@@ -29,13 +29,15 @@ namespace SP.Presentation
 
         void OnEntityDied(EntityDiedEvent evt)
         {
-            if (Enemies == null || Enemies.Count == 0 || Outcome == null) return;
+            if (Outcome == null) return;
 
-            foreach (var e in Enemies) if (e != null && e.Health.IsAlive) return;
-
-            bool anySquadAlive = false;
-            if (Squad != null) foreach (var s in Squad) if (s != null && s.Health.IsAlive) { anySquadAlive = true; break; }
-            if (anySquadAlive) Outcome.ShowVictory();
+            // Antes solo miraba la lista `Enemies` (los 4 de la patrulla),
+            // pero el mapa tiene 7 enemigos: matando esos 4 saltaba
+            // "Ganaste" con 3 enemigos todavía vivos y disparando. La
+            // victoria se decide contra TODOS los enemigos vivos, que es
+            // lo que el jugador ve.
+            if (ActorRegistry.CountAlive(SP.Combat.TeamId.Enemy) > 0) return;
+            if (ActorRegistry.CountAlive(SP.Combat.TeamId.Player) > 0) Outcome.ShowVictory();
         }
     }
 }

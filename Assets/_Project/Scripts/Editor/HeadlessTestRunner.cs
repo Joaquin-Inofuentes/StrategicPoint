@@ -37,6 +37,8 @@ namespace SP.EditorTools
         static Transform canvasRootRef;
         static DeadNoticeView deadNoticeRef;
         static WeaponStatusView weaponStatusRef;
+        static PlayerHealthView playerHealthRef;
+        static MissionStatusView missionStatusRef;
         static VehicleStatusView vehicleStatusRef;
         static DamageVignetteView damageVignetteRef;
         static KillFeedView killFeedRef;
@@ -211,6 +213,7 @@ namespace SP.EditorTools
             inputDriver.VehicleStatus = vehicleStatusRef;
             inputDriver.Outcome = outcomeControllerRef;
             inputDriver.PauseRef = pauseControllerRef;
+            inputDriver.PlayerHealth = playerHealthRef;
             servicesGO.AddComponent<WorldSimulationDriver>();
             servicesGO.AddComponent<SelectionRingManager>();
             servicesGO.AddComponent<AttackLineManager>();
@@ -220,6 +223,13 @@ namespace SP.EditorTools
             battleManager.Squad = squad;
             battleManager.Enemies = patrolEnemies;
             battleManager.Outcome = outcomeControllerRef;
+
+            if (missionStatusRef != null)
+            {
+                missionStatusRef.Squad = squad;
+                missionStatusRef.Enemies = patrolEnemies;
+                missionStatusRef.Refresh();
+            }
 
             Directory.CreateDirectory("Assets/_Project/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -1148,6 +1158,80 @@ namespace SP.EditorTools
             weaponStatusView.Bind(wsText, wsBarFillImg);
             weaponStatusRef = weaponStatusView;
 
+            // HUD de vida propia: justo ENCIMA del de arma, en la misma
+            // columna del rincón inferior derecho. Antes no existía --
+            // no había manera de saber cuánta vida te quedaba salvo
+            // buscarte en la lista de la escuadra.
+            var phGO = new GameObject("PlayerHealth", typeof(Image), typeof(PlayerHealthView));
+            phGO.transform.SetParent(canvasGO.transform, false);
+            phGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.85f);
+            var phRt = phGO.GetComponent<RectTransform>();
+            phRt.anchorMin = new Vector2(1f, 0f);
+            phRt.anchorMax = new Vector2(1f, 0f);
+            phRt.pivot = new Vector2(1f, 0f);
+            phRt.anchoredPosition = new Vector2(-16f, 124f);
+            phRt.sizeDelta = new Vector2(220f, 46f);
+
+            var phTextGO = new GameObject("Text", typeof(Text));
+            phTextGO.transform.SetParent(phGO.transform, false);
+            var phText = phTextGO.GetComponent<Text>();
+            phText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            phText.alignment = TextAnchor.UpperCenter;
+            phText.color = Color.white;
+            phText.fontSize = 16;
+            var phTextRt = phTextGO.GetComponent<RectTransform>();
+            phTextRt.anchorMin = new Vector2(0f, 0f);
+            phTextRt.anchorMax = new Vector2(1f, 1f);
+            phTextRt.offsetMin = new Vector2(4f, 12f);
+            phTextRt.offsetMax = new Vector2(-4f, -4f);
+
+            var phBarBgGO = new GameObject("BarBG", typeof(Image));
+            phBarBgGO.transform.SetParent(phGO.transform, false);
+            phBarBgGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.6f);
+            var phBarBgRt = phBarBgGO.GetComponent<RectTransform>();
+            phBarBgRt.anchorMin = new Vector2(0f, 0f);
+            phBarBgRt.anchorMax = new Vector2(1f, 0f);
+            phBarBgRt.pivot = new Vector2(0f, 0f);
+            phBarBgRt.anchoredPosition = new Vector2(6f, 6f);
+            phBarBgRt.sizeDelta = new Vector2(-12f, 8f);
+
+            var phBarFillGO = new GameObject("BarFill", typeof(Image));
+            phBarFillGO.transform.SetParent(phBarBgGO.transform, false);
+            var phBarFillImg = phBarFillGO.GetComponent<Image>();
+            phBarFillImg.color = new Color(0.35f, 0.85f, 0.4f);
+            phBarFillImg.type = Image.Type.Filled;
+            phBarFillImg.fillMethod = Image.FillMethod.Horizontal;
+            phBarFillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+            phBarFillImg.fillAmount = 1f;
+            StretchFull(phBarFillGO.GetComponent<RectTransform>());
+
+            var playerHealthView = phGO.GetComponent<PlayerHealthView>();
+            playerHealthView.Bind(phText, phBarFillImg);
+            playerHealthRef = playerHealthView;
+
+            // Estado de misión: arriba y al centro, el único panel que se
+            // ve igual en FPS y en RTS (no es info de puntería, es el
+            // marcador de la partida).
+            var msGO = new GameObject("MissionStatus", typeof(Image), typeof(MissionStatusView));
+            msGO.transform.SetParent(canvasGO.transform, false);
+            msGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.8f);
+            var msRt = msGO.GetComponent<RectTransform>();
+            msRt.anchorMin = new Vector2(0.5f, 1f);
+            msRt.anchorMax = new Vector2(0.5f, 1f);
+            msRt.pivot = new Vector2(0.5f, 1f);
+            msRt.anchoredPosition = new Vector2(0f, -14f);
+            msRt.sizeDelta = new Vector2(360f, 34f);
+
+            var msTextGO = new GameObject("Text", typeof(Text));
+            msTextGO.transform.SetParent(msGO.transform, false);
+            var msText = msTextGO.GetComponent<Text>();
+            msText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            msText.alignment = TextAnchor.MiddleCenter;
+            msText.color = Color.white;
+            msText.fontSize = 16;
+            StretchFull(msTextGO.GetComponent<RectTransform>());
+            missionStatusRef = msGO.GetComponent<MissionStatusView>();
+
             // HUD del vehículo: mismo rincón que el de arma (nunca se
             // muestran los dos juntos), pero con velocímetro, barra de
             // vida del tanque y quién es el artillero.
@@ -1285,7 +1369,12 @@ namespace SP.EditorTools
             rosterRt.anchorMax = new Vector2(0f, 1f);
             rosterRt.pivot = new Vector2(0f, 1f);
             rosterRt.anchoredPosition = new Vector2(20f, -20f);
-            rosterRt.sizeDelta = new Vector2(220f, 100f);
+            // Las filas pasaron de 1 renglón (solo nombre) a 2 (nombre +
+            // vida/arma) y suman una barra de vida abajo: hay que darles
+            // el alto real o el segundo renglón queda recortado.
+            const float rowHeight = 46f;
+            const float rowStride = 50f;
+            rosterRt.sizeDelta = new Vector2(240f, squad.Count * rowStride);
             var roster = rosterGO.GetComponent<SelectedSoldierUI>();
 
             for (int i = 0; i < squad.Count; i++)
@@ -1296,8 +1385,8 @@ namespace SP.EditorTools
                 rowRt.anchorMin = new Vector2(0f, 1f);
                 rowRt.anchorMax = new Vector2(0f, 1f);
                 rowRt.pivot = new Vector2(0f, 1f);
-                rowRt.anchoredPosition = new Vector2(0f, -i * 32f);
-                rowRt.sizeDelta = new Vector2(200f, 28f);
+                rowRt.anchoredPosition = new Vector2(0f, -i * rowStride);
+                rowRt.sizeDelta = new Vector2(230f, rowHeight);
                 var rowImg = rowGO.GetComponent<Image>();
 
                 var labelGO = new GameObject("Label", typeof(Text));
@@ -1305,15 +1394,37 @@ namespace SP.EditorTools
                 var labelTxt = labelGO.GetComponent<Text>();
                 labelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 labelTxt.color = Color.white;
-                labelTxt.fontSize = 18;
-                labelTxt.alignment = TextAnchor.MiddleLeft;
+                labelTxt.fontSize = 14;
+                labelTxt.alignment = TextAnchor.UpperLeft;
                 var labelRt = labelGO.GetComponent<RectTransform>();
                 labelRt.anchorMin = Vector2.zero;
                 labelRt.anchorMax = Vector2.one;
-                labelRt.offsetMin = new Vector2(8f, 0f);
-                labelRt.offsetMax = Vector2.zero;
+                labelRt.offsetMin = new Vector2(8f, 6f);
+                labelRt.offsetMax = new Vector2(-6f, -3f);
 
-                roster.AddRow(squad[i], rowImg, labelTxt);
+                // Barra de vida al pie de la fila: el número solo obliga a
+                // hacer la división mental, la barra se lee de un vistazo.
+                var rowBarBgGO = new GameObject("BarBG", typeof(Image));
+                rowBarBgGO.transform.SetParent(rowGO.transform, false);
+                rowBarBgGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.6f);
+                var rowBarBgRt = rowBarBgGO.GetComponent<RectTransform>();
+                rowBarBgRt.anchorMin = new Vector2(0f, 0f);
+                rowBarBgRt.anchorMax = new Vector2(1f, 0f);
+                rowBarBgRt.pivot = new Vector2(0f, 0f);
+                rowBarBgRt.anchoredPosition = new Vector2(6f, 3f);
+                rowBarBgRt.sizeDelta = new Vector2(-12f, 4f);
+
+                var rowBarFillGO = new GameObject("BarFill", typeof(Image));
+                rowBarFillGO.transform.SetParent(rowBarBgGO.transform, false);
+                var rowBarFillImg = rowBarFillGO.GetComponent<Image>();
+                rowBarFillImg.color = new Color(0.35f, 0.85f, 0.4f);
+                rowBarFillImg.type = Image.Type.Filled;
+                rowBarFillImg.fillMethod = Image.FillMethod.Horizontal;
+                rowBarFillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+                rowBarFillImg.fillAmount = 1f;
+                StretchFull(rowBarFillGO.GetComponent<RectTransform>());
+
+                roster.AddRow(squad[i], rowImg, labelTxt, rowBarFillImg);
             }
 
             roster.Initialize();

@@ -13,6 +13,7 @@ namespace SP.Presentation
         GameObject pausePanel;
         GameObject settingsPanel;
         GameOutcomeController outcome;
+        SP.Player.PlayerInputDriver input;
 
         public bool IsPaused { get; private set; }
 
@@ -39,6 +40,7 @@ namespace SP.Presentation
                 if (t != null) settingsPanel = t.gameObject;
             }
             if (outcome == null) outcome = FindAnyObjectByType<GameOutcomeController>();
+            if (input == null) input = FindAnyObjectByType<SP.Player.PlayerInputDriver>();
 
             // Igual que en MainMenuController: los onClick.AddListener()
             // hechos al armar la escena en el Editor no sobreviven a Play
@@ -67,7 +69,6 @@ namespace SP.Presentation
 
                 // El slider de sensibilidad antes era puro adorno: se
                 // movía, pero no afectaba nada del juego real.
-                var input = FindAnyObjectByType<SP.Player.PlayerInputDriver>();
                 var sensValueTxt = settingsPanel.transform.Find("Sensibilidad de mouse_Value")?.GetComponent<Text>();
                 var sensSlider = settingsPanel.transform.Find("Sensibilidad de mouse_Slider")?.GetComponent<Slider>();
                 if (sensSlider != null)
@@ -96,6 +97,10 @@ namespace SP.Presentation
             // La partida ya terminó (ganaste/perdiste): [ESC] no debe
             // abrir un menú de pausa encima de esa pantalla.
             if (outcome != null && outcome.IsShowing) return;
+            // Tampoco a mitad de la cámara de muerte (se congela bien
+            // técnicamente, pero interrumpir esa escena breve con la
+            // pausa se siente como un accidente, no una pausa a propósito).
+            if (!IsPaused && input != null && input.IsHandlingDeath) return;
 
             // [ESC] va "un paso atrás" a la vez: si estás en
             // Configuraciones, vuelve a la pausa (no cierra todo de
@@ -110,6 +115,7 @@ namespace SP.Presentation
         {
             if (pausePanel == null || IsPaused) return;
             if (outcome != null && outcome.IsShowing) return;
+            if (input != null && input.IsHandlingDeath) return;
             IsPaused = true;
             Time.timeScale = 0f;
             pausePanel.SetActive(true);
@@ -129,14 +135,17 @@ namespace SP.Presentation
 
         public void OnSettingsClicked()
         {
-            if (settingsPanel == null) return;
+            // Ya estaba abierto: un doble click no debería volver a
+            // loguear "se entró a configuraciones" como si fuera la
+            // primera vez.
+            if (settingsPanel == null || settingsPanel.activeSelf) return;
             settingsPanel.SetActive(true);
             GameLog.Line("Se entro a configuraciones");
         }
 
         public void OnSettingsBackClicked()
         {
-            if (settingsPanel == null) return;
+            if (settingsPanel == null || !settingsPanel.activeSelf) return;
             settingsPanel.SetActive(false);
             GameLog.Line("Se salio de configuraciones");
         }

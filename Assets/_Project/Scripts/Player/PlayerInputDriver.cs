@@ -25,6 +25,7 @@ namespace SP.Player
         public SelectionController Selection;
         public List<Soldier> Squad;
         public AimUI AimUiRef;
+        public PlayerHealthView PlayerHealth;
         public InstructionBannerView Instructions;
         public Image SelectionBox;
         public Vehicle Vehicle;
@@ -231,6 +232,12 @@ namespace SP.Player
         // cercano -- o a vista RTS si no queda ninguno.
         // -----------------------------------------------------------
         bool handlingDeath;
+        // Para que PauseController no abra la pausa a mitad de la
+        // cámara de muerte -- técnicamente no rompía nada (se congela
+        // bien y sigue al continuar), pero pausar en medio de esa
+        // escena breve se siente como una interrupción rara, no
+        // intencional.
+        public bool IsHandlingDeath => handlingDeath;
 
         void OnEntityDied(EntityDiedEvent evt)
         {
@@ -265,6 +272,8 @@ namespace SP.Player
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
             if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
+            if (AimUiRef != null) AimUiRef.SetVisible(false);
+            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
             deadSoldier.SetBodyVisible(true);
             bodyHiddenFor = null;
 
@@ -342,7 +351,13 @@ namespace SP.Player
         // porque ahí el mouse selecciona y arrastra en vez de mirar.
         void UpdateCursorLock(Keyboard kb, Mouse mouse)
         {
-            bool wantsLock = currentSeat.HasValue || Rig.Mode == ControlMode.Fps;
+            // Antes también se bloqueaba con solo currentSeat.HasValue,
+            // sin mirar el modo -- si estabas manejando un vehiculo y
+            // pasabas a vista RTS con [TAB] (sin bajarte), el cursor
+            // seguia preso e invisible, aunque esa vista es igual de
+            // "arriba mirando el mapa" que la RTS de a pie, donde el
+            // mouse siempre queda libre para clickear.
+            bool wantsLock = Rig.Mode == ControlMode.Fps;
 
             if (wantsLock)
             {
@@ -378,7 +393,7 @@ namespace SP.Player
         {
             if (Brain.Current == null) return;
             if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
-            if (AimUiRef != null) AimUiRef.SetWatchedShooter(Brain.Current.Id);
+            if (AimUiRef != null) { AimUiRef.SetVisible(true); AimUiRef.SetWatchedShooter(Brain.Current.Id); }
 
             if (bodyHiddenFor != Brain.Current)
             {
@@ -411,6 +426,11 @@ namespace SP.Player
             UpdateVehicleMountIndicator(result);
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
+            if (PlayerHealth != null)
+            {
+                PlayerHealth.gameObject.SetActive(true);
+                PlayerHealth.UpdateFrom(Brain.Current);
+            }
             UpdateWeaponViewmodel(Brain.Current.Weapon);
 
             if (mouse != null && mouse.leftButton.wasPressedThisFrame) Brain.Fire();
@@ -706,6 +726,8 @@ namespace SP.Player
             Rig.SetZoomed(false); // el zoom de mirilla es solo a pie
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
+            if (AimUiRef != null) AimUiRef.SetVisible(false);
+            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
 
@@ -848,6 +870,8 @@ namespace SP.Player
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
             if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
+            if (AimUiRef != null) AimUiRef.SetVisible(false);
+            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             UpdateVehicleSelectionRing();
             Vector3 pan = Vector3.zero;

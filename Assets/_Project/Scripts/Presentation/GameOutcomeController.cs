@@ -83,8 +83,17 @@ namespace SP.Presentation
             GameLog.Line("Pantalla de perder activa");
         }
 
+        // Un doble/triple click en Reintentar o Salir (el dedo no siempre
+        // levanta el mouse justo a tiempo) disparaba la acción -- y su
+        // log -- una vez por click, aunque SceneManager.LoadScene ya
+        // había arrancado el cambio de escena con el primero. Con esto
+        // solo el primer click de cada uno hace algo.
+        bool actionTaken;
+
         public void OnRetryClicked()
         {
+            if (actionTaken) return;
+            actionTaken = true;
             GameLog.Line("Se selecciono reintentar");
             Time.timeScale = 1f;
             SceneManager.LoadScene(SceneManager.GetActiveScene().name);
@@ -92,6 +101,8 @@ namespace SP.Presentation
 
         public void OnExitClicked()
         {
+            if (actionTaken) return;
+            actionTaken = true;
             GameLog.Line("Se selecciono salir");
             Time.timeScale = 1f;
             GameLog.Line("Iniciando escena de menu inicial");

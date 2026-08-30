@@ -23,6 +23,37 @@ namespace SP.Core
 
         public static IReadOnlyList<Soldier> All => soldiers;
 
+        // Soldier.Awake() -- que es quien registra -- NO corre en un
+        // GameObject que ya está desactivado cuando carga la escena (un
+        // soldado guardado adentro del vehículo, por ejemplo). Ese soldado
+        // quedaba fuera del registro para siempre: invisible para el
+        // sensado de la IA, para la condición de victoria y para los
+        // contadores del HUD, aunque estuviera perfectamente vivo. Este
+        // barrido incluye los inactivos y los da de alta.
+        public static void EnsureAllRegistered()
+        {
+            var found = UnityEngine.Object.FindObjectsByType<Soldier>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var s in found)
+            {
+                if (s == null) continue;
+                s.Bootstrap();
+                Register(s);
+            }
+        }
+
+        // Cuenta vivos de un equipo. Un soldado montado en un vehículo
+        // tiene el GameObject desactivado pero sigue vivo y sigue siendo
+        // parte de la escuadra: no puede desaparecer del marcador solo
+        // por haberse subido al tanque.
+        public static int CountAlive(TeamId team)
+        {
+            EnsureAllRegistered();
+            int n = 0;
+            foreach (var s in soldiers)
+                if (s != null && s.Team == team && s.Health != null && s.Health.IsAlive) n++;
+            return n;
+        }
+
         public static Soldier FindById(int id)
         {
             foreach (var s in soldiers)

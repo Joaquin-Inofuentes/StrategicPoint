@@ -27,14 +27,24 @@ namespace SP.Presentation
 
         void Start() => GameLog.Line("Pantalla de menu cargada");
 
+        // Un doble click en Jugar (pasa seguido: el segundo click del
+        // mouse cae antes de que la escena termine de cambiar) disparaba
+        // "Se selecciono iniciar partida" dos veces en el log por una
+        // sola intención del jugador.
+        bool actionTaken;
+
         public void OnPlayClicked()
         {
+            if (actionTaken) return;
+            actionTaken = true;
             GameLog.Line("Se selecciono iniciar partida");
             SceneManager.LoadScene("SC_TestLevel");
         }
 
         public void OnExitClicked()
         {
+            if (actionTaken) return;
+            actionTaken = true;
             GameLog.Line("Se selecciono salir del juego");
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;

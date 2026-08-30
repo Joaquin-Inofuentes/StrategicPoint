@@ -24,6 +24,24 @@ namespace SP.UI
         public string CurrentPrompt { get; private set; } = "";
         public bool IsVisible => promptText != null && promptText.gameObject.activeSelf;
 
+        // La mirilla/cartel/paneles de info son puramente de puntería a
+        // pie (FPS). En RTS o manejando un vehículo, nadie los actualiza
+        // (nada llama UpdateFromAimResult ahí) y quedaban congelados con
+        // lo último que se apuntó a pie -- un punto blanco fijo en medio
+        // de la vista táctica, a veces con un cartel tipo "[F] Poseer a
+        // X" de un aliado que ya ni está en pantalla.
+        public void SetVisible(bool visible)
+        {
+            if (crosshair != null) crosshair.gameObject.SetActive(visible);
+            if (!visible)
+            {
+                if (promptText != null) promptText.gameObject.SetActive(false);
+                if (soldierInfoPanel != null) soldierInfoPanel.SetActive(false);
+                if (vehicleInfoPanel != null) vehicleInfoPanel.SetActive(false);
+                CurrentPrompt = "";
+            }
+        }
+
         public void Bind(Text prompt, Image cross)
         {
             promptText = prompt;
