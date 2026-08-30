@@ -48,12 +48,21 @@ namespace SP.UI
             if (brain.Current == null || evt.TargetId != brain.Current.Id) return;
 
             if (routine != null) StopCoroutine(routine);
-            routine = StartCoroutine(FlashAndFade());
+            // El mismo golpe se sentia identico con la vida llena o al
+            // borde de morir. La intensidad ahora escala con lo que
+            // queda: RemainingHealth ya viaja en el evento, no hace
+            // falta re-consultar Health.
+            float maxHealth = brain.Current.Health.MaxHealth;
+            float remainingFrac = maxHealth > 0 ? Mathf.Clamp01((float)evt.RemainingHealth / maxHealth) : 1f;
+            routine = StartCoroutine(FlashAndFade(remainingFrac));
         }
 
-        IEnumerator FlashAndFade()
+        IEnumerator FlashAndFade(float remainingHealthFrac01)
         {
-            const float peakAlpha = 0.75f;
+            // Con la vida llena, el pico apenas se nota (0.35); al borde
+            // de morir, casi opaco (0.9). El mismo golpe pega mas fuerte
+            // en pantalla cuanto mas cerca estas de caer.
+            float peakAlpha = Mathf.Lerp(0.9f, 0.35f, remainingHealthFrac01);
             const float fadeTime = 0.55f;
 
             image.color = new Color(0f, 0f, 0f, peakAlpha);

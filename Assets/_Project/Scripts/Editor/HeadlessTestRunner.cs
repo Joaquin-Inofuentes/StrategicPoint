@@ -217,6 +217,7 @@ namespace SP.EditorTools
             servicesGO.AddComponent<WorldSimulationDriver>();
             servicesGO.AddComponent<SelectionRingManager>();
             servicesGO.AddComponent<AttackLineManager>();
+            servicesGO.AddComponent<FloatingDamageTextManager>();
             servicesGO.AddComponent<GameplaySceneBootstrap>();
 
             var battleManager = servicesGO.AddComponent<BattleManager>();
@@ -1327,6 +1328,28 @@ namespace SP.EditorTools
             var vignetteView = vignetteGO.GetComponent<DamageVignetteView>();
             vignetteView.Bind(vignetteGO.GetComponent<Image>(), playerBrain);
             damageVignetteRef = vignetteView;
+
+            // Flecha que apunta hacia de donde vino el ultimo golpe. OJO:
+            // el mismo bug que ya paso una vez con KillFeedView -- si el
+            // Image a ocultar vive en el MISMO GameObject que el
+            // componente de vista, Bind() desactivando ese Image apaga
+            // TODO el GameObject (y con el, el componente entero, para
+            // siempre). El Image va en un hijo aparte.
+            var dmgDirGO = new GameObject("DamageDirection", typeof(RectTransform), typeof(DamageDirectionView));
+            dmgDirGO.transform.SetParent(canvasGO.transform, false);
+            var dmgDirRt = dmgDirGO.GetComponent<RectTransform>();
+            dmgDirRt.anchorMin = dmgDirRt.anchorMax = new Vector2(0.5f, 0.5f);
+            dmgDirRt.sizeDelta = new Vector2(26f, 26f);
+            dmgDirRt.anchoredPosition = new Vector2(0f, 160f); // arriba del centro, gira alrededor del jugador
+
+            var dmgDirImgGO = new GameObject("Arrow", typeof(Image));
+            dmgDirImgGO.transform.SetParent(dmgDirGO.transform, false);
+            var dmgDirImg = dmgDirImgGO.GetComponent<Image>();
+            StretchFull(dmgDirImgGO.GetComponent<RectTransform>());
+
+            var dmgDirView = dmgDirGO.GetComponent<DamageDirectionView>();
+            dmgDirView.Bind(dmgDirImg, playerBrain);
+            dmgDirView.Initialize();
 
             // "SOLDADO ABATIDO": cartel grande centrado, un poco arriba del
             // medio para no pisar la mirilla, arranca oculto. OJO: el
