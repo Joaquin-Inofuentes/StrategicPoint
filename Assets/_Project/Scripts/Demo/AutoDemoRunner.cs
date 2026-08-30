@@ -25,7 +25,11 @@ namespace SP.Presentation
     // darle Play, o apretar F9 durante el juego (arranca/corta la demo).
     public class AutoDemoRunner : MonoBehaviour
     {
-        [SerializeField] bool autoPlayOnStart = true;
+        // Por defecto NO arranca sola: el usuario le da Play para probar el
+        // juego a mano tranquilo, sin que la demo le agarre el control. Para
+        // correrla, un comando desde afuera llama a StartDemo() (o el propio
+        // usuario aprieta F9 si quiere verla).
+        [SerializeField] bool autoPlayOnStart = false;
 
         public PlayerBrain Brain;
         public CameraRig Rig;
@@ -425,6 +429,12 @@ namespace SP.Presentation
             // FASE 7 - Paneles de info al apuntar, y flecha+lineas al vehiculo
             // ============================================================
             TestLog.Phase("FASE 7 - Info al apuntar (soldado/vehiculo) y flecha de montaje");
+
+            // Kes seguia adentro (Passenger1) desde la Fase 4 -- hay que
+            // bajarla antes de decir "vehiculo vacio", si no el panel de
+            // asientos correctamente la muestra ocupada y desentona con el
+            // tutorial (esto es lo que se veia "desfasado" en la Fase 7).
+            foreach (var occupant in new List<Soldier>(DemoVehicle.Occupants)) DemoVehicle.Dismount(occupant);
 
             vega.transform.position = kes.transform.position + new Vector3(0f, 0f, -3f);
             vega.transform.rotation = Quaternion.LookRotation((kes.transform.position - vega.transform.position).normalized);

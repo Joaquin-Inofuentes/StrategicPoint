@@ -99,6 +99,12 @@ namespace SP.Player
                 return;
             }
 
+            // [F1]/[F2]/[F3]: posee directamente al soldado 1/2/3 del
+            // escuadrón, sin tener que apuntarle primero.
+            if (kb.f1Key.wasPressedThisFrame) PossessSquadIndex(0);
+            if (kb.f2Key.wasPressedThisFrame) PossessSquadIndex(1);
+            if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
+
             if (kb.tabKey.wasPressedThisFrame)
             {
                 Rig.ToggleMode();
@@ -196,6 +202,10 @@ namespace SP.Player
             if (kb.gKey.wasPressedThisFrame && result.Type == AimTargetType.Vehicle)
                 GOrderOnVehicle(result.Vehicle);
 
+            // Mantener click derecho apretado: zoom de mirilla (no manda la
+            // camioneta hasta que se suelta, eso sigue siendo un click).
+            if (mouse != null) Rig.SetZoomed(mouse.rightButton.isPressed);
+
             // Orden a la camioneta: clic derecho sobre el suelo, viajando sola.
             if (mouse != null && mouse.rightButton.wasPressedThisFrame && result.Type == AimTargetType.Ground)
                 TryIssueVehicleMoveOrder(result.Point);
@@ -285,6 +295,18 @@ namespace SP.Player
                 }
             }
             mountIndicator.Show(result.Vehicle, incoming);
+        }
+
+        void PossessSquadIndex(int index)
+        {
+            if (Squad == null || index < 0 || index >= Squad.Count) return;
+            var target = Squad[index];
+            if (target == null || !target.Health.IsAlive || !target.gameObject.activeInHierarchy) return;
+            if (Brain.Current == target) return;
+
+            PossessionService.Swap(Brain, target);
+            Rig.BeginTransition(target.EyeAnchor != null ? target.EyeAnchor : target.transform);
+            if (Rig.Mode == ControlMode.Rts) Rig.SetMode(ControlMode.Fps);
         }
 
         void EquipFromCatalog(WeaponKind kind) => EquipWeaponHotkey(kind);
@@ -396,6 +418,7 @@ namespace SP.Player
 
         void UpdateInVehicle(Keyboard kb, Mouse mouse)
         {
+            Rig.SetZoomed(false); // el zoom de mirilla es solo a pie
             if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
 
             if (kb.vKey.wasPressedThisFrame) vehicleFirstPerson = !vehicleFirstPerson;
@@ -492,6 +515,7 @@ namespace SP.Player
         // -----------------------------------------------------------
         void UpdateRts(Keyboard kb, Mouse mouse)
         {
+            Rig.SetZoomed(false); // el zoom de mirilla es solo a pie
             Vector3 pan = Vector3.zero;
             if (kb.wKey.isPressed) pan += Vector3.forward;
             if (kb.sKey.isPressed) pan += Vector3.back;
@@ -589,12 +613,30 @@ namespace SP.Player
             }
         }
 
+        // El cuadro de selección vive en un Canvas con CanvasScaler
+        // ScaleWithScreenSize: 1 unidad de Canvas ya NO es 1 pixel de
+        // pantalla, así que asignar coordenadas de mouse (pixeles reales)
+        // directo a anchoredPosition queda desfasado de la posición real
+        // apenas la resolución no es exactamente la de referencia. Hay que
+        // convertir pixel de pantalla -> espacio local del Canvas.
+        Vector2 ScreenToCanvasLocal(Vector2 screenPoint)
+        {
+            var canvasRect = SelectionBox.rectTransform.parent as RectTransform;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPoint, Rig.Cam, out var local);
+            // El SelectionBox tiene pivot/anchors en (0,0): sus coordenadas
+            // son relativas a la esquina inferior-izquierda del Canvas, no a
+            // su centro (que es de donde sale "local").
+            return local + new Vector2(canvasRect.rect.width * canvasRect.pivot.x, canvasRect.rect.height * canvasRect.pivot.y);
+        }
+
         void UpdateSelectionBoxVisual(Vector2 a, Vector2 b)
         {
             if (SelectionBox == null) return;
+            Vector2 la = ScreenToCanvasLocal(a);
+            Vector2 lb = ScreenToCanvasLocal(b);
             var rt = SelectionBox.rectTransform;
-            float minX = Mathf.Min(a.x, b.x), maxX = Mathf.Max(a.x, b.x);
-            float minY = Mathf.Min(a.y, b.y), maxY = Mathf.Max(a.y, b.y);
+            float minX = Mathf.Min(la.x, lb.x), maxX = Mathf.Max(la.x, lb.x);
+            float minY = Mathf.Min(la.y, lb.y), maxY = Mathf.Max(la.y, lb.y);
             rt.anchoredPosition = new Vector2(minX, minY);
             rt.sizeDelta = new Vector2(maxX - minX, maxY - minY);
         }

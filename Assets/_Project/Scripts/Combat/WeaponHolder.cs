@@ -59,6 +59,16 @@ namespace SP.Combat
             cooldownTimer = 0f;
 
             ApplyWeaponVisualColor(color);
+            // Cada arma tiene su propia forma (chica/larga/gruesa), no solo
+            // color: así se distingue de un vistazo cuál está equipada. El
+            // cuerpo del soldado tiene escala no uniforme (0.9/1.6/0.9): hay
+            // que compensarla para que el cubo del arma no salga deformado.
+            if (WeaponVisualRenderer != null)
+            {
+                var rootScale = transform.lossyScale;
+                var wanted = WeaponCatalog.Get(kind).VisualScale;
+                WeaponVisualRenderer.transform.localScale = new Vector3(wanted.x / rootScale.x, wanted.y / rootScale.y, wanted.z / rootScale.z);
+            }
         }
 
         // Igual que con el material de Projectile: un Material creado en

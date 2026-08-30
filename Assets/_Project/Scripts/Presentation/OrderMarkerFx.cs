@@ -25,7 +25,10 @@ namespace SP.Presentation
                 else Object.DestroyImmediate(col);
             }
 
-            go.transform.position = position + Vector3.up * 0.05f;
+            // Siempre a nivel del piso, sin importar la altura del punto de
+            // origen (un ataque usa la posición del pecho del enemigo, subir
+            // usa el centro del vehículo -- ninguno es "el suelo").
+            go.transform.position = new Vector3(position.x, 0.05f, position.z);
             go.transform.localScale = new Vector3(1.6f, 0.05f, 1.6f);
 
             var rend = go.GetComponent<MeshRenderer>();

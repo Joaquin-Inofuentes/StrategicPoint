@@ -23,9 +23,29 @@ namespace SP.CameraSystem
         float pitch;
         const float MaxPitch = 80f;
 
+        // Zoom de mirilla: mantener click derecho angosta el FOV, como
+        // apuntar con la mira. Un lerp simple, no un corte seco.
+        [SerializeField] float normalFov = 60f;
+        [SerializeField] float zoomFov = 25f;
+        [SerializeField] float zoomLerpSpeed = 12f;
+        bool zoomed;
+
         public ControlMode Mode { get; private set; } = ControlMode.Fps;
 
-        public void SetCamera(Camera c) => cam = c;
+        public void SetCamera(Camera c)
+        {
+            cam = c;
+            if (cam != null && !cam.orthographic) normalFov = cam.fieldOfView;
+        }
+
+        public void SetZoomed(bool value) => zoomed = value;
+
+        void LateUpdate()
+        {
+            if (cam == null || cam.orthographic) return;
+            float goal = zoomed ? zoomFov : normalFov;
+            cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, goal, Time.deltaTime * zoomLerpSpeed);
+        }
 
         public void AddPitch(float delta) => pitch = Mathf.Clamp(pitch + delta, -MaxPitch, MaxPitch);
         public void ResetPitch() => pitch = 0f;

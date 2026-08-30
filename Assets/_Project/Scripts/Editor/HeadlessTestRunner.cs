@@ -32,6 +32,7 @@ namespace SP.EditorTools
         static NearbySquadListView squadListRef;
         static Image selectionBoxRef;
         static MinimapFollow minimapFollowRef;
+        static Transform canvasRootRef;
 
         static int cachedMinimapLayer = -1;
 
@@ -140,6 +141,7 @@ namespace SP.EditorTools
             BuildGround();
             BuildObstacles();
             SP.Presentation.OrderMarkerFx.Prewarm();
+            SP.Presentation.AttackLineManager.Prewarm();
 
             var soldierPrefab = BuildAndSaveSoldierPrefab();
             var projectilePrefab = BuildAndSaveProjectilePrefab();
@@ -197,6 +199,7 @@ namespace SP.EditorTools
             inputDriver.MinimapRef = minimapFollowRef;
             servicesGO.AddComponent<WorldSimulationDriver>();
             servicesGO.AddComponent<SelectionRingManager>();
+            servicesGO.AddComponent<AttackLineManager>();
 
             Directory.CreateDirectory("Assets/_Project/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -240,7 +243,9 @@ namespace SP.EditorTools
                 runner.DemoEnemy = demoEnemy;
                 runner.PatrolEnemies = patrolEnemies;
 
-                TestLog.Step("Demo lista: Vega junto al vehiculo, Kes y Doc cerca. AutoDemoRunner armado (F9 para arrancar/cortar a mano).");
+                BuildTestButton(canvasRootRef, runner);
+
+                TestLog.Step("Demo lista: Vega junto al vehiculo, Kes y Doc cerca. AutoDemoRunner armado (F9 o el boton 'Test' para arrancar/cortar a mano).");
             }
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -880,6 +885,7 @@ namespace SP.EditorTools
         static void BuildUI(List<Soldier> squad, Camera cam)
         {
             var canvasGO = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            canvasRootRef = canvasGO.transform;
             var canvas = canvasGO.GetComponent<Canvas>();
             // ScreenSpaceCamera (no Overlay): así la UI queda compuesta DENTRO
             // del render de la cámara y aparece en las capturas de pantalla,
@@ -894,7 +900,7 @@ namespace SP.EditorTools
 
             var scaler = canvasGO.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1280f, 720f);
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
 
             var crossGO = new GameObject("Crosshair", typeof(Image));
@@ -911,7 +917,7 @@ namespace SP.EditorTools
             promptTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             promptTxt.alignment = TextAnchor.MiddleCenter;
             promptTxt.color = Color.white;
-            promptTxt.fontSize = 18;
+            promptTxt.fontSize = 24;
             var prt = promptGO.GetComponent<RectTransform>();
             prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
             prt.anchoredPosition = new Vector2(0f, -40f);
@@ -928,7 +934,7 @@ namespace SP.EditorTools
             // justo arriba del texto de instrucciones para que no se pisen.
             var soldierInfoGO = new GameObject("SoldierInfoPanel", typeof(Image));
             soldierInfoGO.transform.SetParent(canvasGO.transform, false);
-            soldierInfoGO.GetComponent<Image>().color = new Color(0.06f, 0.07f, 0.09f, 0.72f);
+            soldierInfoGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.85f);
             var siRt = soldierInfoGO.GetComponent<RectTransform>();
             siRt.anchorMin = new Vector2(0.5f, 0f);
             siRt.anchorMax = new Vector2(0.5f, 0f);
@@ -942,7 +948,7 @@ namespace SP.EditorTools
             siText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             siText.alignment = TextAnchor.MiddleCenter;
             siText.color = Color.white;
-            siText.fontSize = 15;
+            siText.fontSize = 20;
             StretchFull(siTextGO.GetComponent<RectTransform>());
 
             aimUi.BindSoldierInfo(soldierInfoGO, siText);
@@ -953,7 +959,7 @@ namespace SP.EditorTools
             // panel de soldado (nunca se muestran los dos a la vez).
             var vehicleInfoGO = new GameObject("VehicleInfoPanel", typeof(Image));
             vehicleInfoGO.transform.SetParent(canvasGO.transform, false);
-            vehicleInfoGO.GetComponent<Image>().color = new Color(0.06f, 0.07f, 0.09f, 0.72f);
+            vehicleInfoGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.85f);
             var viRt = vehicleInfoGO.GetComponent<RectTransform>();
             viRt.anchorMin = new Vector2(0.5f, 0f);
             viRt.anchorMax = new Vector2(0.5f, 0f);
@@ -982,7 +988,7 @@ namespace SP.EditorTools
                 seatLabelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 seatLabelTxt.alignment = TextAnchor.UpperCenter;
                 seatLabelTxt.color = Color.white;
-                seatLabelTxt.fontSize = 9;
+                seatLabelTxt.fontSize = 13;
                 seatLabelTxt.text = seatLabels[i].Replace("Pasajero ", "Pas.");
                 var seatLabelRt = seatLabelGO.GetComponent<RectTransform>();
                 seatLabelRt.anchorMin = seatLabelRt.anchorMax = new Vector2(0f, 0.5f);
@@ -1021,7 +1027,7 @@ namespace SP.EditorTools
                 var labelTxt = labelGO.GetComponent<Text>();
                 labelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 labelTxt.color = Color.white;
-                labelTxt.fontSize = 14;
+                labelTxt.fontSize = 18;
                 labelTxt.alignment = TextAnchor.MiddleLeft;
                 var labelRt = labelGO.GetComponent<RectTransform>();
                 labelRt.anchorMin = Vector2.zero;
@@ -1062,7 +1068,7 @@ namespace SP.EditorTools
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.alignment = TextAnchor.MiddleCenter;
             text.color = new Color(0.08f, 0.1f, 0.12f);
-            text.fontSize = 16;
+            text.fontSize = 22;
             var rt = textGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 0f);
             rt.anchorMax = new Vector2(0.5f, 0f);
@@ -1073,7 +1079,7 @@ namespace SP.EditorTools
             var bgGO = new GameObject("BG", typeof(Image));
             bgGO.transform.SetParent(go.transform, false);
             bgGO.transform.SetAsFirstSibling();
-            bgGO.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.65f);
+            bgGO.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.8f);
             var bgRt = bgGO.GetComponent<RectTransform>();
             bgRt.anchorMin = new Vector2(0.5f, 0f);
             bgRt.anchorMax = new Vector2(0.5f, 0f);
@@ -1099,7 +1105,7 @@ namespace SP.EditorTools
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.alignment = TextAnchor.MiddleCenter;
             text.color = new Color(0.08f, 0.35f, 0.15f);
-            text.fontSize = 34;
+            text.fontSize = 44;
             text.fontStyle = FontStyle.Bold;
             var rt = textGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 0.5f);
@@ -1170,7 +1176,7 @@ namespace SP.EditorTools
                 var labelTxt = labelGO.GetComponent<Text>();
                 labelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 labelTxt.color = Color.white;
-                labelTxt.fontSize = 11;
+                labelTxt.fontSize = 15;
                 labelTxt.alignment = TextAnchor.MiddleLeft;
                 var labelRt = labelGO.GetComponent<RectTransform>();
                 labelRt.anchorMin = Vector2.zero;
@@ -1182,6 +1188,39 @@ namespace SP.EditorTools
             }
 
             squadListRef = listView;
+        }
+
+        // Botón real (no solo la tecla F9) para arrancar/cortar la demo
+        // automática a mano, sin que el jugador tenga que saber el atajo.
+        static void BuildTestButton(Transform canvasParent, SP.Presentation.AutoDemoRunner runner)
+        {
+            var go = new GameObject("TestButton", typeof(Image), typeof(Button));
+            go.transform.SetParent(canvasParent, false);
+            var img = go.GetComponent<Image>();
+            img.color = new Color(0.16f, 0.45f, 0.85f, 0.9f);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(1f, 0f);
+            rt.anchorMax = new Vector2(1f, 0f);
+            rt.pivot = new Vector2(1f, 0f);
+            rt.anchoredPosition = new Vector2(-16f, 16f);
+            rt.sizeDelta = new Vector2(150f, 44f);
+
+            var labelGO = new GameObject("Label", typeof(Text));
+            labelGO.transform.SetParent(go.transform, false);
+            var label = labelGO.GetComponent<Text>();
+            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            label.alignment = TextAnchor.MiddleCenter;
+            label.color = Color.white;
+            label.fontSize = 18;
+            label.text = "Test (F9)";
+            StretchFull(labelGO.GetComponent<RectTransform>());
+
+            var button = go.GetComponent<Button>();
+            button.onClick.AddListener(() =>
+            {
+                if (runner.IsRunning) runner.StopDemo();
+                else runner.StartDemo();
+            });
         }
 
         static void BuildSelectionBox(Transform canvasParent)
@@ -1223,21 +1262,46 @@ namespace SP.EditorTools
             mmCamGO.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             mmCamGO.transform.position = new Vector3(0f, 60f, 0f);
 
-            var rt = new RenderTexture(256, 256, 16) { name = "RT_Minimap" };
+            var rt = new RenderTexture(384, 384, 16) { name = "RT_Minimap" };
             mmCam.targetTexture = rt;
 
             var follow = mmCamGO.AddComponent<MinimapFollow>();
             minimapFollowRef = follow;
 
+            // Borde: un marco un poco más grande y claro detrás del panel
+            // negro, para que el minimapa se distinga del fondo del juego.
+            var borderGO = new GameObject("MinimapBorder", typeof(Image));
+            borderGO.transform.SetParent(canvasParent, false);
+            borderGO.GetComponent<Image>().color = new Color(0.75f, 0.78f, 0.82f, 0.9f);
+            var borderRt = borderGO.GetComponent<RectTransform>();
+            borderRt.anchorMin = new Vector2(1f, 1f);
+            borderRt.anchorMax = new Vector2(1f, 1f);
+            borderRt.pivot = new Vector2(1f, 1f);
+            borderRt.anchoredPosition = new Vector2(-14f, -14f);
+            borderRt.sizeDelta = new Vector2(228f, 228f);
+
             var frameGO = new GameObject("MinimapFrame", typeof(Image));
-            frameGO.transform.SetParent(canvasParent, false);
-            frameGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.6f);
+            frameGO.transform.SetParent(borderGO.transform, false);
+            frameGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.85f);
             var frameRt = frameGO.GetComponent<RectTransform>();
-            frameRt.anchorMin = new Vector2(1f, 1f);
-            frameRt.anchorMax = new Vector2(1f, 1f);
-            frameRt.pivot = new Vector2(1f, 1f);
-            frameRt.anchoredPosition = new Vector2(-16f, -16f);
-            frameRt.sizeDelta = new Vector2(176f, 176f);
+            StretchFull(frameRt);
+            frameRt.offsetMin = new Vector2(3f, 3f);
+            frameRt.offsetMax = new Vector2(-3f, -3f);
+
+            var nLabelGO = new GameObject("N", typeof(Text));
+            nLabelGO.transform.SetParent(borderGO.transform, false);
+            var nLabel = nLabelGO.GetComponent<Text>();
+            nLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            nLabel.alignment = TextAnchor.MiddleCenter;
+            nLabel.color = new Color(0.85f, 0.9f, 0.95f);
+            nLabel.fontSize = 14;
+            nLabel.fontStyle = FontStyle.Bold;
+            nLabel.text = "N";
+            var nRt = nLabelGO.GetComponent<RectTransform>();
+            nRt.anchorMin = nRt.anchorMax = new Vector2(0.5f, 1f);
+            nRt.pivot = new Vector2(0.5f, 1f);
+            nRt.anchoredPosition = new Vector2(0f, -2f);
+            nRt.sizeDelta = new Vector2(24f, 18f);
 
             var imgGO = new GameObject("MinimapImage", typeof(RawImage));
             imgGO.transform.SetParent(frameGO.transform, false);

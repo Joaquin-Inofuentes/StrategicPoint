@@ -11,6 +11,7 @@ namespace SP.Presentation
         [SerializeField] float baseRadius = 0.75f;
         [SerializeField] float pulseAmount = 0.18f;
         [SerializeField] float pulseSpeed = 2.2f;
+        [SerializeField] float groundHeight = 0.03f;
 
         public static SelectionRingFx Spawn(Transform target, Color color)
         {
@@ -42,7 +43,9 @@ namespace SP.Presentation
                 return;
             }
 
-            transform.position = Target.position + Vector3.up * 0.03f;
+            // A nivel del piso (no a la altura del centro del soldado, que
+            // lo dejaba envolviendo la mitad del cubo en vez de estar abajo).
+            transform.position = new Vector3(Target.position.x, groundHeight, Target.position.z);
 
             float k = (Mathf.Sin(Time.time * pulseSpeed) + 1f) * 0.5f;
             float radius = (baseRadius + pulseAmount * k) * 2f; // cylinder scale = diámetro
