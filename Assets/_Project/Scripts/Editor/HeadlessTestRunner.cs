@@ -641,6 +641,11 @@ namespace SP.EditorTools
         // ---------------------------------------------------------------
         // Construcción de prefabs y entorno
         // ---------------------------------------------------------------
+        // Colores de equipo para el minimapa: fijos, no derivados del color
+        // de cuerpo de cada unidad (ver comentario en SpawnSoldier).
+        static readonly Color PlayerMinimapColor = new Color(0.25f, 0.55f, 0.98f);
+        static readonly Color EnemyMinimapColor = new Color(0.95f, 0.15f, 0.12f);
+
         static Soldier SpawnSoldier(GameObject prefab, string name, TeamId team, RoleType role, Vector3 position, Color color, ProjectilePool pool, int maxHealth)
         {
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
@@ -666,7 +671,23 @@ namespace SP.EditorTools
             var fx = instance.GetComponent<CubeFxReactor>();
             fx?.Bootstrap();
 
-            MinimapIcon.Spawn(instance.transform, color, GetOrCreateMinimapLayer());
+            // El color del cuerpo (color) varia por soldado para
+            // distinguirlos entre si de cerca -- pero eso significa que
+            // Vega (colorVega = 0.95,0.35,0.30) y los enemigos
+            // (colorEnemy = 0.95,0.25,0.20) terminan con un rojo casi
+            // identico en el minimapa, donde la lectura tiene que ser
+            // instantanea. El minimapa usa un color de EQUIPO fijo,
+            // desacoplado del color de cuerpo, y un radio mayor para los
+            // enemigos: dos señales independientes, no solo una.
+            var minimapColor = team == TeamId.Player ? PlayerMinimapColor : EnemyMinimapColor;
+            float minimapRadius = team == TeamId.Player ? 1.6f : 2f;
+            var minimapIcon = MinimapIcon.Spawn(instance.transform, minimapColor, GetOrCreateMinimapLayer(), minimapRadius);
+            // Solo la escuadra propia necesita mostrar hacia donde mira:
+            // es la unica que el jugador puede llegar a controlar, y
+            // sumarselo tambien a los enemigos ensuciaria el minimapa sin
+            // aportar nada que el jugador pueda usar.
+            if (team == TeamId.Player) minimapIcon.EnableDirectionMarker(GetOrCreateMinimapLayer(), minimapRadius);
+            else minimapIcon.EnableFogOfWar();
 
             var healthBar = instance.GetComponentInChildren<HealthBarView>(true);
             healthBar?.Bootstrap();
@@ -1981,6 +2002,59 @@ namespace SP.EditorTools
             imgRt.anchorMax = Vector2.one;
             imgRt.offsetMin = new Vector2(4f, 4f);
             imgRt.offsetMax = new Vector2(-4f, -4f);
+
+            BuildMinimapLegend(canvasParent);
+        }
+
+        // Leyenda de colores: sin esto, un punto azul y uno rojo en el
+        // minimapa se interpretan por convencion o por prueba y error. Se
+        // ancla debajo del minimapa, con exactamente los mismos colores
+        // que usa MinimapIcon -- si alguno cambia, esta leyenda tiene que
+        // cambiar con el (comparten las mismas constantes).
+        static void BuildMinimapLegend(Transform canvasParent)
+        {
+            var legendGO = new GameObject("MinimapLegend", typeof(Image));
+            legendGO.transform.SetParent(canvasParent, false);
+            legendGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.75f);
+            var legendRt = legendGO.GetComponent<RectTransform>();
+            legendRt.anchorMin = new Vector2(1f, 1f);
+            legendRt.anchorMax = new Vector2(1f, 1f);
+            legendRt.pivot = new Vector2(1f, 1f);
+            legendRt.anchoredPosition = new Vector2(-14f, -248f);
+            legendRt.sizeDelta = new Vector2(150f, 66f);
+
+            (string label, Color color)[] entries =
+            {
+                ("Aliado", PlayerMinimapColor),
+                ("Enemigo", EnemyMinimapColor),
+                ("Vehiculo", new Color(0.98f, 0.65f, 0.15f)),
+            };
+
+            for (int i = 0; i < entries.Length; i++)
+            {
+                var swatchGO = new GameObject("Swatch", typeof(Image));
+                swatchGO.transform.SetParent(legendGO.transform, false);
+                swatchGO.GetComponent<Image>().color = entries[i].color;
+                var swRt = swatchGO.GetComponent<RectTransform>();
+                swRt.anchorMin = swRt.anchorMax = new Vector2(0f, 1f);
+                swRt.pivot = new Vector2(0f, 1f);
+                swRt.anchoredPosition = new Vector2(8f, -8f - i * 20f);
+                swRt.sizeDelta = new Vector2(12f, 12f);
+
+                var labelGO = new GameObject("Label", typeof(Text));
+                labelGO.transform.SetParent(legendGO.transform, false);
+                var label = labelGO.GetComponent<Text>();
+                label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                label.text = entries[i].label;
+                label.color = Color.white;
+                label.fontSize = 12;
+                label.alignment = TextAnchor.MiddleLeft;
+                var labelRt = labelGO.GetComponent<RectTransform>();
+                labelRt.anchorMin = labelRt.anchorMax = new Vector2(0f, 1f);
+                labelRt.pivot = new Vector2(0f, 1f);
+                labelRt.anchoredPosition = new Vector2(26f, -6f - i * 20f);
+                labelRt.sizeDelta = new Vector2(110f, 16f);
+            }
         }
     }
 }
