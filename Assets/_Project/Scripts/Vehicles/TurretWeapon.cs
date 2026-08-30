@@ -34,7 +34,10 @@ namespace SP.Vehicles
             if (bootstrapped) return;
             bootstrapped = true;
             vehicle = GetComponentInParent<Vehicle>();
+            WorldSystemsRegistry.Register(this);
         }
+
+        void OnDestroy() => WorldSystemsRegistry.Unregister(this);
 
         public void SetPool(ProjectilePool projectilePool) => pool = projectilePool;
 

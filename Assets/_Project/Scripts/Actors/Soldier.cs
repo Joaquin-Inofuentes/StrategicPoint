@@ -1,6 +1,7 @@
 using UnityEngine;
 using SP.Core;
 using SP.Combat;
+using SP.Ai;
 
 namespace SP.Actors
 {
@@ -26,6 +27,12 @@ namespace SP.Actors
         Health health;
         SoldierMotor motor;
         WeaponHolder weapon;
+        // WorldSimulationDriver hacia GetComponent<AiBrain>() por soldado
+        // en cada frame de Update -- con cincuenta soldados son tres mil
+        // llamadas por segundo a una operacion que siempre devuelve lo
+        // mismo. Mismo patron que Health/Motor/Weapon: se cachea una sola
+        // vez en Bootstrap.
+        AiBrain aiBrain;
 
         // Estas propiedades se leen desde muchos lugares (PlayerBrain,
         // tests, IA) sin pasar por Awake primero cuando el objeto se creó
@@ -34,6 +41,7 @@ namespace SP.Actors
         public Health Health { get { if (!bootstrapped) Bootstrap(); return health; } }
         public SoldierMotor Motor { get { if (!bootstrapped) Bootstrap(); return motor; } }
         public WeaponHolder Weapon { get { if (!bootstrapped) Bootstrap(); return weapon; } }
+        public AiBrain Brain { get { if (!bootstrapped) Bootstrap(); return aiBrain; } }
 
         public Transform EyeAnchor;
 
@@ -70,6 +78,7 @@ namespace SP.Actors
             health = GetComponent<Health>();
             motor = GetComponent<SoldierMotor>();
             weapon = GetComponent<WeaponHolder>();
+            aiBrain = GetComponent<AiBrain>();
 
             health.Initialize(Id, maxHealth);
             ActorRegistry.Register(this);

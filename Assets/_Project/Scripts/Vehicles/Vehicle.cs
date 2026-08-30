@@ -143,7 +143,7 @@ namespace SP.Vehicles
 
             seats[role] = soldier;
 
-            var brain = soldier.GetComponent<AiBrain>();
+            var brain = soldier.Brain;
             if (brain != null) brain.enabled = false;
             soldier.gameObject.SetActive(false);
             RefreshOccupancyColor();
@@ -163,7 +163,7 @@ namespace SP.Vehicles
             soldier.transform.position = transform.position + transform.right * 2.5f;
             soldier.transform.rotation = transform.rotation;
 
-            var brain = soldier.GetComponent<AiBrain>();
+            var brain = soldier.Brain;
             if (brain != null) brain.enabled = true;
             RefreshOccupancyColor();
             return true;

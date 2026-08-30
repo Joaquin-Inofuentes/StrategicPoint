@@ -591,6 +591,7 @@ namespace SP.EditorTools
         // ---------------------------------------------------------------
         static void SimStep(float dt)
         {
+            SP.Core.SpatialGrid.Rebuild();
             var snapshot = new List<Soldier>(ActorRegistry.All);
             foreach (var s in snapshot)
             {

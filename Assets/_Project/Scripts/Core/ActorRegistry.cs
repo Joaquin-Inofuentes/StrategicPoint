@@ -78,12 +78,14 @@ namespace SP.Core
             return best;
         }
 
+        // Es la consulta mas repetida del juego: cada soldado no ocupado
+        // en combate la llama en cada tick para saber si hay un enemigo
+        // cerca. Con range acotado, SpatialGrid la resuelve mirando solo
+        // las celdas vecinas en vez de barrer a todos los soldados vivos.
         public static Soldier FindNearestEnemyInRange(Vector3 point, TeamId excludeTeam, float range)
         {
-            return FindNearest(point, s =>
-                s.Health.IsAlive &&
-                s.Team != excludeTeam &&
-                Vector3.Distance(point, s.transform.position) <= range);
+            return SpatialGrid.FindNearestInRange(point, range, s =>
+                s.Health.IsAlive && s.Team != excludeTeam);
         }
     }
 }

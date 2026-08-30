@@ -24,7 +24,10 @@ namespace SP.Vehicles
         {
             turret = GetComponent<TurretWeapon>();
             vehicle = GetComponentInParent<Vehicle>();
+            WorldSystemsRegistry.Register(this);
         }
+
+        void OnDestroy() => WorldSystemsRegistry.Unregister(this);
 
         public void Tick(float dt)
         {

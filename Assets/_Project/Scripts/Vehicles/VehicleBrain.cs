@@ -1,4 +1,5 @@
 using UnityEngine;
+using SP.Core;
 
 namespace SP.Vehicles
 {
@@ -27,7 +28,10 @@ namespace SP.Vehicles
             bootstrapped = true;
             motor = GetComponent<VehicleMotor>();
             vehicle = GetComponent<Vehicle>();
+            WorldSystemsRegistry.Register(this);
         }
+
+        void OnDestroy() => WorldSystemsRegistry.Unregister(this);
 
         public void IssueMoveOrder(Vector3 point)
         {
