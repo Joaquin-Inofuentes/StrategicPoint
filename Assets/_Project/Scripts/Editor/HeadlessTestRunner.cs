@@ -5,6 +5,8 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using SP.Core;
 using SP.Combat;
 using SP.Actors;
@@ -38,6 +40,8 @@ namespace SP.EditorTools
         static VehicleStatusView vehicleStatusRef;
         static DamageVignetteView damageVignetteRef;
         static KillFeedView killFeedRef;
+        static PauseController pauseControllerRef;
+        static GameOutcomeController outcomeControllerRef;
 
         static int cachedMinimapLayer = -1;
 
@@ -205,9 +209,17 @@ namespace SP.EditorTools
             inputDriver.DeadNotice = deadNoticeRef;
             inputDriver.WeaponStatus = weaponStatusRef;
             inputDriver.VehicleStatus = vehicleStatusRef;
+            inputDriver.Outcome = outcomeControllerRef;
+            inputDriver.PauseRef = pauseControllerRef;
             servicesGO.AddComponent<WorldSimulationDriver>();
             servicesGO.AddComponent<SelectionRingManager>();
             servicesGO.AddComponent<AttackLineManager>();
+            servicesGO.AddComponent<GameplaySceneBootstrap>();
+
+            var battleManager = servicesGO.AddComponent<BattleManager>();
+            battleManager.Squad = squad;
+            battleManager.Enemies = patrolEnemies;
+            battleManager.Outcome = outcomeControllerRef;
 
             Directory.CreateDirectory("Assets/_Project/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -831,6 +843,7 @@ namespace SP.EditorTools
             // no uno creado en memoria.
 
             var turret = turretPivot.AddComponent<TurretWeapon>();
+            turretPivot.AddComponent<TurretAI>();
 
             var gunnerEye = new GameObject("GunnerEye").transform;
             gunnerEye.SetParent(turretPivot.transform, false);
@@ -964,6 +977,13 @@ namespace SP.EditorTools
 
         static void BuildUI(List<Soldier> squad, Camera cam, PlayerBrain playerBrain)
         {
+            // Hace falta para que los botones de pausa/config/victoria-
+            // derrota reciban clicks de verdad: InputSystemUIInputModule
+            // (no el StandaloneInputModule viejo), porque el proyecto
+            // tiene Active Input Handling = solo "Input System" nuevo.
+            if (UnityEngine.Object.FindAnyObjectByType<EventSystem>() == null)
+                new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+
             var canvasGO = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasRootRef = canvasGO.transform;
             var canvas = canvasGO.GetComponent<Canvas>();
@@ -1304,6 +1324,8 @@ namespace SP.EditorTools
             BuildNearbySquadList(canvasGO.transform, squad);
             BuildSelectionBox(canvasGO.transform);
             BuildMinimap(canvasGO.transform, cam);
+            BuildPauseUI(canvasGO.transform);
+            BuildOutcomeUI(canvasGO.transform);
         }
 
         static void StretchFull(RectTransform rt)
@@ -1500,6 +1522,201 @@ namespace SP.EditorTools
                 if (runner.IsRunning) runner.StopDemo();
                 else runner.StartDemo();
             });
+        }
+
+        static Button BuildUIButton(Transform parent, string name, string label, Vector2 anchoredPos, Color color)
+        {
+            var go = new GameObject(name, typeof(Image), typeof(Button));
+            go.transform.SetParent(parent, false);
+            var img = go.GetComponent<Image>();
+            img.color = color;
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = anchoredPos;
+            rt.sizeDelta = new Vector2(260f, 56f);
+
+            var textGO = new GameObject("Text", typeof(Text));
+            textGO.transform.SetParent(go.transform, false);
+            var txt = textGO.GetComponent<Text>();
+            txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            txt.alignment = TextAnchor.MiddleCenter;
+            txt.color = Color.white;
+            txt.fontSize = 24;
+            txt.fontStyle = FontStyle.Bold;
+            txt.text = label;
+            StretchFull(textGO.GetComponent<RectTransform>());
+
+            return go.GetComponent<Button>();
+        }
+
+        static Slider BuildLabeledSlider(Transform parent, string label, Vector2 anchoredPos, float min, float max, float value)
+        {
+            var labelGO = new GameObject(label + "_Label", typeof(Text));
+            labelGO.transform.SetParent(parent, false);
+            var labelTxt = labelGO.GetComponent<Text>();
+            labelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            labelTxt.alignment = TextAnchor.MiddleLeft;
+            labelTxt.color = Color.white;
+            labelTxt.fontSize = 18;
+            labelTxt.text = label;
+            var labelRt = labelGO.GetComponent<RectTransform>();
+            labelRt.anchorMin = labelRt.anchorMax = new Vector2(0.5f, 0.5f);
+            labelRt.anchoredPosition = anchoredPos + new Vector2(0f, 24f);
+            labelRt.sizeDelta = new Vector2(400f, 24f);
+
+            var sliderGO = new GameObject(label + "_Slider", typeof(Slider));
+            sliderGO.transform.SetParent(parent, false);
+            var sliderRt = sliderGO.GetComponent<RectTransform>();
+            sliderRt.anchorMin = sliderRt.anchorMax = new Vector2(0.5f, 0.5f);
+            sliderRt.anchoredPosition = anchoredPos;
+            sliderRt.sizeDelta = new Vector2(400f, 20f);
+
+            var bgGO = new GameObject("Background", typeof(Image));
+            bgGO.transform.SetParent(sliderGO.transform, false);
+            bgGO.GetComponent<Image>().color = new Color(0.2f, 0.2f, 0.22f);
+            StretchFull(bgGO.GetComponent<RectTransform>());
+
+            var fillAreaGO = new GameObject("Fill Area", typeof(RectTransform));
+            fillAreaGO.transform.SetParent(sliderGO.transform, false);
+            StretchFull(fillAreaGO.GetComponent<RectTransform>());
+
+            var fillGO = new GameObject("Fill", typeof(Image));
+            fillGO.transform.SetParent(fillAreaGO.transform, false);
+            fillGO.GetComponent<Image>().color = new Color(0.35f, 0.65f, 0.9f);
+            StretchFull(fillGO.GetComponent<RectTransform>());
+
+            var handleAreaGO = new GameObject("Handle Slide Area", typeof(RectTransform));
+            handleAreaGO.transform.SetParent(sliderGO.transform, false);
+            StretchFull(handleAreaGO.GetComponent<RectTransform>());
+
+            var handleGO = new GameObject("Handle", typeof(Image));
+            handleGO.transform.SetParent(handleAreaGO.transform, false);
+            handleGO.GetComponent<Image>().color = Color.white;
+            var handleRt = handleGO.GetComponent<RectTransform>();
+            handleRt.sizeDelta = new Vector2(16f, 24f);
+
+            var slider = sliderGO.GetComponent<Slider>();
+            slider.fillRect = fillGO.GetComponent<RectTransform>();
+            slider.handleRect = handleRt;
+            slider.targetGraphic = handleGO.GetComponent<Image>();
+            slider.minValue = min;
+            slider.maxValue = max;
+            slider.value = value;
+            return slider;
+        }
+
+        // Pausa ([ESC]) con sub-panel de configuraciones (sensibilidad de
+        // mouse y volumen). El propio PauseController escucha [ESC], acá
+        // solo se arma la UI y se la Bind()ea.
+        static void BuildPauseUI(Transform canvasParent)
+        {
+            var pauseGO = new GameObject("PauseController", typeof(RectTransform), typeof(PauseController));
+            pauseGO.transform.SetParent(canvasParent, false);
+            StretchFull(pauseGO.GetComponent<RectTransform>());
+            var pauseController = pauseGO.GetComponent<PauseController>();
+
+            var pausePanelGO = new GameObject("PausePanel", typeof(Image));
+            pausePanelGO.transform.SetParent(pauseGO.transform, false);
+            pausePanelGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.75f);
+            StretchFull(pausePanelGO.GetComponent<RectTransform>());
+
+            var pauseTitleGO = new GameObject("Title", typeof(Text));
+            pauseTitleGO.transform.SetParent(pausePanelGO.transform, false);
+            var pauseTitleTxt = pauseTitleGO.GetComponent<Text>();
+            pauseTitleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            pauseTitleTxt.alignment = TextAnchor.MiddleCenter;
+            pauseTitleTxt.color = Color.white;
+            pauseTitleTxt.fontSize = 48;
+            pauseTitleTxt.fontStyle = FontStyle.Bold;
+            pauseTitleTxt.text = "PAUSA";
+            var pauseTitleRt = pauseTitleGO.GetComponent<RectTransform>();
+            pauseTitleRt.anchorMin = pauseTitleRt.anchorMax = new Vector2(0.5f, 0.5f);
+            pauseTitleRt.anchoredPosition = new Vector2(0f, 140f);
+            pauseTitleRt.sizeDelta = new Vector2(500f, 80f);
+
+            var continueBtn = BuildUIButton(pausePanelGO.transform, "ContinueButton", "CONTINUAR", new Vector2(0f, 40f), new Color(0.25f, 0.6f, 0.35f));
+            continueBtn.onClick.AddListener(pauseController.OnContinueClicked);
+
+            var settingsBtn = BuildUIButton(pausePanelGO.transform, "SettingsButton", "CONFIGURACIONES", new Vector2(0f, -40f), new Color(0.3f, 0.45f, 0.7f));
+            settingsBtn.onClick.AddListener(pauseController.OnSettingsClicked);
+
+            var settingsPanelGO = new GameObject("SettingsPanel", typeof(Image));
+            settingsPanelGO.transform.SetParent(pauseGO.transform, false);
+            settingsPanelGO.GetComponent<Image>().color = new Color(0.05f, 0.05f, 0.08f, 0.95f);
+            var settingsRt = settingsPanelGO.GetComponent<RectTransform>();
+            settingsRt.anchorMin = settingsRt.anchorMax = new Vector2(0.5f, 0.5f);
+            settingsRt.sizeDelta = new Vector2(480f, 320f);
+
+            var settingsTitleGO = new GameObject("Title", typeof(Text));
+            settingsTitleGO.transform.SetParent(settingsPanelGO.transform, false);
+            var settingsTitleTxt = settingsTitleGO.GetComponent<Text>();
+            settingsTitleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            settingsTitleTxt.alignment = TextAnchor.MiddleCenter;
+            settingsTitleTxt.color = Color.white;
+            settingsTitleTxt.fontSize = 30;
+            settingsTitleTxt.fontStyle = FontStyle.Bold;
+            settingsTitleTxt.text = "CONFIGURACIONES";
+            var settingsTitleRt = settingsTitleGO.GetComponent<RectTransform>();
+            settingsTitleRt.anchorMin = settingsTitleRt.anchorMax = new Vector2(0.5f, 1f);
+            settingsTitleRt.pivot = new Vector2(0.5f, 1f);
+            settingsTitleRt.anchoredPosition = new Vector2(0f, -20f);
+            settingsTitleRt.sizeDelta = new Vector2(440f, 40f);
+
+            BuildLabeledSlider(settingsPanelGO.transform, "Sensibilidad de mouse", new Vector2(0f, 40f), 0.05f, 0.5f, 0.15f);
+            var volumeSlider = BuildLabeledSlider(settingsPanelGO.transform, "Volumen", new Vector2(0f, -30f), 0f, 1f, 1f);
+            volumeSlider.onValueChanged.AddListener(v => AudioListener.volume = v);
+
+            var backBtn = BuildUIButton(settingsPanelGO.transform, "BackButton", "VOLVER", new Vector2(0f, -120f), new Color(0.5f, 0.5f, 0.5f));
+            backBtn.onClick.AddListener(pauseController.OnSettingsBackClicked);
+
+            pauseController.Bind(pausePanelGO, settingsPanelGO);
+            pauseControllerRef = pauseController;
+        }
+
+        // Victoria y derrota: mismo esqueleto (título grande + Reintentar
+        // + Salir), distinto color/texto por panel.
+        static void BuildOutcomeUI(Transform canvasParent)
+        {
+            var outcomeGO = new GameObject("GameOutcome", typeof(RectTransform), typeof(GameOutcomeController));
+            outcomeGO.transform.SetParent(canvasParent, false);
+            StretchFull(outcomeGO.GetComponent<RectTransform>());
+            var outcomeController = outcomeGO.GetComponent<GameOutcomeController>();
+
+            var victoryGO = BuildOutcomePanel(outcomeGO.transform, "VictoryPanel", "GANASTE", new Color(0.1f, 0.5f, 0.15f, 0.92f), out var victoryRetry, out var victoryExit);
+            var defeatGO = BuildOutcomePanel(outcomeGO.transform, "DefeatPanel", "PERDISTE", new Color(0.55f, 0.1f, 0.1f, 0.92f), out var defeatRetry, out var defeatExit);
+
+            victoryRetry.onClick.AddListener(outcomeController.OnRetryClicked);
+            victoryExit.onClick.AddListener(outcomeController.OnExitClicked);
+            defeatRetry.onClick.AddListener(outcomeController.OnRetryClicked);
+            defeatExit.onClick.AddListener(outcomeController.OnExitClicked);
+
+            outcomeController.Bind(victoryGO, defeatGO);
+            outcomeControllerRef = outcomeController;
+        }
+
+        static GameObject BuildOutcomePanel(Transform parent, string name, string title, Color bg, out Button retryBtn, out Button exitBtn)
+        {
+            var go = new GameObject(name, typeof(Image));
+            go.transform.SetParent(parent, false);
+            go.GetComponent<Image>().color = bg;
+            StretchFull(go.GetComponent<RectTransform>());
+
+            var titleGO = new GameObject("Title", typeof(Text));
+            titleGO.transform.SetParent(go.transform, false);
+            var titleTxt = titleGO.GetComponent<Text>();
+            titleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            titleTxt.alignment = TextAnchor.MiddleCenter;
+            titleTxt.color = Color.white;
+            titleTxt.fontSize = 72;
+            titleTxt.fontStyle = FontStyle.Bold;
+            titleTxt.text = title;
+            var titleRt = titleGO.GetComponent<RectTransform>();
+            titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.6f);
+            titleRt.sizeDelta = new Vector2(900f, 120f);
+
+            retryBtn = BuildUIButton(go.transform, "RetryButton", "REINTENTAR", new Vector2(0f, 0f), new Color(0.25f, 0.45f, 0.75f));
+            exitBtn = BuildUIButton(go.transform, "ExitButton", "SALIR", new Vector2(0f, -70f), new Color(0.5f, 0.5f, 0.5f));
+            return go;
         }
 
         static void BuildSelectionBox(Transform canvasParent)

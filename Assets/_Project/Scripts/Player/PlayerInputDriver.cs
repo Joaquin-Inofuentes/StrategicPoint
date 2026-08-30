@@ -33,6 +33,8 @@ namespace SP.Player
         public DeadNoticeView DeadNotice;
         public WeaponStatusView WeaponStatus;
         public VehicleStatusView VehicleStatus;
+        public GameOutcomeController Outcome;
+        public PauseController PauseRef;
 
         [SerializeField] float lookSensitivity = 0.15f;
         [SerializeField] float rtsPanSpeed = 14f;
@@ -156,6 +158,12 @@ namespace SP.Player
             var kb = Keyboard.current;
             if (kb == null) return;
 
+            // Pausa/menú de victoria-derrota tienen Time.timeScale=0, pero
+            // Update() no se frena solo por eso: sin este corte, mientras
+            // el panel de pausa está en pantalla el jugador podía seguir
+            // moviéndose, disparando y girando la cámara por detrás.
+            if (PauseRef != null && PauseRef.IsPaused) return;
+
             UpdateCursorLock(kb, Mouse.current);
 
             if (MinimapRef != null)
@@ -236,9 +244,32 @@ namespace SP.Player
             Rig.SetMode(ControlMode.Fps);
             Rig.BeginTransition(pullBackGO.transform, 0.9f);
             while (Rig.IsTransitioning) yield return null;
-            Destroy(pullBackGO);
 
-            yield return new WaitForSeconds(1.4f);
+            // 3 segundos mirando al cadáver, orbitando despacio alrededor
+            // (no una cámara congelada): "rotando mirándolo por 3
+            // segundos". Mismo radio/altura que el punto de partida, solo
+            // gira el ángulo alrededor del soldado.
+            const float holdSeconds = 3f;
+            const float orbitDegPerSec = 12f;
+            Vector3 toCam = pullBackGO.transform.position - deadSoldier.transform.position;
+            float radius = new Vector2(toCam.x, toCam.z).magnitude;
+            float height = toCam.y;
+            float angle = Mathf.Atan2(toCam.z, toCam.x) * Mathf.Rad2Deg;
+
+            float t = 0f;
+            while (t < holdSeconds)
+            {
+                t += Time.deltaTime;
+                angle += orbitDegPerSec * Time.deltaTime;
+                float rad = angle * Mathf.Deg2Rad;
+                Vector3 offset = new Vector3(Mathf.Cos(rad) * radius, height, Mathf.Sin(rad) * radius);
+                pullBackGO.transform.position = deadSoldier.transform.position + offset;
+                pullBackGO.transform.rotation = Quaternion.LookRotation((deadSoldier.transform.position + Vector3.up * 0.8f - pullBackGO.transform.position).normalized);
+                Rig.FollowAnchor(pullBackGO.transform);
+                yield return null;
+            }
+
+            Destroy(pullBackGO);
 
             Soldier nearest = null;
             float bestDist = float.MaxValue;
@@ -254,14 +285,17 @@ namespace SP.Player
 
             if (nearest != null)
             {
+                GameLog.Line($"Camara cambio de {deadSoldier.DisplayName} a {nearest.DisplayName} (aliado vivo mas cercano)");
                 PossessionService.Swap(Brain, nearest);
                 Rig.SetMode(ControlMode.Fps);
                 Rig.BeginTransition(nearest.EyeAnchor != null ? nearest.EyeAnchor : nearest.transform);
             }
             else
             {
+                GameLog.Line("Perdiste");
                 Rig.SetMode(ControlMode.Rts);
                 Rig.SetRtsView(deadSoldier.transform.position);
+                if (Outcome != null) Outcome.ShowDefeat();
             }
 
             handlingDeath = false;
@@ -433,6 +467,7 @@ namespace SP.Player
         void DismountAll(Vehicle vehicle)
         {
             foreach (var occupant in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(occupant);
+            GameLog.Line("Se dio la orden de que salgan del auto");
         }
 
         // Flecha (cilindro+cono) sobre el vehículo apuntado, más una línea
@@ -739,6 +774,7 @@ namespace SP.Player
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
             currentSeat = newRole;
             if (newRole == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
+            if (newRole == VehicleSeatRole.Gunner) GameLog.Line("Se monto en la metralleta");
         }
 
         void UpdateVehicleCamera(Transform anchor)

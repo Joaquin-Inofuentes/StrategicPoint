@@ -26,12 +26,17 @@ namespace SP.Combat
         int instanceId;
         Renderer cachedRenderer;
         bool ownMaterialReady;
+        // 0 = proyectil normal (solo le pega a lo que toca). >0 = granada
+        // de tanque: al impactar, reparte daño a todo lo que esté en este
+        // radio y dibuja la esfera de explosión (ImpactFx.SpawnExplosion)
+        // en vez del impacto chico normal.
+        float explosionRadius;
 
         // Instancias actualmente en vuelo. Permite avanzar la simulación
         // manualmente (tests) sin depender del bucle de Update de Unity.
         public static readonly List<Projectile> ActiveInstances = new List<Projectile>();
 
-        public void Configure(ProjectilePool owningPool, Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int dmg, Color? color = null)
+        public void Configure(ProjectilePool owningPool, Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int dmg, Color? color = null, float explosionRadiusValue = 0f)
         {
             pool = owningPool;
             transform.position = position;
@@ -39,6 +44,7 @@ namespace SP.Combat
             ownerId = shooterId;
             ownerTeam = shooterTeam;
             damage = dmg;
+            explosionRadius = explosionRadiusValue;
 
             if (color.HasValue)
             {
@@ -97,8 +103,12 @@ namespace SP.Combat
 
             if (hit != null)
             {
-                hit.Health.TakeDamage(damage, ownerId);
-                ImpactFx.Spawn(transform.position, ImpactFx.EnemyColor);
+                if (explosionRadius > 0f) Explode(transform.position);
+                else
+                {
+                    hit.Health.TakeDamage(damage, ownerId);
+                    ImpactFx.Spawn(transform.position, ImpactFx.EnemyColor);
+                }
                 Expire();
                 return;
             }
@@ -110,9 +120,13 @@ namespace SP.Combat
             {
                 if (Vector3.Distance(vehicle.transform.position, transform.position) <= hitRadius + 1.5f)
                 {
-                    vehicle.TakeDamage(damage, ownerId);
-                    EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, transform.position));
-                    ImpactFx.Spawn(transform.position, ImpactFx.VehicleColor);
+                    if (explosionRadius > 0f) Explode(transform.position);
+                    else
+                    {
+                        vehicle.TakeDamage(damage, ownerId);
+                        EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, transform.position));
+                        ImpactFx.Spawn(transform.position, ImpactFx.VehicleColor);
+                    }
                     Expire();
                     return;
                 }
@@ -122,8 +136,12 @@ namespace SP.Combat
             {
                 if (Vector3.Distance(obstacle.transform.position, transform.position) <= hitRadius + 1f)
                 {
-                    EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Obstacle, transform.position));
-                    ImpactFx.Spawn(transform.position, ImpactFx.ObstacleColor);
+                    if (explosionRadius > 0f) Explode(transform.position);
+                    else
+                    {
+                        EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Obstacle, transform.position));
+                        ImpactFx.Spawn(transform.position, ImpactFx.ObstacleColor);
+                    }
                     Expire();
                     return;
                 }
@@ -135,13 +153,40 @@ namespace SP.Combat
             // cualquier otro impacto (antes lo atravesaba sin más).
             if (transform.position.y <= groundImpactHeight)
             {
-                EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, transform.position));
-                ImpactFx.Spawn(transform.position, ImpactFx.GroundColor);
+                if (explosionRadius > 0f) Explode(transform.position);
+                else
+                {
+                    EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, transform.position));
+                    ImpactFx.Spawn(transform.position, ImpactFx.GroundColor);
+                }
                 Expire();
                 return;
             }
 
             if (age >= lifetime) Expire();
+        }
+
+        // Granada del tanque: reparte daño a todo lo que esté adentro del
+        // radio (soldados enemigos Y vehículos), y dibuja la esfera de
+        // explosión que pide el jugador -- crece rápido y se achica de
+        // golpe, representando visualmente la zona de daño real.
+        void Explode(Vector3 point)
+        {
+            foreach (var s in ActorRegistry.All)
+            {
+                if (s == null || !s.Health.IsAlive || s.Team == ownerTeam || !s.gameObject.activeInHierarchy) continue;
+                if (Vector3.Distance(s.transform.position, point) <= explosionRadius)
+                    s.Health.TakeDamage(damage, ownerId);
+            }
+
+            foreach (var vehicle in Object.FindObjectsByType<Vehicle>(FindObjectsSortMode.None))
+            {
+                if (Vector3.Distance(vehicle.transform.position, point) <= explosionRadius)
+                    vehicle.TakeDamage(damage, ownerId);
+            }
+
+            EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, point));
+            ImpactFx.SpawnExplosion(point, explosionRadius);
         }
 
         void Expire()

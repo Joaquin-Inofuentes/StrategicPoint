@@ -30,11 +30,11 @@ namespace SP.Combat
             Bootstrap();
         }
 
-        public Projectile Spawn(Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int damage, Color? color = null)
+        public Projectile Spawn(Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int damage, Color? color = null, float explosionRadius = 0f)
         {
             if (pool == null) Bootstrap();
             var p = pool.Get();
-            p.Configure(this, position, direction, shooterId, shooterTeam, damage, color);
+            p.Configure(this, position, direction, shooterId, shooterTeam, damage, color, explosionRadius);
             return p;
         }
 

@@ -42,6 +42,7 @@ namespace SP.Player
         public static void IssueMoveOrderForSelection(IEnumerable<Soldier> selection, Vector3 point)
         {
             foreach (var s in selection) IssueMoveOrder(s, point);
+            GameLog.Line("Se dio la orden de ir a una posicion");
         }
 
         public static void IssueMountOrder(Soldier soldier, Vehicle vehicle)
@@ -54,6 +55,7 @@ namespace SP.Player
         public static void IssueMountOrderForSelection(IEnumerable<Soldier> selection, Vehicle vehicle)
         {
             foreach (var s in selection) IssueMountOrder(s, vehicle);
+            GameLog.Line("Se dio la orden de ir al auto");
         }
     }
 }

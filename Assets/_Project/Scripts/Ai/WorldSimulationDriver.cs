@@ -26,6 +26,9 @@ namespace SP.Ai
 
             foreach (var t in Object.FindObjectsByType<TurretWeapon>(FindObjectsSortMode.None))
                 t.Tick(dt);
+
+            foreach (var ai in Object.FindObjectsByType<TurretAI>(FindObjectsSortMode.None))
+                ai.Tick(dt);
         }
     }
 }
