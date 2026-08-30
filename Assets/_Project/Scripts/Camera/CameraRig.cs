@@ -12,7 +12,10 @@ namespace SP.CameraSystem
         [SerializeField] Camera cam;
         [SerializeField] float rtsHeight = 30f;
         [SerializeField] float rtsOrthoSize = 20f;
-        [SerializeField] Vector3 rtsLookEuler = new Vector3(55f, 0f, 0f);
+        // Pura vista de pájaro: 90° en X (mirando derecho hacia abajo), sin
+        // inclinación en Y/Z. Antes eran 55° (una vista en ángulo, no un
+        // top-down real).
+        [SerializeField] Vector3 rtsLookEuler = new Vector3(90f, 0f, 0f);
 
         // Pitch (mirar arriba/abajo) es propio de la cámara, no del cuerpo
         // del soldado: el cuerpo solo gira en yaw (RotateYaw), y acá se le

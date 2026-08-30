@@ -36,6 +36,7 @@ namespace SP.Presentation
         public Vehicle DemoVehicle;
         public List<WeaponPickup> WeaponPickups;
         public Soldier DemoEnemy;
+        public List<Soldier> PatrolEnemies;
 
         public bool IsRunning { get; private set; }
 
@@ -74,6 +75,11 @@ namespace SP.Presentation
         // (a modo de benchmark) cómo se prueba cada funcionalidad en vez de
         // que pase todo en un parpadeo. Ajustable en el inspector.
         [SerializeField] float stepGap = 1.2f;
+
+        static void FullHeal(params Soldier[] soldiers)
+        {
+            foreach (var s in soldiers) s.Health.Initialize(s.Id, s.Health.MaxHealth);
+        }
 
         IEnumerator CaptureStep(string stepName)
         {
@@ -397,6 +403,112 @@ namespace SP.Presentation
             yield return Tutorial("Orden de subir al vehiculo: cilindro azul sobre la camioneta.");
             OrderService.IssueMountOrder(doc, DemoVehicle);
             yield return CaptureStep("fase5_marcador_subir_azul");
+
+            // ============================================================
+            // FASE 6 - Patrulla en waypoints y vista RTS top-down
+            // ============================================================
+            TestLog.Phase("FASE 6 - Patrulla en waypoints y vista RTS");
+            TestLog.Step("Para cambiar de soldado: apuntale a un aliado y apreta [F] (funciona igual en FPS y en RTS).");
+
+            if (PatrolEnemies != null && PatrolEnemies.Count > 0)
+            {
+                Rig.SetMode(ControlMode.Rts);
+                Rig.SetRtsView(PatrolEnemies[0].transform.position);
+                yield return Tutorial("FASE 6: 4 enemigos patrullan en loop por waypoints fijos (lineas naranjas = su ronda).");
+                yield return CaptureStep("fase6_patrulla_waypoints");
+
+                Rig.SetMode(ControlMode.Fps);
+                Rig.FollowFps(vega);
+            }
+
+            // ============================================================
+            // FASE 7 - Paneles de info al apuntar, y flecha+lineas al vehiculo
+            // ============================================================
+            TestLog.Phase("FASE 7 - Info al apuntar (soldado/vehiculo) y flecha de montaje");
+
+            vega.transform.position = kes.transform.position + new Vector3(0f, 0f, -3f);
+            vega.transform.rotation = Quaternion.LookRotation((kes.transform.position - vega.transform.position).normalized);
+            Rig.FollowFps(vega);
+            yield return null;
+            yield return Tutorial($"Apuntando a {kes.DisplayName}: abajo se ve su vida, arma y especialidad.");
+            yield return CaptureStep("fase7_info_soldado");
+
+            DemoVehicle.transform.position = vega.transform.position + vega.transform.forward * 10f;
+            kes.transform.position = DemoVehicle.transform.position + new Vector3(-3f, 0f, 2f);
+            doc.transform.position = DemoVehicle.transform.position + new Vector3(3f, 0f, 2f);
+            vega.transform.rotation = Quaternion.LookRotation((DemoVehicle.transform.position - vega.transform.position).normalized);
+            Rig.FollowFps(vega);
+            yield return null;
+            yield return Tutorial("Apuntando al vehiculo vacio: flecha azul arriba + lineas a los aliados que subirian, y cuadrados de asiento (todos verdes = libres).");
+            yield return CaptureStep("fase7_flecha_montaje_y_asientos_libres");
+
+            // ============================================================
+            // FASE 8 - [G] hace bajar a todos y cambia el color del vehiculo
+            // ============================================================
+            TestLog.Phase("FASE 8 - Bajar a todos con [G] y color del vehiculo segun ocupacion");
+
+            InputDriver.EnterVehicle(DemoVehicle);
+            while (Rig.IsTransitioning) yield return null;
+            TestLog.Step($"Vega subio, {kes.DisplayName} y {doc.DisplayName} subieron solos. Ocupantes: {DemoVehicle.OccupantCount}/{DemoVehicle.Capacity}");
+            yield return Tutorial("Camioneta ocupada: deberia verse mas oscura que antes.");
+            yield return CaptureStep("fase8_vehiculo_ocupado_color");
+
+            InputDriver.ExitVehicle();
+            Rig.FollowFps(vega);
+            yield return null;
+            vega.transform.rotation = Quaternion.LookRotation((DemoVehicle.transform.position - vega.transform.position).normalized);
+            Rig.FollowFps(vega);
+            yield return null;
+            TestLog.Step($"Vega bajo y le apunta a la camioneta con {DemoVehicle.OccupantCount} adentro; aprieta [G] para bajarlos a todos");
+            InputDriver.GOrderOnVehicle(DemoVehicle);
+            yield return Tutorial("[G] apuntando a un vehiculo con gente: todos bajan y el color vuelve al original.");
+            yield return CaptureStep("fase8_vehiculo_vacio_color_original");
+
+            // ============================================================
+            // FASE 9 - Batalla final de prueba contra 3 enemigos
+            // ============================================================
+            TestLog.Phase("FASE 9 - Batalla final contra 3 enemigos (test de todo junto)");
+
+            if (PatrolEnemies != null && PatrolEnemies.Count >= 3)
+            {
+                FullHeal(vega, kes, doc);
+                Vector3 battleground = new Vector3(0f, 0.8f, 0f);
+                vega.transform.position = battleground;
+                kes.transform.position = battleground + new Vector3(2f, 0f, 0f);
+                doc.transform.position = battleground + new Vector3(-2f, 0f, 0f);
+
+                for (int i = 0; i < 3; i++)
+                {
+                    var enemy = PatrolEnemies[i];
+                    enemy.Health.Initialize(enemy.Id, enemy.Health.MaxHealth);
+                    enemy.gameObject.SetActive(true);
+                    enemy.transform.position = battleground + new Vector3(Mathf.Cos(i * 2.1f) * 9f, 0f, Mathf.Sin(i * 2.1f) * 9f);
+                }
+
+                Rig.SetMode(ControlMode.Rts);
+                Rig.SetRtsView(battleground);
+                yield return Tutorial("FASE 9: se sueltan 3 enemigos de la patrulla contra el escuadron completo. Se prueba todo junto.");
+                yield return CaptureStep("fase9_batalla_inicio");
+
+                float battleTimeout = 14f;
+                while (battleTimeout > 0f)
+                {
+                    bool anyEnemyAlive = false;
+                    for (int i = 0; i < 3; i++) if (PatrolEnemies[i].Health.IsAlive) anyEnemyAlive = true;
+                    bool anySquadAlive = vega.Health.IsAlive || kes.Health.IsAlive || doc.Health.IsAlive;
+                    if (!anyEnemyAlive || !anySquadAlive) break;
+                    battleTimeout -= Time.deltaTime;
+                    yield return null;
+                }
+
+                yield return CaptureStep("fase9_batalla_mitad");
+                yield return new WaitForSecondsRealtime(2f);
+                yield return CaptureStep("fase9_batalla_resultado");
+
+                int enemiesDown = 0;
+                for (int i = 0; i < 3; i++) if (!PatrolEnemies[i].Health.IsAlive) enemiesDown++;
+                TestLog.Step($"Resultado: {enemiesDown}/3 enemigos caidos. Vega {vega.Health.Current}/{vega.Health.MaxHealth} vida, {kes.DisplayName} {kes.Health.Current}/{kes.Health.MaxHealth}, {doc.DisplayName} {doc.Health.Current}/{doc.Health.MaxHealth}");
+            }
 
             TestLog.Phase("DEMO AUTOMATICO EN PLAY MODE - COMPLETADO");
             IsRunning = false;

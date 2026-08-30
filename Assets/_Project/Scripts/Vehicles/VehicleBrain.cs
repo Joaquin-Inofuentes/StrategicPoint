@@ -16,6 +16,7 @@ namespace SP.Vehicles
         bool bootstrapped;
 
         public bool HasOrder => destination.HasValue;
+        public Vector3? CurrentDestination => destination;
         public bool IsPlayerDriving { get; set; }
 
         void Awake() => Bootstrap();

@@ -15,6 +15,12 @@ namespace SP.Combat
 
         public Transform Muzzle;
 
+        // Cubo chico pegado a la mano/arma del soldado: se ve tanto en FPS
+        // (el jugador lo ve colgando adelante suyo) como en RTS (parte del
+        // cuerpo), y se tiñe del color del arma equipada — así se nota a
+        // simple vista con qué arma anda cada uno, sin abrir ningún menú.
+        public Renderer WeaponVisualRenderer;
+
         Soldier owner;
         float cooldownTimer;
         bool bootstrapped;
@@ -51,6 +57,22 @@ namespace SP.Combat
             // Cambiar de arma no debería dejarte esperando el enfriamiento
             // del arma anterior: se puede disparar de una con la nueva.
             cooldownTimer = 0f;
+
+            ApplyWeaponVisualColor(color);
+        }
+
+        // Igual que con el material de Projectile: un Material creado en
+        // runtime y guardado dentro de un prefab (PrefabUtility.SaveAsPrefabAsset)
+        // puede quedar null en la instancia — se recrea sola si hace falta.
+        void ApplyWeaponVisualColor(Color color)
+        {
+            if (WeaponVisualRenderer == null) return;
+            if (WeaponVisualRenderer.sharedMaterial == null)
+            {
+                var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                WeaponVisualRenderer.sharedMaterial = new Material(shader);
+            }
+            WeaponVisualRenderer.sharedMaterial.color = color;
         }
 
         public void Tick(float dt)

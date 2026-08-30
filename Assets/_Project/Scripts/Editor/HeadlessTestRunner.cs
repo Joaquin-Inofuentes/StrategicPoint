@@ -33,6 +33,44 @@ namespace SP.EditorTools
         static Image selectionBoxRef;
         static MinimapFollow minimapFollowRef;
 
+        static int cachedMinimapLayer = -1;
+
+        // El minimapa necesita una capa propia: su cámara solo renderiza esa
+        // capa (íconos de colores) y la cámara principal la ignora, así el
+        // jugador nunca ve los íconos flotando en el mundo real. Los layers
+        // 8..31 son de uso libre; se reusa el primero que ya se llame
+        // "Minimap" o, si no existe, el primer slot libre.
+        static int GetOrCreateMinimapLayer()
+        {
+            if (cachedMinimapLayer >= 0) return cachedMinimapLayer;
+
+            var tagManagerAssets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset");
+            var tagManager = new SerializedObject(tagManagerAssets[0]);
+            var layersProp = tagManager.FindProperty("layers");
+
+            for (int i = 8; i < layersProp.arraySize; i++)
+            {
+                if (layersProp.GetArrayElementAtIndex(i).stringValue == "Minimap")
+                {
+                    cachedMinimapLayer = i;
+                    return i;
+                }
+            }
+            for (int i = 8; i < layersProp.arraySize; i++)
+            {
+                var sp = layersProp.GetArrayElementAtIndex(i);
+                if (string.IsNullOrEmpty(sp.stringValue))
+                {
+                    sp.stringValue = "Minimap";
+                    tagManager.ApplyModifiedProperties();
+                    cachedMinimapLayer = i;
+                    return i;
+                }
+            }
+            cachedMinimapLayer = 31; // fallback: último layer, casi nunca ocupado
+            return cachedMinimapLayer;
+        }
+
         static Material CreateFlatMaterial(Color color)
         {
             // Lit, pero con brillo/metalico casi nulo: sombreado suave y
@@ -124,6 +162,7 @@ namespace SP.EditorTools
 
             var vehicle = SpawnVehicle(vehiclePrefab, new Vector3(6f, 0.6f, -4f), colorVehicle, pool);
             var weaponPickups = BuildWeaponPickups();
+            var patrolEnemies = BuildPatrolEnemies(soldierPrefab, pool, colorEnemy);
 
             var camGO = new GameObject("MainCamera");
             camGO.tag = "MainCamera";
@@ -157,6 +196,7 @@ namespace SP.EditorTools
             inputDriver.WeaponPickups = weaponPickups;
             inputDriver.MinimapRef = minimapFollowRef;
             servicesGO.AddComponent<WorldSimulationDriver>();
+            servicesGO.AddComponent<SelectionRingManager>();
 
             Directory.CreateDirectory("Assets/_Project/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -198,6 +238,7 @@ namespace SP.EditorTools
                 runner.DemoVehicle = vehicle;
                 runner.WeaponPickups = weaponPickups;
                 runner.DemoEnemy = demoEnemy;
+                runner.PatrolEnemies = patrolEnemies;
 
                 TestLog.Step("Demo lista: Vega junto al vehiculo, Kes y Doc cerca. AutoDemoRunner armado (F9 para arrancar/cortar a mano).");
             }
@@ -567,6 +608,8 @@ namespace SP.EditorTools
             var fx = instance.GetComponent<CubeFxReactor>();
             fx?.Bootstrap();
 
+            MinimapIcon.Spawn(instance.transform, color, GetOrCreateMinimapLayer());
+
             var healthBar = instance.GetComponentInChildren<HealthBarView>(true);
             healthBar?.Bootstrap();
 
@@ -588,11 +631,26 @@ namespace SP.EditorTools
             muzzle.SetParent(root.transform);
             muzzle.localPosition = new Vector3(0f, 0.1f, 0.55f);
 
+            // Arma visible: un cubo chico pegado al costado del cuerpo, para
+            // que se note a simple vista qué arma tiene equipada cada uno
+            // (mismo color que sus proyectiles) tanto en FPS como en RTS.
+            var weaponVisual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            weaponVisual.name = "WeaponVisual";
+            weaponVisual.transform.SetParent(root.transform, false);
+            var wvParentScale = root.transform.localScale;
+            weaponVisual.transform.localScale = new Vector3(0.15f / wvParentScale.x, 0.15f / wvParentScale.y, 0.55f / wvParentScale.z);
+            weaponVisual.transform.localPosition = new Vector3(0.32f / wvParentScale.x, 0f, 0.15f / wvParentScale.z);
+            var wvCol = weaponVisual.GetComponent<Collider>();
+            if (wvCol != null) UnityEngine.Object.DestroyImmediate(wvCol);
+            var wvRenderer = weaponVisual.GetComponent<MeshRenderer>();
+            wvRenderer.sharedMaterial = CreateFlatMaterial(new Color(0.55f, 0.68f, 0.78f));
+
             root.AddComponent<Health>();
             root.AddComponent<SoldierMotor>();
 
             var wh = root.AddComponent<WeaponHolder>();
             wh.Muzzle = muzzle;
+            wh.WeaponVisualRenderer = wvRenderer;
 
             var soldierComp = root.AddComponent<Soldier>();
             soldierComp.EyeAnchor = eye;
@@ -736,6 +794,8 @@ namespace SP.EditorTools
             var turret = instance.GetComponentInChildren<TurretWeapon>();
             turret.SetPool(pool);
 
+            MinimapIcon.Spawn(instance.transform, color, GetOrCreateMinimapLayer(), 2.4f);
+
             return instance.GetComponent<Vehicle>();
         }
 
@@ -793,6 +853,30 @@ namespace SP.EditorTools
             return list;
         }
 
+        // 4 enemigos patrullando en loop por waypoints fijos, cada uno con
+        // su ronda dibujada con un LineRenderer de verdad (se ve en Game
+        // view y en las capturas, no solo en el editor como un Gizmo).
+        static List<Soldier> BuildPatrolEnemies(GameObject soldierPrefab, ProjectilePool pool, Color enemyColor)
+        {
+            var routes = new[]
+            {
+                new[] { new Vector3(20f, 0.8f, 20f), new Vector3(30f, 0.8f, 20f), new Vector3(30f, 0.8f, 30f), new Vector3(20f, 0.8f, 30f) },
+                new[] { new Vector3(-20f, 0.8f, 20f), new Vector3(-30f, 0.8f, 20f), new Vector3(-30f, 0.8f, 30f), new Vector3(-20f, 0.8f, 30f) },
+                new[] { new Vector3(20f, 0.8f, -20f), new Vector3(30f, 0.8f, -20f), new Vector3(30f, 0.8f, -30f), new Vector3(20f, 0.8f, -30f) },
+                new[] { new Vector3(-20f, 0.8f, -20f), new Vector3(-30f, 0.8f, -20f), new Vector3(-30f, 0.8f, -30f), new Vector3(-20f, 0.8f, -30f) },
+            };
+
+            var enemies = new List<Soldier>();
+            for (int i = 0; i < routes.Length; i++)
+            {
+                var enemy = SpawnSoldier(soldierPrefab, $"Enemigo_Patrulla_{i + 1}", TeamId.Enemy, RoleType.Enemy, routes[i][0], enemyColor, pool, 60);
+                enemy.GetComponent<AiBrain>().SetPatrolRoute(routes[i]);
+                PatrolRouteLine.Spawn(routes[i], new Color(0.95f, 0.6f, 0.2f));
+                enemies.Add(enemy);
+            }
+            return enemies;
+        }
+
         static void BuildUI(List<Soldier> squad, Camera cam)
         {
             var canvasGO = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
@@ -802,7 +886,16 @@ namespace SP.EditorTools
             // que graban el render target de la cámara, no el overlay final.
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
             canvas.worldCamera = cam;
-            canvas.planeDistance = 1f;
+            // Muy pegado al near clip: casi nada de geometría del mundo
+            // puede meterse delante y tapar la UI cuando el jugador choca
+            // contra algo (antes estaba a 1 unidad, una distancia de choque
+            // habitual).
+            canvas.planeDistance = 0.35f;
+
+            var scaler = canvasGO.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1280f, 720f);
+            scaler.matchWidthOrHeight = 0.5f;
 
             var crossGO = new GameObject("Crosshair", typeof(Image));
             crossGO.transform.SetParent(canvasGO.transform, false);
@@ -830,6 +923,76 @@ namespace SP.EditorTools
             aimUi.Bind(promptTxt, crossImg);
             aimUi.Initialize();
             aimUiRef = aimUi;
+
+            // Panel de info al apuntar a un aliado (vida/arma/especialidad),
+            // justo arriba del texto de instrucciones para que no se pisen.
+            var soldierInfoGO = new GameObject("SoldierInfoPanel", typeof(Image));
+            soldierInfoGO.transform.SetParent(canvasGO.transform, false);
+            soldierInfoGO.GetComponent<Image>().color = new Color(0.06f, 0.07f, 0.09f, 0.72f);
+            var siRt = soldierInfoGO.GetComponent<RectTransform>();
+            siRt.anchorMin = new Vector2(0.5f, 0f);
+            siRt.anchorMax = new Vector2(0.5f, 0f);
+            siRt.pivot = new Vector2(0.5f, 0f);
+            siRt.anchoredPosition = new Vector2(0f, 66f);
+            siRt.sizeDelta = new Vector2(560f, 30f);
+
+            var siTextGO = new GameObject("Text", typeof(Text));
+            siTextGO.transform.SetParent(soldierInfoGO.transform, false);
+            var siText = siTextGO.GetComponent<Text>();
+            siText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            siText.alignment = TextAnchor.MiddleCenter;
+            siText.color = Color.white;
+            siText.fontSize = 15;
+            StretchFull(siTextGO.GetComponent<RectTransform>());
+
+            aimUi.BindSoldierInfo(soldierInfoGO, siText);
+            soldierInfoGO.SetActive(false);
+
+            // Panel de info al apuntar a un vehículo: 4 cuadrados de asiento
+            // (verde = libre, gris muy oscuro = ocupado), mismo lugar que el
+            // panel de soldado (nunca se muestran los dos a la vez).
+            var vehicleInfoGO = new GameObject("VehicleInfoPanel", typeof(Image));
+            vehicleInfoGO.transform.SetParent(canvasGO.transform, false);
+            vehicleInfoGO.GetComponent<Image>().color = new Color(0.06f, 0.07f, 0.09f, 0.72f);
+            var viRt = vehicleInfoGO.GetComponent<RectTransform>();
+            viRt.anchorMin = new Vector2(0.5f, 0f);
+            viRt.anchorMax = new Vector2(0.5f, 0f);
+            viRt.pivot = new Vector2(0.5f, 0f);
+            viRt.anchoredPosition = new Vector2(0f, 66f);
+            viRt.sizeDelta = new Vector2(260f, 34f);
+
+            var seatLabels = new[] { "Conductor", "Pasajero 1", "Pasajero 2", "Artillero" };
+            var seatSquares = new Image[4];
+            for (int i = 0; i < 4; i++)
+            {
+                var seatGO = new GameObject($"Seat_{seatLabels[i]}", typeof(Image));
+                seatGO.transform.SetParent(vehicleInfoGO.transform, false);
+                var seatImg = seatGO.GetComponent<Image>();
+                seatImg.color = new Color(0.15f, 0.15f, 0.16f);
+                var seatRt = seatGO.GetComponent<RectTransform>();
+                seatRt.anchorMin = seatRt.anchorMax = new Vector2(0f, 0.5f);
+                seatRt.pivot = new Vector2(0f, 0.5f);
+                seatRt.sizeDelta = new Vector2(26f, 26f);
+                seatRt.anchoredPosition = new Vector2(14f + i * 60f, 0f);
+                seatSquares[i] = seatImg;
+
+                var seatLabelGO = new GameObject("Label", typeof(Text));
+                seatLabelGO.transform.SetParent(vehicleInfoGO.transform, false);
+                var seatLabelTxt = seatLabelGO.GetComponent<Text>();
+                seatLabelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                seatLabelTxt.alignment = TextAnchor.UpperCenter;
+                seatLabelTxt.color = Color.white;
+                seatLabelTxt.fontSize = 9;
+                seatLabelTxt.text = seatLabels[i].Replace("Pasajero ", "Pas.");
+                var seatLabelRt = seatLabelGO.GetComponent<RectTransform>();
+                seatLabelRt.anchorMin = seatLabelRt.anchorMax = new Vector2(0f, 0.5f);
+                seatLabelRt.pivot = new Vector2(0.5f, 1f);
+                seatLabelRt.sizeDelta = new Vector2(56f, 14f);
+                seatLabelRt.anchoredPosition = new Vector2(14f + i * 60f + 13f, -14f);
+            }
+
+            aimUi.BindVehicleInfo(vehicleInfoGO, seatSquares);
+            vehicleInfoGO.SetActive(false);
 
             var rosterGO = new GameObject("Roster", typeof(RectTransform), typeof(SelectedSoldierUI));
             rosterGO.transform.SetParent(canvasGO.transform, false);
@@ -1048,8 +1211,15 @@ namespace SP.EditorTools
             mmCam.nearClipPlane = 1f;
             mmCam.farClipPlane = 200f;
             mmCam.clearFlags = CameraClearFlags.SolidColor;
-            mmCam.backgroundColor = new Color(0.14f, 0.16f, 0.19f);
+            // Negro puro: el minimapa no muestra el terreno real, solo los
+            // íconos de colores de su propia capa (filtro de capas).
+            mmCam.backgroundColor = Color.black;
             mmCam.depth = mainCam.depth - 1f;
+            int minimapLayer = GetOrCreateMinimapLayer();
+            mmCam.cullingMask = 1 << minimapLayer;
+            // La cámara principal no debe ver los íconos flotando en el
+            // mundo real.
+            mainCam.cullingMask &= ~(1 << minimapLayer);
             mmCamGO.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             mmCamGO.transform.position = new Vector3(0f, 60f, 0f);
 

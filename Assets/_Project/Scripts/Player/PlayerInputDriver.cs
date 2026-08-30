@@ -43,6 +43,7 @@ namespace SP.Player
         // apenas dejo de apuntarle.
         Renderer highlightedRenderer;
         Color highlightedOriginalColor;
+        VehicleMountIndicator mountIndicator;
 
         // Estado de "estoy adentro de un vehículo".
         VehicleSeatRole? currentSeat;
@@ -98,7 +99,15 @@ namespace SP.Player
                 return;
             }
 
-            if (kb.tabKey.wasPressedThisFrame) Rig.ToggleMode();
+            if (kb.tabKey.wasPressedThisFrame)
+            {
+                Rig.ToggleMode();
+                // Al pasar a RTS, la vista se centra en la última posición
+                // del soldado que estabas controlando (no donde quedó la
+                // cámara en FPS).
+                if (Rig.Mode == ControlMode.Rts && Brain.Current != null)
+                    Rig.SetRtsView(Brain.Current.transform.position);
+            }
 
             if (Rig.Mode == ControlMode.Fps) UpdateFps(kb, Mouse.current);
             else UpdateRts(kb, Mouse.current);
@@ -162,6 +171,8 @@ namespace SP.Player
             var ray = Rig.GetForwardRay();
             var result = Aim.Evaluate(ray, Brain.Current);
             UpdateAimHighlight(result);
+            UpdateVehicleMountIndicator(result);
+            if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
 
             if (mouse != null && mouse.leftButton.wasPressedThisFrame) Brain.Fire();
 
@@ -183,10 +194,7 @@ namespace SP.Player
             }
 
             if (kb.gKey.wasPressedThisFrame && result.Type == AimTargetType.Vehicle)
-            {
-                var nearest = OrderService.FindNearestFreeAlly(result.Vehicle.transform.position, TeamId.Player, Brain.Current);
-                if (nearest != null) OrderService.IssueMountOrder(nearest, result.Vehicle);
-            }
+                GOrderOnVehicle(result.Vehicle);
 
             // Orden a la camioneta: clic derecho sobre el suelo, viajando sola.
             if (mouse != null && mouse.rightButton.wasPressedThisFrame && result.Type == AimTargetType.Ground)
@@ -233,6 +241,52 @@ namespace SP.Player
             }
         }
 
+        // [G] apuntando a un vehículo: si tiene gente adentro, todos bajan
+        // (orden inversa a subir); si está vacío, se manda al aliado libre
+        // más cercano a que suba, como antes.
+        public void GOrderOnVehicle(Vehicle vehicle)
+        {
+            if (vehicle.OccupantCount > 0)
+            {
+                DismountAll(vehicle);
+                return;
+            }
+
+            var nearest = OrderService.FindNearestFreeAlly(vehicle.transform.position, TeamId.Player, Brain.Current);
+            if (nearest != null) OrderService.IssueMountOrder(nearest, vehicle);
+        }
+
+        void DismountAll(Vehicle vehicle)
+        {
+            foreach (var occupant in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(occupant);
+        }
+
+        // Flecha (cilindro+cono) sobre el vehículo apuntado, más una línea
+        // por cada aliado libre y cercano que subiría solo si se le ordena.
+        void UpdateVehicleMountIndicator(AimResult result)
+        {
+            if (result.Type != AimTargetType.Vehicle)
+            {
+                if (mountIndicator != null) mountIndicator.Hide();
+                return;
+            }
+
+            if (mountIndicator == null) mountIndicator = VehicleMountIndicator.Create();
+
+            var incoming = new List<Soldier>();
+            if (Squad != null)
+            {
+                foreach (var s in Squad)
+                {
+                    if (s == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                    if (result.Vehicle.RoleOf(s) != null) continue; // ya está adentro
+                    if (Vector3.Distance(s.transform.position, result.Vehicle.transform.position) <= autoMountRadius)
+                        incoming.Add(s);
+                }
+            }
+            mountIndicator.Show(result.Vehicle, incoming);
+        }
+
         void EquipFromCatalog(WeaponKind kind) => EquipWeaponHotkey(kind);
 
         // Público para que la demo/tutorial automáticos puedan probar los
@@ -248,11 +302,22 @@ namespace SP.Player
         // punto": solo funciona si hay un aliado tuyo sentado de conductor
         // (si no hay nadie manejando, no tiene sentido que se mueva sola).
         // Pública y reusada por el FPS, por el artillero y por los tests.
+        // Debajo de esta distancia, un click nuevo se considera "el mismo
+        // pedido de siempre" y se ignora: sin esto, clickear cerca del
+        // destino (o de donde ya está la camioneta) dispara una orden nueva
+        // por frame y termina tirando marcadores repetidos sin parar.
+        const float RedundantOrderDistance = 2f;
+
         public bool TryIssueVehicleMoveOrder(Vector3 point)
         {
             if (Vehicle == null || Vehicle.Driver == null) return false;
 
             var vb = Vehicle.GetComponent<VehicleBrain>();
+
+            if (Vector3.Distance(point, Vehicle.transform.position) < RedundantOrderDistance) return false;
+            if (vb.HasOrder && vb.CurrentDestination.HasValue &&
+                Vector3.Distance(point, vb.CurrentDestination.Value) < RedundantOrderDistance) return false;
+
             vb.IsPlayerDriving = false;
             vb.IssueMoveOrder(point);
             OrderMarkerFx.Spawn(point, OrderMarkerFx.MoveColor);
@@ -459,7 +524,10 @@ namespace SP.Player
             {
                 var result = Aim.Evaluate(screenRay, null);
                 if (result.Type == AimTargetType.Vehicle)
-                    OrderService.IssueMountOrderForSelection(Selection.Selected, result.Vehicle);
+                {
+                    if (result.Vehicle.OccupantCount > 0) DismountAll(result.Vehicle);
+                    else OrderService.IssueMountOrderForSelection(Selection.Selected, result.Vehicle);
+                }
             }
 
             if (kb.fKey.wasPressedThisFrame)

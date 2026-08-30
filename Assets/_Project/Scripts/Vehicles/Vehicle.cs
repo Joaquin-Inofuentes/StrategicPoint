@@ -20,6 +20,28 @@ namespace SP.Vehicles
 
         readonly Dictionary<VehicleSeatRole, Soldier> seats = new Dictionary<VehicleSeatRole, Soldier>();
 
+        // Feedback de color: el chasis se pone un poco más oscuro/saturado
+        // cuando tiene gente adentro, y vuelve a su color de base al vaciarse.
+        Renderer[] chassisRenderers;
+        Color baseColor;
+        bool colorCached;
+
+        void CacheColorIfNeeded()
+        {
+            if (colorCached) return;
+            colorCached = true;
+            chassisRenderers = GetComponentsInChildren<Renderer>();
+            if (chassisRenderers.Length > 0) baseColor = chassisRenderers[0].sharedMaterial.color;
+        }
+
+        public void RefreshOccupancyColor()
+        {
+            CacheColorIfNeeded();
+            if (chassisRenderers == null || chassisRenderers.Length == 0) return;
+            Color target = seats.Count > 0 ? Color.Lerp(baseColor, Color.black, 0.28f) : baseColor;
+            foreach (var r in chassisRenderers) r.sharedMaterial.color = target;
+        }
+
         public int Capacity => AllRoles.Length;
         public int OccupantCount => seats.Count;
         public bool HasAnyRoom => seats.Count < Capacity;
@@ -66,6 +88,7 @@ namespace SP.Vehicles
             var brain = soldier.GetComponent<AiBrain>();
             if (brain != null) brain.enabled = false;
             soldier.gameObject.SetActive(false);
+            RefreshOccupancyColor();
             return true;
         }
 
@@ -84,6 +107,7 @@ namespace SP.Vehicles
 
             var brain = soldier.GetComponent<AiBrain>();
             if (brain != null) brain.enabled = true;
+            RefreshOccupancyColor();
             return true;
         }
 

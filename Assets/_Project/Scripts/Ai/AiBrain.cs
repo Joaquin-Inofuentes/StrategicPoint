@@ -25,6 +25,18 @@ namespace SP.Ai
         Vehicle mountTarget;
         IDisposable damageSub;
 
+        Vector3[] patrolRoute;
+        int patrolIndex;
+
+        // Ronda de patrulla: mientras no haya nada más que hacer (Patrol),
+        // camina de waypoint en waypoint en loop. Se corta solo si el
+        // sensado detecta un enemigo (como cualquier otra cosa en Patrol).
+        public void SetPatrolRoute(Vector3[] points)
+        {
+            patrolRoute = points;
+            patrolIndex = 0;
+        }
+
         public AiState State { get; private set; } = AiState.Patrol;
         public bool IsPossessedByPlayer { get; set; }
         public Soldier CurrentTarget => target;
@@ -143,6 +155,13 @@ namespace SP.Ai
             switch (State)
             {
                 case AiState.Patrol:
+                    if (patrolRoute != null && patrolRoute.Length > 0)
+                    {
+                        if (self.Motor.MoveTowards(patrolRoute[patrolIndex], 1f, dt))
+                            patrolIndex = (patrolIndex + 1) % patrolRoute.Length;
+                    }
+                    break;
+
                 case AiState.Idle:
                     break;
 
