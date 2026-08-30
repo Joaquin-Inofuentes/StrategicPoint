@@ -1034,10 +1034,28 @@ namespace SP.EditorTools
             prt.anchoredPosition = new Vector2(0f, -40f);
             prt.sizeDelta = new Vector2(420f, 30f);
 
+            // Aviso de "SIN MUNICION"/"RECARGANDO" bajo el cartel de
+            // punteria: mismo centro horizontal, un poco mas abajo para
+            // no pisarse con el prompt contextual.
+            var ammoWarnGO = new GameObject("AmmoWarningText", typeof(Text));
+            ammoWarnGO.transform.SetParent(canvasGO.transform, false);
+            var ammoWarnTxt = ammoWarnGO.GetComponent<Text>();
+            ammoWarnTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            ammoWarnTxt.alignment = TextAnchor.MiddleCenter;
+            ammoWarnTxt.color = new Color(0.95f, 0.55f, 0.2f);
+            ammoWarnTxt.fontSize = 22;
+            ammoWarnTxt.fontStyle = FontStyle.Bold;
+            var awrt = ammoWarnGO.GetComponent<RectTransform>();
+            awrt.anchorMin = awrt.anchorMax = new Vector2(0.5f, 0.5f);
+            awrt.anchoredPosition = new Vector2(0f, -70f);
+            awrt.sizeDelta = new Vector2(320f, 30f);
+            ammoWarnGO.SetActive(false);
+
             var aimUIGO = new GameObject("AimUI", typeof(RectTransform), typeof(AimUI));
             aimUIGO.transform.SetParent(canvasGO.transform, false);
             var aimUi = aimUIGO.GetComponent<AimUI>();
             aimUi.Bind(promptTxt, crossImg);
+            aimUi.BindAmmoWarning(ammoWarnTxt);
             aimUi.Initialize();
             aimUiRef = aimUi;
 

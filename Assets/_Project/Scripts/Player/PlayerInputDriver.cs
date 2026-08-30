@@ -426,6 +426,8 @@ namespace SP.Player
             UpdateVehicleMountIndicator(result);
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
+            if (AimUiRef != null) AimUiRef.UpdateAmmoWarning(Brain.Current.Weapon);
+            if (kb.rKey.wasPressedThisFrame) Brain.Current.Weapon.Reload();
             if (PlayerHealth != null)
             {
                 PlayerHealth.gameObject.SetActive(true);

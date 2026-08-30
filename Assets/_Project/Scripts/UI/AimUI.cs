@@ -24,6 +24,32 @@ namespace SP.UI
         public string CurrentPrompt { get; private set; } = "";
         public bool IsVisible => promptText != null && promptText.gameObject.activeSelf;
 
+        // Aviso bajo la mirilla cuando el arma no puede disparar por
+        // municion: antes el disparo simplemente no salia y no habia
+        // ninguna señal de por que -- el jugador podia pensar que el
+        // juego no registro el click.
+        Text ammoWarningText;
+        public void BindAmmoWarning(Text text) => ammoWarningText = text;
+
+        public void UpdateAmmoWarning(SP.Combat.WeaponHolder weapon)
+        {
+            if (ammoWarningText == null || weapon == null) return;
+            if (weapon.IsReloading)
+            {
+                ammoWarningText.text = "RECARGANDO";
+                ammoWarningText.gameObject.SetActive(true);
+            }
+            else if (weapon.CurrentAmmo <= 0)
+            {
+                ammoWarningText.text = "SIN MUNICION";
+                ammoWarningText.gameObject.SetActive(true);
+            }
+            else
+            {
+                ammoWarningText.gameObject.SetActive(false);
+            }
+        }
+
         // La mirilla/cartel/paneles de info son puramente de puntería a
         // pie (FPS). En RTS o manejando un vehículo, nadie los actualiza
         // (nada llama UpdateFromAimResult ahí) y quedaban congelados con
@@ -38,6 +64,7 @@ namespace SP.UI
                 if (promptText != null) promptText.gameObject.SetActive(false);
                 if (soldierInfoPanel != null) soldierInfoPanel.SetActive(false);
                 if (vehicleInfoPanel != null) vehicleInfoPanel.SetActive(false);
+                if (ammoWarningText != null) ammoWarningText.gameObject.SetActive(false);
                 CurrentPrompt = "";
             }
         }
@@ -141,6 +168,11 @@ namespace SP.UI
                     // crearon (Driver, Passenger1, Passenger2, Gunner).
                     seatSquares = t.GetComponentsInChildren<Image>(true).Skip(1).Take(4).ToArray();
                 }
+            }
+            if (ammoWarningText == null)
+            {
+                var t = canvasRoot.Find("AmmoWarningText");
+                if (t != null) ammoWarningText = t.GetComponent<Text>();
             }
         }
 

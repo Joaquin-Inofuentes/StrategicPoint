@@ -40,6 +40,13 @@ namespace SP.UI
             {
                 string status = weapon.IsReloading ? "  ·  RECARGANDO" : "";
                 label.text = $"{weapon.CurrentWeaponKind}   {weapon.CurrentAmmo}/{weapon.MagazineSize}{status}";
+
+                // El contador quedaba blanco fijo hasta llegar a cero, sin
+                // ningun aviso previo de que se estaba por acabar. Rojo
+                // por debajo del 30% de la carga, para que se note antes
+                // de quedarse en seco en medio de un tiroteo.
+                float frac = weapon.MagazineSize > 0 ? (float)weapon.CurrentAmmo / weapon.MagazineSize : 1f;
+                label.color = (!weapon.IsReloading && frac < 0.3f) ? new Color(0.95f, 0.25f, 0.2f) : Color.white;
             }
             if (fill != null)
             {

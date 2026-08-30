@@ -147,5 +147,15 @@ namespace SP.Combat
             IsReloading = true;
             reloadTimer = reloadDuration;
         }
+
+        // Antes solo se recargaba solo al vaciar el cargador del todo. No
+        // habia forma de rellenar un cargador a medias antes de entrar en
+        // combate, que es una decision tactica basica en cualquier shooter.
+        public bool Reload()
+        {
+            if (IsReloading || CurrentAmmo >= magazineSize) return false;
+            StartReload();
+            return true;
+        }
     }
 }
