@@ -50,10 +50,48 @@ namespace SP.CameraSystem
         public void AddPitch(float delta) => pitch = Mathf.Clamp(pitch + delta, -MaxPitch, MaxPitch);
         public void ResetPitch() => pitch = 0f;
 
+        // Vista RTS guardada al salir, para no perder el encuadre que el
+        // jugador armo (paneo + zoom) cada vez que vuelve. Sin esto, cada
+        // regreso a RTS recentraba en el poseido, tirando cualquier
+        // observacion de otra zona del mapa.
+        Vector3? savedRtsPosition;
+        float savedRtsOrthoSize = -1f;
+
         public void SetMode(ControlMode mode)
         {
+            bool wasRts = Mode == ControlMode.Rts;
+            bool goingToRts = mode == ControlMode.Rts;
+
+            // Guardar la vista RTS justo antes de dejarla, no al entrar:
+            // es la unica forma de capturar el ultimo estado real (paneo,
+            // zoom) que el jugador dejo, en vez de un valor viejo.
+            if (wasRts && !goingToRts && cam != null)
+            {
+                savedRtsPosition = transform.position;
+                savedRtsOrthoSize = cam.orthographicSize;
+            }
+
             Mode = mode;
             if (cam != null) cam.orthographic = mode == ControlMode.Rts;
+        }
+
+        // Si hay una vista RTS guardada, la restaura en vez de recentrar
+        // en `center`. Se usa en vez de llamar a SetRtsView directo desde
+        // los puntos que alternan modo, para que "volver a RTS" y
+        // "entrar a RTS por primera vez o tras la muerte" puedan pedir
+        // explicitamente cual de las dos quieren.
+        public void RestoreOrSetRtsView(Vector3 fallbackCenter)
+        {
+            if (savedRtsPosition.HasValue && savedRtsOrthoSize > 0f)
+            {
+                transform.position = savedRtsPosition.Value;
+                transform.rotation = Quaternion.Euler(rtsLookEuler);
+                if (cam != null) cam.orthographicSize = savedRtsOrthoSize;
+            }
+            else
+            {
+                SetRtsView(fallbackCenter);
+            }
         }
 
         public void ToggleMode() => SetMode(Mode == ControlMode.Fps ? ControlMode.Rts : ControlMode.Fps);

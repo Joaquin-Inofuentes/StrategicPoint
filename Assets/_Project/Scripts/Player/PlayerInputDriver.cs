@@ -27,6 +27,7 @@ namespace SP.Player
         public AimUI AimUiRef;
         public PlayerHealthView PlayerHealth;
         public UI.SelectionCountView SelectionCount;
+        public UI.ModeToastView ModeToast;
         public InstructionBannerView Instructions;
         public Image SelectionBox;
         public Vehicle Vehicle;
@@ -205,8 +206,14 @@ namespace SP.Player
                 {
                     Vector3 focus = currentSeat.HasValue ? Vehicle.transform.position
                         : Brain.Current != null ? Brain.Current.transform.position : Vector3.zero;
-                    Rig.SetRtsView(focus);
+                    // Restaura el paneo/zoom que el jugador dejo la ultima
+                    // vez que estuvo en RTS, en vez de recentrar siempre
+                    // en el poseido -- si no hay vista guardada (primera
+                    // vez), cae a centrar en foco como antes.
+                    Rig.RestoreOrSetRtsView(focus);
                 }
+
+                if (ModeToast != null) ModeToast.Show(Rig.Mode == ControlMode.Rts ? "VISTA RTS" : "VISTA FPS");
             }
 
             if (handlingDeath) return;

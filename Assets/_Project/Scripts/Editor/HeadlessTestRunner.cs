@@ -40,6 +40,7 @@ namespace SP.EditorTools
         static PlayerHealthView playerHealthRef;
         static MissionStatusView missionStatusRef;
         static SelectionCountView selectionCountRef;
+        static ModeToastView modeToastRef;
         static VehicleStatusView vehicleStatusRef;
         static DamageVignetteView damageVignetteRef;
         static KillFeedView killFeedRef;
@@ -217,6 +218,7 @@ namespace SP.EditorTools
             inputDriver.PauseRef = pauseControllerRef;
             inputDriver.PlayerHealth = playerHealthRef;
             inputDriver.SelectionCount = selectionCountRef;
+            inputDriver.ModeToast = modeToastRef;
             servicesGO.AddComponent<WorldSimulationDriver>();
             servicesGO.AddComponent<SelectionRingManager>();
             servicesGO.AddComponent<AttackLineManager>();
@@ -1454,6 +1456,36 @@ namespace SP.EditorTools
             var deadNotice = deadGO.GetComponent<DeadNoticeView>();
             deadNotice.Bind(deadText, deadGO.GetComponent<CanvasGroup>());
             deadNoticeRef = deadNotice;
+
+            // Aviso de modo (VISTA RTS / VISTA FPS): arriba y al centro,
+            // lejos del cartel de "esta muerto" para que nunca compitan
+            // por el mismo lugar en pantalla.
+            var toastGO = new GameObject("ModeToast", typeof(RectTransform), typeof(CanvasGroup), typeof(ModeToastView));
+            toastGO.transform.SetParent(canvasGO.transform, false);
+            var toastRt = toastGO.GetComponent<RectTransform>();
+            toastRt.anchorMin = toastRt.anchorMax = new Vector2(0.5f, 1f);
+            toastRt.pivot = new Vector2(0.5f, 1f);
+            toastRt.anchoredPosition = new Vector2(0f, -90f);
+            toastRt.sizeDelta = new Vector2(260f, 40f);
+
+            var toastBgGO = new GameObject("BG", typeof(Image));
+            toastBgGO.transform.SetParent(toastGO.transform, false);
+            toastBgGO.GetComponent<Image>().color = new Color(0.1f, 0.12f, 0.15f, 0.85f);
+            StretchFull(toastBgGO.GetComponent<RectTransform>());
+
+            var toastTextGO = new GameObject("Text", typeof(Text));
+            toastTextGO.transform.SetParent(toastGO.transform, false);
+            var toastText = toastTextGO.GetComponent<Text>();
+            toastText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            toastText.alignment = TextAnchor.MiddleCenter;
+            toastText.color = Color.white;
+            toastText.fontSize = 18;
+            toastText.fontStyle = FontStyle.Bold;
+            StretchFull(toastTextGO.GetComponent<RectTransform>());
+
+            var modeToast = toastGO.GetComponent<ModeToastView>();
+            modeToast.Bind(toastText, toastGO.GetComponent<CanvasGroup>());
+            modeToastRef = modeToast;
 
             var rosterGO = new GameObject("Roster", typeof(RectTransform), typeof(SelectedSoldierUI));
             rosterGO.transform.SetParent(canvasGO.transform, false);
