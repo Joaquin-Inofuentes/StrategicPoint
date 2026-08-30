@@ -41,6 +41,8 @@ namespace SP.EditorTools
         static MissionStatusView missionStatusRef;
         static SelectionCountView selectionCountRef;
         static ModeToastView modeToastRef;
+        static Text victoryStatsRef;
+        static Text defeatStatsRef;
         static VehicleStatusView vehicleStatusRef;
         static DamageVignetteView damageVignetteRef;
         static KillFeedView killFeedRef;
@@ -1970,8 +1972,35 @@ namespace SP.EditorTools
             titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.6f);
             titleRt.sizeDelta = new Vector2(900f, 120f);
 
+            // Estadisticas de la partida: sin esto la pantalla de fin solo
+            // decia si ganaste o perdiste, sin dato alguno de como fue.
+            var statsGO = new GameObject("Stats", typeof(Text));
+            statsGO.transform.SetParent(go.transform, false);
+            var statsTxt = statsGO.GetComponent<Text>();
+            statsTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            statsTxt.alignment = TextAnchor.MiddleCenter;
+            statsTxt.color = new Color(0.9f, 0.9f, 0.9f);
+            statsTxt.fontSize = 22;
+            var statsRt = statsGO.GetComponent<RectTransform>();
+            statsRt.anchorMin = statsRt.anchorMax = new Vector2(0.5f, 0.6f);
+            statsRt.anchoredPosition = new Vector2(0f, -70f);
+            statsRt.sizeDelta = new Vector2(700f, 40f);
+            if (name == "VictoryPanel") victoryStatsRef = statsTxt; else defeatStatsRef = statsTxt;
+
             retryBtn = BuildUIButton(go.transform, "RetryButton", "REINTENTAR", new Vector2(0f, 0f), new Color(0.25f, 0.45f, 0.75f));
             exitBtn = BuildUIButton(go.transform, "ExitButton", "SALIR", new Vector2(0f, -70f), new Color(0.5f, 0.5f, 0.5f));
+
+            // Navegacion explicita entre los dos botones: sin esto no se
+            // puede pasar de uno a otro con el teclado ni con un mando.
+            var retryNav = retryBtn.navigation;
+            retryNav.mode = Navigation.Mode.Explicit;
+            retryNav.selectOnDown = exitBtn;
+            retryBtn.navigation = retryNav;
+            var exitNav = exitBtn.navigation;
+            exitNav.mode = Navigation.Mode.Explicit;
+            exitNav.selectOnUp = retryBtn;
+            exitBtn.navigation = exitNav;
+
             return go;
         }
 

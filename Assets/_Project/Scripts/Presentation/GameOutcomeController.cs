@@ -1,6 +1,10 @@
+using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using SP.Actors;
+using SP.Combat;
 using SP.Core;
 
 namespace SP.Presentation
@@ -12,7 +16,28 @@ namespace SP.Presentation
     {
         GameObject victoryPanel;
         GameObject defeatPanel;
+        Text victoryStats;
+        Text defeatStats;
         bool shown;
+
+        // Bajas propias y del enemigo durante la partida, mas cuanto duro.
+        // Antes la pantalla de fin solo decia gano/perdio, sin dato alguno
+        // de como fue, lo que no invita a mejorar ni a intentar de nuevo
+        // con otra estrategia.
+        int enemyKills;
+        int squadLosses;
+        float startTime;
+        IDisposable deathSub;
+
+        void Awake() => startTime = Time.time;
+
+        void TrackDeaths(EntityDiedEvent evt)
+        {
+            var soldier = ActorRegistry.FindById(evt.ActorId);
+            if (soldier == null) return;
+            if (soldier.Team == TeamId.Enemy) enemyKills++;
+            else if (soldier.Team == TeamId.Player) squadLosses++;
+        }
 
         // Para que PauseController sepa que no debe abrirse encima --
         // antes [ESC] con la pantalla de Victoria/Derrota puesta abría
@@ -43,6 +68,22 @@ namespace SP.Presentation
                 var t = transform.Find("DefeatPanel");
                 if (t != null) defeatPanel = t.gameObject;
             }
+            if (victoryStats == null && victoryPanel != null)
+            {
+                var t = victoryPanel.transform.Find("Stats");
+                if (t != null) victoryStats = t.GetComponent<Text>();
+            }
+            if (defeatStats == null && defeatPanel != null)
+            {
+                var t = defeatPanel.transform.Find("Stats");
+                if (t != null) defeatStats = t.GetComponent<Text>();
+            }
+
+            // Igual que en AimUI/DamageVignetteView: la suscripcion hecha
+            // en Editor al armar la escena no sobrevive al domain reload
+            // de Play mode.
+            deathSub?.Dispose();
+            deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(TrackDeaths);
 
             // Mismo motivo que en MainMenuController/PauseController: los
             // onClick.AddListener() de un script de Editor no sobreviven
@@ -56,6 +97,8 @@ namespace SP.Presentation
             WireButton(defeatPanel, "ExitButton", OnExitClicked);
         }
 
+        void OnDisable() => deathSub?.Dispose();
+
         static void WireButton(GameObject panel, string childName, UnityEngine.Events.UnityAction action)
         {
             if (panel == null) return;
@@ -64,13 +107,33 @@ namespace SP.Presentation
             if (btn != null) btn.onClick.AddListener(action);
         }
 
+        string BuildStatsText()
+        {
+            float elapsed = Time.time - startTime;
+            int minutes = Mathf.FloorToInt(elapsed / 60f);
+            int seconds = Mathf.FloorToInt(elapsed % 60f);
+            return $"Bajas enemigas: {enemyKills}   ·   Bajas propias: {squadLosses}   ·   Tiempo: {minutes:00}:{seconds:00}";
+        }
+
+        // Foco de teclado en Reintentar al abrir cada pantalla: es la
+        // accion mas probable, y sin esto el teclado no servia hasta
+        // clickear una vez con el mouse.
+        static void FocusRetryButton(GameObject panel)
+        {
+            if (panel == null || EventSystem.current == null) return;
+            var t = panel.transform.Find("RetryButton");
+            if (t != null) EventSystem.current.SetSelectedGameObject(t.gameObject);
+        }
+
         public void ShowVictory()
         {
             if (victoryPanel == null || shown) return;
             shown = true;
             GameLog.Line("Ganaste");
             Time.timeScale = 0f;
+            if (victoryStats != null) victoryStats.text = BuildStatsText();
             victoryPanel.SetActive(true);
+            FocusRetryButton(victoryPanel);
             GameLog.Line("Pantalla de ganar activa");
         }
 
@@ -79,7 +142,9 @@ namespace SP.Presentation
             if (defeatPanel == null || shown) return;
             shown = true;
             Time.timeScale = 0f;
+            if (defeatStats != null) defeatStats.text = BuildStatsText();
             defeatPanel.SetActive(true);
+            FocusRetryButton(defeatPanel);
             GameLog.Line("Pantalla de perder activa");
         }
 
