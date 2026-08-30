@@ -19,6 +19,7 @@ namespace SP.UI
         Vector2 crosshairBaseSize = new Vector2(6f, 6f);
         int watchedShooterId = -1;
         IDisposable damageSub;
+        IDisposable environmentHitSub;
 
         public string CurrentPrompt { get; private set; } = "";
         public bool IsVisible => promptText != null && promptText.gameObject.activeSelf;
@@ -64,6 +65,8 @@ namespace SP.UI
         {
             damageSub?.Dispose();
             damageSub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnDamage);
+            environmentHitSub?.Dispose();
+            environmentHitSub = EventBus.Instance.Subscribe<EnvironmentHitEvent>(OnEnvironmentHit);
         }
 
         // `damageSub` y todas las referencias de abajo no sobreviven al
@@ -123,21 +126,37 @@ namespace SP.UI
             }
         }
 
-        void OnDestroy() => damageSub?.Dispose();
+        void OnDestroy()
+        {
+            damageSub?.Dispose();
+            environmentHitSub?.Dispose();
+        }
 
         // A quién mirar para saber si "mi" disparo impactó.
         public void SetWatchedShooter(int soldierId) => watchedShooterId = soldierId;
+
+        static readonly Color EnemyHitColor = new Color(0.95f, 0.2f, 0.15f);
+        static readonly Color VehicleHitColor = new Color(0.3f, 0.55f, 0.95f);
+        static readonly Color ObstacleHitColor = new Color(0.75f, 0.75f, 0.78f);
 
         void OnDamage(DamageTakenEvent evt)
         {
             if (!Application.isPlaying || crosshair == null || evt.AttackerId != watchedShooterId) return;
             StopAllCoroutines();
-            StartCoroutine(FlashHitMarker());
+            StartCoroutine(FlashHitMarker(EnemyHitColor));
         }
 
-        IEnumerator FlashHitMarker()
+        void OnEnvironmentHit(EnvironmentHitEvent evt)
         {
-            crosshair.color = new Color(0.95f, 0.2f, 0.15f);
+            if (!Application.isPlaying || crosshair == null || evt.ShooterId != watchedShooterId) return;
+            var color = evt.Kind == EnvironmentHitKind.Vehicle ? VehicleHitColor : ObstacleHitColor;
+            StopAllCoroutines();
+            StartCoroutine(FlashHitMarker(color));
+        }
+
+        IEnumerator FlashHitMarker(Color flashColor)
+        {
+            crosshair.color = flashColor;
             crosshair.rectTransform.sizeDelta = crosshairBaseSize * 2.4f;
 
             float t = 0f;
@@ -147,7 +166,7 @@ namespace SP.UI
                 t += Time.deltaTime;
                 float k = t / duration;
                 crosshair.rectTransform.sizeDelta = Vector2.Lerp(crosshairBaseSize * 2.4f, crosshairBaseSize, k);
-                crosshair.color = Color.Lerp(new Color(0.95f, 0.2f, 0.15f), crosshairBaseColor, k);
+                crosshair.color = Color.Lerp(flashColor, crosshairBaseColor, k);
                 yield return null;
             }
 
@@ -162,8 +181,14 @@ namespace SP.UI
                 case AimTargetType.Ally:
                     CurrentPrompt = $"[F] Poseer a {result.Soldier.DisplayName}";
                     break;
+                case AimTargetType.Enemy:
+                    CurrentPrompt = $"Enemigo: {result.Soldier.DisplayName}";
+                    break;
                 case AimTargetType.Vehicle:
                     CurrentPrompt = "[G] Ordenar subir al vehiculo";
+                    break;
+                case AimTargetType.Obstacle:
+                    CurrentPrompt = "Obstáculo";
                     break;
                 case AimTargetType.Ground:
                     CurrentPrompt = "[T] Ir aquí";
@@ -187,12 +212,13 @@ namespace SP.UI
         {
             if (soldierInfoPanel == null) return;
 
-            bool show = result.Type == AimTargetType.Ally && result.Soldier != null;
+            bool show = (result.Type == AimTargetType.Ally || result.Type == AimTargetType.Enemy) && result.Soldier != null;
             soldierInfoPanel.SetActive(show);
             if (!show || soldierInfoText == null) return;
 
             var s = result.Soldier;
-            soldierInfoText.text = $"{s.DisplayName}   ·   Vida {s.Health.Current}/{s.Health.MaxHealth}   ·   Arma {s.Weapon.CurrentWeaponKind}   ·   {s.Role}";
+            string tag = result.Type == AimTargetType.Enemy ? "[Enemigo] " : "";
+            soldierInfoText.text = $"{tag}{s.DisplayName}   ·   Vida {s.Health.Current}/{s.Health.MaxHealth}   ·   Arma {s.Weapon.CurrentWeaponKind}   ·   {s.Role}";
         }
 
         void UpdateVehicleInfo(AimResult result)

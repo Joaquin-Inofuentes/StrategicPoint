@@ -95,4 +95,21 @@ namespace SP.Core
         public readonly List<int> SelectedIds;
         public SelectionChangedEvent(List<int> selectedIds) => SelectedIds = selectedIds;
     }
+
+    public enum EnvironmentHitKind { Vehicle, Obstacle }
+
+    // Un proyectil le pegó a algo que no es un soldado (un vehículo o un
+    // obstáculo): feedback distinto al de pegarle a un enemigo.
+    public readonly struct EnvironmentHitEvent
+    {
+        public readonly int ShooterId;
+        public readonly EnvironmentHitKind Kind;
+        public readonly Vector3 Point;
+        public EnvironmentHitEvent(int shooterId, EnvironmentHitKind kind, Vector3 point)
+        {
+            ShooterId = shooterId;
+            Kind = kind;
+            Point = point;
+        }
+    }
 }

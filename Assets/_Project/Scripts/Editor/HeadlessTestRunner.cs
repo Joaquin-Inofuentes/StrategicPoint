@@ -33,6 +33,8 @@ namespace SP.EditorTools
         static Image selectionBoxRef;
         static MinimapFollow minimapFollowRef;
         static Transform canvasRootRef;
+        static DeadNoticeView deadNoticeRef;
+        static WeaponStatusView weaponStatusRef;
 
         static int cachedMinimapLayer = -1;
 
@@ -197,6 +199,8 @@ namespace SP.EditorTools
             inputDriver.Vehicle = vehicle;
             inputDriver.WeaponPickups = weaponPickups;
             inputDriver.MinimapRef = minimapFollowRef;
+            inputDriver.DeadNotice = deadNoticeRef;
+            inputDriver.WeaponStatus = weaponStatusRef;
             servicesGO.AddComponent<WorldSimulationDriver>();
             servicesGO.AddComponent<SelectionRingManager>();
             servicesGO.AddComponent<AttackLineManager>();
@@ -212,6 +216,27 @@ namespace SP.EditorTools
                 RunPhase2(playerBrain, rig, aimTargeting, selection, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase3(playerBrain, rig, selection, aimTargeting, vega, kes, doc, soldierPrefab, colorEnemy, pool, vehicle);
                 RunPhase4(playerBrain, rig, vehicle, weaponPickups, vega, kes, doc);
+
+                // El cartel de "Felicidades, completaste la Fase N" se
+                // queda ENGANCHADO visible para siempre si no se limpia
+                // acá: PhaseBannerView.Show() solo arranca la corutina que
+                // lo esconde a los N segundos cuando Application.isPlaying
+                // es true, pero este test corre en Edit mode (isPlaying
+                // false), así que la corutina nunca corre. El GameObject
+                // queda con SetActive(true) grabado en la escena, y la
+                // próxima vez que alguien le da Play a mano, hereda ese
+                // estado y el cartel aparece trabado en pantalla desde el
+                // primer frame, sin depender de si corrió el demo o no.
+                // Se apaga el Text hijo (lo mismo que hace PunchAndHide al
+                // final), NO el GameObject del propio PhaseBannerView: si
+                // se apagara el contenedor, un StartCoroutine posterior de
+                // verdad en Play mode fallaría por estar en un GameObject
+                // inactivo.
+                if (phaseBannerRef != null)
+                {
+                    var label = phaseBannerRef.GetComponentInChildren<Text>(true);
+                    if (label != null) label.gameObject.SetActive(false);
+                }
             }
             else
             {
@@ -815,21 +840,25 @@ namespace SP.EditorTools
 
         static void BuildObstacles()
         {
-            Vector3[] positions =
+            // Misma altura para los 4 (antes iban de 1.5 a 3, se veían
+            // desparejos); todos parados sobre el piso (y = mitad de la altura).
+            const float height = 2f;
+            Vector3[] positionsXZ =
             {
-                new Vector3(6f, 0.5f, 3f),
-                new Vector3(-6f, 0.5f, 4f),
-                new Vector3(4f, 0.75f, -6f),
-                new Vector3(-5f, 1f, -3f)
+                new Vector3(6f, 0f, 3f),
+                new Vector3(-6f, 0f, 4f),
+                new Vector3(4f, 0f, -6f),
+                new Vector3(-5f, 0f, -3f)
             };
 
-            for (int i = 0; i < positions.Length; i++)
+            for (int i = 0; i < positionsXZ.Length; i++)
             {
                 var o = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 o.name = $"Obstaculo_{i + 1}";
-                o.transform.position = positions[i];
-                o.transform.localScale = new Vector3(2f, 1.5f + i * 0.5f, 2f);
+                o.transform.position = new Vector3(positionsXZ[i].x, height * 0.5f, positionsXZ[i].z);
+                o.transform.localScale = new Vector3(2f, height, 2f);
                 o.GetComponent<MeshRenderer>().sharedMaterial = CreateFlatMaterial(new Color(0.93f, 0.78f, 0.55f));
+                o.AddComponent<ObstacleMarker>();
             }
         }
 
@@ -1000,6 +1029,80 @@ namespace SP.EditorTools
             aimUi.BindVehicleInfo(vehicleInfoGO, seatSquares);
             vehicleInfoGO.SetActive(false);
 
+            // HUD de arma: qué arma, munición y barra de recarga/enfriamiento.
+            var wsGO = new GameObject("WeaponStatus", typeof(Image), typeof(WeaponStatusView));
+            wsGO.transform.SetParent(canvasGO.transform, false);
+            wsGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.85f);
+            var wsRt = wsGO.GetComponent<RectTransform>();
+            wsRt.anchorMin = new Vector2(1f, 0f);
+            wsRt.anchorMax = new Vector2(1f, 0f);
+            wsRt.pivot = new Vector2(1f, 0f);
+            wsRt.anchoredPosition = new Vector2(-16f, 72f);
+            wsRt.sizeDelta = new Vector2(220f, 46f);
+
+            var wsTextGO = new GameObject("Text", typeof(Text));
+            wsTextGO.transform.SetParent(wsGO.transform, false);
+            var wsText = wsTextGO.GetComponent<Text>();
+            wsText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            wsText.alignment = TextAnchor.UpperCenter;
+            wsText.color = Color.white;
+            wsText.fontSize = 16;
+            var wsTextRt = wsTextGO.GetComponent<RectTransform>();
+            wsTextRt.anchorMin = new Vector2(0f, 0f);
+            wsTextRt.anchorMax = new Vector2(1f, 1f);
+            wsTextRt.offsetMin = new Vector2(4f, 12f);
+            wsTextRt.offsetMax = new Vector2(-4f, -4f);
+
+            var wsBarBgGO = new GameObject("BarBG", typeof(Image));
+            wsBarBgGO.transform.SetParent(wsGO.transform, false);
+            wsBarBgGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.6f);
+            var wsBarBgRt = wsBarBgGO.GetComponent<RectTransform>();
+            wsBarBgRt.anchorMin = new Vector2(0f, 0f);
+            wsBarBgRt.anchorMax = new Vector2(1f, 0f);
+            wsBarBgRt.pivot = new Vector2(0f, 0f);
+            wsBarBgRt.anchoredPosition = new Vector2(6f, 6f);
+            wsBarBgRt.sizeDelta = new Vector2(-12f, 8f);
+
+            var wsBarFillGO = new GameObject("BarFill", typeof(Image));
+            wsBarFillGO.transform.SetParent(wsBarBgGO.transform, false);
+            var wsBarFillImg = wsBarFillGO.GetComponent<Image>();
+            wsBarFillImg.color = new Color(0.4f, 0.85f, 0.45f);
+            wsBarFillImg.type = Image.Type.Filled;
+            wsBarFillImg.fillMethod = Image.FillMethod.Horizontal;
+            wsBarFillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+            wsBarFillImg.fillAmount = 1f;
+            StretchFull(wsBarFillGO.GetComponent<RectTransform>());
+
+            var weaponStatusView = wsGO.GetComponent<WeaponStatusView>();
+            weaponStatusView.Bind(wsText, wsBarFillImg);
+            weaponStatusRef = weaponStatusView;
+
+            // Cartel "X está muerto", centrado, que se desvanece solo.
+            var deadGO = new GameObject("DeadNotice", typeof(RectTransform), typeof(CanvasGroup), typeof(DeadNoticeView));
+            deadGO.transform.SetParent(canvasGO.transform, false);
+            var deadRt = deadGO.GetComponent<RectTransform>();
+            deadRt.anchorMin = deadRt.anchorMax = new Vector2(0.5f, 0.5f);
+            deadRt.anchoredPosition = new Vector2(0f, 80f);
+            deadRt.sizeDelta = new Vector2(420f, 60f);
+
+            var deadBgGO = new GameObject("BG", typeof(Image));
+            deadBgGO.transform.SetParent(deadGO.transform, false);
+            deadBgGO.GetComponent<Image>().color = new Color(0.55f, 0.1f, 0.1f, 0.85f);
+            StretchFull(deadBgGO.GetComponent<RectTransform>());
+
+            var deadTextGO = new GameObject("Text", typeof(Text));
+            deadTextGO.transform.SetParent(deadGO.transform, false);
+            var deadText = deadTextGO.GetComponent<Text>();
+            deadText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            deadText.alignment = TextAnchor.MiddleCenter;
+            deadText.color = Color.white;
+            deadText.fontSize = 22;
+            StretchFull(deadTextGO.GetComponent<RectTransform>());
+
+            var deadNotice = deadGO.GetComponent<DeadNoticeView>();
+            deadNotice.Bind(deadText, deadGO.GetComponent<CanvasGroup>());
+            deadNoticeRef = deadNotice;
+
             var rosterGO = new GameObject("Roster", typeof(RectTransform), typeof(SelectedSoldierUI));
             rosterGO.transform.SetParent(canvasGO.transform, false);
             var rosterRt = rosterGO.GetComponent<RectTransform>();
@@ -1147,7 +1250,7 @@ namespace SP.EditorTools
             contentRt.anchorMin = new Vector2(0f, 1f);
             contentRt.anchorMax = new Vector2(0f, 1f);
             contentRt.pivot = new Vector2(0f, 1f);
-            contentRt.sizeDelta = new Vector2(252f, squad.Count * 40f);
+            contentRt.sizeDelta = new Vector2(252f, squad.Count * 48f);
             contentRt.anchoredPosition = Vector2.zero;
 
             var scrollRect = panelGO.AddComponent<ScrollRect>();
@@ -1168,23 +1271,44 @@ namespace SP.EditorTools
                 rowRt.anchorMin = new Vector2(0f, 1f);
                 rowRt.anchorMax = new Vector2(1f, 1f);
                 rowRt.pivot = new Vector2(0.5f, 1f);
-                rowRt.anchoredPosition = new Vector2(0f, -i * 40f);
-                rowRt.sizeDelta = new Vector2(0f, 36f);
+                rowRt.anchoredPosition = new Vector2(0f, -i * 48f);
+                rowRt.sizeDelta = new Vector2(0f, 44f);
 
                 var labelGO = new GameObject("Label", typeof(Text));
                 labelGO.transform.SetParent(rowGO.transform, false);
                 var labelTxt = labelGO.GetComponent<Text>();
                 labelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 labelTxt.color = Color.white;
-                labelTxt.fontSize = 15;
-                labelTxt.alignment = TextAnchor.MiddleLeft;
+                labelTxt.fontSize = 14;
+                labelTxt.alignment = TextAnchor.UpperLeft;
                 var labelRt = labelGO.GetComponent<RectTransform>();
-                labelRt.anchorMin = Vector2.zero;
-                labelRt.anchorMax = Vector2.one;
-                labelRt.offsetMin = new Vector2(6f, 0f);
-                labelRt.offsetMax = Vector2.zero;
+                labelRt.anchorMin = new Vector2(0f, 0f);
+                labelRt.anchorMax = new Vector2(1f, 1f);
+                labelRt.offsetMin = new Vector2(6f, 6f);
+                labelRt.offsetMax = new Vector2(0f, 0f);
 
-                listView.AddEntry(squad[i], labelTxt);
+                // Barra de vida real (no solo el número), fina, abajo del todo.
+                var healthBgGO = new GameObject("HealthBG", typeof(Image));
+                healthBgGO.transform.SetParent(rowGO.transform, false);
+                healthBgGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.5f);
+                var healthBgRt = healthBgGO.GetComponent<RectTransform>();
+                healthBgRt.anchorMin = new Vector2(0f, 0f);
+                healthBgRt.anchorMax = new Vector2(1f, 0f);
+                healthBgRt.pivot = new Vector2(0f, 0f);
+                healthBgRt.anchoredPosition = new Vector2(6f, 3f);
+                healthBgRt.sizeDelta = new Vector2(-12f, 5f);
+
+                var healthFillGO = new GameObject("HealthFill", typeof(Image));
+                healthFillGO.transform.SetParent(healthBgGO.transform, false);
+                var healthFillImg = healthFillGO.GetComponent<Image>();
+                healthFillImg.color = new Color(0.35f, 0.85f, 0.4f);
+                healthFillImg.type = Image.Type.Filled;
+                healthFillImg.fillMethod = Image.FillMethod.Horizontal;
+                healthFillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+                healthFillImg.fillAmount = 1f;
+                StretchFull(healthFillGO.GetComponent<RectTransform>());
+
+                listView.AddEntry(squad[i], rowGO, labelTxt, healthFillImg);
             }
 
             squadListRef = listView;

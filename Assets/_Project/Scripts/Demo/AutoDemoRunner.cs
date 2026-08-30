@@ -98,17 +98,61 @@ namespace SP.Presentation
             // transición.
             yield return new WaitForSecondsRealtime(0.2f);
             yield return null;
-            yield return new WaitForEndOfFrame();
 
+            // A pesar del margen de arriba, una fracción de los pasos
+            // salía DIRECTAMENTE EN NEGRO (mismo tamaño de archivo exacto,
+            // el mismo frame vacío) — pasa cuando el Editor no está
+            // enfocado y el Game View no repinta a tiempo entre ticks. No
+            // es determinístico (le pasa a distintos pasos en distintas
+            // corridas), así que en vez de adivinar cuánto esperar, se
+            // captura a una textura, se mide si de verdad quedó negra, y
+            // si es así se repinta a mano y se reintenta antes de escribir
+            // el archivo — mucho más confiable que una espera fija.
             string dir = Path.Combine(Application.dataPath, "..", "DemoCaptures");
             Directory.CreateDirectory(dir);
             string fileName = $"{stepCounter:00}_{stepName}.png";
             string path = Path.Combine(dir, fileName);
-            ScreenCapture.CaptureScreenshot(path);
+
+            Texture2D shot = null;
+            for (int attempt = 0; attempt < 4; attempt++)
+            {
+                yield return new WaitForEndOfFrame();
+                shot = ScreenCapture.CaptureScreenshotAsTexture();
+                if (!IsBlack(shot)) break;
+
+                UnityEngine.Object.Destroy(shot);
+                shot = null;
+#if UNITY_EDITOR
+                UnityEditorInternal.InternalEditorUtility.RepaintAllViews();
+#endif
+                yield return new WaitForSecondsRealtime(0.25f);
+                yield return null;
+            }
+
+            if (shot != null)
+            {
+                File.WriteAllBytes(path, shot.EncodeToPNG());
+                UnityEngine.Object.Destroy(shot);
+            }
+
             stepCounter++;
-            yield return new WaitForEndOfFrame(); // deja que la captura se escriba antes de seguir
             TestLog.Step($"Captura: {fileName}");
             yield return new WaitForSecondsRealtime(stepGap);
+        }
+
+        // Frame realmente negro (pantalla sin repintar): revisa una
+        // muestra de píxeles en vez de todos, es una foto de 1920x1080 y
+        // esto corre en medio del demo a cada paso.
+        static bool IsBlack(Texture2D tex)
+        {
+            if (tex == null) return true;
+            for (int i = 0; i < 9; i++)
+            {
+                int x = (tex.width / 3) * (i % 3) + tex.width / 6;
+                int y = (tex.height / 3) * (i / 3) + tex.height / 6;
+                if (tex.GetPixel(x, y).maxColorComponent > 0.02f) return false;
+            }
+            return true;
         }
 
         // Mensaje de tutorial + log + espera corta, todo junto: así cada

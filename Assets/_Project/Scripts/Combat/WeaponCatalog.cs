@@ -16,6 +16,8 @@ namespace SP.Combat
             // como una forma distinta (no solo un color distinto), para que
             // cambiar de arma con 1/2/3 se note de un vistazo.
             public Vector3 VisualScale;
+            public int MagazineSize;
+            public float ReloadDuration;
         }
 
         public static Spec Get(WeaponKind kind)
@@ -24,14 +26,14 @@ namespace SP.Combat
             {
                 case WeaponKind.Pistol:
                     // Chica y corta.
-                    return new Spec { Damage = 14, Cooldown = 0.15f, Color = new Color(0.95f, 0.88f, 0.20f), VisualScale = new Vector3(0.13f, 0.13f, 0.28f) };
+                    return new Spec { Damage = 14, Cooldown = 0.15f, Color = new Color(0.95f, 0.88f, 0.20f), VisualScale = new Vector3(0.13f, 0.13f, 0.28f), MagazineSize = 12, ReloadDuration = 1.0f };
                 case WeaponKind.Heavy:
                     // Grande y gruesa.
-                    return new Spec { Damage = 50, Cooldown = 0.80f, Color = new Color(0.80f, 0.20f, 0.55f), VisualScale = new Vector3(0.26f, 0.26f, 0.65f) };
+                    return new Spec { Damage = 50, Cooldown = 0.80f, Color = new Color(0.80f, 0.20f, 0.55f), VisualScale = new Vector3(0.26f, 0.26f, 0.65f), MagazineSize = 4, ReloadDuration = 2.2f };
                 case WeaponKind.Rifle:
                 default:
                     // Larga y angosta.
-                    return new Spec { Damage = 26, Cooldown = 0.30f, Color = new Color(0.55f, 0.68f, 0.78f), VisualScale = new Vector3(0.15f, 0.15f, 0.55f) };
+                    return new Spec { Damage = 26, Cooldown = 0.30f, Color = new Color(0.55f, 0.68f, 0.78f), VisualScale = new Vector3(0.15f, 0.15f, 0.55f), MagazineSize = 8, ReloadDuration = 1.5f };
             }
         }
     }

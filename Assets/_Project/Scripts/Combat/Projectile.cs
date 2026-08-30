@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using SP.Core;
+using SP.Vehicles;
+using SP.Presentation;
 
 namespace SP.Combat
 {
@@ -97,6 +99,29 @@ namespace SP.Combat
                 hit.Health.TakeDamage(damage, ownerId);
                 Expire();
                 return;
+            }
+
+            // No hay soldado en el camino: probamos vehículo y obstáculo,
+            // para que el jugador tenga feedback de qué le pegó a qué (antes
+            // el proyectil los atravesaba sin avisar nada).
+            foreach (var vehicle in Object.FindObjectsByType<Vehicle>(FindObjectsSortMode.None))
+            {
+                if (Vector3.Distance(vehicle.transform.position, transform.position) <= hitRadius + 1.5f)
+                {
+                    EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, transform.position));
+                    Expire();
+                    return;
+                }
+            }
+
+            foreach (var obstacle in Object.FindObjectsByType<ObstacleMarker>(FindObjectsSortMode.None))
+            {
+                if (Vector3.Distance(obstacle.transform.position, transform.position) <= hitRadius + 1f)
+                {
+                    EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Obstacle, transform.position));
+                    Expire();
+                    return;
+                }
             }
 
             if (age >= lifetime) Expire();

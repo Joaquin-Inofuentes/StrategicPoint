@@ -3,10 +3,11 @@ using SP.Actors;
 using SP.Combat;
 using SP.Core;
 using SP.Vehicles;
+using SP.Presentation;
 
 namespace SP.Player
 {
-    public enum AimTargetType { None, Ally, Vehicle, Ground }
+    public enum AimTargetType { None, Ally, Enemy, Vehicle, Ground, Obstacle }
 
     public struct AimResult
     {
@@ -31,10 +32,16 @@ namespace SP.Player
             if (Physics.Raycast(ray, out var hit, maxDistance))
             {
                 var soldier = hit.collider.GetComponentInParent<Soldier>();
-                if (soldier != null && soldier != excludeSelf && soldier.Team == TeamId.Player && soldier.Health.IsAlive)
+                if (soldier != null && soldier != excludeSelf && soldier.Health.IsAlive)
                 {
+                    if (soldier.Team == TeamId.Player)
+                    {
+                        Highlight(soldier.Id);
+                        return new AimResult { Type = AimTargetType.Ally, Soldier = soldier, Point = hit.point };
+                    }
+
                     Highlight(soldier.Id);
-                    return new AimResult { Type = AimTargetType.Ally, Soldier = soldier, Point = hit.point };
+                    return new AimResult { Type = AimTargetType.Enemy, Soldier = soldier, Point = hit.point };
                 }
 
                 ClearHighlight();
@@ -42,6 +49,9 @@ namespace SP.Player
                 var vehicle = hit.collider.GetComponentInParent<Vehicle>();
                 if (vehicle != null)
                     return new AimResult { Type = AimTargetType.Vehicle, Vehicle = vehicle, Point = hit.point };
+
+                if (hit.collider.GetComponentInParent<ObstacleMarker>() != null)
+                    return new AimResult { Type = AimTargetType.Obstacle, Point = hit.point };
 
                 if (hit.collider.gameObject.name.StartsWith("Ground"))
                     return new AimResult { Type = AimTargetType.Ground, Point = hit.point };

@@ -27,6 +27,8 @@ namespace SP.Player
         public Vehicle Vehicle;
         public List<WeaponPickup> WeaponPickups;
         public MinimapFollow MinimapRef;
+        public DeadNoticeView DeadNotice;
+        public WeaponStatusView WeaponStatus;
 
         [SerializeField] float lookSensitivity = 0.15f;
         [SerializeField] float rtsPanSpeed = 14f;
@@ -44,6 +46,64 @@ namespace SP.Player
         Renderer highlightedRenderer;
         Color highlightedOriginalColor;
         VehicleMountIndicator mountIndicator;
+
+        // Cubo pegado a la cámara (no al cuerpo): así se ve en primera
+        // persona el arma equipada apuntando siempre hacia donde mirás,
+        // con su propia forma/color según qué arma tenés en mano.
+        GameObject weaponViewmodel;
+        Renderer weaponViewmodelRenderer;
+
+        void UpdateWeaponViewmodel(WeaponHolder weapon)
+        {
+            if (Rig == null || Rig.Cam == null || weapon == null) return;
+
+            if (weaponViewmodel == null)
+            {
+                weaponViewmodel = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                weaponViewmodel.name = "WeaponViewmodel";
+                var col = weaponViewmodel.GetComponent<Collider>();
+                if (col != null) Destroy(col);
+                weaponViewmodel.transform.SetParent(Rig.Cam.transform, false);
+                // Un poco más lejos y más grande que el cubo del cuerpo: tan
+                // cerca de la cámara y tan fino, casi no se veía (se perdía
+                // contra el cielo, muy parecido de color). Corrido del
+                // rincón inferior derecho, que es donde vive el HUD del
+                // arma (le tapaba el viewmodel por encima).
+                weaponViewmodel.transform.localPosition = new Vector3(0.28f, -0.22f, 0.65f);
+                weaponViewmodel.transform.localRotation = Quaternion.identity;
+                weaponViewmodelRenderer = weaponViewmodel.GetComponent<MeshRenderer>();
+                // Unlit a propósito: con el shader Lit, bajo la luz plana de
+                // la escena, un color como el del Rifle (celeste grisáceo)
+                // queda casi idéntico al cielo de fondo y el cubo desaparece
+                // a simple vista aunque esté perfectamente ubicado y activo.
+                // Unlit + oscurecido garantiza contraste sin depender de la
+                // iluminación de la escena.
+                var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+                weaponViewmodelRenderer.sharedMaterial = new Material(shader);
+            }
+
+            weaponViewmodel.SetActive(true);
+            var spec = WeaponCatalog.Get(weapon.CurrentWeaponKind);
+            // OJO: escalar spec.VisualScale (pensado para el cuerpo, con
+            // el largo del cañón en Z) de golpe x2/x4 y ubicarlo a solo
+            // 0.55-0.7 de la cámara hacía que la mitad del cubo en Z
+            // quedara DETRÁS del punto focal de la cámara (near clip
+            // 0.3), y ese cruce lo dejaba totalmente fuera del frustum:
+            // por eso no se veía pese a estar activo, bien coloreado y
+            // "dentro de cámara" según todo diagnóstico salvo la
+            // profundidad real. Ancho/alto escalan con el arma pero la
+            // profundidad se cablea fija y chica, y la distancia a la
+            // cámara se aleja lo suficiente como para dejar margen real
+            // delante del near clip.
+            // Primer intento (0.18-0.35 de ancho) resultó gigante: tapaba
+            // media pantalla en las capturas reales del demo. Un arma en
+            // primera persona debe leerse como un detalle en la esquina,
+            // no como una pared — bajado a un rango bien chico.
+            float widthHeight = Mathf.Clamp(spec.VisualScale.x * 1.1f, 0.08f, 0.15f);
+            const float depth = 0.22f;
+            weaponViewmodel.transform.localScale = new Vector3(widthHeight, widthHeight, depth);
+            weaponViewmodelRenderer.sharedMaterial.color = Color.Lerp(spec.Color, Color.black, 0.4f);
+        }
 
         // Estado de "estoy adentro de un vehículo".
         VehicleSeatRole? currentSeat;
@@ -151,10 +211,23 @@ namespace SP.Player
         // -----------------------------------------------------------
         // A pie (FPS)
         // -----------------------------------------------------------
+        // A quién se le ocultó el cuerpo por estar poseído en FPS (la
+        // cámara vive a centímetros de su propio EyeAnchor, y sin esto
+        // su propia malla tapa la pantalla). Se restaura apenas deja de
+        // ser el poseído o se sale de FPS.
+        Soldier bodyHiddenFor;
+
         void UpdateFps(Keyboard kb, Mouse mouse)
         {
             if (Brain.Current == null) return;
             if (AimUiRef != null) AimUiRef.SetWatchedShooter(Brain.Current.Id);
+
+            if (bodyHiddenFor != Brain.Current)
+            {
+                if (bodyHiddenFor != null) bodyHiddenFor.SetBodyVisible(true);
+                Brain.Current.SetBodyVisible(false);
+                bodyHiddenFor = Brain.Current;
+            }
 
             Vector3 f = Brain.Current.transform.forward;
             Vector3 r = Brain.Current.transform.right;
@@ -179,6 +252,8 @@ namespace SP.Player
             UpdateAimHighlight(result);
             UpdateVehicleMountIndicator(result);
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
+            if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
+            UpdateWeaponViewmodel(Brain.Current.Weapon);
 
             if (mouse != null && mouse.leftButton.wasPressedThisFrame) Brain.Fire();
 
@@ -233,7 +308,7 @@ namespace SP.Player
         void UpdateAimHighlight(AimResult result)
         {
             Renderer target = null;
-            if (result.Type == AimTargetType.Ally && result.Soldier != null)
+            if ((result.Type == AimTargetType.Ally || result.Type == AimTargetType.Enemy) && result.Soldier != null)
                 target = result.Soldier.GetComponentInChildren<Renderer>();
             else if (result.Type == AimTargetType.Vehicle && result.Vehicle != null)
                 target = result.Vehicle.GetComponentInChildren<Renderer>();
@@ -301,7 +376,14 @@ namespace SP.Player
         {
             if (Squad == null || index < 0 || index >= Squad.Count) return;
             var target = Squad[index];
-            if (target == null || !target.Health.IsAlive || !target.gameObject.activeInHierarchy) return;
+            if (target == null) return;
+
+            if (!target.Health.IsAlive)
+            {
+                if (DeadNotice != null) DeadNotice.Show(target.DisplayName);
+                return;
+            }
+            if (!target.gameObject.activeInHierarchy) return; // montado en un vehículo, no se puede poseer así
             if (Brain.Current == target) return;
 
             PossessionService.Swap(Brain, target);
@@ -366,8 +448,12 @@ namespace SP.Player
             {
                 case AimTargetType.Ally:
                     return $"[F] poseer a {result.Soldier.DisplayName}   ·   [Click] disparar   ·   [TAB] vista RTS";
+                case AimTargetType.Enemy:
+                    return $"Enemigo: {result.Soldier.DisplayName}   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Vehicle:
                     return "[G] ordenar al aliado mas cercano que suba   ·   [Click] disparar   ·   [TAB] vista RTS";
+                case AimTargetType.Obstacle:
+                    return "Obstáculo   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Ground:
                     return "[T] ordenar ir aquí   ·   [Click der.] mandar la camioneta aquí (si hay alguien manejando)   ·   [Click] disparar   ·   [TAB] vista RTS";
                 default:
@@ -419,6 +505,9 @@ namespace SP.Player
         void UpdateInVehicle(Keyboard kb, Mouse mouse)
         {
             Rig.SetZoomed(false); // el zoom de mirilla es solo a pie
+            if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
+            if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
+            if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
 
             if (kb.vKey.wasPressedThisFrame) vehicleFirstPerson = !vehicleFirstPerson;
@@ -516,6 +605,9 @@ namespace SP.Player
         void UpdateRts(Keyboard kb, Mouse mouse)
         {
             Rig.SetZoomed(false); // el zoom de mirilla es solo a pie
+            if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
+            if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
+            if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             Vector3 pan = Vector3.zero;
             if (kb.wKey.isPressed) pan += Vector3.forward;
             if (kb.sKey.isPressed) pan += Vector3.back;
@@ -529,7 +621,7 @@ namespace SP.Player
                 if (Mathf.Abs(scroll) > 0.01f) Rig.Zoom(scroll * rtsZoomSpeed * Time.deltaTime);
             }
 
-            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T] mover selección · [G] subir al vehículo · [F] poseer · [TAB] vista FPS · {Selection.Selected.Count} seleccionados");
+            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [G] subir al vehículo · [F] poseer · [TAB] vista FPS · {Selection.Selected.Count} seleccionados");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -537,10 +629,12 @@ namespace SP.Player
 
             var screenRay = Rig.Cam.ScreenPointToRay(mouse.position.ReadValue());
 
-            if (kb.tKey.wasPressedThisFrame)
+            // [T] o click derecho: mover a todos los seleccionados ahí,
+            // incluso si el poseído está entre ellos.
+            if (kb.tKey.wasPressedThisFrame || (mouse.rightButton.wasPressedThisFrame && !dragging))
             {
                 var result = Aim.Evaluate(screenRay, null);
-                if (result.Type == AimTargetType.Ground)
+                if (result.Type == AimTargetType.Ground && Selection.Selected.Count > 0)
                     OrderService.IssueMoveOrderForSelection(Selection.Selected, result.Point);
             }
 

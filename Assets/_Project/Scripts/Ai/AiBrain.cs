@@ -94,6 +94,7 @@ namespace SP.Ai
 
         public void IssueMoveOrder(Vector3 point)
         {
+            if (!bootstrapped) Bootstrap();
             target = null;
             hasOrder = true;
             mountTarget = null;
@@ -104,6 +105,7 @@ namespace SP.Ai
         public void IssueMountOrder(Vehicle vehicle)
         {
             if (vehicle == null) return;
+            if (!bootstrapped) Bootstrap();
             target = null;
             hasOrder = true;
             mountTarget = vehicle;
@@ -113,6 +115,7 @@ namespace SP.Ai
 
         public void IssueAttackOrder(Soldier enemy)
         {
+            if (!bootstrapped) Bootstrap();
             target = enemy;
             hasOrder = true;
             SetState(AiState.MovingToAttackOrder);

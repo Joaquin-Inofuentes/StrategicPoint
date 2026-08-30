@@ -26,8 +26,22 @@ namespace SP.Combat
         bool bootstrapped;
         Color projectileColor = new Color(1f, 0.92f, 0.35f);
 
+        int magazineSize = 8;
+        float reloadDuration = 1.5f;
+        float reloadTimer;
+
         public float CooldownRemaining => Mathf.Max(0f, cooldownTimer);
         public WeaponKind CurrentWeaponKind { get; private set; } = WeaponKind.Rifle;
+
+        // Para la barra de recarga/enfriamiento en la UI: 0 = recién
+        // disparada (o recargando), 1 = lista para disparar de nuevo.
+        public float ReadinessFraction01 => IsReloading
+            ? 1f - Mathf.Clamp01(reloadTimer / reloadDuration)
+            : (fireCooldown > 0f ? 1f - Mathf.Clamp01(cooldownTimer / fireCooldown) : 1f);
+
+        public int CurrentAmmo { get; private set; } = 8;
+        public int MagazineSize => magazineSize;
+        public bool IsReloading { get; private set; }
 
         void Awake() => Bootstrap();
 
@@ -36,6 +50,7 @@ namespace SP.Combat
             if (bootstrapped) return;
             bootstrapped = true;
             owner = GetComponent<Soldier>();
+            CurrentAmmo = magazineSize;
         }
 
         public void SetPool(ProjectilePool projectilePool) => pool = projectilePool;
@@ -57,6 +72,13 @@ namespace SP.Combat
             // Cambiar de arma no debería dejarte esperando el enfriamiento
             // del arma anterior: se puede disparar de una con la nueva.
             cooldownTimer = 0f;
+
+            var catalogSpec = WeaponCatalog.Get(kind);
+            magazineSize = catalogSpec.MagazineSize;
+            reloadDuration = catalogSpec.ReloadDuration;
+            CurrentAmmo = magazineSize;
+            IsReloading = false;
+            reloadTimer = 0f;
 
             ApplyWeaponVisualColor(color);
             // Cada arma tiene su propia forma (chica/larga/gruesa), no solo
@@ -87,19 +109,43 @@ namespace SP.Combat
 
         public void Tick(float dt)
         {
+            if (IsReloading)
+            {
+                reloadTimer -= dt;
+                if (reloadTimer <= 0f)
+                {
+                    IsReloading = false;
+                    CurrentAmmo = magazineSize;
+                }
+                return;
+            }
             if (cooldownTimer > 0f) cooldownTimer -= dt;
         }
 
         public bool TryFire(Vector3 origin, Vector3 direction)
         {
             if (owner == null) Bootstrap();
-            if (cooldownTimer > 0f || pool == null || owner == null) return false;
+            if (IsReloading || cooldownTimer > 0f || pool == null || owner == null) return false;
+
+            if (CurrentAmmo <= 0)
+            {
+                StartReload();
+                return false;
+            }
 
             var spawnPos = Muzzle != null ? Muzzle.position : origin;
             pool.Spawn(spawnPos, direction, owner.Id, owner.Team, damage, projectileColor);
             cooldownTimer = fireCooldown;
+            CurrentAmmo--;
+            if (CurrentAmmo <= 0) StartReload();
             EventBus.Instance.Publish(new ShotFiredEvent(owner.Id));
             return true;
+        }
+
+        void StartReload()
+        {
+            IsReloading = true;
+            reloadTimer = reloadDuration;
         }
     }
 }

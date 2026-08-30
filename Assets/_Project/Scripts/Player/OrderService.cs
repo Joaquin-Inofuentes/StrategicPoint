@@ -22,6 +22,11 @@ namespace SP.Player
         public static void IssueMoveOrder(Soldier soldier, Vector3 point)
         {
             var brain = soldier.GetComponent<AiBrain>();
+            // Una orden explícita manda igual aunque el soldado sea el que
+            // estás poseyendo: en RTS no lo estás manejando con WASD, así
+            // que "IsPossessedByPlayer" no debería frenar a la IA acá (antes
+            // seleccionar tu propio soldado y darle "ir ahí" no hacía nada).
+            if (brain != null) brain.IsPossessedByPlayer = false;
             brain?.IssueMoveOrder(point);
             EventBus.Instance.Publish(new MoveOrderIssuedEvent(soldier.Id, point));
             OrderMarkerFx.Spawn(point, OrderMarkerFx.MoveColor);

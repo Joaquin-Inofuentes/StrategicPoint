@@ -37,6 +37,19 @@ namespace SP.Actors
 
         public Transform EyeAnchor;
 
+        Renderer[] bodyRenderers;
+
+        // Oculta la propia malla en primera persona: la cámara vive a
+        // ~0.5m del centro del cuerpo (EyeAnchor), muy dentro del near
+        // clip plane, así que sin esto se ve un triángulo gigante
+        // recortado tapando la pantalla apenas alguien se posee a sí
+        // mismo. No toca colliders ni el GameObject: solo el renderizado.
+        public void SetBodyVisible(bool visible)
+        {
+            if (bodyRenderers == null) bodyRenderers = GetComponentsInChildren<Renderer>(true);
+            foreach (var r in bodyRenderers) if (r != null) r.enabled = visible;
+        }
+
         // Fija identidad y equipo. Se llama una vez al construir la escena.
         public void Configure(string name, TeamId t, RoleType r, int max)
         {
