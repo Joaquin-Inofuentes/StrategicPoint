@@ -13,6 +13,7 @@ namespace SP.Combat
         [SerializeField] float speed = 40f;
         [SerializeField] float lifetime = 3f;
         [SerializeField] float hitRadius = 1f;
+        [SerializeField] float groundImpactHeight = 0.15f;
 
         static int nextInstanceId = 1;
 
@@ -97,6 +98,7 @@ namespace SP.Combat
             if (hit != null)
             {
                 hit.Health.TakeDamage(damage, ownerId);
+                ImpactFx.Spawn(transform.position, ImpactFx.EnemyColor);
                 Expire();
                 return;
             }
@@ -108,7 +110,9 @@ namespace SP.Combat
             {
                 if (Vector3.Distance(vehicle.transform.position, transform.position) <= hitRadius + 1.5f)
                 {
+                    vehicle.TakeDamage(damage, ownerId);
                     EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, transform.position));
+                    ImpactFx.Spawn(transform.position, ImpactFx.VehicleColor);
                     Expire();
                     return;
                 }
@@ -119,9 +123,22 @@ namespace SP.Combat
                 if (Vector3.Distance(obstacle.transform.position, transform.position) <= hitRadius + 1f)
                 {
                     EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Obstacle, transform.position));
+                    ImpactFx.Spawn(transform.position, ImpactFx.ObstacleColor);
                     Expire();
                     return;
                 }
+            }
+
+            // Suelo: el proyectil no tiene gravedad (viaja recto), así que
+            // esto solo dispara si se apunta hacia abajo o desde baja
+            // altura -- pero cuando pasa, tiene que avisar igual que
+            // cualquier otro impacto (antes lo atravesaba sin más).
+            if (transform.position.y <= groundImpactHeight)
+            {
+                EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, transform.position));
+                ImpactFx.Spawn(transform.position, ImpactFx.GroundColor);
+                Expire();
+                return;
             }
 
             if (age >= lifetime) Expire();

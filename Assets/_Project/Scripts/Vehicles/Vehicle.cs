@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 using SP.Actors;
 using SP.Ai;
+using SP.Combat;
+using SP.Core;
 
 namespace SP.Vehicles
 {
@@ -11,6 +13,32 @@ namespace SP.Vehicles
     // vehículo pasa a moverlos a todos con su propio transform.
     public class Vehicle : MonoBehaviour
     {
+        // Reusa el mismo componente Health que los soldados (no se registra
+        // en ActorRegistry: eso es solo para sensado de soldados, el
+        // vehículo no lo necesita). Le da al tanque vida real -- antes un
+        // proyectil que le pegaba solo disparaba el flash de la mirilla,
+        // sin bajarle nada.
+        [SerializeField] int maxHealth = 260;
+        Health health;
+        bool healthBootstrapped;
+
+        public Health Health
+        {
+            get
+            {
+                if (!healthBootstrapped)
+                {
+                    healthBootstrapped = true;
+                    health = GetComponent<Health>();
+                    if (health == null) health = gameObject.AddComponent<Health>();
+                    health.Initialize(-1, maxHealth);
+                }
+                return health;
+            }
+        }
+
+        public void TakeDamage(int amount, int attackerId) => Health.TakeDamage(amount, attackerId);
+
         // Orden de asignación automática: pasajero antes que artillero, para
         // que ese asiento quede libre si el jugador quiere pasarse ahí (2).
         static readonly VehicleSeatRole[] AllRoles =

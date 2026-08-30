@@ -13,7 +13,7 @@ namespace SP.Presentation
         [SerializeField] float pulseSpeed = 2.2f;
         [SerializeField] float groundHeight = 0.03f;
 
-        public static SelectionRingFx Spawn(Transform target, Color color)
+        public static SelectionRingFx Spawn(Transform target, Color color, float radius = 0.75f)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             go.name = "SelectionRing";
@@ -31,6 +31,7 @@ namespace SP.Presentation
 
             var fx = go.AddComponent<SelectionRingFx>();
             fx.Target = target;
+            fx.baseRadius = radius;
             return fx;
         }
 

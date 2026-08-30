@@ -96,7 +96,7 @@ namespace SP.Core
         public SelectionChangedEvent(List<int> selectedIds) => SelectedIds = selectedIds;
     }
 
-    public enum EnvironmentHitKind { Vehicle, Obstacle }
+    public enum EnvironmentHitKind { Vehicle, Obstacle, Ground }
 
     // Un proyectil le pegó a algo que no es un soldado (un vehículo o un
     // obstáculo): feedback distinto al de pegarle a un enemigo.

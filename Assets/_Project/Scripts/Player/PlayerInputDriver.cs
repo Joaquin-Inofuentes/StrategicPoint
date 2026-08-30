@@ -1,3 +1,5 @@
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -5,6 +7,7 @@ using UnityEngine.UI;
 using SP.Actors;
 using SP.Combat;
 using SP.CameraSystem;
+using SP.Core;
 using SP.UI;
 using SP.Vehicles;
 using SP.Presentation;
@@ -29,6 +32,7 @@ namespace SP.Player
         public MinimapFollow MinimapRef;
         public DeadNoticeView DeadNotice;
         public WeaponStatusView WeaponStatus;
+        public VehicleStatusView VehicleStatus;
 
         [SerializeField] float lookSensitivity = 0.15f;
         [SerializeField] float rtsPanSpeed = 14f;
@@ -143,6 +147,10 @@ namespace SP.Player
             }
         }
 
+        IDisposable deathSub;
+        void OnEnable() => deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
+        void OnDisable() => deathSub?.Dispose();
+
         void Update()
         {
             var kb = Keyboard.current;
@@ -152,6 +160,31 @@ namespace SP.Player
 
             if (MinimapRef != null)
                 MinimapRef.Target = currentSeat.HasValue ? Vehicle.transform : (Brain.Current != null ? Brain.Current.transform : null);
+
+            // El [TAB] se procesa ANTES del corte por "estoy adentro de un
+            // vehículo": antes, estando adentro, Tab no hacía nada (el
+            // return de UpdateInVehicle lo comía entero) -- ahora alterna
+            // entre manejar en primera persona y ver el auto desde arriba
+            // en RTS, sin bajarse ni perder el asiento.
+            if (kb.tabKey.wasPressedThisFrame && !handlingDeath)
+            {
+                Rig.ToggleMode();
+
+                if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue && Brain.Current != null && Vehicle != null)
+                {
+                    var role = Vehicle.RoleOf(Brain.Current);
+                    if (role != null) EnterPossessedVehicleSeat(role.Value);
+                }
+
+                if (Rig.Mode == ControlMode.Rts)
+                {
+                    Vector3 focus = currentSeat.HasValue ? Vehicle.transform.position
+                        : Brain.Current != null ? Brain.Current.transform.position : Vector3.zero;
+                    Rig.SetRtsView(focus);
+                }
+            }
+
+            if (handlingDeath) return;
 
             if (currentSeat.HasValue)
             {
@@ -165,18 +198,73 @@ namespace SP.Player
             if (kb.f2Key.wasPressedThisFrame) PossessSquadIndex(1);
             if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
 
-            if (kb.tabKey.wasPressedThisFrame)
-            {
-                Rig.ToggleMode();
-                // Al pasar a RTS, la vista se centra en la última posición
-                // del soldado que estabas controlando (no donde quedó la
-                // cámara en FPS).
-                if (Rig.Mode == ControlMode.Rts && Brain.Current != null)
-                    Rig.SetRtsView(Brain.Current.transform.position);
-            }
-
             if (Rig.Mode == ControlMode.Fps) UpdateFps(kb, Mouse.current);
             else UpdateRts(kb, Mouse.current);
+        }
+
+        // -----------------------------------------------------------
+        // Muerte del soldado poseído: la cámara se aleja mirando el
+        // cadáver, espera un momento, y pasa sola al aliado vivo más
+        // cercano -- o a vista RTS si no queda ninguno.
+        // -----------------------------------------------------------
+        bool handlingDeath;
+
+        void OnEntityDied(EntityDiedEvent evt)
+        {
+            if (!Application.isPlaying || Brain.Current == null || evt.ActorId != Brain.Current.Id) return;
+            if (handlingDeath) return;
+            StartCoroutine(DeathSequence(Brain.Current));
+        }
+
+        IEnumerator DeathSequence(Soldier deadSoldier)
+        {
+            handlingDeath = true;
+            if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
+            if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
+            if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
+            deadSoldier.SetBodyVisible(true);
+            bodyHiddenFor = null;
+
+            // Punto de cámara "detrás y arriba" del cadáver, mirándolo --
+            // un GameObject temporal porque BeginTransition necesita un
+            // Transform de destino, no una posición suelta.
+            var pullBackGO = new GameObject("DeathCamPullback");
+            Vector3 back = -deadSoldier.transform.forward * 4f + Vector3.up * 2.2f;
+            pullBackGO.transform.position = deadSoldier.transform.position + back;
+            pullBackGO.transform.rotation = Quaternion.LookRotation((deadSoldier.transform.position + Vector3.up * 0.8f - pullBackGO.transform.position).normalized);
+
+            Rig.SetMode(ControlMode.Fps);
+            Rig.BeginTransition(pullBackGO.transform, 0.9f);
+            while (Rig.IsTransitioning) yield return null;
+            Destroy(pullBackGO);
+
+            yield return new WaitForSeconds(1.4f);
+
+            Soldier nearest = null;
+            float bestDist = float.MaxValue;
+            if (Squad != null)
+            {
+                foreach (var s in Squad)
+                {
+                    if (s == null || s == deadSoldier || !s.Health.IsAlive) continue;
+                    float d = Vector3.Distance(deadSoldier.transform.position, s.transform.position);
+                    if (d < bestDist) { bestDist = d; nearest = s; }
+                }
+            }
+
+            if (nearest != null)
+            {
+                PossessionService.Swap(Brain, nearest);
+                Rig.SetMode(ControlMode.Fps);
+                Rig.BeginTransition(nearest.EyeAnchor != null ? nearest.EyeAnchor : nearest.transform);
+            }
+            else
+            {
+                Rig.SetMode(ControlMode.Rts);
+                Rig.SetRtsView(deadSoldier.transform.position);
+            }
+
+            handlingDeath = false;
         }
 
         // El cursor arranca libre (para poder clickear la UI/el juego). Al
@@ -220,6 +308,7 @@ namespace SP.Player
         void UpdateFps(Keyboard kb, Mouse mouse)
         {
             if (Brain.Current == null) return;
+            if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
             if (AimUiRef != null) AimUiRef.SetWatchedShooter(Brain.Current.Id);
 
             if (bodyHiddenFor != Brain.Current)
@@ -476,12 +565,7 @@ namespace SP.Player
             var driverSoldier = Brain.Current;
             if (!vehicle.Mount(driverSoldier, role)) return;
 
-            currentSeat = role;
-            var vb = vehicle.GetComponent<VehicleBrain>();
-            if (role == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
-
-            Transform seatAnchor = role == VehicleSeatRole.Driver ? vehicle.transform.Find("DriverEye") : vehicle.transform;
-            if (seatAnchor != null) Rig.BeginTransition(seatAnchor);
+            EnterPossessedVehicleSeat(role.Value);
 
             // Los aliados libres cerca también suben, en cualquier asiento libre.
             foreach (var s in Squad)
@@ -492,6 +576,38 @@ namespace SP.Player
             }
         }
 
+        // Toma control de un asiento en el que el soldado poseído YA está
+        // montado -- sea porque acaba de subir (EnterVehicle) o porque ya
+        // estaba adentro y el jugador recién ahora vuelve a esa vista con
+        // [TAB] o [F] desde RTS. No llama a Vehicle.Mount: eso ya pasó.
+        void EnterPossessedVehicleSeat(VehicleSeatRole role)
+        {
+            currentSeat = role;
+            var vb = Vehicle.GetComponent<VehicleBrain>();
+            if (role == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
+
+            Transform seatAnchor = role == VehicleSeatRole.Driver ? Vehicle.transform.Find("DriverEye") : Vehicle.transform;
+            if (seatAnchor != null) Rig.BeginTransition(seatAnchor);
+        }
+
+        // Aim, en RTS, apuntando a un vehículo con gente adentro: toma
+        // control del conductor (o del primer ocupante si no hay
+        // conductor) y pasa a la vista de manejo en primera persona, con
+        // su propia UI (velocímetro, vida del vehículo, artillero).
+        void EnterVehicleViewFromRts(Vehicle vehicle)
+        {
+            if (vehicle == null || vehicle.OccupantCount == 0) return;
+            var occupant = vehicle.Driver ?? vehicle.Occupants[0];
+            if (occupant == null) return;
+
+            PossessionService.Swap(Brain, occupant);
+            var role = vehicle.RoleOf(occupant);
+            if (role == null) return;
+
+            Rig.SetMode(ControlMode.Fps);
+            EnterPossessedVehicleSeat(role.Value);
+        }
+
         public void ExitVehicle()
         {
             if (Brain.Current == null) return;
@@ -499,7 +615,13 @@ namespace SP.Player
             var vb = Vehicle.GetComponent<VehicleBrain>();
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
             currentSeat = null;
-            Rig.FollowFps(Brain.Current);
+
+            // Si venías viendo el vehículo desde arriba (RTS), bajarte no
+            // debe dejar la cámara con una posición/rotación de FPS
+            // colgada mientras el modo sigue en ortográfico: hay que
+            // recentrar la vista RTS en vez de FollowFps.
+            if (Rig.Mode == ControlMode.Rts) Rig.SetRtsView(Brain.Current.transform.position);
+            else Rig.FollowFps(Brain.Current);
         }
 
         void UpdateInVehicle(Keyboard kb, Mouse mouse)
@@ -510,10 +632,36 @@ namespace SP.Player
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
 
-            if (kb.vKey.wasPressedThisFrame) vehicleFirstPerson = !vehicleFirstPerson;
+            var motor = Vehicle.GetComponent<VehicleMotor>();
+            if (VehicleStatus != null) VehicleStatus.UpdateFrom(Vehicle, motor);
+
             if (kb.eKey.wasPressedThisFrame) { ExitVehicle(); return; }
 
-            var motor = Vehicle.GetComponent<VehicleMotor>();
+            // En RTS, adentro del vehículo: solo cámara top-down + la UI
+            // del tanque, nada de manejar/artillar (eso es de la vista
+            // FPS). [TAB] -- ya manejado en Update() -- es la puerta para
+            // volver a manejar sin tener que bajarse y volver a subir.
+            if (Rig.Mode == ControlMode.Rts)
+            {
+                Vector3 pan = Vector3.zero;
+                if (kb.wKey.isPressed) pan += Vector3.forward;
+                if (kb.sKey.isPressed) pan += Vector3.back;
+                if (kb.dKey.isPressed) pan += Vector3.right;
+                if (kb.aKey.isPressed) pan += Vector3.left;
+                if (pan.sqrMagnitude > 0.0001f) Rig.Pan(pan.normalized * rtsPanSpeed * Time.deltaTime);
+
+                if (mouse != null)
+                {
+                    float scroll = mouse.scroll.ReadValue().y;
+                    if (Mathf.Abs(scroll) > 0.01f) Rig.Zoom(scroll * rtsZoomSpeed * Time.deltaTime);
+                }
+
+                SetInstructionText("[TAB] volver a manejar en primera persona   ·   [E] bajar");
+                return;
+            }
+
+            if (kb.vKey.wasPressedThisFrame) vehicleFirstPerson = !vehicleFirstPerson;
+
             var vb = Vehicle.GetComponent<VehicleBrain>();
             var turret = Vehicle.GetComponentInChildren<TurretWeapon>();
 
@@ -571,10 +719,10 @@ namespace SP.Player
             }
 
             string role = currentSeat == VehicleSeatRole.Driver
-                ? "[WASD] conducir · [G] frenar · [2] ir a la torreta · [V] camara · [E] bajar"
+                ? "[WASD] conducir · [G] frenar · [2] ir a la torreta · [V] camara · [TAB] vista RTS · [E] bajar"
                 : currentSeat == VehicleSeatRole.Gunner
-                    ? "[Mouse] apuntar torreta · [Click] disparar · [Click der.] mandar la camioneta ahi (si hay conductor) · [1] volver a conducir · [V] camara · [E] bajar"
-                    : "[E] bajar · [V] camara";
+                    ? "[Mouse] apuntar torreta · [Click] disparar · [Click der.] mandar la camioneta ahi (si hay conductor) · [1] volver a conducir · [V] camara · [TAB] vista RTS · [E] bajar"
+                    : "[E] bajar · [V] camara · [TAB] vista RTS";
             SetInstructionText(role);
         }
 
@@ -606,8 +754,10 @@ namespace SP.Player
         {
             Rig.SetZoomed(false); // el zoom de mirilla es solo a pie
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
+            if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
+            UpdateVehicleSelectionRing();
             Vector3 pan = Vector3.zero;
             if (kb.wKey.isPressed) pan += Vector3.forward;
             if (kb.sKey.isPressed) pan += Vector3.back;
@@ -621,7 +771,8 @@ namespace SP.Player
                 if (Mathf.Abs(scroll) > 0.01f) Rig.Zoom(scroll * rtsZoomSpeed * Time.deltaTime);
             }
 
-            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [G] subir al vehículo · [F] poseer · [TAB] vista FPS · {Selection.Selected.Count} seleccionados");
+            string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
+            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [G] subir al vehículo · [F] poseer · [TAB] vista FPS · {selectionLabel}");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -629,13 +780,17 @@ namespace SP.Player
 
             var screenRay = Rig.Cam.ScreenPointToRay(mouse.position.ReadValue());
 
-            // [T] o click derecho: mover a todos los seleccionados ahí,
-            // incluso si el poseído está entre ellos.
+            // [T] o click derecho: mover a todos los seleccionados ahí --
+            // o al vehículo, si es él quien está seleccionado (requiere
+            // conductor propio adentro, como en FPS).
             if (kb.tKey.wasPressedThisFrame || (mouse.rightButton.wasPressedThisFrame && !dragging))
             {
                 var result = Aim.Evaluate(screenRay, null);
-                if (result.Type == AimTargetType.Ground && Selection.Selected.Count > 0)
-                    OrderService.IssueMoveOrderForSelection(Selection.Selected, result.Point);
+                if (result.Type == AimTargetType.Ground)
+                {
+                    if (Selection.SelectedVehicle != null) TryIssueVehicleMoveOrder(result.Point);
+                    else if (Selection.Selected.Count > 0) OrderService.IssueMoveOrderForSelection(Selection.Selected, result.Point);
+                }
             }
 
             if (kb.gKey.wasPressedThisFrame)
@@ -656,7 +811,36 @@ namespace SP.Player
                     PossessionService.Swap(Brain, result.Soldier);
                     Rig.SetMode(ControlMode.Fps);
                 }
+                // Apuntando al vehículo con la escuadra (o parte de ella)
+                // ya adentro: [F] toma control de manejo en vez de
+                // requerir que primero le apuntes a un soldado -- los
+                // ocupantes están inactivos/ocultos, no se les puede
+                // apuntar directamente.
+                else if (result.Type == AimTargetType.Vehicle && result.Vehicle.OccupantCount > 0)
+                {
+                    EnterVehicleViewFromRts(result.Vehicle);
+                }
             }
+        }
+
+        // Anillo de selección para el vehículo (mismo look que el de los
+        // soldados, SelectionRingFx, solo que esto no pasa por
+        // SelectionRingManager porque ese escucha SelectionChangedEvent,
+        // que es pura selección de soldados).
+        Vehicle ringedVehicle;
+        SelectionRingFx vehicleSelectionRing;
+        static readonly Color VehicleSelectionRingColor = new Color(0.3f, 0.75f, 0.95f);
+
+        void UpdateVehicleSelectionRing()
+        {
+            if (Selection.SelectedVehicle == ringedVehicle) return;
+            ringedVehicle = Selection.SelectedVehicle;
+            if (vehicleSelectionRing != null) Destroy(vehicleSelectionRing.gameObject);
+            // Radio bien más grande que el de un soldado: el anillo por
+            // defecto (pensado para una cápsula chica) quedaba adentro de
+            // la sombra del propio chasis del tanque -- invisible, tapado
+            // por el mismo vehículo.
+            vehicleSelectionRing = ringedVehicle != null ? SelectionRingFx.Spawn(ringedVehicle.transform, VehicleSelectionRingColor, 2.6f) : null;
         }
 
         // Clic simple = seleccionar uno (o sumar con Shift). Arrastrar dibuja
@@ -694,6 +878,13 @@ namespace SP.Player
                     {
                         if (shift) Selection.AddToSelection(result.Soldier);
                         else Selection.SelectSingle(result.Soldier);
+                    }
+                    else if (result.Type == AimTargetType.Vehicle)
+                    {
+                        // El tanque se selecciona solo (no se combina con
+                        // tropa vía Shift+Click: son dos tipos de
+                        // selección mutuamente excluyentes).
+                        Selection.SelectVehicle(result.Vehicle);
                     }
                     else if (!shift)
                     {

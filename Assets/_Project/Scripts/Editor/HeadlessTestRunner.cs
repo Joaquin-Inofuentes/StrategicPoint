@@ -35,6 +35,9 @@ namespace SP.EditorTools
         static Transform canvasRootRef;
         static DeadNoticeView deadNoticeRef;
         static WeaponStatusView weaponStatusRef;
+        static VehicleStatusView vehicleStatusRef;
+        static DamageVignetteView damageVignetteRef;
+        static KillFeedView killFeedRef;
 
         static int cachedMinimapLayer = -1;
 
@@ -185,7 +188,7 @@ namespace SP.EditorTools
             playerBrain.Possess(vega);
             rig.FollowFps(vega);
 
-            BuildUI(squad, cam);
+            BuildUI(squad, cam, playerBrain);
 
             var inputDriver = servicesGO.AddComponent<PlayerInputDriver>();
             inputDriver.Brain = playerBrain;
@@ -201,6 +204,7 @@ namespace SP.EditorTools
             inputDriver.MinimapRef = minimapFollowRef;
             inputDriver.DeadNotice = deadNoticeRef;
             inputDriver.WeaponStatus = weaponStatusRef;
+            inputDriver.VehicleStatus = vehicleStatusRef;
             servicesGO.AddComponent<WorldSimulationDriver>();
             servicesGO.AddComponent<SelectionRingManager>();
             servicesGO.AddComponent<AttackLineManager>();
@@ -253,7 +257,7 @@ namespace SP.EditorTools
                 // activa en el momento justo de la Fase 1, sin tener que
                 // instanciar un prefab en tiempo de ejecución (Play mode no
                 // puede llamar a este script de Editor).
-                var demoEnemy = SpawnSoldier(soldierPrefab, "Enemigo_Demo", TeamId.Enemy, RoleType.Enemy, new Vector3(0f, 0.8f, 12f), colorEnemy, pool, 60);
+                var demoEnemy = SpawnSoldier(soldierPrefab, "Enemigo_Demo", TeamId.Enemy, RoleType.Enemy, new Vector3(0f, 0.8f, 12f), colorEnemy, pool, 180);
                 demoEnemy.gameObject.SetActive(false);
 
                 var runner = servicesGO.AddComponent<SP.Presentation.AutoDemoRunner>();
@@ -297,7 +301,7 @@ namespace SP.EditorTools
             SimulateSeconds(3.2f);
             Check("El proyectil volvio al pool", pool.FreeCount >= freeBefore);
 
-            var enemy1 = SpawnSoldier(soldierPrefab, "Enemigo_1", TeamId.Enemy, RoleType.Enemy, vega.transform.position + vega.transform.forward * 15f + Vector3.up * 0.8f, enemyColor, pool, 60);
+            var enemy1 = SpawnSoldier(soldierPrefab, "Enemigo_1", TeamId.Enemy, RoleType.Enemy, vega.transform.position + vega.transform.forward * 15f + Vector3.up * 0.8f, enemyColor, pool, 180);
             TestLog.Step($"Aparecio enemigo: {enemy1.DisplayName}");
 
             Vector3 dirToEnemy = (enemy1.transform.position - vega.transform.position).normalized;
@@ -390,7 +394,7 @@ namespace SP.EditorTools
             bool arrived = SimulateUntil(() => nfBrain.State != AiState.MovingToOrder, 6f);
             Check($"{nearestFree.DisplayName} llego al objetivo", arrived);
 
-            var enemy2 = SpawnSoldier(soldierPrefab, "Enemigo_2", TeamId.Enemy, RoleType.Enemy, nearestFree.transform.position + Vector3.forward * 16f + Vector3.up * 0.8f, enemyColor, pool, 50);
+            var enemy2 = SpawnSoldier(soldierPrefab, "Enemigo_2", TeamId.Enemy, RoleType.Enemy, nearestFree.transform.position + Vector3.forward * 16f + Vector3.up * 0.8f, enemyColor, pool, 150);
             OrderService.IssueAttackOrder(nearestFree, enemy2);
             TestLog.Step($"Se dio la orden de atacar a {enemy2.DisplayName}");
             Check($"{nearestFree.DisplayName} cambio de estado a: Yendo", nfBrain.State == AiState.MovingToAttackOrder || nfBrain.State == AiState.Attack);
@@ -435,7 +439,7 @@ namespace SP.EditorTools
             OrderService.IssueMoveOrderForSelection(selection.Selected, dest);
             TestLog.Step($"Se dio la orden de ir a {dest}");
 
-            var enemy3 = SpawnSoldier(soldierPrefab, "Enemigo_3", TeamId.Enemy, RoleType.Enemy, dest + new Vector3(3f, 0.8f, 0f), enemyColor, pool, 40);
+            var enemy3 = SpawnSoldier(soldierPrefab, "Enemigo_3", TeamId.Enemy, RoleType.Enemy, dest + new Vector3(3f, 0.8f, 0f), enemyColor, pool, 120);
             var vegaBrain = vega.GetComponent<AiBrain>();
             bool detected = SimulateUntil(() => vegaBrain.State == AiState.Chase || vegaBrain.State == AiState.Attack, 6f);
             Check($"{vega.DisplayName} detecto que hay un enemigo cerca", detected);
@@ -776,7 +780,16 @@ namespace SP.EditorTools
 
             var driverEye = new GameObject("DriverEye").transform;
             driverEye.SetParent(root.transform, false);
-            driverEye.localPosition = new Vector3(0f, 0.3f, 0.4f);
+            // Y=0.3 (mundo 0.42, escala 1.4 del chasis) quedaba bien
+            // ADENTRO del cubo sólido del chasis (techo real en mundo
+            // 0.7): la cámara del conductor terminaba con la lente
+            // literalmente atravesando la carrocería, un quilombo de
+            // recorte cerca del near clip que tapaba toda la pantalla con
+            // un triángulo naranja. Subida por encima del techo (mundo
+            // ~0.91) y corrida cerca del capot (mundo ~1.62, adentro
+            // todavía del límite 1.8) para que la vista quede despejada,
+            // como sentado arriba en vez de adentro del bloque.
+            driverEye.localPosition = new Vector3(0f, 0.65f, 0.45f);
 
             // TurretPivot neutraliza la escala no uniforme del chasis (2.2/1.4/3.6)
             // para que sus hijos (torreta, mira, boca) usen unidades normales.
@@ -792,6 +805,30 @@ namespace SP.EditorTools
             turretVisual.transform.localScale = new Vector3(0.6f, 0.5f, 0.9f);
             var tvCol = turretVisual.GetComponent<Collider>();
             if (tvCol != null) UnityEngine.Object.DestroyImmediate(tvCol);
+
+            // Cañón: un cubo bien fino y largo que sí se nota como "el
+            // arma que dispara" (antes solo estaba TurretVisual, un cubo
+            // corto que además quedaba pintado del mismo color que todo
+            // el chasis -- imposible de distinguir a simple vista). Se
+            // excluye del repintado uniforme en SpawnVehicle por nombre.
+            var barrel = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            barrel.name = "TurretBarrel";
+            barrel.transform.SetParent(turretPivot.transform, false);
+            barrel.transform.localPosition = new Vector3(0f, 0f, 0.55f);
+            barrel.transform.localScale = new Vector3(0.16f, 0.16f, 0.9f);
+            var barrelCol = barrel.GetComponent<Collider>();
+            if (barrelCol != null) UnityEngine.Object.DestroyImmediate(barrelCol);
+            // OJO: el color se pinta recién en SpawnVehicle, NO acá. Un
+            // Material nuevo asignado en este punto es un objeto de
+            // memoria transitorio -- PrefabUtility.SaveAsPrefabAsset no lo
+            // adopta como sub-asset del prefab, así que al destruir este
+            // `root` de armado la referencia queda rota (sharedMaterial
+            // NULL) y cualquier .color sobre ella tira NullReference la
+            // primera vez que se instancia el prefab y algo lo toca (por
+            // ejemplo, subir alguien y disparar RefreshOccupancyColor()).
+            // El material default del primitivo (el mismo que ya usan
+            // root y TurretVisual) SÍ sobrevive porque es un asset real,
+            // no uno creado en memoria.
 
             var turret = turretPivot.AddComponent<TurretWeapon>();
 
@@ -819,7 +856,21 @@ namespace SP.EditorTools
             instance.transform.rotation = Quaternion.identity;
 
             var mat = CreateFlatMaterial(color);
-            foreach (var rend in instance.GetComponentsInChildren<MeshRenderer>()) rend.sharedMaterial = mat;
+            // El cañón queda afuera del repintado: necesita mantener SU
+            // propio color oscuro (fijo) para leerse como "el arma" en vez
+            // de camuflarse con el chasis, sea cual sea el color que le
+            // toque a este vehículo en particular. Se pinta acá (objeto de
+            // escena ya instanciado, no el prefab) para que el Material
+            // nuevo sobreviva -- ver el comentario en
+            // BuildAndSaveVehiclePrefab sobre por qué no se puede pintar
+            // en el momento de armar el prefab.
+            Renderer barrelRend = null;
+            foreach (var rend in instance.GetComponentsInChildren<MeshRenderer>())
+            {
+                if (rend.gameObject.name == "TurretBarrel") barrelRend = rend;
+                else rend.sharedMaterial = mat;
+            }
+            if (barrelRend != null) barrelRend.sharedMaterial = CreateFlatMaterial(new Color(0.12f, 0.12f, 0.13f));
 
             var turret = instance.GetComponentInChildren<TurretWeapon>();
             turret.SetPool(pool);
@@ -903,7 +954,7 @@ namespace SP.EditorTools
             var enemies = new List<Soldier>();
             for (int i = 0; i < routes.Length; i++)
             {
-                var enemy = SpawnSoldier(soldierPrefab, $"Enemigo_Patrulla_{i + 1}", TeamId.Enemy, RoleType.Enemy, routes[i][0], enemyColor, pool, 60);
+                var enemy = SpawnSoldier(soldierPrefab, $"Enemigo_Patrulla_{i + 1}", TeamId.Enemy, RoleType.Enemy, routes[i][0], enemyColor, pool, 180);
                 enemy.GetComponent<AiBrain>().SetPatrolRoute(routes[i]);
                 PatrolRouteLine.Spawn(routes[i], new Color(0.95f, 0.6f, 0.2f));
                 enemies.Add(enemy);
@@ -911,7 +962,7 @@ namespace SP.EditorTools
             return enemies;
         }
 
-        static void BuildUI(List<Soldier> squad, Camera cam)
+        static void BuildUI(List<Soldier> squad, Camera cam, PlayerBrain playerBrain)
         {
             var canvasGO = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasRootRef = canvasGO.transform;
@@ -1076,6 +1127,110 @@ namespace SP.EditorTools
             var weaponStatusView = wsGO.GetComponent<WeaponStatusView>();
             weaponStatusView.Bind(wsText, wsBarFillImg);
             weaponStatusRef = weaponStatusView;
+
+            // HUD del vehículo: mismo rincón que el de arma (nunca se
+            // muestran los dos juntos), pero con velocímetro, barra de
+            // vida del tanque y quién es el artillero.
+            var vsGO = new GameObject("VehicleStatus", typeof(Image), typeof(VehicleStatusView));
+            vsGO.transform.SetParent(canvasGO.transform, false);
+            vsGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.85f);
+            var vsRt = vsGO.GetComponent<RectTransform>();
+            vsRt.anchorMin = new Vector2(1f, 0f);
+            vsRt.anchorMax = new Vector2(1f, 0f);
+            vsRt.pivot = new Vector2(1f, 0f);
+            vsRt.anchoredPosition = new Vector2(-16f, 72f);
+            vsRt.sizeDelta = new Vector2(220f, 70f);
+
+            var vsSpeedGO = new GameObject("SpeedText", typeof(Text));
+            vsSpeedGO.transform.SetParent(vsGO.transform, false);
+            var vsSpeedTxt = vsSpeedGO.GetComponent<Text>();
+            vsSpeedTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            vsSpeedTxt.alignment = TextAnchor.UpperCenter;
+            vsSpeedTxt.color = Color.white;
+            vsSpeedTxt.fontSize = 20;
+            var vsSpeedRt = vsSpeedGO.GetComponent<RectTransform>();
+            vsSpeedRt.anchorMin = new Vector2(0f, 1f);
+            vsSpeedRt.anchorMax = new Vector2(1f, 1f);
+            vsSpeedRt.pivot = new Vector2(0.5f, 1f);
+            vsSpeedRt.anchoredPosition = new Vector2(0f, -4f);
+            vsSpeedRt.sizeDelta = new Vector2(-8f, 26f);
+
+            var vsGunnerGO = new GameObject("GunnerText", typeof(Text));
+            vsGunnerGO.transform.SetParent(vsGO.transform, false);
+            var vsGunnerTxt = vsGunnerGO.GetComponent<Text>();
+            vsGunnerTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            vsGunnerTxt.alignment = TextAnchor.UpperCenter;
+            vsGunnerTxt.color = new Color(0.85f, 0.85f, 0.85f);
+            vsGunnerTxt.fontSize = 13;
+            var vsGunnerRt = vsGunnerGO.GetComponent<RectTransform>();
+            vsGunnerRt.anchorMin = new Vector2(0f, 1f);
+            vsGunnerRt.anchorMax = new Vector2(1f, 1f);
+            vsGunnerRt.pivot = new Vector2(0.5f, 1f);
+            vsGunnerRt.anchoredPosition = new Vector2(0f, -28f);
+            vsGunnerRt.sizeDelta = new Vector2(-8f, 18f);
+
+            var vsBarBgGO = new GameObject("HealthBarBG", typeof(Image));
+            vsBarBgGO.transform.SetParent(vsGO.transform, false);
+            vsBarBgGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.6f);
+            var vsBarBgRt = vsBarBgGO.GetComponent<RectTransform>();
+            vsBarBgRt.anchorMin = new Vector2(0f, 0f);
+            vsBarBgRt.anchorMax = new Vector2(1f, 0f);
+            vsBarBgRt.pivot = new Vector2(0f, 0f);
+            vsBarBgRt.anchoredPosition = new Vector2(6f, 6f);
+            vsBarBgRt.sizeDelta = new Vector2(-12f, 10f);
+
+            var vsBarFillGO = new GameObject("HealthBarFill", typeof(Image));
+            vsBarFillGO.transform.SetParent(vsBarBgGO.transform, false);
+            var vsBarFillImg = vsBarFillGO.GetComponent<Image>();
+            vsBarFillImg.color = new Color(0.4f, 0.85f, 0.45f);
+            vsBarFillImg.type = Image.Type.Filled;
+            vsBarFillImg.fillMethod = Image.FillMethod.Horizontal;
+            vsBarFillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+            vsBarFillImg.fillAmount = 1f;
+            StretchFull(vsBarFillGO.GetComponent<RectTransform>());
+
+            var vehicleStatusView = vsGO.GetComponent<VehicleStatusView>();
+            vehicleStatusView.Bind(vsSpeedTxt, vsBarFillImg, vsGunnerTxt);
+            vsGO.SetActive(false);
+            vehicleStatusRef = vehicleStatusView;
+
+            // Viñeta de daño: cubre toda la pantalla, arranca invisible
+            // (alfa 0) y solo se ve un instante cuando el poseído recibe
+            // un golpe.
+            var vignetteGO = new GameObject("DamageVignette", typeof(Image), typeof(DamageVignetteView));
+            vignetteGO.transform.SetParent(canvasGO.transform, false);
+            vignetteGO.transform.SetAsFirstSibling();
+            StretchFull(vignetteGO.GetComponent<RectTransform>());
+            var vignetteView = vignetteGO.GetComponent<DamageVignetteView>();
+            vignetteView.Bind(vignetteGO.GetComponent<Image>(), playerBrain);
+            damageVignetteRef = vignetteView;
+
+            // "SOLDADO ABATIDO": cartel grande centrado, un poco arriba del
+            // medio para no pisar la mirilla, arranca oculto. OJO: el
+            // Text va en un hijo, NO en el mismo GameObject que
+            // KillFeedView -- si Bind() apaga el GameObject del propio
+            // componente (como pasaba antes), OnEnable/OnDisable lo
+            // desuscribe de EventBus y nunca más vuelve a escuchar nada.
+            var killFeedGO = new GameObject("KillFeed", typeof(RectTransform), typeof(KillFeedView));
+            killFeedGO.transform.SetParent(canvasGO.transform, false);
+            StretchFull(killFeedGO.GetComponent<RectTransform>());
+
+            var killFeedTextGO = new GameObject("Text", typeof(Text));
+            killFeedTextGO.transform.SetParent(killFeedGO.transform, false);
+            var killFeedTxt = killFeedTextGO.GetComponent<Text>();
+            killFeedTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            killFeedTxt.alignment = TextAnchor.MiddleCenter;
+            killFeedTxt.fontSize = 40;
+            killFeedTxt.fontStyle = FontStyle.Bold;
+            killFeedTxt.color = new Color(0.95f, 0.25f, 0.15f);
+            var killFeedRt = killFeedTextGO.GetComponent<RectTransform>();
+            killFeedRt.anchorMin = killFeedRt.anchorMax = new Vector2(0.5f, 0.5f);
+            killFeedRt.anchoredPosition = new Vector2(0f, 160f);
+            killFeedRt.sizeDelta = new Vector2(700f, 60f);
+
+            var killFeedView = killFeedGO.GetComponent<KillFeedView>();
+            killFeedView.Bind(killFeedTxt);
+            killFeedRef = killFeedView;
 
             // Cartel "X está muerto", centrado, que se desvanece solo.
             var deadGO = new GameObject("DeadNotice", typeof(RectTransform), typeof(CanvasGroup), typeof(DeadNoticeView));

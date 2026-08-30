@@ -138,6 +138,16 @@ namespace SP.UI
         static readonly Color EnemyHitColor = new Color(0.95f, 0.2f, 0.15f);
         static readonly Color VehicleHitColor = new Color(0.3f, 0.55f, 0.95f);
         static readonly Color ObstacleHitColor = new Color(0.75f, 0.75f, 0.78f);
+        static readonly Color GroundHitColor = new Color(0.55f, 0.42f, 0.28f);
+
+        // Tinte suave y permanente de la mirilla mientras se sostiene la
+        // puntería sobre algo (no el flash de "le pegué", que es aparte):
+        // así el jugador sabe qué tiene bajo la mira sin tener que leer el
+        // cartel de texto. Vuelve al color base apenas deja de apuntarle.
+        static readonly Color AllyTint = new Color(0.4f, 0.85f, 1f);
+        static readonly Color EnemyTint = new Color(1f, 0.45f, 0.4f);
+        static readonly Color VehicleTint = new Color(0.5f, 0.7f, 1f);
+        static readonly Color ObstacleTint = new Color(0.85f, 0.85f, 0.85f);
 
         void OnDamage(DamageTakenEvent evt)
         {
@@ -149,13 +159,21 @@ namespace SP.UI
         void OnEnvironmentHit(EnvironmentHitEvent evt)
         {
             if (!Application.isPlaying || crosshair == null || evt.ShooterId != watchedShooterId) return;
-            var color = evt.Kind == EnvironmentHitKind.Vehicle ? VehicleHitColor : ObstacleHitColor;
+            Color color = evt.Kind switch
+            {
+                EnvironmentHitKind.Vehicle => VehicleHitColor,
+                EnvironmentHitKind.Ground => GroundHitColor,
+                _ => ObstacleHitColor,
+            };
             StopAllCoroutines();
             StartCoroutine(FlashHitMarker(color));
         }
 
+        bool flashing;
+
         IEnumerator FlashHitMarker(Color flashColor)
         {
+            flashing = true;
             crosshair.color = flashColor;
             crosshair.rectTransform.sizeDelta = crosshairBaseSize * 2.4f;
 
@@ -166,13 +184,20 @@ namespace SP.UI
                 t += Time.deltaTime;
                 float k = t / duration;
                 crosshair.rectTransform.sizeDelta = Vector2.Lerp(crosshairBaseSize * 2.4f, crosshairBaseSize, k);
-                crosshair.color = Color.Lerp(flashColor, crosshairBaseColor, k);
+                // Vuelve al tinte de lo que se esté apuntando ahora (no al
+                // blanco base): si seguís apuntando al mismo enemigo apenas
+                // le pegaste, el flash debe apagarse hacia el rojo tenue de
+                // "hay un enemigo ahí", no a blanco neutro.
+                crosshair.color = Color.Lerp(flashColor, currentAimTint, k);
                 yield return null;
             }
 
             crosshair.rectTransform.sizeDelta = crosshairBaseSize;
-            crosshair.color = crosshairBaseColor;
+            crosshair.color = currentAimTint;
+            flashing = false;
         }
+
+        Color currentAimTint;
 
         public void UpdateFromAimResult(AimResult result)
         {
@@ -180,21 +205,27 @@ namespace SP.UI
             {
                 case AimTargetType.Ally:
                     CurrentPrompt = $"[F] Poseer a {result.Soldier.DisplayName}";
+                    currentAimTint = AllyTint;
                     break;
                 case AimTargetType.Enemy:
                     CurrentPrompt = $"Enemigo: {result.Soldier.DisplayName}";
+                    currentAimTint = EnemyTint;
                     break;
                 case AimTargetType.Vehicle:
                     CurrentPrompt = "[G] Ordenar subir al vehiculo";
+                    currentAimTint = VehicleTint;
                     break;
                 case AimTargetType.Obstacle:
                     CurrentPrompt = "Obstáculo";
+                    currentAimTint = ObstacleTint;
                     break;
                 case AimTargetType.Ground:
                     CurrentPrompt = "[T] Ir aquí";
+                    currentAimTint = crosshairBaseColor;
                     break;
                 default:
                     CurrentPrompt = "";
+                    currentAimTint = crosshairBaseColor;
                     break;
             }
 
@@ -203,6 +234,12 @@ namespace SP.UI
                 promptText.text = CurrentPrompt;
                 promptText.gameObject.SetActive(!string.IsNullOrEmpty(CurrentPrompt));
             }
+
+            // La mirilla en sí misma lleva el tinte de qué hay debajo (no
+            // solo el cartel de texto), salvo mientras un flash de impacto
+            // está en curso -- ese ya la termina dejando en este mismo
+            // tinte al apagarse.
+            if (crosshair != null && !flashing) crosshair.color = currentAimTint;
 
             UpdateSoldierInfo(result);
             UpdateVehicleInfo(result);
