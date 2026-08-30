@@ -37,6 +37,10 @@ namespace SP.Player
         public PauseController PauseRef;
 
         [SerializeField] float lookSensitivity = 0.15f;
+        // El slider de "Sensibilidad de mouse" en Configuraciones antes
+        // no hacía nada de verdad (solo se veía, no afectaba el juego) --
+        // esta propiedad es lo que lo conecta a algo real.
+        public float LookSensitivity { get => lookSensitivity; set => lookSensitivity = value; }
         [SerializeField] float rtsPanSpeed = 14f;
         [SerializeField] float rtsZoomSpeed = 20f;
         [SerializeField] float dragThresholdPixels = 6f;
@@ -176,6 +180,17 @@ namespace SP.Player
             // en RTS, sin bajarse ni perder el asiento.
             if (kb.tabKey.wasPressedThisFrame && !handlingDeath)
             {
+                // Si Tab te saca de RTS a mitad de un arrastre de
+                // selección, el cuadrito quedaba prendido en pantalla
+                // para siempre (nada lo apagaba hasta el próximo drag
+                // completo en RTS, y para entonces ya no tenía sentido
+                // dónde estaba dibujado).
+                if (dragging)
+                {
+                    dragging = false;
+                    if (SelectionBox != null) SelectionBox.gameObject.SetActive(false);
+                }
+
                 Rig.ToggleMode();
 
                 if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue && Brain.Current != null && Vehicle != null)
@@ -219,9 +234,29 @@ namespace SP.Player
 
         void OnEntityDied(EntityDiedEvent evt)
         {
-            if (!Application.isPlaying || Brain.Current == null || evt.ActorId != Brain.Current.Id) return;
-            if (handlingDeath) return;
-            StartCoroutine(DeathSequence(Brain.Current));
+            if (!Application.isPlaying || Brain.Current == null) return;
+
+            if (evt.ActorId == Brain.Current.Id)
+            {
+                if (handlingDeath) return;
+                StartCoroutine(DeathSequence(Brain.Current));
+                return;
+            }
+
+            // Antes, si moría un aliado que NO estabas manejando, no te
+            // enterabas de nada hasta que intentabas poseerlo con
+            // F1/F2/F3 (ahí sí salía "está muerto"). Ahora también avisa
+            // en el momento, aunque estés mirando para otro lado.
+            if (Squad == null || DeadNotice == null) return;
+            foreach (var s in Squad)
+            {
+                if (s != null && s.Id == evt.ActorId)
+                {
+                    DeadNotice.Show(s.DisplayName);
+                    GameLog.Line($"{s.DisplayName} murio");
+                    break;
+                }
+            }
         }
 
         IEnumerator DeathSequence(Soldier deadSoldier)
@@ -454,6 +489,13 @@ namespace SP.Player
         // más cercano a que suba, como antes.
         public void GOrderOnVehicle(Vehicle vehicle)
         {
+            // Ordenar subir a una carcasa destruida antes mandaba al
+            // aliado a caminar hasta ahí para nada: Vehicle.Mount() ya
+            // rechaza el intento al llegar, pero eso no se sabe hasta
+            // que llega -- una caminata entera sin ningún resultado ni
+            // aviso.
+            if (vehicle.IsDestroyed) return;
+
             if (vehicle.OccupantCount > 0)
             {
                 DismountAll(vehicle);
@@ -667,6 +709,20 @@ namespace SP.Player
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
 
+            // El tanque se destruye y Vehicle.OnDestroyed() ya expulsa a
+            // todo el mundo (Dismount reactiva el GameObject y lo
+            // reposiciona) -- pero currentSeat es estado propio de este
+            // componente, Vehicle no tiene forma de avisarle que ya no
+            // hay que seguir tratando esto como "estoy adentro". Sin este
+            // corte, la cámara se queda pegada a una carcasa quemada.
+            if (Vehicle.IsDestroyed)
+            {
+                currentSeat = null;
+                if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
+                Rig.FollowFps(Brain.Current);
+                return;
+            }
+
             var motor = Vehicle.GetComponent<VehicleMotor>();
             if (VehicleStatus != null) VehicleStatus.UpdateFrom(Vehicle, motor);
 
@@ -832,7 +888,7 @@ namespace SP.Player
             if (kb.gKey.wasPressedThisFrame)
             {
                 var result = Aim.Evaluate(screenRay, null);
-                if (result.Type == AimTargetType.Vehicle)
+                if (result.Type == AimTargetType.Vehicle && !result.Vehicle.IsDestroyed)
                 {
                     if (result.Vehicle.OccupantCount > 0) DismountAll(result.Vehicle);
                     else OrderService.IssueMountOrderForSelection(Selection.Selected, result.Vehicle);

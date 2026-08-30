@@ -14,6 +14,13 @@ namespace SP.Presentation
         GameObject defeatPanel;
         bool shown;
 
+        // Para que PauseController sepa que no debe abrirse encima --
+        // antes [ESC] con la pantalla de Victoria/Derrota puesta abría
+        // TAMBIÉN el menú de pausa arriba, dos paneles con botones
+        // distintos (Reintentar/Salir Y Continuar/Configuraciones) a la
+        // vez, una confusión total.
+        public bool IsShowing => shown;
+
         public void Bind(GameObject victory, GameObject defeat)
         {
             victoryPanel = victory;

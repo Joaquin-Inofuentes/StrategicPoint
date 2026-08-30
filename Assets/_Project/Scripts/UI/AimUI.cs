@@ -212,8 +212,12 @@ namespace SP.UI
                     currentAimTint = EnemyTint;
                     break;
                 case AimTargetType.Vehicle:
-                    CurrentPrompt = "[G] Ordenar subir al vehiculo";
-                    currentAimTint = VehicleTint;
+                    // Antes ofrecía "[G] subir" igual sobre una carcasa
+                    // destruida -- Vehicle.Mount() ya lo rechaza en
+                    // silencio, pero el cartel no avisaba nada, como si
+                    // sí fuera a funcionar.
+                    CurrentPrompt = result.Vehicle.IsDestroyed ? "Vehículo destruido" : "[G] Ordenar subir al vehiculo";
+                    currentAimTint = result.Vehicle.IsDestroyed ? ObstacleTint : VehicleTint;
                     break;
                 case AimTargetType.Obstacle:
                     CurrentPrompt = "Obstáculo";
@@ -267,8 +271,12 @@ namespace SP.UI
             if (!show || seatSquares == null) return;
 
             var vehicle = result.Vehicle;
+            // Una carcasa destruida no tiene "asientos libres" que
+            // mostrar en verde -- confundía, parecía que todavía se
+            // podía subir. Todos los cuadros en rojo apagado en vez.
             for (int i = 0; i < seatSquares.Length && i < SeatOrder.Length; i++)
             {
+                if (vehicle.IsDestroyed) { seatSquares[i].color = new Color(0.45f, 0.15f, 0.15f); continue; }
                 bool free = vehicle.IsSeatFree(SeatOrder[i]);
                 seatSquares[i].color = free ? new Color(0.35f, 0.85f, 0.4f) : new Color(0.15f, 0.15f, 0.16f);
             }

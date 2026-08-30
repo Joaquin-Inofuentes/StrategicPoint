@@ -12,6 +12,7 @@ namespace SP.Presentation
     {
         GameObject pausePanel;
         GameObject settingsPanel;
+        GameOutcomeController outcome;
 
         public bool IsPaused { get; private set; }
 
@@ -37,6 +38,7 @@ namespace SP.Presentation
                 var t = transform.Find("SettingsPanel");
                 if (t != null) settingsPanel = t.gameObject;
             }
+            if (outcome == null) outcome = FindAnyObjectByType<GameOutcomeController>();
 
             // Igual que en MainMenuController: los onClick.AddListener()
             // hechos al armar la escena en el Editor no sobreviven a Play
@@ -52,8 +54,30 @@ namespace SP.Presentation
 
             if (settingsPanel != null)
             {
+                var volumeValueTxt = settingsPanel.transform.Find("Volumen_Value")?.GetComponent<Text>();
                 var volumeSlider = settingsPanel.transform.Find("Volumen_Slider")?.GetComponent<Slider>();
-                if (volumeSlider != null) volumeSlider.onValueChanged.AddListener(v => AudioListener.volume = v);
+                if (volumeSlider != null)
+                {
+                    volumeSlider.onValueChanged.AddListener(v =>
+                    {
+                        AudioListener.volume = v;
+                        if (volumeValueTxt != null) volumeValueTxt.text = v.ToString("0.00");
+                    });
+                }
+
+                // El slider de sensibilidad antes era puro adorno: se
+                // movía, pero no afectaba nada del juego real.
+                var input = FindAnyObjectByType<SP.Player.PlayerInputDriver>();
+                var sensValueTxt = settingsPanel.transform.Find("Sensibilidad de mouse_Value")?.GetComponent<Text>();
+                var sensSlider = settingsPanel.transform.Find("Sensibilidad de mouse_Slider")?.GetComponent<Slider>();
+                if (sensSlider != null)
+                {
+                    sensSlider.onValueChanged.AddListener(v =>
+                    {
+                        if (input != null) input.LookSensitivity = v;
+                        if (sensValueTxt != null) sensValueTxt.text = v.ToString("0.00");
+                    });
+                }
             }
         }
 
@@ -69,14 +93,23 @@ namespace SP.Presentation
         {
             if (Keyboard.current == null || !Application.isPlaying) return;
             if (!Keyboard.current.escapeKey.wasPressedThisFrame) return;
+            // La partida ya terminó (ganaste/perdiste): [ESC] no debe
+            // abrir un menú de pausa encima de esa pantalla.
+            if (outcome != null && outcome.IsShowing) return;
 
-            if (IsPaused) OnContinueClicked();
+            // [ESC] va "un paso atrás" a la vez: si estás en
+            // Configuraciones, vuelve a la pausa (no cierra todo de
+            // golpe, como pasaba antes -- se sentía como que [ESC]
+            // "saltaba" dos pantallas si estabas en el sub-panel).
+            if (settingsPanel != null && settingsPanel.activeSelf) OnSettingsBackClicked();
+            else if (IsPaused) OnContinueClicked();
             else ShowPause();
         }
 
         public void ShowPause()
         {
             if (pausePanel == null || IsPaused) return;
+            if (outcome != null && outcome.IsShowing) return;
             IsPaused = true;
             Time.timeScale = 0f;
             pausePanel.SetActive(true);

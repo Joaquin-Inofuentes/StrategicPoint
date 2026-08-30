@@ -1564,6 +1564,23 @@ namespace SP.EditorTools
             labelRt.anchoredPosition = anchoredPos + new Vector2(0f, 24f);
             labelRt.sizeDelta = new Vector2(400f, 24f);
 
+            // Valor numérico a la derecha del título: antes la barra no
+            // decía nada de cuánto era el valor real, solo un relleno
+            // sin referencia -- imposible saber "qué tan sensible" o
+            // "qué tan alto" quedó de verdad.
+            var valueGO = new GameObject(label + "_Value", typeof(Text));
+            valueGO.transform.SetParent(parent, false);
+            var valueTxt = valueGO.GetComponent<Text>();
+            valueTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            valueTxt.alignment = TextAnchor.MiddleRight;
+            valueTxt.color = new Color(0.8f, 0.85f, 0.9f);
+            valueTxt.fontSize = 16;
+            valueTxt.text = value.ToString("0.00");
+            var valueRt = valueGO.GetComponent<RectTransform>();
+            valueRt.anchorMin = valueRt.anchorMax = new Vector2(0.5f, 0.5f);
+            valueRt.anchoredPosition = anchoredPos + new Vector2(0f, 24f);
+            valueRt.sizeDelta = new Vector2(400f, 24f);
+
             var sliderGO = new GameObject(label + "_Slider", typeof(Slider));
             sliderGO.transform.SetParent(parent, false);
             var sliderRt = sliderGO.GetComponent<RectTransform>();
@@ -1642,7 +1659,10 @@ namespace SP.EditorTools
 
             var settingsPanelGO = new GameObject("SettingsPanel", typeof(Image));
             settingsPanelGO.transform.SetParent(pauseGO.transform, false);
-            settingsPanelGO.GetComponent<Image>().color = new Color(0.05f, 0.05f, 0.08f, 0.95f);
+            // Alfa 1 (no 0.95): con transparencia se veía "PAUSA" tenue
+            // atravesando el panel de Configuraciones, un pisado de texto
+            // que quedaba confuso, no un efecto buscado.
+            settingsPanelGO.GetComponent<Image>().color = new Color(0.05f, 0.05f, 0.08f, 1f);
             var settingsRt = settingsPanelGO.GetComponent<RectTransform>();
             settingsRt.anchorMin = settingsRt.anchorMax = new Vector2(0.5f, 0.5f);
             settingsRt.sizeDelta = new Vector2(480f, 320f);

@@ -47,6 +47,7 @@ namespace SP.Vehicles
         public void AimAt(Vector3 worldPoint, float dt)
         {
             if (!bootstrapped) Bootstrap();
+            if (vehicle != null && vehicle.IsDestroyed) return;
             Vector3 dir = worldPoint - transform.position;
             dir.y = 0f;
             if (dir.sqrMagnitude < 0.0001f) return;
@@ -77,6 +78,12 @@ namespace SP.Vehicles
         public bool TryFire()
         {
             if (!bootstrapped) Bootstrap();
+            // Un tanque destruido no debería poder seguir disparando --
+            // ojo que Tick()/TryFire() se llaman por método directo desde
+            // WorldSimulationDriver, no por el Update() automático de
+            // Unity, así que "enabled=false" solo no alcanza para
+            // frenarlo: hay que chequear el estado real acá.
+            if (vehicle != null && vehicle.IsDestroyed) return false;
             if (cooldownTimer > 0f || pool == null) return false;
 
             int shooterId = vehicle != null && vehicle.Gunner != null ? vehicle.Gunner.Id : -1;

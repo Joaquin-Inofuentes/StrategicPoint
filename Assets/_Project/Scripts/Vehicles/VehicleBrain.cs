@@ -42,7 +42,11 @@ namespace SP.Vehicles
         public void Tick(float dt)
         {
             if (!bootstrapped) Bootstrap();
-            if (IsPlayerDriving || !destination.HasValue) return;
+            // Igual que TurretWeapon: Tick() se llama directo desde
+            // WorldSimulationDriver, "enabled=false" no alcanza para
+            // frenar un vehículo destruido -- una carcasa quemada no
+            // debería poder seguir manejando sola hacia un destino viejo.
+            if ((vehicle != null && vehicle.IsDestroyed) || IsPlayerDriving || !destination.HasValue) return;
 
             Vector3 delta = destination.Value - transform.position;
             delta.y = 0f;

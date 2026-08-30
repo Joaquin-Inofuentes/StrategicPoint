@@ -37,7 +37,37 @@ namespace SP.Vehicles
             }
         }
 
-        public void TakeDamage(int amount, int attackerId) => Health.TakeDamage(amount, attackerId);
+        // Antes el tanque podía llegar a 0 de vida y seguir manejándose,
+        // disparando y subiendo gente como si nada -- la barra de vida
+        // bajaba pero no pasaba NADA. Ahora, al morir: expulsa a todos
+        // los ocupantes, se apagan motor/torreta/IA, y el chasis queda
+        // bien oscuro (carcasa quemada) en vez de su color normal.
+        public bool IsDestroyed { get; private set; }
+
+        public void TakeDamage(int amount, int attackerId)
+        {
+            bool wasAlive = Health.IsAlive;
+            Health.TakeDamage(amount, attackerId);
+            if (wasAlive && !Health.IsAlive) OnDestroyed();
+        }
+
+        void OnDestroyed()
+        {
+            IsDestroyed = true;
+
+            foreach (var occupant in new List<Soldier>(Occupants)) Dismount(occupant);
+
+            var motor = GetComponent<VehicleMotor>();
+            if (motor != null) motor.enabled = false;
+            var vb = GetComponent<VehicleBrain>();
+            if (vb != null) vb.enabled = false;
+            foreach (var turret in GetComponentsInChildren<TurretWeapon>()) turret.enabled = false;
+            foreach (var ai in GetComponentsInChildren<TurretAI>()) ai.enabled = false;
+
+            CacheColorIfNeeded();
+            if (chassisRenderers != null)
+                foreach (var r in chassisRenderers) if (r != null) r.sharedMaterial.color = Color.Lerp(baseColor, Color.black, 0.8f);
+        }
 
         // Orden de asignación automática: pasajero antes que artillero, para
         // que ese asiento quede libre si el jugador quiere pasarse ahí (2).
@@ -96,7 +126,7 @@ namespace SP.Vehicles
 
         public bool Mount(Soldier soldier, VehicleSeatRole? preferredRole = null)
         {
-            if (soldier == null) return false;
+            if (soldier == null || IsDestroyed) return false;
             foreach (var kv in seats) if (kv.Value == soldier) return false; // ya está adentro
 
             VehicleSeatRole role;
