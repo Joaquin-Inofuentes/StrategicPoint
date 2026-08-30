@@ -157,8 +157,26 @@ namespace SP.Player
         }
 
         IDisposable deathSub;
-        void OnEnable() => deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
-        void OnDisable() => deathSub?.Dispose();
+        IDisposable vehicleDestroyedSub;
+        void OnEnable()
+        {
+            deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
+            vehicleDestroyedSub = EventBus.Instance.Subscribe<VehicleDestroyedEvent>(OnVehicleDestroyed);
+        }
+        void OnDisable()
+        {
+            deathSub?.Dispose();
+            vehicleDestroyedSub?.Dispose();
+        }
+
+        // Solo avisa si el que reventó es el vehículo donde está el
+        // jugador ahora mismo -- un tanque enemigo o aliado destruido en
+        // otra punta del mapa no debería interrumpir con un aviso.
+        void OnVehicleDestroyed(VehicleDestroyedEvent evt)
+        {
+            if (currentSeat.HasValue && Vehicle != null && Vehicle == evt.Vehicle)
+                if (ModeToast != null) ModeToast.Show("VEHICULO DESTRUIDO", 1.6f);
+        }
 
         void Update()
         {
@@ -668,7 +686,14 @@ namespace SP.Player
         public void EnterVehicle(Vehicle vehicle)
         {
             var role = vehicle.IsSeatFree(VehicleSeatRole.Driver) ? VehicleSeatRole.Driver : vehicle.FirstFreeSeat();
-            if (role == null) return;
+            if (role == null)
+            {
+                // Antes esto fallaba en silencio: se apretaba [E] y no
+                // pasaba nada, sin ninguna pista de si era porque el
+                // vehiculo estaba lleno o porque algo mas fallo.
+                if (ModeToast != null) ModeToast.Show("VEHICULO LLENO", 1.2f);
+                return;
+            }
 
             var driverSoldier = Brain.Current;
             if (!vehicle.Mount(driverSoldier, role)) return;

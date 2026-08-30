@@ -67,6 +67,8 @@ namespace SP.Vehicles
             CacheColorIfNeeded();
             if (chassisRenderers != null)
                 foreach (var r in chassisRenderers) if (r != null) r.sharedMaterial.color = Color.Lerp(baseColor, Color.black, 0.8f);
+
+            EventBus.Instance.Publish(new VehicleDestroyedEvent(this));
         }
 
         // Orden de asignación automática: pasajero antes que artillero, para

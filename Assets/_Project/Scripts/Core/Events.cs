@@ -96,6 +96,17 @@ namespace SP.Core
         public SelectionChangedEvent(List<int> selectedIds) => SelectedIds = selectedIds;
     }
 
+    // Antes de esto, OnDestroyed() expulsaba a todos y apagaba los
+    // sistemas sin avisar nada mas alla de oscurecer el chasis. Si
+    // estabas manejando, te encontrabas de golpe a pie sin ninguna
+    // confirmacion de que paso. Lleva la referencia directa al vehiculo
+    // (no un id) para no depender de GetInstanceID/GetEntityId.
+    public readonly struct VehicleDestroyedEvent
+    {
+        public readonly SP.Vehicles.Vehicle Vehicle;
+        public VehicleDestroyedEvent(SP.Vehicles.Vehicle vehicle) => Vehicle = vehicle;
+    }
+
     public enum EnvironmentHitKind { Vehicle, Obstacle, Ground }
 
     // Un proyectil le pegó a algo que no es un soldado (un vehículo o un
