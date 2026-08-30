@@ -1,17 +1,18 @@
 using System.Collections.Generic;
 using UnityEngine;
 using SP.Core;
-using SP.Actors;
-using SP.Ai;
 
 namespace SP.Presentation
 {
-    // Línea roja entre un soldado y el enemigo al que le está disparando
-    // mientras está en estado Attack. Revisa a todo el mundo cada frame
-    // (son pocos soldados) y crea/reposiciona/borra las líneas solas.
-    public class AttackLineManager : MonoBehaviour
+    // Linea del soldado a su destino mientras dure una orden de
+    // movimiento simple en RTS. El marcador (OrderMarkerFx) ya dice
+    // DONDE hay un destino; esta linea dice DE QUIEN es, algo que con
+    // varios soldados en movimiento simultaneo el marcador solo no
+    // puede responder. Mismo patron que AttackLineManager: revisa a
+    // todos cada frame y crea/reposiciona/borra las lineas solo.
+    public class OrderLineManager : MonoBehaviour
     {
-        static readonly Color LineColor = new Color(0.9f, 0.15f, 0.12f);
+        static readonly Color LineColor = new Color(0.35f, 0.85f, 0.35f, 0.6f);
 
         readonly Dictionary<int, LineRenderer> lines = new Dictionary<int, LineRenderer>();
 
@@ -20,15 +21,10 @@ namespace SP.Presentation
             foreach (var soldier in ActorRegistry.All)
             {
                 if (soldier == null) continue;
-                // soldier.Brain en vez de GetComponent<AiBrain>(): esto
-                // corre en Update() para cada soldado, cada frame -- con
-                // el registro ya cacheado en Soldier no hace falta pagar
-                // GetComponent otra vez para lo mismo.
                 var brain = soldier.Brain;
-                bool attacking = brain != null && brain.State == AiState.Attack && brain.CurrentTarget != null
-                    && soldier.gameObject.activeInHierarchy;
+                var destination = brain != null ? brain.CurrentOrderDestination : null;
 
-                if (!attacking)
+                if (!destination.HasValue || !soldier.gameObject.activeInHierarchy)
                 {
                     RemoveLine(soldier.Id);
                     continue;
@@ -40,8 +36,8 @@ namespace SP.Presentation
                     lines[soldier.Id] = lr;
                 }
 
-                lr.SetPosition(0, soldier.transform.position + Vector3.up * 0.5f);
-                lr.SetPosition(1, brain.CurrentTarget.transform.position + Vector3.up * 0.5f);
+                lr.SetPosition(0, soldier.transform.position + Vector3.up * 0.3f);
+                lr.SetPosition(1, destination.Value + Vector3.up * 0.05f);
             }
         }
 
@@ -54,10 +50,10 @@ namespace SP.Presentation
 
         static LineRenderer CreateLine()
         {
-            var go = new GameObject("AttackLine");
+            var go = new GameObject("OrderLine");
             var lr = go.AddComponent<LineRenderer>();
             lr.positionCount = 2;
-            lr.widthMultiplier = 0.05f;
+            lr.widthMultiplier = 0.04f;
             lr.useWorldSpace = true;
             var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
             var mat = new Material(shader) { color = LineColor };
@@ -67,10 +63,9 @@ namespace SP.Presentation
             return lr;
         }
 
-        // Si esta línea se crea por primera vez recién en medio del combate
-        // (Play mode), Unity compila esa variante de shader ahí mismo y el
-        // frame se traba (a veces sale una captura negra). Se precalienta
-        // una, lejos y chiquita, al armar el nivel en el editor.
+        // Mismo motivo que AttackLineManager.Prewarm: compilar la
+        // variante del shader la primera vez en medio del juego real
+        // trababa el frame.
         public static void Prewarm()
         {
             var lr = CreateLine();

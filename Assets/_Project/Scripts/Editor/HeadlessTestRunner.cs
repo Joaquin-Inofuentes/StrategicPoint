@@ -153,6 +153,7 @@ namespace SP.EditorTools
             BuildObstacles();
             SP.Presentation.OrderMarkerFx.Prewarm();
             SP.Presentation.AttackLineManager.Prewarm();
+            SP.Presentation.OrderLineManager.Prewarm();
 
             var soldierPrefab = BuildAndSaveSoldierPrefab();
             var projectilePrefab = BuildAndSaveProjectilePrefab();
@@ -217,6 +218,7 @@ namespace SP.EditorTools
             servicesGO.AddComponent<WorldSimulationDriver>();
             servicesGO.AddComponent<SelectionRingManager>();
             servicesGO.AddComponent<AttackLineManager>();
+            servicesGO.AddComponent<OrderLineManager>();
             servicesGO.AddComponent<FloatingDamageTextManager>();
             servicesGO.AddComponent<GameplaySceneBootstrap>();
 

@@ -41,8 +41,12 @@ namespace SP.Player
 
         public static void IssueMoveOrderForSelection(IEnumerable<Soldier> selection, Vector3 point)
         {
-            foreach (var s in selection) IssueMoveOrder(s, point);
-            GameLog.Line("Se dio la orden de ir a una posicion");
+            int count = 0;
+            foreach (var s in selection) { IssueMoveOrder(s, point); count++; }
+            // Antes decia siempre lo mismo sin importar si eran uno o
+            // diez soldados: si la seleccion no era la esperada, no habia
+            // forma de darse cuenta hasta ver a quien realmente se movio.
+            GameLog.Line(count == 1 ? "Se dio la orden de ir a una posicion a 1 soldado" : $"Se dio la orden de ir a una posicion a {count} soldados");
         }
 
         public static void IssueMountOrder(Soldier soldier, Vehicle vehicle)

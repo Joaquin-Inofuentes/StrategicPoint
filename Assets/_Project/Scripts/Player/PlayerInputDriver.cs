@@ -890,7 +890,7 @@ namespace SP.Player
             }
 
             string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
-            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [G] subir al vehículo · [F] poseer · [TAB] vista FPS · {selectionLabel}");
+            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [X] cancelar orden · [G] subir al vehículo · [F] poseer · [TAB] vista FPS · {selectionLabel}");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -938,6 +938,20 @@ namespace SP.Player
                 {
                     EnterVehicleViewFromRts(result.Vehicle);
                 }
+            }
+
+            // Una orden dada por error obligaba a esperar a que el
+            // soldado llegara a destino para recien ahi poder
+            // redirigirlo. [X] la cancela y devuelve a la seleccion
+            // actual a Patrol sin tener que darle una orden nueva encima.
+            if (kb.xKey.wasPressedThisFrame && Selection.Selected.Count > 0)
+            {
+                foreach (var s in Selection.Selected)
+                {
+                    var b = s.Brain;
+                    if (b != null) b.CancelOrder();
+                }
+                GameLog.Line("Se cancelo la orden de la seleccion");
             }
         }
 

@@ -41,6 +41,11 @@ namespace SP.Ai
         public bool IsPossessedByPlayer { get; set; }
         public Soldier CurrentTarget => target;
 
+        // Para dibujar la linea de destino en RTS (punto 26 del backlog):
+        // solo tiene sentido mientras hay una orden de movimiento simple
+        // en curso, no durante una persecucion de combate.
+        public Vector3? CurrentOrderDestination => hasOrder && State == AiState.MovingToOrder ? orderDestination : (Vector3?)null;
+
         void Awake() => Bootstrap();
 
         public void Bootstrap()
@@ -119,6 +124,24 @@ namespace SP.Ai
             target = enemy;
             hasOrder = true;
             SetState(AiState.MovingToAttackOrder);
+        }
+
+        // Una orden dada por error no se podia deshacer: el soldado
+        // caminaba hasta el destino equivocado y habia que esperar a que
+        // llegara para recien ahi poder redirigirlo. No cancela Chase ni
+        // Attack (esos son reacciones al combate, no una orden que el
+        // jugador pueda simplemente retirar) ni al vehiculo objetivo de un
+        // Mount ya en curso a mitad de camino, que se maneja aparte.
+        public void CancelOrder()
+        {
+            if (!bootstrapped) Bootstrap();
+            hasOrder = false;
+            mountTarget = null;
+            if (State == AiState.MovingToOrder || State == AiState.MovingToAttackOrder)
+            {
+                target = null;
+                SetState(AiState.Patrol);
+            }
         }
 
         public void Tick(float dt)
