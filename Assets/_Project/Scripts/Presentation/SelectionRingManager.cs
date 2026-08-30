@@ -37,7 +37,9 @@ namespace SP.Presentation
                 if (rings.ContainsKey(id)) continue;
                 var soldier = ActorRegistry.FindById(id);
                 if (soldier == null) continue;
-                rings[id] = SelectionRingFx.Spawn(soldier.transform, RingColor);
+                var ring = SelectionRingFx.Spawn(soldier.transform, RingColor);
+                ring.TrackHealth(soldier);
+                rings[id] = ring;
             }
         }
     }

@@ -26,6 +26,7 @@ namespace SP.Player
         public List<Soldier> Squad;
         public AimUI AimUiRef;
         public PlayerHealthView PlayerHealth;
+        public UI.SelectionCountView SelectionCount;
         public InstructionBannerView Instructions;
         public Image SelectionBox;
         public Vehicle Vehicle;
@@ -394,6 +395,7 @@ namespace SP.Player
             if (Brain.Current == null) return;
             if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
             if (AimUiRef != null) { AimUiRef.SetVisible(true); AimUiRef.SetWatchedShooter(Brain.Current.Id); }
+            if (SelectionCount != null) SelectionCount.SetModeVisible(false);
 
             if (bodyHiddenFor != Brain.Current)
             {
@@ -730,6 +732,7 @@ namespace SP.Player
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
             if (AimUiRef != null) AimUiRef.SetVisible(false);
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
+            if (SelectionCount != null) SelectionCount.SetModeVisible(false);
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
 
@@ -874,13 +877,29 @@ namespace SP.Player
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
             if (AimUiRef != null) AimUiRef.SetVisible(false);
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
+            if (SelectionCount != null) SelectionCount.SetModeVisible(true);
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             UpdateVehicleSelectionRing();
+            bool ctrlHeld = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
+
+            // [Ctrl+A] selecciona a toda la escuadra viva, el estandar de
+            // cualquier RTS -- antes solo se podia arrastrar un cuadro
+            // que los abarcara a todos, lo que obligaba a alejar la
+            // camara primero.
+            if (ctrlHeld && kb.aKey.wasPressedThisFrame && Squad != null)
+            {
+                Selection.SelectAll(Squad);
+                GameLog.Line("Se selecciono toda la escuadra");
+            }
+
             Vector3 pan = Vector3.zero;
             if (kb.wKey.isPressed) pan += Vector3.forward;
             if (kb.sKey.isPressed) pan += Vector3.back;
             if (kb.dKey.isPressed) pan += Vector3.right;
-            if (kb.aKey.isPressed) pan += Vector3.left;
+            // Con Ctrl apretado, A es el atajo de "seleccionar todo", no
+            // panear -- sin este corte, Ctrl+A tambien empujaria la
+            // camara a la izquierda en el mismo instante.
+            if (kb.aKey.isPressed && !ctrlHeld) pan += Vector3.left;
             if (pan.sqrMagnitude > 0.0001f) Rig.Pan(pan.normalized * rtsPanSpeed * Time.deltaTime);
 
             if (mouse != null)

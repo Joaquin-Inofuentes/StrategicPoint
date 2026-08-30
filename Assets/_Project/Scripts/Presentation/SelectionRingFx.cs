@@ -1,4 +1,5 @@
 using UnityEngine;
+using SP.Actors;
 
 namespace SP.Presentation
 {
@@ -12,6 +13,20 @@ namespace SP.Presentation
         [SerializeField] float pulseAmount = 0.18f;
         [SerializeField] float pulseSpeed = 2.2f;
         [SerializeField] float groundHeight = 0.03f;
+
+        // Si se trackea un soldado (no un vehiculo), el anillo deja de
+        // ser todo del mismo amarillo fijo: se tiñe segun su vida, los
+        // mismos umbrales que el resto del HUD. Antes, seleccionar a un
+        // herido y a uno sano se veia identico -- habia que abrir el
+        // roster para saber a cual convenia retirar.
+        [SerializeField] Soldier trackedSoldier;
+        MeshRenderer ringRenderer;
+
+        public void TrackHealth(Soldier soldier)
+        {
+            trackedSoldier = soldier;
+            if (ringRenderer == null) ringRenderer = GetComponent<MeshRenderer>();
+        }
 
         public static SelectionRingFx Spawn(Transform target, Color color, float radius = 0.75f)
         {
@@ -51,6 +66,19 @@ namespace SP.Presentation
             float k = (Mathf.Sin(Time.time * pulseSpeed) + 1f) * 0.5f;
             float radius = (baseRadius + pulseAmount * k) * 2f; // cylinder scale = diámetro
             transform.localScale = new Vector3(radius, 0.03f, radius);
+
+            if (trackedSoldier != null && trackedSoldier.Health != null)
+            {
+                if (ringRenderer == null) ringRenderer = GetComponent<MeshRenderer>();
+                if (ringRenderer != null && trackedSoldier.Health.MaxHealth > 0)
+                {
+                    float frac = (float)trackedSoldier.Health.Current / trackedSoldier.Health.MaxHealth;
+                    Color c = frac > 0.6f ? new Color(0.35f, 0.85f, 0.4f)
+                        : frac > 0.25f ? new Color(0.95f, 0.8f, 0.25f)
+                        : new Color(0.95f, 0.25f, 0.2f);
+                    ringRenderer.sharedMaterial.color = c;
+                }
+            }
         }
     }
 }

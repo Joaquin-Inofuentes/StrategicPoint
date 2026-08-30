@@ -39,6 +39,7 @@ namespace SP.EditorTools
         static WeaponStatusView weaponStatusRef;
         static PlayerHealthView playerHealthRef;
         static MissionStatusView missionStatusRef;
+        static SelectionCountView selectionCountRef;
         static VehicleStatusView vehicleStatusRef;
         static DamageVignetteView damageVignetteRef;
         static KillFeedView killFeedRef;
@@ -215,6 +216,7 @@ namespace SP.EditorTools
             inputDriver.Outcome = outcomeControllerRef;
             inputDriver.PauseRef = pauseControllerRef;
             inputDriver.PlayerHealth = playerHealthRef;
+            inputDriver.SelectionCount = selectionCountRef;
             servicesGO.AddComponent<WorldSimulationDriver>();
             servicesGO.AddComponent<SelectionRingManager>();
             servicesGO.AddComponent<AttackLineManager>();
@@ -1274,6 +1276,32 @@ namespace SP.EditorTools
             msText.fontSize = 16;
             StretchFull(msTextGO.GetComponent<RectTransform>());
             missionStatusRef = msGO.GetComponent<MissionStatusView>();
+
+            // Contador de seleccionados: justo debajo del estado de
+            // mision, destacado y propio en vez de perdido dentro del
+            // texto de ayuda de RTS.
+            var selCountGO = new GameObject("SelectionCount", typeof(Image), typeof(SelectionCountView));
+            selCountGO.transform.SetParent(canvasGO.transform, false);
+            selCountGO.GetComponent<Image>().color = new Color(0.85f, 0.65f, 0.1f, 0.85f);
+            var selCountRt = selCountGO.GetComponent<RectTransform>();
+            selCountRt.anchorMin = new Vector2(0.5f, 1f);
+            selCountRt.anchorMax = new Vector2(0.5f, 1f);
+            selCountRt.pivot = new Vector2(0.5f, 1f);
+            selCountRt.anchoredPosition = new Vector2(0f, -54f);
+            selCountRt.sizeDelta = new Vector2(200f, 28f);
+
+            var selCountTextGO = new GameObject("Text", typeof(Text));
+            selCountTextGO.transform.SetParent(selCountGO.transform, false);
+            var selCountText = selCountTextGO.GetComponent<Text>();
+            selCountText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            selCountText.alignment = TextAnchor.MiddleCenter;
+            selCountText.color = Color.black;
+            selCountText.fontSize = 15;
+            selCountText.fontStyle = FontStyle.Bold;
+            StretchFull(selCountTextGO.GetComponent<RectTransform>());
+            var selCountView = selCountGO.GetComponent<SelectionCountView>();
+            selCountView.Bind(selCountText);
+            selectionCountRef = selCountView;
 
             // HUD del vehículo: mismo rincón que el de arma (nunca se
             // muestran los dos juntos), pero con velocímetro, barra de

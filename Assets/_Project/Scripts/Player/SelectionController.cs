@@ -39,6 +39,19 @@ namespace SP.Player
             Publish();
         }
 
+        // Para seleccionar a todos hoy hay que arrastrar un cuadro que los
+        // abarque, lo que obliga a panear la camara hasta encuadrarlos.
+        // Es el comando mas repetido de cualquier RTS y era el mas
+        // incomodo del juego.
+        public void SelectAll(IEnumerable<Soldier> squad)
+        {
+            SelectedVehicle = null;
+            selected.Clear();
+            foreach (var s in squad)
+                if (s != null && s.Health != null && s.Health.IsAlive) selected.Add(s);
+            Publish();
+        }
+
         public void Clear()
         {
             selected.Clear();
