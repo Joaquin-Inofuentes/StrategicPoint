@@ -1889,11 +1889,17 @@ namespace SP.EditorTools
             pauseTitleRt.anchoredPosition = new Vector2(0f, 140f);
             pauseTitleRt.sizeDelta = new Vector2(500f, 80f);
 
-            var continueBtn = BuildUIButton(pausePanelGO.transform, "ContinueButton", "CONTINUAR", new Vector2(0f, 40f), new Color(0.25f, 0.6f, 0.35f));
+            var continueBtn = BuildUIButton(pausePanelGO.transform, "ContinueButton", "CONTINUAR", new Vector2(0f, 90f), new Color(0.25f, 0.6f, 0.35f));
             continueBtn.onClick.AddListener(pauseController.OnContinueClicked);
 
-            var settingsBtn = BuildUIButton(pausePanelGO.transform, "SettingsButton", "CONFIGURACIONES", new Vector2(0f, -40f), new Color(0.3f, 0.45f, 0.7f));
+            var settingsBtn = BuildUIButton(pausePanelGO.transform, "SettingsButton", "CONFIGURACIONES", new Vector2(0f, 30f), new Color(0.3f, 0.45f, 0.7f));
             settingsBtn.onClick.AddListener(pauseController.OnSettingsClicked);
+
+            var controlsBtn = BuildUIButton(pausePanelGO.transform, "ControlsButton", "CONTROLES", new Vector2(0f, -30f), new Color(0.4f, 0.4f, 0.45f));
+            controlsBtn.onClick.AddListener(pauseController.OnControlsClicked);
+
+            var menuBtn = BuildUIButton(pausePanelGO.transform, "MenuButton", "VOLVER AL MENU", new Vector2(0f, -90f), new Color(0.55f, 0.3f, 0.25f));
+            menuBtn.onClick.AddListener(pauseController.OnMenuClicked);
 
             var settingsPanelGO = new GameObject("SettingsPanel", typeof(Image));
             settingsPanelGO.transform.SetParent(pauseGO.transform, false);
@@ -1926,6 +1932,92 @@ namespace SP.EditorTools
 
             var backBtn = BuildUIButton(settingsPanelGO.transform, "BackButton", "VOLVER", new Vector2(0f, -120f), new Color(0.5f, 0.5f, 0.5f));
             backBtn.onClick.AddListener(pauseController.OnSettingsBackClicked);
+
+            // Panel de controles: antes no habia ningun lugar donde ver la
+            // lista de atajos salvo el texto contextual, que solo muestra
+            // unos pocos segun el estado actual. La pausa es el momento
+            // natural para consultarlos todos juntos.
+            var controlsPanelGO = new GameObject("ControlsPanel", typeof(Image));
+            controlsPanelGO.transform.SetParent(pauseGO.transform, false);
+            controlsPanelGO.GetComponent<Image>().color = new Color(0.05f, 0.05f, 0.08f, 1f);
+            var controlsRt = controlsPanelGO.GetComponent<RectTransform>();
+            controlsRt.anchorMin = controlsRt.anchorMax = new Vector2(0.5f, 0.5f);
+            controlsRt.sizeDelta = new Vector2(560f, 420f);
+
+            var controlsTitleGO = new GameObject("Title", typeof(Text));
+            controlsTitleGO.transform.SetParent(controlsPanelGO.transform, false);
+            var controlsTitleTxt = controlsTitleGO.GetComponent<Text>();
+            controlsTitleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            controlsTitleTxt.alignment = TextAnchor.MiddleCenter;
+            controlsTitleTxt.color = Color.white;
+            controlsTitleTxt.fontSize = 28;
+            controlsTitleTxt.fontStyle = FontStyle.Bold;
+            controlsTitleTxt.text = "CONTROLES";
+            var controlsTitleRt = controlsTitleGO.GetComponent<RectTransform>();
+            controlsTitleRt.anchorMin = controlsTitleRt.anchorMax = new Vector2(0.5f, 1f);
+            controlsTitleRt.pivot = new Vector2(0.5f, 1f);
+            controlsTitleRt.anchoredPosition = new Vector2(0f, -18f);
+            controlsTitleRt.sizeDelta = new Vector2(500f, 36f);
+
+            var controlsListGO = new GameObject("List", typeof(Text));
+            controlsListGO.transform.SetParent(controlsPanelGO.transform, false);
+            var controlsListTxt = controlsListGO.GetComponent<Text>();
+            controlsListTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            controlsListTxt.alignment = TextAnchor.UpperLeft;
+            controlsListTxt.color = new Color(0.9f, 0.9f, 0.92f);
+            controlsListTxt.fontSize = 16;
+            controlsListTxt.text =
+                "A pie: [WASD] moverse · [Click] disparar · [R] recargar\n" +
+                "[1][2][3] cambiar de arma · [F] poseer aliado · [E] interactuar\n" +
+                "[TAB] alternar vista RTS/FPS\n\n" +
+                "Vista RTS: [WASD] panear · [Rueda] zoom · [Arrastrar] seleccionar\n" +
+                "[Shift+Click] sumar a seleccion · [Ctrl+A] seleccionar escuadra\n" +
+                "[T]/[Click der.] mover selección · [X] cancelar orden\n" +
+                "[G] subir/bajar del vehiculo · [F] poseer\n\n" +
+                "Vehiculo: [WASD] conducir · [G] frenar · [1][2] cambiar asiento\n" +
+                "[V] camara · [E] bajar · [Click] disparar torreta (artillero)\n\n" +
+                "[ESC] pausa/volver atras un paso";
+            var controlsListRt = controlsListGO.GetComponent<RectTransform>();
+            controlsListRt.anchorMin = new Vector2(0f, 0f);
+            controlsListRt.anchorMax = new Vector2(1f, 1f);
+            controlsListRt.offsetMin = new Vector2(24f, 60f);
+            controlsListRt.offsetMax = new Vector2(-24f, -60f);
+
+            var controlsBackBtn = BuildUIButton(controlsPanelGO.transform, "BackButton", "VOLVER", new Vector2(0f, -180f), new Color(0.5f, 0.5f, 0.5f));
+            controlsBackBtn.onClick.AddListener(pauseController.OnControlsBackClicked);
+
+            // Confirmacion antes de salir al menu: abandonar la partida es
+            // irreversible, y un click accidental en "Volver al menu" no
+            // deberia mandar directo a la escena de menu sin dar chance de
+            // arrepentirse.
+            var confirmExitGO = new GameObject("ConfirmExitPanel", typeof(Image));
+            confirmExitGO.transform.SetParent(pauseGO.transform, false);
+            confirmExitGO.GetComponent<Image>().color = new Color(0.08f, 0.05f, 0.05f, 0.97f);
+            var confirmExitRt = confirmExitGO.GetComponent<RectTransform>();
+            confirmExitRt.anchorMin = confirmExitRt.anchorMax = new Vector2(0.5f, 0.5f);
+            confirmExitRt.sizeDelta = new Vector2(420f, 200f);
+
+            var confirmExitTextGO = new GameObject("Text", typeof(Text));
+            confirmExitTextGO.transform.SetParent(confirmExitGO.transform, false);
+            var confirmExitTxt = confirmExitTextGO.GetComponent<Text>();
+            confirmExitTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            confirmExitTxt.alignment = TextAnchor.MiddleCenter;
+            confirmExitTxt.color = Color.white;
+            confirmExitTxt.fontSize = 20;
+            confirmExitTxt.text = "¿Volver al menu?\nSe perdera el progreso de esta partida.";
+            var confirmExitTextRt = confirmExitTextGO.GetComponent<RectTransform>();
+            confirmExitTextRt.anchorMin = confirmExitTextRt.anchorMax = new Vector2(0.5f, 1f);
+            confirmExitTextRt.pivot = new Vector2(0.5f, 1f);
+            confirmExitTextRt.anchoredPosition = new Vector2(0f, -20f);
+            confirmExitTextRt.sizeDelta = new Vector2(380f, 90f);
+
+            var noBtn = BuildUIButton(confirmExitGO.transform, "NoButton", "CANCELAR", new Vector2(-90f, -70f), new Color(0.4f, 0.4f, 0.45f));
+            noBtn.onClick.AddListener(pauseController.OnConfirmExitNo);
+            var yesBtn = BuildUIButton(confirmExitGO.transform, "YesButton", "SALIR", new Vector2(90f, -70f), new Color(0.6f, 0.25f, 0.2f));
+            yesBtn.onClick.AddListener(pauseController.OnConfirmExitYes);
+
+            controlsPanelGO.SetActive(false);
+            confirmExitGO.SetActive(false);
 
             pauseController.Bind(pausePanelGO, settingsPanelGO);
             pauseControllerRef = pauseController;
