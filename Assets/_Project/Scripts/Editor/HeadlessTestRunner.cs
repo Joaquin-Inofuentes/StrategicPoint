@@ -981,6 +981,49 @@ namespace SP.EditorTools
             return instance.GetComponent<Vehicle>();
         }
 
+        // El bloque de un toggle son ~28 lineas identicas salvo nombre,
+        // etiqueta y altura. Con el segundo toggle ya no valia la pena
+        // repetirlas. PauseController los busca por "<name>_Toggle".
+        static Toggle BuildLabeledToggle(Transform parent, string name, string label, float y, bool initialValue)
+        {
+            var toggleGO = new GameObject(name + "_Toggle", typeof(Toggle));
+            toggleGO.transform.SetParent(parent, false);
+            var rt = toggleGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(-140f, y);
+            rt.sizeDelta = new Vector2(24f, 24f);
+
+            var bgGO = new GameObject("Background", typeof(Image));
+            bgGO.transform.SetParent(toggleGO.transform, false);
+            bgGO.GetComponent<Image>().color = new Color(0.2f, 0.2f, 0.24f);
+            StretchFull(bgGO.GetComponent<RectTransform>());
+
+            var checkGO = new GameObject("Checkmark", typeof(Image));
+            checkGO.transform.SetParent(bgGO.transform, false);
+            checkGO.GetComponent<Image>().color = new Color(0.4f, 0.85f, 0.45f);
+            StretchFull(checkGO.GetComponent<RectTransform>());
+
+            var toggle = toggleGO.GetComponent<Toggle>();
+            toggle.targetGraphic = bgGO.GetComponent<Image>();
+            toggle.graphic = checkGO.GetComponent<Image>();
+            toggle.isOn = initialValue;
+
+            var labelGO = new GameObject(name + "_Label", typeof(Text));
+            labelGO.transform.SetParent(parent, false);
+            var labelTxt = labelGO.GetComponent<Text>();
+            labelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            labelTxt.alignment = TextAnchor.MiddleLeft;
+            labelTxt.color = Color.white;
+            labelTxt.fontSize = 18;
+            labelTxt.text = label;
+            var labelRt = labelGO.GetComponent<RectTransform>();
+            labelRt.anchorMin = labelRt.anchorMax = new Vector2(0.5f, 0.5f);
+            labelRt.anchoredPosition = new Vector2(20f, y);
+            labelRt.sizeDelta = new Vector2(260f, 24f);
+
+            return toggle;
+        }
+
         static void BuildGround()
         {
             var ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -2101,7 +2144,9 @@ namespace SP.EditorTools
             settingsPanelGO.GetComponent<Image>().color = new Color(0.05f, 0.05f, 0.08f, 1f);
             var settingsRt = settingsPanelGO.GetComponent<RectTransform>();
             settingsRt.anchorMin = settingsRt.anchorMax = new Vector2(0.5f, 0.5f);
-            settingsRt.sizeDelta = new Vector2(480f, 560f);
+            // 620 y no 560: entra un segundo toggle (efectos de camara) sin
+            // que el boton VOLVER se superponga con el.
+            settingsRt.sizeDelta = new Vector2(480f, 620f);
 
             var settingsTitleGO = new GameObject("Title", typeof(Text));
             settingsTitleGO.transform.SetParent(settingsPanelGO.transform, false);
@@ -2162,7 +2207,9 @@ namespace SP.EditorTools
             invertLabelRt.anchoredPosition = new Vector2(20f, -160f);
             invertLabelRt.sizeDelta = new Vector2(260f, 24f);
 
-            var backBtn = BuildUIButton(settingsPanelGO.transform, "BackButton", "VOLVER", new Vector2(0f, -225f), new Color(0.5f, 0.5f, 0.5f));
+            BuildLabeledToggle(settingsPanelGO.transform, "EfectosDeCamara", "Efectos de camara", -195f, true);
+
+            var backBtn = BuildUIButton(settingsPanelGO.transform, "BackButton", "VOLVER", new Vector2(0f, -255f), new Color(0.5f, 0.5f, 0.5f));
             backBtn.onClick.AddListener(pauseController.OnSettingsBackClicked);
 
             // Panel de controles: antes no habia ningun lugar donde ver la

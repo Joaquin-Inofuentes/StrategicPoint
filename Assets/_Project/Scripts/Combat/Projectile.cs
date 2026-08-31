@@ -267,6 +267,24 @@ namespace SP.Combat
 
             EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, point));
             ImpactFx.SpawnExplosion(point, explosionRadius);
+
+            // Una explosion cerca se veia pero no se SENTIA: la camara
+            // quedaba perfectamente quieta al lado de una granada. La
+            // sacudida cae con la distancia y el tope global del rig
+            // garantiza que nunca se pase, aunque exploten varias juntas.
+            // Instance y no FindAnyObjectByType: Explode corre muy seguido.
+            var rig = SP.CameraSystem.CameraRig.Instance;
+            if (rig != null)
+            {
+                float dist = Vector3.Distance(rig.transform.position, point);
+                float falloff = 1f - Mathf.Clamp01(dist / Mathf.Max(0.01f, explosionRadius * 4f));
+                if (falloff > 0f)
+                {
+                    Vector3 away = rig.transform.position - point;
+                    if (away.sqrMagnitude < 0.0001f) away = Vector3.up;
+                    rig.KickDirectional(away.normalized, falloff * 0.35f);
+                }
+            }
         }
 
         void Expire()

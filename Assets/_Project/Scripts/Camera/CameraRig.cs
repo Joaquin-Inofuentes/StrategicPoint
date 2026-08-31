@@ -9,6 +9,15 @@ namespace SP.CameraSystem
     // Posee la cámara y delega su posición en el modo activo (FPS u RTS).
     public class CameraRig : MonoBehaviour
     {
+        // Acceso directo para los sistemas que necesitan sacudir la camara
+        // muy seguido (cada disparo del cañon, cada explosion). Antes
+        // TurretWeapon hacia un FindAnyObjectByType POR DISPARO, que es un
+        // barrido de escena en el peor momento posible.
+        public static CameraRig Instance { get; private set; }
+
+        void OnEnable() { Instance = this; }
+        void OnDisable() { if (Instance == this) Instance = null; }
+
         [SerializeField] Camera cam;
         [SerializeField] float rtsHeight = 30f;
         [SerializeField] float rtsOrthoSize = 20f;
@@ -42,15 +51,24 @@ namespace SP.CameraSystem
 
         void LateUpdate()
         {
+            // El offset continuo se captura y se limpia SIEMPRE, incluso si
+            // salimos temprano: LateUpdate tiene varias salidas, y si el
+            // reseteo viviera solo en el camino normal, el offset se
+            // acumularia sin limite cada vez que el rig sale antes.
+            Vector3 frame = frameOffset;
+            frameOffset = Vector3.zero;
+
             if (cam == null) return;
 
             recoilPitch = Mathf.MoveTowards(recoilPitch, 0f, Time.deltaTime * recoilRecoverySpeed);
+
+            UpdateBob(!cam.orthographic);
 
             if (!cam.orthographic)
             {
                 float goal = zoomed ? zoomFov : normalFov;
                 cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, goal, Time.deltaTime * zoomLerpSpeed);
-                ApplyDirectionalShake();
+                ApplyCameraOffsets(frame);
                 return;
             }
 
@@ -64,7 +82,7 @@ namespace SP.CameraSystem
                 transform.position = Vector3.Lerp(transform.position, target, Time.deltaTime * panSmoothSpeed);
             }
 
-            ApplyDirectionalShake();
+            ApplyCameraOffsets(frame);
         }
 
         public void AddPitch(float delta) => pitch = Mathf.Clamp(pitch + delta, -MaxPitch, MaxPitch);
@@ -88,18 +106,60 @@ namespace SP.CameraSystem
         [SerializeField] float shakeRecoverySpeed = 9f;
         public Vector3 ShakeOffset => shakeOffset;
 
+        // Sin tope, varias fuentes sumando a la vez (disparo del cañon +
+        // explosion cercana + impacto recibido) podian mandar la camara
+        // lejos del personaje. El presupuesto unico es lo que garantiza
+        // que la sacudida sea legible y no un temblor infinito.
+        [SerializeField] float maxShakeMagnitude = 0.45f;
+        public float MaxShakeMagnitude => maxShakeMagnitude;
+
         public void KickDirectional(Vector3 worldDirection, float magnitude)
         {
+            if (!CameraFxSettings.Enabled) return;
             if (worldDirection.sqrMagnitude < 0.0001f) return;
             shakeOffset += worldDirection.normalized * magnitude;
+            shakeOffset = Vector3.ClampMagnitude(shakeOffset, maxShakeMagnitude);
+        }
+
+        // Canal aparte para fuentes CONTINUAS (inercia del vehiculo,
+        // balanceo al caminar): si entraran por shakeOffset pelearian
+        // contra su propio decaimiento cada frame. Se consume y se limpia
+        // una vez por LateUpdate.
+        Vector3 frameOffset;
+
+        public void AddFrameOffset(Vector3 offset)
+        {
+            if (!CameraFxSettings.Enabled) return;
+            frameOffset += offset;
+        }
+
+        // Balanceo al caminar (183). Solo en primera persona: en RTS la
+        // camara es ortografica y cenital, balancearla ahi solo marea.
+        bool walking;
+        float bobPhase;
+        public Vector3 BobOffset { get; private set; }
+
+        public void SetWalking(bool value) => walking = value;
+
+        void UpdateBob(bool firstPerson)
+        {
+            bool active = firstPerson && walking && CameraFxSettings.Enabled;
+            if (active) bobPhase += Time.deltaTime * 9f;
+            float amp = active ? 0.035f : 0f;
+            // El eje Y usa Abs(sin) para que el paso sea un rebote hacia
+            // arriba y nunca hunda la camara por debajo de su altura.
+            BobOffset = new Vector3(Mathf.Cos(bobPhase) * amp * 0.6f,
+                                    Mathf.Abs(Mathf.Sin(bobPhase)) * amp, 0f);
         }
 
         // Se aplica DESPUES de posicionar la camara (por eso vive en el
-        // final de LateUpdate) y decae solo.
-        void ApplyDirectionalShake()
+        // final de LateUpdate) y decae solo. Recibe el frameOffset ya
+        // capturado por LateUpdate, que lo limpia siempre.
+        void ApplyCameraOffsets(Vector3 frame)
         {
-            if (shakeOffset.sqrMagnitude < 0.000001f) return;
-            transform.position += shakeOffset;
+            Vector3 total = shakeOffset + frame + BobOffset;
+            total = Vector3.ClampMagnitude(total, maxShakeMagnitude);
+            if (total.sqrMagnitude > 0.000001f) transform.position += total;
             shakeOffset = Vector3.Lerp(shakeOffset, Vector3.zero, Mathf.Clamp01(Time.deltaTime * shakeRecoverySpeed));
         }
 

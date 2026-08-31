@@ -144,16 +144,14 @@ namespace SP.Presentation
         void PlayStreakTone(int streak)
         {
             if (!Application.isPlaying || streak < 2) return;
-            var cam = Camera.main;
-            var go = new GameObject("StreakTone");
-            go.transform.position = cam != null ? cam.transform.position : Vector3.zero;
-            var src = go.AddComponent<AudioSource>();
-            src.clip = GenericSfx.Get(SfxKind.Swap);
-            src.pitch = Mathf.Min(2f, 1f + (streak - 1) * 0.16f);
-            src.volume = 0.5f;
-            src.spatialBlend = 0f;
-            src.Play();
-            Destroy(go, 1.5f);
+            // Mismo caso que el tono critico de la mirilla: hace falta un
+            // AudioSource propio porque el pitch varia. El bloque vivia
+            // duplicado en los dos lados; ahora es un solo helper.
+            GenericSfx.PlayOneShot2D(
+                GenericSfx.Get(SfxKind.Swap),
+                0.5f,
+                Mathf.Min(2f, 1f + (streak - 1) * 0.16f),
+                "StreakTone");
         }
 
         // 170: la ultima baja de la partida es el climax y era

@@ -18,13 +18,21 @@ namespace SP.Presentation
 
         // Mostrar TODAS las barras siempre es inviable con cincuenta
         // unidades: satura la pantalla y ademas cuesta dibujarlas. Solo se
-        // muestra la del que acaba de recibir daño, que es justo cuando la
-        // informacion importa, y se apaga sola despues de unos segundos
-        // sin nuevos impactos. La del poseido no se oculta nunca: esa es
-        // la del propio jugador.
+        // muestra la del que acaba de recibir daño o curacion, que es justo
+        // cuando la informacion importa, y se apaga sola despues de unos
+        // segundos sin nuevos impactos.
+        // El poseido NO es una excepcion: su vida ya vive en el HUD fijo
+        // (UI.PlayerHealthView, que PlayerInputDriver refresca cada frame
+        // mientras se esta a pie), y en primera persona su barra flotante
+        // queda arriba y detras de la camara -- que vive en su EyeAnchor --
+        // asi que nunca entraria en cuadro aunque se dejara prendida.
         const float VisibleSeconds = 3.5f;
         float hideAt = -1f;
         IDisposable damageSub;
+        // La curacion tiene su propia suscripcion en vez de refrescar hideAt
+        // desde LateUpdate: alli la barra oculta corta antes por el early
+        // return, con lo que curar a alguien apagado no se veia nunca.
+        IDisposable healSub;
         Soldier owner;
 
         void OnEnable()
@@ -32,12 +40,30 @@ namespace SP.Presentation
             Bootstrap();
             damageSub?.Dispose();
             damageSub = SP.Core.EventBus.Instance.Subscribe<SP.Core.DamageTakenEvent>(OnAnyDamage);
+            healSub?.Dispose();
+            healSub = SP.Core.EventBus.Instance.Subscribe<SP.Core.HealedEvent>(OnAnyHeal);
         }
 
-        void OnDisable() => damageSub?.Dispose();
+        void OnDisable()
+        {
+            damageSub?.Dispose();
+            healSub?.Dispose();
+        }
 
+        // La guarda de Application.isPlaying es la misma que tiene
+        // CubeFxReactor.OnDamage: HeadlessTestRunner corre en Edit mode y
+        // publica daño y curacion de verdad, y nada de esto debe encenderse
+        // ahi (no hay frame que dibujar y Time.time no significa nada).
         void OnAnyDamage(SP.Core.DamageTakenEvent evt)
         {
+            if (!Application.isPlaying) return;
+            if (owner == null || evt.TargetId != owner.Id) return;
+            hideAt = Time.time + VisibleSeconds;
+        }
+
+        void OnAnyHeal(SP.Core.HealedEvent evt)
+        {
+            if (!Application.isPlaying) return;
             if (owner == null || evt.TargetId != owner.Id) return;
             hideAt = Time.time + VisibleSeconds;
         }

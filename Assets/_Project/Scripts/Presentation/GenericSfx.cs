@@ -4,7 +4,10 @@ using SP.Combat;
 
 namespace SP.Presentation
 {
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded }
+    // Los miembros nuevos van SIEMPRE al final: el valor entero de cada
+    // uno es lo que quedaria guardado si alguna vez se serializara, y
+    // meter uno en el medio correria todos los que siguen.
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded }
 
     // Sonidos genéricos generados por código (tonos con envolvente),
     // para no depender de clips de audio importados en el prototipo.
@@ -43,6 +46,23 @@ namespace SP.Presentation
             return clip;
         }
 
+        // Un tono con pitch propio necesita un AudioSource: PlayClipAtPoint no
+        // admite pitch y PlayOneShot no lo captura (lo lee en vivo cada frame).
+        // Un solo lugar para los usos que necesitan pitch propio.
+        public static void PlayOneShot2D(AudioClip clip, float volume, float pitch, string name = "OneShotTone")
+        {
+            if (clip == null || !Application.isPlaying) return;
+            var go = new GameObject(name);
+            var cam = Camera.main;
+            if (cam != null) go.transform.SetParent(cam.transform, false);   // no cuelga de la raiz
+            var src = go.AddComponent<AudioSource>();
+            src.clip = clip; src.volume = volume; src.pitch = pitch; src.spatialBlend = 0f;
+            src.Play();
+            // A pitch alto el clip dura MENOS, no mas: se divide, no se
+            // multiplica. El Max evita dividir por cero si llega un pitch 0.
+            Object.Destroy(go, clip.length / Mathf.Max(0.01f, pitch) + 0.1f);
+        }
+
         static AudioClip Generate(SfxKind kind)
         {
             // Choque metalico: antes un impacto en el vehiculo sonaba
@@ -72,6 +92,10 @@ namespace SP.Presentation
                 // cooldown, no al iniciarlo, para que el artillero pueda
                 // mirar el campo en vez del HUD.
                 case SfxKind.TurretReloaded: freq = 480f; duration = 0.09f; decay = 26f; break;
+                // Quejido del herido: es SfxKind.Hit a pitch 0.75 pero como clip
+                // propio. Bajarle el pitch al AudioSource compartido no funciona:
+                // PlayOneShot no captura el pitch, lo lee en vivo cada frame.
+                case SfxKind.Wounded: freq = 165f; duration = 0.16f; decay = 7.5f; break;
                 default: freq = 500f; duration = 0.08f; decay = 14f; break;
             }
             return GenerateTone(freq, duration, decay, kind.ToString());

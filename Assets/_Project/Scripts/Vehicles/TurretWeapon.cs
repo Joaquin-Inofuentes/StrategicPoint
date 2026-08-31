@@ -225,7 +225,10 @@ namespace SP.Vehicles
 
             // El culatazo empuja la camara HACIA ATRAS del eje de disparo:
             // una vibracion sin direccion no se lee como retroceso.
-            var rig = Object.FindAnyObjectByType<SP.CameraSystem.CameraRig>();
+            // Instance en vez de FindAnyObjectByType: esto corre en CADA
+            // disparo del cañon, y un barrido de escena por disparo es
+            // justo lo que no queremos en pleno combate.
+            var rig = SP.CameraSystem.CameraRig.Instance;
             if (rig != null) rig.KickDirectional(-transform.forward, 0.35f);
 
             return true;

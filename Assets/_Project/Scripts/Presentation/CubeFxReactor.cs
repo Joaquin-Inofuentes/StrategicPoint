@@ -71,14 +71,20 @@ namespace SP.Presentation
         void OnDamage(DamageTakenEvent evt)
         {
             if (!Application.isPlaying || !IsMe(evt.TargetId) || !gameObject.activeInHierarchy) return;
-            // Voz propia del herido, distinta del "tac" del impacto: se
-            // baja el pitch para que se lea como un quejido y no como el
-            // mismo golpe metalico que ya suena en la mirilla del que
-            // dispara. Un enemigo herido y uno muerto tienen que sonar
-            // distinto o el audio no ayuda a decidir si seguir tirandole.
-            audioSource.pitch = 0.75f;
-            audioSource.PlayOneShot(GenericSfx.Get(SfxKind.Hit), 0.7f);
-            audioSource.pitch = 1f;
+            // Voz propia del herido, distinta del "tac" del impacto: mas
+            // grave, para que se lea como un quejido y no como el mismo
+            // golpe metalico que ya suena en la mirilla del que dispara.
+            // Un enemigo herido y uno muerto tienen que sonar distinto o
+            // el audio no ayuda a decidir si seguir tirandole.
+            //
+            // Es un clip propio y NO el AudioSource a pitch 0.75: este
+            // AudioSource lo comparten OnShot y OnDeath, y PlayOneShot no
+            // congela el pitch -- lo lee en vivo cada frame, asi que
+            // devolverlo a 1 en la linea siguiente borraba el efecto antes
+            // de que sonara una sola muestra. Tampoco un AudioSource
+            // temporal: son 50 soldados comiendo balas, un GameObject por
+            // impacto seria basura por frame justo en el peor momento.
+            audioSource.PlayOneShot(GenericSfx.Get(SfxKind.Wounded), 0.7f);
             StopAllCoroutines();
             StartCoroutine(FlashAndPunch());
         }

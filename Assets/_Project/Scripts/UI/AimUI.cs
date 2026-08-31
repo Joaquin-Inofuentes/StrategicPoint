@@ -261,14 +261,10 @@ namespace SP.UI
 
             // Cada nivel tambien suena distinto: en pleno combate la señal
             // sonora llega antes que la visual.
-            if (isCritical)
-            {
-                var critClip = GenericSfx.Get(SfxKind.Hit);
-                var src = new GameObject("CritTone").AddComponent<AudioSource>();
-                src.clip = critClip; src.pitch = 1.7f; src.volume = 0.5f; src.spatialBlend = 0f;
-                src.Play();
-                Destroy(src.gameObject, 1f);
-            }
+            // El tono critico necesita pitch propio, y eso obliga a un
+            // AudioSource: se centraliza en GenericSfx en vez de repetir
+            // el bloque (y colgar un GameObject de la raiz por impacto).
+            if (isCritical) GenericSfx.PlayOneShot2D(GenericSfx.Get(SfxKind.Hit), 0.5f, 1.7f, "CritTone");
             if (isKill)
             {
                 var clip = GenericSfx.Get(SfxKind.Swap); // tono agudo distintivo, ya existente en la paleta de sonidos

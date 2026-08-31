@@ -14,8 +14,19 @@ namespace SP.Presentation
     public class SquadStateIndicatorView : MonoBehaviour
     {
         Soldier soldier;
-        Renderer markerRenderer;
+        // Serializado a proposito: el hijo SquadStateIndicator es un
+        // GameObject real que sobrevive un domain reload (recompilar un
+        // script durante Play mode), pero un campo privado sin serializar
+        // volvia a null y OnEnable construia un SEGUNDO cubo encima del que
+        // ya estaba. Con cincuenta soldados eso son cincuenta cubos y
+        // cincuenta materiales de mas por cada recarga.
+        [SerializeField] Renderer markerRenderer;
+        // El material lo creamos nosotros en runtime: hay que guardarlo
+        // para poder liberarlo en OnDestroy (ver abajo).
+        [SerializeField] Material ownedMaterial;
         IDisposable sub;
+
+        const string MarkerName = "SquadStateIndicator";
 
         static readonly Color IdleColor = new Color(0.55f, 0.58f, 0.62f);
         static readonly Color OrderColor = new Color(0.35f, 0.75f, 0.95f);
@@ -34,6 +45,21 @@ namespace SP.Presentation
             if (soldier == null) soldier = GetComponent<Soldier>();
             if (soldier == null || soldier.Team != TeamId.Player) { enabled = false; return; }
 
+            // Doble red: el campo serializado cubre el domain reload, y la
+            // busqueda por nombre cubre cualquier via en la que el campo se
+            // pierda pero el hijo siga colgado (o quedarian dos cubos).
+            if (markerRenderer == null)
+            {
+                var existing = transform.Find(MarkerName);
+                if (existing != null)
+                {
+                    markerRenderer = existing.GetComponent<Renderer>();
+                    // Ese hijo lo creo BuildMarker, asi que su sharedMaterial
+                    // tambien es nuestro: readoptarlo evita que quede huerfano.
+                    if (markerRenderer != null && ownedMaterial == null)
+                        ownedMaterial = markerRenderer.sharedMaterial;
+                }
+            }
             if (markerRenderer == null) BuildMarker();
 
             sub?.Dispose();
@@ -42,12 +68,29 @@ namespace SP.Presentation
 
         void OnDisable() => sub?.Dispose();
 
+        // Destruir el GameObject NO libera el Material creado en runtime:
+        // queda huerfano hasta cambiar de escena. Mismo criterio que ya
+        // aplica KillFeedbackDirector.SilhouetteFlash con su silueta.
+        void OnDestroy()
+        {
+            if (ownedMaterial == null) return;
+            // El constructor de escena agrega este componente en Edit mode,
+            // donde Destroy no esta permitido (mismo patron que SelectionRingFx).
+            if (Application.isPlaying) Destroy(ownedMaterial);
+            else DestroyImmediate(ownedMaterial);
+            ownedMaterial = null;
+        }
+
         void BuildMarker()
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "SquadStateIndicator";
+            go.name = MarkerName;
             var col = go.GetComponent<Collider>();
-            if (col != null) Destroy(col);
+            if (col != null)
+            {
+                if (Application.isPlaying) Destroy(col);
+                else DestroyImmediate(col);
+            }
             go.transform.SetParent(transform, false);
             // Mas alto que el de enemigo (1.4) para que, cuando un aliado y
             // un enemigo se cruzan, no queden los dos a la misma altura.
@@ -56,7 +99,8 @@ namespace SP.Presentation
 
             var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
             markerRenderer = go.GetComponent<MeshRenderer>();
-            markerRenderer.sharedMaterial = new Material(shader) { color = IdleColor };
+            ownedMaterial = new Material(shader) { color = IdleColor };
+            markerRenderer.sharedMaterial = ownedMaterial;
             markerRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 

@@ -23,6 +23,22 @@ namespace SP.Core
         }
     }
 
+    // Simetrico a DamageTakenEvent: sin esto, curar a alguien no producia
+    // ninguna señal y la barra de vida solo reaccionaba al daño.
+    public readonly struct HealedEvent
+    {
+        public readonly int TargetId;
+        public readonly int Amount;
+        public readonly int RemainingHealth;
+
+        public HealedEvent(int targetId, int amount, int remainingHealth)
+        {
+            TargetId = targetId;
+            Amount = amount;
+            RemainingHealth = remainingHealth;
+        }
+    }
+
     public readonly struct EntityDiedEvent
     {
         public readonly int ActorId;

@@ -224,6 +224,9 @@ namespace SP.Player
             turretControlSub?.Dispose();
             shotSub?.Dispose();
             squadDamageSub?.Dispose();
+            // Si el objeto se apaga a mitad de la camara de muerte, los
+            // objetos temporales de esa escena no tienen quien los borre.
+            CleanupDeathSequence();
         }
 
         // Si atacaban a un aliado que no estabas controlando, no te
@@ -390,6 +393,13 @@ namespace SP.Player
         // intencional.
         public bool IsHandlingDeath => handlingDeath;
 
+        // El anillo del asesino y el punto de camara de la muerte eran
+        // locales de la corrutina: si esta se cortaba a mitad, nadie los
+        // destruia nunca y quedaban clavados en escena. Como campos del
+        // componente siempre hay quien los limpie (CleanupDeathSequence).
+        SelectionRingFx deathKillerRing;
+        GameObject deathPullBackGO;
+
         void OnEntityDied(EntityDiedEvent evt)
         {
             if (!Application.isPlaying || Brain.Current == null) return;
@@ -420,93 +430,138 @@ namespace SP.Player
         IEnumerator DeathSequence(Soldier deadSoldier)
         {
             handlingDeath = true;
-            if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
-            if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
-            if (TurretAim != null) TurretAim.SetVisible(false);
-            if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
-            if (AimUiRef != null) AimUiRef.SetVisible(false);
-            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
-            deadSoldier.SetBodyVisible(true);
-            bodyHiddenFor = null;
-
-            // La camara de muerte mostraba el cadaver propio pero no decia
-            // QUIEN te mato, que es lo que el jugador mas quiere saber en
-            // ese momento. El ultimo atacante ya queda registrado en el
-            // Health del caido.
-            SelectionRingFx killerRing = null;
-            var killer = ActorRegistry.FindById(deadSoldier.Health.LastAttackerId);
-            if (killer != null && killer.Health.IsAlive)
+            // try/finally porque esta corrutina no siempre llega al final:
+            // si la escuadra remata al ultimo enemigo mientras corre la
+            // camara de muerte, BattleManager llama Outcome.ShowVictory()
+            // y eso pone Time.timeScale = 0, con lo cual el bucle de
+            // orbita (que avanza con Time.deltaTime) no termina nunca.
+            // Antes eso dejaba el anillo rojo del asesino clavado sobre el
+            // cadaver encima de la pantalla de victoria -- los soldados no
+            // se destruyen al morir, asi que el autodestruirse por
+            // Target == null de SelectionRingFx tampoco lo limpiaba -- y
+            // handlingDeath en true para siempre, lo que bloqueaba toda
+            // futura DeathSequence y dejaba a PauseController creyendo que
+            // seguia la camara de muerte. Unity descarta el iterador al
+            // frenar la corrutina o desactivar el objeto, asi que el
+            // finally corre igual. (yield adentro de try/finally es legal
+            // en C#; lo prohibido es yield adentro de catch.)
+            try
             {
-                killerRing = SelectionRingFx.Spawn(killer.transform, new Color(1f, 0.3f, 0.2f), 1.1f);
-                if (DeadNotice != null) DeadNotice.Show($"Te mato {killer.DisplayName}");
-            }
+                if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
+                if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
+                if (TurretAim != null) TurretAim.SetVisible(false);
+                if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
+                if (AimUiRef != null) AimUiRef.SetVisible(false);
+                if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
+                deadSoldier.SetBodyVisible(true);
+                bodyHiddenFor = null;
 
-            // Punto de cámara "detrás y arriba" del cadáver, mirándolo --
-            // un GameObject temporal porque BeginTransition necesita un
-            // Transform de destino, no una posición suelta.
-            var pullBackGO = new GameObject("DeathCamPullback");
-            Vector3 back = -deadSoldier.transform.forward * 4f + Vector3.up * 2.2f;
-            pullBackGO.transform.position = deadSoldier.transform.position + back;
-            pullBackGO.transform.rotation = Quaternion.LookRotation((deadSoldier.transform.position + Vector3.up * 0.8f - pullBackGO.transform.position).normalized);
-
-            Rig.SetMode(ControlMode.Fps);
-            Rig.BeginTransition(pullBackGO.transform, 0.9f);
-            while (Rig.IsTransitioning) yield return null;
-
-            // 3 segundos mirando al cadáver, orbitando despacio alrededor
-            // (no una cámara congelada): "rotando mirándolo por 3
-            // segundos". Mismo radio/altura que el punto de partida, solo
-            // gira el ángulo alrededor del soldado.
-            const float holdSeconds = 3f;
-            const float orbitDegPerSec = 12f;
-            Vector3 toCam = pullBackGO.transform.position - deadSoldier.transform.position;
-            float radius = new Vector2(toCam.x, toCam.z).magnitude;
-            float height = toCam.y;
-            float angle = Mathf.Atan2(toCam.z, toCam.x) * Mathf.Rad2Deg;
-
-            float t = 0f;
-            while (t < holdSeconds)
-            {
-                t += Time.deltaTime;
-                angle += orbitDegPerSec * Time.deltaTime;
-                float rad = angle * Mathf.Deg2Rad;
-                Vector3 offset = new Vector3(Mathf.Cos(rad) * radius, height, Mathf.Sin(rad) * radius);
-                pullBackGO.transform.position = deadSoldier.transform.position + offset;
-                pullBackGO.transform.rotation = Quaternion.LookRotation((deadSoldier.transform.position + Vector3.up * 0.8f - pullBackGO.transform.position).normalized);
-                Rig.FollowAnchor(pullBackGO.transform);
-                yield return null;
-            }
-
-            Destroy(pullBackGO);
-            // El resalte del asesino dura solo lo que dura la camara de
-            // muerte: dejarlo puesto lo confundiria con una seleccion.
-            if (killerRing != null) Destroy(killerRing.gameObject);
-
-            Soldier nearest = null;
-            float bestDist = float.MaxValue;
-            if (Squad != null)
-            {
-                foreach (var s in Squad)
+                // La camara de muerte mostraba el cadaver propio pero no decia
+                // QUIEN te mato, que es lo que el jugador mas quiere saber en
+                // ese momento. El ultimo atacante ya queda registrado en el
+                // Health del caido.
+                deathKillerRing = null;
+                var killer = ActorRegistry.FindById(deadSoldier.Health.LastAttackerId);
+                if (killer != null && killer.Health.IsAlive)
                 {
-                    if (s == null || s == deadSoldier || !s.Health.IsAlive) continue;
-                    float d = Vector3.Distance(deadSoldier.transform.position, s.transform.position);
-                    if (d < bestDist) { bestDist = d; nearest = s; }
+                    deathKillerRing = SelectionRingFx.Spawn(killer.transform, new Color(1f, 0.3f, 0.2f), 1.1f);
+                    if (DeadNotice != null) DeadNotice.Show($"Te mato {killer.DisplayName}");
+                }
+
+                // Punto de cámara "detrás y arriba" del cadáver, mirándolo --
+                // un GameObject temporal porque BeginTransition necesita un
+                // Transform de destino, no una posición suelta.
+                deathPullBackGO = new GameObject("DeathCamPullback");
+                Vector3 back = -deadSoldier.transform.forward * 4f + Vector3.up * 2.2f;
+                deathPullBackGO.transform.position = deadSoldier.transform.position + back;
+                deathPullBackGO.transform.rotation = Quaternion.LookRotation((deadSoldier.transform.position + Vector3.up * 0.8f - deathPullBackGO.transform.position).normalized);
+
+                Rig.SetMode(ControlMode.Fps);
+                Rig.BeginTransition(deathPullBackGO.transform, 0.9f);
+                while (Rig.IsTransitioning) yield return null;
+
+                // 3 segundos mirando al cadáver, orbitando despacio alrededor
+                // (no una cámara congelada): "rotando mirándolo por 3
+                // segundos". Mismo radio/altura que el punto de partida, solo
+                // gira el ángulo alrededor del soldado.
+                const float holdSeconds = 3f;
+                const float orbitDegPerSec = 12f;
+                Vector3 toCam = deathPullBackGO.transform.position - deadSoldier.transform.position;
+                float radius = new Vector2(toCam.x, toCam.z).magnitude;
+                float height = toCam.y;
+                float angle = Mathf.Atan2(toCam.z, toCam.x) * Mathf.Rad2Deg;
+
+                float t = 0f;
+                while (t < holdSeconds)
+                {
+                    t += Time.deltaTime;
+                    angle += orbitDegPerSec * Time.deltaTime;
+                    float rad = angle * Mathf.Deg2Rad;
+                    Vector3 offset = new Vector3(Mathf.Cos(rad) * radius, height, Mathf.Sin(rad) * radius);
+                    deathPullBackGO.transform.position = deadSoldier.transform.position + offset;
+                    deathPullBackGO.transform.rotation = Quaternion.LookRotation((deadSoldier.transform.position + Vector3.up * 0.8f - deathPullBackGO.transform.position).normalized);
+                    Rig.FollowAnchor(deathPullBackGO.transform);
+                    yield return null;
+                }
+
+                Soldier nearest = null;
+                float bestDist = float.MaxValue;
+                if (Squad != null)
+                {
+                    foreach (var s in Squad)
+                    {
+                        if (s == null || s == deadSoldier || !s.Health.IsAlive) continue;
+                        float d = Vector3.Distance(deadSoldier.transform.position, s.transform.position);
+                        if (d < bestDist) { bestDist = d; nearest = s; }
+                    }
+                }
+
+                if (nearest != null)
+                {
+                    GameLog.Line($"Camara cambio de {deadSoldier.DisplayName} a {nearest.DisplayName} (aliado vivo mas cercano)");
+                    PossessionService.Swap(Brain, nearest);
+                    Rig.SetMode(ControlMode.Fps);
+                    Rig.BeginTransition(nearest.EyeAnchor != null ? nearest.EyeAnchor : nearest.transform);
+                }
+                else
+                {
+                    GameLog.Line("Perdiste");
+                    Rig.SetMode(ControlMode.Rts);
+                    Rig.SetRtsView(deadSoldier.transform.position);
+                    if (Outcome != null) Outcome.ShowDefeat();
                 }
             }
-
-            if (nearest != null)
+            finally
             {
-                GameLog.Line($"Camara cambio de {deadSoldier.DisplayName} a {nearest.DisplayName} (aliado vivo mas cercano)");
-                PossessionService.Swap(Brain, nearest);
-                Rig.SetMode(ControlMode.Fps);
-                Rig.BeginTransition(nearest.EyeAnchor != null ? nearest.EyeAnchor : nearest.transform);
+                // El resalte del asesino y el punto de camara duran solo lo
+                // que dura la camara de muerte: dejarlos puestos confundiria
+                // al anillo con una seleccion.
+                CleanupDeathSequence();
             }
-            else
+        }
+
+        // Un solo lugar que deja la camara de muerte sin residuos: lo llama
+        // el finally de la corrutina (camino feliz o corte a mitad) y
+        // tambien OnDisable, por si el objeto se apaga antes de que Unity
+        // llegue a descartar el iterador. Es idempotente a proposito, asi
+        // que correr las dos veces no rompe nada.
+        void CleanupDeathSequence()
+        {
+            if (deathKillerRing != null)
             {
-                GameLog.Line("Perdiste");
-                Rig.SetMode(ControlMode.Rts);
-                Rig.SetRtsView(deadSoldier.transform.position);
-                if (Outcome != null) Outcome.ShowDefeat();
+                // Destruir el GameObject NO libera el Material creado en
+                // runtime -- quedaria huerfano hasta cambiar de escena.
+                // Mismo criterio que KillFeedbackDirector.SilhouetteFlash.
+                var mr = deathKillerRing.GetComponent<MeshRenderer>();
+                if (mr != null && mr.sharedMaterial != null) Destroy(mr.sharedMaterial);
+                Destroy(deathKillerRing.gameObject);
+                deathKillerRing = null;
+            }
+
+            if (deathPullBackGO != null)
+            {
+                Destroy(deathPullBackGO);
+                deathPullBackGO = null;
             }
 
             handlingDeath = false;
@@ -583,7 +638,11 @@ namespace SP.Player
             if (kb.sKey.isPressed) move -= f;
             if (kb.dKey.isPressed) move += r;
             if (kb.aKey.isPressed) move -= r;
-            if (move.sqrMagnitude > 0.0001f) Brain.Move(move.normalized, Time.deltaTime);
+            bool moving = move.sqrMagnitude > 0.0001f;
+            if (moving) Brain.Move(move.normalized, Time.deltaTime);
+            // Balanceo al caminar: caminar y estar quieto se veian
+            // exactamente igual, sin ninguna sensacion de pisada.
+            Rig.SetWalking(moving);
 
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked)
             {
@@ -1021,6 +1080,10 @@ namespace SP.Player
 
         void UpdateInVehicle(Keyboard kb, Mouse mouse)
         {
+            // El balanceo es solo de caminar en primera persona: sin
+            // apagarlo aca seguiria oscilando la camara en RTS y dentro
+            // del vehiculo, donde no hay pisadas que representar.
+            Rig.SetWalking(false);
             // El zoom arranca apagado cada frame; solo la rama de
             // artillero lo vuelve a prender (ver mas abajo). Conducir o ir
             // de pasajero no tiene mira que acercar.
@@ -1249,7 +1312,12 @@ namespace SP.Player
                 (Mathf.PerlinNoise(0.71f, Time.time * 18f) - 0.5f) * shakeAmount,
                 0f);
 
-            Rig.transform.position += inertiaOffset + shakeOffset;
+            // Antes esto escribia transform.position directo, saltandose el
+            // presupuesto de sacudida del rig: la inercia del vehiculo se
+            // sumaba encima de cualquier otra sacudida sin tope alguno.
+            // AddFrameOffset la mete por el canal continuo, que si esta
+            // acotado y respeta el interruptor de efectos de camara.
+            Rig.AddFrameOffset(inertiaOffset + shakeOffset);
         }
 
         // -----------------------------------------------------------
@@ -1257,6 +1325,10 @@ namespace SP.Player
         // -----------------------------------------------------------
         void UpdateRts(Keyboard kb, Mouse mouse)
         {
+            // El balanceo es solo de caminar en primera persona: sin
+            // apagarlo aca seguiria oscilando la camara en RTS y dentro
+            // del vehiculo, donde no hay pisadas que representar.
+            Rig.SetWalking(false);
             Rig.SetZoomed(false); // el zoom de mirilla es solo a pie
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
             if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);

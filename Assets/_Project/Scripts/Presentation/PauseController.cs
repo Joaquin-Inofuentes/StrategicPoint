@@ -189,6 +189,20 @@ namespace SP.Presentation
                         PlayerPrefs.SetInt(PrefInvertY, v ? 1 : 0);
                     });
                 }
+
+                // Interruptor de efectos de camara: sacudida, balanceo al
+                // caminar, destellos, viñeta de velocidad y latido. Es la
+                // principal causa de mareo en un FPS y hasta ahora no habia
+                // forma de apagarlo sin apagar el resto del juego. El
+                // estado vive en CameraFxSettings (estatico + PlayerPrefs),
+                // no en un campo de componente, para que sobreviva el
+                // domain reload y lo puedan consultar sistemas repartidos.
+                var camFxToggle = settingsPanel.transform.Find("EfectosDeCamara_Toggle")?.GetComponent<Toggle>();
+                if (camFxToggle != null)
+                {
+                    camFxToggle.SetIsOnWithoutNotify(SP.CameraSystem.CameraFxSettings.Enabled);
+                    camFxToggle.onValueChanged.AddListener(v => SP.CameraSystem.CameraFxSettings.Enabled = v);
+                }
             }
         }
 

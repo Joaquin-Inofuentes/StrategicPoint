@@ -43,8 +43,16 @@ namespace SP.Combat
 
         public void Heal(int amount)
         {
-            if (!IsAlive) return;
+            if (!IsAlive || amount <= 0) return;
+
+            int before = Current;
             Current = Mathf.Min(maxHealth, Current + amount);
+
+            // Solo se avisa si la vida cambio DE VERDAD: curar a alguien que
+            // ya esta lleno no es un evento, y publicarlo igual encenderia
+            // las cincuenta barras de vida a la vez sin que pasara nada.
+            if (Current == before) return;
+            EventBus.Instance.Publish(new HealedEvent(ActorId, Current - before, Current));
         }
     }
 }
