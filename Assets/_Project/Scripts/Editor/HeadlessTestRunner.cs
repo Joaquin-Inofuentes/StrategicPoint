@@ -126,10 +126,25 @@ namespace SP.EditorTools
         [MenuItem("Strategic Point/Construir nivel y correr test")]
         public static void RunAll()
         {
+            // Se resetea al arrancar: sin esto, una segunda corrida en la
+            // misma sesion de Editor arrastraria las fallas de la anterior
+            // (los estaticos sobreviven entre invocaciones de RunAll).
+            failedChecks = 0;
+            failedCheckMessages.Clear();
+
             try
             {
                 TestLog.Begin();
                 BuildAndRun();
+
+                if (failedChecks > 0)
+                {
+                    var detail = string.Join("\n  - ", failedCheckMessages);
+                    Debug.LogError($"[TEST FALLIDO] {failedChecks} check(s) no se cumplieron:\n  - {detail}");
+                    if (Application.isBatchMode) EditorApplication.Exit(1);
+                    return;
+                }
+
                 TestLog.Phase("TODAS LAS FASES COMPLETADAS CON EXITO");
             }
             catch (Exception ex)
@@ -719,10 +734,22 @@ namespace SP.EditorTools
             foreach (var s in soldiers) s.Health.Heal(s.Health.MaxHealth);
         }
 
+        // Antes Check() solo emitia un Warn: la suite imprimia "TODAS LAS
+        // FASES COMPLETADAS CON EXITO" y salia con codigo 0 aunque fallara
+        // TODO. El cartel final no significaba nada. Ahora se cuentan las
+        // fallas y RunAll corta en serio.
+        static int failedChecks;
+        static readonly List<string> failedCheckMessages = new List<string>();
+
+        public static int FailedCheckCount => failedChecks;
+        public static IReadOnlyList<string> FailedCheckMessages => failedCheckMessages;
+
         static void Check(string message, bool condition)
         {
-            if (condition) TestLog.Step(message);
-            else TestLog.Warn($"{message} -- NO SE CUMPLIO EN EL TIEMPO ESPERADO");
+            if (condition) { TestLog.Step(message); return; }
+            failedChecks++;
+            failedCheckMessages.Add(message);
+            TestLog.Warn($"{message} -- NO SE CUMPLIO EN EL TIEMPO ESPERADO");
         }
 
         // ---------------------------------------------------------------
