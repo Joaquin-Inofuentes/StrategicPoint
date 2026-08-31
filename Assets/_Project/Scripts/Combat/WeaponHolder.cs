@@ -73,6 +73,18 @@ namespace SP.Combat
             bootstrapped = true;
             owner = GetComponent<Soldier>();
             CurrentAmmo = magazineSize;
+
+            // BUG REAL: el cubo del arma nace con un Material creado en
+            // tiempo de Editor y guardado adentro del prefab (mismo caso
+            // documentado en Projectile.cs) -- esa referencia no sobrevive
+            // instanciar el prefab, y el Renderer queda con sharedMaterial
+            // null hasta que alguien llame EquipWeapon(). Como eso solo
+            // pasa al recoger un arma del piso o con las teclas 1/2/3 del
+            // jugador, CUALQUIER soldado de IA que nunca cambia de arma
+            // (o sea, casi todos) se quedaba con el cubo del arma en el
+            // magenta de "sin material" toda la partida. Se autocura acá
+            // con el color de catálogo del arma con la que ya arranca.
+            ApplyWeaponVisualColor(WeaponCatalog.Get(CurrentWeaponKind).Color);
         }
 
         public void SetPool(ProjectilePool projectilePool) => pool = projectilePool;

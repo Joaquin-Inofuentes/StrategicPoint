@@ -94,14 +94,21 @@ namespace SP.Combat
             effectiveSpeed = speed * speedMultiplier;
             velocity = (direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward) * effectiveSpeed;
 
-            if (color.HasValue)
+            // BUG REAL: este bloque vivia entero adentro de "if (color.HasValue)".
+            // Un llamador que dispara sin pasar color (ej. pruebas que solo
+            // piden daño) dejaba el Renderer SIN material asignar -- nunca,
+            // ni una vez, en toda la vida del objeto pooleado -- y Unity
+            // dibuja eso en el magenta de "sin material". El material ahora
+            // se garantiza SIEMPRE (con blanco de base si no vino color),
+            // y el tinte pedido se aplica encima si vino.
+            if (cachedRenderer == null) cachedRenderer = GetComponent<Renderer>();
+            if (cachedRenderer == null)
             {
-                if (cachedRenderer == null) cachedRenderer = GetComponent<Renderer>();
-                if (cachedRenderer == null)
-                {
-                    Debug.LogWarning($"[Projectile] {name}: no tiene Renderer, no se puede pintar.");
-                }
-                else if (!ownMaterialReady)
+                Debug.LogWarning($"[Projectile] {name}: no tiene Renderer, no se puede pintar.");
+            }
+            else
+            {
+                if (!ownMaterialReady)
                 {
                     var baseMat = cachedRenderer.sharedMaterial;
                     var freshMat = baseMat != null
@@ -109,12 +116,8 @@ namespace SP.Combat
                         : SP.Presentation.SafeMaterial.Create(Color.white);
                     cachedRenderer.sharedMaterial = freshMat;
                     ownMaterialReady = true;
-                    cachedRenderer.sharedMaterial.color = color.Value;
                 }
-                else
-                {
-                    cachedRenderer.sharedMaterial.color = color.Value;
-                }
+                if (color.HasValue) cachedRenderer.sharedMaterial.color = color.Value;
             }
         }
 
