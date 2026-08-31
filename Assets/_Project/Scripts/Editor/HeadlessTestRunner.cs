@@ -157,6 +157,124 @@ namespace SP.EditorTools
             if (Application.isBatchMode) EditorApplication.Exit(0);
         }
 
+        // ---------------------------------------------------------------
+        // Arnes de rendimiento (item 235: sin esto, cualquier afirmacion
+        // de rendimiento es una opinion). Construye un mundo aislado (NO
+        // toca ni guarda SC_TestLevel.unity) con N unidades en una grilla
+        // determinista, y mide el costo real de WorldSimulationDriver.Step
+        // con 30 pasos de calentamiento descartados y 300 cronometrados.
+        // Reporta mediana y p95 -- nunca el promedio, que un solo pico de
+        // GC arruina y esconde justo lo que interesa.
+        // ---------------------------------------------------------------
+        public struct BenchResult
+        {
+            public int UnitCount;
+            public float MedianMs, P95Ms;
+            public float RebuildMs, AiWeaponMs, VehicleMs, ProjectileMs;
+        }
+
+        public static readonly List<BenchResult> LastBenchmarkResults = new List<BenchResult>();
+
+        [MenuItem("Strategic Point/Benchmark de rendimiento")]
+        public static void RunPerformanceBenchmarks()
+        {
+            LastBenchmarkResults.Clear();
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("N,medianaMs,p95Ms,rebuildMs,aiArmaMs,vehiculoMs,proyectilMs");
+
+            // Los tres tamaños que importan: 10 es el caso de hoy, 60 el
+            // realista, 200 el de estres. Medir solo a 200 miente -- este
+            // mismo proyecto ya vio una estructura salir MAS LENTA que la
+            // fuerza bruta con pocas unidades (SpatialGrid a CellSize=8).
+            foreach (var n in new[] { 10, 60, 200 })
+            {
+                var r = BenchmarkWithUnitCount(n);
+                LastBenchmarkResults.Add(r);
+                sb.AppendLine($"{r.UnitCount},{r.MedianMs:0.000},{r.P95Ms:0.000},{r.RebuildMs:0.000},{r.AiWeaponMs:0.000},{r.VehicleMs:0.000},{r.ProjectileMs:0.000}");
+                Debug.Log($"[Benchmark] N={r.UnitCount}  mediana={r.MedianMs:0.000}ms  p95={r.P95Ms:0.000}ms  (rebuild={r.RebuildMs:0.000} ai+arma={r.AiWeaponMs:0.000} vehiculo={r.VehicleMs:0.000} proyectiles={r.ProjectileMs:0.000})");
+            }
+
+            LastBenchmarkCsv = sb.ToString();
+            Debug.Log("[Benchmark] CSV completo (para diffear entre corridas):\n" + LastBenchmarkCsv);
+        }
+
+        public static string LastBenchmarkCsv { get; private set; } = "";
+
+        static BenchResult BenchmarkWithUnitCount(int unitCount)
+        {
+            // Mundo aislado: NewScene sin guardar nada, para no pisar
+            // SC_TestLevel.unity ni sus referencias estaticas (killFeedRef,
+            // etc, que quedarian apuntando a objetos de una escena vieja).
+            EventBus.Instance.ClearAll();
+            ActorRegistry.Clear();
+            SP.Core.WorldSystemsRegistry.Clear();
+            Projectile.ActiveInstances.Clear();
+
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            BuildLighting();
+            BuildGround();
+            BuildObstacles();
+
+            var soldierPrefab = BuildAndSaveSoldierPrefab();
+            var projectilePrefab = BuildAndSaveProjectilePrefab();
+            var poolGO = new GameObject("BenchPool");
+            var pool = poolGO.AddComponent<ProjectilePool>();
+            pool.Configure(projectilePrefab, SP.Combat.ProjectilePool.RecommendedPrewarm(unitCount, 3f, 3f));
+
+            // Semilla FIJA: la misma corrida de N siempre reparte a las
+            // unidades en las mismas posiciones, para que dos benchmarks
+            // (antes/despues de un cambio) sean comparables entre si.
+            var rng = new System.Random(12345);
+            var playerColor = new Color(0.95f, 0.35f, 0.30f);
+            var enemyColor = new Color(0.95f, 0.25f, 0.20f);
+            int half = unitCount / 2;
+            for (int i = 0; i < unitCount; i++)
+            {
+                bool isPlayer = i < half;
+                var pos = new Vector3((float)(rng.NextDouble() * 160.0 - 80.0), 0.8f, (float)(rng.NextDouble() * 160.0 - 80.0));
+                SpawnSoldier(soldierPrefab, (isPlayer ? "Bench_P_" : "Bench_E_") + i,
+                    isPlayer ? TeamId.Player : TeamId.Enemy, RoleType.Assault, pos,
+                    isPlayer ? playerColor : enemyColor, pool, 100);
+            }
+            SP.Core.WorldSystemsRegistry.EnsurePopulated();
+
+            const float dt = 0.05f;
+            const int warmupSteps = 30;
+            const int measuredSteps = 300;
+
+            for (int i = 0; i < warmupSteps; i++) SimStep(dt);
+
+            var samples = new float[measuredSteps];
+            double rebuildAcc = 0, aiAcc = 0, vehicleAcc = 0, projAcc = 0;
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            for (int i = 0; i < measuredSteps; i++)
+            {
+                double t0 = sw.Elapsed.TotalMilliseconds;
+                SimStep(dt);
+                samples[i] = (float)(sw.Elapsed.TotalMilliseconds - t0);
+                rebuildAcc += WorldSimulationDriver.LastRebuildMs;
+                aiAcc += WorldSimulationDriver.LastAiWeaponMs;
+                vehicleAcc += WorldSimulationDriver.LastVehicleMs;
+                projAcc += LastProjectileMs;
+            }
+
+            System.Array.Sort(samples);
+            float median = samples[measuredSteps / 2];
+            int idx95 = Mathf.Clamp(Mathf.CeilToInt(measuredSteps * 0.95f) - 1, 0, measuredSteps - 1);
+            float p95 = samples[idx95];
+
+            return new BenchResult
+            {
+                UnitCount = unitCount,
+                MedianMs = median,
+                P95Ms = p95,
+                RebuildMs = (float)(rebuildAcc / measuredSteps),
+                AiWeaponMs = (float)(aiAcc / measuredSteps),
+                VehicleMs = (float)(vehicleAcc / measuredSteps),
+                ProjectileMs = (float)(projAcc / measuredSteps),
+            };
+        }
+
         // Construye el mismo mundo que el test automático pero sin correr
         // las fases: deja a Vega libre, sana y parada junto al vehículo,
         // lista para una demo manual en Play mode (E para subir, etc).
@@ -709,9 +827,17 @@ namespace SP.EditorTools
             // del resto de la simulacion incluso en Play real, asi que
             // tickearlo en un paso aparte aca no cambia ninguna regla de
             // juego -- es la misma falta de orden garantizado que ya existe.
+            profileWatch.Restart();
             var projectiles = Projectile.ActiveInstances.ToArray();
             foreach (var p in projectiles) p.Tick(dt);
+            LastProjectileMs = profileWatch.Elapsed.TotalMilliseconds;
         }
+
+        // Mismo criterio que WorldSimulationDriver.LastRebuildMs/etc: un
+        // cronometro reusado, sin asignar por llamada, solo para el arnes
+        // de benchmark. No cambia la logica de SimStep.
+        public static double LastProjectileMs { get; private set; }
+        static readonly System.Diagnostics.Stopwatch profileWatch = new System.Diagnostics.Stopwatch();
 
         static void SimulateSeconds(float totalSeconds, float dt = 0.05f)
         {

@@ -21,12 +21,26 @@ namespace SP.Ai
         // validando una simulacion distinta de la que corre en el juego real,
         // asi que los items 222/223 (los cacheos de este mismo archivo) no
         // tenian ninguna cobertura.
+        // Acumuladores de solo lectura para el arnes de benchmark (item 235
+        // companion). Envuelven los mismos bloques de siempre con un
+        // cronometro reusado (sin asignar por llamada): no cambian ninguna
+        // logica ni el orden de ejecucion, y su costo es un Restart()/lectura
+        // de Stopwatch por bloque -- despreciable frente a lo que miden.
+        public static double LastRebuildMs { get; private set; }
+        public static double LastAiWeaponMs { get; private set; }
+        public static double LastVehicleMs { get; private set; }
+        static readonly System.Diagnostics.Stopwatch profileWatch = new System.Diagnostics.Stopwatch();
+
         public static void Step(float dt)
         {
             // Reparte a los soldados vivos en celdas ANTES de que nadie
             // pregunte "hay un enemigo cerca" este tick -- una sola vez
             // por Update, no una vez por soldado que sensa.
+            profileWatch.Restart();
             SpatialGrid.Rebuild();
+            LastRebuildMs = profileWatch.Elapsed.TotalMilliseconds;
+
+            profileWatch.Restart();
 
             // Antes: GetComponent<AiBrain>() por soldado por frame, y tres
             // Object.FindObjectsByType (un barrido completo de la escena
@@ -53,7 +67,9 @@ namespace SP.Ai
                 s.Brain?.Tick(dt);
                 if (s.Weapon != null) s.Weapon.Tick(dt);
             }
+            LastAiWeaponMs = profileWatch.Elapsed.TotalMilliseconds;
 
+            profileWatch.Restart();
             var vehicleBrains = WorldSystemsRegistry.VehicleBrains;
             for (int i = 0; i < vehicleBrains.Count; i++)
                 if (vehicleBrains[i] != null) vehicleBrains[i].Tick(dt);
@@ -65,6 +81,7 @@ namespace SP.Ai
             var turretAis = WorldSystemsRegistry.TurretAis;
             for (int i = 0; i < turretAis.Count; i++)
                 if (turretAis[i] != null) turretAis[i].Tick(dt);
+            LastVehicleMs = profileWatch.Elapsed.TotalMilliseconds;
         }
     }
 }
