@@ -1516,42 +1516,26 @@ namespace SP.EditorTools
                 Check($"El proyectil real del cañon vuela al doble de la velocidad base (velocidad={shellFired.Velocity.magnitude:0.0} vs base={speedNormal:0.0})",
                     Mathf.Approximately(shellFired.Velocity.magnitude, speedNormal * 2f));
 
-            // --- Vibracion de camara: solo si el jugador esta ADENTRO del vehiculo ---
-            // Se fuerza Enabled=true (y se restaura al final, mismo patron
-            // que el bloque de CameraRig de la Fase 5): KickDirectional es
-            // un no-op si el interruptor global de FX esta apagado, y ese
-            // interruptor persiste en PlayerPrefs entre corridas -- sin
-            // esto el test pasa o falla segun el ultimo valor guardado en
-            // esta maquina, no segun si el gating por PlayerAboard anda.
+            // --- Sin vibracion de camara al disparar (pedido explicito) ---
+            // Antes disparar con el jugador adentro sacudia la camara
+            // (rig.KickDirectional); con rafaga sostenida eso se sentia
+            // como un temblor constante en vez de un golpe puntual, y se
+            // saco. Ahora el disparo NUNCA mueve ShakeOffset, este
+            // adentro o afuera del vehiculo.
             bool fxWasEnabled = SP.CameraSystem.CameraFxSettings.Enabled;
             SP.CameraSystem.CameraFxSettings.Enabled = true;
 
-            // TryFire() lee CameraRig.Instance (el singleton), no la
-            // referencia rig de este metodo. Instance se pone en OnEnable,
-            // que -- como Awake en todo el resto del proyecto -- no corre
-            // en Edit mode sin [ExecuteAlways]. Sin esto el chequeo
-            // "rig != null" de TryFire fallaria SIEMPRE en la suite
-            // headless (Instance nulo), y el test de PlayerAboard nunca
-            // ejercitaria el codigo real sin importar el resultado.
             var instanceField = typeof(CameraRig).GetProperty("Instance", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
             var previousInstance = instanceField.GetValue(null);
             instanceField.SetValue(null, rig);
 
             for (int i = 0; i < 40; i++) turret.Tick(0.1f); // vaciar cooldown del disparo anterior
-            vehicle.PlayerAboard = false;
-            Vector3 shakeBeforeOutside = rig.ShakeOffset;
-            turret.TryFire();
-            Vector3 shakeAfterOutside = rig.ShakeOffset;
-            Check("Con PlayerAboard=false (jugador afuera), disparar el cañon NO mueve la vibracion de camara",
-                shakeAfterOutside == shakeBeforeOutside);
-
-            for (int i = 0; i < 40; i++) turret.Tick(0.1f);
             vehicle.PlayerAboard = true;
-            Vector3 shakeBeforeInside = rig.ShakeOffset;
+            Vector3 shakeBefore = rig.ShakeOffset;
             turret.TryFire();
-            Vector3 shakeAfterInside = rig.ShakeOffset;
-            Check("Con PlayerAboard=true (jugador adentro), disparar el cañon SI mueve la vibracion de camara",
-                shakeAfterInside != shakeBeforeInside);
+            Vector3 shakeAfter = rig.ShakeOffset;
+            Check("Disparar el cañon con el jugador adentro NO mueve la vibracion de camara (se saco a pedido)",
+                shakeAfter == shakeBefore);
 
             instanceField.SetValue(null, previousInstance);
             SP.CameraSystem.CameraFxSettings.Enabled = fxWasEnabled;

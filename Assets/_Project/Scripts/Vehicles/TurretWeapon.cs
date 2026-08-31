@@ -252,22 +252,13 @@ namespace SP.Vehicles
             SpawnMuzzleDust(spawnPos);
             KickChassis();
 
-            // El culatazo empuja la camara HACIA ATRAS del eje de disparo:
-            // una vibracion sin direccion no se lee como retroceso.
-            // Instance en vez de FindAnyObjectByType: esto corre en CADA
-            // disparo del cañon, y un barrido de escena por disparo es
-            // justo lo que no queremos en pleno combate.
-            //
-            // Pedido explicito: la vibracion es de QUIEN ESTA ADENTRO del
-            // tanque, no de toda la partida. Sin este chequeo, la torreta
-            // autonoma (TurretAI, sin artillero humano) sacudia la camara
-            // del jugador aunque estuviera lejos a pie o en otro vehiculo
-            // -- cada cañonazo temblaba la pantalla entera del juego.
-            // vehicle.PlayerAboard (no un Find) es lo barato: lo mantiene
-            // al dia PlayerInputDriver en los dos unicos puntos donde
-            // sube/baja del asiento.
-            var rig = SP.CameraSystem.CameraRig.Instance;
-            if (rig != null && vehicle != null && vehicle.PlayerAboard) rig.KickDirectional(-transform.forward, 0.35f);
+            // Pedido explicito: sacar la vibracion de camara del disparo
+            // del cañon. Antes cada tiro sacudia la pantalla del artillero
+            // (rig.KickDirectional) -- con el cooldown corto de rafaga
+            // sostenida eso se sentia como un temblor constante, no como
+            // un golpe puntual. El retroceso sigue existiendo (cañon que
+            // se hunde, chasis que da un empujon), solo que ya no mueve la
+            // camara del jugador.
 
             return true;
         }

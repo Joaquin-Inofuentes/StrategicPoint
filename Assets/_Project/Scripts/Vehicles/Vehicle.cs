@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using SP.Actors;
@@ -227,9 +228,58 @@ namespace SP.Vehicles
 
             var brain = soldier.Brain;
             if (brain != null) brain.enabled = false;
-            soldier.gameObject.SetActive(false);
+
+            // Pedido explicito: una animacion real al subir, no el
+            // desaparecer instantaneo de antes. En Play mode el soldado
+            // se acerca al vehiculo y se achica hasta desaparecer; recien
+            // ahi se desactiva. En Edit mode (la suite headless corre
+            // Mount() sin Play) StartCoroutine no funciona -- se mantiene
+            // el camino sincronico de siempre para no romper esos tests.
+            if (Application.isPlaying) StartCoroutine(PlayMountAnimation(soldier));
+            else soldier.gameObject.SetActive(false);
+
             RefreshOccupancyColor();
             return true;
+        }
+
+        const float MountAnimationSeconds = 0.35f;
+
+        IEnumerator PlayMountAnimation(Soldier soldier)
+        {
+            var startPos = soldier.transform.position;
+            var startScale = soldier.transform.localScale;
+            var targetPos = transform.position;
+
+            float t = 0f;
+            while (t < MountAnimationSeconds)
+            {
+                // Si en el medio lo bajaron (Dismount, o el vehiculo se
+                // destruyo y expulso a todos) cortar aca y devolverle la
+                // escala real: RoleOf devuelve null apenas Dismount() lo
+                // saca de seats, ANTES de reposicionarlo -- sin este
+                // chequeo, la corutina seguiria de largo y le pisaria la
+                // posicion que Dismount le puso, para terminar
+                // desactivandolo (invisible) a alguien que se acababa de
+                // bajar y deberia seguir de pie afuera.
+                if (soldier == null) yield break;
+                if (RoleOf(soldier) == null) { soldier.transform.localScale = startScale; yield break; }
+                t += Time.deltaTime;
+                float k = Mathf.Clamp01(t / MountAnimationSeconds);
+                // Ease-out: rapido al principio, se frena justo antes de
+                // desaparecer -- un lerp lineal se sentia mecanico para
+                // algo tan corto.
+                float eased = 1f - (1f - k) * (1f - k);
+                soldier.transform.position = Vector3.Lerp(startPos, targetPos, eased);
+                soldier.transform.localScale = Vector3.Lerp(startScale, Vector3.zero, eased);
+                yield return null;
+            }
+
+            if (soldier == null) yield break;
+            // Restaura la escala ANTES de desactivar: Dismount() no la
+            // toca, asi que si quedara en cero el soldado reapareceria
+            // invisible la proxima vez que se baje.
+            soldier.transform.localScale = startScale;
+            soldier.gameObject.SetActive(false);
         }
 
         // Baja a un soldado y lo reaparece junto al vehículo.
