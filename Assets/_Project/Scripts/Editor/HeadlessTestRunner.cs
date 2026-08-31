@@ -94,12 +94,29 @@ namespace SP.EditorTools
             return cachedMinimapLayer;
         }
 
+        // Pedido explicito: "material simple comun", no una busqueda de
+        // shader por nombre. Antes esto hacia Shader.Find("Universal
+        // Render Pipeline/Lit") a mano -- si esa cadena no resolvia bien
+        // en el momento (variantes sin compilar, orden de carga, lo que
+        // sea) el objeto quedaba con el shader de error. En vez de
+        // adivinar el shader correcto para la pipeline activa, se CLONA
+        // el material que UNITY MISMO le pone a un primitivo nuevo: eso
+        // ya esta resuelto para la pipeline real del proyecto (sea URP,
+        // Built-in o lo que sea) sin que este codigo tenga que saber su
+        // nombre. Un template cacheado y clonado por color, en vez de
+        // instanciar un primitivo por cada material pedido.
+        static Material defaultMaterialTemplate;
         static Material CreateFlatMaterial(Color color)
         {
-            // Lit, pero con brillo/metalico casi nulo: sombreado suave y
-            // colores vivos, sin el brillo especular que los lavaba pálidos.
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            var mat = new Material(shader);
+            if (defaultMaterialTemplate == null)
+            {
+                var temp = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                defaultMaterialTemplate = new Material(temp.GetComponent<Renderer>().sharedMaterial);
+                if (Application.isPlaying) UnityEngine.Object.Destroy(temp);
+                else UnityEngine.Object.DestroyImmediate(temp);
+            }
+
+            var mat = new Material(defaultMaterialTemplate);
             mat.color = color;
             if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.08f);
             if (mat.HasProperty("_Glossiness")) mat.SetFloat("_Glossiness", 0.08f);
@@ -537,6 +554,17 @@ namespace SP.EditorTools
             EventBus.Instance.ClearAll();
             ActorRegistry.Clear();
             Projectile.ActiveInstances.Clear();
+            // BUG REAL encontrado al repetir RunAll() varias veces seguidas
+            // sin recompilar entremedio (sin domain reload, que es lo que
+            // normalmente lo resetea): EnsurePopulated() solo puebla una
+            // vez por sesion (guarda "populated"), asi que sin este Clear
+            // el registro seguia apuntando a los Vehicle/TurretWeapon/etc.
+            // de la escena ANTERIOR, ya destruidos -- una referencia
+            // "fake-null" de Unity. FindVehicleContaining (poseer a un
+            // montado) y FindTheVehicle ([U]/[I]) fallaban en silencio
+            // porque el vehiculo que buscaban no era el de la escena
+            // recien construida.
+            SP.Core.WorldSystemsRegistry.Clear();
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
