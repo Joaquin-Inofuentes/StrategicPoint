@@ -201,7 +201,14 @@ namespace SP.Vehicles
 
         public bool Mount(Soldier soldier, VehicleSeatRole? preferredRole = null)
         {
-            if (soldier == null || IsDestroyed) return false;
+            // BUG REAL: esto no chequeaba vida. Un muerto se montaba
+            // igual (devolvia true, sumaba al conteo de ocupantes) porque
+            // nada en el camino de Mount() miraba Health.IsAlive -- cada
+            // llamador (el auto-mount de EnterVehicle, IssueMountOrder,
+            // etc.) tenia que acordarse de filtrar por su cuenta, y no
+            // todos lo hacian. La guarda va aca, en la fuente unica, para
+            // que ningun camino futuro pueda repetir el olvido.
+            if (soldier == null || IsDestroyed || !soldier.Health.IsAlive) return false;
             foreach (var kv in seats) if (kv.Value == soldier) return false; // ya está adentro
 
             VehicleSeatRole role;

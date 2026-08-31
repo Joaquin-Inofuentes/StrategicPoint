@@ -1579,6 +1579,15 @@ namespace SP.EditorTools
                 brainCand.CancelOrder();
             }
 
+            // BUG REAL encontrado y corregido tras probar "subir a un
+            // muerto": Vehicle.Mount() no chequeaba Health.IsAlive.
+            int docMaxHp = doc.Health.MaxHealth;
+            doc.Health.TakeDamage(9999, -1);
+            bool montoAUnMuerto = vehicle.Mount(doc);
+            Check("Vehicle.Mount() rechaza a un soldado muerto (antes lo montaba igual)",
+                !montoAUnMuerto && vehicle.OccupantCount == 0);
+            doc.Health.Initialize(doc.Id, docMaxHp); // revivido: no contamina el resto de la suite
+
             // --- [I] bajar a todos: la misma DismountAll que ya prueba la Fase 6, ---
             // pero disparada por la tecla dedicada (sin apuntar), verificando
             // que FindTheVehicle resuelve el vehiculo sin necesitar aim.
