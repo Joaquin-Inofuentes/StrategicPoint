@@ -75,6 +75,14 @@ namespace SP.Player
         bool dragging;
         Vector2 dragStart;
 
+        // Paneo con click derecho sostenido, item pedido: mantener y
+        // arrastrar corre la camara, un solo click (sin arrastre) sigue
+        // siendo la orden de moverse/atacar de siempre -- mismo criterio
+        // de umbral en pixeles que ya usa la seleccion por arrastre.
+        bool rightDragging;
+        Vector2 rightDragStart;
+        [SerializeField] float rightDragPanMultiplier = 2f;
+
         // Resaltado de a qué le estoy apuntando (aliado o vehículo): se
         // guarda el renderer y su color original para poder devolvérselo
         // apenas dejo de apuntarle.
@@ -1470,7 +1478,7 @@ namespace SP.Player
             }
 
             string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
-            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [X] cancelar orden · [G] subir al vehículo · [F] poseer · [Q] ciclar · [C] mas cercano · [TAB] vista FPS · {selectionLabel}");
+            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [Click der. sostenido] panear · [X] cancelar orden · [G] subir al vehículo · [F] poseer · [Q] ciclar · [C] mas cercano · [TAB] vista FPS · {selectionLabel}");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -1478,10 +1486,30 @@ namespace SP.Player
 
             var screenRay = Rig.Cam.ScreenPointToRay(mouse.position.ReadValue());
 
-            // [T] o click derecho: mover a todos los seleccionados ahí --
-            // o al vehículo, si es él quien está seleccionado (requiere
-            // conductor propio adentro, como en FPS).
-            if (kb.tKey.wasPressedThisFrame || (mouse.rightButton.wasPressedThisFrame && !dragging))
+            // Click derecho SOSTENIDO y arrastrado panea la camara (al
+            // doble de velocidad del paneo por teclado); SIN arrastre
+            // sigue siendo la orden de moverse/atacar de mas abajo. Se
+            // decide con el mismo umbral en pixeles que ya usa la
+            // seleccion por arrastre de click izquierdo, para que un
+            // click tembloroso no dispare un paneo por error.
+            if (mouse.rightButton.wasPressedThisFrame) { rightDragStart = mouse.position.ReadValue(); rightDragging = false; }
+            if (mouse.rightButton.isPressed && !rightDragging &&
+                Vector2.Distance(mouse.position.ReadValue(), rightDragStart) > dragThresholdPixels)
+                rightDragging = true;
+            if (rightDragging && mouse.rightButton.isPressed)
+            {
+                var rightDelta = mouse.delta.ReadValue();
+                Vector3 dragPan = new Vector3(-rightDelta.x, 0f, -rightDelta.y);
+                if (dragPan.sqrMagnitude > 0.0001f)
+                    Rig.Pan(dragPan.normalized * (rtsPanSpeed * rightDragPanMultiplier) * Time.deltaTime);
+            }
+            bool rightClickOrder = mouse.rightButton.wasReleasedThisFrame && !rightDragging;
+            if (mouse.rightButton.wasReleasedThisFrame) rightDragging = false;
+
+            // [T] o click derecho (sin arrastre): mover a todos los
+            // seleccionados ahí -- o al vehículo, si es él quien está
+            // seleccionado (requiere conductor propio adentro, como en FPS).
+            if (kb.tKey.wasPressedThisFrame || (rightClickOrder && !dragging))
             {
                 var result = Aim.Evaluate(screenRay, null);
                 // Con Shift la orden se ENCOLA detras de lo ya planificado

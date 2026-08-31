@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using SP.Actors;
+using SP.Ai;
 using SP.Core;
 using SP.Player;
 
@@ -23,13 +24,22 @@ namespace SP.UI
             public Soldier Soldier;
             public Text Label;
             public Image HealthFill;
+            // Item pedido: indicador de que esta haciendo CADA soldado
+            // (siguiendo / atacando / quieto), no solo su vida y arma.
+            // Se cachea el AiBrain porque GetComponent en LateUpdate,
+            // sobre 50 filas cada frame, es plata tirada.
+            public AiBrain Brain;
         }
 
         readonly List<Row> rows = new List<Row>();
         readonly HashSet<int> selectedIds = new HashSet<int>();
         int possessedId = -1;
 
-        static readonly Color normalColor = new Color(0f, 0f, 0f, 0.55f);
+        // Antes 0.55 de alpha: sobre fondos claros (cielo, piso) o el
+        // magenta de un shader faltante, el texto blanco se perdia. El
+        // resto de colores (posesion/seleccion) ya estaban altos (0.9);
+        // este era el unico bajo.
+        static readonly Color normalColor = new Color(0f, 0f, 0f, 0.85f);
         static readonly Color possessedColor = new Color(0.15f, 0.55f, 0.85f, 0.9f);
         static readonly Color selectedColor = new Color(0.85f, 0.65f, 0.1f, 0.9f);
 
@@ -44,9 +54,30 @@ namespace SP.UI
                 Soldier = soldier,
                 Label = label,
                 HealthFill = healthFill,
+                Brain = soldier.GetComponent<AiBrain>(),
             });
             label.text = $"{soldier.DisplayName} ({soldier.Role})";
             background.color = normalColor;
+        }
+
+        // Traduce el estado interno de AiBrain a las 3 categorias que se
+        // pidieron (siguiendo / atacando / quieto), sin perder del todo
+        // la info: un soldado en camino a una orden no es ni una ni otra,
+        // asi que tiene su propia etiqueta en vez de mentir metiendolo en
+        // "quieto".
+        static string StateLabel(AiState state)
+        {
+            switch (state)
+            {
+                case AiState.Follow: return "Siguiendo";
+                case AiState.Chase:
+                case AiState.MovingToAttackOrder:
+                case AiState.Attack: return "Atacando";
+                case AiState.MovingToOrder: return "En camino";
+                case AiState.Patrol:
+                case AiState.Idle: return "Quieto";
+                default: return "";
+            }
         }
 
         static readonly Color deadColor = new Color(0.12f, 0.12f, 0.13f, 0.75f);
@@ -82,9 +113,14 @@ namespace SP.UI
                 // solo no alcanzaba para distinguirlo del seleccionado.
                 string marker = isPossessed && alive ? "► " : "   ";
                 string weapon = row.Soldier.Weapon != null ? row.Soldier.Weapon.CurrentWeaponKind.ToString() : "";
+                // Al soldado poseido lo maneja el jugador, no su AiBrain
+                // (que esta en pausa mientras dure la posesion): mostrarle
+                // un estado de IA seria mentira, "(vos)" es lo honesto.
+                string estado = isPossessed ? "(vos)" : (row.Brain != null ? StateLabel(row.Brain.State) : "");
+                string estadoSuffix = string.IsNullOrEmpty(estado) ? "" : $"   ·   {estado}";
 
                 row.Label.text = alive
-                    ? $"{marker}{row.Soldier.DisplayName} ({row.Soldier.Role})\n     {row.Soldier.Health.Current}/{row.Soldier.Health.MaxHealth}   ·   {weapon}"
+                    ? $"{marker}{row.Soldier.DisplayName} ({row.Soldier.Role})\n     {row.Soldier.Health.Current}/{row.Soldier.Health.MaxHealth}   ·   {weapon}{estadoSuffix}"
                     : $"   {row.Soldier.DisplayName} — CAIDO";
                 row.Label.color = alive ? Color.white : deadTextColor;
 
@@ -136,6 +172,7 @@ namespace SP.UI
                     Background = child.GetComponent<Image>(),
                     Label = child.Find("Label")?.GetComponent<Text>(),
                     HealthFill = child.Find("BarBG/BarFill")?.GetComponent<Image>(),
+                    Brain = match.GetComponent<AiBrain>(),
                 });
             }
         }
