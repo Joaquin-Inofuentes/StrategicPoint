@@ -76,6 +76,9 @@ namespace SP.Vehicles
         public bool IsInAgony { get; private set; }
         public bool FinalExplosionDone { get; private set; }
 
+        void OnEnable() => SP.Core.WorldSystemsRegistry.Register(this);
+        void OnDisable() => SP.Core.WorldSystemsRegistry.Unregister(this);
+
         void OnDestroyed()
         {
             IsDestroyed = true;

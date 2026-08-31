@@ -247,6 +247,11 @@ namespace SP.EditorTools
             servicesGO.AddComponent<OrderLineManager>();
             servicesGO.AddComponent<FloatingDamageTextManager>();
             servicesGO.AddComponent<PostFxDirector>();
+            // En Edit mode OnEnable no corre, asi que los vehiculos y
+            // obstaculos no se dan de alta solos en el registro que
+            // ahora usan los proyectiles. Sin esto la suite simularia
+            // impactos contra un mundo sin vehiculos ni obstaculos.
+            SP.Core.WorldSystemsRegistry.EnsurePopulated();
             var bootstrap = servicesGO.AddComponent<GameplaySceneBootstrap>();
             bootstrap.ObjectiveBanner = phaseBannerRef;
             bootstrap.ModeToast = modeToastRef;

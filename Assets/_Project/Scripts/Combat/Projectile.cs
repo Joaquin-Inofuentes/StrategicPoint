@@ -173,10 +173,25 @@ namespace SP.Combat
             // No hay soldado en el camino: probamos vehículo y obstáculo,
             // para que el jugador tenga feedback de qué le pegó a qué (antes
             // el proyectil los atravesaba sin avisar nada).
-            foreach (var vehicle in Object.FindObjectsByType<Vehicle>(FindObjectsSortMode.None))
+            // WorldSystemsRegistry en vez de FindObjectsByType: esto corria
+            // POR PROYECTIL y POR FRAME, o sea un barrido completo de la
+            // escena por cada bala en vuelo. Ademas se toma el vehiculo MAS
+            // CERCANO en rango y no "el primero que aparezca": el orden de
+            // FindObjectsByType era arbitrario, asi que con dos vehiculos
+            // pegados era impredecible a cual le pegaba.
+            Vehicle nearestVehicle = null;
+            float nearestVehicleDist = float.MaxValue;
+            var vehicleList = SP.Core.WorldSystemsRegistry.Vehicles;
+            for (int i = 0; i < vehicleList.Count; i++)
             {
-                if (vehicle == ignoreVehicle) continue;
-                if (Vector3.Distance(vehicle.transform.position, transform.position) <= hitRadius + 1.5f)
+                var v = vehicleList[i];
+                if (v == null || v == ignoreVehicle) continue;
+                float d = Vector3.Distance(v.transform.position, transform.position);
+                if (d <= hitRadius + 1.5f && d < nearestVehicleDist) { nearestVehicleDist = d; nearestVehicle = v; }
+            }
+            {
+                var vehicle = nearestVehicle;
+                if (vehicle != null)
                 {
                     if (explosionRadius > 0f) Explode(transform.position);
                     else
@@ -193,9 +208,21 @@ namespace SP.Combat
                 }
             }
 
-            foreach (var obstacle in Object.FindObjectsByType<ObstacleMarker>(FindObjectsSortMode.None))
+            // Mismo caso que los vehiculos: barrido por proyectil por
+            // frame, reemplazado por el registro y el mas cercano en rango.
+            ObstacleMarker nearestObstacle = null;
+            float nearestObstacleDist = float.MaxValue;
+            var obstacleList = SP.Core.WorldSystemsRegistry.Obstacles;
+            for (int i = 0; i < obstacleList.Count; i++)
             {
-                if (Vector3.Distance(obstacle.transform.position, transform.position) <= hitRadius + 1f)
+                var o = obstacleList[i];
+                if (o == null) continue;
+                float d = Vector3.Distance(o.transform.position, transform.position);
+                if (d <= hitRadius + 1f && d < nearestObstacleDist) { nearestObstacleDist = d; nearestObstacle = o; }
+            }
+            {
+                var obstacle = nearestObstacle;
+                if (obstacle != null)
                 {
                     if (explosionRadius > 0f) Explode(transform.position);
                     else
@@ -258,9 +285,14 @@ namespace SP.Combat
                 s.transform.position += away.normalized * strength * 2.2f;
             }
 
-            foreach (var vehicle in Object.FindObjectsByType<Vehicle>(FindObjectsSortMode.None))
+            // Tercer barrido por frame que tambien se va: la explosion si
+            // reparte a TODOS los vehiculos en radio, asi que aca el orden
+            // no importa y la semantica queda identica.
+            var explosionVehicles = SP.Core.WorldSystemsRegistry.Vehicles;
+            for (int i = 0; i < explosionVehicles.Count; i++)
             {
-                if (vehicle == ignoreVehicle) continue;
+                var vehicle = explosionVehicles[i];
+                if (vehicle == null || vehicle == ignoreVehicle) continue;
                 if (Vector3.Distance(vehicle.transform.position, point) <= explosionRadius)
                     vehicle.TakeDamage(damage, ownerId);
             }

@@ -50,6 +50,17 @@ namespace SP.Presentation
             if (currentHealth < 0) currentHealth = maxHealth;
         }
 
+        // OnEnable/OnDisable y no Awake/OnDestroy: asi el alta/baja
+        // tambien acompaña a un obstaculo que se desactiva al derrumbarse,
+        // sin dejar una referencia muerta en el registro.
+        void OnEnable()
+        {
+            CacheIfNeeded();
+            SP.Core.WorldSystemsRegistry.Register(this);
+        }
+
+        void OnDisable() => SP.Core.WorldSystemsRegistry.Unregister(this);
+
         void Awake() => CacheIfNeeded();
 
         public void TakeDamage(int amount)
