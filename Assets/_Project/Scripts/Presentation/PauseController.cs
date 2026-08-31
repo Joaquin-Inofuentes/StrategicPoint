@@ -16,6 +16,7 @@ namespace SP.Presentation
         GameObject settingsPanel;
         GameObject controlsPanel;
         GameObject confirmExitPanel;
+        GameObject rebindPanel;
         GameOutcomeController outcome;
         SP.Player.PlayerInputDriver input;
 
@@ -66,6 +67,11 @@ namespace SP.Presentation
                 var t = transform.Find("ConfirmExitPanel");
                 if (t != null) confirmExitPanel = t.gameObject;
             }
+            if (rebindPanel == null)
+            {
+                var t = transform.Find("RebindPanel");
+                if (t != null) rebindPanel = t.gameObject;
+            }
             if (outcome == null) outcome = FindAnyObjectByType<GameOutcomeController>();
             if (input == null) input = FindAnyObjectByType<SP.Player.PlayerInputDriver>();
 
@@ -83,6 +89,9 @@ namespace SP.Presentation
             WireButton(pausePanel, "MenuButton", OnMenuClicked);
             WireButton(settingsPanel, "BackButton", OnSettingsBackClicked);
             WireButton(controlsPanel, "BackButton", OnControlsBackClicked);
+            WireButton(controlsPanel, "RebindButton", OnRebindClicked);
+            WireButton(rebindPanel, "BackButton", OnRebindBackClicked);
+            WireButton(rebindPanel, "ResetButton", OnRebindResetClicked);
             WireButton(confirmExitPanel, "YesButton", OnConfirmExitYes);
             WireButton(confirmExitPanel, "NoButton", OnConfirmExitNo);
 
@@ -229,6 +238,7 @@ namespace SP.Presentation
             // [ESC] va "un paso atrás" a la vez, nunca salta dos pantallas
             // de golpe: confirmar salida -> controles/config -> pausa.
             if (confirmExitPanel != null && confirmExitPanel.activeSelf) OnConfirmExitNo();
+            else if (rebindPanel != null && rebindPanel.activeSelf) OnRebindBackClicked();
             else if (controlsPanel != null && controlsPanel.activeSelf) OnControlsBackClicked();
             else if (settingsPanel != null && settingsPanel.activeSelf) OnSettingsBackClicked();
             else if (IsPaused) OnContinueClicked();
@@ -303,6 +313,32 @@ namespace SP.Presentation
             if (controlsPanel == null || !controlsPanel.activeSelf) return;
             controlsPanel.SetActive(false);
             GameLog.Line("Se salio de controles");
+        }
+
+        // Panel de remapeo (item 208). Es una capa mas adentro que
+        // controles, asi que ESC lo cierra antes de cerrar controles.
+        public void OnRebindClicked()
+        {
+            if (rebindPanel == null || rebindPanel.activeSelf) return;
+            rebindPanel.SetActive(true);
+            var view = rebindPanel.GetComponent<SP.UI.KeyRebindView>();
+            if (view != null) view.RefreshAll();
+            GameLog.Line("Se entro a remapear teclas");
+        }
+
+        public void OnRebindBackClicked()
+        {
+            if (rebindPanel == null || !rebindPanel.activeSelf) return;
+            rebindPanel.SetActive(false);
+            GameLog.Line("Se salio de remapear teclas");
+        }
+
+        public void OnRebindResetClicked()
+        {
+            SP.Player.KeyBindings.ResetToDefaults();
+            var view = rebindPanel != null ? rebindPanel.GetComponent<SP.UI.KeyRebindView>() : null;
+            if (view != null) view.RefreshAll();
+            GameLog.Line("Se restauraron los controles de fabrica");
         }
 
         // Abandonar la partida es irreversible (se pierde el progreso), y

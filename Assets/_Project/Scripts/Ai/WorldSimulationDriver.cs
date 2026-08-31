@@ -27,6 +27,17 @@ namespace SP.Ai
             // existe". Ahora todo sale de listas cacheadas que se
             // mantienen al alta/baja de cada objeto (Soldier.Brain,
             // WorldSystemsRegistry).
+            //
+            // Item 224: este bucle sigue tickeando a TODOS los soldados en
+            // TODOS los frames, y eso es deliberado. Lo que se reparte en el
+            // tiempo es solo la consulta de sensado, adentro de AiBrain
+            // (SenseNearestEnemy): saltear el Tick entero cada N frames
+            // saltearia tambien la maquina de estados y el movimiento, y un
+            // soldado que se mueve 1 de cada 3 frames se ve tartamudeando.
+            // El ahorro es invisible; el tartamudeo, no. Cada cerebro lleva
+            // su propio contador de ticks y se desfasa por Id, asi que la
+            // carga de sensado ya queda repartida entre frames sin que este
+            // bucle tenga que saber nada del tema.
             foreach (var s in ActorRegistry.All)
             {
                 if (s == null || !s.gameObject.activeInHierarchy) continue;

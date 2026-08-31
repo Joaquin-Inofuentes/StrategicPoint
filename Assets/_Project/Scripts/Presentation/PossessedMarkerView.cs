@@ -17,14 +17,43 @@ namespace SP.Presentation
 
         static readonly Color MarkerColor = new Color(1f, 0.9f, 0.3f);
 
+        // Altura a la que flota el rombo sobre la cabeza. Constante y no
+        // magica suelta: el director la necesita para preguntar por el
+        // punto real del marcador al evaluar el nivel de detalle.
+        const float MarkerHeight = 2.1f;
+
+        // Puerta de nivel de detalle que escribe WorldUiDirector. Arranca
+        // en true a proposito: si el director nunca corre (Edit mode, o
+        // una escena sin el), el marcador se comporta exactamente como
+        // antes, solo que sin LOD.
+        bool lodAllowed = true;
+        public bool LodAllowed => lodAllowed;
+        public void SetLodAllowed(bool value) => lodAllowed = value;
+
         void OnEnable()
         {
             if (marker == null) BuildMarker();
             sub?.Dispose();
             sub = EventBus.Instance.Subscribe<PossessionChangedEvent>(OnPossessionChanged);
+            // Alta y baja en el unico recorrido de UI de mundo. Mismo
+            // patron que SP.Core.WorldSystemsRegistry.
+            WorldUiDirector.Register(this);
         }
 
-        void OnDisable() => sub?.Dispose();
+        void OnDisable()
+        {
+            sub?.Dispose();
+            WorldUiDirector.Unregister(this);
+        }
+
+        // Punto que el director proyecta para decidir el LOD: el del
+        // marcador en si, no el de los pies del soldado.
+        public bool TryGetLodProbe(out Vector3 position)
+        {
+            if (current == null) { position = Vector3.zero; return false; }
+            position = current.transform.position + Vector3.up * MarkerHeight;
+            return true;
+        }
 
         void BuildMarker()
         {
@@ -47,19 +76,26 @@ namespace SP.Presentation
             marker.gameObject.SetActive(false);
         }
 
-        // El marcador se posiciona en LateUpdate (no se emparenta al
+        // El marcador se posiciona por codigo (no se emparenta al
         // soldado): emparentarlo lo heredaria la rotacion del cuerpo y el
         // rombo giraria con el, y ademas quedaria colgando de un objeto
         // que se desactiva al subir a un vehiculo.
-        void LateUpdate()
+        //
+        // Ya no es un LateUpdate propio: lo llama WorldUiDirector en el
+        // unico recorrido de UI de mundo. Devuelve true si el marcador
+        // quedo visible, para que el director pueda contarlo.
+        public bool Tick()
         {
-            if (marker == null) return;
-            bool show = current != null && current.Health.IsAlive && current.gameObject.activeInHierarchy;
+            if (marker == null) return false;
+            // El LOD se COMPONE con la regla de siempre (hay poseido, esta
+            // vivo y su objeto esta activo); solo puede restar.
+            bool show = lodAllowed && current != null && current.Health.IsAlive && current.gameObject.activeInHierarchy;
             if (marker.gameObject.activeSelf != show) marker.gameObject.SetActive(show);
-            if (!show) return;
+            if (!show) return false;
 
             float bob = Mathf.Sin(Time.time * 3f) * 0.08f;
-            marker.position = current.transform.position + new Vector3(0f, 2.1f + bob, 0f);
+            marker.position = current.transform.position + new Vector3(0f, MarkerHeight + bob, 0f);
+            return true;
         }
 
         void OnPossessionChanged(PossessionChangedEvent evt)

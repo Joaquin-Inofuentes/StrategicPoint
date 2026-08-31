@@ -48,6 +48,7 @@ namespace SP.EditorTools
         static TurretAimView turretAimRef;
         static OffscreenKillMarkerView offscreenKillRef;
         static DamageVignetteView damageVignetteRef;
+        static SP.UI.PerfHudView perfHudRef;
         static KillFeedView killFeedRef;
         static PauseController pauseControllerRef;
         static GameOutcomeController outcomeControllerRef;
@@ -226,6 +227,7 @@ namespace SP.EditorTools
             inputDriver.WeaponStatus = weaponStatusRef;
             inputDriver.VehicleStatus = vehicleStatusRef;
             inputDriver.DamageVignette = damageVignetteRef;
+            inputDriver.PerfHud = perfHudRef;
             inputDriver.TurretAim = turretAimRef;
             inputDriver.Outcome = outcomeControllerRef;
             inputDriver.PauseRef = pauseControllerRef;
@@ -1040,6 +1042,60 @@ namespace SP.EditorTools
             return toggle;
         }
 
+        // Panel de remapeo (item 208). Sin esta pantalla el remapeo existia
+        // solo como API: seguia haciendo falta editar codigo o PlayerPrefs a
+        // mano, o sea que el item quedaba a medias.
+        static void BuildRebindPanel(Transform parent, SP.Presentation.PauseController pauseController)
+        {
+            var panelGO = new GameObject("RebindPanel", typeof(Image));
+            panelGO.transform.SetParent(parent, false);
+            panelGO.GetComponent<Image>().color = new Color(0.05f, 0.05f, 0.08f, 1f);
+            var rt = panelGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(720f, 620f);
+
+            var titleGO = new GameObject("Title", typeof(Text));
+            titleGO.transform.SetParent(panelGO.transform, false);
+            var titleTxt = titleGO.GetComponent<Text>();
+            titleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            titleTxt.alignment = TextAnchor.MiddleCenter;
+            titleTxt.color = Color.white;
+            titleTxt.fontSize = 24;
+            titleTxt.text = "REMAPEAR CONTROLES";
+            var titleRt = titleGO.GetComponent<RectTransform>();
+            titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.5f);
+            titleRt.anchoredPosition = new Vector2(0f, 260f);
+            titleRt.sizeDelta = new Vector2(680f, 40f);
+
+            // Dos columnas: 18 acciones en una sola no entran en pantalla.
+            var acciones = new System.Collections.Generic.List<string>(SP.Player.KeyBindings.AllActions);
+            var botones = new Button[acciones.Count];
+            var etiquetas = new Text[acciones.Count];
+            for (int i = 0; i < acciones.Count; i++)
+            {
+                int col = i / 9;
+                int row = i % 9;
+                float x = col == 0 ? -175f : 175f;
+                float y = 200f - row * 46f;
+                var b = BuildUIButton(panelGO.transform, "Rebind_" + acciones[i], "", new Vector2(x, y), new Color(0.18f, 0.2f, 0.26f));
+                var brt = b.GetComponent<RectTransform>();
+                brt.sizeDelta = new Vector2(330f, 38f);
+                botones[i] = b;
+                etiquetas[i] = b.GetComponentInChildren<Text>();
+                if (etiquetas[i] != null) etiquetas[i].fontSize = 14;
+            }
+
+            var view = panelGO.AddComponent<SP.UI.KeyRebindView>();
+            view.Bind(botones, etiquetas, acciones.ToArray());
+
+            var resetBtn = BuildUIButton(panelGO.transform, "ResetButton", "RESTAURAR", new Vector2(-110f, -250f), new Color(0.55f, 0.4f, 0.3f));
+            resetBtn.onClick.AddListener(pauseController.OnRebindResetClicked);
+            var backBtn = BuildUIButton(panelGO.transform, "BackButton", "VOLVER", new Vector2(110f, -250f), new Color(0.5f, 0.5f, 0.5f));
+            backBtn.onClick.AddListener(pauseController.OnRebindBackClicked);
+
+            panelGO.SetActive(false);
+        }
+
         static void BuildGround()
         {
             var ground = GameObject.CreatePrimitive(PrimitiveType.Cube);
@@ -1554,6 +1610,28 @@ namespace SP.EditorTools
             // Destello a pantalla completa (181 explosion, 184 cambio de
             // modo). Va como ULTIMO hermano, al reves que el vignette: un
             // fogonazo de explosion tiene que tapar tambien el HUD.
+            // Panel de diagnostico (235). Apagado por defecto: medir no
+            // debe alterar lo medido. Se prende con [P].
+            var perfGO = new GameObject("PerfHud", typeof(RectTransform), typeof(PerfHudView));
+            perfGO.transform.SetParent(canvasGO.transform, false);
+            var perfRt = perfGO.GetComponent<RectTransform>();
+            perfRt.anchorMin = perfRt.anchorMax = new Vector2(0f, 1f);
+            perfRt.pivot = new Vector2(0f, 1f);
+            perfRt.anchoredPosition = new Vector2(16f, -16f);
+            perfRt.sizeDelta = new Vector2(420f, 110f);
+            var perfTextGO = new GameObject("Text", typeof(Text));
+            perfTextGO.transform.SetParent(perfGO.transform, false);
+            var perfTxt = perfTextGO.GetComponent<Text>();
+            perfTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            perfTxt.alignment = TextAnchor.UpperLeft;
+            perfTxt.color = new Color(0.6f, 1f, 0.7f);
+            perfTxt.fontSize = 14;
+            perfTxt.raycastTarget = false;
+            StretchFull(perfTextGO.GetComponent<RectTransform>());
+            var perfView = perfGO.GetComponent<PerfHudView>();
+            perfView.Bind(perfTxt);
+            perfHudRef = perfView;
+
             var flashGO = new GameObject("ScreenFlash", typeof(RectTransform), typeof(ScreenFlashView));
             flashGO.transform.SetParent(canvasGO.transform, false);
             StretchFull(flashGO.GetComponent<RectTransform>());
@@ -2308,7 +2386,12 @@ namespace SP.EditorTools
             controlsListRt.offsetMin = new Vector2(24f, 60f);
             controlsListRt.offsetMax = new Vector2(-24f, -60f);
 
-            var controlsBackBtn = BuildUIButton(controlsPanelGO.transform, "BackButton", "VOLVER", new Vector2(0f, -180f), new Color(0.5f, 0.5f, 0.5f));
+            var rebindOpenBtn = BuildUIButton(controlsPanelGO.transform, "RebindButton", "REMAPEAR", new Vector2(-130f, -180f), new Color(0.35f, 0.45f, 0.6f));
+            rebindOpenBtn.onClick.AddListener(pauseController.OnRebindClicked);
+
+            BuildRebindPanel(pauseGO.transform, pauseController);
+
+            var controlsBackBtn = BuildUIButton(controlsPanelGO.transform, "BackButton", "VOLVER", new Vector2(130f, -180f), new Color(0.5f, 0.5f, 0.5f));
             controlsBackBtn.onClick.AddListener(pauseController.OnControlsBackClicked);
 
             // Confirmacion antes de salir al menu: abandonar la partida es

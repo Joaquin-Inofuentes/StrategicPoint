@@ -6,6 +6,20 @@ using SP.Vehicles;
 
 namespace SP.Ai
 {
+    // Postura de combate de una unidad. Libre es el comportamiento
+    // historico y por defecto: las otras dos NO son un camino de codigo
+    // alternativo, son modificadores que se aplican sobre las mismas tres
+    // decisiones que ya existian (rango de vision, avanzar hacia el
+    // objetivo, apretar el gatillo). Con Libre esos modificadores son
+    // exactamente neutros: multiplicador 1f y guardas que devuelven true
+    // antes de mirar cualquier otra cosa.
+    public enum CombatStance
+    {
+        Libre,       // sin restricciones: identico al comportamiento de siempre
+        Defensiva,   // ve menos lejos y no se despega de su puesto
+        AltoElFuego  // detecta y encara, pero no dispara ni persigue
+    }
+
     // Máquina de estados de un soldado no poseído. Sensa, persigue, ataca,
     // reacciona a que le disparen y a que le disparen a un aliado cercano,
     // y ejecuta órdenes explícitas del jugador (T). Cuando el soldado pasa
@@ -17,6 +31,17 @@ namespace SP.Ai
         [SerializeField] float alertRadius = 30f;
         [SerializeField] float arriveThreshold = 0.6f;
 
+        // Modificadores de la postura Defensiva. En Libre no se leen: el
+        // multiplicador efectivo es la constante 1f y la correa ni se
+        // consulta (StanceAllowsPursuit sale por el return de arriba).
+        [SerializeField] float defensiveVisionMultiplier = 0.6f;
+        [SerializeField] float defensiveLeashRadius = 8f;
+
+        // Item 224: cada cuantos ticks se rehace la consulta de sensado.
+        // Con 1 el codigo queda literalmente en el comportamiento previo
+        // (una consulta por tick); con 2 o 3 se reparte la carga.
+        [SerializeField] int senseIntervalTicks = 3;
+
         Soldier self;
         Soldier target;
         Vector3 orderDestination;
@@ -24,6 +49,26 @@ namespace SP.Ai
         bool bootstrapped;
         Vehicle mountTarget;
         IDisposable damageSub;
+
+        // La postura NO se serializa a proposito, al reves que patrolRoute:
+        // no se asigna al construir la escena sino en runtime (el jugador
+        // la cambia durante la partida), y un valor guardado en la escena o
+        // el prefab podria arrancar a un soldado en algo que no sea Libre
+        // sin que nadie lo haya pedido. El default del campo es el default
+        // del enum, asi que cualquier soldado nace en Libre.
+        CombatStance stance = CombatStance.Libre;
+
+        // "Puesto" de la postura Defensiva: el punto del que no se aleja.
+        // Se fija al nacer y se re-ancla cuando le ponen Defensiva, porque
+        // el origen que importa es donde estaba parado cuando le dieron la
+        // orden, no donde spawneo diez minutos antes.
+        Vector3 homePosition;
+
+        // --- Cache del sensado repartido en el tiempo (item 224) ---
+        Soldier sensedTarget;   // ultimo resultado de la consulta
+        int tickCount;          // ticks simulados por ESTE cerebro
+        int lastSenseTick;      // tick en que se calculo sensedTarget
+        bool forceSense = true; // primer tick: sensar si o si
 
         // [SerializeField] NO es decorativo aca: la ruta se asigna por
         // codigo al construir la escena (HeadlessTestRunner.SetPatrolRoute)
@@ -56,6 +101,57 @@ namespace SP.Ai
         public bool IsPossessedByPlayer { get; set; }
         public Soldier CurrentTarget => target;
 
+        // ------------------------------------------------------------------
+        // Item 212: postura de combate
+        // ------------------------------------------------------------------
+        // Setter publico: lo maneja la UI / las ordenes del jugador. Cambiar
+        // de postura invalida el sensado cacheado y fuerza una consulta
+        // nueva, porque el rango de vision efectivo acaba de cambiar y
+        // servir el resultado calculado con el rango anterior seria mentir.
+        public CombatStance Stance
+        {
+            get => stance;
+            set
+            {
+                if (stance == value) return;
+                stance = value;
+                sensedTarget = null;
+                forceSense = true;
+                if (value == CombatStance.Defensiva) homePosition = transform.position;
+            }
+        }
+
+        public Vector3 HomePosition => homePosition;
+
+        // Rango de vision que usa el sensado. En Libre y en AltoElFuego el
+        // multiplicador es la constante 1f, y x * 1f es bit a bit el mismo
+        // float que x: la consulta recibe exactamente visionRange, el mismo
+        // valor que recibia antes de existir las posturas.
+        public float EffectiveVisionRange => visionRange * StanceVisionMultiplier;
+
+        float StanceVisionMultiplier =>
+            stance == CombatStance.Defensiva ? defensiveVisionMultiplier : 1f;
+
+        // ------------------------------------------------------------------
+        // Item 224: sensado repartido en el tiempo (verificable desde afuera)
+        // ------------------------------------------------------------------
+        public int SenseIntervalTicks
+        {
+            get => senseIntervalTicks;
+            // Menos de 1 seria division por cero en el modulo del desfasaje.
+            set => senseIntervalTicks = Mathf.Max(1, value);
+        }
+
+        // Antiguedad del objetivo cacheado, en ticks. Mientras el soldado
+        // este en un estado que sensa (Patrol / Idle / orden de movimiento
+        // simple) nunca supera SenseIntervalTicks - 1: ese es el tope de
+        // obsolescencia que se puede verificar desde afuera. En Chase y
+        // Attack sigue creciendo porque ahi no se sensa -- tampoco se
+        // sensaba antes -- y el cache se revalida antes de volver a usarse.
+        public int TicksSinceLastSense => tickCount - lastSenseTick;
+
+        public Soldier LastSensedTarget => sensedTarget;
+
         // Para dibujar la linea de destino en RTS (punto 26 del backlog):
         // solo tiene sentido mientras hay una orden de movimiento simple
         // en curso, no durante una persecucion de combate.
@@ -68,6 +164,7 @@ namespace SP.Ai
             if (bootstrapped) return;
             bootstrapped = true;
             self = GetComponent<Soldier>();
+            homePosition = transform.position;
             damageSub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnAnyDamage);
         }
 
@@ -183,6 +280,12 @@ namespace SP.Ai
                 return;
             }
 
+            // Reloj propio de este cerebro (item 224). Cuenta solo los ticks
+            // que realmente simula: si esta poseido, inactivo o muerto sale
+            // antes y no avanza, asi que el intervalo de sensado se mide en
+            // ticks de IA reales y no en frames de reloj de pared.
+            tickCount++;
+
             if (target != null && !target.Health.IsAlive)
                 target = null;
 
@@ -196,7 +299,11 @@ namespace SP.Ai
                 (State == AiState.MovingToOrder && mountTarget != null);
             if (State != AiState.Chase && State != AiState.Attack && !onProtectedOrder)
             {
-                var sensed = ActorRegistry.FindNearestEnemyInRange(self.transform.position, self.Team, visionRange);
+                // Misma guarda de sensado de siempre; lo unico que cambia es
+                // de donde sale el resultado: la consulta ahora pasa por el
+                // cache repartido en el tiempo y por el rango efectivo de la
+                // postura (en Libre, visionRange tal cual).
+                var sensed = SenseNearestEnemy();
                 if (sensed != null)
                 {
                     target = sensed;
@@ -249,7 +356,12 @@ namespace SP.Ai
                     if (target == null) { SetState(AiState.Patrol); break; }
                     float d = Vector3.Distance(self.transform.position, target.transform.position);
                     if (d <= attackRange) SetState(AiState.Attack);
-                    else self.Motor.MoveTowards(target.transform.position, attackRange * 0.85f, dt);
+                    // En Libre StanceAllowsPursuit devuelve true de entrada,
+                    // asi que este else-if ejecuta el MISMO MoveTowards de
+                    // antes y la rama de abajo es inalcanzable.
+                    else if (StanceAllowsPursuit(target.transform.position))
+                        self.Motor.MoveTowards(target.transform.position, attackRange * 0.85f, dt);
+                    else HoldStancePosition(dt);
                     break;
 
                 case AiState.Attack:
@@ -259,9 +371,118 @@ namespace SP.Ai
 
                     self.Motor.LookTowards(target.transform.position, dt);
                     self.Weapon.Tick(dt);
-                    self.Weapon.TryFire(self.transform.position, (target.transform.position - self.transform.position).normalized);
+                    // En Libre StanceAllowsFire es true y el TryFire es el
+                    // mismo de siempre. AltoElFuego encara y sigue al
+                    // enemigo con la mira, pero no aprieta el gatillo.
+                    if (StanceAllowsFire)
+                        self.Weapon.TryFire(self.transform.position, (target.transform.position - self.transform.position).normalized);
                     break;
             }
+        }
+
+        // ------------------------------------------------------------------
+        // Item 212: modificadores de postura
+        // ------------------------------------------------------------------
+        // Ninguno de estos dos metodos reescribe una decision: se enchufan
+        // como condicion sobre las decisiones que ya existian. La primera
+        // linea de cada uno es la salida neutra de Libre, para que la
+        // postura por defecto recorra el mismo camino de antes.
+        bool StanceAllowsPursuit(Vector3 targetPosition)
+        {
+            if (stance == CombatStance.Libre) return true;
+            if (stance == CombatStance.AltoElFuego) return false;
+            // Defensiva: persigo mientras el objetivo siga dentro de la
+            // burbuja alrededor de mi puesto. Se mide contra la posicion del
+            // objetivo y no contra la mia para que el soldado no quede
+            // oscilando justo sobre el borde de la correa.
+            return Vector3.Distance(homePosition, targetPosition) <= defensiveLeashRadius;
+        }
+
+        bool StanceAllowsFire => stance != CombatStance.AltoElFuego;
+
+        // Que hace cuando la postura le prohibe avanzar. Solo se llama con
+        // target != null (lo garantiza el case de Chase).
+        void HoldStancePosition(float dt)
+        {
+            // Defensiva: si venia persiguiendo cuando le cambiaron la
+            // postura, o lo arrastro una orden previa, vuelve caminando a su
+            // puesto en vez de quedarse clavado lejos de casa.
+            if (stance == CombatStance.Defensiva &&
+                Vector3.Distance(self.transform.position, homePosition) > arriveThreshold)
+            {
+                self.Motor.MoveTowards(homePosition, arriveThreshold, dt);
+                return;
+            }
+
+            // Ya esta en su puesto (o es AltoElFuego): no avanza, pero
+            // mantiene al enemigo encarado. Sigue detectandolo, que es
+            // justo lo que pide la postura.
+            self.Motor.LookTowards(target.transform.position, dt);
+        }
+
+        // ------------------------------------------------------------------
+        // Item 224: sensado repartido en el tiempo
+        // ------------------------------------------------------------------
+        // Se reparte SOLO esta consulta ("cual es el enemigo mas cercano"),
+        // que es lo caro y lo que se puede diferir. La maquina de estados y
+        // el movimiento siguen corriendo todos los ticks: mover a un soldado
+        // 1 de cada N frames se ve como un tartamudeo, y eso seria un precio
+        // visible a cambio de un ahorro invisible.
+        //
+        // OBSOLESCENCIA ACOTADA: el objetivo que devuelve este metodo puede
+        // tener hasta SenseIntervalTicks - 1 ticks de antiguedad (con N=3,
+        // hasta 2 ticks; a 60 fps, 33 ms). Es aceptable porque las escalas
+        // no se parecen: un soldado camina a 5 m/s y el rango de vision es
+        // de 10 m, asi que en 2 ticks recorre unos 17 cm -- necesita cientos
+        // de frames para entrar o salir del rango de vision. El unico efecto
+        // observable es reaccionar hasta 2 frames tarde a un enemigo que
+        // aparece, y el desfasaje por soldado hace que ni siquiera reaccionen
+        // todos tarde a la vez.
+        //
+        // El desfasaje es Id % N y no un random a proposito: reparte la carga
+        // igual de bien pero es determinista, asi dos corridas identicas dan
+        // el mismo resultado y las pruebas headless siguen siendo repetibles.
+        Soldier SenseNearestEnemy()
+        {
+            // CRITICO: si el objetivo cacheado murio o se desactivo (se subio
+            // a un vehiculo) se descarta AHORA y se re-sensa sin esperar el
+            // intervalo. Un soldado apuntandole 3 frames a un cadaver es un
+            // bug que se ve en pantalla.
+            //
+            // Ojo con lo que esto NO es: no es un filtro de la busqueda. La
+            // consulta sigue siendo la misma de siempre y sigue SIN filtrar
+            // por activeInHierarchy (ver el comentario de SpatialGrid.
+            // Rebuild: el barrido original tampoco lo filtraba, y un soldado
+            // montado igual podia ser sensado). Si la busqueda original
+            // hubiera devuelto a ese soldado inactivo, esta tambien lo
+            // devuelve: lo unico que se fuerza es volver a preguntarle al
+            // mundo en vez de servir un puntero viejo sin revisar. La regla
+            // de a quien se detecta no cambia.
+            if (sensedTarget != null && !IsCachedSenseUsable(sensedTarget))
+            {
+                sensedTarget = null;
+                forceSense = true;
+            }
+
+            if (forceSense || senseIntervalTicks <= 1 ||
+                (tickCount + (self.Id % senseIntervalTicks)) % senseIntervalTicks == 0)
+            {
+                forceSense = false;
+                lastSenseTick = tickCount;
+                sensedTarget = ActorRegistry.FindNearestEnemyInRange(
+                    self.transform.position, self.Team, EffectiveVisionRange);
+            }
+
+            return sensedTarget;
+        }
+
+        // Se evalua sobre el CACHE, nunca sobre los candidatos de la
+        // busqueda. Un objetivo cacheado sirve mientras siga existiendo,
+        // vivo y activo; si no, se re-sensa en el acto.
+        static bool IsCachedSenseUsable(Soldier s)
+        {
+            return s != null && s.Health != null && s.Health.IsAlive &&
+                   s.gameObject.activeInHierarchy;
         }
     }
 }

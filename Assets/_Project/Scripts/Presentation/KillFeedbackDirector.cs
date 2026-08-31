@@ -147,6 +147,16 @@ namespace SP.Presentation
             // Mismo caso que el tono critico de la mirilla: hace falta un
             // AudioSource propio porque el pitch varia. El bloque vivia
             // duplicado en los dos lados; ahora es un solo helper.
+            //
+            // ESTE SE QUEDA EN PlayOneShot2D, no migra a AudioDirector, y
+            // es el caso mas claro de los dos: aca el pitch no es un
+            // adorno, ES el numero de la racha. El clip es siempre el mismo
+            // (SfxKind.Swap) y lo unico que dice "vas por la quinta" es que
+            // suena mas agudo que la cuarta. AudioDirector fija el pitch el
+            // mismo con NextPitch (variacion aleatoria por instancia, item
+            // 191) y no admite pedirlo: por PlayUi, toda la escalera de
+            // racha sonaria igual, con ruido aleatorio encima. Se migra
+            // recien el dia que el director acepte un pitch explicito.
             GenericSfx.PlayOneShot2D(
                 GenericSfx.Get(SfxKind.Swap),
                 0.5f,
@@ -173,6 +183,22 @@ namespace SP.Presentation
         {
             SlowMotionActive = true;
             Time.timeScale = SlowMotionScale;
+
+            // Item 197: "silencio tactico". La camara lenta sola cambia la
+            // imagen pero no el oido, y el climax se seguia escuchando
+            // igual de saturado que el resto del tiroteo. El duck es
+            // MARCADO (0.7 contra el 0.25 del cañonazo) justamente porque
+            // esto pasa UNA sola vez por partida: no hay riesgo de que la
+            // mezcla quede bombeando.
+            //
+            // AudioDucking recupera el volumen en 1.5 s reales con
+            // Time.unscaledDeltaTime, o sea que la recuperacion no se
+            // estira con el timeScale de 0.25 y termina poco despues de que
+            // la camara lenta vuelva a la normalidad. Y recupera hacia el
+            // TECHO DEL USUARIO leido de PlayerPrefs, no hacia 1: a quien
+            // dejo el slider en 0.3 no se le sube el volumen al final.
+            AudioDucking.Duck(0.7f);
+
             // unscaled: si se esperara en tiempo de juego, la propia camara
             // lenta estiraria su propia duracion.
             yield return new WaitForSecondsRealtime(SlowMotionSeconds);

@@ -281,19 +281,38 @@ namespace SP.Player
             EventBus.Instance.Publish(new OrderAcknowledgedEvent(list.ConvertAll(s => s.Id).ToArray()));
         }
 
-        // PlayClipAtPoint crea un GameObject que se autodestruye con
-        // Destroy(), ilegal fuera de Play mode -- y el test headless corre
-        // las fases en Edit mode.
-        static void PlayAt(SfxKind kind, float volume)
+        // Confirmacion de orden: canal Ui y 2D.
+        //
+        // La version anterior hacia AudioSource.PlayClipAtPoint en
+        // cam.transform.position, es decir un sonido POSICIONAL puesto
+        // exactamente encima del oyente para simular uno plano. Eso es un
+        // 2D mal hecho: pagaba atenuacion, panorama y rolloff para que
+        // dieran neutro, y quedaba a merced de donde estuviera la camara
+        // ese frame (en vista RTS la camara se mueve sola). Una
+        // confirmacion de orden no ocurre en ningun lugar del mundo: la
+        // emite la interfaz, no la escena. Va por el canal Ui, que ademas
+        // le da al jugador un volumen propio, separado del de efectos.
+        //
+        // Prioridad alta: es acuse de recibo de algo que el jugador acaba
+        // de pedir. Si se lo come el limite de voces, el juego parece que
+        // ignoro la orden. Ademas el canal Ui tiene reserva propia (6
+        // voces), asi que no compite contra el tiroteo.
+        static void PlayUi(SfxKind kind, float volume, float priority)
         {
+            // La suite headless corre en Edit mode. AudioDirector lo vuelve
+            // a chequear; salir antes evita hasta generar el clip.
             if (!Application.isPlaying) return;
-            var cam = Camera.main;
-            AudioSource.PlayClipAtPoint(GenericSfx.Get(kind), cam != null ? cam.transform.position : Vector3.zero, volume);
+            // Si no hay director todavia, PlayUi2D devuelve false en
+            // silencio en vez de tirar.
+            AudioDirector.PlayUi2D(kind, volume, priority);
         }
 
-        static void PlayOrderSound() => PlayAt(SfxKind.Order, 0.5f);
+        static void PlayOrderSound() => PlayUi(SfxKind.Order, 0.5f, 0.9f);
 
-        public static void PlayRejectSound() => PlayAt(SfxKind.EmptyClick, 0.6f);
+        // El "no" mecanico va todavia mas arriba que la confirmacion: es la
+        // UNICA senal de que la accion se rechazo. Perderla deja al jugador
+        // creyendo que el juego no registro el click.
+        public static void PlayRejectSound() => PlayUi(SfxKind.EmptyClick, 0.6f, 0.95f);
 
         public static void IssueMountOrder(Soldier soldier, Vehicle vehicle)
         {

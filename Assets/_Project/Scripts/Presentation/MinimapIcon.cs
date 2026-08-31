@@ -36,44 +36,82 @@ namespace SP.Presentation
         // de su alcance de vision (el mismo valor que usa AiBrain para
         // sensar).
         [SerializeField] bool fogEnabled;
-        const float FogVisionRange = 10f;
-        const float FogCheckInterval = 0.3f;
-        float nextFogCheck;
+        // Publica porque quien resuelve la niebla ahora es WorldUiDirector:
+        // arma UNA sola lista de observadores vivos por pase y la compara
+        // contra todos los iconos, en vez de que cada icono dispare su
+        // propia consulta a la grilla espacial con su propio timer.
+        public const float FogVisionRange = 10f;
+
+        public bool FogEnabled => fogEnabled;
 
         public void EnableFogOfWar()
         {
             fogEnabled = true;
-            if (selfRenderer == null) selfRenderer = GetComponent<MeshRenderer>();
+            EnsureRenderer();
             if (selfRenderer != null) selfRenderer.enabled = false;
         }
 
-        void LateUpdate()
+        // selfRenderer es un campo privado comun: NO sobrevive al domain
+        // reload al entrar en Play. OnEnable si vuelve a correr ahi, asi
+        // que la referencia se recompone sola.
+        void EnsureRenderer()
+        {
+            if (selfRenderer == null) selfRenderer = GetComponent<MeshRenderer>();
+        }
+
+        // Alta y baja en el unico recorrido de UI de mundo. Mismo patron
+        // que SP.Core.WorldSystemsRegistry.
+        void OnEnable()
+        {
+            EnsureRenderer();
+            WorldUiDirector.Register(this);
+        }
+
+        void OnDisable() => WorldUiDirector.Unregister(this);
+
+        public bool IsRendered
+        {
+            get
+            {
+                EnsureRenderer();
+                return selfRenderer != null && selfRenderer.enabled;
+            }
+        }
+
+        // El director necesita el punto del mundo que representa el icono
+        // sin tener que tocar Target por su cuenta.
+        public Vector3 TargetPosition => Target != null ? Target.position : transform.position;
+
+        // Antes esto era un LateUpdate propio: con cincuenta unidades eran
+        // cincuenta LateUpdate por frame solo para copiar una posicion.
+        // Ahora lo llama WorldUiDirector desde un unico recorrido.
+        // Devuelve false si el icono se destruyo por quedarse sin objetivo.
+        public bool TickFollow()
         {
             if (Target == null)
             {
                 if (Application.isPlaying) Destroy(gameObject);
                 else DestroyImmediate(gameObject);
-                return;
+                return false;
             }
             transform.position = new Vector3(Target.position.x, height, Target.position.z);
             if (directionMarker != null)
                 transform.rotation = Quaternion.Euler(0f, Target.eulerAngles.y, 0f);
+            return true;
+        }
 
-            if (fogEnabled && Application.isPlaying && Time.time >= nextFogCheck)
-            {
-                nextFogCheck = Time.time + FogCheckInterval;
-                if (selfRenderer == null) selfRenderer = GetComponent<MeshRenderer>();
-                if (selfRenderer != null)
-                {
-                    // Reutiliza la misma grilla espacial que ya arma
-                    // WorldSimulationDriver cada tick: no es una busqueda
-                    // lineal nueva por icono, es la consulta acotada por
-                    // rango que ya existe.
-                    bool spotted = ActorRegistry.FindNearestEnemyInRange(Target.position, TeamId.Enemy, FogVisionRange) != null;
-                    selfRenderer.enabled = spotted;
-                    if (directionMarker != null) directionMarker.gameObject.SetActive(false); // los enemigos no llevan flecha
-                }
-            }
+        // Solo se llama en los pases de reevaluacion del director (cada
+        // ~0.25 s), el mismo espaciado que tenia el timer propio de cada
+        // icono: la niebla no necesita resolverse por frame. El calculo de
+        // "spotted" vive en el director porque ahi se hace por lote para
+        // todos los iconos a la vez.
+        public void ApplyFog(bool spotted)
+        {
+            if (!fogEnabled || !Application.isPlaying) return;
+            EnsureRenderer();
+            if (selfRenderer == null) return;
+            selfRenderer.enabled = spotted;
+            if (directionMarker != null) directionMarker.gameObject.SetActive(false); // los enemigos no llevan flecha
         }
 
         public void EnableDirectionMarker(int layer, float iconRadius)

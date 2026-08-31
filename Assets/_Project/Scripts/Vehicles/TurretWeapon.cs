@@ -164,7 +164,10 @@ namespace SP.Vehicles
             // El fin del cooldown era invisible y mudo: habia que mirar el
             // HUD justo cuando hay que mirar el campo. Suena al
             // COMPLETARSE, no al iniciarse.
-            if (wasReloading && cooldownTimer <= 0f) PlayAt(SP.Presentation.SfxKind.TurretReloaded, 0.45f);
+            // Prioridad media: es informacion util para el artillero, pero
+            // si el pool esta saturado tiene que perder contra disparos e
+            // impactos, que son lo que decide si seguis vivo.
+            if (wasReloading && cooldownTimer <= 0f) PlayAtMuzzle(SP.Presentation.SfxKind.TurretReloaded, 0.45f, 0.5f);
 
             Heat = Mathf.Max(0f, Heat - HeatCoolPerSec * dt);
             ApplyHeatColor();
@@ -217,8 +220,31 @@ namespace SP.Vehicles
 
             // Dos capas: cuerpo grave (el peso) y crack agudo (el golpe).
             // Un tono unico no suena a cañon por mas fuerte que sea.
-            PlayAt(SP.Presentation.SfxKind.CannonBody, 0.9f);
-            PlayAt(SP.Presentation.SfxKind.CannonCrack, 0.55f);
+            //
+            // Las dos van en la boca del cañon (spawnPos ya ES esa
+            // posicion, la misma que usa el proyectil y el fogonazo) y con
+            // la prioridad mas alta del canal de efectos: es el sonido mas
+            // fuerte del juego, si se lo come el limite de voces el disparo
+            // mas potente queda mudo, que es peor que perder cualquier otra
+            // cosa. El cuerpo va por encima del crack porque es el que
+            // lleva el peso; si solo entra uno, que entre ese.
+            PlayAtMuzzle(SP.Presentation.SfxKind.CannonBody, 0.9f, 0.95f);
+            PlayAtMuzzle(SP.Presentation.SfxKind.CannonCrack, 0.55f, 0.9f);
+
+            // Item 190: duck leve al disparar el cañon. Un cañonazo tiene
+            // que "aplastar" un instante el resto de la mezcla o se pierde
+            // entre cincuenta fusiles sonando a la vez; 0.25 es leve a
+            // proposito, esto pasa muy seguido y un duck marcado aca
+            // dejaria el combate entero bombeando. El marcado es el del
+            // item 197 (camara lenta), que pasa una sola vez por partida.
+            //
+            // Respeta el techo de volumen del usuario porque AudioDucking
+            // lo relee de PlayerPrefs: nunca sube el volumen mas alla del
+            // slider. Va DESPUES de reproducir, aunque en la practica da
+            // igual: AudioListener.volume se aplica en vivo, asi que el
+            // propio cañonazo tambien se atenua un poco -- que es lo que
+            // hace un compresor real y suena bien.
+            SP.Presentation.AudioDucking.Duck(0.25f);
 
             SpawnMuzzleDust(spawnPos);
             KickChassis();
@@ -234,16 +260,33 @@ namespace SP.Vehicles
             return true;
         }
 
-        static void PlayAt(SP.Presentation.SfxKind kind, float volume)
+        // Item 193: BUG REAL que arregla esto. La version anterior
+        // reproducia el cañon con AudioSource.PlayClipAtPoint en
+        // cam.transform.position, o sea EN LA OREJA DEL JUGADOR: sonaba
+        // exactamente igual de fuerte y de centrado tuvieras el tanque al
+        // lado o a ochenta metros, y nunca desde el lado correcto. El audio
+        // posicional del arma mas ruidosa del juego estaba, en la practica,
+        // apagado. Ahora se pasa la posicion REAL de la boca del cañon y la
+        // atenuacion, el panorama y el filtro por distancia los aplica
+        // AudioDirector.
+        //
+        // Deja de ser estatico a proposito: la posicion de la boca es
+        // estado de ESTA torreta.
+        void PlayAtMuzzle(SP.Presentation.SfxKind kind, float volume, float priority)
         {
-            // PlayClipAtPoint crea un objeto que se autodestruye con
-            // Destroy(), ilegal fuera de Play mode -- y la suite headless
-            // corre las fases en Edit mode.
+            // La suite headless corre las fases en Edit mode: nada de audio
+            // puede ejecutarse ahi. AudioDirector lo vuelve a chequear, pero
+            // salir antes evita hasta generar el clip.
             if (!Application.isPlaying) return;
-            var cam = Camera.main;
-            AudioSource.PlayClipAtPoint(SP.Presentation.GenericSfx.Get(kind),
-                cam != null ? cam.transform.position : Vector3.zero, volume);
+            // Instance null (Edit mode, o antes de que se construya el
+            // director): PlayAt devuelve false en silencio, no tira.
+            SP.Presentation.AudioDirector.PlayAt(kind, MuzzlePosition, volume, priority);
         }
+
+        // Sin Muzzle cableado se cae al centro de la torreta, que es la
+        // mejor aproximacion disponible y sigue siendo una posicion del
+        // mundo -- nunca la de la camara.
+        Vector3 MuzzlePosition => Muzzle != null ? Muzzle.position : transform.position;
 
         // Solo cuando la boca esta cerca del suelo: disparar con el cañon
         // levantado no deberia levantar polvo de la nada.

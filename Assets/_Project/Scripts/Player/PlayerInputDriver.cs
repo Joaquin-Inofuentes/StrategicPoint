@@ -28,6 +28,7 @@ namespace SP.Player
         // Publico (no privado) a proposito: asi Unity lo serializa y la
         // referencia sobrevive el domain reload al entrar a Play.
         public DamageVignetteView DamageVignette;
+        public SP.UI.PerfHudView PerfHud;
         // Formacion con la que se emiten las ordenes de movimiento. Cuadricula
         // es la de siempre, asi que el comportamiento por defecto no cambia.
         FormationKind currentFormation = FormationKind.Cuadricula;
@@ -313,6 +314,9 @@ namespace SP.Player
             // pausa), pero congela la entrada del jugador mientras esta
             // abierto para no mover ni disparar por error mientras lee.
             if (kb.hKey.wasPressedThisFrame && PauseRef != null) PauseRef.ToggleControlsOverlay();
+            // [P] panel de diagnostico: fps (mediana y p95), conteos de
+            // actores, proyectiles y voces de audio. Solo lectura.
+            if (kb.pKey.wasPressedThisFrame && PerfHud != null) PerfHud.Toggle();
             if (PauseRef != null && PauseRef.IsControlsOverlayOpen) return;
 
             UpdateCursorLock(kb, Mouse.current);

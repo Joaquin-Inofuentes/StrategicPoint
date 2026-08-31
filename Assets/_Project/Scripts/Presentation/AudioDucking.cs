@@ -33,7 +33,10 @@ namespace SP.Presentation
         public static void Duck(float intensity01)
         {
             if (!Application.isPlaying) return;
-            if (!SP.CameraSystem.CameraFxSettings.Enabled) return;
+            // A proposito NO se consulta CameraFxSettings: eso apaga efectos
+            // de CAMARA (sacudida, balanceo, destellos) porque son la causa
+            // principal de mareo. La sordera es audio, no camara: alguien
+            // que apaga los efectos visuales no tiene por que perderla.
 
             EnsureHost();
             if (instance == null) return;

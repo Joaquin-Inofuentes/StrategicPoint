@@ -261,14 +261,28 @@ namespace SP.UI
 
             // Cada nivel tambien suena distinto: en pleno combate la señal
             // sonora llega antes que la visual.
-            // El tono critico necesita pitch propio, y eso obliga a un
-            // AudioSource: se centraliza en GenericSfx en vez de repetir
-            // el bloque (y colgar un GameObject de la raiz por impacto).
+            //
+            // ESTE SE QUEDA EN PlayOneShot2D, no migra a AudioDirector.
+            // El tono critico ES el pitch: es SfxKind.Hit a 1.7, o sea el
+            // mismo clip del impacto normal subido de tono, y esa es toda
+            // la diferencia entre "le pegue" y "le pegue fuerte". El
+            // director fija el pitch el mismo (NextPitch, la variacion por
+            // instancia del item 191) y no expone ningun parametro para
+            // pedirlo: pasar por PlayUi haria sonar el critico igual que un
+            // impacto comun y la senal desapareceria. Ojo, ademas, con
+            // PlayOneShot: no captura el pitch, lo lee en vivo cada frame
+            // -- por eso hace falta un AudioSource propio y no basta con
+            // subirle el pitch a uno compartido.
             if (isCritical) GenericSfx.PlayOneShot2D(GenericSfx.Get(SfxKind.Hit), 0.5f, 1.7f, "CritTone");
             if (isKill)
             {
-                var clip = GenericSfx.Get(SfxKind.Swap); // tono agudo distintivo, ya existente en la paleta de sonidos
-                AudioSource.PlayClipAtPoint(clip, Camera.main != null ? Camera.main.transform.position : Vector3.zero, 0.6f);
+                // Este si migra: no depende del pitch. Antes era un
+                // PlayClipAtPoint posicional plantado en la camara, o sea
+                // un 2D mal hecho y ademas un GameObject nuevo por baja.
+                // Canal Ui y prioridad casi maxima: confirmar una baja es
+                // la informacion que mas cambia la decision siguiente del
+                // jugador (dejar de tirarle y buscar otro blanco).
+                AudioDirector.PlayUi2D(SfxKind.Swap, 0.6f, 0.95f);
             }
         }
 

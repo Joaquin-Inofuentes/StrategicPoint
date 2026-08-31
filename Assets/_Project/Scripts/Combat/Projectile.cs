@@ -48,6 +48,17 @@ namespace SP.Combat
         // el vehiculo aparecia destruido una y otra vez en las pruebas y yo
         // lo atribuia a los enemigos.
         SP.Vehicles.Vehicle ignoreVehicle;
+
+        // Item 194: si ya sono el silbido de esta bala. Es UNA sola vez por
+        // proyectil: sin esto, mientras la bala atraviesa la esfera de 3 m
+        // se cumple la condicion en varios ticks seguidos y saldrian cuatro
+        // o cinco silbidos superpuestos por bala -- que ademas se comerian
+        // el pool de voces entero en un tiroteo. Se resetea en OnDespawn,
+        // junto a gravity e ignoreVehicle, porque el pool REUSA la misma
+        // instancia: sin resetear, cada objeto del pool silbaria una unica
+        // vez en toda la partida y nunca mas.
+        bool whizzPlayed;
+
         public float Gravity => gravity;
         public Vector3 Velocity => velocity;
 
@@ -114,6 +125,7 @@ namespace SP.Combat
             active = false;
             gravity = 0f;
             ignoreVehicle = null;
+            whizzPlayed = false;
             ActiveInstances.Remove(this);
             // Vuelve a escala de reposo uniforme: sin esto, la proxima vez
             // que el pool reutilice este mismo objeto para un impacto (no
@@ -198,6 +210,7 @@ namespace SP.Combat
                     {
                         vehicle.TakeDamage(damage, ownerId);
                         EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, transform.position));
+                        PlayImpactSfx(EnvironmentHitKind.Vehicle, transform.position, 0.55f);
                         // Blindaje: chispas metalicas rebotadas, no el
                         // mismo polvo generico que contra el suelo.
                         var awayFromHull = (transform.position - vehicle.transform.position).normalized;
@@ -231,6 +244,7 @@ namespace SP.Combat
                         // la cobertura no cambiaba nada.
                         obstacle.TakeDamage(damage);
                         EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Obstacle, transform.position));
+                        PlayImpactSfx(EnvironmentHitKind.Obstacle, transform.position, 0.5f);
                         ImpactFx.SpawnScaledByDamage(transform.position, ImpactFx.ObstacleColor, damage);
                         var awayFromWall = (transform.position - obstacle.transform.position).normalized;
                         DecalPool.Spawn(DecalKind.BulletHole, transform.position, awayFromWall, 0.22f);
@@ -250,6 +264,7 @@ namespace SP.Combat
                 else
                 {
                     EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, transform.position));
+                    PlayImpactSfx(EnvironmentHitKind.Ground, transform.position, 0.45f);
                     ImpactFx.SpawnScaledByDamage(transform.position, ImpactFx.GroundColor, damage);
                     DecalPool.Spawn(DecalKind.BulletHole, new Vector3(transform.position.x, 0.02f, transform.position.z), Vector3.up, 0.25f);
                 }
@@ -257,7 +272,126 @@ namespace SP.Combat
                 return;
             }
 
+            // Item 194: va DESPUES de todos los chequeos de impacto y de
+            // los return tempranos que traen. Una bala que te acaba de
+            // pegar (o que pego al lado) ya no "pasa cerca": el silbido es
+            // el sonido de la que FALLA, y sonarlo en el mismo tick del
+            // impacto se leeria como que erraron cuando en realidad
+            // acertaron.
+            TryPlayNearMissWhizz();
+
             if (age >= lifetime) Expire();
+        }
+
+        // ------------------------------------------------------------------
+        // Item 192: cola de impacto por material
+        // ------------------------------------------------------------------
+
+        // Hasta ahora EnvironmentHitEvent solo movia particulas: pegarle al
+        // blindaje de un tanque, a una pared o al piso producia tres
+        // efectos visuales distintos y CERO sonido. Con la camara mirando
+        // para otro lado el jugador no se enteraba de nada.
+        //
+        // Prioridad media-baja por defecto: los impactos son el suceso mas
+        // frecuente del juego y no pueden ganarle en el pool a un disparo
+        // ni a una muerte. Si el limite de voces los descarta, se descartan
+        // -- para eso esta.
+        static void PlayImpactSfx(EnvironmentHitKind kind, Vector3 point, float volume, float priority = 0.4f)
+        {
+            // La suite headless corre en Edit mode. AudioDirector lo
+            // vuelve a chequear, pero salir antes evita hasta generar el
+            // clip la primera vez.
+            if (!Application.isPlaying) return;
+
+            SfxKind sfx;
+            switch (kind)
+            {
+                // Blindaje: multi-parcial agudo, "tink".
+                case EnvironmentHitKind.Vehicle: sfx = SfxKind.ImpactMetal; break;
+                // Los obstaculos de este juego son cobertura solida
+                // (ObstacleMarker: bloques que bloquean el paso), asi que
+                // suenan a piedra y no a chapa ni a tierra.
+                case EnvironmentHitKind.Obstacle: sfx = SfxKind.ImpactStone; break;
+                default: sfx = SfxKind.ImpactDirt; break;
+            }
+
+            // Estatico y con Instance null-safe: si todavia no hay
+            // director (Edit mode, o antes de que se construya) devuelve
+            // false en silencio en vez de tirar.
+            AudioDirector.PlayAt(sfx, point, volume, priority);
+        }
+
+        // ------------------------------------------------------------------
+        // Item 194: silbido de bala cercana
+        // ------------------------------------------------------------------
+
+        // A que distancia del oido pasa a ser "cerca". Tres metros es el
+        // radio pedido y es coherente con hitRadius (1): mas ancho y
+        // silbaria cualquier bala del tiroteo, mas angosto y solo silbarian
+        // las que igual te iban a pegar.
+        const float WhizzRadius = 3f;
+
+        // Solo para el camino de respaldo por camara (ver abajo): a la
+        // velocidad de un proyectil de mano, en 0.12 s ya recorrio varios
+        // metros y salio de la esfera. Sirve para que las balas PROPIAS,
+        // que nacen justo encima del jugador, no silben al salir.
+        const float WhizzFallbackMinAge = 0.12f;
+
+        void TryPlayNearMissWhizz()
+        {
+            if (whizzPlayed) return;
+            if (!Application.isPlaying) return;
+
+            // COMO SE SABE QUIEN ES EL POSEIDO SIN ACOPLAR ESTO AL INPUT:
+            // PlayerBrain no tiene ningun accesor estatico (hay que buscarlo
+            // con FindAnyObjectByType, que es exactamente lo prohibido:
+            // esto corre por proyectil y por frame). Pero KillFeedbackDirector
+            // SI es un singleton estatico y YA tiene el PlayerBrain cableado
+            // desde el constructor de escena, porque lo necesita para saber
+            // si una baja fue tuya. Son dos derreferencias de campo, cero
+            // barridos, y no le agrega ninguna dependencia nueva al
+            // proyecto: SP.Combat ya usa SP.Presentation.
+            var director = SP.Presentation.KillFeedbackDirector.Instance;
+            var possessed = director != null && director.Brain != null ? director.Brain.Current : null;
+
+            Vector3 earPos;
+            if (possessed != null)
+            {
+                // El silbido es de las balas ENEMIGAS. Las propias, y las
+                // de tu escuadra, no producen esa sensacion -- y en un
+                // tiroteo con cincuenta aliados sonarian todo el tiempo.
+                if (possessed.Team == ownerTeam) return;
+                earPos = possessed.transform.position;
+            }
+            else
+            {
+                // RESPALDO DOCUMENTADO: sin poseido resuelto (Edit mode, o
+                // el director todavia sin construir) se usa la camara como
+                // aproximacion de "donde esta el jugador". Es honesto:
+                // ahi vive el AudioListener, o sea es literalmente el punto
+                // desde el que se escucha.
+                //
+                // Lo que se PIERDE es el filtro por equipo: sin soldado no
+                // hay equipo del jugador contra el cual comparar ownerTeam.
+                // Por eso este camino exige ademas una edad minima: en FPS
+                // la camara esta encima del soldado poseido y sus propias
+                // balas nacen dentro de la esfera de 3 m, asi que sin el
+                // gate cada disparo tuyo se silbaria a si mismo.
+                var cam = Camera.main;
+                if (cam == null) return;
+                if (age < WhizzFallbackMinAge) return;
+                earPos = cam.transform.position;
+            }
+
+            // sqrMagnitude y no Distance: esto corre por proyectil y por
+            // frame, y la raiz cuadrada no aporta nada para comparar.
+            if ((transform.position - earPos).sqrMagnitude > WhizzRadius * WhizzRadius) return;
+
+            whizzPlayed = true;
+            // Prioridad BAJA a proposito (item 194): es ambientacion, no
+            // informacion accionable. Si el pool esta saturado por disparos
+            // e impactos, este es el primero que sobra.
+            AudioDirector.PlayAt(SfxKind.BulletWhizz, transform.position, 0.4f, 0.2f);
         }
 
         // Granada del tanque: reparte daño a todo lo que esté adentro del
@@ -298,6 +432,12 @@ namespace SP.Combat
             }
 
             EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, point));
+            // Mas fuerte y mas prioritario que el impacto puntual: es una
+            // granada, no una bala. Sigue siendo la cola de tierra y no un
+            // sonido de explosion propio -- el evento que publica la
+            // explosion ES Ground, y inventarle un SfxKind aparte seria
+            // diseño nuevo, no el item 192.
+            PlayImpactSfx(EnvironmentHitKind.Ground, point, 0.85f, 0.8f);
             ImpactFx.SpawnExplosion(point, explosionRadius);
 
             // Una explosion cerca se veia pero no se SENTIA: la camara
