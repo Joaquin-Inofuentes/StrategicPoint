@@ -1005,10 +1005,10 @@ namespace SP.Player
             }
 
             string role = currentSeat == VehicleSeatRole.Driver
-                ? "[WASD] conducir · [G] frenar · [2] ir a la torreta · [V] camara · [TAB] vista RTS · [E] bajar"
+                ? "[WASD] conducir · [G] frenar · [2] ir a la torreta · [V] cámara · [TAB] vista RTS · [E] bajar"
                 : currentSeat == VehicleSeatRole.Gunner
-                    ? "[Mouse] apuntar torreta · [Click] disparar · [Click der.] mandar la camioneta ahi (si hay conductor) · [1] volver a conducir · [V] camara · [TAB] vista RTS · [E] bajar"
-                    : "[E] bajar · [V] camara · [TAB] vista RTS";
+                    ? "[Mouse] apuntar torreta · [Click] disparar · [Click der.] mandar la camioneta ahí (si hay conductor) · [1] volver a conducir · [V] cámara · [TAB] vista RTS · [E] bajar"
+                    : "[E] bajar · [V] cámara · [TAB] vista RTS";
             SetInstructionText(role);
         }
 

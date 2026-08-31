@@ -2054,10 +2054,10 @@ namespace SP.EditorTools
                 "Vista RTS: [WASD] panear · [Rueda] zoom · [Arrastrar] seleccionar\n" +
                 "[Shift+Click] sumar a seleccion · [Ctrl+A] seleccionar escuadra\n" +
                 "[T]/[Click der.] mover selección · [X] cancelar orden\n" +
-                "[G] subir/bajar del vehiculo · [F] poseer\n\n" +
-                "Vehiculo: [WASD] conducir · [G] frenar · [1][2] cambiar asiento\n" +
-                "[V] camara · [E] bajar · [Click] disparar torreta (artillero)\n\n" +
-                "[ESC] pausa/volver atras un paso";
+                "[G] subir/bajar del vehículo · [F] poseer\n\n" +
+                "Vehículo: [WASD] conducir · [G] frenar · [1][2] cambiar asiento\n" +
+                "[V] cámara · [E] bajar · [Click] disparar torreta (artillero)\n\n" +
+                "[ESC] pausa/volver atrás un paso";
             var controlsListRt = controlsListGO.GetComponent<RectTransform>();
             controlsListRt.anchorMin = new Vector2(0f, 0f);
             controlsListRt.anchorMax = new Vector2(1f, 1f);
@@ -2298,7 +2298,7 @@ namespace SP.EditorTools
             {
                 ("Aliado", PlayerMinimapColor),
                 ("Enemigo", EnemyMinimapColor),
-                ("Vehiculo", new Color(0.98f, 0.65f, 0.15f)),
+                ("Vehículo", new Color(0.98f, 0.65f, 0.15f)),
             };
 
             for (int i = 0; i < entries.Length; i++)
