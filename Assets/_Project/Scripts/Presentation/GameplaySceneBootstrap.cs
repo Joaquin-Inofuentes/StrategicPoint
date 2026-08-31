@@ -36,7 +36,23 @@ namespace SP.Presentation
             // propio TAB marca el PlayerPref, ver PlayerInputDriver).
             if (ModeToast != null && PlayerPrefs.GetInt(PrefUsedTab, 0) == 0)
                 StartCoroutine(ShowTabHintDelayed());
+
+            // 52: guiar la PRIMERA accion. El cartel de objetivo dice QUE
+            // hay que lograr, pero no que hacer en el primer segundo: un
+            // jugador nuevo se quedaba parado sin saber por donde empezar.
+            // Va por la cola de alertas (216) para no pisarse con el aviso
+            // de TAB, que se dispara en la misma ventana de tiempo.
+            if (PlayerPrefs.GetInt(PrefFirstActionShown, 0) == 0)
+            {
+                SP.UI.AlertQueue.Push("Avanza con [WASD] y dispara con clic izquierdo",
+                                      SP.UI.AlertPriority.Baja, 3.5f);
+                PlayerPrefs.SetInt(PrefFirstActionShown, 1);
+            }
         }
+
+        // Una sola vez en la vida del jugador, igual que el aviso de TAB:
+        // repetirlo en cada partida seria ruido para quien ya sabe jugar.
+        const string PrefFirstActionShown = "sp_first_action_shown";
 
         IEnumerator ShowTabHintDelayed()
         {

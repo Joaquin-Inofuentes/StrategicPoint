@@ -23,7 +23,7 @@ Encontrado jugando como usuario promedio. Estado: [ ] pendiente · [x] hecho
 ## IT4 — Munición
 - [x] 13. Aviso "SIN MUNICION" al llegar a 0
 - [x] 14. Contador en rojo con poca munición (<30%)
-- [ ] 15. Barra de recarga más legible
+- [x] 15. Barra de recarga más legible
 - [x] 16. Tecla [R] de recarga manual
 
 ## IT5 — Daño recibido
@@ -52,19 +52,19 @@ Encontrado jugando como usuario promedio. Estado: [ ] pendiente · [x] hecho
 
 ## IT9 — Transición FPS↔RTS
 - [x] 33. Aviso breve del modo al cambiar ("VISTA RTS")
-- [ ] 34. Lerp de cámara al cambiar de modo (no corte seco)
+- [x] 34. Lerp de cámara al cambiar de modo (no corte seco)
 - [x] 35. Recordar posición de cámara RTS al volver
 - [x] 36. Instrucciones distintas y claras por modo
 
 ## IT10 — Vehículo
 - [x] 37. Aviso de asiento ocupado al intentar entrar
-- [ ] 38. Barra de vida del vehículo siempre visible al ir adentro
-- [ ] 39. Indicador de velocidad más legible
+- [x] 38. Barra de vida del vehículo siempre visible al ir adentro
+- [x] 39. Indicador de velocidad más legible
 - [x] 40. Aviso al destruirse el vehículo
 
 ## IT11 — Pantallas de fin
 - [x] 41. Estadísticas en victoria/derrota (bajas, tiempo)
-- [ ] 42. Distinguir mejor victoria de derrota visualmente
+- [x] 42. Distinguir mejor victoria de derrota visualmente
 - [x] 43. Foco por defecto en botón Reintentar
 - [x] 44. Navegación por teclado en los botones
 
@@ -78,11 +78,11 @@ Encontrado jugando como usuario promedio. Estado: [ ] pendiente · [x] hecho
 - [x] 49. Cartel inicial con el objetivo de la misión
 - [x] 50. Recordatorio de [TAB] las primeras veces
 - [x] 51. Lista de controles con [H]
-- [ ] 52. Resaltar la primera acción sugerida
+- [x] 52. Resaltar la primera acción sugerida
 
 ## IT14 — Legibilidad del HUD
 - [x] 53. Contorno/sombra en textos sobre fondo claro
-- [ ] 54. Tamaños consistentes entre paneles
+- [x] 54. Tamaños consistentes entre paneles
 - [x] 55. Evitar solapamiento de paneles
 - [x] 56. Márgenes consistentes
 
@@ -95,14 +95,14 @@ Encontrado jugando como usuario promedio. Estado: [ ] pendiente · [x] hecho
 ## IT16 — Estado de la escuadra
 - [x] 61. Aviso cuando un aliado está bajo ataque
 - [x] 62. Aviso cuando un aliado tiene poca vida
-- [ ] 63. Indicador fuera de pantalla de aliados
+- [x] 63. Indicador fuera de pantalla de aliados
 - [x] 64. Resaltar al aliado más cercano poseíble
 
 ## IT17 — Enemigos
-- [ ] 65. Barra de vida del enemigo al apuntarle
-- [ ] 66. Indicador de enemigo fuera de pantalla que te dispara
+- [x] 65. Barra de vida del enemigo al apuntarle
+- [x] 66. Indicador de enemigo fuera de pantalla que te dispara
 - [x] 67. Distinguir enemigo alerta vs. desprevenido
-- [ ] 68. Marcar al enemigo objetivo del arma
+- [x] 68. Marcar al enemigo objetivo del arma
 
 ## IT18 — Cámara
 - [x] 69. Límites de paneo en RTS (no perderse en el vacío)

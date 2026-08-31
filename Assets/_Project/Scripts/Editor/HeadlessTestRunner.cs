@@ -50,6 +50,7 @@ namespace SP.EditorTools
         static DamageVignetteView damageVignetteRef;
         static SP.UI.PerfHudView perfHudRef;
         static SP.UI.GroupCardsView groupCardsRef;
+        static SP.UI.OffscreenAllyMarkerView offscreenAlliesRef;
         static SP.Core.WaypointGraph inputDriverNavGraph;
         static KillFeedView killFeedRef;
         static PauseController pauseControllerRef;
@@ -173,7 +174,10 @@ namespace SP.EditorTools
 
             var poolGO = new GameObject("ProjectilePool");
             var pool = poolGO.AddComponent<ProjectilePool>();
-            pool.Configure(projectilePrefab, 24);
+            // 229: el 24 era una constante magica. Ahora se deriva de
+            // unidades x cadencia x vida del proyectil, que es lo que
+            // realmente determina cuantos hay en vuelo a la vez.
+            pool.Configure(projectilePrefab, SP.Combat.ProjectilePool.RecommendedPrewarm(12, 3f, 3f));
 
             var colorVega = new Color(0.95f, 0.35f, 0.30f);
             var colorKes = new Color(0.62f, 0.52f, 0.95f);
@@ -231,6 +235,7 @@ namespace SP.EditorTools
             inputDriver.DamageVignette = damageVignetteRef;
             inputDriver.PerfHud = perfHudRef;
             inputDriver.GroupCards = groupCardsRef;
+            if (offscreenAlliesRef != null) offscreenAlliesRef.SetSquad(inputDriver.Squad);
             inputDriver.NavGraph = inputDriverNavGraph;
             inputDriver.TurretAim = turretAimRef;
             inputDriver.Outcome = outcomeControllerRef;
@@ -736,7 +741,15 @@ namespace SP.EditorTools
             instance.transform.rotation = Quaternion.identity;
 
             var rend = instance.GetComponentInChildren<MeshRenderer>();
-            if (rend != null) rend.sharedMaterial = CreateFlatMaterial(color);
+            // 230: un material COMPARTIDO por equipo en vez de uno por
+            // soldado. Antes eran 50 materiales en memoria y cero batching
+            // posible. El color individual va por MaterialPropertyBlock,
+            // que no rompe el batch.
+            if (rend != null)
+            {
+                rend.sharedMaterial = GetOrCreateTeamMaterial(color);
+                SP.Presentation.CubeFxReactor.WriteTint(rend, color);
+            }
 
             var soldier = instance.GetComponent<Soldier>();
             soldier.Configure(name, team, role, maxHealth);
@@ -1057,7 +1070,7 @@ namespace SP.EditorTools
             labelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             labelTxt.alignment = TextAnchor.MiddleLeft;
             labelTxt.color = Color.white;
-            labelTxt.fontSize = 18;
+            labelTxt.fontSize = FontCuerpo;
             labelTxt.text = label;
             var labelRt = labelGO.GetComponent<RectTransform>();
             labelRt.anchorMin = labelRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1085,7 +1098,7 @@ namespace SP.EditorTools
             titleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             titleTxt.alignment = TextAnchor.MiddleCenter;
             titleTxt.color = Color.white;
-            titleTxt.fontSize = 24;
+            titleTxt.fontSize = FontSubtitulo;
             titleTxt.text = "REMAPEAR CONTROLES";
             var titleRt = titleGO.GetComponent<RectTransform>();
             titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1107,7 +1120,7 @@ namespace SP.EditorTools
                 brt.sizeDelta = new Vector2(330f, 38f);
                 botones[i] = b;
                 etiquetas[i] = b.GetComponentInChildren<Text>();
-                if (etiquetas[i] != null) etiquetas[i].fontSize = 14;
+                if (etiquetas[i] != null) etiquetas[i].fontSize = FontChico;
             }
 
             var view = panelGO.AddComponent<SP.UI.KeyRebindView>();
@@ -1120,6 +1133,36 @@ namespace SP.EditorTools
 
             panelGO.SetActive(false);
         }
+
+        // Un material por COLOR pedido (o sea, por equipo), cacheado. La
+        // clave es el color exacto: dos equipos distintos siguen teniendo
+        // materiales distintos, pero los 50 soldados de un mismo equipo
+        // comparten uno solo.
+        static readonly System.Collections.Generic.Dictionary<Color, Material> teamMaterials =
+            new System.Collections.Generic.Dictionary<Color, Material>();
+
+        static Material GetOrCreateTeamMaterial(Color color)
+        {
+            Material mat;
+            if (teamMaterials.TryGetValue(color, out mat) && mat != null) return mat;
+            mat = CreateFlatMaterial(color);
+            teamMaterials[color] = mat;
+            return mat;
+        }
+
+        // Item 54: habia QUINCE tamaños de fuente distintos repartidos por
+        // el HUD (12,13,14,15,16,18,20,22,24,28,30,40,44,48,72), muchos
+        // separados por un solo punto -- diferencias invisibles que no
+        // comunicaban ninguna jerarquia, solo inconsistencia. Siete
+        // niveles con nombre, y cada texto elige por lo que ES, no por un
+        // numero suelto.
+        const int FontDisplay = 72;      // resultado de la partida
+        const int FontTitulo = 44;       // titulo de pantalla o panel grande
+        const int FontEncabezado = 28;   // encabezado de seccion
+        const int FontSubtitulo = 22;    // banner, aviso destacado
+        const int FontCuerpo = 18;       // texto normal de UI y botones
+        const int FontChico = 14;        // etiquetas, listas, valores
+        const int FontMicro = 12;        // notas al pie, leyendas
 
         static void BuildGround()
         {
@@ -1265,7 +1308,7 @@ namespace SP.EditorTools
             promptTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             promptTxt.alignment = TextAnchor.MiddleCenter;
             promptTxt.color = Color.white;
-            promptTxt.fontSize = 24;
+            promptTxt.fontSize = FontSubtitulo;
             var prt = promptGO.GetComponent<RectTransform>();
             prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
             prt.anchoredPosition = new Vector2(0f, -40f);
@@ -1281,7 +1324,7 @@ namespace SP.EditorTools
             ammoWarnTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             ammoWarnTxt.alignment = TextAnchor.MiddleCenter;
             ammoWarnTxt.color = new Color(0.95f, 0.55f, 0.2f);
-            ammoWarnTxt.fontSize = 22;
+            ammoWarnTxt.fontSize = FontSubtitulo;
             ammoWarnTxt.fontStyle = FontStyle.Bold;
             var awrt = ammoWarnGO.GetComponent<RectTransform>();
             awrt.anchorMin = awrt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -1316,7 +1359,7 @@ namespace SP.EditorTools
             siText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             siText.alignment = TextAnchor.MiddleCenter;
             siText.color = Color.white;
-            siText.fontSize = 20;
+            siText.fontSize = FontCuerpo;
             StretchFull(siTextGO.GetComponent<RectTransform>());
 
             aimUi.BindSoldierInfo(soldierInfoGO, siText);
@@ -1356,7 +1399,7 @@ namespace SP.EditorTools
                 seatLabelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 seatLabelTxt.alignment = TextAnchor.UpperCenter;
                 seatLabelTxt.color = Color.white;
-                seatLabelTxt.fontSize = 13;
+                seatLabelTxt.fontSize = FontMicro;
                 seatLabelTxt.text = seatLabels[i].Replace("Pasajero ", "Pas.");
                 var seatLabelRt = seatLabelGO.GetComponent<RectTransform>();
                 seatLabelRt.anchorMin = seatLabelRt.anchorMax = new Vector2(0f, 0.5f);
@@ -1385,7 +1428,7 @@ namespace SP.EditorTools
             wsText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             wsText.alignment = TextAnchor.UpperCenter;
             wsText.color = Color.white;
-            wsText.fontSize = 16;
+            wsText.fontSize = FontChico;
             var wsTextRt = wsTextGO.GetComponent<RectTransform>();
             wsTextRt.anchorMin = new Vector2(0f, 0f);
             wsTextRt.anchorMax = new Vector2(1f, 1f);
@@ -1436,7 +1479,7 @@ namespace SP.EditorTools
             phText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             phText.alignment = TextAnchor.UpperCenter;
             phText.color = Color.white;
-            phText.fontSize = 16;
+            phText.fontSize = FontChico;
             var phTextRt = phTextGO.GetComponent<RectTransform>();
             phTextRt.anchorMin = new Vector2(0f, 0f);
             phTextRt.anchorMax = new Vector2(1f, 1f);
@@ -1486,7 +1529,7 @@ namespace SP.EditorTools
             msText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             msText.alignment = TextAnchor.MiddleCenter;
             msText.color = Color.white;
-            msText.fontSize = 16;
+            msText.fontSize = FontChico;
             StretchFull(msTextGO.GetComponent<RectTransform>());
             missionStatusRef = msGO.GetComponent<MissionStatusView>();
 
@@ -1509,7 +1552,7 @@ namespace SP.EditorTools
             selCountText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             selCountText.alignment = TextAnchor.MiddleCenter;
             selCountText.color = Color.black;
-            selCountText.fontSize = 15;
+            selCountText.fontSize = FontChico;
             selCountText.fontStyle = FontStyle.Bold;
             StretchFull(selCountTextGO.GetComponent<RectTransform>());
             var selCountView = selCountGO.GetComponent<SelectionCountView>();
@@ -1535,7 +1578,7 @@ namespace SP.EditorTools
             vsSpeedTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             vsSpeedTxt.alignment = TextAnchor.UpperCenter;
             vsSpeedTxt.color = Color.white;
-            vsSpeedTxt.fontSize = 20;
+            vsSpeedTxt.fontSize = FontCuerpo;
             var vsSpeedRt = vsSpeedGO.GetComponent<RectTransform>();
             vsSpeedRt.anchorMin = new Vector2(0f, 1f);
             vsSpeedRt.anchorMax = new Vector2(1f, 1f);
@@ -1552,7 +1595,7 @@ namespace SP.EditorTools
             vsSeatTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             vsSeatTxt.alignment = TextAnchor.UpperCenter;
             vsSeatTxt.color = new Color(0.6f, 0.85f, 1f);
-            vsSeatTxt.fontSize = 13;
+            vsSeatTxt.fontSize = FontMicro;
             vsSeatTxt.fontStyle = FontStyle.Bold;
             var vsSeatRt = vsSeatGO.GetComponent<RectTransform>();
             vsSeatRt.anchorMin = new Vector2(0f, 1f);
@@ -1567,7 +1610,7 @@ namespace SP.EditorTools
             vsGunnerTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             vsGunnerTxt.alignment = TextAnchor.UpperCenter;
             vsGunnerTxt.color = new Color(0.85f, 0.85f, 0.85f);
-            vsGunnerTxt.fontSize = 13;
+            vsGunnerTxt.fontSize = FontMicro;
             var vsGunnerRt = vsGunnerGO.GetComponent<RectTransform>();
             vsGunnerRt.anchorMin = new Vector2(0f, 1f);
             vsGunnerRt.anchorMax = new Vector2(1f, 1f);
@@ -1635,6 +1678,28 @@ namespace SP.EditorTools
             // Destello a pantalla completa (181 explosion, 184 cambio de
             // modo). Va como ULTIMO hermano, al reves que el vignette: un
             // fogonazo de explosion tiene que tapar tambien el HUD.
+            // Flechas hacia aliados fuera de encuadre (63).
+            var allyArrowsGO = new GameObject("OffscreenAllies", typeof(RectTransform), typeof(OffscreenAllyMarkerView));
+            allyArrowsGO.transform.SetParent(canvasGO.transform, false);
+            StretchFull(allyArrowsGO.GetComponent<RectTransform>());
+            var allyArrows = new Image[8];
+            for (int i = 0; i < allyArrows.Length; i++)
+            {
+                var aGO = new GameObject("AllyArrow_" + i, typeof(Image));
+                aGO.transform.SetParent(allyArrowsGO.transform, false);
+                var img = aGO.GetComponent<Image>();
+                img.color = new Color(0.45f, 0.75f, 0.95f, 0.85f);
+                img.raycastTarget = false;
+                var art = aGO.GetComponent<RectTransform>();
+                art.anchorMin = art.anchorMax = new Vector2(0.5f, 0.5f);
+                art.sizeDelta = new Vector2(16f, 22f);
+                aGO.SetActive(false);
+                allyArrows[i] = img;
+            }
+            var allyMarkerView = allyArrowsGO.GetComponent<OffscreenAllyMarkerView>();
+            allyMarkerView.Bind(allyArrows);
+            offscreenAlliesRef = allyMarkerView;
+
             // Tarjetas de grupo de control (215). Arriba a la derecha,
             // debajo del minimapa.
             var cardsGO = new GameObject("GroupCards", typeof(RectTransform), typeof(GroupCardsView));
@@ -1652,7 +1717,7 @@ namespace SP.EditorTools
                 var st = slotGO.GetComponent<Text>();
                 st.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 st.alignment = TextAnchor.MiddleRight;
-                st.fontSize = 14;
+                st.fontSize = FontChico;
                 st.raycastTarget = false;
                 var srt = slotGO.GetComponent<RectTransform>();
                 srt.anchorMin = srt.anchorMax = new Vector2(1f, 1f);
@@ -1680,7 +1745,7 @@ namespace SP.EditorTools
             perfTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             perfTxt.alignment = TextAnchor.UpperLeft;
             perfTxt.color = new Color(0.6f, 1f, 0.7f);
-            perfTxt.fontSize = 14;
+            perfTxt.fontSize = FontChico;
             perfTxt.raycastTarget = false;
             StretchFull(perfTextGO.GetComponent<RectTransform>());
             var perfView = perfGO.GetComponent<PerfHudView>();
@@ -1736,7 +1801,7 @@ namespace SP.EditorTools
             var killFeedTxt = killFeedTextGO.GetComponent<Text>();
             killFeedTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             killFeedTxt.alignment = TextAnchor.MiddleCenter;
-            killFeedTxt.fontSize = 40;
+            killFeedTxt.fontSize = FontTitulo;
             killFeedTxt.fontStyle = FontStyle.Bold;
             killFeedTxt.color = new Color(0.95f, 0.25f, 0.15f);
             var killFeedRt = killFeedTextGO.GetComponent<RectTransform>();
@@ -1767,7 +1832,7 @@ namespace SP.EditorTools
             deadText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             deadText.alignment = TextAnchor.MiddleCenter;
             deadText.color = Color.white;
-            deadText.fontSize = 22;
+            deadText.fontSize = FontSubtitulo;
             StretchFull(deadTextGO.GetComponent<RectTransform>());
 
             var deadNotice = deadGO.GetComponent<DeadNoticeView>();
@@ -1796,7 +1861,7 @@ namespace SP.EditorTools
             toastText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             toastText.alignment = TextAnchor.MiddleCenter;
             toastText.color = Color.white;
-            toastText.fontSize = 18;
+            toastText.fontSize = FontCuerpo;
             toastText.fontStyle = FontStyle.Bold;
             StretchFull(toastTextGO.GetComponent<RectTransform>());
 
@@ -1837,7 +1902,7 @@ namespace SP.EditorTools
                 var labelTxt = labelGO.GetComponent<Text>();
                 labelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 labelTxt.color = Color.white;
-                labelTxt.fontSize = 14;
+                labelTxt.fontSize = FontChico;
                 labelTxt.alignment = TextAnchor.UpperLeft;
                 var labelRt = labelGO.GetComponent<RectTransform>();
                 labelRt.anchorMin = Vector2.zero;
@@ -2002,7 +2067,7 @@ namespace SP.EditorTools
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.alignment = TextAnchor.MiddleCenter;
             text.color = new Color(0.08f, 0.1f, 0.12f);
-            text.fontSize = 22;
+            text.fontSize = FontSubtitulo;
             var rt = textGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 0f);
             rt.anchorMax = new Vector2(0.5f, 0f);
@@ -2039,7 +2104,7 @@ namespace SP.EditorTools
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.alignment = TextAnchor.MiddleCenter;
             text.color = new Color(0.08f, 0.35f, 0.15f);
-            text.fontSize = 44;
+            text.fontSize = FontTitulo;
             text.fontStyle = FontStyle.Bold;
             var rt = textGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 0.5f);
@@ -2111,7 +2176,7 @@ namespace SP.EditorTools
                 var labelTxt = labelGO.GetComponent<Text>();
                 labelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 labelTxt.color = Color.white;
-                labelTxt.fontSize = 14;
+                labelTxt.fontSize = FontChico;
                 labelTxt.alignment = TextAnchor.UpperLeft;
                 var labelRt = labelGO.GetComponent<RectTransform>();
                 labelRt.anchorMin = new Vector2(0f, 0f);
@@ -2167,7 +2232,7 @@ namespace SP.EditorTools
             label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             label.alignment = TextAnchor.MiddleCenter;
             label.color = Color.white;
-            label.fontSize = 18;
+            label.fontSize = FontCuerpo;
             label.text = "Test (F9)";
             StretchFull(labelGO.GetComponent<RectTransform>());
 
@@ -2196,7 +2261,7 @@ namespace SP.EditorTools
             txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             txt.alignment = TextAnchor.MiddleCenter;
             txt.color = Color.white;
-            txt.fontSize = 24;
+            txt.fontSize = FontSubtitulo;
             txt.fontStyle = FontStyle.Bold;
             txt.text = label;
             StretchFull(textGO.GetComponent<RectTransform>());
@@ -2212,7 +2277,7 @@ namespace SP.EditorTools
             labelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             labelTxt.alignment = TextAnchor.MiddleLeft;
             labelTxt.color = Color.white;
-            labelTxt.fontSize = 18;
+            labelTxt.fontSize = FontCuerpo;
             labelTxt.text = label;
             var labelRt = labelGO.GetComponent<RectTransform>();
             labelRt.anchorMin = labelRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -2229,7 +2294,7 @@ namespace SP.EditorTools
             valueTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             valueTxt.alignment = TextAnchor.MiddleRight;
             valueTxt.color = new Color(0.8f, 0.85f, 0.9f);
-            valueTxt.fontSize = 16;
+            valueTxt.fontSize = FontChico;
             valueTxt.text = value.ToString("0.00");
             var valueRt = valueGO.GetComponent<RectTransform>();
             valueRt.anchorMin = valueRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -2298,7 +2363,7 @@ namespace SP.EditorTools
             pauseTitleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             pauseTitleTxt.alignment = TextAnchor.MiddleCenter;
             pauseTitleTxt.color = Color.white;
-            pauseTitleTxt.fontSize = 48;
+            pauseTitleTxt.fontSize = FontTitulo;
             pauseTitleTxt.fontStyle = FontStyle.Bold;
             pauseTitleTxt.text = "PAUSA";
             var pauseTitleRt = pauseTitleGO.GetComponent<RectTransform>();
@@ -2336,7 +2401,7 @@ namespace SP.EditorTools
             settingsTitleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             settingsTitleTxt.alignment = TextAnchor.MiddleCenter;
             settingsTitleTxt.color = Color.white;
-            settingsTitleTxt.fontSize = 30;
+            settingsTitleTxt.fontSize = FontEncabezado;
             settingsTitleTxt.fontStyle = FontStyle.Bold;
             settingsTitleTxt.text = "CONFIGURACIONES";
             var settingsTitleRt = settingsTitleGO.GetComponent<RectTransform>();
@@ -2382,7 +2447,7 @@ namespace SP.EditorTools
             invertLabelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             invertLabelTxt.alignment = TextAnchor.MiddleLeft;
             invertLabelTxt.color = Color.white;
-            invertLabelTxt.fontSize = 18;
+            invertLabelTxt.fontSize = FontCuerpo;
             invertLabelTxt.text = "Invertir eje Y";
             var invertLabelRt = invertLabelGO.GetComponent<RectTransform>();
             invertLabelRt.anchorMin = invertLabelRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -2411,7 +2476,7 @@ namespace SP.EditorTools
             controlsTitleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             controlsTitleTxt.alignment = TextAnchor.MiddleCenter;
             controlsTitleTxt.color = Color.white;
-            controlsTitleTxt.fontSize = 28;
+            controlsTitleTxt.fontSize = FontEncabezado;
             controlsTitleTxt.fontStyle = FontStyle.Bold;
             controlsTitleTxt.text = "CONTROLES";
             var controlsTitleRt = controlsTitleGO.GetComponent<RectTransform>();
@@ -2426,7 +2491,7 @@ namespace SP.EditorTools
             controlsListTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             controlsListTxt.alignment = TextAnchor.UpperLeft;
             controlsListTxt.color = new Color(0.9f, 0.9f, 0.92f);
-            controlsListTxt.fontSize = 16;
+            controlsListTxt.fontSize = FontChico;
             // Fuente UNICA: antes esto era un literal a mano que ya habia
             // divergido del cartel contextual y del codigo. Le faltaban ~20
             // atajos reales (Q, C, F1/F2/F3, H, Espacio, Ctrl+1..9, el zoom
@@ -2434,7 +2499,7 @@ namespace SP.EditorTools
             // contexto de vehiculo en vista tactica). Ahora las dos vistas
             // derivan de ControlsTable, asi que no pueden desincronizarse.
             controlsListTxt.text = SP.UI.ControlsTable.FullText();
-            controlsListTxt.fontSize = 13;
+            controlsListTxt.fontSize = FontMicro;
             var controlsListRt = controlsListGO.GetComponent<RectTransform>();
             controlsListRt.anchorMin = new Vector2(0f, 0f);
             controlsListRt.anchorMax = new Vector2(1f, 1f);
@@ -2466,7 +2531,7 @@ namespace SP.EditorTools
             confirmExitTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             confirmExitTxt.alignment = TextAnchor.MiddleCenter;
             confirmExitTxt.color = Color.white;
-            confirmExitTxt.fontSize = 20;
+            confirmExitTxt.fontSize = FontCuerpo;
             confirmExitTxt.text = "¿Volver al menu?\nSe perdera el progreso de esta partida.";
             var confirmExitTextRt = confirmExitTextGO.GetComponent<RectTransform>();
             confirmExitTextRt.anchorMin = confirmExitTextRt.anchorMax = new Vector2(0.5f, 1f);
@@ -2522,7 +2587,7 @@ namespace SP.EditorTools
             titleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             titleTxt.alignment = TextAnchor.MiddleCenter;
             titleTxt.color = Color.white;
-            titleTxt.fontSize = 72;
+            titleTxt.fontSize = FontDisplay;
             titleTxt.fontStyle = FontStyle.Bold;
             titleTxt.text = title;
             var titleRt = titleGO.GetComponent<RectTransform>();
@@ -2537,7 +2602,7 @@ namespace SP.EditorTools
             statsTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             statsTxt.alignment = TextAnchor.MiddleCenter;
             statsTxt.color = new Color(0.9f, 0.9f, 0.9f);
-            statsTxt.fontSize = 22;
+            statsTxt.fontSize = FontSubtitulo;
             var statsRt = statsGO.GetComponent<RectTransform>();
             statsRt.anchorMin = statsRt.anchorMax = new Vector2(0.5f, 0.6f);
             statsRt.anchoredPosition = new Vector2(0f, -70f);
@@ -2633,7 +2698,7 @@ namespace SP.EditorTools
             nLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             nLabel.alignment = TextAnchor.MiddleCenter;
             nLabel.color = new Color(0.85f, 0.9f, 0.95f);
-            nLabel.fontSize = 14;
+            nLabel.fontSize = FontChico;
             nLabel.fontStyle = FontStyle.Bold;
             nLabel.text = "N";
             var nRt = nLabelGO.GetComponent<RectTransform>();
@@ -2700,7 +2765,7 @@ namespace SP.EditorTools
                 label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 label.text = entries[i].label;
                 label.color = Color.white;
-                label.fontSize = 12;
+                label.fontSize = FontMicro;
                 label.alignment = TextAnchor.MiddleLeft;
                 var labelRt = labelGO.GetComponent<RectTransform>();
                 labelRt.anchorMin = labelRt.anchorMax = new Vector2(0f, 1f);

@@ -321,6 +321,15 @@ namespace SP.Player
             // [P] panel de diagnostico: fps (mediana y p95), conteos de
             // actores, proyectiles y voces de audio. Solo lectura.
             if (kb.pKey.wasPressedThisFrame && PerfHud != null) PerfHud.Toggle();
+
+            // 216: un solo consumidor de la cola de alertas. Antes cada
+            // vista emitia su aviso por su cuenta y con varios a la vez
+            // ninguno quedaba legible. La cola decide cual se muestra.
+            if (ModeToast != null && !AlertQueue.IsBusy)
+            {
+                string alerta; float segs;
+                if (AlertQueue.TryDequeue(out alerta, out segs)) ModeToast.Show(alerta, segs);
+            }
             if (PauseRef != null && PauseRef.IsControlsOverlayOpen) return;
 
             UpdateCursorLock(kb, Mouse.current);
@@ -827,14 +836,18 @@ namespace SP.Player
 
             if (target == highlightedRenderer) return;
 
+            // MaterialPropertyBlock y NO sharedMaterial.color: desde el item
+            // 230 los soldados de un mismo equipo COMPARTEN material, asi
+            // que escribirle el color aca teñiria a todo el equipo de
+            // blanco al apuntarle a uno solo.
             if (highlightedRenderer != null)
-                highlightedRenderer.sharedMaterial.color = highlightedOriginalColor;
+                SP.Presentation.CubeFxReactor.WriteTint(highlightedRenderer, highlightedOriginalColor);
 
             highlightedRenderer = target;
             if (target != null)
             {
-                highlightedOriginalColor = target.sharedMaterial.color;
-                target.sharedMaterial.color = Color.Lerp(highlightedOriginalColor, Color.white, 0.65f);
+                highlightedOriginalColor = SP.Presentation.CubeFxReactor.ReadTint(target);
+                SP.Presentation.CubeFxReactor.WriteTint(target, Color.Lerp(highlightedOriginalColor, Color.white, 0.65f));
             }
         }
 
@@ -1526,6 +1539,31 @@ namespace SP.Player
             // actual a Patrol sin tener que darle una orden nueva encima.
             // --- Ordenes de escuadra nuevas ---
             // [Z] reagrupar dispersos (219)
+            // 213: clic sobre el minimapa emite la orden en el punto del
+            // MUNDO correspondiente, sin tener que panear la camara hasta
+            // ahi. Se chequea antes que el clic normal para que el clic
+            // sobre el minimapa no sea interpretado como clic en el mundo.
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame && MinimapRef != null && Selection.Selected.Count > 0)
+            {
+                var minimapRt = MinimapRef.transform as RectTransform;
+                if (minimapRt != null)
+                {
+                    Vector2 local;
+                    if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                            minimapRt, mouse.position.ReadValue(), null, out local))
+                    {
+                        Vector3 destino;
+                        if (MinimapRef.TryMinimapPointToWorld(local, out destino))
+                        {
+                            OrderService.IssueFormationOrderForSelection(
+                                Selection.Selected, destino, Vector3.forward, currentFormation);
+                            AlertQueue.Push("ORDEN DESDE EL MINIMAPA", AlertPriority.Media, 1.2f);
+                            return;
+                        }
+                    }
+                }
+            }
+
             if (KeyBindings.WasPressed(KeyBindings.Reagrupar) && Selection.Selected.Count > 0)
             {
                 OrderService.RegroupSelection(Selection.Selected, currentFormation);

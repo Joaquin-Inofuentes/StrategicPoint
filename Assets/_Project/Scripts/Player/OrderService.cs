@@ -269,6 +269,9 @@ namespace SP.Player
             // IssueAttackOrder / IssueMountOrder, que corren una vez por
             // soldado.
             PlayOrderSound();
+            // 221: el lote es exactamente la granularidad correcta para el
+            // historial -- una entrada por orden dada, no una por soldado.
+            OrderHistory.Record(logLine, list != null ? list.Count : 0);
 
             // Antes decia siempre lo mismo sin importar si eran uno o
             // diez soldados: si la seleccion no era la esperada, no habia

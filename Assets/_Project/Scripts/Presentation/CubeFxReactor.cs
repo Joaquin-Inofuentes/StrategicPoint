@@ -30,7 +30,11 @@ namespace SP.Presentation
 
             soldier = GetComponent<Soldier>();
             rend = GetComponentInChildren<Renderer>();
-            baseColor = rend != null ? rend.sharedMaterial.color : Color.white;
+            // El color propio del soldado ya no vive en un material por
+            // instancia (item 230: eso eran 50 materiales y cero batching).
+            // Se lee del bloque de propiedades, que es donde lo dejo el
+            // constructor de escena.
+            baseColor = ReadTint(rend);
             baseScale = transform.localScale;
 
             // El AudioSource propio YA NO reproduce nada: todo el audio de
@@ -131,15 +135,49 @@ namespace SP.Presentation
             // blanco. Hay que devolverlo a su color antes de caer.
             StopAllCoroutines();
             transform.localScale = baseScale;
-            if (rend != null) rend.sharedMaterial.color = baseColor;
+            WriteTint(rend, baseColor);
 
             StartCoroutine(FallOver());
+        }
+
+
+        // --- Tinte por instancia sin material por instancia (item 230) ---
+        // Con un material COMPARTIDO por equipo, escribir sharedMaterial.color
+        // pintaria a los 50 soldados iguales. MaterialPropertyBlock aplica el
+        // color a ESTE renderer sin romper el batching.
+        static MaterialPropertyBlock tintBlock;
+        static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        static readonly int ColorId = Shader.PropertyToID("_Color");
+
+        public static void WriteTint(Renderer r, Color c)
+        {
+            if (r == null) return;
+            if (tintBlock == null) tintBlock = new MaterialPropertyBlock();
+            r.GetPropertyBlock(tintBlock);
+            // Las dos propiedades porque el shader puede ser URP (_BaseColor)
+            // o el Standard de fallback (_Color).
+            tintBlock.SetColor(BaseColorId, c);
+            tintBlock.SetColor(ColorId, c);
+            r.SetPropertyBlock(tintBlock);
+        }
+
+        public static Color ReadTint(Renderer r)
+        {
+            if (r == null) return Color.white;
+            if (tintBlock == null) tintBlock = new MaterialPropertyBlock();
+            r.GetPropertyBlock(tintBlock);
+            // Si nadie escribio el bloque todavia, el bloque devuelve negro
+            // transparente: en ese caso vale el color del material.
+            var c = tintBlock.GetColor(BaseColorId);
+            if (c.a <= 0f) c = tintBlock.GetColor(ColorId);
+            if (c.a <= 0f && r.sharedMaterial != null) c = r.sharedMaterial.color;
+            return c;
         }
 
         IEnumerator FlashAndPunch()
         {
             var punchedColor = Color.white;
-            if (rend != null) rend.sharedMaterial.color = punchedColor;
+            WriteTint(rend, punchedColor);
             transform.localScale = baseScale * 1.15f;
 
             float t = 0f;
@@ -151,7 +189,7 @@ namespace SP.Presentation
             }
 
             transform.localScale = baseScale;
-            if (rend != null) rend.sharedMaterial.color = baseColor;
+            WriteTint(rend, baseColor);
         }
 
         IEnumerator FallOver()
