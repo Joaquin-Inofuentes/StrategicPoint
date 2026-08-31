@@ -1281,6 +1281,28 @@ namespace SP.EditorTools
                 }
             }
 
+            // 15: barra de recarga legible -- ReadinessFraction01 baja
+            // durante la recarga y el color cambia (naranja recargando,
+            // verde listo).
+            if (weaponStatusRef != null && vega.Weapon != null)
+            {
+                vega.Weapon.Reload();
+                weaponStatusRef.UpdateFrom(vega.Weapon);
+                var fillField = typeof(WeaponStatusView).GetField("fill", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var fillDuringReload = (Image)fillField.GetValue(weaponStatusRef);
+                bool bajoDurantelaRecarga = fillDuringReload.fillAmount < 1f;
+                bool colorRecargando = fillDuringReload.color == new Color(0.95f, 0.6f, 0.2f);
+                Check($"Barra de recarga baja durante la recarga (fillAmount={fillDuringReload.fillAmount:0.00}) y cambia de color",
+                    bajoDurantelaRecarga && colorRecargando);
+                // Terminar la recarga a mano (Edit mode no avanza el reloj
+                // solo) y confirmar que vuelve a 1 y a verde.
+                for (int i = 0; i < 60 && vega.Weapon.IsReloading; i++) vega.Weapon.Tick(0.05f);
+                weaponStatusRef.UpdateFrom(vega.Weapon);
+                var fillAfterReload = (Image)fillField.GetValue(weaponStatusRef);
+                Check($"Tras terminar la recarga, la barra vuelve a lleno y a verde (fillAmount={fillAfterReload.fillAmount:0.00})",
+                    Mathf.Approximately(fillAfterReload.fillAmount, 1f) && fillAfterReload.color == new Color(0.4f, 0.85f, 0.45f));
+            }
+
             // 94: impacto segun material -- colores y clips distintos por tipo.
             Check("ImpactFx.VehicleColor y EnemyColor son distintos (feedback visual por tipo de impacto)",
                 ImpactFx.VehicleColor != ImpactFx.EnemyColor);
