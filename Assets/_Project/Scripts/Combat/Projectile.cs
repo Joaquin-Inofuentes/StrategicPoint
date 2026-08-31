@@ -283,6 +283,16 @@ namespace SP.Combat
                     Vector3 away = rig.transform.position - point;
                     if (away.sqrMagnitude < 0.0001f) away = Vector3.up;
                     rig.KickDirectional(away.normalized, falloff * 0.35f);
+
+                    // 181: fogonazo + sordera momentanea si la explosion
+                    // fue MUY cerca. La sacudida sola no transmite que casi
+                    // te alcanza; el destello si.
+                    float veryClose = 1f - Mathf.Clamp01(dist / Mathf.Max(0.01f, explosionRadius * 1.5f));
+                    if (veryClose > 0f)
+                    {
+                        SP.UI.ScreenFlashView.Explosion(veryClose);
+                        SP.Presentation.AudioDucking.Duck(veryClose);
+                    }
                 }
             }
         }

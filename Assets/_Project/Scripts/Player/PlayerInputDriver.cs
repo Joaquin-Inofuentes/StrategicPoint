@@ -25,6 +25,9 @@ namespace SP.Player
         public SelectionController Selection;
         public List<Soldier> Squad;
         public AimUI AimUiRef;
+        // Publico (no privado) a proposito: asi Unity lo serializa y la
+        // referencia sobrevive el domain reload al entrar a Play.
+        public DamageVignetteView DamageVignette;
         public PlayerHealthView PlayerHealth;
         public UI.SelectionCountView SelectionCount;
         public UI.ModeToastView ModeToast;
@@ -356,6 +359,13 @@ namespace SP.Player
                 }
 
                 if (ModeToast != null) ModeToast.Show(Rig.Mode == ControlMode.Rts ? "VISTA RTS" : "VISTA FPS");
+                // 184: el salto entre vista FPS y RTS era un corte
+                // seco. Un destello gris muy corto lo lee como una
+                // transicion. No va dentro de CameraRig.SetMode: eso
+                // tambien lo llama la secuencia de muerte, donde un
+                // flash encima de la camara de muerte seria un
+                // accidente visual.
+                SP.UI.ScreenFlashView.ModeChange();
             }
 
             if (handlingDeath) return;
@@ -1278,6 +1288,7 @@ namespace SP.Player
             if (vehicleFirstPerson && anchor != null) Rig.FollowAnchor(anchor);
             else Rig.FollowThirdPerson(Vehicle.transform, 8f, 3.5f);
             ApplyVehicleCameraFeel();
+            ApplyVehicleSpeedFx();
         }
 
         // Sin esto la camara del vehiculo esta rigidamente pegada al
@@ -1287,6 +1298,22 @@ namespace SP.Player
         // corrieron), como un empujon extra, sin que CameraRig tenga que
         // saber nada de vehiculos.
         float vehiclePrevSpeed;
+
+        // 178 desenfoque de movimiento y 182 viñeta de velocidad: manejar
+        // a fondo se veia igual que estar detenido salvo por el numerito
+        // del velocimetro. Los dos leen la MISMA fraccion de velocidad,
+        // asi que se calculan una sola vez y en un solo lugar.
+        void ApplyVehicleSpeedFx()
+        {
+            if (Vehicle == null) return;
+            var motor = Vehicle.GetComponent<VehicleMotor>();
+            if (motor == null) return;
+
+            float speedFrac = Mathf.Clamp01(Mathf.Abs(motor.CurrentSpeed) / Mathf.Max(0.01f, motor.MaxSpeed));
+            var postFx = SP.Presentation.PostFxDirector.Instance;
+            if (postFx != null) postFx.SetSpeedBlur(speedFrac);
+            if (DamageVignette != null) DamageVignette.SetSpeedFraction(speedFrac);
+        }
 
         void ApplyVehicleCameraFeel()
         {

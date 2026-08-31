@@ -192,6 +192,11 @@ namespace SP.EditorTools
             cam.clearFlags = CameraClearFlags.SolidColor;
             cam.backgroundColor = new Color(0.86f, 0.91f, 0.96f);
             camGO.AddComponent<AudioListener>();
+            // La camara se creaba con AddComponent<Camera> pelado, sin
+            // UniversalAdditionalCameraData, o sea con el post-procesado
+            // apagado. Los items 176 y 178 lo necesitan; PostFxDirector se
+            // encarga de que encenderlo no cambie el look (ver su cabecera).
+            SP.Presentation.PostFxDirector.EnableOnCamera(cam);
             var rig = camGO.AddComponent<CameraRig>();
             rig.SetCamera(cam);
             rig.SetMode(ControlMode.Fps);
@@ -220,6 +225,7 @@ namespace SP.EditorTools
             inputDriver.DeadNotice = deadNoticeRef;
             inputDriver.WeaponStatus = weaponStatusRef;
             inputDriver.VehicleStatus = vehicleStatusRef;
+            inputDriver.DamageVignette = damageVignetteRef;
             inputDriver.TurretAim = turretAimRef;
             inputDriver.Outcome = outcomeControllerRef;
             inputDriver.PauseRef = pauseControllerRef;
@@ -240,6 +246,7 @@ namespace SP.EditorTools
             servicesGO.AddComponent<AttackLineManager>();
             servicesGO.AddComponent<OrderLineManager>();
             servicesGO.AddComponent<FloatingDamageTextManager>();
+            servicesGO.AddComponent<PostFxDirector>();
             var bootstrap = servicesGO.AddComponent<GameplaySceneBootstrap>();
             bootstrap.ObjectiveBanner = phaseBannerRef;
             bootstrap.ModeToast = modeToastRef;
@@ -1516,6 +1523,39 @@ namespace SP.EditorTools
             var vignetteView = vignetteGO.GetComponent<DamageVignetteView>();
             vignetteView.Bind(vignetteGO.GetComponent<Image>(), playerBrain);
             damageVignetteRef = vignetteView;
+
+            // Pulso rojo de vida baja (177). Image PROPIA y no la del
+            // vignette: el vignette escribe su color cada frame en el
+            // flash de daño, asi que compartir la Image daria un
+            // parpadeo sucio en vez de dos señales legibles.
+            var pulseGO = new GameObject("LowHealthPulse", typeof(RectTransform), typeof(LowHealthPulseView));
+            pulseGO.transform.SetParent(canvasGO.transform, false);
+            pulseGO.transform.SetAsFirstSibling();
+            StretchFull(pulseGO.GetComponent<RectTransform>());
+            var pulseImgGO = new GameObject("Pulse", typeof(Image));
+            pulseImgGO.transform.SetParent(pulseGO.transform, false);
+            var pulseImg = pulseImgGO.GetComponent<Image>();
+            pulseImg.color = new Color(0.85f, 0.1f, 0.1f, 0f);
+            pulseImg.raycastTarget = false;
+            StretchFull(pulseImgGO.GetComponent<RectTransform>());
+            var pulseView = pulseGO.GetComponent<LowHealthPulseView>();
+            pulseView.Bind(pulseImg);
+            pulseView.Brain = playerBrain;
+
+            // Destello a pantalla completa (181 explosion, 184 cambio de
+            // modo). Va como ULTIMO hermano, al reves que el vignette: un
+            // fogonazo de explosion tiene que tapar tambien el HUD.
+            var flashGO = new GameObject("ScreenFlash", typeof(RectTransform), typeof(ScreenFlashView));
+            flashGO.transform.SetParent(canvasGO.transform, false);
+            StretchFull(flashGO.GetComponent<RectTransform>());
+            var flashImgGO = new GameObject("Flash", typeof(Image));
+            flashImgGO.transform.SetParent(flashGO.transform, false);
+            var flashImg = flashImgGO.GetComponent<Image>();
+            flashImg.color = new Color(1f, 1f, 1f, 0f);
+            flashImg.raycastTarget = false;
+            StretchFull(flashImgGO.GetComponent<RectTransform>());
+            flashGO.GetComponent<ScreenFlashView>().Bind(flashImg);
+            flashGO.transform.SetAsLastSibling();
 
             // Flecha que apunta hacia de donde vino el ultimo golpe. OJO:
             // el mismo bug que ya paso una vez con KillFeedView -- si el

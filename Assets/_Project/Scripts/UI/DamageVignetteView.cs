@@ -55,7 +55,34 @@ namespace SP.UI
             float maxHealth = brain.Current.Health.MaxHealth;
             float remainingFrac = maxHealth > 0 ? Mathf.Clamp01((float)evt.RemainingHealth / maxHealth) : 1f;
             routine = StartCoroutine(FlashAndFade(remainingFrac));
+
+            // 176: aberracion cromatica proporcional al daño, mas fuerte
+            // cuanto menos vida queda. Es una segunda capa sobre la misma
+            // señal que ya da el vignette, pero actua sobre la IMAGEN del
+            // mundo y no sobre un overlay, asi que se lee incluso mirando
+            // al centro de la pantalla.
+            var postFx = SP.Presentation.PostFxDirector.Instance;
+            if (postFx != null) postFx.PulseDamageAberration(Mathf.Lerp(0.9f, 0.25f, remainingFrac));
         }
+
+        // 182: viñeta de velocidad. Reusa ESTA Image en vez de crear una
+        // segunda capa a pantalla completa (fill-rate por una señal de
+        // prioridad baja). El flash de daño se suma por encima de este
+        // piso, en vez de interpolar siempre hacia 0.
+        float baselineAlpha;
+
+        public void SetSpeedFraction(float frac01)
+        {
+            baselineAlpha = SP.CameraSystem.CameraFxSettings.Enabled
+                ? Mathf.Lerp(0f, 0.4f, Mathf.Clamp01(frac01))
+                : 0f;
+            // Si no hay un flash de daño en curso, el piso se aplica ya
+            // mismo; si lo hay, la corrutina lo va a respetar al terminar.
+            if (routine == null && image != null)
+                image.color = new Color(0f, 0f, 0f, baselineAlpha);
+        }
+
+        public float CurrentAlpha => image != null ? image.color.a : 0f;
 
         IEnumerator FlashAndFade(float remainingHealthFrac01)
         {
@@ -70,10 +97,14 @@ namespace SP.UI
             while (t < fadeTime)
             {
                 t += Time.deltaTime;
-                image.color = new Color(0f, 0f, 0f, Mathf.Lerp(peakAlpha, 0f, t / fadeTime));
+                // Interpola hacia el piso de velocidad, no hacia 0: si no,
+                // recibir un tiro manejando rapido apagaba la viñeta de
+                // velocidad hasta el proximo cambio de velocidad.
+                image.color = new Color(0f, 0f, 0f, Mathf.Lerp(peakAlpha, baselineAlpha, t / fadeTime));
                 yield return null;
             }
-            image.color = new Color(0f, 0f, 0f, 0f);
+            image.color = new Color(0f, 0f, 0f, baselineAlpha);
+            routine = null;
         }
 
         // Textura 128x128 generada una sola vez (no depende de ningún

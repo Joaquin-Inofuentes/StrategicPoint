@@ -7,7 +7,7 @@ namespace SP.Presentation
     // Los miembros nuevos van SIEMPRE al final: el valor entero de cada
     // uno es lo que quedaria guardado si alguna vez se serializara, y
     // meter uno en el medio correria todos los que siguen.
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded }
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat }
 
     // Sonidos genéricos generados por código (tonos con envolvente),
     // para no depender de clips de audio importados en el prototipo.
@@ -96,6 +96,10 @@ namespace SP.Presentation
                 // propio. Bajarle el pitch al AudioSource compartido no funciona:
                 // PlayOneShot no captura el pitch, lo lee en vivo cada frame.
                 case SfxKind.Wounded: freq = 165f; duration = 0.16f; decay = 7.5f; break;
+                // Latido: un golpe grave y corto, no una nota. Con una frecuencia
+                // musical reconocible sonaria como parte de la paleta de avisos en
+                // vez de como una senal corporal.
+                case SfxKind.Heartbeat: freq = 55f; duration = 0.22f; decay = 9f; break;
                 default: freq = 500f; duration = 0.08f; decay = 14f; break;
             }
             return GenerateTone(freq, duration, decay, kind.ToString());
