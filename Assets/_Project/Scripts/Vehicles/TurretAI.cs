@@ -19,9 +19,21 @@ namespace SP.Vehicles
         Vehicle vehicle;
         Soldier target;
         float retargetTimer;
+        bool bootstrapped;
 
-        void Awake()
+        void Awake() => Bootstrap();
+
+        // Publico e idempotente, igual que VehicleBrain/TurretWeapon: Awake
+        // NO corre al hacer AddComponent en Edit mode (esta clase no tiene
+        // [ExecuteAlways]), asi que WorldSystemsRegistry.EnsurePopulated
+        // necesita poder llamar esto a mano durante la construccion de la
+        // escena en la suite headless. Sin esto quedaba "registrado" con
+        // turret/vehicle en null, y Tick() haria un no-op silencioso para
+        // siempre por la guarda de la linea de abajo.
+        public void Bootstrap()
         {
+            if (bootstrapped) return;
+            bootstrapped = true;
             turret = GetComponent<TurretWeapon>();
             vehicle = GetComponentInParent<Vehicle>();
             WorldSystemsRegistry.Register(this);
@@ -43,6 +55,7 @@ namespace SP.Vehicles
 
         public void Tick(float dt)
         {
+            if (!bootstrapped) Bootstrap();
             if (turret == null) return;
             // Si hay un artillero de carne y hueso adentro, la IA se
             // aparta: el mouse del jugador manda.

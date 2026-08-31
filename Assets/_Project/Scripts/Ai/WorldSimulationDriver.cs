@@ -10,10 +10,19 @@ namespace SP.Ai
     // control sobre el tiempo.
     public class WorldSimulationDriver : MonoBehaviour
     {
-        void Update()
-        {
-            float dt = Time.deltaTime;
+        void Update() => Step(Time.deltaTime);
 
+        // Extraido a estatico para que HeadlessTestRunner.SimStep (la
+        // simulacion manual que corre la suite en Edit mode) llame EXACTAMENTE
+        // esto y no una copia que fue divergiendo con el tiempo. Antes SimStep
+        // tenia su propia version que usaba GetComponent<AiBrain>() en vez del
+        // Brain cacheado, FindObjectsByType en vez de WorldSystemsRegistry, y
+        // -- el hueco real -- nunca tickeaba TurretAI. La suite quedaba
+        // validando una simulacion distinta de la que corre en el juego real,
+        // asi que los items 222/223 (los cacheos de este mismo archivo) no
+        // tenian ninguna cobertura.
+        public static void Step(float dt)
+        {
             // Reparte a los soldados vivos en celdas ANTES de que nadie
             // pregunte "hay un enemigo cerca" este tick -- una sola vez
             // por Update, no una vez por soldado que sensa.

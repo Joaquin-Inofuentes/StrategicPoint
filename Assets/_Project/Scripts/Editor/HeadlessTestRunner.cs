@@ -694,22 +694,23 @@ namespace SP.EditorTools
         // ---------------------------------------------------------------
         static void SimStep(float dt)
         {
-            SP.Core.SpatialGrid.Rebuild();
-            var snapshot = new List<Soldier>(ActorRegistry.All);
-            foreach (var s in snapshot)
-            {
-                if (s == null || !s.gameObject.activeInHierarchy) continue;
-                s.GetComponent<AiBrain>()?.Tick(dt);
-                if (s.Weapon != null) s.Weapon.Tick(dt);
-            }
+            // Un solo camino de simulacion: WorldSimulationDriver.Step es
+            // EXACTAMENTE lo que corre en Play mode real (Brain cacheado,
+            // WorldSystemsRegistry, y ahora tambien TurretAI). Antes esto
+            // tenia su propia copia divergente que dejaba a TurretAI sin
+            // tickear -- la suite pasaba en verde sin haber ejercitado nunca
+            // esa IA.
+            WorldSimulationDriver.Step(dt);
 
+            // Los proyectiles SI quedan aparte, y es la unica diferencia
+            // real entre los dos caminos: en Play mode cada Projectile se
+            // tickea solo via su propio Update() (Projectile.cs), que no
+            // corre en Edit mode. Ese self-tick ya es asincrono respecto
+            // del resto de la simulacion incluso en Play real, asi que
+            // tickearlo en un paso aparte aca no cambia ninguna regla de
+            // juego -- es la misma falta de orden garantizado que ya existe.
             var projectiles = Projectile.ActiveInstances.ToArray();
             foreach (var p in projectiles) p.Tick(dt);
-
-            foreach (var v in UnityEngine.Object.FindObjectsByType<VehicleBrain>(FindObjectsSortMode.None))
-                v.Tick(dt);
-            foreach (var t in UnityEngine.Object.FindObjectsByType<TurretWeapon>(FindObjectsSortMode.None))
-                t.Tick(dt);
         }
 
         static void SimulateSeconds(float totalSeconds, float dt = 0.05f)

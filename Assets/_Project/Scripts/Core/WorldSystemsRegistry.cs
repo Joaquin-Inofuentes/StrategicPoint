@@ -62,6 +62,20 @@ namespace SP.Core
                 Register(v);
             foreach (var o in UnityEngine.Object.FindObjectsByType<SP.Presentation.ObstacleMarker>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None))
                 Register(o);
+
+            // Bootstrap() y no Register() a secas: estos tres cachean
+            // referencias (turret/vehicle, etc.) dentro de Bootstrap, que
+            // es lo que normalmente dispara Awake. Sin llamarlo, quedarian
+            // "registrados" pero con esas referencias en null, y su propio
+            // Tick() haria un no-op silencioso via su guarda de null -- que
+            // es exactamente el bug que dejaba a TurretAI sin cobertura en
+            // la suite pese a que WorldSimulationDriver.Step ya lo recorre.
+            foreach (var vb in UnityEngine.Object.FindObjectsByType<VehicleBrain>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None))
+                vb.Bootstrap();
+            foreach (var tw in UnityEngine.Object.FindObjectsByType<TurretWeapon>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None))
+                tw.Bootstrap();
+            foreach (var ta in UnityEngine.Object.FindObjectsByType<TurretAI>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None))
+                ta.Bootstrap();
         }
 
         public static void Clear()
