@@ -247,6 +247,10 @@ namespace SP.EditorTools
             servicesGO.AddComponent<OrderLineManager>();
             servicesGO.AddComponent<FloatingDamageTextManager>();
             servicesGO.AddComponent<PostFxDirector>();
+            // EnsureVoices explicito: OnEnable no corre en Edit mode, y
+            // sin el las 30 fuentes del pool no existirian mientras la
+            // suite headless construye y simula la escena.
+            servicesGO.AddComponent<AudioDirector>().EnsureVoices();
             // En Edit mode OnEnable no corre, asi que los vehiculos y
             // obstaculos no se dan de alta solos en el registro que
             // ahora usan los proyectiles. Sin esto la suite simularia

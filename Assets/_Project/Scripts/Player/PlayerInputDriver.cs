@@ -386,8 +386,11 @@ namespace SP.Player
             if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
             // [Q] cicla entre vivos y [C] posee al mas cercano: ambas caen
             // bajo la mano izquierda sin soltar WASD, a diferencia de F1/F2/F3.
-            if (kb.qKey.wasPressedThisFrame) CycleToNextLivingAlly();
-            if (kb.cKey.wasPressedThisFrame) PossessNearestAlly();
+            if (KeyBindings.WasPressed(KeyBindings.CiclarPosesion)) CycleLivingAlly(+1);
+            // 199: solo se podia ciclar hacia ADELANTE. Con una escuadra de
+            // tres eso ya obliga a dar la vuelta entera para volver uno.
+            if (KeyBindings.WasPressed(KeyBindings.CiclarPosesionAtras)) CycleLivingAlly(-1);
+            if (KeyBindings.WasPressed(KeyBindings.PoseerMasCercano)) PossessNearestAlly();
 
             if (Rig.Mode == ControlMode.Fps) UpdateFps(kb, Mouse.current);
             else UpdateRts(kb, Mouse.current);
@@ -706,6 +709,16 @@ namespace SP.Player
             if (kb.digit2Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Pistol);
             if (kb.digit3Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Heavy);
 
+            // 206: cambiar de arma con la rueda, la convencion del genero.
+            // No colisiona con el zoom RTS por construccion: esta rama solo
+            // se alcanza con Rig.Mode == Fps y sin asiento de vehiculo, y
+            // los dos lectores de rueda para zoom viven en ramas de RTS.
+            if (mouse != null)
+            {
+                float wheel = mouse.scroll.ReadValue().y;
+                if (Mathf.Abs(wheel) > 0.01f) CycleWeapon(wheel > 0f ? +1 : -1);
+            }
+
             if (kb.fKey.wasPressedThisFrame && result.Type == AimTargetType.Ally)
                 TryPossess(result.Soldier);
 
@@ -732,10 +745,20 @@ namespace SP.Player
                 ? Vehicle : null;
             var nearPickup = FindNearestPickup(Brain.Current.transform.position);
 
-            if (kb.eKey.wasPressedThisFrame)
+            // 201: antes [E] hacia las dos cosas y el vehiculo ganaba
+            // siempre, asi que parado al lado de un vehiculo Y de un arma
+            // tirada, el arma era INALCANZABLE. Ahora [X] es subir/bajar y
+            // [E] queda como interactuar puro, prefiriendo el pickup. [E]
+            // sobre el vehiculo se conserva como alias heredado para no
+            // romper la memoria muscular de golpe.
+            if (KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo) && nearVehicle != null)
             {
-                if (nearVehicle != null) EnterVehicle(nearVehicle);
-                else if (nearPickup != null) nearPickup.EquipOn(Brain.Current.Weapon, Brain.Current.Id);
+                EnterVehicle(nearVehicle);
+            }
+            else if (KeyBindings.WasPressed(KeyBindings.Interactuar))
+            {
+                if (nearPickup != null) nearPickup.EquipOn(Brain.Current.Weapon, Brain.Current.Id);
+                else if (nearVehicle != null) EnterVehicle(nearVehicle);
             }
 
             SetInstructionText(nearVehicle != null ? "[E] Subir al vehiculo (se suben los aliados cercanos)"
@@ -925,13 +948,17 @@ namespace SP.Player
         // Los atajos por indice fallan cuando ese soldado murio. El ciclo
         // salta a los caidos y recorre a los vivos en orden estable (el del
         // escuadron), asi que siempre da un resultado util.
-        void CycleToNextLivingAlly()
+        void CycleToNextLivingAlly() => CycleLivingAlly(+1);
+
+        // direction +1 avanza y -1 retrocede sobre el mismo orden estable.
+        void CycleLivingAlly(int direction)
         {
             if (Squad == null || Squad.Count == 0) return;
+            if (direction == 0) direction = 1;
             int start = Squad.IndexOf(Brain.Current);
             for (int step = 1; step <= Squad.Count; step++)
             {
-                var candidate = Squad[(start + step + Squad.Count) % Squad.Count];
+                var candidate = Squad[((start + step * direction) % Squad.Count + Squad.Count) % Squad.Count];
                 if (candidate == null || candidate == Brain.Current) continue;
                 if (!candidate.Health.IsAlive || !candidate.gameObject.activeInHierarchy) continue;
                 TryPossess(candidate);
@@ -941,6 +968,19 @@ namespace SP.Player
         }
 
         void EquipFromCatalog(WeaponKind kind) => EquipWeaponHotkey(kind);
+
+        // Orden fijo del ciclo, el mismo que las teclas 1/2/3.
+        static readonly WeaponKind[] WeaponCycle = { WeaponKind.Rifle, WeaponKind.Pistol, WeaponKind.Heavy };
+
+        void CycleWeapon(int direction)
+        {
+            if (Brain.Current == null || Brain.Current.Weapon == null) return;
+            var actual = Brain.Current.Weapon.CurrentWeaponKind;
+            int idx = System.Array.IndexOf(WeaponCycle, actual);
+            if (idx < 0) idx = 0;
+            int next = ((idx + direction) % WeaponCycle.Length + WeaponCycle.Length) % WeaponCycle.Length;
+            EquipFromCatalog(WeaponCycle[next]);
+        }
 
         // Público para que la demo/tutorial automáticos puedan probar los
         // atajos 1/2/3 sin depender de que haya un teclado físico.
@@ -1136,7 +1176,8 @@ namespace SP.Player
                 VehicleStatus.SetSeat(currentSeat);
             }
 
-            if (kb.eKey.wasPressedThisFrame) { ExitVehicle(); return; }
+            if (KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo)
+                || KeyBindings.WasPressed(KeyBindings.Interactuar)) { ExitVehicle(); return; }
 
             // En RTS, adentro del vehículo: solo cámara top-down + la UI
             // del tanque, nada de manejar/artillar (eso es de la vista
@@ -1477,34 +1518,34 @@ namespace SP.Player
             // actual a Patrol sin tener que darle una orden nueva encima.
             // --- Ordenes de escuadra nuevas ---
             // [Z] reagrupar dispersos (219)
-            if (kb.zKey.wasPressedThisFrame && Selection.Selected.Count > 0)
+            if (KeyBindings.WasPressed(KeyBindings.Reagrupar) && Selection.Selected.Count > 0)
             {
                 OrderService.RegroupSelection(Selection.Selected, currentFormation);
                 if (ModeToast != null) ModeToast.Show("REAGRUPANDO");
             }
 
             // [B] retirada: alejarse del enemigo mas cercano (217)
-            if (kb.bKey.wasPressedThisFrame && Selection.Selected.Count > 0)
+            if (KeyBindings.WasPressed(KeyBindings.Retirada) && Selection.Selected.Count > 0)
             {
                 OrderService.IssueRetreatOrderForSelection(Selection.Selected);
                 if (ModeToast != null) ModeToast.Show("RETIRADA");
             }
 
             // [K] cicla la formacion con la que se emiten las ordenes (210)
-            if (kb.kKey.wasPressedThisFrame)
+            if (KeyBindings.WasPressed(KeyBindings.CiclarFormacion))
             {
                 currentFormation = (FormationKind)(((int)currentFormation + 1) % 4);
                 if (ModeToast != null) ModeToast.Show("FORMACION: " + currentFormation.ToString().ToUpper());
             }
 
             // [J] seleccionar solo los heridos (220)
-            if (kb.jKey.wasPressedThisFrame)
+            if (KeyBindings.WasPressed(KeyBindings.SeleccionarHeridos))
             {
                 if (!Selection.SelectWoundedOnly() && ModeToast != null) ModeToast.Show("NADIE HERIDO");
             }
 
             // [N] seleccionar a todos los del mismo tipo en pantalla (214)
-            if (kb.nKey.wasPressedThisFrame && Selection.Selected.Count > 0)
+            if (KeyBindings.WasPressed(KeyBindings.SeleccionarMismoTipo) && Selection.Selected.Count > 0)
             {
                 Selection.SelectSameTypeOnScreen(Selection.Selected[0], Rig.Cam);
             }
