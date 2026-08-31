@@ -51,10 +51,20 @@ namespace SP.Presentation
 
         bool IsMe(int actorId) => soldier != null && soldier.Id == actorId;
 
+        static readonly Color MuzzleFlashColor = new Color(1f, 0.92f, 0.6f);
+
         void OnShot(ShotFiredEvent evt)
         {
             if (!Application.isPlaying || !IsMe(evt.ShooterId) || !gameObject.activeInHierarchy) return;
             audioSource.PlayOneShot(GenericSfx.Get(SfxKind.Shoot));
+
+            // Fogonazo en la boca del arma: no habia ninguna señal en el
+            // arma misma al disparar, el unico indicio era el proyectil
+            // que ya salio (a veces ni se ve). Reusa ImpactFx -- mismo
+            // crecer/achicar, solo que bien chico y bien rapido.
+            var muzzle = soldier != null && soldier.Weapon != null ? soldier.Weapon.Muzzle : null;
+            var flashPos = muzzle != null ? muzzle.position : transform.position;
+            ImpactFx.Spawn(flashPos, MuzzleFlashColor, 0.22f, 0.08f);
         }
 
         void OnDamage(DamageTakenEvent evt)

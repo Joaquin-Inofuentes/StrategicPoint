@@ -66,6 +66,20 @@ namespace SP.Player
         GameObject weaponViewmodel;
         Renderer weaponViewmodelRenderer;
 
+        // Retroceso visual del arma al disparar: sin esto el viewmodel
+        // queda perfectamente inmovil pase lo que pase, y disparar se
+        // siente como apretar un boton en vez de usar un arma. recoilKick
+        // arranca en 1 en cada disparo y decae hacia 0; el desplazamiento
+        // real se aplica en Z (hacia la camara) en UpdateWeaponViewmodel.
+        float recoilKick;
+        IDisposable shotSub;
+
+        void OnShotFiredForRecoil(ShotFiredEvent evt)
+        {
+            if (Brain == null || Brain.Current == null || evt.ShooterId != Brain.Current.Id) return;
+            recoilKick = 1f;
+        }
+
         void UpdateWeaponViewmodel(WeaponHolder weapon)
         {
             if (Rig == null || Rig.Cam == null || weapon == null) return;
@@ -116,6 +130,18 @@ namespace SP.Player
             const float depth = 0.22f;
             weaponViewmodel.transform.localScale = new Vector3(widthHeight, widthHeight, depth);
             weaponViewmodelRenderer.sharedMaterial.color = Color.Lerp(spec.Color, Color.black, 0.4f);
+
+            // El retroceso decae rapido (recupera en ~0.12s) y empuja el
+            // arma hacia la camara (Z local mas chico) y un poco hacia
+            // arriba, volviendo sola a su lugar -- un punch, no un lerp
+            // parejo, para que se note el golpe del disparo.
+            recoilKick = Mathf.MoveTowards(recoilKick, 0f, Time.deltaTime * 8f);
+            const float maxKickZ = 0.09f;
+            const float maxKickY = 0.03f;
+            weaponViewmodel.transform.localPosition = new Vector3(
+                0.28f,
+                -0.22f + maxKickY * recoilKick,
+                0.65f - maxKickZ * recoilKick);
         }
 
         // Estado de "estoy adentro de un vehículo".
@@ -162,11 +188,13 @@ namespace SP.Player
         {
             deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
             vehicleDestroyedSub = EventBus.Instance.Subscribe<VehicleDestroyedEvent>(OnVehicleDestroyed);
+            shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFiredForRecoil);
         }
         void OnDisable()
         {
             deathSub?.Dispose();
             vehicleDestroyedSub?.Dispose();
+            shotSub?.Dispose();
         }
 
         // Solo avisa si el que reventó es el vehículo donde está el
