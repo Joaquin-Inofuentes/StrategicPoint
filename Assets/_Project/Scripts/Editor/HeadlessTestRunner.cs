@@ -45,6 +45,7 @@ namespace SP.EditorTools
         static Text victoryStatsRef;
         static Text defeatStatsRef;
         static VehicleStatusView vehicleStatusRef;
+        static TurretAimView turretAimRef;
         static DamageVignetteView damageVignetteRef;
         static KillFeedView killFeedRef;
         static PauseController pauseControllerRef;
@@ -217,6 +218,7 @@ namespace SP.EditorTools
             inputDriver.DeadNotice = deadNoticeRef;
             inputDriver.WeaponStatus = weaponStatusRef;
             inputDriver.VehicleStatus = vehicleStatusRef;
+            inputDriver.TurretAim = turretAimRef;
             inputDriver.Outcome = outcomeControllerRef;
             inputDriver.PauseRef = pauseControllerRef;
             inputDriver.PlayerHealth = playerHealthRef;
@@ -1426,6 +1428,8 @@ namespace SP.EditorTools
             vsGO.SetActive(false);
             vehicleStatusRef = vehicleStatusView;
 
+            BuildTurretAimUI(canvasGO);
+
             // Viñeta de daño: cubre toda la pantalla, arranca invisible
             // (alfa 0) y solo se ve un instante cuando el poseído recibe
             // un golpe.
@@ -1618,6 +1622,71 @@ namespace SP.EditorTools
             BuildMinimap(canvasGO.transform, cam);
             BuildPauseUI(canvasGO.transform);
             BuildOutcomeUI(canvasGO.transform);
+        }
+
+        // HUD del artillero: reticulo de dos estados, marca de la brecha
+        // de giro pendiente, barra de cooldown y anillo en el suelo con
+        // el radio de explosion real del arma.
+        static void BuildTurretAimUI(GameObject canvasGO)
+        {
+            var root = new GameObject("TurretAim", typeof(RectTransform), typeof(TurretAimView));
+            root.transform.SetParent(canvasGO.transform, false);
+            StretchFull(root.GetComponent<RectTransform>());
+
+            var reticleGO = new GameObject("Reticle", typeof(Image));
+            reticleGO.transform.SetParent(root.transform, false);
+            var reticleImg = reticleGO.GetComponent<Image>();
+            reticleImg.color = new Color(0.35f, 1f, 0.45f);
+            var reticleRt = reticleGO.GetComponent<RectTransform>();
+            reticleRt.anchorMin = reticleRt.anchorMax = new Vector2(0.5f, 0.5f);
+            reticleRt.pivot = new Vector2(0.5f, 0.5f);
+            reticleRt.anchoredPosition = Vector2.zero;
+            reticleRt.sizeDelta = new Vector2(14f, 14f);
+
+            var gapGO = new GameObject("GapMarker", typeof(Image));
+            gapGO.transform.SetParent(root.transform, false);
+            gapGO.GetComponent<Image>().color = new Color(1f, 0.75f, 0.25f, 0.85f);
+            var gapRt = gapGO.GetComponent<RectTransform>();
+            gapRt.anchorMin = gapRt.anchorMax = new Vector2(0.5f, 0.5f);
+            gapRt.pivot = new Vector2(0.5f, 0.5f);
+            gapRt.anchoredPosition = Vector2.zero;
+            gapRt.sizeDelta = new Vector2(6f, 22f);
+            gapGO.SetActive(false);
+
+            var cdBgGO = new GameObject("CooldownBG", typeof(Image));
+            cdBgGO.transform.SetParent(root.transform, false);
+            cdBgGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
+            var cdBgRt = cdBgGO.GetComponent<RectTransform>();
+            cdBgRt.anchorMin = cdBgRt.anchorMax = new Vector2(0.5f, 0.5f);
+            cdBgRt.pivot = new Vector2(0.5f, 1f);
+            cdBgRt.anchoredPosition = new Vector2(0f, -28f);
+            cdBgRt.sizeDelta = new Vector2(90f, 7f);
+
+            var cdFillGO = new GameObject("CooldownFill", typeof(Image));
+            cdFillGO.transform.SetParent(cdBgGO.transform, false);
+            var cdFillImg = cdFillGO.GetComponent<Image>();
+            cdFillImg.color = new Color(0.35f, 1f, 0.45f);
+            cdFillImg.type = Image.Type.Filled;
+            cdFillImg.fillMethod = Image.FillMethod.Horizontal;
+            cdFillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+            cdFillImg.fillAmount = 1f;
+            StretchFull(cdFillGO.GetComponent<RectTransform>());
+
+            // El anillo vive en el mundo, no en el Canvas: marca un area
+            // del terreno, no una posicion de pantalla.
+            var ringGO = new GameObject("TurretRadiusRing", typeof(LineRenderer));
+            var ring = ringGO.GetComponent<LineRenderer>();
+            ring.loop = true;
+            ring.useWorldSpace = true;
+            ring.widthMultiplier = 0.12f;
+            ring.positionCount = 0;
+            ring.sharedMaterial = CreateFlatMaterial(new Color(0.95f, 0.55f, 0.1f));
+            ring.enabled = false;
+
+            var view = root.GetComponent<TurretAimView>();
+            view.Bind(reticleImg, gapGO.GetComponent<Image>(), cdFillImg, ring);
+            root.SetActive(false);
+            turretAimRef = view;
         }
 
         static void StretchFull(RectTransform rt)

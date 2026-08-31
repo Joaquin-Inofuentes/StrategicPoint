@@ -36,6 +36,7 @@ namespace SP.Player
         public DeadNoticeView DeadNotice;
         public WeaponStatusView WeaponStatus;
         public VehicleStatusView VehicleStatus;
+        public TurretAimView TurretAim;
         public GameOutcomeController Outcome;
         public PauseController PauseRef;
 
@@ -206,11 +207,13 @@ namespace SP.Player
 
         IDisposable deathSub;
         IDisposable vehicleDestroyedSub;
+        IDisposable turretControlSub;
         IDisposable squadDamageSub;
         void OnEnable()
         {
             deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
             vehicleDestroyedSub = EventBus.Instance.Subscribe<VehicleDestroyedEvent>(OnVehicleDestroyed);
+            turretControlSub = EventBus.Instance.Subscribe<TurretControlChangedEvent>(OnTurretControlChanged);
             shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFiredForRecoil);
             squadDamageSub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnSquadDamage);
         }
@@ -218,6 +221,7 @@ namespace SP.Player
         {
             deathSub?.Dispose();
             vehicleDestroyedSub?.Dispose();
+            turretControlSub?.Dispose();
             shotSub?.Dispose();
             squadDamageSub?.Dispose();
         }
@@ -271,6 +275,17 @@ namespace SP.Player
         {
             if (currentSeat.HasValue && Vehicle != null && Vehicle == evt.Vehicle)
                 if (ModeToast != null) ModeToast.Show("VEHICULO DESTRUIDO", 1.6f);
+        }
+
+        // TurretAI cede el control al haber artillero humano y lo retoma
+        // al bajarse, pero ese traspaso era invisible: el jugador veia la
+        // torreta moverse sola sin saber por que. Igual que el aviso de
+        // vehiculo destruido, solo interesa el vehiculo donde esta ahora.
+        void OnTurretControlChanged(TurretControlChangedEvent evt)
+        {
+            if (!currentSeat.HasValue || Vehicle == null || Vehicle != evt.Vehicle) return;
+            if (ModeToast == null) return;
+            ModeToast.Show(evt.AiInControl ? "TORRETA EN AUTOMATICO" : "TORRETA BAJO TU CONTROL", 1.4f);
         }
 
         void Update()
@@ -403,6 +418,7 @@ namespace SP.Player
             handlingDeath = true;
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
             if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
+            if (TurretAim != null) TurretAim.SetVisible(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
             if (AimUiRef != null) AimUiRef.SetVisible(false);
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
@@ -525,6 +541,7 @@ namespace SP.Player
         {
             if (Brain.Current == null) return;
             if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
+            if (TurretAim != null) TurretAim.SetVisible(false);
             if (AimUiRef != null)
             {
                 AimUiRef.SetVisible(true);
@@ -949,6 +966,7 @@ namespace SP.Player
             {
                 currentSeat = null;
                 if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
+                if (TurretAim != null) TurretAim.SetVisible(false);
                 Rig.FollowFps(Brain.Current);
                 return;
             }
@@ -985,6 +1003,7 @@ namespace SP.Player
                     if (Mathf.Abs(scroll) > 0.01f) Rig.Zoom(scroll * rtsZoomSpeed * Time.deltaTime);
                 }
 
+                if (TurretAim != null) TurretAim.SetVisible(false);
                 SetInstructionText("[TAB] volver a manejar en primera persona   ·   [E] bajar");
                 return;
             }
@@ -993,6 +1012,9 @@ namespace SP.Player
 
             var vb = Vehicle.GetComponent<VehicleBrain>();
             var turret = Vehicle.GetComponentInChildren<TurretWeapon>();
+            // El HUD de torreta es solo del artillero: conduciendo o de
+            // pasajero no aporta nada y taparia la vista.
+            if (TurretAim != null && currentSeat != VehicleSeatRole.Gunner) TurretAim.SetVisible(false);
 
             if (currentSeat == VehicleSeatRole.Driver)
             {
@@ -1026,10 +1048,17 @@ namespace SP.Player
 
                 if (mouse != null && turret != null)
                 {
+                    // El mouse ya no gira el cañon directo: mueve el
+                    // angulo OBJETIVO, y el cañon lo persigue a velocidad
+                    // limitada. Es lo que le da peso a la torreta -- y lo
+                    // que hace que el reticulo de "ya llegue / todavia
+                    // girando" tenga algo que informar.
                     var delta = mouse.delta.ReadValue();
-                    turret.RotateYaw(delta.x * turretSensitivity);
+                    turret.AddDesiredYaw(delta.x * turretSensitivity);
+                    turret.TickPlayerAim(Time.deltaTime);
                     if (mouse.leftButton.wasPressedThisFrame) turret.TryFire();
                 }
+                if (TurretAim != null) TurretAim.UpdateFrom(turret);
 
                 // Clic derecho: ordenarle a la camioneta ir a un punto (la maneja la IA).
                 if (mouse != null && mouse.rightButton.wasPressedThisFrame && Rig.Cam != null)
@@ -1135,6 +1164,7 @@ namespace SP.Player
             Rig.SetZoomed(false); // el zoom de mirilla es solo a pie
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
             if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
+            if (TurretAim != null) TurretAim.SetVisible(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
             if (AimUiRef != null) AimUiRef.SetVisible(false);
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);

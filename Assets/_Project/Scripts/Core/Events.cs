@@ -121,6 +121,18 @@ namespace SP.Core
         }
     }
 
+    public readonly struct TurretControlChangedEvent
+    {
+        public readonly SP.Vehicles.Vehicle Vehicle;
+        public readonly bool AiInControl;
+
+        public TurretControlChangedEvent(SP.Vehicles.Vehicle vehicle, bool aiInControl)
+        {
+            Vehicle = vehicle;
+            AiInControl = aiInControl;
+        }
+    }
+
     public readonly struct VehicleDestroyedEvent
     {
         public readonly SP.Vehicles.Vehicle Vehicle;

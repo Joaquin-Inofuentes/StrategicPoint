@@ -29,12 +29,26 @@ namespace SP.Vehicles
 
         void OnDestroy() => WorldSystemsRegistry.Unregister(this);
 
+        // Antes el traspaso de control era invisible: el jugador veia la
+        // torreta moverse sola sin saber por que (o la veia quieta
+        // esperando que la IA la usara). Se publica en los dos sentidos.
+        bool? lastAiInControl;
+
+        void PublishControlChange(bool aiInControl)
+        {
+            if (lastAiInControl == aiInControl) return;
+            lastAiInControl = aiInControl;
+            EventBus.Instance.Publish(new TurretControlChangedEvent(vehicle, aiInControl));
+        }
+
         public void Tick(float dt)
         {
             if (turret == null) return;
             // Si hay un artillero de carne y hueso adentro, la IA se
             // aparta: el mouse del jugador manda.
-            if (vehicle != null && vehicle.Gunner != null) return;
+            bool hasHumanGunner = vehicle != null && vehicle.Gunner != null;
+            PublishControlChange(!hasHumanGunner);
+            if (hasHumanGunner) return;
 
             retargetTimer -= dt;
             if (retargetTimer <= 0f || target == null || !target.Health.IsAlive)
