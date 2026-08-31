@@ -391,6 +391,107 @@ namespace SP.EditorTools
             return Mathf.Abs(da - db) < 0.0001f;
         }
 
+        // ---------------------------------------------------------------
+        // Escenarios de estres con carga realista (item 5 del plan de
+        // cierre): el objetivo declarado del proyecto es 50+ soldados, y
+        // hasta este punto ninguna mejora de rendimiento se habia medido
+        // con carga real -- solo con los ~10 de la escena de test.
+        // ---------------------------------------------------------------
+        public struct StressResult
+        {
+            public int OrderMarkerActiveAfter50;
+            public bool OrderMarkerWithinBudget;
+            public int ProjectilesExhaustedCount;
+            public bool ProjectilePoolHeld;
+            public int RingSpawnsAfterFill;
+            public int RingSpawnsAfter200Changes;
+            public bool RingPoolStoppedGrowing;
+        }
+
+        public static StressResult LastStressResult;
+
+        [MenuItem("Strategic Point/Estres con carga realista (50+)")]
+        public static void RunStressScenarios()
+        {
+            EventBus.Instance.ClearAll();
+            ActorRegistry.Clear();
+            SP.Core.WorldSystemsRegistry.Clear();
+            Projectile.ActiveInstances.Clear();
+
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            BuildLighting();
+            BuildGround();
+
+            var soldierPrefab = BuildAndSaveSoldierPrefab();
+            var projectilePrefab = BuildAndSaveProjectilePrefab();
+            var poolGO = new GameObject("StressPool");
+            var pool = poolGO.AddComponent<ProjectilePool>();
+            pool.Configure(projectilePrefab, SP.Combat.ProjectilePool.RecommendedPrewarm(50, 3f, 3f));
+
+            var rng = new System.Random(555);
+            var playerColor = new Color(0.95f, 0.35f, 0.30f);
+            var soldiers = new List<Soldier>(50);
+            for (int i = 0; i < 50; i++)
+            {
+                var pos = new Vector3((float)(rng.NextDouble() * 100.0 - 50.0), 0.8f, (float)(rng.NextDouble() * 100.0 - 50.0));
+                soldiers.Add(SpawnSoldier(soldierPrefab, "Stress_" + i, TeamId.Player, RoleType.Assault, pos, playerColor, pool, 100));
+            }
+
+            var result = new StressResult();
+
+            // (a) Ordenar a las 50 de una: OrderMarkerFx.Spawn se llama UNA
+            // VEZ POR SOLDADO. El tope duro (64) tiene que aguantar el lote
+            // entero sin desbordar.
+            foreach (var s in soldiers)
+                SP.Presentation.OrderMarkerFx.Spawn(s.transform.position, SP.Presentation.OrderMarkerFx.MoveColor);
+            result.OrderMarkerActiveAfter50 = SP.Presentation.OrderMarkerFx.ActiveCount;
+            result.OrderMarkerWithinBudget = SP.Presentation.OrderMarkerFx.TotalCount <= SP.Presentation.OrderMarkerFx.Budget;
+
+            // (b) Fuego sostenido con >=30 proyectiles en vuelo a la vez:
+            // el pool prewarmeado no debe tener que instanciar en caliente.
+            for (int i = 0; i < 40; i++)
+            {
+                var shooter = soldiers[i % soldiers.Count];
+                pool.Spawn(shooter.transform.position, Vector3.forward, shooter.Id, TeamId.Player, 10);
+            }
+            result.ProjectilesExhaustedCount = pool.ExhaustedCount;
+            result.ProjectilePoolHeld = pool.ExhaustedCount == 0;
+
+            // (c) 200 cambios de seleccion con las 50 unidades: tras el
+            // llenado inicial del pool de anillos, reusar no debe
+            // instanciar primitivas nuevas.
+            var ringManagerGO = new GameObject("StressRingManager");
+            var ringManager = ringManagerGO.AddComponent<SP.Presentation.SelectionRingManager>();
+            var onSelChanged = typeof(SP.Presentation.SelectionRingManager).GetMethod("OnSelectionChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            SP.Presentation.SelectionRingFx.ResetSpawnCount();
+            var allIds = soldiers.ConvertAll(s => s.Id);
+            onSelChanged.Invoke(ringManager, new object[] { new SelectionChangedEvent(allIds) });
+            result.RingSpawnsAfterFill = SP.Presentation.SelectionRingFx.SpawnCount;
+
+            for (int i = 0; i < 200; i++)
+            {
+                // Alterna entre la escuadra completa y un subconjunto, que
+                // es el patron real de jugar (seleccionar todo, despues
+                // acotar a unos pocos, despues volver a todos).
+                var subset = i % 2 == 0 ? allIds : allIds.GetRange(0, 10);
+                onSelChanged.Invoke(ringManager, new object[] { new SelectionChangedEvent(subset) });
+            }
+            result.RingSpawnsAfter200Changes = SP.Presentation.SelectionRingFx.SpawnCount;
+            result.RingPoolStoppedGrowing = result.RingSpawnsAfter200Changes == result.RingSpawnsAfterFill;
+
+            LastStressResult = result;
+
+            Debug.Log($"[Estres] OrderMarker: activos={result.OrderMarkerActiveAfter50} dentroDelPresupuesto={result.OrderMarkerWithinBudget}");
+            Debug.Log($"[Estres] ProjectilePool: exhaustedCount={result.ProjectilesExhaustedCount} sostuvoElPrewarm={result.ProjectilePoolHeld}");
+            Debug.Log($"[Estres] SelectionRingFx: spawnsTrasLlenado={result.RingSpawnsAfterFill} spawnsTras200Cambios={result.RingSpawnsAfter200Changes} poolDejoDeCrecer={result.RingPoolStoppedGrowing}");
+
+            bool allGood = result.OrderMarkerWithinBudget && result.ProjectilePoolHeld && result.RingPoolStoppedGrowing;
+            if (allGood) Debug.Log("[Estres] Los tres escenarios de carga realista (50 unidades) pasaron.");
+            else Debug.LogError("[Estres] Al menos un escenario de carga realista fallo -- ver el detalle arriba.");
+        }
+
         // Construye el mismo mundo que el test automático pero sin correr
         // las fases: deja a Vega libre, sana y parada junto al vehículo,
         // lista para una demo manual en Play mode (E para subir, etc).

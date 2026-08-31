@@ -59,8 +59,16 @@ namespace SP.Presentation
             ringRenderer.SetPropertyBlock(propertyBlock);
         }
 
+        // Contador de solo lectura para verificacion (item 232/5-companion):
+        // solo sube cuando el pool del manager esta vacio y hay que crear
+        // un anillo de verdad. Sirve para confirmar que, tras el llenado
+        // inicial, cambiar de seleccion reusa en vez de instanciar.
+        public static int SpawnCount { get; private set; }
+        public static void ResetSpawnCount() => SpawnCount = 0;
+
         public static SelectionRingFx Spawn(Transform target, Color color, float radius = 0.75f)
         {
+            SpawnCount++;
             var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             go.name = "SelectionRing";
             var col = go.GetComponent<Collider>();

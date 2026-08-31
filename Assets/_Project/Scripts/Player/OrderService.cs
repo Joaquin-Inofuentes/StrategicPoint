@@ -195,8 +195,15 @@ namespace SP.Player
         // siempre, sin que nada avise que la orden no se pudo cumplir.
         public static bool IsValidDestination(Vector3 point)
         {
-            foreach (var obstacle in Object.FindObjectsByType<ObstacleMarker>(FindObjectsSortMode.None))
+            // WorldSystemsRegistry en vez de FindObjectsByType: esto solo
+            // corre una vez por orden (no por frame), asi que nunca fue el
+            // cuello de botella real -- pero el registro ya existe y esta
+            // poblado, asi que evitar el barrido es gratis.
+            var obstacles = SP.Core.WorldSystemsRegistry.Obstacles;
+            for (int i = 0; i < obstacles.Count; i++)
             {
+                var obstacle = obstacles[i];
+                if (obstacle == null) continue;
                 var d = obstacle.transform.position - point;
                 d.y = 0f;
                 if (d.magnitude <= obstacle.transform.localScale.x * 0.5f + 0.5f) return false;
