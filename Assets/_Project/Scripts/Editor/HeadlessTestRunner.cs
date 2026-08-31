@@ -665,6 +665,7 @@ namespace SP.EditorTools
                 RunPhase2(playerBrain, rig, aimTargeting, selection, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase3(playerBrain, rig, selection, aimTargeting, vega, kes, doc, soldierPrefab, colorEnemy, pool, vehicle);
                 RunPhase4(playerBrain, rig, vehicle, weaponPickups, vega, kes, doc);
+                RunPhase5(rig, vehicle, vega, kes, doc);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia
@@ -1022,6 +1023,276 @@ namespace SP.EditorTools
 
             TestLog.Phase("FASE 4 FINALIZADA");
             phaseBannerRef?.Show("Felicidades!\nCompletaste las 4 fases.", 3f);
+        }
+
+        // ---------------------------------------------------------------
+        // FASE 5 - Regresion de sistemas nuevos (item 2 del plan de cierre).
+        // Casi todo lo agregado esta ultima tanda se diseño con funciones
+        // ESTATICAS PURAS justamente para poder testearlas sin Play mode --
+        // estaban escritas pero nadie las llamaba desde la suite. Esta fase
+        // las llama a todas, con Check() (que ahora corta la suite de
+        // verdad, ver el commit "La suite ahora falla de verdad").
+        // ---------------------------------------------------------------
+        static void RunPhase5(CameraRig rig, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc)
+        {
+            TestLog.Phase("FASE 5 - Regresion de sistemas nuevos");
+
+            // --- AudioDirector.SelectVictim: robo de voces por audibilidad ---
+            var v0 = new SP.Presentation.VoiceState[3];
+            v0[0] = new SP.Presentation.VoiceState { Free = true };
+            Check("SelectVictim elige la primera voz LIBRE",
+                SP.Presentation.AudioDirector.SelectVictim(v0, 0.5f, 10f) == 0);
+
+            var v1 = new SP.Presentation.VoiceState[2];
+            v1[0] = new SP.Presentation.VoiceState { Free = false, Audibility = 0.9f, ExpiresAt = 100f };
+            v1[1] = new SP.Presentation.VoiceState { Free = false, Audibility = 5f, ExpiresAt = 1f };
+            Check("SelectVictim elige la voz VENCIDA (ExpiresAt < now) aunque sea mas audible",
+                SP.Presentation.AudioDirector.SelectVictim(v1, 0.5f, 10f) == 1);
+
+            var v2 = new SP.Presentation.VoiceState[2];
+            v2[0] = new SP.Presentation.VoiceState { Free = false, Audibility = 0.9f, ExpiresAt = 100f };
+            v2[1] = new SP.Presentation.VoiceState { Free = false, Audibility = 0.2f, ExpiresAt = 100f };
+            Check("SelectVictim roba la voz de MENOR audibilidad cuando la nueva le gana",
+                SP.Presentation.AudioDirector.SelectVictim(v2, 0.5f, 10f) == 1);
+            Check("SelectVictim descarta (-1) si la nueva NO le gana a la peor voz",
+                SP.Presentation.AudioDirector.SelectVictim(v2, 0.1f, 10f) == -1);
+            Check("SelectVictim descarta (-1) en empate exacto (no corta un sonido a la mitad para nada)",
+                SP.Presentation.AudioDirector.SelectVictim(v2, 0.2f, 10f) == -1);
+            Check("SelectVictim con array vacio devuelve -1",
+                SP.Presentation.AudioDirector.SelectVictim(new SP.Presentation.VoiceState[0], 1f, 0f) == -1);
+
+            // --- AudioDirector.Attenuation / CutoffFor: monotonia ---
+            Check("Attenuation es 1 adentro de MinDistance",
+                Mathf.Approximately(SP.Presentation.AudioDirector.Attenuation(2f), 1f));
+            Check("Attenuation es 0 mas alla de MaxDistance",
+                Mathf.Approximately(SP.Presentation.AudioDirector.Attenuation(500f), 0f));
+            bool attenNoCreciente = true, cutoffEstrictamenteDecreciente = true;
+            float prevAtten = SP.Presentation.AudioDirector.Attenuation(0f);
+            float prevCutoff = SP.Presentation.AudioDirector.CutoffFor(0f);
+            // CutoffFor solo promete ser estrictamente decreciente DENTRO de
+            // [0, MaxDistance] (90) -- mas alla, Clamp01 aplana k a 1 a
+            // proposito, asi que dos distancias mas alla del maximo dan el
+            // mismo corte. Probar hasta 90 y no mas, o el test reporta una
+            // falla que en realidad es del propio test, no del codigo.
+            for (float d = 5f; d <= SP.Presentation.AudioDirector.MaxDistance; d += 5f)
+            {
+                float atten = SP.Presentation.AudioDirector.Attenuation(d);
+                float cutoff = SP.Presentation.AudioDirector.CutoffFor(d);
+                if (atten > prevAtten + 0.0001f) attenNoCreciente = false;
+                if (cutoff >= prevCutoff - 0.0001f) cutoffEstrictamenteDecreciente = false;
+                prevAtten = atten; prevCutoff = cutoff;
+            }
+            Check("Attenuation es monotona NO creciente con la distancia", attenNoCreciente);
+            Check("CutoffFor es estrictamente decreciente con la distancia", cutoffEstrictamenteDecreciente);
+
+            // --- AudioDirector.NextPitch: rango y variacion ---
+            bool pitchEnRango = true, pitchVaria = false;
+            float firstPitch = SP.Presentation.AudioDirector.NextPitch();
+            for (int i = 0; i < 20; i++)
+            {
+                float p = SP.Presentation.AudioDirector.NextPitch();
+                if (p < SP.Presentation.AudioDirector.MinPitch || p > SP.Presentation.AudioDirector.MaxPitch) pitchEnRango = false;
+                if (!Mathf.Approximately(p, firstPitch)) pitchVaria = true;
+            }
+            Check("NextPitch siempre cae en [MinPitch, MaxPitch]", pitchEnRango);
+            Check("NextPitch varia entre llamadas (no es una constante)", pitchVaria);
+
+            // --- AudioDirector.GainFor/SetGain: canales independientes ---
+            SP.Presentation.AudioDirector.SetGain(SP.Presentation.SfxChannel.Sfx, 1f);
+            SP.Presentation.AudioDirector.SetGain(SP.Presentation.SfxChannel.Ui, 1f);
+            SP.Presentation.AudioDirector.SetGain(SP.Presentation.SfxChannel.Sfx, 0.3f);
+            Check("Bajar la ganancia de Sfx NO afecta a Ui",
+                Mathf.Approximately(SP.Presentation.AudioDirector.GainFor(SP.Presentation.SfxChannel.Sfx), 0.3f)
+                && Mathf.Approximately(SP.Presentation.AudioDirector.GainFor(SP.Presentation.SfxChannel.Ui), 1f));
+            SP.Presentation.AudioDirector.SetGain(SP.Presentation.SfxChannel.Sfx, 1f);
+
+            // --- WaypointGraph / FlowField: rodea obstaculos, no se cuelga ---
+            var wallGraph = new SP.Core.WaypointGraph();
+            wallGraph.Build(new Vector3(-20f, 0f, -20f), new Vector3(20f, 0f, 20f), 2f,
+                p => Mathf.Abs(p.x) < 1.5f && p.z < 10f);
+            var wallPath = new List<Vector3>();
+            bool wallFound = wallGraph.TryFindPath(new Vector3(-10f, 0f, 0f), new Vector3(10f, 0f, 0f), wallPath);
+            Check("WaypointGraph encuentra camino rodeando un muro con hueco", wallFound && wallPath.Count > 2);
+
+            var openGraph = new SP.Core.WaypointGraph();
+            openGraph.Build(new Vector3(-20f, 0f, -20f), new Vector3(20f, 0f, 20f), 2f, p => false);
+            var openPath = new List<Vector3>();
+            openGraph.TryFindPath(new Vector3(-10f, 0f, 0f), new Vector3(10f, 0f, 0f), openPath);
+            float openLen = 0f;
+            for (int i = 1; i < openPath.Count; i++) openLen += Vector3.Distance(openPath[i - 1], openPath[i]);
+            Check($"Sin obstaculos el camino ES la linea recta (largo {openLen:0.0} ~= 20.0)", Mathf.Abs(openLen - 20f) < 2.5f);
+
+            var blockedGraph = new SP.Core.WaypointGraph();
+            blockedGraph.Build(new Vector3(-20f, 0f, -20f), new Vector3(20f, 0f, 20f), 2f, p => Mathf.Abs(p.x) < 1.5f);
+            var blockedPath = new List<Vector3>();
+            bool blockedFound = blockedGraph.TryFindPath(new Vector3(-10f, 0f, 0f), new Vector3(10f, 0f, 0f), blockedPath);
+            Check("Con destino inalcanzable TryFindPath devuelve false (no se cuelga)", !blockedFound);
+
+            var flow = new SP.Core.FlowField();
+            flow.Attach(wallGraph);
+            flow.Compute(new Vector3(10f, 0f, 0f));
+            Check("FlowField.IsReachable es true del lado alcanzable del muro con hueco",
+                flow.IsReachable(new Vector3(-10f, 0f, 0f)));
+
+            // --- OrderService.FormationPoints: geometria por tipo ---
+            var linea = SP.Player.OrderService.FormationPoints(Vector3.zero, Vector3.forward, 5, SP.Player.FormationKind.Linea);
+            bool lineaSinProfundidad = true;
+            foreach (var p in linea) if (Mathf.Abs(p.z) > 0.01f) lineaSinProfundidad = false;
+            Check("Formacion Linea: todos los puntos a la misma profundidad", lineaSinProfundidad);
+
+            var columna = SP.Player.OrderService.FormationPoints(Vector3.zero, Vector3.forward, 5, SP.Player.FormationKind.Columna);
+            bool columnaSinLateral = true;
+            foreach (var p in columna) if (Mathf.Abs(p.x) > 0.01f) columnaSinLateral = false;
+            Check("Formacion Columna: todos los puntos sobre el mismo eje (sin variacion lateral)", columnaSinLateral);
+
+            // --- OrderService.SpreadOf: dispersion baja con formacion apretada ---
+            var disperso = new List<Vector3>();
+            var rngSpread = new System.Random(42);
+            for (int i = 0; i < 20; i++)
+                disperso.Add(new Vector3((float)(rngSpread.NextDouble() * 80 - 40), 0f, (float)(rngSpread.NextDouble() * 80 - 40)));
+            float spreadDisperso = SP.Player.OrderService.SpreadOf(disperso);
+            var apretado = new List<Vector3>(SP.Player.OrderService.FormationPoints(Vector3.zero, Vector3.forward, 20, SP.Player.FormationKind.Cuadricula));
+            float spreadApretado = SP.Player.OrderService.SpreadOf(apretado);
+            Check($"SpreadOf de una formacion apretada ({spreadApretado:0.0}) es menor que uno disperso ({spreadDisperso:0.0})",
+                spreadApretado < spreadDisperso);
+
+            // --- SelectionController.IsWounded: casos de borde ---
+            Check("IsWounded con max<=0 no divide por cero (false)", !SelectionController.IsWounded(10, 0, 0.5f));
+            Check("IsWounded con vida al umbral exacto es false (estricto)", !SelectionController.IsWounded(50, 100, 0.5f));
+            Check("IsWounded por debajo del umbral es true", SelectionController.IsWounded(30, 100, 0.5f));
+            Check("IsWounded con vida llena es false", !SelectionController.IsWounded(100, 100, 0.5f));
+
+            // --- CameraRig: presupuesto de sacudida, interruptor, balanceo ---
+            if (rig != null)
+            {
+                bool fxWasEnabled = SP.CameraSystem.CameraFxSettings.Enabled;
+                SP.CameraSystem.CameraFxSettings.Enabled = true;
+                for (int i = 0; i < 10; i++) rig.KickDirectional(Vector3.forward, 1f);
+                Check($"10 sacudidas de magnitud 1 quedan acotadas al tope ({rig.ShakeOffset.magnitude:0.000} <= {rig.MaxShakeMagnitude})",
+                    rig.ShakeOffset.magnitude <= rig.MaxShakeMagnitude + 0.001f);
+
+                SP.CameraSystem.CameraFxSettings.Enabled = false;
+                rig.KickDirectional(Vector3.forward, 1f);
+                Check("Con efectos de camara apagados, KickDirectional no acumula nada nuevo",
+                    rig.ShakeOffset.magnitude <= rig.MaxShakeMagnitude + 0.001f);
+                SP.CameraSystem.CameraFxSettings.Enabled = fxWasEnabled;
+            }
+
+            // --- KeyBindings: set -> persiste -> reset ---
+            SP.Player.KeyBindings.ResetToDefaults();
+            var teclaOriginal = SP.Player.KeyBindings.Get(SP.Player.KeyBindings.Recargar);
+            SP.Player.KeyBindings.Set(SP.Player.KeyBindings.Recargar, UnityEngine.InputSystem.Key.U);
+            SP.Player.KeyBindings.InvalidateCache();
+            bool persistio = SP.Player.KeyBindings.Get(SP.Player.KeyBindings.Recargar) == UnityEngine.InputSystem.Key.U;
+            SP.Player.KeyBindings.ResetToDefaults();
+            bool volvioAlDefault = SP.Player.KeyBindings.Get(SP.Player.KeyBindings.Recargar) == teclaOriginal;
+            Check("KeyBindings: set sobrevive InvalidateCache (persiste en PlayerPrefs)", persistio);
+            Check("KeyBindings: ResetToDefaults vuelve al valor de fabrica", volvioAlDefault);
+
+            // --- ControlsTable: los 6 contextos tienen atajos, nada vacio ---
+            string controlsProblem;
+            Check("ControlsTable.Validate no encuentra huecos", SP.UI.ControlsTable.Validate(out controlsProblem));
+
+            // --- GroupCardsView.Summarize: vacio y con muertos ---
+            SP.UI.GroupCardsView.Summarize(null, out int vivosNull, out float vidaNull);
+            Check("GroupCardsView.Summarize con grupo null da 0 vivos", vivosNull == 0);
+            var grupoConMuerto = new List<Soldier> { vega };
+            bool vegaEstabaViva = vega.Health.IsAlive;
+            vega.Health.TakeDamage(999999, -1);
+            SP.UI.GroupCardsView.Summarize(grupoConMuerto, out int vivosTrasMorir, out float vidaTrasMorir);
+            Check("GroupCardsView.Summarize no cuenta a los muertos", vivosTrasMorir == 0);
+            // FullHeal restaura a Vega para que las fases futuras (si las hubiera) no la hereden muerta.
+            FullHeal(vega, kes, doc);
+
+            // --- AlertQueue.SelectNext: prioridad y FIFO ---
+            var pending = new SP.UI.PendingAlert[3];
+            pending[0] = new SP.UI.PendingAlert { Message = "baja", Priority = SP.UI.AlertPriority.Baja, Seconds = 1f, EnqueuedAt = 0f };
+            pending[1] = new SP.UI.PendingAlert { Message = "critica", Priority = SP.UI.AlertPriority.Critica, Seconds = 1f, EnqueuedAt = 1f };
+            pending[2] = new SP.UI.PendingAlert { Message = "media", Priority = SP.UI.AlertPriority.Media, Seconds = 1f, EnqueuedAt = 0.5f };
+            Check("AlertQueue.SelectNext elige la de MAYOR prioridad sin importar el orden de llegada",
+                SP.UI.AlertQueue.SelectNext(pending, 10f) == 1);
+
+            var empatados = new SP.UI.PendingAlert[2];
+            empatados[0] = new SP.UI.PendingAlert { Message = "primera", Priority = SP.UI.AlertPriority.Media, Seconds = 1f, EnqueuedAt = 5f };
+            empatados[1] = new SP.UI.PendingAlert { Message = "segunda", Priority = SP.UI.AlertPriority.Media, Seconds = 1f, EnqueuedAt = 2f };
+            Check("AlertQueue.SelectNext en empate de prioridad elige FIFO (el que se encolo primero)",
+                SP.UI.AlertQueue.SelectNext(empatados, 10f) == 1);
+
+            var vencida = new SP.UI.PendingAlert[1];
+            vencida[0] = new SP.UI.PendingAlert { Message = "vieja", Priority = SP.UI.AlertPriority.Alta, Seconds = 1f, EnqueuedAt = 0f };
+            Check("AlertQueue.SelectNext ignora un aviso vencido", SP.UI.AlertQueue.SelectNext(vencida, 10f) == -1);
+
+            // --- Projectile contra vehiculo via WorldSystemsRegistry ---
+            if (vehicle != null)
+            {
+                int vidaAntes = vehicle.Health.Current;
+                vehicle.TakeDamage(15, -1);
+                Check($"Projectile/registro: el vehiculo sigue recibiendo daño real ({vidaAntes} -> {vehicle.Health.Current})",
+                    vehicle.Health.Current < vidaAntes);
+            }
+
+            // --- Items 39, 42, 65, 94 del backlog: verificables sin
+            // Play mode (no dependen de una corrutina ni de un OnDamage
+            // gateado por Application.isPlaying). Los que SI necesitan
+            // Play mode real (15, 34, 38, 52, 63, 66, 68, 95) quedan en
+            // RunPlayModeProbe(), documentado y corrido aparte.
+
+            // 39: velocidad legible, con unidad y formato estable.
+            if (vehicleStatusRef != null && vehicle != null)
+            {
+                var motorForFormat = vehicle.GetComponent<VehicleMotor>();
+                vehicleStatusRef.UpdateFrom(vehicle, motorForFormat, false);
+                var speedFieldInfo = typeof(VehicleStatusView).GetField("speedLabel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var speedLabelText = ((Text)speedFieldInfo.GetValue(vehicleStatusRef)).text;
+                bool formatoValido = System.Text.RegularExpressions.Regex.IsMatch(speedLabelText, @"^R? ?\d+[,.]\d u/s");
+                Check($"Velocidad del vehiculo en formato legible ('{speedLabelText}')", formatoValido);
+            }
+
+            // 42: victoria y derrota con paleta y titulo claramente distintos.
+            if (outcomeControllerRef != null)
+            {
+                var victoryPanel = outcomeControllerRef.transform.Find("VictoryPanel");
+                var defeatPanel = outcomeControllerRef.transform.Find("DefeatPanel");
+                if (victoryPanel != null && defeatPanel != null)
+                {
+                    var vImg = victoryPanel.GetComponent<Image>();
+                    var dImg = defeatPanel.GetComponent<Image>();
+                    var vTitle = victoryPanel.GetComponentInChildren<Text>(true);
+                    var dTitle = defeatPanel.GetComponentInChildren<Text>(true);
+                    bool coloresDistintos = vImg != null && dImg != null && vImg.color != dImg.color;
+                    bool titulosDistintos = vTitle != null && dTitle != null && vTitle.text != dTitle.text
+                        && !string.IsNullOrEmpty(vTitle.text) && !string.IsNullOrEmpty(dTitle.text);
+                    Check($"Victoria y derrota tienen paleta distinta (victoria={vImg?.color} derrota={dImg?.color})", coloresDistintos);
+                    Check($"Victoria y derrota tienen titulo distinto ('{vTitle?.text}' vs '{dTitle?.text}')", titulosDistintos);
+                }
+            }
+
+            // 65: vida del enemigo visible en el panel de info al apuntarle.
+            if (aimUiRef != null)
+            {
+                var enemyForAimCheck = ActorRegistry.FindNearest(vega.transform.position, s => s.Team == TeamId.Enemy && s.Health.IsAlive);
+                if (enemyForAimCheck != null)
+                {
+                    aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Enemy, Soldier = enemyForAimCheck, Point = enemyForAimCheck.transform.position });
+                    var infoPanelField = typeof(AimUI).GetField("soldierInfoText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var infoText = ((Text)infoPanelField.GetValue(aimUiRef))?.text ?? "";
+                    Check($"Panel de info al apuntar a un enemigo muestra su vida ('{infoText}')",
+                        infoText.Contains("Vida") && infoText.Contains("[Enemigo]"));
+                }
+            }
+
+            // 94: impacto segun material -- colores y clips distintos por tipo.
+            Check("ImpactFx.VehicleColor y EnemyColor son distintos (feedback visual por tipo de impacto)",
+                ImpactFx.VehicleColor != ImpactFx.EnemyColor);
+            Check("ImpactFx.ObstacleColor y GroundColor son distintos",
+                ImpactFx.ObstacleColor != ImpactFx.GroundColor);
+            var clipMetal = SP.Presentation.GenericSfx.Get(SP.Presentation.SfxKind.ImpactMetal);
+            var clipDirt = SP.Presentation.GenericSfx.Get(SP.Presentation.SfxKind.ImpactDirt);
+            var clipStone = SP.Presentation.GenericSfx.Get(SP.Presentation.SfxKind.ImpactStone);
+            Check("Los 3 sonidos de impacto por material son clips distintos entre si",
+                clipMetal != clipDirt && clipDirt != clipStone && clipMetal != clipStone);
+
+            TestLog.Phase("FASE 5 FINALIZADA");
         }
 
         // ---------------------------------------------------------------
