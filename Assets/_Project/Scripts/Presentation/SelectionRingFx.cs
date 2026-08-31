@@ -28,6 +28,37 @@ namespace SP.Presentation
             if (ringRenderer == null) ringRenderer = GetComponent<MeshRenderer>();
         }
 
+        static Material sharedMaterial;
+        static MaterialPropertyBlock propertyBlock;
+        static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+        static readonly int ColorId = Shader.PropertyToID("_Color");
+
+        static Material SharedMaterial
+        {
+            get
+            {
+                if (sharedMaterial == null)
+                {
+                    var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                    sharedMaterial = new Material(shader);
+                }
+                return sharedMaterial;
+            }
+        }
+
+        // Se escriben las dos propiedades porque el shader puede ser el de
+        // URP (_BaseColor) o el Standard de fallback (_Color).
+        public void SetColor(Color c)
+        {
+            if (ringRenderer == null) ringRenderer = GetComponent<MeshRenderer>();
+            if (ringRenderer == null) return;
+            if (propertyBlock == null) propertyBlock = new MaterialPropertyBlock();
+            ringRenderer.GetPropertyBlock(propertyBlock);
+            propertyBlock.SetColor(BaseColorId, c);
+            propertyBlock.SetColor(ColorId, c);
+            ringRenderer.SetPropertyBlock(propertyBlock);
+        }
+
         public static SelectionRingFx Spawn(Transform target, Color color, float radius = 0.75f)
         {
             var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -40,11 +71,15 @@ namespace SP.Presentation
             }
 
             var rend = go.GetComponent<MeshRenderer>();
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            var mat = new Material(shader) { color = color };
-            rend.sharedMaterial = mat;
+            // Material COMPARTIDO y Shader.Find resuelto una sola vez. Antes
+            // cada anillo hacia su propio Shader.Find (de las llamadas mas
+            // caras del motor) y su propio new Material: seleccionar 50
+            // unidades eran 50 Shader.Find y 50 materiales, y el manager los
+            // destruia y recreaba en CADA cambio de seleccion.
+            rend.sharedMaterial = SharedMaterial;
 
             var fx = go.AddComponent<SelectionRingFx>();
+            fx.SetColor(color);
             fx.Target = target;
             fx.baseRadius = radius;
             return fx;
@@ -89,7 +124,10 @@ namespace SP.Presentation
                     Color c = frac > 0.6f ? new Color(0.35f, 0.85f, 0.4f)
                         : frac > 0.25f ? new Color(0.95f, 0.8f, 0.25f)
                         : new Color(0.95f, 0.25f, 0.2f);
-                    ringRenderer.sharedMaterial.color = ack > 0f ? Color.Lerp(c, Color.white, ack) : c;
+                    // MaterialPropertyBlock y no sharedMaterial.color: el
+                    // material ahora es compartido entre todos los anillos,
+                    // asi que escribirle el color pintaria a TODOS igual.
+                    SetColor(ack > 0f ? Color.Lerp(c, Color.white, ack) : c);
                 }
             }
         }

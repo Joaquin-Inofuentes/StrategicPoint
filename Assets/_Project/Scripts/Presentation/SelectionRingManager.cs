@@ -43,11 +43,15 @@ namespace SP.Presentation
         {
             var idSet = new HashSet<int>(evt.SelectedIds);
 
+            // Pool en vez de destruir y recrear. Antes cada cambio de
+            // seleccion destruia TODOS los anillos y los volvia a crear:
+            // con 50 unidades eran 50 primitivas nuevas por cada clic.
+            // Ahora los que sobran se guardan desactivados y se reusan.
             var toRemove = new List<int>();
             foreach (var kv in rings)
             {
                 if (idSet.Contains(kv.Key)) continue;
-                if (kv.Value != null) Destroy(kv.Value.gameObject);
+                if (kv.Value != null) Recycle(kv.Value);
                 toRemove.Add(kv.Key);
             }
             foreach (var id in toRemove) rings.Remove(id);
@@ -57,10 +61,39 @@ namespace SP.Presentation
                 if (rings.ContainsKey(id)) continue;
                 var soldier = ActorRegistry.FindById(id);
                 if (soldier == null) continue;
-                var ring = SelectionRingFx.Spawn(soldier.transform, RingColor);
+                var ring = Rent(soldier.transform);
                 ring.TrackHealth(soldier);
                 rings[id] = ring;
             }
+        }
+        // Anillos libres, desactivados. ResetIfStale no hace falta porque el
+        // manager entero se recrea con la escena, pero la lista se limpia de
+        // referencias muertas por las dudas (un anillo puede haber sido
+        // destruido por fuera, p.ej. al cambiar de escena).
+        readonly List<SelectionRingFx> pool = new List<SelectionRingFx>();
+
+        SelectionRingFx Rent(Transform target)
+        {
+            while (pool.Count > 0)
+            {
+                var candidate = pool[pool.Count - 1];
+                pool.RemoveAt(pool.Count - 1);
+                if (candidate == null) continue;
+                candidate.gameObject.SetActive(true);
+                candidate.Target = target;
+                candidate.SetColor(RingColor);
+                return candidate;
+            }
+            return SelectionRingFx.Spawn(target, RingColor);
+        }
+
+        void Recycle(SelectionRingFx ring)
+        {
+            if (ring == null) return;
+            ring.Target = null;
+            ring.TrackHealth(null);
+            ring.gameObject.SetActive(false);
+            pool.Add(ring);
         }
     }
 }

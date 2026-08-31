@@ -2290,17 +2290,14 @@ namespace SP.EditorTools
             controlsListTxt.alignment = TextAnchor.UpperLeft;
             controlsListTxt.color = new Color(0.9f, 0.9f, 0.92f);
             controlsListTxt.fontSize = 16;
-            controlsListTxt.text =
-                "A pie: [WASD] moverse · [Click] disparar · [R] recargar\n" +
-                "[1][2][3] cambiar de arma · [F] poseer aliado · [E] interactuar\n" +
-                "[TAB] alternar vista RTS/FPS\n\n" +
-                "Vista RTS: [WASD] panear · [Rueda] zoom · [Arrastrar] seleccionar\n" +
-                "[Shift+Click] sumar a seleccion · [Ctrl+A] seleccionar escuadra\n" +
-                "[T]/[Click der.] mover selección · [X] cancelar orden\n" +
-                "[G] subir/bajar del vehículo · [F] poseer\n\n" +
-                "Vehículo: [WASD] conducir · [G] frenar · [1][2] cambiar asiento\n" +
-                "[V] cámara · [E] bajar · [Click] disparar torreta (artillero)\n\n" +
-                "[ESC] pausa/volver atrás un paso";
+            // Fuente UNICA: antes esto era un literal a mano que ya habia
+            // divergido del cartel contextual y del codigo. Le faltaban ~20
+            // atajos reales (Q, C, F1/F2/F3, H, Espacio, Ctrl+1..9, el zoom
+            // con clic derecho, la R de municion del artillero, y todo el
+            // contexto de vehiculo en vista tactica). Ahora las dos vistas
+            // derivan de ControlsTable, asi que no pueden desincronizarse.
+            controlsListTxt.text = SP.UI.ControlsTable.FullText();
+            controlsListTxt.fontSize = 13;
             var controlsListRt = controlsListGO.GetComponent<RectTransform>();
             controlsListRt.anchorMin = new Vector2(0f, 0f);
             controlsListRt.anchorMax = new Vector2(1f, 1f);

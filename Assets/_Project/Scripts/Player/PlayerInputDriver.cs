@@ -28,6 +28,9 @@ namespace SP.Player
         // Publico (no privado) a proposito: asi Unity lo serializa y la
         // referencia sobrevive el domain reload al entrar a Play.
         public DamageVignetteView DamageVignette;
+        // Formacion con la que se emiten las ordenes de movimiento. Cuadricula
+        // es la de siempre, asi que el comportamiento por defecto no cambia.
+        FormationKind currentFormation = FormationKind.Cuadricula;
         public PlayerHealthView PlayerHealth;
         public UI.SelectionCountView SelectionCount;
         public UI.ModeToastView ModeToast;
@@ -1432,8 +1435,10 @@ namespace SP.Player
                 // implementada que el jugador no podia usar.
                 else if (result.Type == AimTargetType.Enemy && Selection.Selected.Count > 0)
                 {
-                    foreach (var s in Selection.Selected) OrderService.IssueAttackOrder(s, result.Soldier);
-                    GameLog.Line($"Se dio la orden de atacar a {result.Soldier.DisplayName}");
+                    // Lote: la confirmacion sonora y el log van UNA vez, no
+                    // una por soldado (con 50 seleccionados eran 50 tonos
+                    // superpuestos). El log ya lo emite el metodo de lote.
+                    OrderService.IssueAttackOrderForSelection(Selection.Selected, result.Soldier);
                 }
                 else if (result.Type == AimTargetType.Vehicle && result.Vehicle.IsDestroyed)
                 {
@@ -1470,6 +1475,40 @@ namespace SP.Player
             // soldado llegara a destino para recien ahi poder
             // redirigirlo. [X] la cancela y devuelve a la seleccion
             // actual a Patrol sin tener que darle una orden nueva encima.
+            // --- Ordenes de escuadra nuevas ---
+            // [Z] reagrupar dispersos (219)
+            if (kb.zKey.wasPressedThisFrame && Selection.Selected.Count > 0)
+            {
+                OrderService.RegroupSelection(Selection.Selected, currentFormation);
+                if (ModeToast != null) ModeToast.Show("REAGRUPANDO");
+            }
+
+            // [B] retirada: alejarse del enemigo mas cercano (217)
+            if (kb.bKey.wasPressedThisFrame && Selection.Selected.Count > 0)
+            {
+                OrderService.IssueRetreatOrderForSelection(Selection.Selected);
+                if (ModeToast != null) ModeToast.Show("RETIRADA");
+            }
+
+            // [K] cicla la formacion con la que se emiten las ordenes (210)
+            if (kb.kKey.wasPressedThisFrame)
+            {
+                currentFormation = (FormationKind)(((int)currentFormation + 1) % 4);
+                if (ModeToast != null) ModeToast.Show("FORMACION: " + currentFormation.ToString().ToUpper());
+            }
+
+            // [J] seleccionar solo los heridos (220)
+            if (kb.jKey.wasPressedThisFrame)
+            {
+                if (!Selection.SelectWoundedOnly() && ModeToast != null) ModeToast.Show("NADIE HERIDO");
+            }
+
+            // [N] seleccionar a todos los del mismo tipo en pantalla (214)
+            if (kb.nKey.wasPressedThisFrame && Selection.Selected.Count > 0)
+            {
+                Selection.SelectSameTypeOnScreen(Selection.Selected[0], Rig.Cam);
+            }
+
             if (kb.xKey.wasPressedThisFrame && Selection.Selected.Count > 0)
             {
                 foreach (var s in Selection.Selected)
