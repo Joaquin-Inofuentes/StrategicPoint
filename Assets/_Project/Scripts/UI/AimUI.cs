@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using SP.Core;
 using SP.Player;
+using SP.Presentation;
 using SP.Vehicles;
 
 namespace SP.UI
@@ -18,6 +19,7 @@ namespace SP.UI
         Color crosshairBaseColor = Color.white;
         Vector2 crosshairBaseSize = new Vector2(6f, 6f);
         float crosshairUserScale = 1f;
+        float crosshairSpreadFraction;
 
         // La mirilla era un punto blanco fijo, sin forma de ajustar
         // tamaño ni color -- sobre fondos claros practicamente
@@ -25,7 +27,23 @@ namespace SP.UI
         public void SetCrosshairScale(float scale)
         {
             crosshairUserScale = scale;
-            crosshairBaseSize = new Vector2(6f, 6f) * scale;
+            RecomputeCrosshairSize();
+        }
+
+        // La mirilla antes no decia nada de la precision real del arma:
+        // se veia igual de chica disparando en rafaga sostenida que
+        // recien equipada. Ahora se abre con la dispersion real que
+        // WeaponHolder aplica al proyectil (no es un efecto cosmetico
+        // aparte), y se cierra sola al dejar de disparar.
+        public void SetSpread01(float fraction)
+        {
+            crosshairSpreadFraction = Mathf.Clamp01(fraction);
+            RecomputeCrosshairSize();
+        }
+
+        void RecomputeCrosshairSize()
+        {
+            crosshairBaseSize = new Vector2(6f, 6f) * crosshairUserScale + Vector2.one * (crosshairSpreadFraction * 9f);
         }
 
         // El tinte real de cada frame lo recalcula UpdateFromAimResult a
@@ -215,11 +233,25 @@ namespace SP.UI
         static readonly Color VehicleTint = new Color(0.5f, 0.7f, 1f);
         static readonly Color ObstacleTint = new Color(0.85f, 0.85f, 0.85f);
 
+        static readonly Color KillMarkerColor = new Color(1f, 0.85f, 0.15f);
+
         void OnDamage(DamageTakenEvent evt)
         {
             if (!Application.isPlaying || crosshair == null || evt.AttackerId != watchedShooterId) return;
             StopAllCoroutines();
-            StartCoroutine(FlashHitMarker(EnemyHitColor));
+
+            // Herir y matar producian exactamente la misma señal -- el
+            // jugador no podia distinguir "le pegue" de "lo mate" sin
+            // mirar aparte. RemainingHealth ya viaja en el mismo evento
+            // de daño que produjo la baja, no hace falta esperar un
+            // EntityDiedEvent separado (que ademas no lleva quien mato).
+            bool isKill = evt.RemainingHealth <= 0;
+            StartCoroutine(FlashHitMarker(isKill ? KillMarkerColor : EnemyHitColor, isKill));
+            if (isKill)
+            {
+                var clip = GenericSfx.Get(SfxKind.Swap); // tono agudo distintivo, ya existente en la paleta de sonidos
+                AudioSource.PlayClipAtPoint(clip, Camera.main != null ? Camera.main.transform.position : Vector3.zero, 0.6f);
+            }
         }
 
         void OnEnvironmentHit(EnvironmentHitEvent evt)
@@ -232,24 +264,30 @@ namespace SP.UI
                 _ => ObstacleHitColor,
             };
             StopAllCoroutines();
-            StartCoroutine(FlashHitMarker(color));
+            StartCoroutine(FlashHitMarker(color, false));
         }
 
         bool flashing;
 
-        IEnumerator FlashHitMarker(Color flashColor)
+        // isKill agranda mas el flash y lo sostiene mas tiempo: la misma
+        // logica de "impacto" pero con mas peso, para que una baja se
+        // LEA como algo mas importante que un impacto cualquiera, no
+        // solo un color distinto.
+        IEnumerator FlashHitMarker(Color flashColor, bool isKill)
         {
             flashing = true;
+            float peakMultiplier = isKill ? 3.6f : 2.4f;
+            float duration = isKill ? 0.4f : 0.22f;
+
             crosshair.color = flashColor;
-            crosshair.rectTransform.sizeDelta = crosshairBaseSize * 2.4f;
+            crosshair.rectTransform.sizeDelta = crosshairBaseSize * peakMultiplier;
 
             float t = 0f;
-            const float duration = 0.22f;
             while (t < duration)
             {
                 t += Time.deltaTime;
                 float k = t / duration;
-                crosshair.rectTransform.sizeDelta = Vector2.Lerp(crosshairBaseSize * 2.4f, crosshairBaseSize, k);
+                crosshair.rectTransform.sizeDelta = Vector2.Lerp(crosshairBaseSize * peakMultiplier, crosshairBaseSize, k);
                 // Vuelve al tinte de lo que se esté apuntando ahora (no al
                 // blanco base): si seguís apuntando al mismo enemigo apenas
                 // le pegaste, el flash debe apagarse hacia el rojo tenue de

@@ -56,7 +56,8 @@ namespace SP.Presentation
         void OnShot(ShotFiredEvent evt)
         {
             if (!Application.isPlaying || !IsMe(evt.ShooterId) || !gameObject.activeInHierarchy) return;
-            audioSource.PlayOneShot(GenericSfx.Get(SfxKind.Shoot));
+            var kind = soldier.Weapon != null ? soldier.Weapon.CurrentWeaponKind : SP.Combat.WeaponKind.Rifle;
+            audioSource.PlayOneShot(GenericSfx.GetWeaponShot(kind));
 
             // Fogonazo en la boca del arma: no habia ninguna señal en el
             // arma misma al disparar, el unico indicio era el proyectil

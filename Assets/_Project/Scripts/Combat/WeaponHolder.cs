@@ -30,6 +30,28 @@ namespace SP.Combat
         float reloadDuration = 1.5f;
         float reloadTimer;
 
+        // Dispersion real: antes la mirilla no comunicaba nada de la
+        // precision real del arma, y el proyectil siempre salia
+        // perfectamente derecho sin importar cuanto se disparara
+        // seguido. Ahora cada tiro ensancha el cono de dispersion (mas
+        // dificil acertar en rafaga sostenida) y decae solo al dejar de
+        // disparar -- la mirilla en pantalla refleja este mismo valor,
+        // no es un efecto puramente cosmetico separado de la puntería
+        // real.
+        float spreadDeg;
+        const float MaxSpreadDeg = 6f;
+        const float SpreadGrowthPerShot = 1.6f;
+        // OJO: con un fireCooldown tipico de 0.3-0.35s entre disparos, un
+        // decay de 10 grados/seg (probado primero) borraba 3-3.5 grados
+        // entre CADA tiro -- mas de lo que un solo disparo hace crecer
+        // (1.6), asi que la dispersion nunca llegaba a acumularse en
+        // cadencia real, solo en pruebas con huecos artificialmente
+        // largos entre tiros. Bajado a 3, para que la rafaga sostenida
+        // realmente ensanche el cono y solo se recupere al soltar el
+        // gatillo por un rato.
+        const float SpreadDecayPerSec = 3f;
+        public float SpreadFraction01 => Mathf.Clamp01(spreadDeg / MaxSpreadDeg);
+
         public float CooldownRemaining => Mathf.Max(0f, cooldownTimer);
         public WeaponKind CurrentWeaponKind { get; private set; } = WeaponKind.Rifle;
 
@@ -109,6 +131,8 @@ namespace SP.Combat
 
         public void Tick(float dt)
         {
+            spreadDeg = Mathf.MoveTowards(spreadDeg, 0f, SpreadDecayPerSec * dt);
+
             if (IsReloading)
             {
                 reloadTimer -= dt;
@@ -133,13 +157,33 @@ namespace SP.Combat
                 return false;
             }
 
+            // El desvio se calcula con la dispersion ANTES de este tiro
+            // (el patron acumulado hasta ahora), y recien despues crece
+            // para el proximo -- si no, hasta el primer disparo de una
+            // rafaga saldria desviado por su propio impacto.
+            var spreadDir = ApplySpread(direction, spreadDeg);
+            spreadDeg = Mathf.Min(MaxSpreadDeg, spreadDeg + SpreadGrowthPerShot);
+
             var spawnPos = Muzzle != null ? Muzzle.position : origin;
-            pool.Spawn(spawnPos, direction, owner.Id, owner.Team, damage, projectileColor);
+            pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor);
             cooldownTimer = fireCooldown;
             CurrentAmmo--;
             if (CurrentAmmo <= 0) StartReload();
             EventBus.Instance.Publish(new ShotFiredEvent(owner.Id));
             return true;
+        }
+
+        static Vector3 ApplySpread(Vector3 direction, float maxDeg)
+        {
+            if (maxDeg <= 0f) return direction;
+            // Desvio dentro de un cono: un angulo al azar en cada eje
+            // perpendicular a la direccion de disparo, no una unica
+            // rotacion en un solo plano (eso se veria como un abanico
+            // plano en vez de una nube redonda de impactos).
+            float yaw = UnityEngine.Random.Range(-maxDeg, maxDeg);
+            float pitch = UnityEngine.Random.Range(-maxDeg, maxDeg);
+            var rot = Quaternion.AngleAxis(yaw, Vector3.up) * Quaternion.AngleAxis(pitch, Vector3.right);
+            return rot * direction;
         }
 
         void StartReload()

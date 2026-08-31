@@ -32,6 +32,9 @@ namespace SP.Combat
         // en vez del impacto chico normal.
         float explosionRadius;
 
+        const float RestScale = 0.2f; // debe coincidir con la escala del prefab (BuildAndSaveProjectilePrefab)
+        const float TraceStretch = 2.75f;
+
         // Instancias actualmente en vuelo. Permite avanzar la simulación
         // manualmente (tests) sin depender del bucle de Update de Unity.
         public static readonly List<Projectile> ActiveInstances = new List<Projectile>();
@@ -41,6 +44,12 @@ namespace SP.Combat
             pool = owningPool;
             transform.position = position;
             transform.rotation = Quaternion.LookRotation(direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward);
+            // Trazadora: a la velocidad real del proyectil, una esfera de
+            // 0.2 unidades es practicamente invisible a simple vista. Se
+            // estira en Z local (que ya coincide con la direccion de
+            // vuelo por el LookRotation de arriba) para que se lea la
+            // trayectoria, no solo el punto de impacto.
+            transform.localScale = new Vector3(RestScale, RestScale, RestScale * TraceStretch);
             ownerId = shooterId;
             ownerTeam = shooterTeam;
             damage = dmg;
@@ -82,6 +91,11 @@ namespace SP.Combat
         {
             active = false;
             ActiveInstances.Remove(this);
+            // Vuelve a escala de reposo uniforme: sin esto, la proxima vez
+            // que el pool reutilice este mismo objeto para un impacto (no
+            // un vuelo), o si algo lo inspecciona en el pool, quedaria
+            // con el estiramiento de la trazadora del disparo anterior.
+            transform.localScale = Vector3.one * RestScale;
         }
 
         void Update() => Tick(Time.deltaTime);

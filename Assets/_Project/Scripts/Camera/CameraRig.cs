@@ -44,6 +44,8 @@ namespace SP.CameraSystem
         {
             if (cam == null) return;
 
+            recoilPitch = Mathf.MoveTowards(recoilPitch, 0f, Time.deltaTime * recoilRecoverySpeed);
+
             if (!cam.orthographic)
             {
                 float goal = zoomed ? zoomFov : normalFov;
@@ -64,6 +66,16 @@ namespace SP.CameraSystem
 
         public void AddPitch(float delta) => pitch = Mathf.Clamp(pitch + delta, -MaxPitch, MaxPitch);
         public void ResetPitch() => pitch = 0f;
+
+        // Culatazo de camara: un canal SEPARADO del pitch que controla el
+        // mouse, para que decaiga solo sin que el jugador tenga que
+        // compensarlo bajando el mouse el mismo tanto que subio (eso
+        // seria acumular error de puntería en cada disparo). Sube de
+        // golpe con cada tiro y se recupera con un MoveTowards.
+        float recoilPitch;
+        [SerializeField] float recoilRecoverySpeed = 40f; // grados/seg
+        public void KickRecoil(float degrees) => recoilPitch += degrees;
+        public float RecoilPitch => recoilPitch;
 
         // Vista RTS guardada al salir, para no perder el encuadre que el
         // jugador armo (paneo + zoom) cada vez que vuelve. Sin esto, cada
@@ -157,7 +169,7 @@ namespace SP.CameraSystem
             if (soldier == null || IsTransitioning) return;
             Transform eye = soldier.EyeAnchor != null ? soldier.EyeAnchor : soldier.transform;
             transform.position = eye.position;
-            transform.rotation = eye.rotation * Quaternion.Euler(-pitch, 0f, 0f);
+            transform.rotation = eye.rotation * Quaternion.Euler(-(pitch + recoilPitch), 0f, 0f);
         }
 
         // Primera persona genérica: sirve para el ojo de un soldado o el

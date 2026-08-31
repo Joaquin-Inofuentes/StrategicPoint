@@ -82,12 +82,24 @@ namespace SP.Player
         // arranca en 1 en cada disparo y decae hacia 0; el desplazamiento
         // real se aplica en Z (hacia la camara) en UpdateWeaponViewmodel.
         float recoilKick;
+        float emptyClickCooldown;
         IDisposable shotSub;
 
         void OnShotFiredForRecoil(ShotFiredEvent evt)
         {
             if (Brain == null || Brain.Current == null || evt.ShooterId != Brain.Current.Id) return;
             recoilKick = 1f;
+            // Culatazo real de camara, no solo del cubo del arma: sube la
+            // mira un poco con cada disparo y se recupera sola. La
+            // magnitud depende del arma (Heavy patea mas que Pistol),
+            // igual que ya varia el retroceso del viewmodel via
+            // WeaponCatalog.
+            var spec = WeaponCatalog.Get(Brain.Current.Weapon.CurrentWeaponKind);
+            // El daño ya varia por arma en el catalogo (Heavy pega mas
+            // fuerte que Pistol): un proxy razonable de "cuanto empuja"
+            // sin sumar un campo de recoil nuevo al catalogo.
+            float kickDeg = Mathf.Clamp(spec.Damage * 0.025f, 0.6f, 3f);
+            Rig.KickRecoil(kickDeg);
         }
 
         void UpdateWeaponViewmodel(WeaponHolder weapon)
@@ -513,7 +525,12 @@ namespace SP.Player
         {
             if (Brain.Current == null) return;
             if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
-            if (AimUiRef != null) { AimUiRef.SetVisible(true); AimUiRef.SetWatchedShooter(Brain.Current.Id); }
+            if (AimUiRef != null)
+            {
+                AimUiRef.SetVisible(true);
+                AimUiRef.SetWatchedShooter(Brain.Current.Id);
+                AimUiRef.SetSpread01(Brain.Current.Weapon.SpreadFraction01);
+            }
             if (SelectionCount != null) SelectionCount.SetModeVisible(false);
 
             if (bodyHiddenFor != Brain.Current)
@@ -557,7 +574,25 @@ namespace SP.Player
             }
             UpdateWeaponViewmodel(Brain.Current.Weapon);
 
-            if (mouse != null && mouse.leftButton.wasPressedThisFrame) Brain.Fire();
+            // isPressed (no wasPressedThisFrame): antes habia que
+            // clickear una vez por bala incluso con un rifle. Ahora
+            // mantener el boton dispara a la cadencia real del arma
+            // (fireCooldown), que ya es distinta por WeaponKind.
+            if (mouse != null && mouse.leftButton.isPressed)
+            {
+                bool emptyBeforeFire = Brain.Current.Weapon.CurrentAmmo <= 0 && !Brain.Current.Weapon.IsReloading;
+                bool fired = Brain.Fire();
+                // Clic seco de gatillo vacio: solo si de verdad no
+                // disparo por falta de municion (no por estar en
+                // cooldown normal entre tiros, que no deberia sonar
+                // como un fallo).
+                if (!fired && emptyBeforeFire && emptyClickCooldown <= 0f)
+                {
+                    emptyClickCooldown = 0.3f;
+                    AudioSource.PlayClipAtPoint(GenericSfx.Get(SfxKind.EmptyClick), Rig.transform.position, 0.5f);
+                }
+            }
+            emptyClickCooldown = Mathf.Max(0f, emptyClickCooldown - Time.deltaTime);
 
             if (kb.digit1Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Rifle);
             if (kb.digit2Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Pistol);
