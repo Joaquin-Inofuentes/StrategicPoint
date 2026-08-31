@@ -44,6 +44,16 @@ namespace SP.Player
         // no hacía nada de verdad (solo se veía, no afectaba el juego) --
         // esta propiedad es lo que lo conecta a algo real.
         public float LookSensitivity { get => lookSensitivity; set => lookSensitivity = value; }
+
+        // Antes la torreta usaba la misma sensibilidad que mirar a pie:
+        // son dos gestos de escala muy distinta (mirar con el cuerpo vs.
+        // girar un cañon), ajustar uno arruinaba el otro.
+        [SerializeField] float turretSensitivity = 0.15f;
+        public float TurretSensitivity { get => turretSensitivity; set => turretSensitivity = value; }
+
+        // Requisito de accesibilidad basico y preferencia muy comun en
+        // shooters: sin esto no habia forma de invertir el eje vertical.
+        public bool InvertLookY { get; set; }
         [SerializeField] float rtsPanSpeed = 14f;
         [SerializeField] float rtsZoomSpeed = 20f;
         [SerializeField] float dragThresholdPixels = 6f;
@@ -526,7 +536,7 @@ namespace SP.Player
             {
                 var delta = mouse.delta.ReadValue();
                 Brain.RotateYaw(delta.x * lookSensitivity);
-                Rig.AddPitch(delta.y * lookSensitivity);
+                Rig.AddPitch(delta.y * lookSensitivity * (InvertLookY ? -1f : 1f));
             }
 
             Rig.FollowFps(Brain.Current);
@@ -974,7 +984,7 @@ namespace SP.Player
                 if (mouse != null && turret != null)
                 {
                     var delta = mouse.delta.ReadValue();
-                    turret.RotateYaw(delta.x * lookSensitivity);
+                    turret.RotateYaw(delta.x * turretSensitivity);
                     if (mouse.leftButton.wasPressedThisFrame) turret.TryFire();
                 }
 

@@ -41,6 +41,7 @@ namespace SP.EditorTools
         static MissionStatusView missionStatusRef;
         static SelectionCountView selectionCountRef;
         static ModeToastView modeToastRef;
+        static CanvasScaler hudScalerRef;
         static Text victoryStatsRef;
         static Text defeatStatsRef;
         static VehicleStatusView vehicleStatusRef;
@@ -1066,6 +1067,7 @@ namespace SP.EditorTools
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
+            hudScalerRef = scaler;
 
             var crossGO = new GameObject("Crosshair", typeof(Image));
             crossGO.transform.SetParent(canvasGO.transform, false);
@@ -1948,7 +1950,7 @@ namespace SP.EditorTools
             settingsPanelGO.GetComponent<Image>().color = new Color(0.05f, 0.05f, 0.08f, 1f);
             var settingsRt = settingsPanelGO.GetComponent<RectTransform>();
             settingsRt.anchorMin = settingsRt.anchorMax = new Vector2(0.5f, 0.5f);
-            settingsRt.sizeDelta = new Vector2(480f, 320f);
+            settingsRt.sizeDelta = new Vector2(480f, 560f);
 
             var settingsTitleGO = new GameObject("Title", typeof(Text));
             settingsTitleGO.transform.SetParent(settingsPanelGO.transform, false);
@@ -1965,11 +1967,51 @@ namespace SP.EditorTools
             settingsTitleRt.anchoredPosition = new Vector2(0f, -20f);
             settingsTitleRt.sizeDelta = new Vector2(440f, 40f);
 
-            BuildLabeledSlider(settingsPanelGO.transform, "Sensibilidad de mouse", new Vector2(0f, 40f), 0.05f, 0.5f, 0.15f);
-            var volumeSlider = BuildLabeledSlider(settingsPanelGO.transform, "Volumen", new Vector2(0f, -30f), 0f, 1f, 1f);
+            BuildLabeledSlider(settingsPanelGO.transform, "Sensibilidad de mouse", new Vector2(0f, 130f), 0.05f, 0.5f, 0.15f);
+            // Sensibilidad de torreta por separado: mirar a pie y girar
+            // un cañon son gestos de escala muy distinta, ajustar uno no
+            // deberia arruinar el otro.
+            BuildLabeledSlider(settingsPanelGO.transform, "Sensibilidad de torreta", new Vector2(0f, 70f), 0.05f, 0.5f, 0.15f);
+            var volumeSlider = BuildLabeledSlider(settingsPanelGO.transform, "Volumen", new Vector2(0f, 10f), 0f, 1f, 1f);
             volumeSlider.onValueChanged.AddListener(v => AudioListener.volume = v);
+            BuildLabeledSlider(settingsPanelGO.transform, "Tamaño de HUD", new Vector2(0f, -50f), 0.7f, 1.4f, 1f);
+            BuildLabeledSlider(settingsPanelGO.transform, "Tamaño de mirilla", new Vector2(0f, -110f), 0.5f, 2f, 1f);
 
-            var backBtn = BuildUIButton(settingsPanelGO.transform, "BackButton", "VOLVER", new Vector2(0f, -120f), new Color(0.5f, 0.5f, 0.5f));
+            // Invertir eje Y: toggle simple, no un slider -- es una opcion
+            // binaria (invertido o no), no un rango.
+            var invertGO = new GameObject("InvertirEjeY_Toggle", typeof(Toggle));
+            invertGO.transform.SetParent(settingsPanelGO.transform, false);
+            var invertRt = invertGO.GetComponent<RectTransform>();
+            invertRt.anchorMin = invertRt.anchorMax = new Vector2(0.5f, 0.5f);
+            invertRt.anchoredPosition = new Vector2(-140f, -160f);
+            invertRt.sizeDelta = new Vector2(24f, 24f);
+            var invertBgGO = new GameObject("Background", typeof(Image));
+            invertBgGO.transform.SetParent(invertGO.transform, false);
+            invertBgGO.GetComponent<Image>().color = new Color(0.2f, 0.2f, 0.24f);
+            StretchFull(invertBgGO.GetComponent<RectTransform>());
+            var invertCheckGO = new GameObject("Checkmark", typeof(Image));
+            invertCheckGO.transform.SetParent(invertBgGO.transform, false);
+            invertCheckGO.GetComponent<Image>().color = new Color(0.4f, 0.85f, 0.45f);
+            StretchFull(invertCheckGO.GetComponent<RectTransform>());
+            var invertToggle = invertGO.GetComponent<Toggle>();
+            invertToggle.targetGraphic = invertBgGO.GetComponent<Image>();
+            invertToggle.graphic = invertCheckGO.GetComponent<Image>();
+            invertToggle.isOn = false;
+
+            var invertLabelGO = new GameObject("InvertirEjeY_Label", typeof(Text));
+            invertLabelGO.transform.SetParent(settingsPanelGO.transform, false);
+            var invertLabelTxt = invertLabelGO.GetComponent<Text>();
+            invertLabelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            invertLabelTxt.alignment = TextAnchor.MiddleLeft;
+            invertLabelTxt.color = Color.white;
+            invertLabelTxt.fontSize = 18;
+            invertLabelTxt.text = "Invertir eje Y";
+            var invertLabelRt = invertLabelGO.GetComponent<RectTransform>();
+            invertLabelRt.anchorMin = invertLabelRt.anchorMax = new Vector2(0.5f, 0.5f);
+            invertLabelRt.anchoredPosition = new Vector2(20f, -160f);
+            invertLabelRt.sizeDelta = new Vector2(260f, 24f);
+
+            var backBtn = BuildUIButton(settingsPanelGO.transform, "BackButton", "VOLVER", new Vector2(0f, -225f), new Color(0.5f, 0.5f, 0.5f));
             backBtn.onClick.AddListener(pauseController.OnSettingsBackClicked);
 
             // Panel de controles: antes no habia ningun lugar donde ver la
@@ -2059,6 +2101,8 @@ namespace SP.EditorTools
             confirmExitGO.SetActive(false);
 
             pauseController.Bind(pausePanelGO, settingsPanelGO);
+            pauseController.HudScaler = hudScalerRef;
+            pauseController.AimUiRef = aimUiRef;
             pauseControllerRef = pauseController;
         }
 

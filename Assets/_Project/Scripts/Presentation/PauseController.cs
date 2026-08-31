@@ -3,6 +3,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using SP.Core;
+using SP.UI;
 
 namespace SP.Presentation
 {
@@ -18,8 +19,18 @@ namespace SP.Presentation
         GameOutcomeController outcome;
         SP.Player.PlayerInputDriver input;
 
+        // Wireados desde HeadlessTestRunner para las opciones de
+        // accesibilidad: tamaño de HUD y de mirilla.
+        public CanvasScaler HudScaler;
+        public AimUI AimUiRef;
+        static readonly Vector2 BaseReferenceResolution = new Vector2(1920f, 1080f);
+
         const string PrefVolume = "sp_volume";
         const string PrefSensitivity = "sp_sensitivity";
+        const string PrefTurretSensitivity = "sp_turret_sensitivity";
+        const string PrefHudScale = "sp_hud_scale";
+        const string PrefCrosshairScale = "sp_crosshair_scale";
+        const string PrefInvertY = "sp_invert_y";
 
         public bool IsPaused { get; private set; }
 
@@ -110,6 +121,72 @@ namespace SP.Presentation
                         if (input != null) input.LookSensitivity = v;
                         PlayerPrefs.SetFloat(PrefSensitivity, v);
                         if (sensValueTxt != null) sensValueTxt.text = v.ToString("0.00");
+                    });
+                }
+
+                var turretValueTxt = settingsPanel.transform.Find("Sensibilidad de torreta_Value")?.GetComponent<Text>();
+                var turretSlider = settingsPanel.transform.Find("Sensibilidad de torreta_Slider")?.GetComponent<Slider>();
+                float savedTurretSens = PlayerPrefs.GetFloat(PrefTurretSensitivity, 0.15f);
+                if (input != null) input.TurretSensitivity = savedTurretSens;
+                if (turretSlider != null)
+                {
+                    turretSlider.SetValueWithoutNotify(savedTurretSens);
+                    if (turretValueTxt != null) turretValueTxt.text = savedTurretSens.ToString("0.00");
+                    turretSlider.onValueChanged.AddListener(v =>
+                    {
+                        if (input != null) input.TurretSensitivity = v;
+                        PlayerPrefs.SetFloat(PrefTurretSensitivity, v);
+                        if (turretValueTxt != null) turretValueTxt.text = v.ToString("0.00");
+                    });
+                }
+
+                // Tamaño de HUD: en modo ScaleWithScreenSize, CanvasScaler
+                // no expone un multiplicador directo -- la forma real de
+                // agrandar/achicar toda la UI es achicar/agrandar la
+                // resolucion de referencia (menos referencia = mismos
+                // pixeles de diseño ocupan mas pantalla real).
+                var hudValueTxt = settingsPanel.transform.Find("Tamaño de HUD_Value")?.GetComponent<Text>();
+                var hudSlider = settingsPanel.transform.Find("Tamaño de HUD_Slider")?.GetComponent<Slider>();
+                float savedHudScale = PlayerPrefs.GetFloat(PrefHudScale, 1f);
+                if (HudScaler != null) HudScaler.referenceResolution = BaseReferenceResolution / savedHudScale;
+                if (hudSlider != null)
+                {
+                    hudSlider.SetValueWithoutNotify(savedHudScale);
+                    if (hudValueTxt != null) hudValueTxt.text = savedHudScale.ToString("0.00");
+                    hudSlider.onValueChanged.AddListener(v =>
+                    {
+                        if (HudScaler != null) HudScaler.referenceResolution = BaseReferenceResolution / v;
+                        PlayerPrefs.SetFloat(PrefHudScale, v);
+                        if (hudValueTxt != null) hudValueTxt.text = v.ToString("0.00");
+                    });
+                }
+
+                var crossValueTxt = settingsPanel.transform.Find("Tamaño de mirilla_Value")?.GetComponent<Text>();
+                var crossSlider = settingsPanel.transform.Find("Tamaño de mirilla_Slider")?.GetComponent<Slider>();
+                float savedCrossScale = PlayerPrefs.GetFloat(PrefCrosshairScale, 1f);
+                if (AimUiRef != null) AimUiRef.SetCrosshairScale(savedCrossScale);
+                if (crossSlider != null)
+                {
+                    crossSlider.SetValueWithoutNotify(savedCrossScale);
+                    if (crossValueTxt != null) crossValueTxt.text = savedCrossScale.ToString("0.00");
+                    crossSlider.onValueChanged.AddListener(v =>
+                    {
+                        if (AimUiRef != null) AimUiRef.SetCrosshairScale(v);
+                        PlayerPrefs.SetFloat(PrefCrosshairScale, v);
+                        if (crossValueTxt != null) crossValueTxt.text = v.ToString("0.00");
+                    });
+                }
+
+                var invertToggle = settingsPanel.transform.Find("InvertirEjeY_Toggle")?.GetComponent<Toggle>();
+                bool savedInvertY = PlayerPrefs.GetInt(PrefInvertY, 0) == 1;
+                if (input != null) input.InvertLookY = savedInvertY;
+                if (invertToggle != null)
+                {
+                    invertToggle.SetIsOnWithoutNotify(savedInvertY);
+                    invertToggle.onValueChanged.AddListener(v =>
+                    {
+                        if (input != null) input.InvertLookY = v;
+                        PlayerPrefs.SetInt(PrefInvertY, v ? 1 : 0);
                     });
                 }
             }

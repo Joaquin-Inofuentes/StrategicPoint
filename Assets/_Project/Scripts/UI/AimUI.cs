@@ -17,6 +17,22 @@ namespace SP.UI
         Image crosshair;
         Color crosshairBaseColor = Color.white;
         Vector2 crosshairBaseSize = new Vector2(6f, 6f);
+        float crosshairUserScale = 1f;
+
+        // La mirilla era un punto blanco fijo, sin forma de ajustar
+        // tamaño ni color -- sobre fondos claros practicamente
+        // desaparecia y no habia ninguna opcion para compensarlo.
+        public void SetCrosshairScale(float scale)
+        {
+            crosshairUserScale = scale;
+            crosshairBaseSize = new Vector2(6f, 6f) * scale;
+        }
+
+        // El tinte real de cada frame lo recalcula UpdateFromAimResult a
+        // partir de crosshairBaseColor (llamado cada frame en FPS), asi
+        // que no hace falta reaplicar el color a mano aca: el proximo
+        // frame ya lo toma.
+        public void SetCrosshairColor(Color color) => crosshairBaseColor = color;
         int watchedShooterId = -1;
         IDisposable damageSub;
         IDisposable environmentHitSub;
