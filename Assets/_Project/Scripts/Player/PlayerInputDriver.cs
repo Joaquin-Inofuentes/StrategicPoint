@@ -368,6 +368,10 @@ namespace SP.Player
             if (kb.f1Key.wasPressedThisFrame) PossessSquadIndex(0);
             if (kb.f2Key.wasPressedThisFrame) PossessSquadIndex(1);
             if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
+            // [Q] cicla entre vivos y [C] posee al mas cercano: ambas caen
+            // bajo la mano izquierda sin soltar WASD, a diferencia de F1/F2/F3.
+            if (kb.qKey.wasPressedThisFrame) CycleToNextLivingAlly();
+            if (kb.cKey.wasPressedThisFrame) PossessNearestAlly();
 
             if (Rig.Mode == ControlMode.Fps) UpdateFps(kb, Mouse.current);
             else UpdateRts(kb, Mouse.current);
@@ -616,11 +620,7 @@ namespace SP.Player
             if (kb.digit3Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Heavy);
 
             if (kb.fKey.wasPressedThisFrame && result.Type == AimTargetType.Ally)
-            {
-                var target = result.Soldier;
-                PossessionService.Swap(Brain, target);
-                Rig.BeginTransition(target.EyeAnchor != null ? target.EyeAnchor : target.transform);
-            }
+                TryPossess(result.Soldier);
 
             if (kb.tKey.wasPressedThisFrame && result.Type == AimTargetType.Ground)
             {
@@ -777,20 +777,80 @@ namespace SP.Player
         void PossessSquadIndex(int index)
         {
             if (Squad == null || index < 0 || index >= Squad.Count) return;
-            var target = Squad[index];
-            if (target == null) return;
+            TryPossess(Squad[index]);
+        }
+
+        // Unico camino de posesion del jugador. Antes cada sitio hacia lo
+        // suyo: el [F] desde RTS cambiaba de camara de golpe (sin la
+        // transicion que si tenian los atajos F1/F2/F3 y la secuencia de
+        // muerte), ninguno avisaba a quien pasaste, ninguno devolvia el
+        // pitch a cero, y el rechazo por soldado caido solo existia en un
+        // sitio -- en el resto la tecla parecia no funcionar.
+        public bool TryPossess(Soldier target)
+        {
+            if (target == null) return false;
 
             if (!target.Health.IsAlive)
             {
-                if (DeadNotice != null) DeadNotice.Show($"{target.DisplayName} esta muerto");
-                return;
+                if (DeadNotice != null) DeadNotice.Show($"{target.DisplayName} esta muerto: no se puede poseer");
+                OrderService.PlayRejectSound();
+                return false;
             }
-            if (!target.gameObject.activeInHierarchy) return; // montado en un vehículo, no se puede poseer así
-            if (Brain.Current == target) return;
+            if (!target.gameObject.activeInHierarchy)
+            {
+                if (DeadNotice != null) DeadNotice.Show($"{target.DisplayName} esta dentro de un vehiculo");
+                OrderService.PlayRejectSound();
+                return false;
+            }
+            if (Brain.Current == target) return false;
 
+            var previous = Brain.Current;
             PossessionService.Swap(Brain, target);
+
+            // El pitch es estado del rig, no del soldado: sin esto heredas
+            // el angulo vertical del anterior y podes aparecer mirando al
+            // piso sin ningun motivo.
+            Rig.ResetPitch();
             Rig.BeginTransition(target.EyeAnchor != null ? target.EyeAnchor : target.transform);
             if (Rig.Mode == ControlMode.Rts) Rig.SetMode(ControlMode.Fps);
+
+            if (ModeToast != null) ModeToast.Show($"CONTROLAS A {target.DisplayName.ToUpperInvariant()}", 1.2f);
+
+            // El anterior recupera su AiBrain y empieza a actuar solo. Sin
+            // aviso, el jugador ve moverse a un soldado que creia suyo.
+            if (previous != null && previous.Brain != null && !previous.Brain.IsPossessedByPlayer)
+                GameLog.Line($"{previous.DisplayName} vuelve al control de la IA");
+
+            return true;
+        }
+
+        // Poseer exigia recordar el numero de cada soldado o apuntarle con
+        // precision -- ninguna de las dos cosas es viable bajo fuego.
+        void PossessNearestAlly()
+        {
+            if (Brain.Current == null) return;
+            var nearest = ActorRegistry.FindNearest(Brain.Current.transform.position, s =>
+                s.Health.IsAlive && s.Team == Brain.Current.Team && s != Brain.Current && s.gameObject.activeInHierarchy);
+            if (nearest == null) { RejectOrder("NO HAY ALIADO CERCA"); return; }
+            TryPossess(nearest);
+        }
+
+        // Los atajos por indice fallan cuando ese soldado murio. El ciclo
+        // salta a los caidos y recorre a los vivos en orden estable (el del
+        // escuadron), asi que siempre da un resultado util.
+        void CycleToNextLivingAlly()
+        {
+            if (Squad == null || Squad.Count == 0) return;
+            int start = Squad.IndexOf(Brain.Current);
+            for (int step = 1; step <= Squad.Count; step++)
+            {
+                var candidate = Squad[(start + step + Squad.Count) % Squad.Count];
+                if (candidate == null || candidate == Brain.Current) continue;
+                if (!candidate.Health.IsAlive || !candidate.gameObject.activeInHierarchy) continue;
+                TryPossess(candidate);
+                return;
+            }
+            RejectOrder("NO QUEDAN ALIADOS VIVOS");
         }
 
         void EquipFromCatalog(WeaponKind kind) => EquipWeaponHotkey(kind);
@@ -1201,7 +1261,7 @@ namespace SP.Player
             }
 
             string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
-            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [X] cancelar orden · [G] subir al vehículo · [F] poseer · [TAB] vista FPS · {selectionLabel}");
+            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [X] cancelar orden · [G] subir al vehículo · [F] poseer · [Q] ciclar · [C] mas cercano · [TAB] vista FPS · {selectionLabel}");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -1259,11 +1319,7 @@ namespace SP.Player
             if (kb.fKey.wasPressedThisFrame)
             {
                 var result = Aim.Evaluate(screenRay, null);
-                if (result.Type == AimTargetType.Ally)
-                {
-                    PossessionService.Swap(Brain, result.Soldier);
-                    Rig.SetMode(ControlMode.Fps);
-                }
+                if (result.Type == AimTargetType.Ally) TryPossess(result.Soldier);
                 // Apuntando al vehículo con la escuadra (o parte de ella)
                 // ya adentro: [F] toma control de manejo en vez de
                 // requerir que primero le apuntes a un soldado -- los

@@ -226,6 +226,8 @@ namespace SP.EditorTools
             inputDriver.ModeToast = modeToastRef;
             servicesGO.AddComponent<WorldSimulationDriver>();
             servicesGO.AddComponent<SelectionRingManager>();
+            var possessedMarker = servicesGO.AddComponent<PossessedMarkerView>();
+            possessedMarker.SetInitial(playerBrain.Current);
             servicesGO.AddComponent<AttackLineManager>();
             servicesGO.AddComponent<OrderLineManager>();
             servicesGO.AddComponent<FloatingDamageTextManager>();

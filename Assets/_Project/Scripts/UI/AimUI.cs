@@ -363,8 +363,24 @@ namespace SP.UI
 
             var s = result.Soldier;
             string tag = result.Type == AimTargetType.Enemy ? "[Enemigo] " : "";
-            soldierInfoText.text = $"{tag}{s.DisplayName}   ·   Vida {s.Health.Current}/{s.Health.MaxHealth}   ·   Arma {s.Weapon.CurrentWeaponKind}   ·   {s.Role}";
+            // El estado de IA es justamente lo que decide si conviene tomar
+            // el control ahora o dejarlo pelear -- el panel mostraba vida,
+            // arma y rol, pero no eso.
+            string state = s.Brain != null ? StateLabel(s.Brain.State) : "-";
+            soldierInfoText.text = $"{tag}{s.DisplayName}   ·   Vida {s.Health.Current}/{s.Health.MaxHealth}   ·   Arma {s.Weapon.CurrentWeaponKind}   ·   {s.Role}   ·   {state}";
         }
+
+        static string StateLabel(SP.Ai.AiState state) => state switch
+        {
+            SP.Ai.AiState.Patrol => "Patrullando",
+            SP.Ai.AiState.Idle => "En reposo",
+            SP.Ai.AiState.MovingToOrder => "Cumpliendo orden",
+            SP.Ai.AiState.MovingToAttackOrder => "Yendo a atacar",
+            SP.Ai.AiState.Chase => "Persiguiendo",
+            SP.Ai.AiState.Attack => "En combate",
+            SP.Ai.AiState.Dead => "Caido",
+            _ => state.ToString(),
+        };
 
         void UpdateVehicleInfo(AimResult result)
         {
