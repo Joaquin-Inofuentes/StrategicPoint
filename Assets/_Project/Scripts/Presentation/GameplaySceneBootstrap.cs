@@ -19,6 +19,11 @@ namespace SP.Presentation
 
         void Start()
         {
+            // Prellenado de los escombros en runtime (no al construir la
+            // escena): asi el primer estallido real no paga la creacion
+            // de 64 objetos, y nada de esto termina guardado en la escena.
+            DebrisPool.Prewarm();
+
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null)

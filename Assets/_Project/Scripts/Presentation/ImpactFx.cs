@@ -106,6 +106,117 @@ namespace SP.Presentation
             // Diámetro = 2x radio (la esfera primitiva de Unity tiene 1
             // unidad de diámetro con escala 1).
             fx.StartCoroutine(fx.ExplodeAndCollapse(radius * 2f));
+
+            // La esfera dice DONDE, pero se colapsa rapido y es dificil
+            // leer HASTA DONDE llego. El anillo se expande exactamente
+            // hasta explosionRadius sobre el suelo y se queda ahi un
+            // instante: es lo que permite aprender el alcance real y
+            // evitar el fuego amigo.
+            SpawnShockwaveRing(position, radius);
+            DecalPool.Spawn(DecalKind.Crater, new Vector3(position.x, 0.02f, position.z), Vector3.up, radius * 1.4f);
+            SpawnDustCloud(position, radius);
+
+            // Escombros del punto de impacto, del pool compartido.
+            for (int i = 0; i < 10; i++)
+            {
+                var dir = (Random.insideUnitSphere + Vector3.up).normalized;
+                DebrisPool.Spawn(position, dir * Random.Range(4f, 9f), new Color(0.4f, 0.32f, 0.24f), Random.Range(0.1f, 0.22f));
+            }
+        }
+
+        public static void SpawnShockwaveRing(Vector3 center, float radius)
+        {
+            var go = new GameObject("ShockwaveRing");
+            go.transform.position = new Vector3(center.x, 0.06f, center.z);
+            var line = go.AddComponent<LineRenderer>();
+            line.loop = true;
+            line.useWorldSpace = true;
+            line.widthMultiplier = 0.18f;
+            line.positionCount = 36;
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+            line.sharedMaterial = new Material(shader) { color = ExplosionColor };
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            var fx = go.AddComponent<ImpactFx>();
+            fx.StartCoroutine(fx.ExpandRing(line, new Vector3(center.x, 0.06f, center.z), radius));
+        }
+
+        IEnumerator ExpandRing(LineRenderer line, Vector3 center, float targetRadius)
+        {
+            const float expandTime = 0.28f;
+            const float holdTime = 0.12f;
+
+            float t = 0f;
+            while (t < expandTime)
+            {
+                t += Time.deltaTime;
+                DrawRing(line, center, Mathf.Lerp(0f, targetRadius, t / expandTime));
+                yield return null;
+            }
+            // Se planta EXACTAMENTE en el radio real antes de irse: ese
+            // instante es el que enseña el alcance.
+            DrawRing(line, center, targetRadius);
+            yield return new WaitForSeconds(holdTime);
+
+            t = 0f;
+            while (t < 0.2f)
+            {
+                t += Time.deltaTime;
+                line.widthMultiplier = Mathf.Lerp(0.18f, 0f, t / 0.2f);
+                yield return null;
+            }
+
+            if (Application.isPlaying) Destroy(gameObject);
+            else DestroyImmediate(gameObject);
+        }
+
+        static void DrawRing(LineRenderer line, Vector3 center, float radius)
+        {
+            int n = line.positionCount;
+            for (int i = 0; i < n; i++)
+            {
+                float a = (float)i / n * Mathf.PI * 2f;
+                line.SetPosition(i, center + new Vector3(Mathf.Cos(a) * radius, 0f, Mathf.Sin(a) * radius));
+            }
+        }
+
+        static readonly Color DustColor = new Color(0.62f, 0.56f, 0.46f);
+
+        // Nube breve que ensucia la zona y se disipa. Va por el mismo
+        // presupuesto de escombros para que no se acumule: una explosion
+        // no puede costar mas que su cupo.
+        static void SpawnDustCloud(Vector3 center, float radius)
+        {
+            for (int i = 0; i < 6; i++)
+            {
+                var offset = Random.insideUnitSphere * radius * 0.6f;
+                offset.y = Mathf.Abs(offset.y) * 0.3f;
+                DebrisPool.Spawn(center + offset, Vector3.up * Random.Range(0.4f, 1.1f), DustColor, Random.Range(0.5f, 0.9f), 1.4f);
+            }
+        }
+
+        // Antes todos los impactos generaban el mismo efecto: un obus de
+        // tanque se sentia igual que una bala de pistola y se perdia la
+        // jerarquia entre armas. El daño ya viaja en el Projectile.
+        public static void SpawnScaledByDamage(Vector3 position, Color color, int damage)
+        {
+            float scale = Mathf.Lerp(0.35f, 1.4f, Mathf.InverseLerp(5f, 60f, damage));
+            Spawn(position, color, 0.55f * scale, 0.35f);
+        }
+
+        static readonly Color ArmorSparkColor = new Color(1f, 0.9f, 0.55f);
+
+        // EnvironmentHitKind ya distinguia el vehiculo, pero el efecto era
+        // el mismo que contra el suelo: no se percibia que el blindaje
+        // resiste. Chispas rapidas que salen rebotadas, no polvo de tierra.
+        public static void SpawnArmorSparks(Vector3 position, Vector3 surfaceNormal)
+        {
+            Spawn(position, ArmorSparkColor, 0.3f, 0.12f);
+            for (int i = 0; i < 5; i++)
+            {
+                var dir = Vector3.Slerp(surfaceNormal, Random.onUnitSphere, 0.55f).normalized;
+                DebrisPool.Spawn(position, dir * Random.Range(6f, 11f), ArmorSparkColor, Random.Range(0.05f, 0.09f), 0.5f);
+            }
         }
 
         IEnumerator ExplodeAndCollapse(float peakDiameter)

@@ -157,6 +157,7 @@ namespace SP.EditorTools
             BuildLighting();
             BuildGround();
             BuildObstacles();
+            BuildLightProps();
             SP.Presentation.OrderMarkerFx.Prewarm();
             SP.Presentation.AttackLineManager.Prewarm();
             SP.Presentation.OrderLineManager.Prewarm();
@@ -1001,6 +1002,25 @@ namespace SP.EditorTools
                 o.transform.localScale = new Vector3(2f, height, 2f);
                 o.GetComponent<MeshRenderer>().sharedMaterial = CreateFlatMaterial(new Color(0.93f, 0.78f, 0.55f));
                 o.AddComponent<ObstacleMarker>();
+            }
+        }
+
+        // Bidones livianos sobre el camino que hace el vehiculo en la
+        // fase 4: son lo unico que le da al tanque algo que alterar al
+        // pasar, en vez de atravesar el escenario sin dejar rastro.
+        static void BuildLightProps()
+        {
+            Vector3[] spots = { new Vector3(8f, 0f, -4f), new Vector3(11f, 0f, -3f), new Vector3(9.5f, 0f, -6f) };
+            for (int i = 0; i < spots.Length; i++)
+            {
+                var prop = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                prop.name = $"Bidon_{i + 1}";
+                prop.transform.position = new Vector3(spots[i].x, 0.45f, spots[i].z);
+                prop.transform.localScale = new Vector3(0.55f, 0.45f, 0.55f);
+                prop.GetComponent<MeshRenderer>().sharedMaterial = CreateFlatMaterial(new Color(0.45f, 0.55f, 0.35f));
+                var col = prop.GetComponent<Collider>();
+                if (col != null) UnityEngine.Object.DestroyImmediate(col);
+                prop.AddComponent<LightProp>();
             }
         }
 

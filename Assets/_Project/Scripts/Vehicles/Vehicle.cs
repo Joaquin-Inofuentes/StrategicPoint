@@ -56,9 +56,19 @@ namespace SP.Vehicles
             if (wasAlive && !Health.IsAlive) OnDestroyed();
         }
 
+        // Antes esto apagaba todo y oscurecia el chasis en un SOLO frame:
+        // la muerte del elemento mas poderoso del campo era visualmente
+        // anticlimatica. Ahora son dos etapas con un intervalo entre
+        // medio: agonia (sistemas caidos, humo, todavia reconocible) y
+        // explosion final (torreta por el aire, casco quemado).
+        public const float AgonySeconds = 1.2f;
+        public bool IsInAgony { get; private set; }
+        public bool FinalExplosionDone { get; private set; }
+
         void OnDestroyed()
         {
             IsDestroyed = true;
+            IsInAgony = true;
 
             foreach (var occupant in new List<Soldier>(Occupants)) Dismount(occupant);
 
@@ -69,11 +79,46 @@ namespace SP.Vehicles
             foreach (var turret in GetComponentsInChildren<TurretWeapon>()) turret.enabled = false;
             foreach (var ai in GetComponentsInChildren<TurretAI>()) ai.enabled = false;
 
+            // Etapa 1: se apaga, pero todavia con su color reconocible --
+            // solo un poco apagado. El negro de carcasa quemada es de la
+            // etapa 2, si no la explosion final no tendria nada que
+            // cambiar visualmente.
             CacheColorIfNeeded();
             if (chassisRenderers != null)
-                foreach (var r in chassisRenderers) if (r != null) r.sharedMaterial.color = Color.Lerp(baseColor, Color.black, 0.8f);
+                foreach (var r in chassisRenderers) if (r != null) r.sharedMaterial.color = Color.Lerp(baseColor, Color.black, 0.35f);
 
             EventBus.Instance.Publish(new VehicleDestroyedEvent(this));
+
+            if (Application.isPlaying) Invoke(nameof(FinalExplosion), AgonySeconds);
+            else FinalExplosion(); // en Edit mode (suite headless) no hay Invoke util
+        }
+
+        public void FinalExplosion()
+        {
+            if (FinalExplosionDone) return;
+            FinalExplosionDone = true;
+            IsInAgony = false;
+
+            if (chassisRenderers != null)
+                foreach (var r in chassisRenderers) if (r != null) r.sharedMaterial.color = Color.Lerp(baseColor, Color.black, 0.85f);
+
+            SP.Presentation.ImpactFx.SpawnExplosion(transform.position + Vector3.up, 4f);
+            DetachTurret();
+        }
+
+        // La destruccion del tanque no tenia una señal legible a
+        // distancia: en vista RTS costaba saber si murio. Un cañon
+        // volando por el aire se ve desde cualquier zoom.
+        void DetachTurret()
+        {
+            var turret = GetComponentInChildren<TurretWeapon>(true);
+            if (turret == null) return;
+            var t = turret.transform;
+            if (t.parent == null) return;
+
+            t.SetParent(null, true);
+            var flier = t.gameObject.AddComponent<DetachedTurretFlight>();
+            flier.Launch();
         }
 
         // Orden de asignación automática: pasajero antes que artillero, para

@@ -121,7 +121,7 @@ namespace SP.Combat
                 else
                 {
                     hit.Health.TakeDamage(damage, ownerId);
-                    ImpactFx.Spawn(transform.position, ImpactFx.EnemyColor);
+                    ImpactFx.SpawnScaledByDamage(transform.position, ImpactFx.EnemyColor, damage);
                 }
                 Expire();
                 return;
@@ -139,7 +139,10 @@ namespace SP.Combat
                     {
                         vehicle.TakeDamage(damage, ownerId);
                         EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, transform.position));
-                        ImpactFx.Spawn(transform.position, ImpactFx.VehicleColor);
+                        // Blindaje: chispas metalicas rebotadas, no el
+                        // mismo polvo generico que contra el suelo.
+                        var awayFromHull = (transform.position - vehicle.transform.position).normalized;
+                        ImpactFx.SpawnArmorSparks(transform.position, awayFromHull);
                     }
                     Expire();
                     return;
@@ -153,8 +156,13 @@ namespace SP.Combat
                     if (explosionRadius > 0f) Explode(transform.position);
                     else
                     {
+                        // Los obstaculos eran inmortales: disparar contra
+                        // la cobertura no cambiaba nada.
+                        obstacle.TakeDamage(damage);
                         EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Obstacle, transform.position));
-                        ImpactFx.Spawn(transform.position, ImpactFx.ObstacleColor);
+                        ImpactFx.SpawnScaledByDamage(transform.position, ImpactFx.ObstacleColor, damage);
+                        var awayFromWall = (transform.position - obstacle.transform.position).normalized;
+                        DecalPool.Spawn(DecalKind.BulletHole, transform.position, awayFromWall, 0.22f);
                     }
                     Expire();
                     return;
@@ -171,7 +179,8 @@ namespace SP.Combat
                 else
                 {
                     EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, transform.position));
-                    ImpactFx.Spawn(transform.position, ImpactFx.GroundColor);
+                    ImpactFx.SpawnScaledByDamage(transform.position, ImpactFx.GroundColor, damage);
+                    DecalPool.Spawn(DecalKind.BulletHole, new Vector3(transform.position.x, 0.02f, transform.position.z), Vector3.up, 0.25f);
                 }
                 Expire();
                 return;
@@ -189,8 +198,20 @@ namespace SP.Combat
             foreach (var s in ActorRegistry.All)
             {
                 if (s == null || !s.Health.IsAlive || s.Team == ownerTeam || !s.gameObject.activeInHierarchy) continue;
-                if (Vector3.Distance(s.transform.position, point) <= explosionRadius)
-                    s.Health.TakeDamage(damage, ownerId);
+                float dist = Vector3.Distance(s.transform.position, point);
+                if (dist > explosionRadius) continue;
+                s.Health.TakeDamage(damage, ownerId);
+
+                // Antes el daño en area no movia a nadie: una granada se
+                // veia igual que un disparo puntual. El empuje es
+                // proporcional a la cercania al centro y no toca el
+                // estado de la IA -- el soldado sigue bajo su control
+                // normal en el frame siguiente, solo cambio de lugar.
+                Vector3 away = s.transform.position - point;
+                away.y = 0f;
+                if (away.sqrMagnitude < 0.0001f) away = Random.insideUnitSphere;
+                float strength = 1f - Mathf.Clamp01(dist / explosionRadius);
+                s.transform.position += away.normalized * strength * 2.2f;
             }
 
             foreach (var vehicle in Object.FindObjectsByType<Vehicle>(FindObjectsSortMode.None))
