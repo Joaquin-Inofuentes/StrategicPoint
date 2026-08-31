@@ -96,7 +96,7 @@ namespace SP.Presentation
             }
             go.transform.SetParent(root, false);
 
-            var shader = Shader.Find("Unlit/Color") ?? Shader.Find("Universal Render Pipeline/Unlit");
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
             var rend = go.GetComponent<MeshRenderer>();
             rend.sharedMaterial = new Material(shader);
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -188,7 +188,7 @@ namespace SP.Presentation
                 // asumir que sigue ahi.
                 if (rend.sharedMaterial == null)
                 {
-                    var shader = Shader.Find("Unlit/Color") ?? Shader.Find("Universal Render Pipeline/Unlit");
+                    var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
                     rend.sharedMaterial = new Material(shader);
                 }
                 rend.sharedMaterial.color = color;

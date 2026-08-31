@@ -43,7 +43,7 @@ namespace SP.Presentation
             var mf = head.AddComponent<MeshFilter>();
             mf.sharedMesh = BuildConeMesh(0.3f, 0.55f, 14);
             var mr = head.AddComponent<MeshRenderer>();
-            var shader = Shader.Find("Standard") ?? Shader.Find("Universal Render Pipeline/Lit");
+            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             mr.sharedMaterial = new Material(shader) { color = ArrowColor };
         }
 
@@ -59,7 +59,7 @@ namespace SP.Presentation
         {
             var rend = go.GetComponent<Renderer>();
             if (rend == null) return;
-            var shader = Shader.Find("Standard") ?? Shader.Find("Universal Render Pipeline/Lit");
+            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
             rend.sharedMaterial = new Material(shader) { color = color };
         }
 
@@ -127,7 +127,7 @@ namespace SP.Presentation
             lr.positionCount = 2;
             lr.widthMultiplier = 0.08f;
             lr.useWorldSpace = true;
-            var shader = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit");
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
             var mat = new Material(shader) { color = ArrowColor };
             lr.material = mat;
             lr.startColor = ArrowColor;

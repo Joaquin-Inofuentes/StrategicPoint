@@ -116,7 +116,7 @@ namespace SP.Presentation
             go.transform.rotation = victim.transform.rotation;
             var baseScale = victim.transform.localScale * 1.25f;
 
-            var shader = Shader.Find("Unlit/Color") ?? Shader.Find("Universal Render Pipeline/Unlit");
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
             var mr = go.GetComponent<MeshRenderer>();
             mr.sharedMaterial = new Material(shader) { color = SilhouetteColor };
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;

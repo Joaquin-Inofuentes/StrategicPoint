@@ -126,7 +126,7 @@ namespace SP.Presentation
             nose.transform.localScale = new Vector3(iconRadius * 0.5f, 0.2f, iconRadius * 0.7f);
 
             var rend = nose.GetComponent<MeshRenderer>();
-            var shader = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit");
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
             rend.sharedMaterial = new Material(shader) { color = Color.white };
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             rend.receiveShadows = false;
@@ -148,7 +148,7 @@ namespace SP.Presentation
             go.transform.localScale = new Vector3(radius, 0.2f, radius);
 
             var rend = go.GetComponent<MeshRenderer>();
-            var shader = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit");
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
             var mat = new Material(shader) { color = color };
             rend.sharedMaterial = mat;
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;

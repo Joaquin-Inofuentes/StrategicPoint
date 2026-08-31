@@ -67,7 +67,7 @@ namespace SP.Presentation
             go.transform.localScale = new Vector3(0.28f, 0.28f, 0.28f);
             go.transform.localRotation = Quaternion.Euler(0f, 45f, 45f);
 
-            var shader = Shader.Find("Unlit/Color") ?? Shader.Find("Universal Render Pipeline/Unlit");
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
             var rend = go.GetComponent<MeshRenderer>();
             rend.sharedMaterial = new Material(shader) { color = MarkerColor };
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;

@@ -180,7 +180,7 @@ namespace SP.Presentation
             go.transform.localScale = Vector3.one * 0.15f;
 
             var rend = go.GetComponent<MeshRenderer>();
-            var shader = Shader.Find("Unlit/Color") ?? Shader.Find("Universal Render Pipeline/Unlit");
+            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
             rend.sharedMaterial = new Material(shader) { color = SmokeColor };
 
             go.AddComponent<VehicleSmokePuff>().Begin(origin);

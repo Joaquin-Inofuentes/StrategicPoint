@@ -68,7 +68,7 @@ namespace SP.Presentation
             {
                 if (sharedMaterial == null)
                 {
-                    var shader = Shader.Find("Unlit/Color") ?? Shader.Find("Universal Render Pipeline/Unlit");
+                    var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
                     sharedMaterial = new Material(shader);
                 }
                 return sharedMaterial;
