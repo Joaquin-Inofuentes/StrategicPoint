@@ -275,6 +275,122 @@ namespace SP.EditorTools
             };
         }
 
+        // ---------------------------------------------------------------
+        // Arnes de equivalencia (regla de oro del proyecto convertida en
+        // codigo: una optimizacion no debe cambiar las reglas de juego).
+        // Ya se rompio una vez: una version anterior de SpatialGrid filtro
+        // a los soldados inactivos y cambio en silencio a quien detectaba
+        // la IA. K consultas con semilla fija contra un barrido de fuerza
+        // bruta independiente, en mundos de N in {10, 60, 200}, exige CERO
+        // discrepancias.
+        // ---------------------------------------------------------------
+        public static int LastEquivalenceMismatches { get; private set; }
+
+        [MenuItem("Strategic Point/Verificar equivalencia SpatialGrid")]
+        public static void RunEquivalenceCheck()
+        {
+            int total = 0;
+            foreach (var n in new[] { 10, 60, 200 })
+            {
+                int mismatches = EquivalenceCheckWithUnitCount(n, 5000);
+                total += mismatches;
+                Debug.Log($"[Equivalencia] N={n}: {mismatches} discrepancias sobre 5000 consultas.");
+            }
+            LastEquivalenceMismatches = total;
+            if (total == 0)
+                Debug.Log("[Equivalencia] SpatialGrid.FindNearestInRange es equivalente a fuerza bruta en N=10,60,200. 0 discrepancias.");
+            else
+                Debug.LogError($"[Equivalencia] {total} discrepancias totales -- SpatialGrid NO es equivalente a fuerza bruta.");
+        }
+
+        static int EquivalenceCheckWithUnitCount(int unitCount, int queries)
+        {
+            EventBus.Instance.ClearAll();
+            ActorRegistry.Clear();
+            SP.Core.WorldSystemsRegistry.Clear();
+
+            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
+            BuildLighting();
+            BuildGround();
+
+            var soldierPrefab = BuildAndSaveSoldierPrefab();
+            var projectilePrefab = BuildAndSaveProjectilePrefab();
+            var poolGO = new GameObject("EquivPool");
+            var pool = poolGO.AddComponent<ProjectilePool>();
+            pool.Configure(projectilePrefab, 4);
+
+            var rng = new System.Random(999);
+            var playerColor = new Color(0.95f, 0.35f, 0.30f);
+            var enemyColor = new Color(0.95f, 0.25f, 0.20f);
+
+            // Casos de borde SEMBRADOS a proposito, no dejados al azar:
+            // posiciones exactas sobre multiplos de CellSize (20, el punto
+            // donde un soldado cae justo en el borde entre dos celdas), y
+            // coordenadas negativas (ejercitan el Offset = 1<<20 del
+            // empaquetado de claves). Un tercio de las unidades nace
+            // desactivada (simula ir montado en un vehiculo): SpatialGrid
+            // NO filtra por activeInHierarchy a proposito, igual que el
+            // FindNearest original, y este es el escenario que exactamente
+            // detecto esa diferencia la primera vez.
+            int half = unitCount / 2;
+            for (int i = 0; i < unitCount; i++)
+            {
+                bool isPlayer = i < half;
+                Vector3 pos;
+                if (i < 6)
+                {
+                    // Multiplos exactos de CellSize, con signo alternado.
+                    float mult = ((i / 2) + 1) * 20f * (i % 2 == 0 ? 1f : -1f);
+                    pos = new Vector3(mult, 0.8f, mult * 0.5f);
+                }
+                else
+                {
+                    pos = new Vector3((float)(rng.NextDouble() * 200.0 - 100.0), 0.8f, (float)(rng.NextDouble() * 200.0 - 100.0));
+                }
+                var s = SpawnSoldier(soldierPrefab, (isPlayer ? "Equiv_P_" : "Equiv_E_") + i,
+                    isPlayer ? TeamId.Player : TeamId.Enemy, RoleType.Assault, pos,
+                    isPlayer ? playerColor : enemyColor, pool, 100);
+                if (i % 3 == 0) s.gameObject.SetActive(false);
+            }
+
+            SP.Core.SpatialGrid.Rebuild();
+
+            int mismatches = 0;
+            for (int q = 0; q < queries; q++)
+            {
+                var point = new Vector3((float)(rng.NextDouble() * 240.0 - 120.0), 0.8f, (float)(rng.NextDouble() * 240.0 - 120.0));
+                float range = (float)(rng.NextDouble() * 55.0 + 5.0);
+                var excludeTeam = rng.Next(2) == 0 ? TeamId.Player : TeamId.Enemy;
+
+                var gridResult = ActorRegistry.FindNearestEnemyInRange(point, excludeTeam, range);
+                var bruteResult = ActorRegistry.FindNearest(point, s =>
+                    s.Health.IsAlive && s.Team != excludeTeam && Vector3.Distance(point, s.transform.position) <= range);
+
+                if (!ResultsEquivalent(gridResult, bruteResult, point))
+                {
+                    mismatches++;
+                    if (mismatches <= 5)
+                        Debug.LogWarning($"[Equivalencia] N={unitCount} query={q}: point={point} range={range:0.0} excludeTeam={excludeTeam} grid={(gridResult != null ? gridResult.name : "null")} brute={(bruteResult != null ? bruteResult.name : "null")}");
+                }
+            }
+            return mismatches;
+        }
+
+        // Mismo Id -> identico. Id distinto pero MISMA distancia (dentro de
+        // epsilon) -> dos candidatos equidistantes, un resultado
+        // legitimamente distinto y no una falla real. Sin esta segunda
+        // rama el arnes daria falsos positivos en cualquier empate y
+        // terminaria ignorado, que es peor que no tenerlo.
+        static bool ResultsEquivalent(Soldier a, Soldier b, Vector3 point)
+        {
+            if (a == null && b == null) return true;
+            if (a == null || b == null) return false;
+            if (a.Id == b.Id) return true;
+            float da = Vector3.Distance(point, a.transform.position);
+            float db = Vector3.Distance(point, b.transform.position);
+            return Mathf.Abs(da - db) < 0.0001f;
+        }
+
         // Construye el mismo mundo que el test automático pero sin correr
         // las fases: deja a Vega libre, sana y parada junto al vehículo,
         // lista para una demo manual en Play mode (E para subir, etc).
