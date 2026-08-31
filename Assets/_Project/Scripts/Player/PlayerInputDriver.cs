@@ -1131,6 +1131,23 @@ namespace SP.Player
                 }
                 GameLog.Line("Se cancelo la orden de la seleccion");
             }
+
+            // [Espacio] recentra la camara en el centroide de la escuadra
+            // viva -- la tecla mas grande y accesible para la accion mas
+            // repetida en vista tactica, para cuando la camara se pierde
+            // paneando por el mapa.
+            if (kb.spaceKey.wasPressedThisFrame && Squad != null)
+            {
+                Vector3 sum = Vector3.zero;
+                int count = 0;
+                foreach (var s in Squad)
+                {
+                    if (s == null || !s.Health.IsAlive) continue;
+                    sum += s.transform.position;
+                    count++;
+                }
+                if (count > 0) Rig.RecenterOn(sum / count);
+            }
         }
 
         // Anillo de selección para el vehículo (mismo look que el de los

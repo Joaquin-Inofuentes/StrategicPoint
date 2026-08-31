@@ -42,9 +42,24 @@ namespace SP.CameraSystem
 
         void LateUpdate()
         {
-            if (cam == null || cam.orthographic) return;
-            float goal = zoomed ? zoomFov : normalFov;
-            cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, goal, Time.deltaTime * zoomLerpSpeed);
+            if (cam == null) return;
+
+            if (!cam.orthographic)
+            {
+                float goal = zoomed ? zoomFov : normalFov;
+                cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, goal, Time.deltaTime * zoomLerpSpeed);
+                return;
+            }
+
+            // En RTS: converge hacia el objetivo de paneo (ya acotado a
+            // los bordes del mapa en Pan()). No corre durante una
+            // transicion de camara (BeginTransition), que ya tiene su
+            // propio control total de la posicion.
+            if (panTargetInitialized && !IsTransitioning)
+            {
+                var target = new Vector3(panTarget.x, transform.position.y, panTarget.z);
+                transform.position = Vector3.Lerp(transform.position, target, Time.deltaTime * panSmoothSpeed);
+            }
         }
 
         public void AddPitch(float delta) => pitch = Mathf.Clamp(pitch + delta, -MaxPitch, MaxPitch);
@@ -87,6 +102,11 @@ namespace SP.CameraSystem
                 transform.position = savedRtsPosition.Value;
                 transform.rotation = Quaternion.Euler(rtsLookEuler);
                 if (cam != null) cam.orthographicSize = savedRtsOrthoSize;
+                // El objetivo de paneo suavizado debe re-sincronizarse con
+                // la posicion recien restaurada -- si no, el primer Pan()
+                // arrancaria el lerp desde donde haya quedado el objetivo
+                // de la sesion RTS anterior (o de FPS), un salto visible.
+                panTargetInitialized = false;
             }
             else
             {
@@ -163,18 +183,62 @@ namespace SP.CameraSystem
             if (cam != null) cam.orthographicSize = rtsOrthoSize;
             transform.position = center + Vector3.up * rtsHeight;
             transform.rotation = Quaternion.Euler(rtsLookEuler);
+            panTargetInitialized = false;
         }
 
         public Ray GetForwardRay() => new Ray(transform.position, transform.forward);
 
         public Camera Cam => cam;
 
-        public void Pan(Vector3 worldDelta) => transform.position += worldDelta;
+        // Antes Pan sumaba directo a la posicion sin ningun limite: se
+        // podia alejar infinitamente del mapa y quedar mirando el vacio
+        // sin saber como volver. Ahora acumula en un objetivo acotado a
+        // los bordes del mapa, y LateUpdate interpola la posicion real
+        // hacia ese objetivo -- el paneo deja de ser un salto duro
+        // dependiente del framerate y pasa a converger suave.
+        [SerializeField] float mapHalfExtent = 90f;
+        [SerializeField] float panSmoothSpeed = 10f;
+        Vector3 panTarget;
+        bool panTargetInitialized;
+
+        public void Pan(Vector3 worldDelta)
+        {
+            if (!panTargetInitialized) { panTarget = transform.position; panTargetInitialized = true; }
+            panTarget += worldDelta;
+            panTarget.x = Mathf.Clamp(panTarget.x, -mapHalfExtent, mapHalfExtent);
+            panTarget.z = Mathf.Clamp(panTarget.z, -mapHalfExtent, mapHalfExtent);
+        }
+
+        // Si la camara se pierde en RTS no habia forma rapida de volver a
+        // la accion salvo panear a ciegas hasta encontrar a la tropa.
+        // Manda el objetivo de paneo directo al punto pedido (acotado
+        // igual que Pan) y deja que el mismo lerp de LateUpdate lo lleve
+        // ahi con suavidad, en vez de teletransportar.
+        public void RecenterOn(Vector3 point)
+        {
+            panTargetInitialized = true;
+            panTarget = new Vector3(
+                Mathf.Clamp(point.x, -mapHalfExtent, mapHalfExtent),
+                transform.position.y,
+                Mathf.Clamp(point.z, -mapHalfExtent, mapHalfExtent));
+        }
+
+        // Zoom ya hacia clamp, pero no decia nada al llegar al limite: el
+        // jugador seguia girando la rueda sin entender por que no pasaba
+        // nada mas. Expone si el ultimo Zoom se topo con un extremo.
+        public bool ZoomAtLimit { get; private set; }
 
         public void Zoom(float delta)
         {
             if (cam == null) return;
-            cam.orthographicSize = Mathf.Clamp(cam.orthographicSize - delta, 6f, 60f);
+            // OJO: comparar "antes vs despues del clamp" esta mal si ya
+            // se estaba justo en el limite (antes==despues sin que este
+            // Zoom haya pedido nada extra). Lo que importa es si el
+            // valor SIN acotar se hubiera ido afuera del rango.
+            float raw = cam.orthographicSize - delta;
+            float clamped = Mathf.Clamp(raw, 6f, 60f);
+            ZoomAtLimit = Mathf.Abs(raw - clamped) > 0.001f;
+            cam.orthographicSize = clamped;
         }
     }
 }
