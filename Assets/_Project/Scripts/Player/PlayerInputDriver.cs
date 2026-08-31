@@ -189,6 +189,13 @@ namespace SP.Player
             // moviéndose, disparando y girando la cámara por detrás.
             if (PauseRef != null && PauseRef.IsPaused) return;
 
+            // [H] consulta los controles sin pausar el juego -- sigue
+            // corriendo la simulacion (a diferencia de abrirlo desde
+            // pausa), pero congela la entrada del jugador mientras esta
+            // abierto para no mover ni disparar por error mientras lee.
+            if (kb.hKey.wasPressedThisFrame && PauseRef != null) PauseRef.ToggleControlsOverlay();
+            if (PauseRef != null && PauseRef.IsControlsOverlayOpen) return;
+
             UpdateCursorLock(kb, Mouse.current);
 
             if (MinimapRef != null)
@@ -213,6 +220,10 @@ namespace SP.Player
                 }
 
                 Rig.ToggleMode();
+                // Marca que el jugador ya descubrio el cambio de modo, para
+                // que el recordatorio de GameplaySceneBootstrap no vuelva a
+                // aparecer nunca mas en ninguna partida futura.
+                PlayerPrefs.SetInt("sp_used_tab", 1);
 
                 if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue && Brain.Current != null && Vehicle != null)
                 {

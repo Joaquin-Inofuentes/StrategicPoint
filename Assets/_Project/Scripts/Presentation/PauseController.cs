@@ -185,6 +185,21 @@ namespace SP.Presentation
             GameLog.Line("Se salio de configuraciones");
         }
 
+        // Abre/cierra el panel de controles SIN pausar el juego -- para
+        // consultar los atajos en pleno movimiento (tecla dedicada, no la
+        // pausa) sin perder el hilo de lo que esta pasando en pantalla.
+        // Solo funciona si no hay ya otra pantalla de por medio (pausa,
+        // fin de partida), para no abrir controles encima de esas.
+        public bool IsControlsOverlayOpen => controlsPanel != null && controlsPanel.activeSelf && !IsPaused;
+
+        public void ToggleControlsOverlay()
+        {
+            if (controlsPanel == null || IsPaused) return;
+            if (outcome != null && outcome.IsShowing) return;
+            if (input != null && input.IsHandlingDeath) return;
+            controlsPanel.SetActive(!controlsPanel.activeSelf);
+        }
+
         public void OnControlsClicked()
         {
             if (controlsPanel == null || controlsPanel.activeSelf) return;

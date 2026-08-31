@@ -226,7 +226,9 @@ namespace SP.EditorTools
             servicesGO.AddComponent<AttackLineManager>();
             servicesGO.AddComponent<OrderLineManager>();
             servicesGO.AddComponent<FloatingDamageTextManager>();
-            servicesGO.AddComponent<GameplaySceneBootstrap>();
+            var bootstrap = servicesGO.AddComponent<GameplaySceneBootstrap>();
+            bootstrap.ObjectiveBanner = phaseBannerRef;
+            bootstrap.ModeToast = modeToastRef;
 
             var battleManager = servicesGO.AddComponent<BattleManager>();
             battleManager.Squad = squad;
