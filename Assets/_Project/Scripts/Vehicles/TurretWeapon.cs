@@ -40,11 +40,34 @@ namespace SP.Vehicles
         const float RecoilRecoverPerSec = 2.2f;
         static readonly Color MuzzleFlashColor = new Color(1f, 0.75f, 0.35f);
 
-        public float ExplosionRadius => explosionRadius;
+        // Un solo tipo de proyectil significa que no hay ninguna decision
+        // antes de disparar. Dos crean una eleccion tactica constante:
+        // area contra grupos, perforante contra un blanco duro.
+        public enum AmmoType { Explosive, ArmorPiercing }
+        public AmmoType Ammo { get; private set; } = AmmoType.Explosive;
+        public void CycleAmmo() => Ammo = Ammo == AmmoType.Explosive ? AmmoType.ArmorPiercing : AmmoType.Explosive;
+
+        public float ExplosionRadius => Ammo == AmmoType.Explosive ? explosionRadius : 0f;
+        public int CurrentDamage => Ammo == AmmoType.Explosive ? damage : Mathf.RoundToInt(damage * 1.8f);
+        public Color CurrentProjectileColor => Ammo == AmmoType.Explosive ? projectileColor : new Color(0.55f, 0.85f, 1f);
+
+        // Caida del proyectil de tanque. El de arma de mano sigue recto:
+        // vuela tan poco tiempo que un arco no aportaria nada y volveria
+        // impredecible el tiro a quemarropa.
+        [SerializeField] float projectileGravity = 9.8f;
+        public float ProjectileGravity => Ammo == AmmoType.Explosive ? projectileGravity : projectileGravity * 0.45f;
+
+        // El cooldown fijo permitia disparar indefinidamente al mismo
+        // ritmo, o sea ninguna decision sobre CUANDO disparar. El calor
+        // sube por disparo y baja con el tiempo, y estira el cooldown.
+        public float Heat { get; private set; }
+        const float HeatPerShot = 0.34f;
+        const float HeatCoolPerSec = 0.22f;
+        public float EffectiveCooldown => fireCooldown * (1f + Heat * 1.6f);
 
         // Antes el cooldown de medio segundo era completamente invisible:
         // se apretaba y no pasaba nada, sin saber cuanto faltaba.
-        public float CooldownFraction01 => fireCooldown <= 0f ? 1f : Mathf.Clamp01(1f - cooldownTimer / fireCooldown);
+        public float CooldownFraction01 => EffectiveCooldown <= 0f ? 1f : Mathf.Clamp01(1f - cooldownTimer / EffectiveCooldown);
 
         // Angulo al que el jugador quiere apuntar, separado de donde esta
         // realmente el cañon: es la brecha entre los dos la que da sentido
@@ -136,7 +159,16 @@ namespace SP.Vehicles
         public void Tick(float dt)
         {
             if (!bootstrapped) Bootstrap();
+            bool wasReloading = cooldownTimer > 0f;
             if (cooldownTimer > 0f) cooldownTimer -= dt;
+            // El fin del cooldown era invisible y mudo: habia que mirar el
+            // HUD justo cuando hay que mirar el campo. Suena al
+            // COMPLETARSE, no al iniciarse.
+            if (wasReloading && cooldownTimer <= 0f) PlayAt(SP.Presentation.SfxKind.TurretReloaded, 0.45f);
+
+            Heat = Mathf.Max(0f, Heat - HeatCoolPerSec * dt);
+            ApplyHeatColor();
+            RecoverChassisShake(dt);
 
             // El disparo mas potente del juego no movia nada: el cañon
             // quedaba estatico, con menos presencia que un rifle. Se
@@ -163,8 +195,10 @@ namespace SP.Vehicles
             var team = vehicle != null && vehicle.Gunner != null ? vehicle.Gunner.Team : TeamId.Player;
 
             var spawnPos = Muzzle != null ? Muzzle.position : transform.position;
-            pool.Spawn(spawnPos, transform.forward, shooterId, team, damage, projectileColor, explosionRadius);
-            cooldownTimer = fireCooldown;
+            pool.Spawn(spawnPos, transform.forward, shooterId, team, CurrentDamage,
+                CurrentProjectileColor, ExplosionRadius, ProjectileGravity, vehicle);
+            cooldownTimer = EffectiveCooldown;
+            Heat = Mathf.Clamp01(Heat + HeatPerShot);
 
             // Se hunde YA, no en el proximo Tick: si se deja para el Tick
             // siguiente, ese mismo Tick tambien le descuenta la
@@ -176,7 +210,90 @@ namespace SP.Vehicles
             // mano (SP.Presentation.CubeFxReactor usa 0.22), acorde al
             // calibre.
             SP.Presentation.ImpactFx.Spawn(spawnPos, MuzzleFlashColor, 0.7f, 0.12f);
+            // Luz real de un par de frames: un destello plano no ilumina
+            // nada, y con poca luz ambiente la diferencia de potencia
+            // percibida es enorme.
+            SP.Presentation.MuzzleLightPool.Flash(spawnPos, MuzzleFlashColor);
+
+            // Dos capas: cuerpo grave (el peso) y crack agudo (el golpe).
+            // Un tono unico no suena a cañon por mas fuerte que sea.
+            PlayAt(SP.Presentation.SfxKind.CannonBody, 0.9f);
+            PlayAt(SP.Presentation.SfxKind.CannonCrack, 0.55f);
+
+            SpawnMuzzleDust(spawnPos);
+            KickChassis();
+
+            // El culatazo empuja la camara HACIA ATRAS del eje de disparo:
+            // una vibracion sin direccion no se lee como retroceso.
+            var rig = Object.FindAnyObjectByType<SP.CameraSystem.CameraRig>();
+            if (rig != null) rig.KickDirectional(-transform.forward, 0.35f);
+
             return true;
+        }
+
+        static void PlayAt(SP.Presentation.SfxKind kind, float volume)
+        {
+            // PlayClipAtPoint crea un objeto que se autodestruye con
+            // Destroy(), ilegal fuera de Play mode -- y la suite headless
+            // corre las fases en Edit mode.
+            if (!Application.isPlaying) return;
+            var cam = Camera.main;
+            AudioSource.PlayClipAtPoint(SP.Presentation.GenericSfx.Get(kind),
+                cam != null ? cam.transform.position : Vector3.zero, volume);
+        }
+
+        // Solo cuando la boca esta cerca del suelo: disparar con el cañon
+        // levantado no deberia levantar polvo de la nada.
+        const float MuzzleDustHeight = 2.2f;
+        public bool MuzzleIsNearGround => (Muzzle != null ? Muzzle.position.y : transform.position.y) <= MuzzleDustHeight;
+
+        void SpawnMuzzleDust(Vector3 spawnPos)
+        {
+            if (!MuzzleIsNearGround) return;
+            var dustColor = new Color(0.68f, 0.62f, 0.5f);
+            for (int i = 0; i < 5; i++)
+            {
+                // Cono alrededor del eje del cañon, no una esfera: el
+                // polvo lo empuja el fogonazo hacia adelante.
+                var dir = Vector3.Slerp(transform.forward, Random.onUnitSphere, 0.4f).normalized;
+                SP.Presentation.DebrisPool.Spawn(spawnPos, dir * Random.Range(2f, 5f), dustColor, Random.Range(0.3f, 0.55f), 0.9f);
+            }
+        }
+
+        // Solo se sacudia la camara, asi que desde afuera (vista RTS) un
+        // tanque disparando era indistinguible de uno quieto.
+        Vector3 chassisKick;
+        const float ChassisKickDistance = 0.22f;
+        const float ChassisRecoverPerSec = 1.4f;
+
+        void KickChassis()
+        {
+            if (vehicle == null) return;
+            chassisKick = -transform.forward * ChassisKickDistance;
+            vehicle.transform.position += chassisKick;
+        }
+
+        void RecoverChassisShake(float dt)
+        {
+            if (vehicle == null || chassisKick.sqrMagnitude < 0.000001f) return;
+            var step = Vector3.MoveTowards(chassisKick, Vector3.zero, ChassisRecoverPerSec * dt);
+            vehicle.transform.position -= (chassisKick - step);
+            chassisKick = step;
+        }
+
+        // El metal se pone al rojo con el calor acumulado: el estado de
+        // sobrecalentamiento tiene que verse en el mundo, no solo en un
+        // numero del HUD.
+        Color barrelBaseColor;
+        bool barrelColorCached;
+
+        void ApplyHeatColor()
+        {
+            if (barrel == null) return;
+            var rend = barrel.GetComponent<MeshRenderer>();
+            if (rend == null) return;
+            if (!barrelColorCached) { barrelColorCached = true; barrelBaseColor = rend.sharedMaterial.color; }
+            rend.sharedMaterial.color = Color.Lerp(barrelBaseColor, new Color(1f, 0.25f, 0.1f), Heat);
         }
     }
 }

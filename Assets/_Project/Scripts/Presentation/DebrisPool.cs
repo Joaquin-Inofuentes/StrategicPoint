@@ -179,7 +179,20 @@ namespace SP.Presentation
             active = true;
 
             var rend = GetComponent<MeshRenderer>();
-            if (rend != null) rend.sharedMaterial.color = color;
+            if (rend != null)
+            {
+                // El Material creado por codigo no es un asset guardado:
+                // una reconstruccion de escena o un domain reload lo
+                // destruye y deja al Renderer con sharedMaterial en null,
+                // aunque el GameObject siga vivo. Hay que rehacerlo, no
+                // asumir que sigue ahi.
+                if (rend.sharedMaterial == null)
+                {
+                    var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+                    rend.sharedMaterial = new Material(shader);
+                }
+                rend.sharedMaterial.color = color;
+            }
             gameObject.SetActive(true);
         }
 

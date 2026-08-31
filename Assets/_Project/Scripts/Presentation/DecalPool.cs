@@ -93,6 +93,16 @@ namespace SP.Presentation
                 rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
 
+            // Mismo caso que en DebrisPool: el Material creado por codigo
+            // no es un asset, y una reconstruccion de escena lo destruye
+            // dejando al Renderer sin material aunque el objeto siga vivo.
+            var decalRend = decal.GetComponent<MeshRenderer>();
+            if (decalRend != null && decalRend.sharedMaterial == null)
+            {
+                var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+                decalRend.sharedMaterial = new Material(shader) { color = kind == DecalKind.Crater ? CraterColor : BulletHoleColor };
+            }
+
             // Levantado un pelo sobre la superficie para no pelear con ella
             // por el z-buffer.
             decal.transform.position = position + normal * 0.02f;

@@ -32,6 +32,25 @@ namespace SP.Combat
         // en vez del impacto chico normal.
         float explosionRadius;
 
+        // Caida por gravedad. 0 = trayectoria recta (armas de mano: el
+        // proyectil viaja tan poco tiempo que un arco no aportaria nada y
+        // volveria impredecible el tiro a quemarropa). >0 = arco de
+        // tanque, que es lo que le da al artillero una habilidad propia
+        // en vez de apuntar y listo.
+        float gravity;
+        Vector3 velocity;
+
+        // BUG REAL encontrado al testear la balistica: el proyectil de la
+        // torreta nace en la boca del cañon, que esta a menos de 2.5 m del
+        // centro del chasis -- justo dentro del radio con el que el propio
+        // proyectil detecta vehiculos. El tanque se pegaba un tiro a si
+        // mismo en el PRIMER tick de cada disparo, sin salir nunca. Por eso
+        // el vehiculo aparecia destruido una y otra vez en las pruebas y yo
+        // lo atribuia a los enemigos.
+        SP.Vehicles.Vehicle ignoreVehicle;
+        public float Gravity => gravity;
+        public Vector3 Velocity => velocity;
+
         const float RestScale = 0.2f; // debe coincidir con la escala del prefab (BuildAndSaveProjectilePrefab)
         const float TraceStretch = 2.75f;
 
@@ -39,8 +58,10 @@ namespace SP.Combat
         // manualmente (tests) sin depender del bucle de Update de Unity.
         public static readonly List<Projectile> ActiveInstances = new List<Projectile>();
 
-        public void Configure(ProjectilePool owningPool, Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int dmg, Color? color = null, float explosionRadiusValue = 0f)
+        public void Configure(ProjectilePool owningPool, Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int dmg, Color? color = null, float explosionRadiusValue = 0f, float gravityValue = 0f, SP.Vehicles.Vehicle sourceVehicle = null)
         {
+            gravity = gravityValue;
+            ignoreVehicle = sourceVehicle;
             pool = owningPool;
             transform.position = position;
             transform.rotation = Quaternion.LookRotation(direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward);
@@ -54,6 +75,7 @@ namespace SP.Combat
             ownerTeam = shooterTeam;
             damage = dmg;
             explosionRadius = explosionRadiusValue;
+            velocity = (direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward) * speed;
 
             if (color.HasValue)
             {
@@ -90,6 +112,8 @@ namespace SP.Combat
         public void OnDespawn()
         {
             active = false;
+            gravity = 0f;
+            ignoreVehicle = null;
             ActiveInstances.Remove(this);
             // Vuelve a escala de reposo uniforme: sin esto, la proxima vez
             // que el pool reutilice este mismo objeto para un impacto (no
@@ -104,7 +128,26 @@ namespace SP.Combat
         {
             if (!active) return;
 
-            transform.position += transform.forward * speed * dt;
+            if (gravity != 0f)
+            {
+                // Integracion exacta para aceleracion constante (velocity
+                // Verlet): pos += v*dt + 0.5*a*dt^2. Con el Euler simple
+                // de antes, la trayectoria real dependia del tamaño del
+                // paso, asi que la marca de impacto previsto no podia
+                // coincidir salvo que simulara con EXACTAMENTE el mismo dt
+                // -- que es variable. Asi las dos describen la misma
+                // parabola sin importar los fps.
+                transform.position += velocity * dt + new Vector3(0f, -0.5f * gravity * dt * dt, 0f);
+                velocity.y -= gravity * dt;
+                // La trazadora tiene que seguir mirando hacia donde va
+                // realmente, no hacia donde salio: si no, el arco se ve
+                // como un proyectil recto desplazandose de costado.
+                if (velocity.sqrMagnitude > 0.0001f) transform.rotation = Quaternion.LookRotation(velocity.normalized);
+            }
+            else
+            {
+                transform.position += transform.forward * speed * dt;
+            }
             age += dt;
 
             // Un soldado montado en un vehículo queda inactivo (oculto); no
@@ -132,6 +175,7 @@ namespace SP.Combat
             // el proyectil los atravesaba sin avisar nada).
             foreach (var vehicle in Object.FindObjectsByType<Vehicle>(FindObjectsSortMode.None))
             {
+                if (vehicle == ignoreVehicle) continue;
                 if (Vector3.Distance(vehicle.transform.position, transform.position) <= hitRadius + 1.5f)
                 {
                     if (explosionRadius > 0f) Explode(transform.position);
@@ -216,6 +260,7 @@ namespace SP.Combat
 
             foreach (var vehicle in Object.FindObjectsByType<Vehicle>(FindObjectsSortMode.None))
             {
+                if (vehicle == ignoreVehicle) continue;
                 if (Vector3.Distance(vehicle.transform.position, point) <= explosionRadius)
                     vehicle.TakeDamage(damage, ownerId);
             }

@@ -50,6 +50,7 @@ namespace SP.CameraSystem
             {
                 float goal = zoomed ? zoomFov : normalFov;
                 cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, goal, Time.deltaTime * zoomLerpSpeed);
+                ApplyDirectionalShake();
                 return;
             }
 
@@ -62,6 +63,8 @@ namespace SP.CameraSystem
                 var target = new Vector3(panTarget.x, transform.position.y, panTarget.z);
                 transform.position = Vector3.Lerp(transform.position, target, Time.deltaTime * panSmoothSpeed);
             }
+
+            ApplyDirectionalShake();
         }
 
         public void AddPitch(float delta) => pitch = Mathf.Clamp(pitch + delta, -MaxPitch, MaxPitch);
@@ -76,6 +79,29 @@ namespace SP.CameraSystem
         [SerializeField] float recoilRecoverySpeed = 40f; // grados/seg
         public void KickRecoil(float degrees) => recoilPitch += degrees;
         public float RecoilPitch => recoilPitch;
+
+        // Sacudida DIRECCIONAL: una vibracion aleatoria no comunica de
+        // donde vino la fuerza. El culatazo del cañon tiene que empujar la
+        // camara en un sentido concreto -- el opuesto al eje de disparo --
+        // para que se lea como retroceso y no como ruido.
+        Vector3 shakeOffset;
+        [SerializeField] float shakeRecoverySpeed = 9f;
+        public Vector3 ShakeOffset => shakeOffset;
+
+        public void KickDirectional(Vector3 worldDirection, float magnitude)
+        {
+            if (worldDirection.sqrMagnitude < 0.0001f) return;
+            shakeOffset += worldDirection.normalized * magnitude;
+        }
+
+        // Se aplica DESPUES de posicionar la camara (por eso vive en el
+        // final de LateUpdate) y decae solo.
+        void ApplyDirectionalShake()
+        {
+            if (shakeOffset.sqrMagnitude < 0.000001f) return;
+            transform.position += shakeOffset;
+            shakeOffset = Vector3.Lerp(shakeOffset, Vector3.zero, Mathf.Clamp01(Time.deltaTime * shakeRecoverySpeed));
+        }
 
         // Vista RTS guardada al salir, para no perder el encuadre que el
         // jugador armo (paneo + zoom) cada vez que vuelve. Sin esto, cada

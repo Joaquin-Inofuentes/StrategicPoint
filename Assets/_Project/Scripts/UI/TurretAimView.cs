@@ -111,22 +111,53 @@ namespace SP.UI
         void UpdateRadiusRing(TurretWeapon turret)
         {
             if (radiusRing == null) return;
+            var target = PredictedImpactPoint(turret);
+            // Con municion perforante el radio es 0: el anillo pasa a ser
+            // una marca chica de punto de caida, no una zona de daño.
+            float radius = turret.ExplosionRadius > 0f ? turret.ExplosionRadius : 0.5f;
+            DrawCircle(target, radius);
+        }
 
-            // El punto apuntado es donde la linea del cañon corta el
-            // plano del suelo. El proyectil vuela recto y sin gravedad,
-            // asi que esta es la interseccion real, no una aproximacion.
+        // Con balistica de arco, apuntar sin ninguna ayuda seria pura
+        // adivinanza. Se SIMULA la trayectoria real (misma gravedad y
+        // velocidad que usara el proyectil) en vez de estimarla con una
+        // formula aparte que podria desincronizarse del vuelo real.
+        public static Vector3 PredictedImpactPoint(TurretWeapon turret)
+        {
             Vector3 origin = turret.Muzzle != null ? turret.Muzzle.position : turret.transform.position;
             Vector3 dir = turret.transform.forward;
-            float groundY = 0f;
-            Vector3 target;
-            if (Mathf.Abs(dir.y) > 0.001f && (groundY - origin.y) / dir.y > 0f)
-                target = origin + dir * ((groundY - origin.y) / dir.y);
-            else
-                target = origin + dir * 30f; // cañon horizontal: alcance nominal
+            float g = turret.ProjectileGravity;
+            // Debe coincidir con Projectile.groundImpactHeight: el
+            // proyectil expira al bajar de esa altura, no al llegar a y=0.
+            // Predecir contra y=0 metia un error sistematico de casi un
+            // metro en un tiro de 18 m.
+            const float groundY = 0.15f;
 
-            target.y = groundY + 0.05f;
-            DrawCircle(target, turret.ExplosionRadius);
+            if (g <= 0f)
+            {
+                if (Mathf.Abs(dir.y) > 0.001f && (groundY - origin.y) / dir.y > 0f)
+                    return new Vector3(origin.x + dir.x * ((groundY - origin.y) / dir.y), groundY + 0.05f,
+                                       origin.z + dir.z * ((groundY - origin.y) / dir.y));
+                var flat = origin + dir * 30f;
+                return new Vector3(flat.x, groundY + 0.05f, flat.z);
+            }
+
+            // Forma cerrada de la parabola, no una simulacion paso a paso:
+            // el resultado no depende de ningun dt, asi que coincide con
+            // el vuelo real (que integra la misma parabola de forma
+            // exacta) sin importar los fps.
+            //   y(t) = y0 + vy*t - 0.5*g*t^2 = 0
+            Vector3 vel = dir * ProjectileSpeed;
+            float y0 = origin.y - groundY;
+            float disc = vel.y * vel.y + 2f * g * y0;
+            if (disc < 0f) disc = 0f;
+            float tImpact = (vel.y + Mathf.Sqrt(disc)) / g;
+            return new Vector3(origin.x + vel.x * tImpact, groundY + 0.05f, origin.z + vel.z * tImpact);
         }
+
+        // Debe coincidir con Projectile.speed del prefab: la simulacion no
+        // sirve de nada si integra a otra velocidad que el vuelo real.
+        public const float ProjectileSpeed = 40f;
 
         void DrawCircle(Vector3 center, float radius)
         {

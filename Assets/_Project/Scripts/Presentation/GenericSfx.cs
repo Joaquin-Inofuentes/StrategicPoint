@@ -4,7 +4,7 @@ using SP.Combat;
 
 namespace SP.Presentation
 {
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit }
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded }
 
     // Sonidos genéricos generados por código (tonos con envolvente),
     // para no depender de clips de audio importados en el prototipo.
@@ -63,6 +63,15 @@ namespace SP.Presentation
                 // reconocible, para que se lea como un "no" mecanico y no
                 // como una nota mas del resto de la paleta de sonidos.
                 case SfxKind.EmptyClick: freq = 2400f; duration = 0.035f; decay = 60f; break;
+                // Un cañon necesita DOS capas para sonar potente, no un
+                // tono unico: el cuerpo grave que da el peso y el crack
+                // agudo que da el golpe. Se reproducen juntas.
+                case SfxKind.CannonBody: freq = 55f; duration = 0.55f; decay = 4f; break;
+                case SfxKind.CannonCrack: freq = 1700f; duration = 0.07f; decay = 32f; break;
+                // Mecanismo de recarga: se dispara al COMPLETARSE el
+                // cooldown, no al iniciarlo, para que el artillero pueda
+                // mirar el campo en vez del HUD.
+                case SfxKind.TurretReloaded: freq = 480f; duration = 0.09f; decay = 26f; break;
                 default: freq = 500f; duration = 0.08f; decay = 14f; break;
             }
             return GenerateTone(freq, duration, decay, kind.ToString());

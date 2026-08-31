@@ -1006,7 +1006,10 @@ namespace SP.Player
 
         void UpdateInVehicle(Keyboard kb, Mouse mouse)
         {
-            Rig.SetZoomed(false); // el zoom de mirilla es solo a pie
+            // El zoom arranca apagado cada frame; solo la rama de
+            // artillero lo vuelve a prender (ver mas abajo). Conducir o ir
+            // de pasajero no tiene mira que acercar.
+            Rig.SetZoomed(false);
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
             if (AimUiRef != null) AimUiRef.SetVisible(false);
@@ -1117,11 +1120,29 @@ namespace SP.Player
                     turret.AddDesiredYaw(delta.x * turretSensitivity);
                     turret.TickPlayerAim(Time.deltaTime);
                     if (mouse.leftButton.wasPressedThisFrame) turret.TryFire();
+
+                    // El artillero usaba el mismo FOV que caminando, asi
+                    // que apuntar a distancia era adivinar. El zoom de
+                    // mirilla existia a pie pero se desactivaba adrede en
+                    // vehiculo; con el arco balistico hace mas falta aca.
+                    Rig.SetZoomed(mouse.rightButton.isPressed);
+
+                    // [R] alterna municion: explosiva de area o
+                    // perforante de daño concentrado.
+                    if (kb.rKey.wasPressedThisFrame)
+                    {
+                        turret.CycleAmmo();
+                        if (ModeToast != null)
+                            ModeToast.Show(turret.Ammo == TurretWeapon.AmmoType.Explosive ? "MUNICION EXPLOSIVA" : "MUNICION PERFORANTE", 1.1f);
+                    }
                 }
                 if (TurretAim != null) TurretAim.UpdateFrom(turret);
 
-                // Clic derecho: ordenarle a la camioneta ir a un punto (la maneja la IA).
-                if (mouse != null && mouse.rightButton.wasPressedThisFrame && Rig.Cam != null)
+                // Antes esto era clic derecho, pero ese boton pasa a ser
+                // el zoom de mira del artillero (que es lo que mas se usa
+                // desde ese asiento). [T] es ademas la misma tecla que da
+                // la orden de movimiento en RTS.
+                if (kb.tKey.wasPressedThisFrame && mouse != null && Rig.Cam != null)
                 {
                     var groundRay = Rig.Cam.ScreenPointToRay(mouse.position.ReadValue());
                     var res = Aim.Evaluate(groundRay, null);
@@ -1139,7 +1160,7 @@ namespace SP.Player
             string role = currentSeat == VehicleSeatRole.Driver
                 ? "[WASD] conducir · [G] frenar · [2] ir a la torreta · [V] cámara · [TAB] vista RTS · [E] bajar"
                 : currentSeat == VehicleSeatRole.Gunner
-                    ? "[Mouse] apuntar torreta · [Click] disparar · [Click der.] mandar la camioneta ahí (si hay conductor) · [1] volver a conducir · [V] cámara · [TAB] vista RTS · [E] bajar"
+                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom de mira · [R] munición · [T] mandar la camioneta ahí · [1] conducir · [V] cámara · [TAB] vista RTS · [E] bajar"
                     : "[E] bajar · [V] cámara · [TAB] vista RTS";
             SetInstructionText(role);
         }
