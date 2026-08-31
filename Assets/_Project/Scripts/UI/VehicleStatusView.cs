@@ -14,6 +14,7 @@ namespace SP.UI
         Text speedLabel;
         Image healthFill;
         Text gunnerLabel;
+        Text seatLabel;
 
         public void Bind(Text speed, Image health, Text gunner)
         {
@@ -39,9 +40,31 @@ namespace SP.UI
                 var t = transform.Find("GunnerText");
                 if (t != null) gunnerLabel = t.GetComponent<Text>();
             }
+            if (seatLabel == null)
+            {
+                var t = transform.Find("SeatText");
+                if (t != null) seatLabel = t.GetComponent<Text>();
+            }
         }
 
-        public void UpdateFrom(Vehicle vehicle, VehicleMotor motor)
+        // El rol se deducia leyendo el texto largo de controles (que
+        // cambia todo el tiempo). No habia un indicador fijo y estable de
+        // en que asiento estabas.
+        static string RoleLabel(SP.Vehicles.VehicleSeatRole? role) => role switch
+        {
+            SP.Vehicles.VehicleSeatRole.Driver => "Conductor",
+            SP.Vehicles.VehicleSeatRole.Gunner => "Artillero",
+            SP.Vehicles.VehicleSeatRole.Passenger1 => "Pasajero",
+            SP.Vehicles.VehicleSeatRole.Passenger2 => "Pasajero",
+            _ => "-",
+        };
+
+        public void SetSeat(SP.Vehicles.VehicleSeatRole? role)
+        {
+            if (seatLabel != null) seatLabel.text = RoleLabel(role);
+        }
+
+        public void UpdateFrom(Vehicle vehicle, VehicleMotor motor, bool braking = false)
         {
             if (vehicle == null || motor == null)
             {
@@ -51,7 +74,18 @@ namespace SP.UI
             gameObject.SetActive(true);
 
             if (speedLabel != null)
-                speedLabel.text = $"{Mathf.Abs(motor.CurrentSpeed):0.0} u/s";
+            {
+                // Marcha atras: antes CurrentSpeed negativo se mostraba
+                // identico a positivo (con Abs), sin ningun indicio de
+                // que ibas para atras salvo mirar el paisaje afuera.
+                bool reversing = motor.CurrentSpeed < -0.1f;
+                string prefix = reversing ? "R " : "";
+                string suffix = braking ? "  FRENANDO" : "";
+                speedLabel.text = $"{prefix}{Mathf.Abs(motor.CurrentSpeed):0.0} u/s{suffix}";
+                speedLabel.color = braking ? new Color(0.95f, 0.6f, 0.2f)
+                    : reversing ? new Color(0.95f, 0.85f, 0.3f)
+                    : Color.white;
+            }
 
             if (healthFill != null)
             {

@@ -101,6 +101,26 @@ namespace SP.Core
     // estabas manejando, te encontrabas de golpe a pie sin ninguna
     // confirmacion de que paso. Lleva la referencia directa al vehiculo
     // (no un id) para no depender de GetInstanceID/GetEntityId.
+    // Ver VehicleDestroyedEvent mas abajo: misma excepcion deliberada a la
+    // regla de "solo ids" (Object.GetInstanceID() es obsoleto/error de
+    // compilacion en esta version de Unity), asi que carga la referencia
+    // directa al vehiculo en vez de un id.
+    public readonly struct VehicleDamagedEvent
+    {
+        public readonly SP.Vehicles.Vehicle Vehicle;
+        public readonly int Amount;
+        public readonly int RemainingHealth;
+        public readonly int MaxHealth;
+
+        public VehicleDamagedEvent(SP.Vehicles.Vehicle vehicle, int amount, int remainingHealth, int maxHealth)
+        {
+            Vehicle = vehicle;
+            Amount = amount;
+            RemainingHealth = remainingHealth;
+            MaxHealth = maxHealth;
+        }
+    }
+
     public readonly struct VehicleDestroyedEvent
     {
         public readonly SP.Vehicles.Vehicle Vehicle;

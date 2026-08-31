@@ -954,7 +954,15 @@ namespace SP.Player
             }
 
             var motor = Vehicle.GetComponent<VehicleMotor>();
-            if (VehicleStatus != null) VehicleStatus.UpdateFrom(Vehicle, motor);
+            // El freno solo es una accion real cuando quien maneja es el
+            // jugador (currentSeat==Driver) y esta apretando [G] -- para
+            // un pasajero o el conductor IA esto no aplica.
+            bool isBraking = currentSeat == VehicleSeatRole.Driver && kb.gKey.isPressed;
+            if (VehicleStatus != null)
+            {
+                VehicleStatus.UpdateFrom(Vehicle, motor, isBraking);
+                VehicleStatus.SetSeat(currentSeat);
+            }
 
             if (kb.eKey.wasPressedThisFrame) { ExitVehicle(); return; }
 
@@ -1061,12 +1069,62 @@ namespace SP.Player
             currentSeat = newRole;
             if (newRole == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
             if (newRole == VehicleSeatRole.Gunner) GameLog.Line("Se monto en la metralleta");
+
+            // Antes la camara saltaba de golpe al cambiar de asiento --
+            // de conductor a artillero es un cambio de punto de vista
+            // igual de brusco que subir al vehiculo por primera vez, que
+            // ya usa esta misma transicion.
+            if (vehicleFirstPerson)
+            {
+                Transform newAnchor = newRole == VehicleSeatRole.Driver
+                    ? Vehicle.transform.Find("DriverEye")
+                    : newRole == VehicleSeatRole.Gunner
+                        ? Vehicle.GetComponentInChildren<TurretWeapon>()?.transform.Find("GunnerEye")
+                        : null;
+                if (newAnchor != null) Rig.BeginTransition(newAnchor);
+            }
         }
 
         void UpdateVehicleCamera(Transform anchor)
         {
             if (vehicleFirstPerson && anchor != null) Rig.FollowAnchor(anchor);
             else Rig.FollowThirdPerson(Vehicle.transform, 8f, 3.5f);
+            ApplyVehicleCameraFeel();
+        }
+
+        // Sin esto la camara del vehiculo esta rigidamente pegada al
+        // ancla frame a frame: un tanque de varias toneladas se sentia
+        // igual de liviano que una camara flotando. Se suma DESPUES de
+        // posicionar la camara (Rig.FollowAnchor/FollowThirdPerson ya
+        // corrieron), como un empujon extra, sin que CameraRig tenga que
+        // saber nada de vehiculos.
+        float vehiclePrevSpeed;
+
+        void ApplyVehicleCameraFeel()
+        {
+            if (Rig.IsTransitioning || Vehicle == null) return;
+            var motor = Vehicle.GetComponent<VehicleMotor>();
+            if (motor == null) return;
+
+            // Inercia: empuje en sentido contrario a como cambio la
+            // velocidad este frame (acelerar empuja hacia atras, frenar
+            // empuja hacia adelante), no a la velocidad en si.
+            float speedDelta = motor.CurrentSpeed - vehiclePrevSpeed;
+            vehiclePrevSpeed = motor.CurrentSpeed;
+            Vector3 inertiaOffset = -Vehicle.transform.forward * Mathf.Clamp(speedDelta * 0.12f, -0.25f, 0.25f);
+
+            // Sacudida proporcional a la velocidad actual: sin fisica
+            // real, el desplazamiento del VehicleMotor es perfectamente
+            // liso, como deslizarse sobre hielo. Ruido Perlin en vez de
+            // Random puro para que no tiemble a los saltos entre frames.
+            float speedFrac = Mathf.Abs(motor.CurrentSpeed) / Mathf.Max(0.01f, motor.MaxSpeed);
+            float shakeAmount = speedFrac * 0.035f;
+            Vector3 shakeOffset = new Vector3(
+                (Mathf.PerlinNoise(Time.time * 18f, 0.37f) - 0.5f) * shakeAmount,
+                (Mathf.PerlinNoise(0.71f, Time.time * 18f) - 0.5f) * shakeAmount,
+                0f);
+
+            Rig.transform.position += inertiaOffset + shakeOffset;
         }
 
         // -----------------------------------------------------------

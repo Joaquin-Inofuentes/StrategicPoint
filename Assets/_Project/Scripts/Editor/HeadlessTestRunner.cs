@@ -932,6 +932,8 @@ namespace SP.EditorTools
             instance.name = "Vehiculo_Blindado";
             instance.transform.position = position;
             instance.transform.rotation = Quaternion.identity;
+            if (instance.GetComponent<AudioSource>() == null) instance.AddComponent<AudioSource>();
+            instance.AddComponent<VehicleAudioFeedback>();
 
             var mat = CreateFlatMaterial(color);
             // El cañón queda afuera del repintado: necesita mantener SU
@@ -949,6 +951,12 @@ namespace SP.EditorTools
                 else rend.sharedMaterial = mat;
             }
             if (barrelRend != null) barrelRend.sharedMaterial = CreateFlatMaterial(new Color(0.12f, 0.12f, 0.13f));
+
+            // Se agrega DESPUES de repintar el chasis: VehicleFxReactor
+            // cachea el color base en su Awake (que AddComponent dispara
+            // en el acto), y ese color base tiene que ser el pintado real
+            // del vehiculo, no el gris del prefab original.
+            instance.AddComponent<VehicleFxReactor>();
 
             var turret = instance.GetComponentInChildren<TurretWeapon>();
             turret.SetPool(pool);
@@ -1345,7 +1353,7 @@ namespace SP.EditorTools
             vsRt.anchorMax = new Vector2(1f, 0f);
             vsRt.pivot = new Vector2(1f, 0f);
             vsRt.anchoredPosition = new Vector2(-16f, 72f);
-            vsRt.sizeDelta = new Vector2(220f, 70f);
+            vsRt.sizeDelta = new Vector2(220f, 88f);
 
             var vsSpeedGO = new GameObject("SpeedText", typeof(Text));
             vsSpeedGO.transform.SetParent(vsGO.transform, false);
@@ -1359,7 +1367,25 @@ namespace SP.EditorTools
             vsSpeedRt.anchorMax = new Vector2(1f, 1f);
             vsSpeedRt.pivot = new Vector2(0.5f, 1f);
             vsSpeedRt.anchoredPosition = new Vector2(0f, -4f);
-            vsSpeedRt.sizeDelta = new Vector2(-8f, 26f);
+            vsSpeedRt.sizeDelta = new Vector2(-8f, 22f);
+
+            // Antes solo se sabía en qué asiento estabas leyendo el texto
+            // largo de controles (que además cambia todo el rato). Un
+            // rótulo fijo y siempre visible en el propio HUD del vehículo.
+            var vsSeatGO = new GameObject("SeatText", typeof(Text));
+            vsSeatGO.transform.SetParent(vsGO.transform, false);
+            var vsSeatTxt = vsSeatGO.GetComponent<Text>();
+            vsSeatTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            vsSeatTxt.alignment = TextAnchor.UpperCenter;
+            vsSeatTxt.color = new Color(0.6f, 0.85f, 1f);
+            vsSeatTxt.fontSize = 13;
+            vsSeatTxt.fontStyle = FontStyle.Bold;
+            var vsSeatRt = vsSeatGO.GetComponent<RectTransform>();
+            vsSeatRt.anchorMin = new Vector2(0f, 1f);
+            vsSeatRt.anchorMax = new Vector2(1f, 1f);
+            vsSeatRt.pivot = new Vector2(0.5f, 1f);
+            vsSeatRt.anchoredPosition = new Vector2(0f, -26f);
+            vsSeatRt.sizeDelta = new Vector2(-8f, 16f);
 
             var vsGunnerGO = new GameObject("GunnerText", typeof(Text));
             vsGunnerGO.transform.SetParent(vsGO.transform, false);
@@ -1372,8 +1398,8 @@ namespace SP.EditorTools
             vsGunnerRt.anchorMin = new Vector2(0f, 1f);
             vsGunnerRt.anchorMax = new Vector2(1f, 1f);
             vsGunnerRt.pivot = new Vector2(0.5f, 1f);
-            vsGunnerRt.anchoredPosition = new Vector2(0f, -28f);
-            vsGunnerRt.sizeDelta = new Vector2(-8f, 18f);
+            vsGunnerRt.anchoredPosition = new Vector2(0f, -42f);
+            vsGunnerRt.sizeDelta = new Vector2(-8f, 16f);
 
             var vsBarBgGO = new GameObject("HealthBarBG", typeof(Image));
             vsBarBgGO.transform.SetParent(vsGO.transform, false);

@@ -4,7 +4,7 @@ using SP.Combat;
 
 namespace SP.Presentation
 {
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick }
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit }
 
     // Sonidos genéricos generados por código (tonos con envolvente),
     // para no depender de clips de audio importados en el prototipo.
@@ -45,6 +45,12 @@ namespace SP.Presentation
 
         static AudioClip Generate(SfxKind kind)
         {
+            // Choque metalico: antes un impacto en el vehiculo sonaba
+            // (SfxKind.Hit) identico a un balazo en un soldado -- un tono
+            // puro no suena a metal, hace falta sumar un par de parciales
+            // desafinados entre si (asi suena una campana o una chapa).
+            if (kind == SfxKind.VehicleHit) return GenerateMetalClang();
+
             float freq, duration, decay;
             switch (kind)
             {
@@ -60,6 +66,36 @@ namespace SP.Presentation
                 default: freq = 500f; duration = 0.08f; decay = 14f; break;
             }
             return GenerateTone(freq, duration, decay, kind.ToString());
+        }
+
+        static AudioClip GenerateMetalClang()
+        {
+            const int sampleRate = 44100;
+            const float duration = 0.22f;
+            const float decay = 14f;
+            // Frecuencias sin relacion armonica simple entre si: es
+            // justamente esa "desafinacion" la que se lee como metal en
+            // vez de como una nota musical limpia.
+            float[] partials = { 180f, 410f, 730f };
+            float[] weights = { 0.5f, 0.32f, 0.22f };
+
+            int sampleCount = (int)(duration * sampleRate);
+            var samples = new float[sampleCount];
+            var rng = new System.Random(7);
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = (float)i / sampleRate;
+                float envelope = Mathf.Exp(-decay * t);
+                float v = 0f;
+                for (int p = 0; p < partials.Length; p++)
+                    v += Mathf.Sin(2f * Mathf.PI * partials[p] * t) * weights[p];
+                v += ((float)rng.NextDouble() - 0.5f) * 0.08f;
+                samples[i] = Mathf.Clamp(v * envelope, -1f, 1f);
+            }
+
+            var clip = AudioClip.Create("VehicleHit", sampleCount, 1, sampleRate, false);
+            clip.SetData(samples, 0);
+            return clip;
         }
 
         static AudioClip GenerateTone(float freq, float duration, float decay, string name)

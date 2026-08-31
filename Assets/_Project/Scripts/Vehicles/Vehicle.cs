@@ -48,6 +48,11 @@ namespace SP.Vehicles
         {
             bool wasAlive = Health.IsAlive;
             Health.TakeDamage(amount, attackerId);
+            // Antes un impacto en el vehiculo solo bajaba una barra --
+            // ningun flash en el chasis, ningun sonido distinto al de un
+            // soldado. Evento propio para que la reaccion visual/sonora
+            // del vehiculo sea la suya, no la de carne y hueso.
+            if (wasAlive) EventBus.Instance.Publish(new VehicleDamagedEvent(this, amount, Health.Current, Health.MaxHealth));
             if (wasAlive && !Health.IsAlive) OnDestroyed();
         }
 
@@ -162,13 +167,33 @@ namespace SP.Vehicles
             seats.Remove(foundRole.Value);
 
             soldier.gameObject.SetActive(true);
-            soldier.transform.position = transform.position + transform.right * 2.5f;
+            // Antes todos bajaban exactamente al mismo punto (derecha del
+            // chasis), sin importar el asiento -- con varios ocupantes
+            // quedaban superpuestos o dentro del chasis. Cada asiento
+            // baja por su propio costado.
+            soldier.transform.position = transform.position + DismountOffsetFor(foundRole.Value);
             soldier.transform.rotation = transform.rotation;
 
             var brain = soldier.Brain;
             if (brain != null) brain.enabled = true;
             RefreshOccupancyColor();
             return true;
+        }
+
+        // Un costado y una distancia distinta por asiento: conductor a la
+        // izquierda, artillero a la derecha, pasajeros atras a cada lado
+        // -- para que cuatro ocupantes bajando a la vez no terminen los
+        // cuatro en el mismo punto ni adentro del chasis.
+        Vector3 DismountOffsetFor(VehicleSeatRole role)
+        {
+            switch (role)
+            {
+                case VehicleSeatRole.Driver: return -transform.right * 2.5f;
+                case VehicleSeatRole.Gunner: return transform.right * 2.5f;
+                case VehicleSeatRole.Passenger1: return -transform.right * 2.5f - transform.forward * 2f;
+                case VehicleSeatRole.Passenger2: return transform.right * 2.5f - transform.forward * 2f;
+                default: return transform.right * 2.5f;
+            }
         }
 
         public VehicleSeatRole? RoleOf(Soldier soldier)
