@@ -27,10 +27,29 @@ namespace SP.UI
         // escena, un privado se perderia en el domain reload.
         public Image[] Arrows;
 
-        // Lo llena el driver: esta vista no sale a buscar la escuadra, para
-        // no acoplarse ni hacer barridos.
+        // BUG REAL encontrado en Play mode: esta lista se llenaba con
+        // SetSquad() al construir la escena en el Editor, pero es un
+        // campo privado SIN [SerializeField] -- no sobrevive el domain
+        // reload al entrar a Play. Quedaba vacia en Play pese a haberse
+        // llenado bien en el momento de construir la escena, y las
+        // flechas de aliados fuera de pantalla nunca aparecian. Mismo
+        // patron de bug que ya paso con AiBrain.patrolRoute.
+        //
+        // SetSquad() sigue existiendo (una copia explicita gana si se
+        // usa), pero el fallback real es leer PlayerInputDriver.Squad
+        // directamente: ese campo SI es publico y SI sobrevive, y ya es
+        // la fuente de verdad de "quien es la escuadra" en todo el
+        // proyecto.
         readonly List<Soldier> squad = new List<Soldier>();
+        SP.Player.PlayerInputDriver driver;
         Camera cam;
+
+        IReadOnlyList<Soldier> CurrentSquad()
+        {
+            if (squad.Count > 0) return squad;
+            if (driver == null) driver = Object.FindAnyObjectByType<SP.Player.PlayerInputDriver>();
+            return driver != null && driver.Squad != null ? driver.Squad : (IReadOnlyList<Soldier>)System.Array.Empty<Soldier>();
+        }
 
         public int VisibleMarkerCount { get; private set; }
 
@@ -78,11 +97,20 @@ namespace SP.UI
             float halfW = Mathf.Max(0f, w * 0.5f - EdgeMargin);
             float halfH = Mathf.Max(0f, h * 0.5f - EdgeMargin);
 
+            // El poseido esta pegado a la camara (la FPS mira desde sus
+            // ojos): WorldToViewportPoint(su propia posicion) da un z casi
+            // cero, al borde entre "delante" y "detras" de la camara por
+            // puro ruido de punto flotante. Sin excluirlo, a veces se le
+            // dibujaba una flecha a si mismo.
+            if (driver == null) driver = Object.FindAnyObjectByType<SP.Player.PlayerInputDriver>();
+            var poseido = driver != null && driver.Brain != null ? driver.Brain.Current : null;
+
             int used = 0;
-            for (int i = 0; i < squad.Count && used < Arrows.Length; i++)
+            var currentSquad = CurrentSquad();
+            for (int i = 0; i < currentSquad.Count && used < Arrows.Length; i++)
             {
-                var s = squad[i];
-                if (s == null || s.Health == null || !s.Health.IsAlive) continue;
+                var s = currentSquad[i];
+                if (s == null || s == poseido || s.Health == null || !s.Health.IsAlive) continue;
                 if (!s.gameObject.activeInHierarchy) continue;   // va dentro de un vehiculo
 
                 var vp = cam.WorldToViewportPoint(s.transform.position);
