@@ -244,24 +244,55 @@ namespace SP.EditorTools
 
             for (int i = 0; i < warmupSteps; i++) SimStep(dt);
 
+            // Forzar el GC ANTES de medir, no durante: construir tres
+            // mundos seguidos (10, 60 y 200 unidades) en la misma llamada
+            // acumula basura, y una coleccion que cae justo en medio de la
+            // ventana medida se atribuye al paso que estaba corriendo en
+            // ese instante -- no es costo real de esa fase, es ruido del
+            // recolector. Practica estandar de benchmarking: forzarlo en
+            // el setup, nunca dejar que interrumpa la muestra.
+            System.GC.Collect();
+            System.GC.WaitForPendingFinalizers();
+            System.GC.Collect();
+
             var samples = new float[measuredSteps];
             double rebuildAcc = 0, aiAcc = 0, vehicleAcc = 0, projAcc = 0;
+            // Ademas del promedio, se guarda el desglose por fase del paso
+            // MAS LENTO de toda la corrida: un promedio no dice nada sobre
+            // de donde viene una cola larga (p95 muy por encima de la
+            // mediana), porque la diluye entre 300 pasos. El paso peor
+            // SI dice que fase domino ese pico en particular.
+            float worstStepMs = -1f;
+            float worstRebuild = 0f, worstAi = 0f, worstVehicle = 0f, worstProj = 0f;
+            int worstStepIndex = -1;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             for (int i = 0; i < measuredSteps; i++)
             {
                 double t0 = sw.Elapsed.TotalMilliseconds;
                 SimStep(dt);
-                samples[i] = (float)(sw.Elapsed.TotalMilliseconds - t0);
+                float stepMs = (float)(sw.Elapsed.TotalMilliseconds - t0);
+                samples[i] = stepMs;
                 rebuildAcc += WorldSimulationDriver.LastRebuildMs;
                 aiAcc += WorldSimulationDriver.LastAiWeaponMs;
                 vehicleAcc += WorldSimulationDriver.LastVehicleMs;
                 projAcc += LastProjectileMs;
+                if (stepMs > worstStepMs)
+                {
+                    worstStepMs = stepMs;
+                    worstStepIndex = i;
+                    worstRebuild = (float)WorldSimulationDriver.LastRebuildMs;
+                    worstAi = (float)WorldSimulationDriver.LastAiWeaponMs;
+                    worstVehicle = (float)WorldSimulationDriver.LastVehicleMs;
+                    worstProj = (float)LastProjectileMs;
+                }
             }
 
             System.Array.Sort(samples);
             float median = samples[measuredSteps / 2];
             int idx95 = Mathf.Clamp(Mathf.CeilToInt(measuredSteps * 0.95f) - 1, 0, measuredSteps - 1);
             float p95 = samples[idx95];
+
+            Debug.Log($"[Benchmark] N={unitCount} paso mas lento: #{worstStepIndex} total={worstStepMs:0.000}ms (rebuild={worstRebuild:0.000} ai+arma={worstAi:0.000} vehiculo={worstVehicle:0.000} proyectiles={worstProj:0.000})");
 
             return new BenchResult
             {
@@ -1286,6 +1317,20 @@ namespace SP.EditorTools
             // verde listo).
             if (weaponStatusRef != null && vega.Weapon != null)
             {
+                // BUG DE ESTE TEST encontrado y corregido: WeaponHolder.Reload()
+                // devuelve false y no hace nada si CurrentAmmo ya esta al
+                // maximo -- correcto, no tiene sentido recargar un cargador
+                // lleno. Pero eso hacia que este check fuera FLAKY segun
+                // cuanto habia disparado Vega en las fases anteriores. Se
+                // dispara una vez primero para garantizar que haya algo
+                // que recargar, sin importar el estado previo. Antes de
+                // eso, Tick(1f) limpia cualquier cooldown de disparo que
+                // hubiera quedado pendiente de una fase anterior -- sin
+                // esto, TryFire podia fallar en silencio por cooldown
+                // activo, dejando el cargador lleno y arruinando todo el
+                // resto de la secuencia (verificado: pasaba de verdad).
+                vega.Weapon.Tick(1f);
+                vega.Weapon.TryFire(vega.transform.position, vega.transform.forward);
                 vega.Weapon.Reload();
                 weaponStatusRef.UpdateFrom(vega.Weapon);
                 var fillField = typeof(WeaponStatusView).GetField("fill", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
@@ -1297,6 +1342,19 @@ namespace SP.EditorTools
                 // Terminar la recarga a mano (Edit mode no avanza el reloj
                 // solo) y confirmar que vuelve a 1 y a verde.
                 for (int i = 0; i < 60 && vega.Weapon.IsReloading; i++) vega.Weapon.Tick(0.05f);
+                // SEGUNDO BUG DE ESTE TEST encontrado y corregido: el
+                // cooldown de disparo queda CONGELADO mientras
+                // IsReloading es true (correcto: no tiene sentido que
+                // corra un cooldown de disparo mientras el arma esta
+                // desarmada recargando), y solo retoma su cuenta regresiva
+                // DESPUES de que termina la recarga. El disparo que se
+                // hizo arriba para forzar la recarga dejaba un cooldown
+                // pendiente que el loop de arriba nunca le daba tiempo de
+                // consumir, porque para de tickear apenas IsReloading pasa
+                // a false. Verificado con el arma real: justo al terminar
+                // la recarga el cooldown seguia entero (0.3s), y recien
+                // se vaciaba tras un segundo mas de ticks.
+                for (int i = 0; i < 20; i++) vega.Weapon.Tick(0.05f);
                 weaponStatusRef.UpdateFrom(vega.Weapon);
                 var fillAfterReload = (Image)fillField.GetValue(weaponStatusRef);
                 Check($"Tras terminar la recarga, la barra vuelve a lleno y a verde (fillAmount={fillAfterReload.fillAmount:0.00})",

@@ -1654,16 +1654,41 @@ namespace SP.Player
             if (!showing)
             {
                 if (formationGhosts.Count > 0) ClearFormationGhosts();
+                // Item 218: la linea de ruta tiene que desaparecer en el
+                // mismo instante que los fantasmas de destino, no un frame
+                // despues -- si no, quedaba una linea vieja pegada en
+                // pantalla apuntando a un destino que ya no se estaba
+                // previsualizando.
+                if (SP.Ai.PathPreview.Instance != null) SP.Ai.PathPreview.Instance.Hide();
                 return;
             }
 
             var result = Aim.Evaluate(screenRay, null);
-            if (result.Type != AimTargetType.Ground) { ClearFormationGhosts(); return; }
+            if (result.Type != AimTargetType.Ground) { ClearFormationGhosts(); if (SP.Ai.PathPreview.Instance != null) SP.Ai.PathPreview.Instance.Hide(); return; }
 
             var spots = OrderService.FormationPoints(result.Point, Selection.Selected.Count);
             EnsureGhostCount(spots.Length);
             for (int i = 0; i < spots.Length; i++)
                 formationGhosts[i].transform.position = new Vector3(spots[i].x, 0.06f, spots[i].z);
+
+            // 218: vista previa de la ruta, no solo del destino. Antes el
+            // jugador veia DONDE iban a terminar los fantasmas pero no
+            // POR DONDE iba a ir la escuadra -- si habia un obstaculo en
+            // el medio, se enteraba recien cuando los soldados chocaban
+            // contra el. El origen es el centroide de la seleccion, que
+            // es de donde parte la orden en conjunto.
+            if (SP.Ai.PathPreview.Instance != null)
+            {
+                Vector3 centroide = Vector3.zero;
+                int vivos = 0;
+                foreach (var s in Selection.Selected)
+                {
+                    if (s == null || s.Health == null || !s.Health.IsAlive) continue;
+                    centroide += s.transform.position;
+                    vivos++;
+                }
+                if (vivos > 0) SP.Ai.PathPreview.Instance.Show(centroide / vivos, result.Point);
+            }
         }
 
         void EnsureGhostCount(int count)
