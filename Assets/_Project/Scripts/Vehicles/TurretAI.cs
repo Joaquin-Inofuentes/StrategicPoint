@@ -57,17 +57,43 @@ namespace SP.Vehicles
         {
             if (!bootstrapped) Bootstrap();
             if (turret == null) return;
+
+            // BUG REAL: esto disparaba solo, sin nadie a bordo -- un
+            // tanque vacio (sin conductor, artillero ni pasajero, de
+            // ningun equipo) se comportaba como una torreta automatica
+            // hostil a los enemigos del jugador aunque no lo tripulara
+            // nadie. Sin tripulacion, ningun equipo lo controla: no
+            // apunta, no dispara, y se limpia el blanco que tuviera para
+            // no quedarselo apuntando de un tick al otro cuando alguien
+            // suba despues.
+            if (vehicle == null || vehicle.OccupantCount == 0)
+            {
+                PublishControlChange(false);
+                target = null;
+                return;
+            }
+
             // Si hay un artillero de carne y hueso adentro, la IA se
-            // aparta: el mouse del jugador manda.
-            bool hasHumanGunner = vehicle != null && vehicle.Gunner != null;
+            // aparta: el mouse de quien lo maneje manda (jugador o, si
+            // algun dia hay un enemigo humano-controlado, ese enemigo).
+            bool hasHumanGunner = vehicle.Gunner != null;
             PublishControlChange(!hasHumanGunner);
             if (hasHumanGunner) return;
 
+            // A quien apunta la IA depende de QUIEN esta adentro, no de
+            // que el tanque sea "siempre del jugador": la tripulacion
+            // puede ser propia o enemiga (un vehiculo capturado), y tiene
+            // que dispararle al equipo CONTRARIO al de su propia gente,
+            // nunca a la propia -- amigo o enemigo lo decide la
+            // tripulacion real, no una constante fija.
+            var crewTeam = vehicle.Occupants[0].Team;
+            var enemyTeam = crewTeam == TeamId.Player ? TeamId.Enemy : TeamId.Player;
+
             retargetTimer -= dt;
-            if (retargetTimer <= 0f || target == null || !target.Health.IsAlive)
+            if (retargetTimer <= 0f || target == null || !target.Health.IsAlive || target.Team != enemyTeam)
             {
                 retargetTimer = retargetInterval;
-                target = ActorRegistry.FindNearestEnemyInRange(transform.position, TeamId.Player, range);
+                target = ActorRegistry.FindNearestEnemyInRange(transform.position, crewTeam, range);
             }
 
             if (target == null || !target.Health.IsAlive) return;

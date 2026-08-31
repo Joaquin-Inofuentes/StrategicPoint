@@ -125,12 +125,31 @@ namespace SP.Presentation
             if (t != null) EventSystem.current.SetSelectedGameObject(t.gameObject);
         }
 
+        // BUG REAL: PlayerInputDriver libera el cursor cuando MUERE el
+        // poseido (pasa a vista RTS antes de llamar ShowDefeat), pero
+        // BattleManager llama ShowVictory() directo, sin tocar el cursor
+        // para nada. Si ganabas jugando en primera persona (el caso mas
+        // comun), el cursor seguia bloqueado e invisible en el centro de
+        // la pantalla encima de la propia pantalla de victoria: los
+        // botones RESPONDIAN bien a un click real (probado con un evento
+        // de mouse inyectado), pero el jugador no tenia forma de mover ni
+        // ver el cursor para hacer ese click. Se libera aca, en las dos
+        // pantallas, en vez de confiar en que quien las dispara se
+        // acuerde de hacerlo -- un solo lugar, valido para cualquier
+        // camino que termine llamando a estas dos.
+        static void ReleaseCursor()
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+        }
+
         public void ShowVictory()
         {
             if (victoryPanel == null || shown) return;
             shown = true;
             GameLog.Line("Ganaste");
             Time.timeScale = 0f;
+            ReleaseCursor();
             if (victoryStats != null) victoryStats.text = BuildStatsText();
             victoryPanel.SetActive(true);
             FocusRetryButton(victoryPanel);
@@ -142,6 +161,7 @@ namespace SP.Presentation
             if (defeatPanel == null || shown) return;
             shown = true;
             Time.timeScale = 0f;
+            ReleaseCursor();
             if (defeatStats != null) defeatStats.text = BuildStatsText();
             defeatPanel.SetActive(true);
             FocusRetryButton(defeatPanel);
