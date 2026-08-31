@@ -29,6 +29,10 @@ namespace SP.Player
         // referencia sobrevive el domain reload al entrar a Play.
         public DamageVignetteView DamageVignette;
         public SP.UI.PerfHudView PerfHud;
+        public SP.UI.GroupCardsView GroupCards;
+        // Grafo de navegacion para la vista previa de ruta (218). Se arma
+        // al construir la escena, no lo calcula el driver.
+        [System.NonSerialized] public SP.Core.WaypointGraph NavGraph;
         // Formacion con la que se emiten las ordenes de movimiento. Cuadricula
         // es la de siempre, asi que el comportamiento por defecto no cambia.
         FormationKind currentFormation = FormationKind.Cuadricula;
@@ -1666,6 +1670,27 @@ namespace SP.Player
         float lastRecallTime = -99f;
         const float GroupDoubleTapSeconds = 0.4f;
 
+        // Traduce los ids guardados a soldados vivos para las tarjetas.
+        // Se llama al GUARDAR un grupo y a intervalo desde la vista, no por
+        // frame desde aca.
+        void RefreshGroupCards()
+        {
+            if (GroupCards == null) return;
+            var listas = new System.Collections.Generic.List<System.Collections.Generic.List<Soldier>>();
+            for (int g = 1; g <= SP.UI.GroupCardsView.SlotCount; g++)
+            {
+                var miembros = new System.Collections.Generic.List<Soldier>();
+                if (controlGroups.TryGetValue(g, out var ids))
+                    foreach (var id in ids)
+                    {
+                        var s = SP.Core.ActorRegistry.FindById(id);
+                        if (s != null) miembros.Add(s);
+                    }
+                listas.Add(miembros);
+            }
+            GroupCards.SetGroups(listas);
+        }
+
         void UpdateControlGroups(Keyboard kb)
         {
             var digitKeys = new[] { kb.digit1Key, kb.digit2Key, kb.digit3Key, kb.digit4Key, kb.digit5Key,
@@ -1683,6 +1708,7 @@ namespace SP.Player
                     var ids = new List<int>();
                     foreach (var s in Selection.Selected) ids.Add(s.Id);
                     controlGroups[group] = ids;
+                    RefreshGroupCards();
                     if (ModeToast != null) ModeToast.Show($"GRUPO {group} GUARDADO ({ids.Count})", 1.0f);
                     GameLog.Line($"Se guardo el grupo de control {group} con {ids.Count} soldados");
                     continue;

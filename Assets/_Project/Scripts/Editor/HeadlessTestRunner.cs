@@ -49,6 +49,8 @@ namespace SP.EditorTools
         static OffscreenKillMarkerView offscreenKillRef;
         static DamageVignetteView damageVignetteRef;
         static SP.UI.PerfHudView perfHudRef;
+        static SP.UI.GroupCardsView groupCardsRef;
+        static SP.Core.WaypointGraph inputDriverNavGraph;
         static KillFeedView killFeedRef;
         static PauseController pauseControllerRef;
         static GameOutcomeController outcomeControllerRef;
@@ -228,6 +230,8 @@ namespace SP.EditorTools
             inputDriver.VehicleStatus = vehicleStatusRef;
             inputDriver.DamageVignette = damageVignetteRef;
             inputDriver.PerfHud = perfHudRef;
+            inputDriver.GroupCards = groupCardsRef;
+            inputDriver.NavGraph = inputDriverNavGraph;
             inputDriver.TurretAim = turretAimRef;
             inputDriver.Outcome = outcomeControllerRef;
             inputDriver.PauseRef = pauseControllerRef;
@@ -253,6 +257,27 @@ namespace SP.EditorTools
             // sin el las 30 fuentes del pool no existirian mientras la
             // suite headless construye y simula la escena.
             servicesGO.AddComponent<AudioDirector>().EnsureVoices();
+            servicesGO.AddComponent<WorldUiDirector>();
+
+            // Grafo de navegacion + vista previa de ruta (items 218/226/227).
+            // Los obstaculos ya estan en el registro, asi que el predicado de
+            // bloqueo no necesita ningun barrido de escena.
+            var navGraph = new SP.Core.WaypointGraph();
+            navGraph.Build(new Vector3(-90f, 0f, -90f), new Vector3(90f, 0f, 90f), 4f, worldPoint =>
+            {
+                var obstaculos = SP.Core.WorldSystemsRegistry.Obstacles;
+                for (int i = 0; i < obstaculos.Count; i++)
+                {
+                    var o = obstaculos[i];
+                    if (o == null) continue;
+                    if (Vector3.Distance(new Vector3(o.transform.position.x, 0f, o.transform.position.z),
+                                         new Vector3(worldPoint.x, 0f, worldPoint.z)) <= 2.5f) return true;
+                }
+                return false;
+            });
+            var pathPreview = servicesGO.AddComponent<SP.Ai.PathPreview>();
+            pathPreview.Attach(navGraph);
+            inputDriverNavGraph = navGraph;
             // En Edit mode OnEnable no corre, asi que los vehiculos y
             // obstaculos no se dan de alta solos en el registro que
             // ahora usan los proyectiles. Sin esto la suite simularia
@@ -1610,6 +1635,36 @@ namespace SP.EditorTools
             // Destello a pantalla completa (181 explosion, 184 cambio de
             // modo). Va como ULTIMO hermano, al reves que el vignette: un
             // fogonazo de explosion tiene que tapar tambien el HUD.
+            // Tarjetas de grupo de control (215). Arriba a la derecha,
+            // debajo del minimapa.
+            var cardsGO = new GameObject("GroupCards", typeof(RectTransform), typeof(GroupCardsView));
+            cardsGO.transform.SetParent(canvasGO.transform, false);
+            var cardsRt = cardsGO.GetComponent<RectTransform>();
+            cardsRt.anchorMin = cardsRt.anchorMax = new Vector2(1f, 1f);
+            cardsRt.pivot = new Vector2(1f, 1f);
+            cardsRt.anchoredPosition = new Vector2(-16f, -260f);
+            cardsRt.sizeDelta = new Vector2(180f, 200f);
+            var cardSlots = new Text[GroupCardsView.SlotCount];
+            for (int i = 0; i < GroupCardsView.SlotCount; i++)
+            {
+                var slotGO = new GameObject("Slot_" + (i + 1), typeof(Text));
+                slotGO.transform.SetParent(cardsGO.transform, false);
+                var st = slotGO.GetComponent<Text>();
+                st.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                st.alignment = TextAnchor.MiddleRight;
+                st.fontSize = 14;
+                st.raycastTarget = false;
+                var srt = slotGO.GetComponent<RectTransform>();
+                srt.anchorMin = srt.anchorMax = new Vector2(1f, 1f);
+                srt.pivot = new Vector2(1f, 1f);
+                srt.anchoredPosition = new Vector2(0f, -i * 20f);
+                srt.sizeDelta = new Vector2(180f, 18f);
+                cardSlots[i] = st;
+            }
+            var cardsView = cardsGO.GetComponent<GroupCardsView>();
+            cardsView.Bind(cardSlots);
+            groupCardsRef = cardsView;
+
             // Panel de diagnostico (235). Apagado por defecto: medir no
             // debe alterar lo medido. Se prende con [P].
             var perfGO = new GameObject("PerfHud", typeof(RectTransform), typeof(PerfHudView));
