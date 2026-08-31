@@ -38,7 +38,7 @@ namespace SP.Presentation
             if (actionTaken) return;
             actionTaken = true;
             GameLog.Line("Se selecciono iniciar partida");
-            SceneManager.LoadScene("SC_TestLevel");
+            SceneManager.LoadScene("SC_Gameplay");
         }
 
         public void OnExitClicked()

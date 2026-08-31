@@ -110,8 +110,9 @@ namespace SP.EditorTools
         public static void RegisterScenesInBuildSettings()
         {
             var menu = new EditorBuildSettingsScene(ScenePath, true);
-            var gameplay = new EditorBuildSettingsScene("Assets/_Project/Scenes/SC_TestLevel.unity", true);
-            EditorBuildSettings.scenes = new[] { menu, gameplay };
+            var gameplay = new EditorBuildSettingsScene("Assets/_Project/Scenes/SC_Gameplay.unity", true);
+            var testLevel = new EditorBuildSettingsScene("Assets/_Project/Scenes/SC_TestLevel.unity", true);
+            EditorBuildSettings.scenes = new[] { menu, gameplay, testLevel };
         }
     }
 }
