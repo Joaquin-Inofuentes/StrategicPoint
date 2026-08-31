@@ -696,6 +696,12 @@ namespace SP.EditorTools
             var fx = instance.GetComponent<CubeFxReactor>();
             fx?.Bootstrap();
 
+            // Marca de alerta sobre la cabeza: solo los enemigos, para que
+            // el jugador sepa si ya lo detectaron antes de que empiece a
+            // disparar (el componente mismo se auto-desactiva si no es
+            // del equipo enemigo, por si algun dia se llama por error).
+            if (team == TeamId.Enemy) instance.AddComponent<EnemyAlertIndicatorView>();
+
             // El color del cuerpo (color) varia por soldado para
             // distinguirlos entre si de cerca -- pero eso significa que
             // Vega (colorVega = 0.95,0.35,0.30) y los enemigos
