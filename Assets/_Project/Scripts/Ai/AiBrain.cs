@@ -25,7 +25,16 @@ namespace SP.Ai
         Vehicle mountTarget;
         IDisposable damageSub;
 
-        Vector3[] patrolRoute;
+        // [SerializeField] NO es decorativo aca: la ruta se asigna por
+        // codigo al construir la escena (HeadlessTestRunner.SetPatrolRoute)
+        // y un campo privado sin serializar NO sobrevive el domain reload
+        // al entrar a Play. Sin esto los 4 enemigos de patrulla quedaban
+        // clavados de pie para siempre, en estado Patrol, mientras el
+        // LineRenderer de sus rondas -- que si se serializa -- seguia
+        // dibujando los circuitos naranjas en el mapa. Se leia como una IA
+        // rota, y no daba ningun error: el case Patrol hace un no-op
+        // silencioso cuando patrolRoute es null.
+        [SerializeField] Vector3[] patrolRoute;
         int patrolIndex;
 
         // Antes IssueMoveOrder reemplazaba el destino anterior, asi que no

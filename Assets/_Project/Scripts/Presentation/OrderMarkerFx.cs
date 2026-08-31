@@ -115,6 +115,20 @@ namespace SP.Presentation
             if (shaderWarmed) return;
             shaderWarmed = true;
             Spawn(new Vector3(0f, -500f, 0f), MoveColor, 0.05f);
+
+            // El Spawn de arriba confia en la corrutina LerpAndDie para
+            // limpiarse, pero las corrutinas NO corren en Edit mode: el
+            // marcador de precalentamiento quedaba serializado en la escena
+            // en (0,-500,0) para siempre. Invisible, pero es basura que se
+            // arrastra commit a commit. AttackLineManager.Prewarm y
+            // OrderLineManager.Prewarm ya hacen esta limpieza explicita.
+            if (!Application.isPlaying) DestroyPrewarmLeftovers();
+        }
+
+        static void DestroyPrewarmLeftovers()
+        {
+            foreach (var go in Object.FindObjectsByType<OrderMarkerFx>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (go != null) Object.DestroyImmediate(go.gameObject);
         }
 
         IEnumerator LerpAndDie(float duration)

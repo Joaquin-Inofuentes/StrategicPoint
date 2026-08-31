@@ -966,10 +966,11 @@ namespace SP.EditorTools
             }
             if (barrelRend != null) barrelRend.sharedMaterial = CreateFlatMaterial(new Color(0.12f, 0.12f, 0.13f));
 
-            // Se agrega DESPUES de repintar el chasis: VehicleFxReactor
-            // cachea el color base en su Awake (que AddComponent dispara
-            // en el acto), y ese color base tiene que ser el pintado real
-            // del vehiculo, no el gris del prefab original.
+            // Va despues de repintar el chasis por prolijidad, pero el orden
+            // en realidad da igual: Awake NO corre al hacer AddComponent en
+            // Edit mode (esta clase no tiene [ExecuteAlways]), asi que el
+            // cacheo del color base ocurre recien al entrar a Play, cuando
+            // el material pintado ya esta serializado en la escena.
             instance.AddComponent<VehicleFxReactor>();
 
             var turret = instance.GetComponentInChildren<TurretWeapon>();

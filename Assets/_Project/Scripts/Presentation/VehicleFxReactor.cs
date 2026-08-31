@@ -53,9 +53,11 @@ namespace SP.Presentation
             // maneja VehicleAudioFeedback, que le reescribe pitch y volumen
             // CADA frame segun la velocidad: un PlayOneShot ahi sonaba
             // agudo o grave segun a que velocidad ibas cuando te pegaron.
-            // Se busca por nombre antes de crear para que sea idempotente
-            // (Awake corre tanto al armar la escena en el Editor como al
-            // entrar a Play, y no queremos acumular AudioSources).
+            // Se busca por nombre antes de crear para que sea idempotente.
+            // Hoy Awake solo corre al entrar a Play (esta clase no tiene
+            // [ExecuteAlways], asi que AddComponent en Edit mode no lo
+            // dispara y el hijo nunca se serializa en la escena), pero el
+            // Find lo deja a prueba de que eso cambie.
             var fxAudioTf = transform.Find(FxAudioChildName);
             if (fxAudioTf == null)
             {
