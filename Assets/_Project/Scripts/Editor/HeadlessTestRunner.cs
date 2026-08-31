@@ -138,6 +138,19 @@ namespace SP.EditorTools
             // Luz de relleno tenue para que el lado en sombra no quede negro.
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.55f, 0.58f, 0.62f);
+
+            // Una escena nueva (EditorSceneManager.NewScene) hereda el
+            // skybox default de Unity, "Default-Skybox/Skybox/Procedural" --
+            // un shader del Built-in Render Pipeline, no de URP. La camara
+            // nunca lo dibuja (clearFlags es SolidColor), pero
+            // RenderSettings.defaultReflectionMode queda en Skybox igual.
+            // Se saca por las dudas (Custom + textura null = sin reflejo
+            // ambiental, cosmetico) aunque NO sea la causa del magenta
+            // reportado en obstaculos/UI: probado y descartado -- el
+            // magenta sigue identico con esto en Custom. Esa investigacion
+            // sigue abierta.
+            RenderSettings.defaultReflectionMode = UnityEngine.Rendering.DefaultReflectionMode.Custom;
+            RenderSettings.customReflectionTexture = null;
         }
 
         [MenuItem("Strategic Point/Construir nivel y correr test")]
