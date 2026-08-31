@@ -54,8 +54,7 @@ namespace SP.Ai
             line = go.AddComponent<LineRenderer>();
             line.useWorldSpace = true;
             line.widthMultiplier = 0.16f;
-            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
-            line.material = new Material(shader) { color = PathColor };
+            line.material = SP.Presentation.SafeMaterial.Create(PathColor);
             line.startColor = PathColor;
             line.endColor = PathColor;
             line.positionCount = 0;

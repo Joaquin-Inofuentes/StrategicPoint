@@ -96,9 +96,8 @@ namespace SP.Presentation
             }
             go.transform.SetParent(root, false);
 
-            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
             var rend = go.GetComponent<MeshRenderer>();
-            rend.sharedMaterial = new Material(shader);
+            rend.sharedMaterial = SafeMaterial.CreateShared();
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
             var d = go.AddComponent<Debris>();
@@ -187,10 +186,7 @@ namespace SP.Presentation
                 // aunque el GameObject siga vivo. Hay que rehacerlo, no
                 // asumir que sigue ahi.
                 if (rend.sharedMaterial == null)
-                {
-                    var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
-                    rend.sharedMaterial = new Material(shader);
-                }
+                    rend.sharedMaterial = SafeMaterial.CreateShared();
                 rend.sharedMaterial.color = color;
             }
             gameObject.SetActive(true);

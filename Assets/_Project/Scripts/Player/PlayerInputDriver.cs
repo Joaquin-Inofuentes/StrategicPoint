@@ -156,8 +156,7 @@ namespace SP.Player
                 // a simple vista aunque esté perfectamente ubicado y activo.
                 // Unlit + oscurecido garantiza contraste sin depender de la
                 // iluminación de la escena.
-                var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
-                weaponViewmodelRenderer.sharedMaterial = new Material(shader);
+                weaponViewmodelRenderer.sharedMaterial = SP.Presentation.SafeMaterial.Create(Color.white);
             }
 
             weaponViewmodel.SetActive(true);
@@ -1883,8 +1882,7 @@ namespace SP.Player
                 var col = go.GetComponent<Collider>();
                 if (col != null) Destroy(col);
                 go.transform.localScale = new Vector3(0.9f, 0.03f, 0.9f);
-                var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-                go.GetComponent<MeshRenderer>().sharedMaterial = new Material(shader) { color = new Color(0.35f, 0.85f, 0.35f) };
+                go.GetComponent<MeshRenderer>().sharedMaterial = SP.Presentation.SafeMaterial.Create(new Color(0.35f, 0.85f, 0.35f));
                 formationGhosts.Add(go);
             }
             while (formationGhosts.Count > count)

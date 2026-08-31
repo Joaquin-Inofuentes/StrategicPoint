@@ -97,9 +97,8 @@ namespace SP.Presentation
             go.transform.localPosition = new Vector3(0f, 1.7f, 0f);
             go.transform.localScale = Vector3.one * 0.16f;
 
-            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
             markerRenderer = go.GetComponent<MeshRenderer>();
-            ownedMaterial = new Material(shader) { color = IdleColor };
+            ownedMaterial = SafeMaterial.Create(IdleColor);
             markerRenderer.sharedMaterial = ownedMaterial;
             markerRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }

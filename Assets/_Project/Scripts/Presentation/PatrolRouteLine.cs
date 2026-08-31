@@ -16,9 +16,7 @@ namespace SP.Presentation
             lr.widthMultiplier = 0.12f;
             lr.useWorldSpace = true;
 
-            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
-            var mat = new Material(shader) { color = color };
-            lr.material = mat;
+            lr.material = SafeMaterial.Create(color);
             lr.startColor = color;
             lr.endColor = color;
 

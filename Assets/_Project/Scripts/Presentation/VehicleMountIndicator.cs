@@ -43,8 +43,7 @@ namespace SP.Presentation
             var mf = head.AddComponent<MeshFilter>();
             mf.sharedMesh = BuildConeMesh(0.3f, 0.55f, 14);
             var mr = head.AddComponent<MeshRenderer>();
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            mr.sharedMaterial = new Material(shader) { color = ArrowColor };
+            mr.sharedMaterial = SafeMaterial.Create(ArrowColor);
         }
 
         static void DestroyCollider(GameObject go)
@@ -59,8 +58,7 @@ namespace SP.Presentation
         {
             var rend = go.GetComponent<Renderer>();
             if (rend == null) return;
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            rend.sharedMaterial = new Material(shader) { color = color };
+            rend.sharedMaterial = SafeMaterial.Create(color);
         }
 
         // Cono simple con la punta hacia abajo (apex en y=0, base en y=height).
@@ -127,9 +125,7 @@ namespace SP.Presentation
             lr.positionCount = 2;
             lr.widthMultiplier = 0.08f;
             lr.useWorldSpace = true;
-            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
-            var mat = new Material(shader) { color = ArrowColor };
-            lr.material = mat;
+            lr.material = SafeMaterial.Create(ArrowColor);
             lr.startColor = ArrowColor;
             lr.endColor = ArrowColor;
             lines.Add(lr);

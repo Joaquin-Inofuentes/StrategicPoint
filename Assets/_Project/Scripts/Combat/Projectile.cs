@@ -106,7 +106,7 @@ namespace SP.Combat
                     var baseMat = cachedRenderer.sharedMaterial;
                     var freshMat = baseMat != null
                         ? new Material(baseMat)
-                        : new Material(Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard"));
+                        : SP.Presentation.SafeMaterial.Create(Color.white);
                     cachedRenderer.sharedMaterial = freshMat;
                     ownMaterialReady = true;
                     cachedRenderer.sharedMaterial.color = color.Value;

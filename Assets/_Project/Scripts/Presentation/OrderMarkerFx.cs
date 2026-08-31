@@ -202,12 +202,7 @@ namespace SP.Presentation
         {
             get
             {
-                if (sharedMaterial == null)
-                {
-                    var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-                    sharedMaterial = new Material(shader);
-                    if (sharedMaterial.HasProperty("_Smoothness")) sharedMaterial.SetFloat("_Smoothness", 0.1f);
-                }
+                if (sharedMaterial == null) sharedMaterial = SafeMaterial.CreateShared();
                 return sharedMaterial;
             }
         }

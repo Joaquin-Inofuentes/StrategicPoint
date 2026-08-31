@@ -87,9 +87,8 @@ namespace SP.Presentation
                     else Object.DestroyImmediate(col);
                 }
                 decal.transform.SetParent(root, false);
-                var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
                 var rend = decal.GetComponent<MeshRenderer>();
-                rend.sharedMaterial = new Material(shader) { color = kind == DecalKind.Crater ? CraterColor : BulletHoleColor };
+                rend.sharedMaterial = SafeMaterial.Create(kind == DecalKind.Crater ? CraterColor : BulletHoleColor);
                 rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             }
 
@@ -98,10 +97,7 @@ namespace SP.Presentation
             // dejando al Renderer sin material aunque el objeto siga vivo.
             var decalRend = decal.GetComponent<MeshRenderer>();
             if (decalRend != null && decalRend.sharedMaterial == null)
-            {
-                var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
-                decalRend.sharedMaterial = new Material(shader) { color = kind == DecalKind.Crater ? CraterColor : BulletHoleColor };
-            }
+                decalRend.sharedMaterial = SafeMaterial.Create(kind == DecalKind.Crater ? CraterColor : BulletHoleColor);
 
             // Levantado un pelo sobre la superficie para no pelear con ella
             // por el z-buffer.
