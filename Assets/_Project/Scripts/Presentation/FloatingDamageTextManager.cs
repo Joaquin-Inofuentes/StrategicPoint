@@ -82,6 +82,13 @@ namespace SP.Presentation
             textRt.offsetMin = Vector2.zero;
             textRt.offsetMax = Vector2.zero;
 
+            // Es el texto mas expuesto de todo el HUD: flota directo sobre
+            // el mundo 3D sin ningun panel de fondo, así que puede caer
+            // sobre cielo, tierra o el cuerpo de un enemigo por igual.
+            var outline = textGO.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.8f);
+            outline.effectDistance = new Vector2(1.5f, -1.5f);
+
             canvasGO.SetActive(false);
             pool.Add(text);
             return text;

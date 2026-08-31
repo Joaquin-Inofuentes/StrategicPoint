@@ -1065,6 +1065,7 @@ namespace SP.EditorTools
             prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
             prt.anchoredPosition = new Vector2(0f, -40f);
             prt.sizeDelta = new Vector2(420f, 30f);
+            AddOutline(promptTxt);
 
             // Aviso de "SIN MUNICION"/"RECARGANDO" bajo el cartel de
             // punteria: mismo centro horizontal, un poco mas abajo para
@@ -1081,6 +1082,7 @@ namespace SP.EditorTools
             awrt.anchorMin = awrt.anchorMax = new Vector2(0.5f, 0.5f);
             awrt.anchoredPosition = new Vector2(0f, -70f);
             awrt.sizeDelta = new Vector2(320f, 30f);
+            AddOutline(ammoWarnTxt);
             ammoWarnGO.SetActive(false);
 
             var aimUIGO = new GameObject("AimUI", typeof(RectTransform), typeof(AimUI));
@@ -1497,7 +1499,8 @@ namespace SP.EditorTools
             rosterRt.anchorMin = new Vector2(0f, 1f);
             rosterRt.anchorMax = new Vector2(0f, 1f);
             rosterRt.pivot = new Vector2(0f, 1f);
-            rosterRt.anchoredPosition = new Vector2(20f, -20f);
+            // Margen unificado a 16px con el resto del HUD (antes 20).
+            rosterRt.anchoredPosition = new Vector2(16f, -16f);
             // Las filas pasaron de 1 renglón (solo nombre) a 2 (nombre +
             // vida/arma) y suman una barra de vida abajo: hay que darles
             // el alto real o el segundo renglón queda recortado.
@@ -1576,6 +1579,18 @@ namespace SP.EditorTools
             rt.offsetMax = Vector2.zero;
         }
 
+        // Los textos que se ven directo sobre el mundo 3D (sin un panel
+        // opaco atras) pierden contraste segun el cielo o el terreno de
+        // fondo -- un contorno oscuro fino los mantiene legibles sin
+        // importar que haya detras. Los textos que ya estan sobre un
+        // panel de fondo solido no lo necesitan.
+        static void AddOutline(Text text)
+        {
+            var outline = text.gameObject.AddComponent<Outline>();
+            outline.effectColor = new Color(0f, 0f, 0f, 0.75f);
+            outline.effectDistance = new Vector2(1.2f, -1.2f);
+        }
+
         static void BuildInstructionBanner(Transform canvasParent)
         {
             var go = new GameObject("InstructionBanner", typeof(RectTransform), typeof(InstructionBannerView));
@@ -1648,7 +1663,8 @@ namespace SP.EditorTools
             panelRt.anchorMin = new Vector2(0f, 0f);
             panelRt.anchorMax = new Vector2(0f, 0f);
             panelRt.pivot = new Vector2(0f, 0f);
-            panelRt.anchoredPosition = new Vector2(20f, 20f);
+            // Margen unificado a 16px con el resto del HUD (antes 20).
+            panelRt.anchoredPosition = new Vector2(16f, 16f);
             panelRt.sizeDelta = new Vector2(260f, 120f);
 
             var viewportGO = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
@@ -2152,7 +2168,8 @@ namespace SP.EditorTools
             borderRt.anchorMin = new Vector2(1f, 1f);
             borderRt.anchorMax = new Vector2(1f, 1f);
             borderRt.pivot = new Vector2(1f, 1f);
-            borderRt.anchoredPosition = new Vector2(-14f, -14f);
+            // Margen unificado a 16px con el resto del HUD (antes 14).
+            borderRt.anchoredPosition = new Vector2(-16f, -16f);
             borderRt.sizeDelta = new Vector2(228f, 228f);
 
             var frameGO = new GameObject("MinimapFrame", typeof(Image));
@@ -2205,7 +2222,11 @@ namespace SP.EditorTools
             legendRt.anchorMin = new Vector2(1f, 1f);
             legendRt.anchorMax = new Vector2(1f, 1f);
             legendRt.pivot = new Vector2(1f, 1f);
-            legendRt.anchoredPosition = new Vector2(-14f, -248f);
+            // Margen unificado a 16px (antes 14) y recalculado para
+            // mantener el mismo hueco de 6px debajo del minimapa: con
+            // el borde ahora en -16 (alto 228), su borde inferior queda
+            // en y=-244; la leyenda arranca 6px mas abajo, en -250.
+            legendRt.anchoredPosition = new Vector2(-16f, -250f);
             legendRt.sizeDelta = new Vector2(150f, 66f);
 
             (string label, Color color)[] entries =
