@@ -87,7 +87,7 @@ namespace SP.Presentation
                     else Object.DestroyImmediate(col);
                 }
                 decal.transform.SetParent(root, false);
-                var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+                var shader = Shader.Find("Unlit/Color") ?? Shader.Find("Universal Render Pipeline/Unlit");
                 var rend = decal.GetComponent<MeshRenderer>();
                 rend.sharedMaterial = new Material(shader) { color = kind == DecalKind.Crater ? CraterColor : BulletHoleColor };
                 rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -99,7 +99,7 @@ namespace SP.Presentation
             var decalRend = decal.GetComponent<MeshRenderer>();
             if (decalRend != null && decalRend.sharedMaterial == null)
             {
-                var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+                var shader = Shader.Find("Unlit/Color") ?? Shader.Find("Universal Render Pipeline/Unlit");
                 decalRend.sharedMaterial = new Material(shader) { color = kind == DecalKind.Crater ? CraterColor : BulletHoleColor };
             }
 

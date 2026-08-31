@@ -123,7 +123,7 @@ namespace SP.Combat
             if (WeaponVisualRenderer == null) return;
             if (WeaponVisualRenderer.sharedMaterial == null)
             {
-                var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                var shader = Shader.Find("Standard") ?? Shader.Find("Universal Render Pipeline/Lit");
                 WeaponVisualRenderer.sharedMaterial = new Material(shader);
             }
             WeaponVisualRenderer.sharedMaterial.color = color;

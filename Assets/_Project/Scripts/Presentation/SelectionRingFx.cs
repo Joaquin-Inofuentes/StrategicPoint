@@ -39,7 +39,7 @@ namespace SP.Presentation
             {
                 if (sharedMaterial == null)
                 {
-                    var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                    var shader = Shader.Find("Standard") ?? Shader.Find("Universal Render Pipeline/Lit");
                     sharedMaterial = new Material(shader);
                 }
                 return sharedMaterial;

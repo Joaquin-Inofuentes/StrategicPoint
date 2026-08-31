@@ -59,7 +59,7 @@ namespace SP.Presentation
             lr.positionCount = 2;
             lr.widthMultiplier = 0.05f;
             lr.useWorldSpace = true;
-            var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
+            var shader = Shader.Find("Sprites/Default") ?? Shader.Find("Universal Render Pipeline/Unlit");
             var mat = new Material(shader) { color = LineColor };
             lr.material = mat;
             lr.startColor = LineColor;

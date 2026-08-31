@@ -156,7 +156,7 @@ namespace SP.Player
                 // a simple vista aunque esté perfectamente ubicado y activo.
                 // Unlit + oscurecido garantiza contraste sin depender de la
                 // iluminación de la escena.
-                var shader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Color");
+                var shader = Shader.Find("Unlit/Color") ?? Shader.Find("Universal Render Pipeline/Unlit");
                 weaponViewmodelRenderer.sharedMaterial = new Material(shader);
             }
 
@@ -1348,6 +1348,21 @@ namespace SP.Player
             if (KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo)
                 || KeyBindings.WasPressed(KeyBindings.Interactuar)) { ExitVehicle(); return; }
 
+            // Pedido explicito: "si estoy adentro, como digo que entren
+            // los que esten cerca?" -- [U] no vivia aca, solo en
+            // UpdateFps (a pie), asi que manejando o de artillero no
+            // hacia nada. Mismo camino de a uno por apretada.
+            if (kb.uKey.wasPressedThisFrame)
+            {
+                var vehicleToFill = FindTheVehicle();
+                if (vehicleToFill != null && !vehicleToFill.IsDestroyed && vehicleToFill.HasAnyRoom)
+                {
+                    var next = FindNextSquadmateToBoard(vehicleToFill);
+                    if (next != null) OrderService.IssueMountOrder(next, vehicleToFill);
+                    else RejectOrder("NO HAY MAS ALIADOS PARA SUBIR");
+                }
+            }
+
             // En RTS, adentro del vehículo: solo cámara top-down + la UI
             // del tanque, nada de manejar/artillar (eso es de la vista
             // FPS). [TAB] -- ya manejado en Update() -- es la puerta para
@@ -1459,10 +1474,10 @@ namespace SP.Player
             }
 
             string role = currentSeat == VehicleSeatRole.Driver
-                ? "[WASD] conducir · [G] frenar · [2] ir a la torreta · [V] cámara · [TAB] vista RTS · [E] bajar"
+                ? "[WASD] conducir · [G] frenar · [2] ir a la torreta · [U] llamar a un aliado cercano · [V] cámara · [TAB] vista RTS · [E] bajar"
                 : currentSeat == VehicleSeatRole.Gunner
-                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom de mira · [R] munición · [T] mandar la camioneta ahí · [1] conducir · [V] cámara · [TAB] vista RTS · [E] bajar"
-                    : "[E] bajar · [V] cámara · [TAB] vista RTS";
+                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom de mira · [R] munición · [T] mandar la camioneta ahí · [1] conducir · [U] llamar a un aliado cercano · [V] cámara · [TAB] vista RTS · [E] bajar"
+                    : "[U] llamar a un aliado cercano · [E] bajar · [V] cámara · [TAB] vista RTS";
             SetInstructionText(role);
         }
 
@@ -1868,7 +1883,7 @@ namespace SP.Player
                 var col = go.GetComponent<Collider>();
                 if (col != null) Destroy(col);
                 go.transform.localScale = new Vector3(0.9f, 0.03f, 0.9f);
-                var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                var shader = Shader.Find("Standard") ?? Shader.Find("Universal Render Pipeline/Lit");
                 go.GetComponent<MeshRenderer>().sharedMaterial = new Material(shader) { color = new Color(0.35f, 0.85f, 0.35f) };
                 formationGhosts.Add(go);
             }

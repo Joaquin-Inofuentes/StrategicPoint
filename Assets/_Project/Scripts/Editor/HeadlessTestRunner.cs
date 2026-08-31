@@ -98,7 +98,7 @@ namespace SP.EditorTools
         {
             // Lit, pero con brillo/metalico casi nulo: sombreado suave y
             // colores vivos, sin el brillo especular que los lavaba pálidos.
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            var shader = Shader.Find("Standard") ?? Shader.Find("Universal Render Pipeline/Lit");
             var mat = new Material(shader);
             mat.color = color;
             if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.08f);
