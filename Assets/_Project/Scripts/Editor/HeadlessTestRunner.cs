@@ -698,6 +698,7 @@ namespace SP.EditorTools
                 RunPhase4(playerBrain, rig, vehicle, weaponPickups, vega, kes, doc);
                 RunPhase5(rig, vehicle, vega, kes, doc);
                 RunPhase6(rig, vehicle, pool, vega, kes, doc);
+                RunPhase7(inputDriver, vehicle, vega, kes, doc);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia
@@ -1516,6 +1517,139 @@ namespace SP.EditorTools
             vehicle.PlayerAboard = false;
 
             TestLog.Phase("FASE 6 FINALIZADA");
+        }
+
+        // ---------------------------------------------------------------
+        // FASE 7: pedidos tras probar victoria/derrota y el vehiculo en
+        // vivo -- poseer a un montado, ciclar/subir de a uno, barra de
+        // vida de enemigo, y el cableado de los botones de fin de partida.
+        // ---------------------------------------------------------------
+        static void RunPhase7(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc)
+        {
+            TestLog.Phase("FASE 7 - Poseer montado, subir de a uno, barra de vida enemiga, botones de fin");
+
+            foreach (var occupant in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(occupant);
+
+            // --- Poseer a un aliado montado en el vehiculo (antes se rechazaba) ---
+            vehicle.Mount(kes, VehicleSeatRole.Gunner);
+            Check("Kes queda inactiva al montar (verificacion de la propia prueba)", !kes.gameObject.activeInHierarchy);
+            bool poseidoMontado = inputDriver.TryPossess(kes);
+            Check("TryPossess sobre un aliado montado en el vehiculo ahora tiene exito (antes se rechazaba)",
+                poseidoMontado && inputDriver.Brain.Current == kes);
+            Check("Al poseer a un montado, PlayerAboard queda en true (broker de la vibracion del cañon)",
+                vehicle.PlayerAboard);
+            var currentSeatField = typeof(PlayerInputDriver).GetField("currentSeat", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var seatAfterPossess = currentSeatField.GetValue(inputDriver);
+            Check("El asiento asignado tras poseer al montado es el que de verdad ocupaba (Gunner)",
+                seatAfterPossess != null && seatAfterPossess.ToString() == "Gunner");
+
+            // Bajar y devolver el control a Vega para las pruebas siguientes.
+            vehicle.Dismount(kes);
+            currentSeatField.SetValue(inputDriver, null);
+            inputDriver.TryPossess(vega);
+
+            // --- Duracion de transicion x2 con lerp ---
+            var durField = typeof(PlayerInputDriver).GetField("PossessTransitionDuration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            float duracion = (float)durField.GetRawConstantValue();
+            Check($"La duracion de transicion de posesion es el doble de la base (0.35s x2 = {duracion:0.00}s)",
+                Mathf.Approximately(duracion, 0.7f));
+
+            // --- Ciclar con [Q] ahora SI incluye a los montados ---
+            vehicle.Mount(kes, VehicleSeatRole.Passenger1);
+            var cycleMethod = typeof(PlayerInputDriver).GetMethod("CycleLivingAlly", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            cycleMethod.Invoke(inputDriver, new object[] { 1 });
+            Check("Ciclar con [Q] ahora SI puede terminar poseyendo a un aliado montado en el vehiculo",
+                !inputDriver.Brain.Current.gameObject.activeInHierarchy || inputDriver.Brain.Current == kes);
+            vehicle.Dismount(kes);
+            currentSeatField.SetValue(inputDriver, null);
+            inputDriver.TryPossess(vega);
+
+            // --- [U] subir de a uno: el mas cercano no-tasqueado cada vez ---
+            var findNextMethod = typeof(PlayerInputDriver).GetMethod("FindNextSquadmateToBoard", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var primerCandidato = (Soldier)findNextMethod.Invoke(inputDriver, new object[] { vehicle });
+            Check("FindNextSquadmateToBoard encuentra a alguien para subir cuando el vehiculo esta vacio",
+                primerCandidato != null);
+            if (primerCandidato != null)
+            {
+                var brainCand = primerCandidato.GetComponent<AiBrain>();
+                brainCand.IssueMountOrder(vehicle);
+                var segundoCandidato = (Soldier)findNextMethod.Invoke(inputDriver, new object[] { vehicle });
+                Check("Tras encargarle a uno que suba, el siguiente candidato es OTRO distinto (no repite al mismo)",
+                    segundoCandidato != primerCandidato);
+                brainCand.CancelOrder();
+            }
+
+            // --- [I] bajar a todos: la misma DismountAll que ya prueba la Fase 6, ---
+            // pero disparada por la tecla dedicada (sin apuntar), verificando
+            // que FindTheVehicle resuelve el vehiculo sin necesitar aim.
+            vehicle.Mount(kes, VehicleSeatRole.Passenger1);
+            vehicle.Mount(doc, VehicleSeatRole.Passenger2);
+            var findVehicleMethod = typeof(PlayerInputDriver).GetMethod("FindTheVehicle", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var vehiculoEncontrado = (Vehicle)findVehicleMethod.Invoke(inputDriver, null);
+            Check("FindTheVehicle resuelve el vehiculo sin necesitar apuntarle (para las teclas [U]/[I])",
+                vehiculoEncontrado == vehicle);
+            var dismountAllMethod = typeof(PlayerInputDriver).GetMethod("DismountAll", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            dismountAllMethod.Invoke(inputDriver, new object[] { vehicle });
+            Check("[I] (DismountAll via FindTheVehicle) baja a todos los ocupantes", vehicle.OccupantCount == 0);
+            Check("Kes vuelve a estar activa tras bajar", kes.gameObject.activeInHierarchy);
+            Check("Doc vuelve a estar activo tras bajar", doc.gameObject.activeInHierarchy);
+
+            // --- Click derecho en FPS: seleccionar aliado y ordenarle una posicion ---
+            var selection = inputDriver.GetComponent<SelectionController>() ?? UnityEngine.Object.FindAnyObjectByType<SelectionController>();
+            selection.SelectSingle(kes);
+            Check("SelectSingle deja seleccionado solo al aliado apuntado",
+                selection.Selected.Count == 1 && selection.Selected[0] == kes);
+            var destino = new Vector3(15f, 0f, 15f);
+            OrderService.IssueMoveOrderForSelection(selection.Selected, destino);
+            var kesBrainOrder = kes.GetComponent<AiBrain>();
+            Check("Tras click derecho en el piso con alguien seleccionado, esa orden de movimiento SI se emite",
+                kesBrainOrder.State == AiState.MovingToOrder);
+            kesBrainOrder.CancelOrder();
+
+            // --- Barra de vida de enemigos: SI se actualiza en tiempo real ---
+            Soldier enemigoParaBarra = null;
+            foreach (var s in ActorRegistry.All) if (s.Team == TeamId.Enemy && s.Health.IsAlive) { enemigoParaBarra = s; break; }
+            if (enemigoParaBarra != null)
+            {
+                var barra = enemigoParaBarra.GetComponentInChildren<SP.Presentation.HealthBarView>(true);
+                var lodSetter = typeof(SP.Presentation.HealthBarView).GetMethod("SetLodAllowed");
+                lodSetter.Invoke(barra, new object[] { true });
+                // OnAnyDamage sale temprano si !Application.isPlaying (a
+                // proposito: la suite corre en Edit mode y no hay frame
+                // que dibujar ahi). Sin la suscripcion, hideAt nunca se
+                // pondria al dia solo -- se fuerza a mano, mismo criterio
+                // que el resto de la suite usa con otros sistemas
+                // gateados por Application.isPlaying.
+                var hideAtField = typeof(SP.Presentation.HealthBarView).GetField("hideAt", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                hideAtField.SetValue(barra, 999999f);
+                int hpAntes = enemigoParaBarra.Health.Current;
+                enemigoParaBarra.Health.TakeDamage(40, -1);
+                barra.Tick();
+                var fillField = typeof(SP.Presentation.HealthBarView).GetField("fill", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var fill = (Image)fillField.GetValue(barra);
+                float esperado = (float)enemigoParaBarra.Health.Current / enemigoParaBarra.Health.MaxHealth;
+                Check($"La barra de vida del enemigo SI se actualiza con el daño real (hp {hpAntes}->{enemigoParaBarra.Health.Current}, fill={fill.fillAmount:0.00} esperado={esperado:0.00})",
+                    Mathf.Approximately(fill.fillAmount, esperado));
+            }
+
+            // --- Botones de victoria/derrota: cableado real (el click en vivo
+            // ya se verifico a mano con un evento de mouse real inyectado) ---
+            if (outcomeControllerRef != null)
+            {
+                var victoryPanel = outcomeControllerRef.transform.Find("VictoryPanel");
+                var retryBtn = victoryPanel.Find("RetryButton").GetComponent<Button>();
+                var callsField = typeof(UnityEngine.Events.UnityEventBase).GetField("m_Calls", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var calls = callsField.GetValue(retryBtn.onClick);
+                var runtimeCallsField = calls.GetType().GetField("m_RuntimeCalls", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var runtimeCalls = runtimeCallsField.GetValue(calls) as System.Collections.IList;
+                Check("El boton REINTENTAR tiene su listener de verdad enganchado (no solo en apariencia)",
+                    runtimeCalls != null && runtimeCalls.Count > 0);
+                var es = UnityEngine.Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>(FindObjectsInactive.Include);
+                Check("Hay un EventSystem con InputSystemUIInputModule (el que de verdad procesa clicks reales)",
+                    es != null && es.GetComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>() != null);
+            }
+
+            TestLog.Phase("FASE 7 FINALIZADA");
         }
 
         // ---------------------------------------------------------------

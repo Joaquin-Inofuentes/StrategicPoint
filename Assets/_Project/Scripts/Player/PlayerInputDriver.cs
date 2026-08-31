@@ -5,6 +5,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using SP.Actors;
+using SP.Ai;
 using SP.Combat;
 using SP.CameraSystem;
 using SP.Core;
@@ -71,6 +72,14 @@ namespace SP.Player
         [SerializeField] float dragThresholdPixels = 6f;
         [SerializeField] float interactRadius = 3.5f;
         [SerializeField] float autoMountRadius = 6f;
+
+        // Item pedido: "que el cambiar entre soldados dure el doble de
+        // tiempo con lerp". CameraRig.BeginTransition ya lerpea; el
+        // default (0.35s) era el mismo para posesion, muerte y asientos
+        // de vehiculo. Esta es la duracion base x2, la usan todas las
+        // transiciones de POSESION (no la de la camara de muerte, que ya
+        // tiene su propia duracion explicita de 0.9s sin relacion con esto).
+        const float PossessTransitionDuration = 0.7f;
 
         bool dragging;
         Vector2 dragStart;
@@ -763,13 +772,55 @@ namespace SP.Player
             if (kb.yKey.wasPressedThisFrame && Squad != null)
                 OrderService.IssueFollowOrderForSelection(Squad, Brain.Current);
 
+            // Pedido explicito: teclas dedicadas para subir/bajar del
+            // vehiculo, sin depender de apuntarle (eso ya lo cubre [G]).
+            // [U] sube a UN aliado por apretada -- al mas cercano que
+            // todavia no este ya en camino a montar -- para poder llenar
+            // los asientos de a uno en vez de mandar a toda la escuadra
+            // de un tiron. [I] baja a todos los que esten adentro.
+            if (kb.uKey.wasPressedThisFrame)
+            {
+                var vehicle = FindTheVehicle();
+                if (vehicle != null && !vehicle.IsDestroyed && vehicle.HasAnyRoom)
+                {
+                    var next = FindNextSquadmateToBoard(vehicle);
+                    if (next != null) OrderService.IssueMountOrder(next, vehicle);
+                    else RejectOrder("NO HAY MAS ALIADOS PARA SUBIR");
+                }
+            }
+            if (kb.iKey.wasPressedThisFrame)
+            {
+                var vehicle = FindTheVehicle();
+                if (vehicle != null && vehicle.OccupantCount > 0) DismountAll(vehicle);
+            }
+
             // Mantener click derecho apretado: zoom de mirilla (no manda la
             // camioneta hasta que se suelta, eso sigue siendo un click).
             if (mouse != null) Rig.SetZoomed(mouse.rightButton.isPressed);
 
-            // Orden a la camioneta: clic derecho sobre el suelo, viajando sola.
-            if (mouse != null && mouse.rightButton.wasPressedThisFrame && result.Type == AimTargetType.Ground)
-                TryIssueVehicleMoveOrder(result.Point);
+            // Pedido explicito: click derecho sobre un aliado lo
+            // selecciona (igual que arrastrar el mouse en RTS, pero
+            // apuntando desde primera persona) y un click derecho
+            // posterior sobre el piso lo manda ahi. No pisa el zoom de
+            // mirilla de arriba (ese reacciona a isPressed cada frame,
+            // este es un evento de UN frame) ni la orden a la camioneta:
+            // esa sigue siendo el resultado por defecto si no hay nadie
+            // seleccionado.
+            if (mouse != null && mouse.rightButton.wasPressedThisFrame)
+            {
+                if (result.Type == AimTargetType.Ally)
+                {
+                    Selection.SelectSingle(result.Soldier);
+                    if (ModeToast != null) ModeToast.Show($"{result.Soldier.DisplayName.ToUpperInvariant()} SELECCIONADO", 1f);
+                }
+                else if (result.Type == AimTargetType.Ground)
+                {
+                    if (Selection.Selected.Count > 0)
+                        OrderService.IssueMoveOrderForSelection(Selection.Selected, result.Point);
+                    else
+                        TryIssueVehicleMoveOrder(result.Point);
+                }
+            }
 
             // Interacción por cercanía (no por puntería): subir al vehículo
             // o equipar un arma tirada en el piso.
@@ -942,13 +993,37 @@ namespace SP.Player
                 OrderService.PlayRejectSound();
                 return false;
             }
+            if (Brain.Current == target) return false;
+
+            // Pedido explicito: antes esto se rechazaba de plano ("esta
+            // dentro de un vehiculo"). Ahora, si esta montado, se toma
+            // control de ESE asiento -- lo mismo que ya hacia
+            // EnterVehicleViewFromRts al apuntarle al vehiculo entero
+            // (que toma "el primer ocupante"), pero entrando por el
+            // soldado puntual que se quiso poseer.
             if (!target.gameObject.activeInHierarchy)
             {
-                if (DeadNotice != null) DeadNotice.Show($"{target.DisplayName} esta dentro de un vehiculo");
-                OrderService.PlayRejectSound();
-                return false;
+                var vehicle = FindVehicleContaining(target);
+                var role = vehicle != null ? vehicle.RoleOf(target) : null;
+                if (vehicle == null || role == null)
+                {
+                    if (DeadNotice != null) DeadNotice.Show($"{target.DisplayName} no esta disponible");
+                    OrderService.PlayRejectSound();
+                    return false;
+                }
+
+                var previousInVehicle = Brain.Current;
+                PossessionService.Swap(Brain, target);
+                Vehicle = vehicle;
+                Rig.SetMode(ControlMode.Fps);
+                EnterPossessedVehicleSeat(role.Value);
+
+                if (ModeToast != null) ModeToast.Show($"CONTROLAS A {target.DisplayName.ToUpperInvariant()}", 1.2f);
+                if (previousInVehicle != null && previousInVehicle.Brain != null && !previousInVehicle.Brain.IsPossessedByPlayer)
+                    GameLog.Line($"{previousInVehicle.DisplayName} vuelve al control de la IA");
+
+                return true;
             }
-            if (Brain.Current == target) return false;
 
             var previous = Brain.Current;
             PossessionService.Swap(Brain, target);
@@ -957,7 +1032,7 @@ namespace SP.Player
             // el angulo vertical del anterior y podes aparecer mirando al
             // piso sin ningun motivo.
             Rig.ResetPitch();
-            Rig.BeginTransition(target.EyeAnchor != null ? target.EyeAnchor : target.transform);
+            Rig.BeginTransition(target.EyeAnchor != null ? target.EyeAnchor : target.transform, PossessTransitionDuration);
             if (Rig.Mode == ControlMode.Rts) Rig.SetMode(ControlMode.Fps);
 
             if (ModeToast != null) ModeToast.Show($"CONTROLAS A {target.DisplayName.ToUpperInvariant()}", 1.2f);
@@ -968,6 +1043,60 @@ namespace SP.Player
                 GameLog.Line($"{previous.DisplayName} vuelve al control de la IA");
 
             return true;
+        }
+
+        // Vehiculo actual (el unico del mapa hoy) o, si en el futuro hay
+        // mas de uno, el que de verdad tiene a este soldado entre sus
+        // ocupantes -- no asumido por el campo Vehicle, que es fijo por
+        // Inspector.
+        static Vehicle FindVehicleContaining(Soldier soldier)
+        {
+            var vehicles = SP.Core.WorldSystemsRegistry.Vehicles;
+            for (int i = 0; i < vehicles.Count; i++)
+            {
+                var v = vehicles[i];
+                if (v == null) continue;
+                var occupants = v.Occupants;
+                for (int j = 0; j < occupants.Count; j++)
+                    if (occupants[j] == soldier) return v;
+            }
+            return null;
+        }
+
+        // [U]/[I] no apuntan a nada, asi que necesitan resolver "el
+        // vehiculo" solos. Con un solo vehiculo en el mapa (hoy) esto
+        // alcanza; el campo Vehicle queda como respaldo si el registro
+        // todavia no se poblo.
+        Vehicle FindTheVehicle()
+        {
+            var vehicles = SP.Core.WorldSystemsRegistry.Vehicles;
+            return vehicles.Count > 0 ? vehicles[0] : Vehicle;
+        }
+
+        // El mas cercano de la escuadra que todavia puede subir: vivo,
+        // activo (no ya montado) y sin una orden de movimiento en curso
+        // que ya lo lleve a ESTE vehiculo -- sin este ultimo chequeo,
+        // apretar [U] dos veces seguido mandaba al mismo de nuevo en vez
+        // de sumar al siguiente.
+        Soldier FindNextSquadmateToBoard(Vehicle vehicle)
+        {
+            if (Squad == null) return null;
+            Soldier best = null;
+            float bestDist = float.MaxValue;
+            foreach (var s in Squad)
+            {
+                if (s == null || s == Brain.Current) continue;
+                if (!s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+
+                var brain = s.GetComponent<AiBrain>();
+                if (brain != null && brain.CurrentOrderDestination.HasValue &&
+                    Vector3.Distance(brain.CurrentOrderDestination.Value, vehicle.transform.position) < 1f)
+                    continue;
+
+                float d = Vector3.Distance(s.transform.position, vehicle.transform.position);
+                if (d < bestDist) { bestDist = d; best = s; }
+            }
+            return best;
         }
 
         // Poseer exigia recordar el numero de cada soldado o apuntarle con
@@ -996,7 +1125,9 @@ namespace SP.Player
             {
                 var candidate = Squad[((start + step * direction) % Squad.Count + Squad.Count) % Squad.Count];
                 if (candidate == null || candidate == Brain.Current) continue;
-                if (!candidate.Health.IsAlive || !candidate.gameObject.activeInHierarchy) continue;
+                // Ya no se salta a los montados en el vehiculo: TryPossess
+                // ahora sabe tomar ese asiento en vez de rechazar.
+                if (!candidate.Health.IsAlive) continue;
                 TryPossess(candidate);
                 return;
             }
@@ -1082,7 +1213,7 @@ namespace SP.Player
                 case AimTargetType.Ground:
                     return "[T] ordenar ir aquí   ·   [Y] que me sigan   ·   [Click der.] mandar la camioneta aquí (si hay alguien manejando)   ·   [Click] disparar   ·   [TAB] vista RTS";
                 default:
-                    return "[WASD] moverse   ·   [Y] que me sigan   ·   [Click] disparar   ·   [1][2][3] cambiar de arma   ·   [TAB] vista RTS";
+                    return "[WASD] moverse   ·   [Y] que me sigan   ·   [U] subir al auto   ·   [I] bajar del auto   ·   [Click] disparar   ·   [1][2][3] cambiar de arma   ·   [TAB] vista RTS";
             }
         }
 
@@ -1131,7 +1262,7 @@ namespace SP.Player
             if (role == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
 
             Transform seatAnchor = role == VehicleSeatRole.Driver ? Vehicle.transform.Find("DriverEye") : Vehicle.transform;
-            if (seatAnchor != null) Rig.BeginTransition(seatAnchor);
+            if (seatAnchor != null) Rig.BeginTransition(seatAnchor, PossessTransitionDuration);
         }
 
         // Aim, en RTS, apuntando a un vehículo con gente adentro: toma
