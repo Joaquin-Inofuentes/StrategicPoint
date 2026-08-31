@@ -15,7 +15,6 @@ namespace SP.UI
     public class KillFeedView : MonoBehaviour
     {
         Text label;
-        IDisposable sub;
         Coroutine routine;
 
         public void Bind(Text text)
@@ -27,32 +26,39 @@ namespace SP.UI
         void OnEnable()
         {
             if (label == null) label = GetComponentInChildren<Text>(true);
-            sub?.Dispose();
-            sub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
         }
 
-        void OnDisable() => sub?.Dispose();
-
-        void OnEntityDied(EntityDiedEvent evt)
+        // Antes esta vista se suscribia sola a EntityDiedEvent. El EventBus
+        // corre los handlers en orden de registro, y esta se registraba al
+        // armar la UI mientras que KillFeedbackDirector se agrega despues:
+        // el feed leia FeedText()/LastKillWasPlayer ANTES de que el director
+        // procesara la baja, o sea que mostraba siempre los datos de la baja
+        // ANTERIOR. En la primera baja propia salia "ABATIDO POR TU
+        // ESCUADRA" en azul, y el "x2" y la racha llegaban siempre un kill
+        // tarde. Ahora lo llama el director cuando ya actualizo su estado,
+        // asi el orden es correcto por construccion y no por suerte.
+        public void ShowKill()
         {
             if (!Application.isPlaying || label == null) return;
-
-            var actor = ActorRegistry.FindById(evt.ActorId);
-            // Solo se anuncian bajas enemigas: si a un aliado propio le
-            // avisáramos lo mismo, "SOLDADO ABATIDO" leería como un festejo
-            // por perder a los nuestros.
-            if (actor == null || actor.Team != TeamId.Enemy) return;
-
             if (routine != null) StopCoroutine(routine);
             routine = StartCoroutine(PunchAndFade());
         }
 
         IEnumerator PunchAndFade()
         {
-            label.text = "SOLDADO ABATIDO";
+            // El texto lo arma KillFeedbackDirector, que es quien sabe si
+            // fue el jugador o la escuadra y cuantas bajas se agruparon.
+            // Apilar una linea por baja cubria la pantalla justo cuando
+            // mas informacion hay.
+            var director = SP.Presentation.KillFeedbackDirector.Instance;
+            label.text = director != null ? director.FeedText() : "SOLDADO ABATIDO";
             label.gameObject.SetActive(true);
             var rt = label.rectTransform;
-            var baseColor = new Color(0.95f, 0.25f, 0.15f);
+            // Las bajas propias van en naranja fuerte y las de la
+            // escuadra en un tono mas frio: sin esto el jugador no podia
+            // evaluar su aporte contra el de sus soldados.
+            bool mine = director != null && director.LastKillWasPlayer;
+            var baseColor = mine ? new Color(0.95f, 0.25f, 0.15f) : new Color(0.45f, 0.7f, 0.95f);
 
             // Overshoot bien grande (2x) y una leve sacudida de rotación:
             // "explosivo y volátil" pedía algo más brusco que el punch

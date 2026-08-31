@@ -21,106 +21,106 @@ Encontrado jugando como usuario promedio. Estado: [ ] pendiente · [x] hecho
 - [x] 12. Mostrar el arma de cada soldado
 
 ## IT4 — Munición
-- [ ] 13. Aviso "SIN MUNICION" al llegar a 0
-- [ ] 14. Contador en rojo con poca munición (<30%)
+- [x] 13. Aviso "SIN MUNICION" al llegar a 0
+- [x] 14. Contador en rojo con poca munición (<30%)
 - [ ] 15. Barra de recarga más legible
-- [ ] 16. Tecla [R] de recarga manual
+- [x] 16. Tecla [R] de recarga manual
 
 ## IT5 — Daño recibido
-- [ ] 17. Indicador de dirección del daño
-- [ ] 18. Vignette más fuerte con poca vida
-- [ ] 19. Número de daño flotante sobre el objetivo
-- [ ] 20. Sonido/flash distinto al recibir vs. dar daño
+- [x] 17. Indicador de dirección del daño
+- [x] 18. Vignette más fuerte con poca vida
+- [x] 19. Número de daño flotante sobre el objetivo
+- [x] 20. Sonido/flash distinto al recibir vs. dar daño
 
 ## IT6 — Minimapa
-- [ ] 21. Marco/leyenda de colores del minimapa
-- [ ] 22. Flecha de orientación del jugador
-- [ ] 23. Íconos de enemigos distinguibles
-- [ ] 24. Ocultar enemigos no vistos (niebla simple)
+- [x] 21. Marco/leyenda de colores del minimapa
+- [x] 22. Flecha de orientación del jugador
+- [x] 23. Íconos de enemigos distinguibles
+- [x] 24. Ocultar enemigos no vistos (niebla simple)
 
 ## IT7 — Órdenes RTS legibles
-- [ ] 25. Marcador de destino visible al ordenar mover
-- [ ] 26. Línea del soldado a su destino
-- [ ] 27. Confirmación en texto de la orden dada
-- [ ] 28. Cancelar órdenes con [Esc]/click derecho
+- [x] 25. Marcador de destino visible al ordenar mover
+- [x] 26. Línea del soldado a su destino
+- [x] 27. Confirmación en texto de la orden dada
+- [x] 28. Cancelar órdenes con [Esc]/click derecho
 
 ## IT8 — Selección RTS
-- [ ] 29. Contador de seleccionados más visible
-- [ ] 30. [Ctrl+A] seleccionar toda la escuadra
-- [ ] 31. Doble click selecciona todos los del mismo rol
-- [ ] 32. Anillo de selección con color por estado de vida
+- [x] 29. Contador de seleccionados más visible
+- [x] 30. [Ctrl+A] seleccionar toda la escuadra
+- [x] 31. Doble click selecciona todos los del mismo rol
+- [x] 32. Anillo de selección con color por estado de vida
 
 ## IT9 — Transición FPS↔RTS
-- [ ] 33. Aviso breve del modo al cambiar ("VISTA RTS")
+- [x] 33. Aviso breve del modo al cambiar ("VISTA RTS")
 - [ ] 34. Lerp de cámara al cambiar de modo (no corte seco)
-- [ ] 35. Recordar posición de cámara RTS al volver
-- [ ] 36. Instrucciones distintas y claras por modo
+- [x] 35. Recordar posición de cámara RTS al volver
+- [x] 36. Instrucciones distintas y claras por modo
 
 ## IT10 — Vehículo
-- [ ] 37. Aviso de asiento ocupado al intentar entrar
+- [x] 37. Aviso de asiento ocupado al intentar entrar
 - [ ] 38. Barra de vida del vehículo siempre visible al ir adentro
 - [ ] 39. Indicador de velocidad más legible
-- [ ] 40. Aviso al destruirse el vehículo
+- [x] 40. Aviso al destruirse el vehículo
 
 ## IT11 — Pantallas de fin
-- [ ] 41. Estadísticas en victoria/derrota (bajas, tiempo)
+- [x] 41. Estadísticas en victoria/derrota (bajas, tiempo)
 - [ ] 42. Distinguir mejor victoria de derrota visualmente
-- [ ] 43. Foco por defecto en botón Reintentar
-- [ ] 44. Navegación por teclado en los botones
+- [x] 43. Foco por defecto en botón Reintentar
+- [x] 44. Navegación por teclado en los botones
 
 ## IT12 — Pausa y configuración
-- [ ] 45. Mostrar controles en el menú de pausa
-- [ ] 46. Persistir configuración entre partidas
-- [ ] 47. Botón de volver al menú desde pausa
-- [ ] 48. Confirmar antes de salir al menú
+- [x] 45. Mostrar controles en el menú de pausa
+- [x] 46. Persistir configuración entre partidas
+- [x] 47. Botón de volver al menú desde pausa
+- [x] 48. Confirmar antes de salir al menú
 
 ## IT13 — Onboarding
-- [ ] 49. Cartel inicial con el objetivo de la misión
-- [ ] 50. Recordatorio de [TAB] las primeras veces
-- [ ] 51. Lista de controles con [H]
+- [x] 49. Cartel inicial con el objetivo de la misión
+- [x] 50. Recordatorio de [TAB] las primeras veces
+- [x] 51. Lista de controles con [H]
 - [ ] 52. Resaltar la primera acción sugerida
 
 ## IT14 — Legibilidad del HUD
-- [ ] 53. Contorno/sombra en textos sobre fondo claro
+- [x] 53. Contorno/sombra en textos sobre fondo claro
 - [ ] 54. Tamaños consistentes entre paneles
-- [ ] 55. Evitar solapamiento de paneles
-- [ ] 56. Márgenes consistentes
+- [x] 55. Evitar solapamiento de paneles
+- [x] 56. Márgenes consistentes
 
 ## IT15 — Feedback de disparo
-- [ ] 57. Retroceso visual del viewmodel al disparar
-- [ ] 58. Fogonazo en la punta del arma
-- [ ] 59. Marcador de impacto en el mundo
-- [ ] 60. Confirmación de baja distinta a la de impacto
+- [x] 57. Retroceso visual del viewmodel al disparar
+- [x] 58. Fogonazo en la punta del arma
+- [x] 59. Marcador de impacto en el mundo
+- [x] 60. Confirmación de baja distinta a la de impacto
 
 ## IT16 — Estado de la escuadra
-- [ ] 61. Aviso cuando un aliado está bajo ataque
-- [ ] 62. Aviso cuando un aliado tiene poca vida
+- [x] 61. Aviso cuando un aliado está bajo ataque
+- [x] 62. Aviso cuando un aliado tiene poca vida
 - [ ] 63. Indicador fuera de pantalla de aliados
-- [ ] 64. Resaltar al aliado más cercano poseíble
+- [x] 64. Resaltar al aliado más cercano poseíble
 
 ## IT17 — Enemigos
 - [ ] 65. Barra de vida del enemigo al apuntarle
 - [ ] 66. Indicador de enemigo fuera de pantalla que te dispara
-- [ ] 67. Distinguir enemigo alerta vs. desprevenido
+- [x] 67. Distinguir enemigo alerta vs. desprevenido
 - [ ] 68. Marcar al enemigo objetivo del arma
 
 ## IT18 — Cámara
-- [ ] 69. Límites de paneo en RTS (no perderse en el vacío)
-- [ ] 70. Botón/tecla para recentrar en la escuadra
-- [ ] 71. Zoom con límites claros
-- [ ] 72. Suavizado del paneo
+- [x] 69. Límites de paneo en RTS (no perderse en el vacío)
+- [x] 70. Botón/tecla para recentrar en la escuadra
+- [x] 71. Zoom con límites claros
+- [x] 72. Suavizado del paneo
 
 ## IT19 — Accesibilidad
-- [ ] 73. Sensibilidad separada FPS / RTS
-- [ ] 74. Opción de tamaño de HUD
-- [ ] 75. Opción de invertir eje Y
-- [ ] 76. Mirilla configurable
+- [x] 73. Sensibilidad separada FPS / RTS
+- [x] 74. Opción de tamaño de HUD
+- [x] 75. Opción de invertir eje Y
+- [x] 76. Mirilla configurable
 
 ## IT20 — Pulido final
-- [ ] 77. Revisión de todos los textos en español consistente
-- [ ] 78. Sin estados de UI colgados en ningún flujo
-- [ ] 79. Regresión completa
-- [ ] 80. Suite automatizada en verde
+- [x] 77. Revisión de todos los textos en español consistente
+- [x] 78. Sin estados de UI colgados en ningún flujo
+- [x] 79. Regresión completa
+- [x] 80. Suite automatizada en verde
 
 ## Bugs de fondo encontrados durante IT1-IT2 (no estaban en la lista)
 - [x] B1. Victoria saltaba con 3 enemigos vivos: solo miraba la sublista de patrulla (4) y no los 7 del mapa

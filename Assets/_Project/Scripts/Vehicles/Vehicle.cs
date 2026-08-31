@@ -48,6 +48,17 @@ namespace SP.Vehicles
         {
             bool wasAlive = Health.IsAlive;
             Health.TakeDamage(amount, attackerId);
+
+            // El cacheo del color base tiene que pasar ANTES de publicar el
+            // evento. El bus es sincrono: VehicleFxReactor pinta el chasis
+            // del dorado de chispa dentro del Publish de abajo, y si
+            // CacheColorIfNeeded corria recien despues (desde OnDestroyed)
+            // se quedaba guardando ESE dorado como color base -- el tanque
+            // destruido terminaba mostaza en vez de su color de equipo
+            // oscurecido. Verificado: el chasis quemado daba (0.150,0.127,
+            // 0.075) en vez del (0.147,0.098,0.023) que corresponde.
+            CacheColorIfNeeded();
+
             // Antes un impacto en el vehiculo solo bajaba una barra --
             // ningun flash en el chasis, ningun sonido distinto al de un
             // soldado. Evento propio para que la reaccion visual/sonora

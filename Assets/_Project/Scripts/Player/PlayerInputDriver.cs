@@ -429,6 +429,18 @@ namespace SP.Player
             deadSoldier.SetBodyVisible(true);
             bodyHiddenFor = null;
 
+            // La camara de muerte mostraba el cadaver propio pero no decia
+            // QUIEN te mato, que es lo que el jugador mas quiere saber en
+            // ese momento. El ultimo atacante ya queda registrado en el
+            // Health del caido.
+            SelectionRingFx killerRing = null;
+            var killer = ActorRegistry.FindById(deadSoldier.Health.LastAttackerId);
+            if (killer != null && killer.Health.IsAlive)
+            {
+                killerRing = SelectionRingFx.Spawn(killer.transform, new Color(1f, 0.3f, 0.2f), 1.1f);
+                if (DeadNotice != null) DeadNotice.Show($"Te mato {killer.DisplayName}");
+            }
+
             // Punto de cámara "detrás y arriba" del cadáver, mirándolo --
             // un GameObject temporal porque BeginTransition necesita un
             // Transform de destino, no una posición suelta.
@@ -466,6 +478,9 @@ namespace SP.Player
             }
 
             Destroy(pullBackGO);
+            // El resalte del asesino dura solo lo que dura la camara de
+            // muerte: dejarlo puesto lo confundiria con una seleccion.
+            if (killerRing != null) Destroy(killerRing.gameObject);
 
             Soldier nearest = null;
             float bestDist = float.MaxValue;

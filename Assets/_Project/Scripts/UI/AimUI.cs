@@ -234,6 +234,12 @@ namespace SP.UI
         static readonly Color ObstacleTint = new Color(0.85f, 0.85f, 0.85f);
 
         static readonly Color KillMarkerColor = new Color(1f, 0.85f, 0.15f);
+        static readonly Color CriticalMarkerColor = new Color(1f, 0.45f, 0.05f);
+        // Que fraccion de la vida maxima hace de un impacto un "critico".
+        // Impacto, critico y baja son tres sucesos con consecuencias muy
+        // distintas para la decision del jugador (seguir tirandole o pasar
+        // al siguiente) y producian la misma señal exacta.
+        const float CriticalDamageFraction = 0.3f;
 
         void OnDamage(DamageTakenEvent evt)
         {
@@ -246,7 +252,23 @@ namespace SP.UI
             // de daño que produjo la baja, no hace falta esperar un
             // EntityDiedEvent separado (que ademas no lleva quien mato).
             bool isKill = evt.RemainingHealth <= 0;
-            StartCoroutine(FlashHitMarker(isKill ? KillMarkerColor : EnemyHitColor, isKill));
+            var victim = SP.Core.ActorRegistry.FindById(evt.TargetId);
+            int maxHp = victim != null && victim.Health != null ? victim.Health.MaxHealth : 100;
+            bool isCritical = !isKill && maxHp > 0 && evt.Amount >= maxHp * CriticalDamageFraction;
+
+            var markerColor = isKill ? KillMarkerColor : isCritical ? CriticalMarkerColor : EnemyHitColor;
+            StartCoroutine(FlashHitMarker(markerColor, isKill, isCritical));
+
+            // Cada nivel tambien suena distinto: en pleno combate la señal
+            // sonora llega antes que la visual.
+            if (isCritical)
+            {
+                var critClip = GenericSfx.Get(SfxKind.Hit);
+                var src = new GameObject("CritTone").AddComponent<AudioSource>();
+                src.clip = critClip; src.pitch = 1.7f; src.volume = 0.5f; src.spatialBlend = 0f;
+                src.Play();
+                Destroy(src.gameObject, 1f);
+            }
             if (isKill)
             {
                 var clip = GenericSfx.Get(SfxKind.Swap); // tono agudo distintivo, ya existente en la paleta de sonidos
@@ -273,11 +295,14 @@ namespace SP.UI
         // logica de "impacto" pero con mas peso, para que una baja se
         // LEA como algo mas importante que un impacto cualquiera, no
         // solo un color distinto.
-        IEnumerator FlashHitMarker(Color flashColor, bool isKill)
+        IEnumerator FlashHitMarker(Color flashColor, bool isKill, bool isCritical = false)
         {
             flashing = true;
-            float peakMultiplier = isKill ? 3.6f : 2.4f;
-            float duration = isKill ? 0.4f : 0.22f;
+            // Tres tamaños y tres duraciones, no dos: el critico tiene que
+            // leerse como algo intermedio y no confundirse con ninguno de
+            // los extremos.
+            float peakMultiplier = isKill ? 3.6f : isCritical ? 3.0f : 2.4f;
+            float duration = isKill ? 0.4f : isCritical ? 0.3f : 0.22f;
 
             crosshair.color = flashColor;
             crosshair.rectTransform.sizeDelta = crosshairBaseSize * peakMultiplier;

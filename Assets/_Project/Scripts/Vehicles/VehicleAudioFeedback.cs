@@ -33,9 +33,23 @@ namespace SP.Vehicles
             if (engineSource != null && !engineSource.isPlaying) engineSource.Play();
         }
 
+        Vehicle vehicle;
+
         void Update()
         {
             if (motor == null || engineSource == null) return;
+
+            // Vehicle.OnDestroyed apaga motor, torreta e IA pero no sabe de
+            // este componente: CurrentSpeed quedaba congelado en su ultimo
+            // valor, asi que un tanque destruido a plena marcha se quedaba
+            // con el motor sonando agudo en loop eterno sobre la carcasa.
+            if (vehicle == null) vehicle = GetComponent<Vehicle>();
+            if (vehicle != null && vehicle.IsDestroyed)
+            {
+                if (engineSource.isPlaying) engineSource.Stop();
+                return;
+            }
+
             float speedFrac = Mathf.Clamp01(Mathf.Abs(motor.CurrentSpeed) / Mathf.Max(0.01f, motor.MaxSpeed));
             // Piso audible en ralenti (0.7) para que el motor nunca quede
             // en silencio total con el vehiculo detenido -- eso se leeria

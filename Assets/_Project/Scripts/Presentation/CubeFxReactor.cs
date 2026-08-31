@@ -71,7 +71,14 @@ namespace SP.Presentation
         void OnDamage(DamageTakenEvent evt)
         {
             if (!Application.isPlaying || !IsMe(evt.TargetId) || !gameObject.activeInHierarchy) return;
-            audioSource.PlayOneShot(GenericSfx.Get(SfxKind.Hit));
+            // Voz propia del herido, distinta del "tac" del impacto: se
+            // baja el pitch para que se lea como un quejido y no como el
+            // mismo golpe metalico que ya suena en la mirilla del que
+            // dispara. Un enemigo herido y uno muerto tienen que sonar
+            // distinto o el audio no ayuda a decidir si seguir tirandole.
+            audioSource.pitch = 0.75f;
+            audioSource.PlayOneShot(GenericSfx.Get(SfxKind.Hit), 0.7f);
+            audioSource.pitch = 1f;
             StopAllCoroutines();
             StartCoroutine(FlashAndPunch());
         }

@@ -46,6 +46,7 @@ namespace SP.EditorTools
         static Text defeatStatsRef;
         static VehicleStatusView vehicleStatusRef;
         static TurretAimView turretAimRef;
+        static OffscreenKillMarkerView offscreenKillRef;
         static DamageVignetteView damageVignetteRef;
         static KillFeedView killFeedRef;
         static PauseController pauseControllerRef;
@@ -229,6 +230,13 @@ namespace SP.EditorTools
             servicesGO.AddComponent<SelectionRingManager>();
             var possessedMarker = servicesGO.AddComponent<PossessedMarkerView>();
             possessedMarker.SetInitial(playerBrain.Current);
+            var killDirector = servicesGO.AddComponent<KillFeedbackDirector>();
+            killDirector.Brain = playerBrain;
+            killDirector.OffscreenMarker = offscreenKillRef;
+            // El feed ya no se suscribe solo al bus: lo dispara el director
+            // despues de actualizar su estado, para que el texto no salga
+            // corrido una baja (ver comentario en KillFeedView.ShowKill).
+            killDirector.Feed = killFeedRef;
             servicesGO.AddComponent<AttackLineManager>();
             servicesGO.AddComponent<OrderLineManager>();
             servicesGO.AddComponent<FloatingDamageTextManager>();
@@ -1452,6 +1460,7 @@ namespace SP.EditorTools
             vehicleStatusRef = vehicleStatusView;
 
             BuildTurretAimUI(canvasGO);
+            BuildOffscreenKillMarker(canvasGO);
 
             // Viñeta de daño: cubre toda la pantalla, arranca invisible
             // (alfa 0) y solo se ve un instante cuando el poseído recibe
@@ -1650,6 +1659,29 @@ namespace SP.EditorTools
         // HUD del artillero: reticulo de dos estados, marca de la brecha
         // de giro pendiente, barra de cooldown y anillo en el suelo con
         // el radio de explosion real del arma.
+        // Flecha breve en el borde apuntando a una baja que quedo fuera
+        // de encuadre: por el feed de texto esas bajas se perdian entre el
+        // resto de la informacion.
+        static void BuildOffscreenKillMarker(GameObject canvasGO)
+        {
+            var root = new GameObject("OffscreenKillMarker", typeof(RectTransform), typeof(OffscreenKillMarkerView));
+            root.transform.SetParent(canvasGO.transform, false);
+            StretchFull(root.GetComponent<RectTransform>());
+
+            var arrowGO = new GameObject("Arrow", typeof(Image));
+            arrowGO.transform.SetParent(root.transform, false);
+            arrowGO.GetComponent<Image>().color = new Color(0.95f, 0.3f, 0.2f, 0.9f);
+            var rt = arrowGO.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(14f, 26f);
+            arrowGO.SetActive(false);
+
+            var view = root.GetComponent<OffscreenKillMarkerView>();
+            view.Bind(arrowGO.GetComponent<Image>());
+            offscreenKillRef = view;
+        }
+
         static void BuildTurretAimUI(GameObject canvasGO)
         {
             var root = new GameObject("TurretAim", typeof(RectTransform), typeof(TurretAimView));
