@@ -198,8 +198,11 @@ namespace SP.Vehicles
             var team = vehicle != null && vehicle.Gunner != null ? vehicle.Gunner.Team : TeamId.Player;
 
             var spawnPos = Muzzle != null ? Muzzle.position : transform.position;
+            // Pedido explicito: la bala del cañon vuela al doble de la
+            // velocidad base del pool (comun con las armas de mano, que
+            // siguen en 1x porque no pasan este parametro).
             pool.Spawn(spawnPos, transform.forward, shooterId, team, CurrentDamage,
-                CurrentProjectileColor, ExplosionRadius, ProjectileGravity, vehicle);
+                CurrentProjectileColor, ExplosionRadius, ProjectileGravity, vehicle, speedMultiplier: 2f);
             cooldownTimer = EffectiveCooldown;
             Heat = Mathf.Clamp01(Heat + HeatPerShot);
 
@@ -254,8 +257,17 @@ namespace SP.Vehicles
             // Instance en vez de FindAnyObjectByType: esto corre en CADA
             // disparo del cañon, y un barrido de escena por disparo es
             // justo lo que no queremos en pleno combate.
+            //
+            // Pedido explicito: la vibracion es de QUIEN ESTA ADENTRO del
+            // tanque, no de toda la partida. Sin este chequeo, la torreta
+            // autonoma (TurretAI, sin artillero humano) sacudia la camara
+            // del jugador aunque estuviera lejos a pie o en otro vehiculo
+            // -- cada cañonazo temblaba la pantalla entera del juego.
+            // vehicle.PlayerAboard (no un Find) es lo barato: lo mantiene
+            // al dia PlayerInputDriver en los dos unicos puntos donde
+            // sube/baja del asiento.
             var rig = SP.CameraSystem.CameraRig.Instance;
-            if (rig != null) rig.KickDirectional(-transform.forward, 0.35f);
+            if (rig != null && vehicle != null && vehicle.PlayerAboard) rig.KickDirectional(-transform.forward, 0.35f);
 
             return true;
         }

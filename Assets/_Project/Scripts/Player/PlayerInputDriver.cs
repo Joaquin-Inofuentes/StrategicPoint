@@ -748,6 +748,13 @@ namespace SP.Player
             if (kb.gKey.wasPressedThisFrame && result.Type == AimTargetType.Vehicle)
                 GOrderOnVehicle(result.Vehicle);
 
+            // Pedido explicito: "que le pueda decir a mis aliados que me
+            // sigan" -- no necesita apuntar a nada, es sobre TODA la
+            // escuadra viva y activa (no montada en un vehiculo), igual
+            // que el resto de las ordenes de escuadra completa.
+            if (kb.yKey.wasPressedThisFrame && Squad != null)
+                OrderService.IssueFollowOrderForSelection(Squad, Brain.Current);
+
             // Mantener click derecho apretado: zoom de mirilla (no manda la
             // camioneta hasta que se suelta, eso sigue siendo un click).
             if (mouse != null) Rig.SetZoomed(mouse.rightButton.isPressed);
@@ -1057,17 +1064,17 @@ namespace SP.Player
             switch (result.Type)
             {
                 case AimTargetType.Ally:
-                    return $"[F] poseer a {result.Soldier.DisplayName}   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return $"[F] poseer a {result.Soldier.DisplayName}   ·   [Y] que me sigan   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Enemy:
-                    return $"Enemigo: {result.Soldier.DisplayName}   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return $"Enemigo: {result.Soldier.DisplayName}   ·   [Y] que me sigan   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Vehicle:
-                    return "[G] ordenar al aliado mas cercano que suba   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return "[G] ordenar al aliado mas cercano que suba   ·   [Y] que me sigan   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Obstacle:
-                    return "Obstáculo   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return "Obstáculo   ·   [Y] que me sigan   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Ground:
-                    return "[T] ordenar ir aquí   ·   [Click der.] mandar la camioneta aquí (si hay alguien manejando)   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return "[T] ordenar ir aquí   ·   [Y] que me sigan   ·   [Click der.] mandar la camioneta aquí (si hay alguien manejando)   ·   [Click] disparar   ·   [TAB] vista RTS";
                 default:
-                    return "[WASD] moverse   ·   [Click] disparar   ·   [1][2][3] cambiar de arma   ·   [TAB] vista RTS";
+                    return "[WASD] moverse   ·   [Y] que me sigan   ·   [Click] disparar   ·   [1][2][3] cambiar de arma   ·   [TAB] vista RTS";
             }
         }
 
@@ -1111,6 +1118,7 @@ namespace SP.Player
         void EnterPossessedVehicleSeat(VehicleSeatRole role)
         {
             currentSeat = role;
+            Vehicle.PlayerAboard = true;
             var vb = Vehicle.GetComponent<VehicleBrain>();
             if (role == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
 
@@ -1142,6 +1150,7 @@ namespace SP.Player
             Vehicle.Dismount(Brain.Current);
             var vb = Vehicle.GetComponent<VehicleBrain>();
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
+            Vehicle.PlayerAboard = false;
             currentSeat = null;
 
             // Si venías viendo el vehículo desde arriba (RTS), bajarte no

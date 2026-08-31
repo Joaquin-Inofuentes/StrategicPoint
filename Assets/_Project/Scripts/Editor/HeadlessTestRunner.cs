@@ -697,6 +697,7 @@ namespace SP.EditorTools
                 RunPhase3(playerBrain, rig, selection, aimTargeting, vega, kes, doc, soldierPrefab, colorEnemy, pool, vehicle);
                 RunPhase4(playerBrain, rig, vehicle, weaponPickups, vega, kes, doc);
                 RunPhase5(rig, vehicle, vega, kes, doc);
+                RunPhase6(rig, vehicle, pool, vega, kes, doc);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia
@@ -1373,6 +1374,148 @@ namespace SP.EditorTools
                 clipMetal != clipDirt && clipDirt != clipStone && clipMetal != clipStone);
 
             TestLog.Phase("FASE 5 FINALIZADA");
+        }
+
+        // ---------------------------------------------------------------
+        // FASE 6: pedido del jugador tras probar el tanque en vivo --
+        // orden de "seguir", cañon a doble velocidad y vibracion de
+        // camara solo para quien esta ADENTRO del vehiculo.
+        // ---------------------------------------------------------------
+        static void RunPhase6(CameraRig rig, Vehicle vehicle, ProjectilePool pool, Soldier vega, Soldier kes, Soldier doc)
+        {
+            TestLog.Phase("FASE 6 - Orden de seguir, cañon del tanque y vibracion por vehiculo");
+
+            // Fases anteriores pueden dejar gente montada en el vehiculo
+            // (Kes/Vega quedan asi tras las pruebas de Mount/Dismount de
+            // fases previas): un soldado inactivo hace que AiBrain.Tick
+            // salga por la guarda de activeInHierarchy ANTES de llegar a
+            // ninguna logica de estado, asi que Follow jamas se moveria
+            // por una razon ajena a la orden en si. Se arranca de una base
+            // limpia bajando a todos.
+            foreach (var occupant in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(occupant);
+
+            // --- Orden "que me sigan" ---
+            // Lejos de cualquier enemigo a proposito: Follow es
+            // interrumpible por sensado (mismo diseño que MovingToOrder,
+            // a propósito -- si aparece un enemigo mientras seguis al
+            // lider, tiene que entrar en combate). Midiendo el
+            // desplazamiento CERCA de una patrulla enemiga ese sensado
+            // desviaba a Kes a Chase en el primerisimo tick, y el
+            // movimiento medido pasaba a ser el de perseguir a ESE
+            // enemigo, no el de acercarse al lider -- nada que ver con si
+            // Follow mueve o no. Aislado en una esquina vacia del mapa se
+            // mide la mecanica en si misma, sin la interferencia.
+            var kesBrain = kes.GetComponent<AiBrain>();
+            // Vega llega MUERTA a esta fase (cae en el combate de fases
+            // anteriores y el juego no tiene revivir): Health.Heal() no
+            // hace nada sobre un muerto a proposito, asi que Initialize
+            // es la unica forma de darle vida de nuevo para este test.
+            // Con el MISMO Id que ya tenia -- pasar uno distinto es el
+            // bug real que ya aparecio esta sesion (Health.ActorId
+            // desincronizado de Soldier.Id).
+            vega.Health.Initialize(vega.Id, vega.Health.MaxHealth);
+            vega.transform.position = new Vector3(300f, 0.6f, 300f);
+            kes.transform.position = vega.transform.position + new Vector3(12f, 0f, 0f);
+            OrderService.IssueFollowOrder(kes, vega);
+            Check("IssueFollowOrder pone al soldado en estado Follow", kesBrain.State == AiState.Follow);
+            Check("FollowTarget expone al lider mientras esta siguiendo", kesBrain.FollowTarget == vega);
+
+            float distBefore = Vector3.Distance(kes.transform.position, vega.transform.position);
+            for (int i = 0; i < 400 && kesBrain.State == AiState.Follow; i++) kesBrain.Tick(0.05f);
+            float distAfter = Vector3.Distance(kes.transform.position, vega.transform.position);
+            Check($"Seguir al lider reduce la distancia y se estabiliza cerca (antes={distBefore:0.0}m despues={distAfter:0.0}m)",
+                distAfter < distBefore && distAfter <= 3.2f);
+
+            kesBrain.CancelOrder();
+            Check("CancelOrder saca a Kes de Follow y vuelve a Patrol", kesBrain.State == AiState.Patrol);
+            Check("CancelOrder limpia FollowTarget", kesBrain.FollowTarget == null);
+
+            // Si el lider se desactiva a mitad de Follow (ej.: sube a un
+            // vehiculo), no debe quedar persiguiendo un punto muerto para
+            // siempre -- mismo patron de bug que ya aparecio con
+            // OffscreenAllyMarkerView y AiBrain.patrolRoute esta sesion.
+            OrderService.IssueFollowOrder(kes, vega);
+            vega.gameObject.SetActive(false);
+            kesBrain.Tick(0.05f);
+            Check("Si el lider se desactiva (ej. sube a un vehiculo), Follow se suelta solo y vuelve a Patrol",
+                kesBrain.State == AiState.Patrol && kesBrain.FollowTarget == null);
+            vega.gameObject.SetActive(true);
+
+            // --- Cañon del tanque: proyectil al doble de velocidad ---
+            var pNormal = pool.Spawn(vehicle.transform.position, Vector3.forward, -1, TeamId.Enemy, 10, null, 0f, 0f, null, 1f);
+            float speedNormal = pNormal.Velocity.magnitude;
+            pool.Release(pNormal);
+            var pDoble = pool.Spawn(vehicle.transform.position, Vector3.forward, -1, TeamId.Enemy, 10, null, 0f, 0f, null, 2f);
+            float speedDoble = pDoble.Velocity.magnitude;
+            pool.Release(pDoble);
+            Check($"speedMultiplier=2 duplica la velocidad real del proyectil (normal={speedNormal:0.0} doble={speedDoble:0.0})",
+                Mathf.Approximately(speedDoble, speedNormal * 2f));
+
+            // El cañon del tanque en si mismo tiene que pedir 2x: no alcanza
+            // con que el pool lo soporte, TurretWeapon.TryFire tiene que
+            // usarlo de verdad.
+            var turret = vehicle.GetComponentInChildren<TurretWeapon>();
+            var cdField = typeof(TurretWeapon).GetField("cooldownTimer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            cdField.SetValue(turret, 0f);
+            // Snapshot POR IDENTIDAD y no "distinto de pNormal/pDoble": el
+            // pool acaba de recibir esos dos de vuelta con Release(), asi
+            // que estan arriba de la pila de libres y es MUY probable que
+            // el propio TryFire() de aca abajo reuse esa misma instancia.
+            // Comparar contra el snapshot de ANTES de disparar identifica
+            // al proyectil nuevo sin importar si el objeto es reciclado.
+            var activeBeforeFire = new HashSet<Projectile>(Projectile.ActiveInstances);
+            bool fired = turret.TryFire();
+            Projectile shellFired = null;
+            foreach (var p in Projectile.ActiveInstances)
+                if (!activeBeforeFire.Contains(p)) { shellFired = p; break; }
+            Check("El cañon del tanque efectivamente disparo un proyectil nuevo",
+                fired && shellFired != null);
+            if (shellFired != null)
+                Check($"El proyectil real del cañon vuela al doble de la velocidad base (velocidad={shellFired.Velocity.magnitude:0.0} vs base={speedNormal:0.0})",
+                    Mathf.Approximately(shellFired.Velocity.magnitude, speedNormal * 2f));
+
+            // --- Vibracion de camara: solo si el jugador esta ADENTRO del vehiculo ---
+            // Se fuerza Enabled=true (y se restaura al final, mismo patron
+            // que el bloque de CameraRig de la Fase 5): KickDirectional es
+            // un no-op si el interruptor global de FX esta apagado, y ese
+            // interruptor persiste en PlayerPrefs entre corridas -- sin
+            // esto el test pasa o falla segun el ultimo valor guardado en
+            // esta maquina, no segun si el gating por PlayerAboard anda.
+            bool fxWasEnabled = SP.CameraSystem.CameraFxSettings.Enabled;
+            SP.CameraSystem.CameraFxSettings.Enabled = true;
+
+            // TryFire() lee CameraRig.Instance (el singleton), no la
+            // referencia rig de este metodo. Instance se pone en OnEnable,
+            // que -- como Awake en todo el resto del proyecto -- no corre
+            // en Edit mode sin [ExecuteAlways]. Sin esto el chequeo
+            // "rig != null" de TryFire fallaria SIEMPRE en la suite
+            // headless (Instance nulo), y el test de PlayerAboard nunca
+            // ejercitaria el codigo real sin importar el resultado.
+            var instanceField = typeof(CameraRig).GetProperty("Instance", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            var previousInstance = instanceField.GetValue(null);
+            instanceField.SetValue(null, rig);
+
+            for (int i = 0; i < 40; i++) turret.Tick(0.1f); // vaciar cooldown del disparo anterior
+            vehicle.PlayerAboard = false;
+            Vector3 shakeBeforeOutside = rig.ShakeOffset;
+            turret.TryFire();
+            Vector3 shakeAfterOutside = rig.ShakeOffset;
+            Check("Con PlayerAboard=false (jugador afuera), disparar el cañon NO mueve la vibracion de camara",
+                shakeAfterOutside == shakeBeforeOutside);
+
+            for (int i = 0; i < 40; i++) turret.Tick(0.1f);
+            vehicle.PlayerAboard = true;
+            Vector3 shakeBeforeInside = rig.ShakeOffset;
+            turret.TryFire();
+            Vector3 shakeAfterInside = rig.ShakeOffset;
+            Check("Con PlayerAboard=true (jugador adentro), disparar el cañon SI mueve la vibracion de camara",
+                shakeAfterInside != shakeBeforeInside);
+
+            instanceField.SetValue(null, previousInstance);
+            SP.CameraSystem.CameraFxSettings.Enabled = fxWasEnabled;
+            vehicle.PlayerAboard = false;
+
+            TestLog.Phase("FASE 6 FINALIZADA");
         }
 
         // ---------------------------------------------------------------

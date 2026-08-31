@@ -79,7 +79,7 @@ namespace SP.Combat
             return recommended < MinimumPrewarm ? MinimumPrewarm : recommended;
         }
 
-        public Projectile Spawn(Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int damage, Color? color = null, float explosionRadius = 0f, float gravity = 0f, SP.Vehicles.Vehicle sourceVehicle = null)
+        public Projectile Spawn(Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int damage, Color? color = null, float explosionRadius = 0f, float gravity = 0f, SP.Vehicles.Vehicle sourceVehicle = null, float speedMultiplier = 1f)
         {
             if (pool == null) Bootstrap();
             // Se pregunta ANTES del Get: ObjectPool.Get() instancia en el
@@ -88,7 +88,7 @@ namespace SP.Combat
             // Instantiate.
             if (pool != null && pool.FreeCount == 0) ExhaustedCount++;
             var p = pool.Get();
-            p.Configure(this, position, direction, shooterId, shooterTeam, damage, color, explosionRadius, gravity, sourceVehicle);
+            p.Configure(this, position, direction, shooterId, shooterTeam, damage, color, explosionRadius, gravity, sourceVehicle, speedMultiplier);
             return p;
         }
 

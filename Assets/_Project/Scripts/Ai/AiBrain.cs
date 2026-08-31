@@ -50,6 +50,19 @@ namespace SP.Ai
         Vehicle mountTarget;
         IDisposable damageSub;
 
+        // Item pedido: "que le pueda decir a mis aliados que me sigan".
+        // A quien sigo -- normalmente el soldado poseido por el jugador.
+        // Separado de orderDestination porque ese es un punto FIJO
+        // (MovingToOrder termina al llegar); Follow no termina nunca solo,
+        // persigue una posicion que se mueve cada Tick hasta que lo
+        // cancelen o lo interrumpa el combate.
+        Soldier followTarget;
+
+        // Distancia a la que se detiene detras del lider: 0 lo pegaria
+        // encima del jugador (empujones, camara tapada); demasiado lejos
+        // y "seguir" se ve identico a quedarse atras sin hacer nada.
+        [SerializeField] float followStopDistance = 2.5f;
+
         // La postura NO se serializa a proposito, al reves que patrolRoute:
         // no se asigna al construir la escena sino en runtime (el jugador
         // la cambia durante la partida), y un valor guardado en la escena o
@@ -157,6 +170,11 @@ namespace SP.Ai
         // en curso, no durante una persecucion de combate.
         public Vector3? CurrentOrderDestination => hasOrder && State == AiState.MovingToOrder ? orderDestination : (Vector3?)null;
 
+        // Verificable desde afuera (tests, UI): a quien sigo mientras
+        // realmente estoy en Follow. Null en cualquier otro estado, igual
+        // que CurrentOrderDestination con MovingToOrder.
+        public Soldier FollowTarget => State == AiState.Follow ? followTarget : null;
+
         void Awake() => Bootstrap();
 
         public void Bootstrap()
@@ -241,6 +259,22 @@ namespace SP.Ai
             SetState(AiState.MovingToOrder);
         }
 
+        // "Que me sigan": a diferencia de IssueMoveOrder, no hay un punto
+        // fijo que borrar/reemplazar -- Follow se re-evalua cada Tick
+        // contra la posicion ACTUAL de leader. Pisa cualquier orden previa
+        // (mueve, ataca, montar) igual que las demas Issue*.
+        public void IssueFollowOrder(Soldier leader)
+        {
+            if (leader == null || leader == self) return;
+            if (!bootstrapped) Bootstrap();
+            target = null;
+            hasOrder = true;
+            mountTarget = null;
+            orderQueue.Clear();
+            followTarget = leader;
+            SetState(AiState.Follow);
+        }
+
         public void IssueAttackOrder(Soldier enemy)
         {
             if (!bootstrapped) Bootstrap();
@@ -260,8 +294,9 @@ namespace SP.Ai
             if (!bootstrapped) Bootstrap();
             hasOrder = false;
             mountTarget = null;
+            followTarget = null;
             orderQueue.Clear();
-            if (State == AiState.MovingToOrder || State == AiState.MovingToAttackOrder)
+            if (State == AiState.MovingToOrder || State == AiState.MovingToAttackOrder || State == AiState.Follow)
             {
                 target = null;
                 SetState(AiState.Patrol);
@@ -290,7 +325,7 @@ namespace SP.Ai
                 target = null;
 
             if (target == null && (State == AiState.Chase || State == AiState.Attack))
-                SetState(hasOrder ? AiState.MovingToOrder : AiState.Patrol);
+                SetState(!hasOrder ? AiState.Patrol : followTarget != null ? AiState.Follow : AiState.MovingToOrder);
 
             // El sensado puede interrumpir una patrulla u orden de movimiento
             // simple, pero no una orden de ataque ni una de subir a un
@@ -349,6 +384,25 @@ namespace SP.Ai
                         hasOrder = false;
                         SetState(AiState.Patrol);
                     }
+                    break;
+
+                case AiState.Follow:
+                    // El lider murio, se desactivo (subio a un vehiculo) o
+                    // se cancelo por otro lado: no hay a quien seguir, se
+                    // suelta la orden en vez de quedarse persiguiendo un
+                    // punto viejo para siempre.
+                    if (followTarget == null || !followTarget.Health.IsAlive || !followTarget.gameObject.activeInHierarchy)
+                    {
+                        hasOrder = false;
+                        followTarget = null;
+                        SetState(AiState.Patrol);
+                        break;
+                    }
+                    // A diferencia de MovingToOrder, el destino se
+                    // recalcula CADA tick contra la posicion actual del
+                    // lider: por eso Follow nunca "llega" y termina solo,
+                    // solo se corta si lo cancelan o el combate lo saca.
+                    self.Motor.MoveTowards(followTarget.transform.position, followStopDistance, dt);
                     break;
 
                 case AiState.Chase:

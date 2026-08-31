@@ -25,6 +25,7 @@ namespace SP.Presentation
         public static readonly Color MoveColor = new Color(0.35f, 0.85f, 0.35f);
         public static readonly Color AttackColor = new Color(0.92f, 0.2f, 0.18f);
         public static readonly Color MountColor = new Color(0.25f, 0.55f, 0.95f);
+        public static readonly Color FollowColor = new Color(0.85f, 0.7f, 0.2f);
 
         // CUPO. Un lote de ordenes es un marcador POR SOLDADO, asi que el
         // tope tiene que cubrir la escuadra entera de una: 64 aguanta el

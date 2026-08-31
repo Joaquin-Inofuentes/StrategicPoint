@@ -166,6 +166,15 @@ namespace SP.Vehicles
             foreach (var r in chassisRenderers) r.sharedMaterial.color = target;
         }
 
+        // Lo pone/saca PlayerInputDriver al entrar/salir de un asiento
+        // (cualquiera, no solo artillero). Mismo patron que
+        // VehicleBrain.IsPlayerDriving: barato de mantener porque solo
+        // cambia en esos dos puntos, y evita que quien necesite saber
+        // "esta el jugador ADENTRO de este vehiculo" (la vibracion del
+        // cañon, item pedido explicito) tenga que salir a buscar al
+        // PlayerInputDriver con un Find por disparo.
+        public bool PlayerAboard { get; set; }
+
         public int Capacity => AllRoles.Length;
         public int OccupantCount => seats.Count;
         public bool HasAnyRoom => seats.Count < Capacity;

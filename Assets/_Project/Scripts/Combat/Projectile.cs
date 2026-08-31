@@ -39,6 +39,7 @@ namespace SP.Combat
         // en vez de apuntar y listo.
         float gravity;
         Vector3 velocity;
+        float effectiveSpeed;
 
         // BUG REAL encontrado al testear la balistica: el proyectil de la
         // torreta nace en la boca del cañon, que esta a menos de 2.5 m del
@@ -69,7 +70,11 @@ namespace SP.Combat
         // manualmente (tests) sin depender del bucle de Update de Unity.
         public static readonly List<Projectile> ActiveInstances = new List<Projectile>();
 
-        public void Configure(ProjectilePool owningPool, Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int dmg, Color? color = null, float explosionRadiusValue = 0f, float gravityValue = 0f, SP.Vehicles.Vehicle sourceVehicle = null)
+        // speedMultiplier: 1f para todo lo que ya existia (armas de mano,
+        // que no lo pasan). El cañon del tanque pide 2f para que su
+        // proyectil viaje al doble de la velocidad base sin tocar el
+        // campo serializado que comparte el resto del pool.
+        public void Configure(ProjectilePool owningPool, Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int dmg, Color? color = null, float explosionRadiusValue = 0f, float gravityValue = 0f, SP.Vehicles.Vehicle sourceVehicle = null, float speedMultiplier = 1f)
         {
             gravity = gravityValue;
             ignoreVehicle = sourceVehicle;
@@ -86,7 +91,8 @@ namespace SP.Combat
             ownerTeam = shooterTeam;
             damage = dmg;
             explosionRadius = explosionRadiusValue;
-            velocity = (direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward) * speed;
+            effectiveSpeed = speed * speedMultiplier;
+            velocity = (direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward) * effectiveSpeed;
 
             if (color.HasValue)
             {
@@ -158,7 +164,7 @@ namespace SP.Combat
             }
             else
             {
-                transform.position += transform.forward * speed * dt;
+                transform.position += transform.forward * effectiveSpeed * dt;
             }
             age += dt;
 

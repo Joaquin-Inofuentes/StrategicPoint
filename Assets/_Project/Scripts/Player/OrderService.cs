@@ -324,6 +324,34 @@ namespace SP.Player
         // creyendo que el juego no registro el click.
         public static void PlayRejectSound() => PlayUi(SfxKind.EmptyClick, 0.6f, 0.95f);
 
+        // "Que me sigan": normalmente leader es Brain.Current (el soldado
+        // poseido). No entra en el patron de a-un-punto-fijo del resto:
+        // no hay OrderMarkerFx.Spawn por soldado porque el destino se
+        // mueve con el lider, un cubo fijo en el piso mentiria apenas
+        // caminara un paso.
+        public static void IssueFollowOrder(Soldier soldier, Soldier leader)
+        {
+            var brain = soldier.GetComponent<AiBrain>();
+            if (brain != null) brain.IsPossessedByPlayer = false;
+            brain?.IssueFollowOrder(leader);
+        }
+
+        public static void IssueFollowOrderForSelection(IEnumerable<Soldier> selection, Soldier leader)
+        {
+            if (selection == null || leader == null) return;
+            var list = new List<Soldier>(selection);
+            if (list.Count == 0) return;
+
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (list[i] == leader) continue;
+                IssueFollowOrder(list[i], leader);
+            }
+
+            OrderMarkerFx.Spawn(leader.transform.position, OrderMarkerFx.FollowColor);
+            AnnounceBatch(list, list.Count == 1 ? "Se dio la orden de seguir a 1 soldado" : $"Se dio la orden de seguir a {list.Count} soldados");
+        }
+
         public static void IssueMountOrder(Soldier soldier, Vehicle vehicle)
         {
             var brain = soldier.GetComponent<AiBrain>();

@@ -5,6 +5,7 @@ namespace SP.Ai
         Patrol,
         Idle,
         MovingToOrder,
+        Follow,
         Chase,
         MovingToAttackOrder,
         Attack,
