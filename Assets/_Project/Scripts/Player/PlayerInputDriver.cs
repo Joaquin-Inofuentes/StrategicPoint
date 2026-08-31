@@ -916,9 +916,21 @@ namespace SP.Player
             }
         }
 
-        // [G] apuntando a un vehículo: si tiene gente adentro, todos bajan
-        // (orden inversa a subir); si está vacío, se manda al aliado libre
-        // más cercano a que suba, como antes.
+        // [G] apuntando a un vehículo: sube UN aliado por apretada, al
+        // mismo criterio que [U] (el más cercano que todavía no esté
+        // adentro ni ya en camino a subir) -- para poder llenar los
+        // asientos de a uno, apretando varias veces seguidas, sin mandar
+        // dos veces al mismo. [I] es la tecla dedicada para bajarlos a
+        // todos; [G] no hace doble función.
+        //
+        // BUG REAL: antes, con el vehículo ya ocupado, [G] los bajaba a
+        // TODOS en vez de sumar uno más -- y encima usaba
+        // FindNearestFreeAlly, que no descarta a quien ya está adentro
+        // (Mount() solo lo desactiva, no lo saca del registro), así que
+        // apretar [G] dos veces con alguien ya montado le repetía la
+        // orden a ESE MISMO en vez de sumar al siguiente. FindNextSquadmateToBoard
+        // (la función de [U]) sí filtra correctamente a los ya montados y
+        // a los que ya están en camino.
         public void GOrderOnVehicle(Vehicle vehicle)
         {
             // Ordenar subir a una carcasa destruida antes mandaba al
@@ -927,15 +939,11 @@ namespace SP.Player
             // que llega -- una caminata entera sin ningún resultado ni
             // aviso.
             if (vehicle.IsDestroyed) return;
+            if (!vehicle.HasAnyRoom) { RejectOrder("VEHICULO LLENO"); return; }
 
-            if (vehicle.OccupantCount > 0)
-            {
-                DismountAll(vehicle);
-                return;
-            }
-
-            var nearest = OrderService.FindNearestFreeAlly(vehicle.transform.position, TeamId.Player, Brain.Current);
-            if (nearest != null) OrderService.IssueMountOrder(nearest, vehicle);
+            var next = FindNextSquadmateToBoard(vehicle);
+            if (next != null) OrderService.IssueMountOrder(next, vehicle);
+            else RejectOrder("NO HAY MAS ALIADOS PARA SUBIR");
         }
 
         void DismountAll(Vehicle vehicle)
@@ -1690,13 +1698,24 @@ namespace SP.Player
                 }
             }
 
+            // Mismo criterio que la version FPS de [G] (ver GOrderOnVehicle):
+            // suma a la seleccion que todavia no este adentro, no expulsa a
+            // nadie -- [I] es la unica tecla que baja gente.
             if (kb.gKey.wasPressedThisFrame)
             {
                 var result = Aim.Evaluate(screenRay, null);
                 if (result.Type == AimTargetType.Vehicle && !result.Vehicle.IsDestroyed)
                 {
-                    if (result.Vehicle.OccupantCount > 0) DismountAll(result.Vehicle);
-                    else OrderService.IssueMountOrderForSelection(Selection.Selected, result.Vehicle);
+                    if (!result.Vehicle.HasAnyRoom) { RejectOrder("VEHICULO LLENO"); }
+                    else
+                    {
+                        var boardable = new List<Soldier>();
+                        foreach (var s in Selection.Selected)
+                            if (s != null && s.Health.IsAlive && s.gameObject.activeInHierarchy && result.Vehicle.RoleOf(s) == null)
+                                boardable.Add(s);
+                        if (boardable.Count > 0) OrderService.IssueMountOrderForSelection(boardable, result.Vehicle);
+                        else RejectOrder("NO HAY MAS ALIADOS PARA SUBIR");
+                    }
                 }
             }
 

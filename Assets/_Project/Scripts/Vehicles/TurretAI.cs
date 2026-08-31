@@ -17,9 +17,17 @@ namespace SP.Vehicles
 
         TurretWeapon turret;
         Vehicle vehicle;
+        VehicleMotor motor;
         Soldier target;
         float retargetTimer;
         bool bootstrapped;
+
+        // VehicleBrain lo consulta para el otro lado de la misma regla:
+        // con un solo tripulante, mientras la torreta esta trabada en un
+        // blanco no hay que arrancar a manejar sola hacia una orden vieja
+        // -- esa unica persona no puede estar disparando Y conduciendo a
+        // la vez.
+        public bool IsEngaging => target != null && target.Health.IsAlive;
 
         void Awake() => Bootstrap();
 
@@ -36,6 +44,7 @@ namespace SP.Vehicles
             bootstrapped = true;
             turret = GetComponent<TurretWeapon>();
             vehicle = GetComponentInParent<Vehicle>();
+            if (vehicle != null) motor = vehicle.GetComponent<VehicleMotor>();
             WorldSystemsRegistry.Register(this);
         }
 
@@ -79,6 +88,20 @@ namespace SP.Vehicles
             bool hasHumanGunner = vehicle.Gunner != null;
             PublishControlChange(!hasHumanGunner);
             if (hasHumanGunner) return;
+
+            // Pedido explicito: con UN solo tripulante (a bordo, de
+            // cualquier equipo) esa persona maneja O dispara, nunca las
+            // dos cosas a la vez -- no puede estar conduciendo Y
+            // operando la torreta al mismo tiempo. Con dos o mas adentro
+            // esto no aplica (uno bien puede manejar mientras el otro
+            // tira). Se corta ANTES de retargetear: si ya tenia un
+            // blanco trabado, arrancar a andar se lo hace soltar en vez
+            // de dispararle igual mientras el chasis se mueve.
+            if (vehicle.OccupantCount == 1 && motor != null && !motor.IsStopped)
+            {
+                target = null;
+                return;
+            }
 
             // A quien apunta la IA depende de QUIEN esta adentro, no de
             // que el tanque sea "siempre del jugador": la tripulacion

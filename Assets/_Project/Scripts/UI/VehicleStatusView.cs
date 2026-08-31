@@ -95,7 +95,18 @@ namespace SP.UI
             }
 
             if (gunnerLabel != null)
-                gunnerLabel.text = vehicle.Gunner != null ? $"Artillero: {vehicle.Gunner.DisplayName}" : "Artillero: -";
+            {
+                // Pedido explicito: si hay UN solo tripulante tiene que
+                // notarse a simple vista -- esa persona maneja O dispara,
+                // nunca las dos cosas (TurretAI/VehicleBrain), y sin este
+                // rotulo no habia forma de saber por que el cañon dejaba
+                // de responder solo al arrancar a andar.
+                bool solo = vehicle.OccupantCount == 1;
+                string crew = solo ? $"Tripulación: 1/{vehicle.Capacity} (SOLO)" : $"Tripulación: {vehicle.OccupantCount}/{vehicle.Capacity}";
+                string gunnerPart = vehicle.Gunner != null ? $" · Artillero: {vehicle.Gunner.DisplayName}" : "";
+                gunnerLabel.text = crew + gunnerPart;
+                gunnerLabel.color = solo ? new Color(0.95f, 0.65f, 0.2f) : new Color(0.85f, 0.85f, 0.85f);
+            }
         }
     }
 }

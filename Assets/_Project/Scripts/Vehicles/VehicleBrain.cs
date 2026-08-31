@@ -13,6 +13,7 @@ namespace SP.Vehicles
 
         VehicleMotor motor;
         Vehicle vehicle;
+        TurretAI turretAi;
         Vector3? destination;
         bool bootstrapped;
 
@@ -28,6 +29,7 @@ namespace SP.Vehicles
             bootstrapped = true;
             motor = GetComponent<VehicleMotor>();
             vehicle = GetComponent<Vehicle>();
+            turretAi = GetComponentInChildren<TurretAI>();
             WorldSystemsRegistry.Register(this);
         }
 
@@ -51,6 +53,13 @@ namespace SP.Vehicles
             // frenar un vehículo destruido -- una carcasa quemada no
             // debería poder seguir manejando sola hacia un destino viejo.
             if ((vehicle != null && vehicle.IsDestroyed) || IsPlayerDriving || !destination.HasValue) return;
+
+            // Misma regla que TurretAI.IsEngaging, del otro lado: con un
+            // solo tripulante trabado disparandole a algo, esa persona no
+            // puede ADEMAS estar manejando -- la orden de movimiento
+            // queda pendiente (no se pierde, solo espera) hasta que
+            // suelte el blanco o suba alguien mas.
+            if (vehicle != null && vehicle.OccupantCount == 1 && turretAi != null && turretAi.IsEngaging) return;
 
             Vector3 delta = destination.Value - transform.position;
             delta.y = 0f;
