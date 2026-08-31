@@ -50,6 +50,15 @@ namespace SP.Presentation
             return fx;
         }
 
+        // Destello de "orden recibida": el anillo se agranda y se aclara
+        // un instante. Se implementa como una ventana de tiempo leida en
+        // LateUpdate (no una corrutina) para que conviva con el pulso y
+        // el tinte por vida que ese mismo LateUpdate ya recalcula cada
+        // frame -- una corrutina que pintara el color seria pisada.
+        float ackFlashUntil;
+        const float AckFlashDuration = 0.45f;
+        public void FlashAcknowledge() => ackFlashUntil = Time.time + AckFlashDuration;
+
         void LateUpdate()
         {
             if (Target == null)
@@ -65,6 +74,10 @@ namespace SP.Presentation
 
             float k = (Mathf.Sin(Time.time * pulseSpeed) + 1f) * 0.5f;
             float radius = (baseRadius + pulseAmount * k) * 2f; // cylinder scale = diámetro
+
+            float ackRemaining = ackFlashUntil - Time.time;
+            float ack = ackRemaining > 0f ? ackRemaining / AckFlashDuration : 0f;
+            radius *= 1f + ack * 0.8f;
             transform.localScale = new Vector3(radius, 0.03f, radius);
 
             if (trackedSoldier != null && trackedSoldier.Health != null)
@@ -76,7 +89,7 @@ namespace SP.Presentation
                     Color c = frac > 0.6f ? new Color(0.35f, 0.85f, 0.4f)
                         : frac > 0.25f ? new Color(0.95f, 0.8f, 0.25f)
                         : new Color(0.95f, 0.25f, 0.2f);
-                    ringRenderer.sharedMaterial.color = c;
+                    ringRenderer.sharedMaterial.color = ack > 0f ? Color.Lerp(c, Color.white, ack) : c;
                 }
             }
         }

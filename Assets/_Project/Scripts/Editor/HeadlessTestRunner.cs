@@ -704,6 +704,7 @@ namespace SP.EditorTools
             // disparar (el componente mismo se auto-desactiva si no es
             // del equipo enemigo, por si algun dia se llama por error).
             if (team == TeamId.Enemy) instance.AddComponent<EnemyAlertIndicatorView>();
+            else instance.AddComponent<SquadStateIndicatorView>();
 
             // El color del cuerpo (color) varia por soldado para
             // distinguirlos entre si de cerca -- pero eso significa que

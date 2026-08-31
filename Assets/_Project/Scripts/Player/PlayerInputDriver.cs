@@ -1215,10 +1215,34 @@ namespace SP.Player
             if (kb.tKey.wasPressedThisFrame || (mouse.rightButton.wasPressedThisFrame && !dragging))
             {
                 var result = Aim.Evaluate(screenRay, null);
+                // Con Shift la orden se ENCOLA detras de lo ya planificado
+                // en vez de reemplazarlo: es lo que permite trazar una ruta
+                // de varios tramos.
+                bool queued = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+
                 if (result.Type == AimTargetType.Ground)
                 {
                     if (Selection.SelectedVehicle != null) TryIssueVehicleMoveOrder(result.Point);
-                    else if (Selection.Selected.Count > 0) OrderService.IssueMoveOrderForSelection(Selection.Selected, result.Point);
+                    else if (Selection.Selected.Count > 0)
+                    {
+                        // Ordenar sobre un obstaculo no hacia nada y no
+                        // avisaba: el soldado se trababa contra el borde y
+                        // el jugador creia que la orden se habia dado.
+                        if (!OrderService.IsValidDestination(result.Point)) RejectOrder("DESTINO BLOQUEADO");
+                        else OrderService.IssueMoveOrderForSelection(Selection.Selected, result.Point, queued);
+                    }
+                }
+                // IssueAttackOrder existia y funcionaba pero no estaba
+                // cableada a ninguna entrada en RTS: una capacidad ya
+                // implementada que el jugador no podia usar.
+                else if (result.Type == AimTargetType.Enemy && Selection.Selected.Count > 0)
+                {
+                    foreach (var s in Selection.Selected) OrderService.IssueAttackOrder(s, result.Soldier);
+                    GameLog.Line($"Se dio la orden de atacar a {result.Soldier.DisplayName}");
+                }
+                else if (result.Type == AimTargetType.Vehicle && result.Vehicle.IsDestroyed)
+                {
+                    RejectOrder("VEHICULO DESTRUIDO");
                 }
             }
 
@@ -1262,8 +1286,15 @@ namespace SP.Player
                     var b = s.Brain;
                     if (b != null) b.CancelOrder();
                 }
+                // Los marcadores de cola son permanentes (representan un
+                // plan pendiente): cancelar la orden tiene que borrarlos,
+                // si no queda un plan dibujado que ya nadie va a cumplir.
+                OrderMarkerFx.ClearQueuedMarkers();
                 GameLog.Line("Se cancelo la orden de la seleccion");
             }
+
+            UpdateControlGroups(kb);
+            UpdateFormationPreview(mouse, screenRay);
 
             // [Espacio] recentra la camara en el centroide de la escuadra
             // viva -- la tecla mas grande y accesible para la accion mas
@@ -1290,6 +1321,126 @@ namespace SP.Player
         Vehicle ringedVehicle;
         SelectionRingFx vehicleSelectionRing;
         static readonly Color VehicleSelectionRingColor = new Color(0.3f, 0.75f, 0.95f);
+
+        // El jugador no veia donde iba a quedar cada soldado hasta DESPUES
+        // de dar la orden, cuando ya no podia corregirla. Mientras se
+        // mantiene el boton derecho apretado se dibujan los puestos
+        // fantasma; se descartan al soltar (la orden real, que se emite en
+        // wasPressedThisFrame, dibuja sus propios marcadores).
+        readonly List<GameObject> formationGhosts = new List<GameObject>();
+
+        void UpdateFormationPreview(Mouse mouse, Ray screenRay)
+        {
+            bool showing = mouse.rightButton.isPressed && !dragging
+                && Selection.Selected.Count > 1 && Selection.SelectedVehicle == null;
+
+            if (!showing)
+            {
+                if (formationGhosts.Count > 0) ClearFormationGhosts();
+                return;
+            }
+
+            var result = Aim.Evaluate(screenRay, null);
+            if (result.Type != AimTargetType.Ground) { ClearFormationGhosts(); return; }
+
+            var spots = OrderService.FormationPoints(result.Point, Selection.Selected.Count);
+            EnsureGhostCount(spots.Length);
+            for (int i = 0; i < spots.Length; i++)
+                formationGhosts[i].transform.position = new Vector3(spots[i].x, 0.06f, spots[i].z);
+        }
+
+        void EnsureGhostCount(int count)
+        {
+            while (formationGhosts.Count < count)
+            {
+                var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                go.name = "FormationGhost";
+                var col = go.GetComponent<Collider>();
+                if (col != null) Destroy(col);
+                go.transform.localScale = new Vector3(0.9f, 0.03f, 0.9f);
+                var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                go.GetComponent<MeshRenderer>().sharedMaterial = new Material(shader) { color = new Color(0.35f, 0.85f, 0.35f) };
+                formationGhosts.Add(go);
+            }
+            while (formationGhosts.Count > count)
+            {
+                var last = formationGhosts[formationGhosts.Count - 1];
+                formationGhosts.RemoveAt(formationGhosts.Count - 1);
+                if (last != null) Destroy(last);
+            }
+        }
+
+        void ClearFormationGhosts()
+        {
+            foreach (var g in formationGhosts) if (g != null) Destroy(g);
+            formationGhosts.Clear();
+        }
+
+        void RejectOrder(string reason)
+        {
+            if (ModeToast != null) ModeToast.Show(reason, 1.2f);
+            OrderService.PlayRejectSound();
+            GameLog.Line($"Orden rechazada: {reason}");
+        }
+
+        // Se guardan IDS y no referencias a Soldier: si un miembro del
+        // grupo cae, su id simplemente no resuelve al recuperarlo, en vez
+        // de arrastrar una referencia a un objeto muerto para siempre.
+        readonly Dictionary<int, List<int>> controlGroups = new Dictionary<int, List<int>>();
+        int lastRecalledGroup = -1;
+        float lastRecallTime = -99f;
+        const float GroupDoubleTapSeconds = 0.4f;
+
+        void UpdateControlGroups(Keyboard kb)
+        {
+            var digitKeys = new[] { kb.digit1Key, kb.digit2Key, kb.digit3Key, kb.digit4Key, kb.digit5Key,
+                                    kb.digit6Key, kb.digit7Key, kb.digit8Key, kb.digit9Key };
+            bool ctrl = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
+
+            for (int i = 0; i < digitKeys.Length; i++)
+            {
+                if (!digitKeys[i].wasPressedThisFrame) continue;
+                int group = i + 1;
+
+                if (ctrl)
+                {
+                    if (Selection.Selected.Count == 0) continue;
+                    var ids = new List<int>();
+                    foreach (var s in Selection.Selected) ids.Add(s.Id);
+                    controlGroups[group] = ids;
+                    if (ModeToast != null) ModeToast.Show($"GRUPO {group} GUARDADO ({ids.Count})", 1.0f);
+                    GameLog.Line($"Se guardo el grupo de control {group} con {ids.Count} soldados");
+                    continue;
+                }
+
+                if (!controlGroups.TryGetValue(group, out var savedIds)) continue;
+
+                var alive = new List<Soldier>();
+                foreach (var id in savedIds)
+                {
+                    var s = ActorRegistry.FindById(id);
+                    if (s != null && s.Health.IsAlive) alive.Add(s);
+                }
+                if (alive.Count == 0) { RejectOrder($"GRUPO {group} SIN SOBREVIVIENTES"); continue; }
+
+                Selection.SelectAll(alive);
+
+                // Doble pulsacion de la MISMA tecla: ademas de seleccionar,
+                // lleva la vista hasta el grupo. La primera solo selecciona
+                // -- recuperar un grupo no deberia mover la camara sin que
+                // el jugador lo pida.
+                bool doubleTap = lastRecalledGroup == group && Time.time - lastRecallTime <= GroupDoubleTapSeconds;
+                lastRecalledGroup = group;
+                lastRecallTime = Time.time;
+
+                if (doubleTap)
+                {
+                    Vector3 sum = Vector3.zero;
+                    foreach (var s in alive) sum += s.transform.position;
+                    Rig.RecenterOn(sum / alive.Count);
+                }
+            }
+        }
 
         void UpdateVehicleSelectionRing()
         {

@@ -28,6 +28,12 @@ namespace SP.Ai
         Vector3[] patrolRoute;
         int patrolIndex;
 
+        // Antes IssueMoveOrder reemplazaba el destino anterior, asi que no
+        // se podian planificar rutas: cada orden borraba la anterior.
+        readonly System.Collections.Generic.Queue<Vector3> orderQueue = new System.Collections.Generic.Queue<Vector3>();
+        public int QueuedOrderCount => orderQueue.Count;
+        public System.Collections.Generic.IEnumerable<Vector3> QueuedDestinations => orderQueue;
+
         // Ronda de patrulla: mientras no haya nada más que hacer (Patrol),
         // camina de waypoint en waypoint en loop. Se corta solo si el
         // sensado detecta un enemigo (como cualquier otra cosa en Patrol).
@@ -97,12 +103,23 @@ namespace SP.Ai
             SetState(AiState.Chase);
         }
 
-        public void IssueMoveOrder(Vector3 point)
+        // queued=false (por defecto) es la orden de siempre: borra todo lo
+        // planificado y va a este punto. queued=true encola este punto
+        // detras de lo que ya haya, sin interrumpir el tramo en curso.
+        public void IssueMoveOrder(Vector3 point, bool queued = false)
         {
             if (!bootstrapped) Bootstrap();
+
+            if (queued && hasOrder && State == AiState.MovingToOrder && mountTarget == null)
+            {
+                orderQueue.Enqueue(point);
+                return;
+            }
+
             target = null;
             hasOrder = true;
             mountTarget = null;
+            orderQueue.Clear();
             orderDestination = point;
             SetState(AiState.MovingToOrder);
         }
@@ -137,6 +154,7 @@ namespace SP.Ai
             if (!bootstrapped) Bootstrap();
             hasOrder = false;
             mountTarget = null;
+            orderQueue.Clear();
             if (State == AiState.MovingToOrder || State == AiState.MovingToAttackOrder)
             {
                 target = null;
@@ -194,14 +212,25 @@ namespace SP.Ai
                 case AiState.MovingToOrder:
                     if (self.Motor.MoveTowards(orderDestination, arriveThreshold, dt))
                     {
-                        hasOrder = false;
                         if (mountTarget != null)
                         {
+                            hasOrder = false;
                             mountTarget.Mount(self);
                             mountTarget = null;
                             return; // el GameObject quedó inactivo: no tocar más estado.
                         }
+
                         EventBus.Instance.Publish(new OrderCompletedEvent(self.Id));
+
+                        // Tramo cumplido: si hay mas puntos planificados,
+                        // sigue con el proximo sin volver a Patrol.
+                        if (orderQueue.Count > 0)
+                        {
+                            orderDestination = orderQueue.Dequeue();
+                            break;
+                        }
+
+                        hasOrder = false;
                         SetState(AiState.Patrol);
                     }
                     break;

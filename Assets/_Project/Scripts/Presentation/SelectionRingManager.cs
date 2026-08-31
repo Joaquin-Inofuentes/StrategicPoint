@@ -16,8 +16,28 @@ namespace SP.Presentation
         readonly Dictionary<int, SelectionRingFx> rings = new Dictionary<int, SelectionRingFx>();
         IDisposable sub;
 
-        void OnEnable() => sub = EventBus.Instance.Subscribe<SelectionChangedEvent>(OnSelectionChanged);
-        void OnDisable() => sub?.Dispose();
+        IDisposable ackSub;
+
+        void OnEnable()
+        {
+            sub = EventBus.Instance.Subscribe<SelectionChangedEvent>(OnSelectionChanged);
+            ackSub = EventBus.Instance.Subscribe<OrderAcknowledgedEvent>(OnOrderAcknowledged);
+        }
+
+        void OnDisable()
+        {
+            sub?.Dispose();
+            ackSub?.Dispose();
+        }
+
+        // Solo destellan los anillos de quienes recibieron la orden: si la
+        // seleccion no era la que el jugador creia, se ve en el acto.
+        void OnOrderAcknowledged(OrderAcknowledgedEvent evt)
+        {
+            if (evt.ActorIds == null) return;
+            foreach (var id in evt.ActorIds)
+                if (rings.TryGetValue(id, out var ring) && ring != null) ring.FlashAcknowledge();
+        }
 
         void OnSelectionChanged(SelectionChangedEvent evt)
         {

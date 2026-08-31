@@ -121,6 +121,14 @@ namespace SP.Core
         }
     }
 
+    // Quienes acaban de recibir una orden, para que sus anillos destellen:
+    // el sonido unico por lote no dice a QUIENES alcanzo.
+    public readonly struct OrderAcknowledgedEvent
+    {
+        public readonly int[] ActorIds;
+        public OrderAcknowledgedEvent(int[] actorIds) => ActorIds = actorIds;
+    }
+
     public readonly struct TurretControlChangedEvent
     {
         public readonly SP.Vehicles.Vehicle Vehicle;
