@@ -184,17 +184,62 @@ namespace SP.Player
 
         IDisposable deathSub;
         IDisposable vehicleDestroyedSub;
+        IDisposable squadDamageSub;
         void OnEnable()
         {
             deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
             vehicleDestroyedSub = EventBus.Instance.Subscribe<VehicleDestroyedEvent>(OnVehicleDestroyed);
             shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFiredForRecoil);
+            squadDamageSub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnSquadDamage);
         }
         void OnDisable()
         {
             deathSub?.Dispose();
             vehicleDestroyedSub?.Dispose();
             shotSub?.Dispose();
+            squadDamageSub?.Dispose();
+        }
+
+        // Si atacaban a un aliado que no estabas controlando, no te
+        // enterabas hasta que ya habia muerto (el aviso de DeadNotice
+        // solo dispara con la muerte). Ahora avisa apenas empieza el
+        // ataque, con una ventana minima entre avisos por soldado para
+        // no saturar con una notificacion por bala.
+        readonly System.Collections.Generic.Dictionary<int, float> lastAttackAlert = new System.Collections.Generic.Dictionary<int, float>();
+        readonly System.Collections.Generic.HashSet<int> lowHealthWarned = new System.Collections.Generic.HashSet<int>();
+        const float LowHealthThreshold = 0.3f;
+        const float AttackAlertCooldown = 4f;
+
+        void OnSquadDamage(DamageTakenEvent evt)
+        {
+            if (!Application.isPlaying || Squad == null || DeadNotice == null) return;
+            if (Brain.Current != null && evt.TargetId == Brain.Current.Id) return; // el propio ya tiene su vignette
+
+            Soldier victim = null;
+            foreach (var s in Squad) if (s != null && s.Id == evt.TargetId) { victim = s; break; }
+            if (victim == null || !victim.Health.IsAlive) return;
+
+            if (!lastAttackAlert.TryGetValue(victim.Id, out var last) || Time.time - last > AttackAlertCooldown)
+            {
+                lastAttackAlert[victim.Id] = Time.time;
+                DeadNotice.Show($"{victim.DisplayName} esta bajo ataque", 2f);
+            }
+
+            // Aviso de vida critica: una sola vez por caida por debajo del
+            // umbral, no una vez por bala mientras siga por debajo.
+            float frac = victim.Health.MaxHealth > 0 ? (float)victim.Health.Current / victim.Health.MaxHealth : 1f;
+            if (frac <= LowHealthThreshold)
+            {
+                if (!lowHealthWarned.Contains(victim.Id))
+                {
+                    lowHealthWarned.Add(victim.Id);
+                    DeadNotice.Show($"{victim.DisplayName} tiene poca vida", 2f);
+                }
+            }
+            else
+            {
+                lowHealthWarned.Remove(victim.Id);
+            }
         }
 
         // Solo avisa si el que reventó es el vehículo donde está el
@@ -324,7 +369,7 @@ namespace SP.Player
             {
                 if (s != null && s.Id == evt.ActorId)
                 {
-                    DeadNotice.Show(s.DisplayName);
+                    DeadNotice.Show($"{s.DisplayName} esta muerto");
                     GameLog.Line($"{s.DisplayName} murio");
                     break;
                 }
@@ -485,6 +530,7 @@ namespace SP.Player
             }
 
             Rig.FollowFps(Brain.Current);
+            UpdateNearestAllyHighlight();
 
             var ray = Rig.GetForwardRay();
             var result = Aim.Evaluate(ray, Brain.Current);
@@ -551,6 +597,46 @@ namespace SP.Player
         // Resalta (aclara el color) el aliado o vehículo al que se le está
         // apuntando, y le devuelve su color original apenas se deja de
         // apuntarle o se apunta a otra cosa.
+        // Para poseer a un aliado hay que apuntarle con precision, sin
+        // ninguna pista de cual esta en rango util -- este anillo marca
+        // al vivo mas cercano (excluyendo al propio poseido) para que el
+        // jugador sepa a quien puede cambiar sin tener que girar la
+        // camara buscando. Se recalcula por intervalo, no por frame: no
+        // hace falta la precision de un frame para "quien esta mas cerca".
+        const float NearestAllyRange = 15f;
+        const float NearestAllyCheckInterval = 0.35f;
+        float nextNearestAllyCheck;
+        Soldier nearestAllyHighlighted;
+        SelectionRingFx nearestAllyRing;
+        static readonly Color NearestAllyRingColor = new Color(0.4f, 0.85f, 1f, 0.8f);
+
+        void UpdateNearestAllyHighlight()
+        {
+            if (Squad == null || Time.time < nextNearestAllyCheck) return;
+            nextNearestAllyCheck = Time.time + NearestAllyCheckInterval;
+
+            Soldier nearest = null;
+            float bestDistSqr = NearestAllyRange * NearestAllyRange;
+            foreach (var s in Squad)
+            {
+                if (s == null || s == Brain.Current || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                float d = (s.transform.position - Brain.Current.transform.position).sqrMagnitude;
+                if (d <= bestDistSqr) { bestDistSqr = d; nearest = s; }
+            }
+
+            if (nearest == nearestAllyHighlighted) return;
+            nearestAllyHighlighted = nearest;
+
+            if (nearestAllyRing != null) { Destroy(nearestAllyRing.gameObject); nearestAllyRing = null; }
+            if (nearest != null) nearestAllyRing = SelectionRingFx.Spawn(nearest.transform, NearestAllyRingColor, 0.85f);
+        }
+
+        void ClearNearestAllyHighlight()
+        {
+            if (nearestAllyRing != null) { Destroy(nearestAllyRing.gameObject); nearestAllyRing = null; }
+            nearestAllyHighlighted = null;
+        }
+
         void UpdateAimHighlight(AimResult result)
         {
             Renderer target = null;
@@ -634,7 +720,7 @@ namespace SP.Player
 
             if (!target.Health.IsAlive)
             {
-                if (DeadNotice != null) DeadNotice.Show(target.DisplayName);
+                if (DeadNotice != null) DeadNotice.Show($"{target.DisplayName} esta muerto");
                 return;
             }
             if (!target.gameObject.activeInHierarchy) return; // montado en un vehículo, no se puede poseer así
@@ -804,6 +890,7 @@ namespace SP.Player
             if (AimUiRef != null) AimUiRef.SetVisible(false);
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
             if (SelectionCount != null) SelectionCount.SetModeVisible(false);
+            ClearNearestAllyHighlight();
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
 
@@ -949,6 +1036,7 @@ namespace SP.Player
             if (AimUiRef != null) AimUiRef.SetVisible(false);
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
             if (SelectionCount != null) SelectionCount.SetModeVisible(true);
+            ClearNearestAllyHighlight();
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             UpdateVehicleSelectionRing();
             bool ctrlHeld = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;

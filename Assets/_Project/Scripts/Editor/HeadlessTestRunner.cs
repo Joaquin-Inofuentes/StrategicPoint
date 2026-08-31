@@ -311,7 +311,22 @@ namespace SP.EditorTools
             }
 
             EditorSceneManager.MarkSceneDirty(scene);
-            EditorSceneManager.SaveScene(scene, ScenePath);
+
+            // BUG REAL encontrado en testeo (no en las fases mismas, en
+            // el propio runner): con runPhases=true, este segundo
+            // SaveScene persistia al ARCHIVO en disco el estado en que
+            // quedaban las fases -- soldados a mitad de combate, y peor,
+            // a veces montados en el vehiculo. Vehicle.seats es un
+            // Dictionary privado que no sobrevive el domain reload: un
+            // soldado guardado montado (GameObject inactivo) quedaba
+            // inactivo PARA SIEMPRE la proxima vez que alguien abriera
+            // esta escena y le diera Play, porque el vehiculo ya no
+            // recordaba tenerlo adentro para poder bajarlo. El primer
+            // SaveScene (arriba, antes de correr las fases) ya dejo en
+            // disco exactamente el estado inicial limpio que se queria
+            // -- las fases son solo verificacion en memoria, no hace
+            // falta volver a grabar lo que dejan a mitad de camino.
+            if (!runPhases) EditorSceneManager.SaveScene(scene, ScenePath);
         }
 
         // ---------------------------------------------------------------

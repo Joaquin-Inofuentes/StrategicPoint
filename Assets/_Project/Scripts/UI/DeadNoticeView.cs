@@ -26,10 +26,15 @@ namespace SP.UI
             if (group == null) group = GetComponent<CanvasGroup>();
         }
 
-        public void Show(string soldierName, float fadeSeconds = 3f)
+        // Antes solo servia para "X esta muerto" (el sufijo iba fijo
+        // adentro). Ahora recibe el mensaje completo, para poder
+        // reusarlo tambien en "X esta bajo ataque" / "X tiene poca
+        // vida" sin construir un componente nuevo para cada aviso de
+        // escuadra parecido.
+        public void Show(string message, float fadeSeconds = 3f)
         {
             if (label == null || group == null) return;
-            label.text = $"{soldierName} está muerto";
+            label.text = message;
             if (routine != null) StopCoroutine(routine);
             routine = StartCoroutine(FadeOut(fadeSeconds));
         }
