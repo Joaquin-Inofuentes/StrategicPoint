@@ -16,6 +16,7 @@ namespace SP.Core
         readonly T prefab;
         readonly Transform parent;
         readonly Stack<T> free = new Stack<T>();
+        readonly HashSet<T> freeSet = new HashSet<T>();
 
         public ObjectPool(T prefab, int prewarm, Transform parent)
         {
@@ -26,12 +27,22 @@ namespace SP.Core
                 var instance = Object.Instantiate(prefab, parent);
                 instance.gameObject.SetActive(false);
                 free.Push(instance);
+                freeSet.Add(instance);
             }
         }
 
         public T Get()
         {
-            T instance = free.Count > 0 ? free.Pop() : Object.Instantiate(prefab, parent);
+            T instance;
+            if (free.Count > 0)
+            {
+                instance = free.Pop();
+                freeSet.Remove(instance);
+            }
+            else
+            {
+                instance = Object.Instantiate(prefab, parent);
+            }
             instance.gameObject.SetActive(true);
             instance.OnSpawn();
             return instance;
@@ -39,9 +50,25 @@ namespace SP.Core
 
         public void Release(T instance)
         {
+            if (instance == null) return;
+            if (!freeSet.Add(instance))
+            {
+                Debug.LogWarning($"[ObjectPool<{typeof(T).Name}>] Release() llamado dos veces sobre la misma instancia ({instance.name}); se ignora la segunda liberacion para no duplicarla en el pool.");
+                return;
+            }
             instance.OnDespawn();
             instance.gameObject.SetActive(false);
             free.Push(instance);
+        }
+
+        public void Clear()
+        {
+            while (free.Count > 0)
+            {
+                var instance = free.Pop();
+                if (instance != null) Object.Destroy(instance.gameObject);
+            }
+            freeSet.Clear();
         }
 
         public int FreeCount => free.Count;

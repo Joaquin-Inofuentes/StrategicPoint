@@ -477,11 +477,10 @@ namespace SP.Presentation
         public static bool PlayUi2D(SfxKind kind, float volume, float priority = 1f)
             => Instance != null && Instance.PlayUi(kind, volume, priority);
 
-        float DistanceToListener(Vector3 position)
-        {
-            var tf = ResolveListener();
-            return tf != null ? Vector3.Distance(tf.position, position) : 0f;
-        }
+        public static float DistanceOrUnknown(Transform listener, Vector3 position) =>
+            listener != null ? Vector3.Distance(listener.position, position) : float.MaxValue;
+
+        float DistanceToListener(Vector3 position) => DistanceOrUnknown(ResolveListener(), position);
 
         Transform ResolveListener()
         {

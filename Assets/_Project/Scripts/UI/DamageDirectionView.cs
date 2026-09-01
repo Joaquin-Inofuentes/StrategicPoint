@@ -91,7 +91,7 @@ namespace SP.UI
             float t = 0f;
             while (t < holdTime)
             {
-                t += Time.deltaTime;
+                t += Time.unscaledDeltaTime;
                 arrow.color = new Color(0.95f, 0.25f, 0.2f, Mathf.Lerp(1f, 0f, t / holdTime));
                 yield return null;
             }

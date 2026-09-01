@@ -95,7 +95,12 @@ namespace SP.CameraSystem
         // golpe con cada tiro y se recupera con un MoveTowards.
         float recoilPitch;
         [SerializeField] float recoilRecoverySpeed = 40f; // grados/seg
-        public void KickRecoil(float degrees) => recoilPitch += degrees;
+        [SerializeField] float maxRecoilPitch = 25f; // tope duro: varias fuentes sumando no deben mandar la mira al cielo
+        public void KickRecoil(float degrees)
+        {
+            if (!CameraFxSettings.Enabled) return;
+            recoilPitch = Mathf.Clamp(recoilPitch + degrees, 0f, maxRecoilPitch);
+        }
         public float RecoilPitch => recoilPitch;
 
         // Sacudida DIRECCIONAL: una vibracion aleatoria no comunica de
@@ -170,7 +175,7 @@ namespace SP.CameraSystem
         Vector3? savedRtsPosition;
         float savedRtsOrthoSize = -1f;
 
-        public void SetMode(ControlMode mode)
+        public void SetMode(ControlMode mode, Vector3? rtsFallbackCenter = null)
         {
             bool wasRts = Mode == ControlMode.Rts;
             bool goingToRts = mode == ControlMode.Rts;
@@ -186,6 +191,9 @@ namespace SP.CameraSystem
 
             Mode = mode;
             if (cam != null) cam.orthographic = mode == ControlMode.Rts;
+
+            if (goingToRts && !wasRts && rtsFallbackCenter.HasValue)
+                RestoreOrSetRtsView(rtsFallbackCenter.Value);
         }
 
         // Si hay una vista RTS guardada, la restaura en vez de recentrar
@@ -195,6 +203,7 @@ namespace SP.CameraSystem
         // explicitamente cual de las dos quieren.
         public void RestoreOrSetRtsView(Vector3 fallbackCenter)
         {
+            CancelTransition();
             if (savedRtsPosition.HasValue && savedRtsOrthoSize > 0f)
             {
                 transform.position = savedRtsPosition.Value;
@@ -212,7 +221,7 @@ namespace SP.CameraSystem
             }
         }
 
-        public void ToggleMode() => SetMode(Mode == ControlMode.Fps ? ControlMode.Rts : ControlMode.Fps);
+        public void ToggleMode(Vector3? rtsFallbackCenter = null) => SetMode(Mode == ControlMode.Fps ? ControlMode.Rts : ControlMode.Fps, rtsFallbackCenter);
 
         // Mientras hay una transición en curso (BeginTransition), el resto
         // de los métodos Follow* no deben pisarla escribiendo la transform
@@ -220,13 +229,23 @@ namespace SP.CameraSystem
         public bool IsTransitioning { get; private set; }
         Coroutine transitionRoutine;
 
+        void CancelTransition()
+        {
+            if (transitionRoutine != null)
+            {
+                StopCoroutine(transitionRoutine);
+                transitionRoutine = null;
+            }
+            IsTransitioning = false;
+        }
+
         // Lerp corto de posición/rotación hacia un ancla (usado al poseer un
         // aliado con F o al subir a un vehículo con E), en vez del salto
         // instantáneo de antes.
         public void BeginTransition(Transform target, float duration = 0.35f)
         {
             if (target == null) return;
-            if (transitionRoutine != null) StopCoroutine(transitionRoutine);
+            CancelTransition();
             transitionRoutine = StartCoroutine(TransitionRoutine(target, duration));
         }
 
@@ -238,14 +257,25 @@ namespace SP.CameraSystem
             float t = 0f;
             while (t < duration)
             {
+                if (target == null)
+                {
+                    transform.position = fromPos;
+                    transform.rotation = fromRot;
+                    IsTransitioning = false;
+                    transitionRoutine = null;
+                    yield break;
+                }
                 t += Time.deltaTime;
                 float k = t / duration;
                 transform.position = Vector3.Lerp(fromPos, target.position, k);
                 transform.rotation = Quaternion.Slerp(fromRot, target.rotation, k);
                 yield return null;
             }
-            transform.position = target.position;
-            transform.rotation = target.rotation;
+            if (target != null)
+            {
+                transform.position = target.position;
+                transform.rotation = target.rotation;
+            }
             IsTransitioning = false;
             transitionRoutine = null;
         }
@@ -264,7 +294,7 @@ namespace SP.CameraSystem
         {
             if (anchor == null || IsTransitioning) return;
             transform.position = anchor.position;
-            transform.rotation = anchor.rotation * Quaternion.Euler(-pitch, 0f, 0f);
+            transform.rotation = anchor.rotation * Quaternion.Euler(-(pitch + recoilPitch), 0f, 0f);
         }
 
         // Tercera persona: orbita detrás y arriba del objetivo, mirándolo.
@@ -278,6 +308,7 @@ namespace SP.CameraSystem
 
         public void SetRtsView(Vector3 center)
         {
+            CancelTransition();
             if (cam != null) cam.orthographicSize = rtsOrthoSize;
             transform.position = center + Vector3.up * rtsHeight;
             transform.rotation = Quaternion.Euler(rtsLookEuler);

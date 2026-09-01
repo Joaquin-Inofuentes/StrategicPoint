@@ -13,9 +13,17 @@ namespace SP.UI
 
         public void Bind(Text text)
         {
+            if (text == null) return;
             label = text;
             rt = text.rectTransform;
             text.gameObject.SetActive(false);
+        }
+
+        void OnDisable()
+        {
+            StopAllCoroutines();
+            if (rt != null) rt.localScale = Vector3.one;
+            if (label != null) label.gameObject.SetActive(false);
         }
 
         public void Show(string message, float holdSeconds = 2.2f)
@@ -41,7 +49,7 @@ namespace SP.UI
         {
             yield return ScaleOver(0.2f, 1.15f, 0.25f);
             yield return ScaleOver(1.15f, 1f, 0.12f);
-            yield return new WaitForSeconds(holdSeconds);
+            yield return new WaitForSecondsRealtime(holdSeconds);
             yield return ScaleOver(1f, 0.2f, 0.3f);
             label.gameObject.SetActive(false);
         }
@@ -51,7 +59,7 @@ namespace SP.UI
             float t = 0f;
             while (t < duration)
             {
-                t += Time.deltaTime;
+                t += Time.unscaledDeltaTime;
                 rt.localScale = Vector3.one * Mathf.Lerp(from, to, t / duration);
                 yield return null;
             }

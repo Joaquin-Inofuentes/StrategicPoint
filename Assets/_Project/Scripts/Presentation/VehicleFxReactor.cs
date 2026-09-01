@@ -116,11 +116,14 @@ namespace SP.Presentation
             RestoreBaseColors();
         }
 
+        void OnDisable()
+        {
+            RestoreBaseColors();
+        }
+
         void RestoreBaseColors()
         {
-            // El vehiculo puede haber muerto (y su chasis puesto negro por
-            // Vehicle.OnDestroyed) durante el flash de chispa -- no pisar
-            // ese color con el original.
+            if (chassisRenderers == null || baseColors == null) return;
             if (vehicle != null && vehicle.IsDestroyed) return;
 
             // Delegar en el propio vehiculo en vez de repintar con el color

@@ -79,11 +79,8 @@ namespace SP.Presentation
         void ApplyStageLook(int stage)
         {
             if (rend == null) return;
-            // Se oscurece y se "asienta" (se achata y se hunde) en cada
-            // etapa: dos señales distintas, para que se lea de lejos en
-            // vista RTS y de cerca en primera persona.
             float darken = stage * 0.22f;
-            rend.sharedMaterial.color = Color.Lerp(baseColor, Color.black, darken);
+            CubeFxReactor.WriteTint(rend, Color.Lerp(baseColor, Color.black, darken));
 
             float squash = 1f - stage * 0.12f;
             transform.localScale = new Vector3(baseScale.x, baseScale.y * squash, baseScale.z);
@@ -104,7 +101,7 @@ namespace SP.Presentation
         void SpawnDebris(int count, float speed)
         {
             var origin = transform.position + Vector3.up * baseScale.y * 0.4f;
-            Color debrisColor = rend != null ? rend.sharedMaterial.color : baseColor;
+            Color debrisColor = rend != null ? CubeFxReactor.ReadTint(rend) : baseColor;
             for (int i = 0; i < count; i++)
             {
                 var dir = (Random.insideUnitSphere + Vector3.up * 1.2f).normalized;

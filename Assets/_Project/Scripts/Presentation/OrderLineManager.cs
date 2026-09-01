@@ -45,7 +45,19 @@ namespace SP.Presentation
         {
             if (!lines.TryGetValue(actorId, out var lr)) return;
             lines.Remove(actorId);
-            if (lr != null) Destroy(lr.gameObject);
+            if (lr == null) return;
+
+            var mat = lr.material;
+            if (Application.isPlaying)
+            {
+                if (mat != null) Destroy(mat);
+                Destroy(lr.gameObject);
+            }
+            else
+            {
+                if (mat != null) DestroyImmediate(mat);
+                DestroyImmediate(lr.gameObject);
+            }
         }
 
         static LineRenderer CreateLine()
@@ -70,8 +82,9 @@ namespace SP.Presentation
             lr.transform.position = new Vector3(0f, -500f, 0f);
             lr.SetPosition(0, lr.transform.position);
             lr.SetPosition(1, lr.transform.position + Vector3.right * 0.01f);
-            if (Application.isPlaying) Object.Destroy(lr.gameObject);
-            else Object.DestroyImmediate(lr.gameObject);
+            var mat = lr.material;
+            if (Application.isPlaying) { if (mat != null) Destroy(mat); Object.Destroy(lr.gameObject); }
+            else { if (mat != null) DestroyImmediate(mat); Object.DestroyImmediate(lr.gameObject); }
         }
     }
 }

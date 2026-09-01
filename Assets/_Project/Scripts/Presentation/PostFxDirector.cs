@@ -56,24 +56,27 @@ namespace SP.Presentation
 
         void EnsureBuilt()
         {
-            if (volume != null && profile != null) return;
-
-            // El Volume vive en un hijo propio para no interferir con nada
-            // que este colgado de este GameObject.
             var holder = transform.Find("PostFxVolume");
             if (holder == null)
             {
                 var go = new GameObject("PostFxVolume");
                 go.transform.SetParent(transform, false);
+                go.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
                 holder = go.transform;
             }
 
             volume = holder.GetComponent<Volume>();
             if (volume == null) volume = holder.gameObject.AddComponent<Volume>();
             volume.isGlobal = true;
-            // Prioridad alta: tiene que ganarle al perfil por defecto de la
-            // plantilla, o los overrides neutralizadores no servirian.
             volume.priority = 1000f;
+
+            if (volume.profile != null)
+            {
+                profile = volume.profile;
+                profile.TryGet(out aberration);
+                profile.TryGet(out motionBlur);
+                return;
+            }
 
             profile = ScriptableObject.CreateInstance<VolumeProfile>();
             profile.name = "SP_RuntimePostFx";

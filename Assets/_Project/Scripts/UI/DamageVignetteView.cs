@@ -96,7 +96,7 @@ namespace SP.UI
             float t = 0f;
             while (t < fadeTime)
             {
-                t += Time.deltaTime;
+                t += Time.unscaledDeltaTime;
                 // Interpola hacia el piso de velocidad, no hacia 0: si no,
                 // recibir un tiro manejando rapido apagaba la viñeta de
                 // velocidad hasta el proximo cambio de velocidad.

@@ -8,6 +8,12 @@ namespace SP.Combat
 {
     // Viaja, comprueba su propio impacto por distancia (sin física) y
     // se devuelve solo al pool. Nunca lo instancia nadie salvo el pool.
+    // [DefaultExecutionOrder(-50)]: los proyectiles tienen que evaluar su
+    // impacto DESPUES de que WorldSimulationDriver mueva a todo el mundo en
+    // este mismo frame (-100), no antes -- si no, el orden relativo entre
+    // "el soldado se movio" y "la bala revisa que toco" quedaba librado al
+    // orden interno no documentado de Unity.
+    [DefaultExecutionOrder(-50)]
     public class Projectile : MonoBehaviour, IPoolable
     {
         [SerializeField] float speed = 40f;
@@ -63,12 +69,23 @@ namespace SP.Combat
         public float Gravity => gravity;
         public Vector3 Velocity => velocity;
 
+        int poolGeneration;
+        public int PoolGeneration { get => poolGeneration; set => poolGeneration = value; }
+
         const float RestScale = 0.2f; // debe coincidir con la escala del prefab (BuildAndSaveProjectilePrefab)
         const float TraceStretch = 2.75f;
 
         // Instancias actualmente en vuelo. Permite avanzar la simulación
         // manualmente (tests) sin depender del bucle de Update de Unity.
         public static readonly List<Projectile> ActiveInstances = new List<Projectile>();
+
+        // Los estaticos sobreviven a "Enter Play Mode" sin domain reload: sin
+        // este reset, ActiveInstances arrastraria referencias fake-null de
+        // proyectiles de la sesion de Play ANTERIOR (mismo patron que
+        // AlertQueue.ResetOnLoad), inflando el contador de PerfHudView y
+        // arriesgando a que AutoDemoRunner agarre una referencia vieja.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetActiveInstancesOnLoad() => ActiveInstances.Clear();
 
         // speedMultiplier: 1f para todo lo que ya existia (armas de mano,
         // que no lo pasan). El cañon del tanque pide 2f para que su
@@ -423,7 +440,16 @@ namespace SP.Combat
                 // normal en el frame siguiente, solo cambio de lugar.
                 Vector3 away = s.transform.position - point;
                 away.y = 0f;
-                if (away.sqrMagnitude < 0.0001f) away = Random.insideUnitSphere;
+                if (away.sqrMagnitude < 0.0001f)
+                {
+                    // Mismo criterio que el vector principal (arriba): el empuje de
+                    // una granada es lateral, nunca vertical. Random.insideUnitSphere
+                    // tenia componente Y y podia lanzar al soldado para arriba si
+                    // caia justo en el epicentro.
+                    var randomXZ = Random.insideUnitCircle;
+                    away = new Vector3(randomXZ.x, 0f, randomXZ.y);
+                    if (away.sqrMagnitude < 0.0001f) away = Vector3.forward; // caso degenerado de insideUnitCircle (~(0,0)): direccion fija
+                }
                 float strength = 1f - Mathf.Clamp01(dist / explosionRadius);
                 s.transform.position += away.normalized * strength * 2.2f;
             }

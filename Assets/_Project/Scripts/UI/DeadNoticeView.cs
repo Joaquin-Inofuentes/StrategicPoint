@@ -26,6 +26,13 @@ namespace SP.UI
             if (group == null) group = GetComponent<CanvasGroup>();
         }
 
+        void OnDisable()
+        {
+            StopAllCoroutines();
+            routine = null;
+            if (group != null) group.alpha = 0f;
+        }
+
         // Antes solo servia para "X esta muerto" (el sufijo iba fijo
         // adentro). Ahora recibe el mensaje completo, para poder
         // reusarlo tambien en "X esta bajo ataque" / "X tiene poca
@@ -33,9 +40,22 @@ namespace SP.UI
         // escuadra parecido.
         public void Show(string message, float fadeSeconds = 3f)
         {
+            if (string.IsNullOrEmpty(message)) return;
+            AlertQueue.Push(message, AlertPriority.Media, fadeSeconds);
+        }
+
+        void Update()
+        {
+            if (!Application.isPlaying) return;
+            if (routine != null) return; // ya hay un aviso en pantalla, que termine su ciclo
+            if (AlertQueue.TryDequeue(out string message, out float seconds))
+                BeginShow(message, seconds);
+        }
+
+        void BeginShow(string message, float fadeSeconds)
+        {
             if (label == null || group == null) return;
             label.text = message;
-            if (routine != null) StopCoroutine(routine);
             routine = StartCoroutine(FadeOut(fadeSeconds));
         }
 
@@ -44,17 +64,19 @@ namespace SP.UI
             group.alpha = 1f;
             float t = 0f;
             const float hold = 0.4f;
-            while (t < hold) { t += Time.deltaTime; yield return null; }
+            while (t < hold) { t += Time.unscaledDeltaTime; yield return null; }
 
             t = 0f;
             float fade = Mathf.Max(0.01f, duration - hold);
             while (t < fade)
             {
-                t += Time.deltaTime;
+                t += Time.unscaledDeltaTime;
                 group.alpha = 1f - (t / fade);
                 yield return null;
             }
             group.alpha = 0f;
+            routine = null;
+            AlertQueue.NotifyFinished();
         }
     }
 }

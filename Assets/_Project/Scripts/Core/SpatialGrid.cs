@@ -44,6 +44,9 @@ namespace SP.Core
         static readonly Dictionary<long, List<Soldier>> cells = new Dictionary<long, List<Soldier>>();
         static bool built;
 
+        static readonly List<long> emptyKeysBuffer = new List<long>();
+        public static int CellCount => cells.Count;
+
         const int Offset = 1 << 20; // desplaza coordenadas negativas antes de empacar
 
         static long Key(int cx, int cz) => ((long)(cx + Offset) << 32) | (uint)(cz + Offset);
@@ -62,6 +65,16 @@ namespace SP.Core
 
         public static void Rebuild()
         {
+            // WorldSimulationDriver.Step() llama Rebuild() una vez por tick,
+            // antes de cualquier sensado de IA -- es la puerta de entrada real
+            // de la simulacion. Sin este EnsureAllRegistered(), un soldado que
+            // arranca la escena ya desactivado (ej. premontado en un vehiculo)
+            // nunca entra en ActorRegistry.All -- y por lo tanto nunca en esta
+            // grilla -- salvo que, por casualidad, algo mas (CountAlive /
+            // CollectLivingAllies) lo haya registrado antes. Mismo arreglo que
+            // ya tienen esos dos, aplicado donde realmente hace falta.
+            ActorRegistry.EnsureAllRegistered();
+
             foreach (var list in cells.Values) list.Clear();
 
             // OJO: sin filtro de activeInHierarchy a proposito. El
@@ -82,6 +95,18 @@ namespace SP.Core
                 }
                 list.Add(s);
             }
+
+            // Purga las celdas que quedaron vacias en ESTE Rebuild: sin esto,
+            // toda celda que alguna vez tuvo un soldado se queda en el
+            // diccionario para siempre, y Rebuild() -- que corre una vez por
+            // Step, sesenta veces por segundo -- se pone mas lento con la
+            // vida de la partida solo por el tamaño del diccionario, no por
+            // la cantidad real de soldados.
+            emptyKeysBuffer.Clear();
+            foreach (var kvp in cells)
+                if (kvp.Value.Count == 0) emptyKeysBuffer.Add(kvp.Key);
+            for (int i = 0; i < emptyKeysBuffer.Count; i++) cells.Remove(emptyKeysBuffer[i]);
+
             built = true;
         }
 

@@ -19,6 +19,7 @@ namespace SP.Presentation
         GameObject rebindPanel;
         GameOutcomeController outcome;
         SP.Player.PlayerInputDriver input;
+        Text controlsListTxt;
 
         // Wireados desde HeadlessTestRunner para las opciones de
         // accesibilidad: tamaño de HUD y de mirilla.
@@ -61,6 +62,11 @@ namespace SP.Presentation
             {
                 var t = transform.Find("ControlsPanel");
                 if (t != null) controlsPanel = t.gameObject;
+            }
+            if (controlsListTxt == null && controlsPanel != null)
+            {
+                var t = controlsPanel.transform.Find("List");
+                if (t != null) controlsListTxt = t.GetComponent<Text>();
             }
             if (confirmExitPanel == null)
             {
@@ -286,6 +292,11 @@ namespace SP.Presentation
             GameLog.Line("Se salio de configuraciones");
         }
 
+        void RefreshControlsList()
+        {
+            if (controlsListTxt != null) controlsListTxt.text = SP.UI.ControlsTable.FullText();
+        }
+
         // Abre/cierra el panel de controles SIN pausar el juego -- para
         // consultar los atajos en pleno movimiento (tecla dedicada, no la
         // pausa) sin perder el hilo de lo que esta pasando en pantalla.
@@ -298,13 +309,16 @@ namespace SP.Presentation
             if (controlsPanel == null || IsPaused) return;
             if (outcome != null && outcome.IsShowing) return;
             if (input != null && input.IsHandlingDeath) return;
-            controlsPanel.SetActive(!controlsPanel.activeSelf);
+            bool nextState = !controlsPanel.activeSelf;
+            controlsPanel.SetActive(nextState);
+            if (nextState) RefreshControlsList();
         }
 
         public void OnControlsClicked()
         {
             if (controlsPanel == null || controlsPanel.activeSelf) return;
             controlsPanel.SetActive(true);
+            RefreshControlsList();
             GameLog.Line("Se entro a controles");
         }
 
@@ -330,6 +344,7 @@ namespace SP.Presentation
         {
             if (rebindPanel == null || !rebindPanel.activeSelf) return;
             rebindPanel.SetActive(false);
+            RefreshControlsList();
             GameLog.Line("Se salio de remapear teclas");
         }
 
@@ -338,6 +353,7 @@ namespace SP.Presentation
             SP.Player.KeyBindings.ResetToDefaults();
             var view = rebindPanel != null ? rebindPanel.GetComponent<SP.UI.KeyRebindView>() : null;
             if (view != null) view.RefreshAll();
+            RefreshControlsList();
             GameLog.Line("Se restauraron los controles de fabrica");
         }
 

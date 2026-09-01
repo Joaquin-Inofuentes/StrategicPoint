@@ -12,6 +12,7 @@ namespace SP.Presentation
     // Pantallas de victoria y derrota: UI distinta para cada una (colores,
     // texto) pero los mismos dos botones -- Reintentar (recarga esta
     // misma escena) y Salir (vuelve al menú principal).
+    [DefaultExecutionOrder(-50)]
     public class GameOutcomeController : MonoBehaviour
     {
         GameObject victoryPanel;
@@ -112,7 +113,9 @@ namespace SP.Presentation
             float elapsed = Time.time - startTime;
             int minutes = Mathf.FloorToInt(elapsed / 60f);
             int seconds = Mathf.FloorToInt(elapsed % 60f);
-            return $"Bajas enemigas: {enemyKills}   ·   Bajas propias: {squadLosses}   ·   Tiempo: {minutes:00}:{seconds:00}";
+            int enemyDead = SP.Core.ActorRegistry.CountDead(TeamId.Enemy);
+            int squadDead = SP.Core.ActorRegistry.CountDead(TeamId.Player);
+            return $"Bajas enemigas: {enemyDead}   ·   Bajas propias: {squadDead}   ·   Tiempo: {minutes:00}:{seconds:00}";
         }
 
         // Foco de teclado en Reintentar al abrir cada pantalla: es la

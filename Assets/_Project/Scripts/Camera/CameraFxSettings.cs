@@ -34,6 +34,7 @@ namespace SP.CameraSystem
             {
                 cached = value;
                 PlayerPrefs.SetInt(Pref, value ? 1 : 0);
+                PlayerPrefs.Save();
             }
         }
 

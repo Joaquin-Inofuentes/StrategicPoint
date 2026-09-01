@@ -90,6 +90,8 @@ namespace SP.Presentation
         // Estado de instancia
         // ------------------------------------------------------------
         static WorldUiDirector active;
+        static readonly List<WorldUiDirector> enabledInstances = new List<WorldUiDirector>();
+        public bool IsDrivingUpdates => active == this;
 
         // Camera.main resuelto UNA vez. Se re-resuelve solo si quedo en
         // null (cambio de escena, camara destruida): el operador == de
@@ -102,6 +104,7 @@ namespace SP.Presentation
 
         void OnEnable()
         {
+            enabledInstances.Add(this);
             if (active == null) active = this;
             // La camara vieja no vale tras un cambio de escena.
             cam = null;
@@ -110,7 +113,11 @@ namespace SP.Presentation
 
         void OnDisable()
         {
-            if (active == this) active = null;
+            enabledInstances.Remove(this);
+            if (active == this)
+            {
+                active = enabledInstances.Count > 0 ? enabledInstances[0] : null;
+            }
         }
 
         // Un solo LateUpdate en todo el juego para la UI de mundo. Si por

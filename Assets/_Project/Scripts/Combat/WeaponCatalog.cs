@@ -31,9 +31,16 @@ namespace SP.Combat
                     // Grande y gruesa.
                     return new Spec { Damage = 50, Cooldown = 0.80f, Color = new Color(0.80f, 0.20f, 0.55f), VisualScale = new Vector3(0.26f, 0.26f, 0.65f), MagazineSize = 4, ReloadDuration = 2.2f };
                 case WeaponKind.Rifle:
-                default:
                     // Larga y angosta.
                     return new Spec { Damage = 26, Cooldown = 0.30f, Color = new Color(0.55f, 0.68f, 0.78f), VisualScale = new Vector3(0.15f, 0.15f, 0.55f), MagazineSize = 8, ReloadDuration = 1.5f };
+                default:
+                    // WeaponKind sin Spec definido en el catalogo: no debe
+                    // pasar desapercibido como si fuera un Rifle elegido a
+                    // proposito. Avisa fuerte y cae a Rifle solo como ultimo
+                    // recurso, para no tirar el combate abajo por un dato
+                    // faltante.
+                    Debug.LogWarning($"[WeaponCatalog] WeaponKind.{kind} no tiene Spec definido -- usando stats de Rifle como resguardo.");
+                    goto case WeaponKind.Rifle;
             }
         }
     }

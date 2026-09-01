@@ -60,7 +60,11 @@ namespace SP.Presentation
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = "PossessedMarker";
             var col = go.GetComponent<Collider>();
-            if (col != null) Destroy(col);
+            if (col != null)
+            {
+                if (Application.isPlaying) Destroy(col);
+                else DestroyImmediate(col);
+            }
             go.transform.SetParent(transform, false);
             // Rombo apuntando hacia abajo: se distingue de las esferas de
             // alerta enemiga y del cubo de estado del escuadron.

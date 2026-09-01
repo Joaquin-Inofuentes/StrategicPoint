@@ -24,6 +24,15 @@ namespace SP.Player
     // del soldado elegido. No decide combate, solo entrega la orden.
     public static class OrderService
     {
+        static List<Soldier> AliveOnly(IEnumerable<Soldier> selection)
+        {
+            var list = new List<Soldier>();
+            if (selection == null) return list;
+            foreach (var s in selection)
+                if (s != null && s.Health != null && s.Health.IsAlive) list.Add(s);
+            return list;
+        }
+
         public static Soldier FindNearestFreeAlly(Vector3 point, TeamId team, Soldier exclude)
         {
             return ActorRegistry.FindNearest(point, s =>
@@ -56,6 +65,15 @@ namespace SP.Player
         public static Vector3[] FormationPoints(Vector3 center, int count)
         {
             return FormationPoints(center, Vector3.forward, count, FormationKind.Cuadricula, FormationSpacing);
+        }
+
+        // Igual que la sobrecarga de 2 argumentos (Cuadricula fija), pero
+        // dejando elegir la formacion real -- para la vista previa fantasma
+        // en RTS, que necesita mostrar la MISMA formacion que despues emite
+        // la orden real.
+        public static Vector3[] FormationPoints(Vector3 center, Vector3 forward, int count, FormationKind kind)
+        {
+            return FormationPoints(center, forward, count, kind, FormationSpacing);
         }
 
         // Funcion PURA: mismas entradas, mismas salidas, sin tocar escena
@@ -229,7 +247,7 @@ namespace SP.Player
         public static void IssueAttackOrderForSelection(IEnumerable<Soldier> selection, Soldier enemy)
         {
             if (selection == null || enemy == null) return;
-            var list = new List<Soldier>(selection);
+            var list = AliveOnly(selection);
             if (list.Count == 0) return;
 
             for (int i = 0; i < list.Count; i++) IssueAttackOrder(list[i], enemy);
@@ -252,8 +270,7 @@ namespace SP.Player
         // quede del lado del driver.
         public static void IssueFormationOrderForSelection(IEnumerable<Soldier> selection, Vector3 center, Vector3 forward, FormationKind kind = FormationKind.Cuadricula, bool queued = false)
         {
-            if (selection == null) return;
-            var list = new List<Soldier>(selection);
+            var list = AliveOnly(selection);
             if (list.Count == 0) return;
 
             // Se pasa FormationSpacing y no el default de la firma pura:
@@ -361,8 +378,8 @@ namespace SP.Player
 
         public static void IssueMountOrderForSelection(IEnumerable<Soldier> selection, Vehicle vehicle)
         {
-            if (selection == null || vehicle == null) return;
-            var list = new List<Soldier>(selection);
+            if (vehicle == null) return;
+            var list = AliveOnly(selection);
             if (list.Count == 0) return;
 
             for (int i = 0; i < list.Count; i++) IssueMountOrder(list[i], vehicle);

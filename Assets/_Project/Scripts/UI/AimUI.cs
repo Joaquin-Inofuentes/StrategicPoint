@@ -18,6 +18,7 @@ namespace SP.UI
         Image crosshair;
         Color crosshairBaseColor = Color.white;
         Vector2 crosshairBaseSize = new Vector2(6f, 6f);
+        Vector2 crosshairSpriteSize = new Vector2(6f, 6f); // sizeDelta real de la Image, sin escala de usuario ni spread
         float crosshairUserScale = 1f;
         float crosshairSpreadFraction;
 
@@ -43,7 +44,7 @@ namespace SP.UI
 
         void RecomputeCrosshairSize()
         {
-            crosshairBaseSize = new Vector2(6f, 6f) * crosshairUserScale + Vector2.one * (crosshairSpreadFraction * 9f);
+            crosshairBaseSize = crosshairSpriteSize * crosshairUserScale + Vector2.one * (crosshairSpreadFraction * 9f);
         }
 
         // El tinte real de cada frame lo recalcula UpdateFromAimResult a
@@ -110,7 +111,8 @@ namespace SP.UI
             if (cross != null)
             {
                 crosshairBaseColor = cross.color;
-                crosshairBaseSize = cross.rectTransform.sizeDelta;
+                crosshairSpriteSize = cross.rectTransform.sizeDelta;
+                RecomputeCrosshairSize();
             }
         }
 
@@ -178,7 +180,8 @@ namespace SP.UI
                     if (crosshair != null)
                     {
                         crosshairBaseColor = crosshair.color;
-                        crosshairBaseSize = crosshair.rectTransform.sizeDelta;
+                        crosshairSpriteSize = crosshair.rectTransform.sizeDelta;
+                        RecomputeCrosshairSize();
                     }
                 }
             }
@@ -197,10 +200,16 @@ namespace SP.UI
                 if (t != null)
                 {
                     vehicleInfoPanel = t.gameObject;
-                    // El primer Image es el fondo del panel; los siguientes 4,
-                    // los cuadrados de asiento en el mismo orden en que se
-                    // crearon (Driver, Passenger1, Passenger2, Gunner).
-                    seatSquares = t.GetComponentsInChildren<Image>(true).Skip(1).Take(4).ToArray();
+                    var squares = t.GetComponentsInChildren<Image>(true).Skip(1).Take(4).ToArray();
+                    if (squares.Length == SeatOrder.Length)
+                    {
+                        seatSquares = squares;
+                    }
+                    else
+                    {
+                        seatSquares = null;
+                        Debug.LogWarning($"[AimUI] VehicleInfoPanel tiene {squares.Length} Image hijas tras el fondo (se esperaban {SeatOrder.Length}); el panel de asientos de vehiculo no se puede armar de forma confiable y queda desactivado.");
+                    }
                 }
             }
             if (ammoWarningText == null)
@@ -320,7 +329,7 @@ namespace SP.UI
             float t = 0f;
             while (t < duration)
             {
-                t += Time.deltaTime;
+                t += Time.unscaledDeltaTime;
                 float k = t / duration;
                 crosshair.rectTransform.sizeDelta = Vector2.Lerp(crosshairBaseSize * peakMultiplier, crosshairBaseSize, k);
                 // Vuelve al tinte de lo que se esté apuntando ahora (no al
@@ -410,6 +419,7 @@ namespace SP.UI
             SP.Ai.AiState.Patrol => "Patrullando",
             SP.Ai.AiState.Idle => "En reposo",
             SP.Ai.AiState.MovingToOrder => "Cumpliendo orden",
+            SP.Ai.AiState.Follow => "Siguiendo",
             SP.Ai.AiState.MovingToAttackOrder => "Yendo a atacar",
             SP.Ai.AiState.Chase => "Persiguiendo",
             SP.Ai.AiState.Attack => "En combate",

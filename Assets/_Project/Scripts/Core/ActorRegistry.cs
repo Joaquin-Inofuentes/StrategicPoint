@@ -54,6 +54,15 @@ namespace SP.Core
             return n;
         }
 
+        public static int CountDead(TeamId team)
+        {
+            EnsureAllRegistered();
+            int n = 0;
+            foreach (var s in soldiers)
+                if (s != null && s.Team == team && s.Health != null && !s.Health.IsAlive) n++;
+            return n;
+        }
+
         public static Soldier FindById(int id)
         {
             foreach (var s in soldiers)

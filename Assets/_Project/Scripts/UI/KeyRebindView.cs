@@ -23,6 +23,7 @@ namespace SP.UI
         public string[] ActionIds;
 
         int listeningRow = -1;
+        int listenStartFrame = -1;
 
         public bool IsListening => listeningRow >= 0;
 
@@ -62,11 +63,19 @@ namespace SP.UI
 
         public void BeginListening(int row)
         {
-            if (ActionIds == null || row < 0 || row >= ActionIds.Length) return;
+            if (ActionIds == null || Labels == null || row < 0 || row >= ActionIds.Length || row >= Labels.Length) return;
+            RefreshAll(); // limpia cualquier "PRESIONA UNA TECLA" que hubiera quedado de una fila anterior
+            listenStartFrame = Time.frameCount; // (del Bug 4, si se aplica en el mismo commit)
             listeningRow = row;
-            if (Labels != null && Labels[row] != null)
+            if (Labels[row] != null)
                 Labels[row].text = NameOf(ActionIds[row]) + ":  PRESIONA UNA TECLA";
         }
+
+        // Funcion pura, sin estado de escena: separa la REGLA (ignorar el
+        // frame en el que empezo a escuchar) de la lectura real del teclado,
+        // para poder probarla sin Keyboard.current.
+        public static bool ShouldIgnoreCapture(int listenStartFrame, int currentFrame) =>
+            currentFrame <= listenStartFrame;
 
         void Update()
         {
@@ -80,6 +89,8 @@ namespace SP.UI
                 RefreshAll();
                 return;
             }
+
+            if (ShouldIgnoreCapture(listenStartFrame, Time.frameCount)) return; // el click que activo la escucha no cuenta como la tecla nueva
 
             // anyKey no sirve para saber CUAL: hay que recorrer los
             // controles del teclado y quedarse con el primero que se apreto
@@ -97,15 +108,10 @@ namespace SP.UI
             if (listeningRow < 0 || ActionIds == null) return;
             string action = ActionIds[listeningRow];
 
-            // Si esa tecla ya la usa otra accion, se libera la vieja en vez
-            // de dejar dos acciones peleando por la misma tecla en silencio.
-            foreach (var other in ActionIds)
-            {
-                if (other == action) continue;
-                if (KeyBindings.Get(other) == key) KeyBindings.Set(other, Key.None);
-            }
+            string freed = KeyBindings.Set(action, key);
+            if (freed != null)
+                GameLog.Line($"{NameOf(freed)} quedo sin tecla asignada (la tomo {NameOf(action)})");
 
-            KeyBindings.Set(action, key);
             listeningRow = -1;
             RefreshAll();
         }

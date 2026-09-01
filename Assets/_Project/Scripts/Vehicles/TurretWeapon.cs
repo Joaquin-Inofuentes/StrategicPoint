@@ -341,7 +341,12 @@ namespace SP.Vehicles
             if (barrel == null) return;
             var rend = barrel.GetComponent<MeshRenderer>();
             if (rend == null) return;
-            if (!barrelColorCached) { barrelColorCached = true; barrelBaseColor = rend.sharedMaterial.color; }
+            if (!barrelColorCached) 
+            { 
+                barrelColorCached = true; 
+                if (rend.sharedMaterial != null) rend.sharedMaterial = new Material(rend.sharedMaterial);
+                barrelBaseColor = rend.sharedMaterial != null ? rend.sharedMaterial.color : Color.white; 
+            }
             rend.sharedMaterial.color = Color.Lerp(barrelBaseColor, new Color(1f, 0.25f, 0.1f), Heat);
         }
     }

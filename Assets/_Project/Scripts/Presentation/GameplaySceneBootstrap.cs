@@ -47,6 +47,7 @@ namespace SP.Presentation
                 SP.UI.AlertQueue.Push("Avanza con [WASD] y dispara con clic izquierdo",
                                       SP.UI.AlertPriority.Baja, 3.5f);
                 PlayerPrefs.SetInt(PrefFirstActionShown, 1);
+                PlayerPrefs.Save();
             }
         }
 

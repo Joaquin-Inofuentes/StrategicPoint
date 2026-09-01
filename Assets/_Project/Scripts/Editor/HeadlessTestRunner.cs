@@ -153,7 +153,8 @@ namespace SP.EditorTools
             RenderSettings.customReflectionTexture = null;
         }
 
-        [MenuItem("Strategic Point/Construir nivel y correr test")]
+        [MenuItem("Strategic Point/Run All Tests Headless")]
+        [Unity.Editor.Pipeline.CliCommand("run-suite")]
         public static void RunAll()
         {
             // Se resetea al arrancar: sin esto, una segunda corrida en la
@@ -235,6 +236,7 @@ namespace SP.EditorTools
             // Mundo aislado: NewScene sin guardar nada, para no pisar
             // SC_TestLevel.unity ni sus referencias estaticas (killFeedRef,
             // etc, que quedarian apuntando a objetos de una escena vieja).
+            DestroyTransientRuntimeAssets();
             EventBus.Instance.ClearAll();
             ActorRegistry.Clear();
             SP.Core.WorldSystemsRegistry.Clear();
@@ -366,9 +368,11 @@ namespace SP.EditorTools
 
         static int EquivalenceCheckWithUnitCount(int unitCount, int queries)
         {
+            DestroyTransientRuntimeAssets();
             EventBus.Instance.ClearAll();
             ActorRegistry.Clear();
             SP.Core.WorldSystemsRegistry.Clear();
+            Projectile.ActiveInstances.Clear();
 
             EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             BuildLighting();
@@ -474,6 +478,7 @@ namespace SP.EditorTools
         [MenuItem("Strategic Point/Estres con carga realista (50+)")]
         public static void RunStressScenarios()
         {
+            DestroyTransientRuntimeAssets();
             EventBus.Instance.ClearAll();
             ActorRegistry.Clear();
             SP.Core.WorldSystemsRegistry.Clear();
@@ -483,16 +488,17 @@ namespace SP.EditorTools
             BuildLighting();
             BuildGround();
 
+            const int StressSoldierCount = 50;
             var soldierPrefab = BuildAndSaveSoldierPrefab();
             var projectilePrefab = BuildAndSaveProjectilePrefab();
             var poolGO = new GameObject("StressPool");
             var pool = poolGO.AddComponent<ProjectilePool>();
-            pool.Configure(projectilePrefab, SP.Combat.ProjectilePool.RecommendedPrewarm(50, 3f, 3f));
+            pool.Configure(projectilePrefab, SP.Combat.ProjectilePool.RecommendedPrewarm(StressSoldierCount, 3f, 3f));
 
             var rng = new System.Random(555);
             var playerColor = new Color(0.95f, 0.35f, 0.30f);
-            var soldiers = new List<Soldier>(50);
-            for (int i = 0; i < 50; i++)
+            var soldiers = new List<Soldier>(StressSoldierCount);
+            for (int i = 0; i < StressSoldierCount; i++)
             {
                 var pos = new Vector3((float)(rng.NextDouble() * 100.0 - 50.0), 0.8f, (float)(rng.NextDouble() * 100.0 - 50.0));
                 soldiers.Add(SpawnSoldier(soldierPrefab, "Stress_" + i, TeamId.Player, RoleType.Assault, pos, playerColor, pool, 100));
@@ -523,20 +529,20 @@ namespace SP.EditorTools
             // instanciar primitivas nuevas.
             var ringManagerGO = new GameObject("StressRingManager");
             var ringManager = ringManagerGO.AddComponent<SP.Presentation.SelectionRingManager>();
-            var onSelChanged = typeof(SP.Presentation.SelectionRingManager).GetMethod("OnSelectionChanged",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var onSelChanged = GetRequiredMethod(typeof(SP.Presentation.SelectionRingManager), "OnSelectionChanged", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
             SP.Presentation.SelectionRingFx.ResetSpawnCount();
             var allIds = soldiers.ConvertAll(s => s.Id);
             onSelChanged.Invoke(ringManager, new object[] { new SelectionChangedEvent(allIds) });
             result.RingSpawnsAfterFill = SP.Presentation.SelectionRingFx.SpawnCount;
+            int subsetSize = Mathf.Clamp(StressSoldierCount / 5, 1, StressSoldierCount);
 
             for (int i = 0; i < 200; i++)
             {
                 // Alterna entre la escuadra completa y un subconjunto, que
                 // es el patron real de jugar (seleccionar todo, despues
                 // acotar a unos pocos, despues volver a todos).
-                var subset = i % 2 == 0 ? allIds : allIds.GetRange(0, 10);
+                var subset = i % 2 == 0 ? allIds : allIds.GetRange(0, subsetSize);
                 onSelChanged.Invoke(ringManager, new object[] { new SelectionChangedEvent(subset) });
             }
             result.RingSpawnsAfter200Changes = SP.Presentation.SelectionRingFx.SpawnCount;
@@ -564,6 +570,7 @@ namespace SP.EditorTools
 
         static void BuildAndRun(bool runPhases = true)
         {
+            DestroyTransientRuntimeAssets();
             EventBus.Instance.ClearAll();
             ActorRegistry.Clear();
             Projectile.ActiveInstances.Clear();
@@ -829,12 +836,12 @@ namespace SP.EditorTools
             bool moved = Vector3.Distance(startPos, vega.transform.position) > 0.1f;
             Check($"Movimiento verificado contra transform de {vega.DisplayName} (WASD), desplazamiento {(vega.transform.position - startPos).magnitude:0.00} m", moved);
 
+            int freeBefore = pool.FreeCount;
             bool fired = vega.Weapon.TryFire(vega.transform.position, vega.transform.forward);
             Check($"Disparo: se creo proyectil de {vega.DisplayName} con exito (click)", fired);
 
-            int freeBefore = pool.FreeCount;
             SimulateSeconds(3.2f);
-            Check("El proyectil volvio al pool", pool.FreeCount >= freeBefore);
+            Check("El proyectil volvio al pool", pool.FreeCount == freeBefore);
 
             var enemy1 = SpawnSoldier(soldierPrefab, "Enemigo_1", TeamId.Enemy, RoleType.Enemy, vega.transform.position + vega.transform.forward * 15f + Vector3.up * 0.8f, enemyColor, pool, 180);
             TestLog.Step($"Aparecio enemigo: {enemy1.DisplayName}");
@@ -1246,9 +1253,13 @@ namespace SP.EditorTools
                     rig.ShakeOffset.magnitude <= rig.MaxShakeMagnitude + 0.001f);
 
                 SP.CameraSystem.CameraFxSettings.Enabled = false;
-                rig.KickDirectional(Vector3.forward, 1f);
+                var dummyRig = new GameObject("DummyRig").AddComponent<CameraRig>();
+                Vector3 shakeBeforeOff = dummyRig.ShakeOffset;
+                dummyRig.KickDirectional(Vector3.forward, 1f);
+                Vector3 shakeAfterOff = dummyRig.ShakeOffset;
                 Check("Con efectos de camara apagados, KickDirectional no acumula nada nuevo",
-                    rig.ShakeOffset.magnitude <= rig.MaxShakeMagnitude + 0.001f);
+                    shakeAfterOff == shakeBeforeOff);
+                UnityEngine.Object.DestroyImmediate(dummyRig.gameObject);
                 SP.CameraSystem.CameraFxSettings.Enabled = fxWasEnabled;
             }
 
@@ -1316,7 +1327,7 @@ namespace SP.EditorTools
             {
                 var motorForFormat = vehicle.GetComponent<VehicleMotor>();
                 vehicleStatusRef.UpdateFrom(vehicle, motorForFormat, false);
-                var speedFieldInfo = typeof(VehicleStatusView).GetField("speedLabel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var speedFieldInfo = GetRequiredField(typeof(VehicleStatusView), "speedLabel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 var speedLabelText = ((Text)speedFieldInfo.GetValue(vehicleStatusRef)).text;
                 bool formatoValido = System.Text.RegularExpressions.Regex.IsMatch(speedLabelText, @"^R? ?\d+[,.]\d u/s");
                 Check($"Velocidad del vehiculo en formato legible ('{speedLabelText}')", formatoValido);
@@ -1348,7 +1359,7 @@ namespace SP.EditorTools
                 if (enemyForAimCheck != null)
                 {
                     aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Enemy, Soldier = enemyForAimCheck, Point = enemyForAimCheck.transform.position });
-                    var infoPanelField = typeof(AimUI).GetField("soldierInfoText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var infoPanelField = GetRequiredField(typeof(AimUI), "soldierInfoText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     var infoText = ((Text)infoPanelField.GetValue(aimUiRef))?.text ?? "";
                     Check($"Panel de info al apuntar a un enemigo muestra su vida ('{infoText}')",
                         infoText.Contains("Vida") && infoText.Contains("[Enemigo]"));
@@ -1376,7 +1387,7 @@ namespace SP.EditorTools
                 vega.Weapon.TryFire(vega.transform.position, vega.transform.forward);
                 vega.Weapon.Reload();
                 weaponStatusRef.UpdateFrom(vega.Weapon);
-                var fillField = typeof(WeaponStatusView).GetField("fill", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var fillField = GetRequiredField(typeof(WeaponStatusView), "fill", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 var fillDuringReload = (Image)fillField.GetValue(weaponStatusRef);
                 bool bajoDurantelaRecarga = fillDuringReload.fillAmount < 1f;
                 bool colorRecargando = fillDuringReload.color == new Color(0.95f, 0.6f, 0.2f);
@@ -1497,7 +1508,7 @@ namespace SP.EditorTools
             // con que el pool lo soporte, TurretWeapon.TryFire tiene que
             // usarlo de verdad.
             var turret = vehicle.GetComponentInChildren<TurretWeapon>();
-            var cdField = typeof(TurretWeapon).GetField("cooldownTimer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var cdField = GetRequiredField(typeof(TurretWeapon), "cooldownTimer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             cdField.SetValue(turret, 0f);
             // Snapshot POR IDENTIDAD y no "distinto de pNormal/pDoble": el
             // pool acaba de recibir esos dos de vuelta con Release(), asi
@@ -1525,7 +1536,7 @@ namespace SP.EditorTools
             bool fxWasEnabled = SP.CameraSystem.CameraFxSettings.Enabled;
             SP.CameraSystem.CameraFxSettings.Enabled = true;
 
-            var instanceField = typeof(CameraRig).GetProperty("Instance", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+            var instanceField = GetRequiredProperty(typeof(CameraRig), "Instance", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
             var previousInstance = instanceField.GetValue(null);
             instanceField.SetValue(null, rig);
 
@@ -1563,7 +1574,7 @@ namespace SP.EditorTools
                 poseidoMontado && inputDriver.Brain.Current == kes);
             Check("Al poseer a un montado, PlayerAboard queda en true (broker de la vibracion del cañon)",
                 vehicle.PlayerAboard);
-            var currentSeatField = typeof(PlayerInputDriver).GetField("currentSeat", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var currentSeatField = GetRequiredField(typeof(PlayerInputDriver), "currentSeat", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var seatAfterPossess = currentSeatField.GetValue(inputDriver);
             Check("El asiento asignado tras poseer al montado es el que de verdad ocupaba (Gunner)",
                 seatAfterPossess != null && seatAfterPossess.ToString() == "Gunner");
@@ -1574,14 +1585,14 @@ namespace SP.EditorTools
             inputDriver.TryPossess(vega);
 
             // --- Duracion de transicion x2 con lerp ---
-            var durField = typeof(PlayerInputDriver).GetField("PossessTransitionDuration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            var durField = GetRequiredField(typeof(PlayerInputDriver), "PossessTransitionDuration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
             float duracion = (float)durField.GetRawConstantValue();
             Check($"La duracion de transicion de posesion es el doble de la base (0.35s x2 = {duracion:0.00}s)",
                 Mathf.Approximately(duracion, 0.7f));
 
             // --- Ciclar con [Q] ahora SI incluye a los montados ---
             vehicle.Mount(kes, VehicleSeatRole.Passenger1);
-            var cycleMethod = typeof(PlayerInputDriver).GetMethod("CycleLivingAlly", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var cycleMethod = GetRequiredMethod(typeof(PlayerInputDriver), "CycleLivingAlly", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             cycleMethod.Invoke(inputDriver, new object[] { 1 });
             Check("Ciclar con [Q] ahora SI puede terminar poseyendo a un aliado montado en el vehiculo",
                 !inputDriver.Brain.Current.gameObject.activeInHierarchy || inputDriver.Brain.Current == kes);
@@ -1590,7 +1601,7 @@ namespace SP.EditorTools
             inputDriver.TryPossess(vega);
 
             // --- [U] subir de a uno: el mas cercano no-tasqueado cada vez ---
-            var findNextMethod = typeof(PlayerInputDriver).GetMethod("FindNextSquadmateToBoard", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var findNextMethod = GetRequiredMethod(typeof(PlayerInputDriver), "FindNextSquadmateToBoard", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var primerCandidato = (Soldier)findNextMethod.Invoke(inputDriver, new object[] { vehicle });
             Check("FindNextSquadmateToBoard encuentra a alguien para subir cuando el vehiculo esta vacio",
                 primerCandidato != null);
@@ -1618,11 +1629,11 @@ namespace SP.EditorTools
             // que FindTheVehicle resuelve el vehiculo sin necesitar aim.
             vehicle.Mount(kes, VehicleSeatRole.Passenger1);
             vehicle.Mount(doc, VehicleSeatRole.Passenger2);
-            var findVehicleMethod = typeof(PlayerInputDriver).GetMethod("FindTheVehicle", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var findVehicleMethod = GetRequiredMethod(typeof(PlayerInputDriver), "FindTheVehicle", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var vehiculoEncontrado = (Vehicle)findVehicleMethod.Invoke(inputDriver, null);
             Check("FindTheVehicle resuelve el vehiculo sin necesitar apuntarle (para las teclas [U]/[I])",
                 vehiculoEncontrado == vehicle);
-            var dismountAllMethod = typeof(PlayerInputDriver).GetMethod("DismountAll", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var dismountAllMethod = GetRequiredMethod(typeof(PlayerInputDriver), "DismountAll", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             dismountAllMethod.Invoke(inputDriver, new object[] { vehicle });
             Check("[I] (DismountAll via FindTheVehicle) baja a todos los ocupantes", vehicle.OccupantCount == 0);
             Check("Kes vuelve a estar activa tras bajar", kes.gameObject.activeInHierarchy);
@@ -1646,7 +1657,7 @@ namespace SP.EditorTools
             if (enemigoParaBarra != null)
             {
                 var barra = enemigoParaBarra.GetComponentInChildren<SP.Presentation.HealthBarView>(true);
-                var lodSetter = typeof(SP.Presentation.HealthBarView).GetMethod("SetLodAllowed");
+                var lodSetter = GetRequiredMethod(typeof(SP.Presentation.HealthBarView), "SetLodAllowed");
                 lodSetter.Invoke(barra, new object[] { true });
                 // OnAnyDamage sale temprano si !Application.isPlaying (a
                 // proposito: la suite corre en Edit mode y no hay frame
@@ -1654,12 +1665,12 @@ namespace SP.EditorTools
                 // pondria al dia solo -- se fuerza a mano, mismo criterio
                 // que el resto de la suite usa con otros sistemas
                 // gateados por Application.isPlaying.
-                var hideAtField = typeof(SP.Presentation.HealthBarView).GetField("hideAt", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var hideAtField = GetRequiredField(typeof(SP.Presentation.HealthBarView), "hideAt", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 hideAtField.SetValue(barra, 999999f);
                 int hpAntes = enemigoParaBarra.Health.Current;
                 enemigoParaBarra.Health.TakeDamage(40, -1);
                 barra.Tick();
-                var fillField = typeof(SP.Presentation.HealthBarView).GetField("fill", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var fillField = GetRequiredField(typeof(SP.Presentation.HealthBarView), "fill", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 var fill = (Image)fillField.GetValue(barra);
                 float esperado = (float)enemigoParaBarra.Health.Current / enemigoParaBarra.Health.MaxHealth;
                 Check($"La barra de vida del enemigo SI se actualiza con el daño real (hp {hpAntes}->{enemigoParaBarra.Health.Current}, fill={fill.fillAmount:0.00} esperado={esperado:0.00})",
@@ -1672,9 +1683,9 @@ namespace SP.EditorTools
             {
                 var victoryPanel = outcomeControllerRef.transform.Find("VictoryPanel");
                 var retryBtn = victoryPanel.Find("RetryButton").GetComponent<Button>();
-                var callsField = typeof(UnityEngine.Events.UnityEventBase).GetField("m_Calls", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var callsField = GetRequiredField(typeof(UnityEngine.Events.UnityEventBase), "m_Calls", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 var calls = callsField.GetValue(retryBtn.onClick);
-                var runtimeCallsField = calls.GetType().GetField("m_RuntimeCalls", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                var runtimeCallsField = GetRequiredField(calls.GetType(), "m_RuntimeCalls", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                 var runtimeCalls = runtimeCallsField.GetValue(calls) as System.Collections.IList;
                 Check("El boton REINTENTAR tiene su listener de verdad enganchado (no solo en apariencia)",
                     runtimeCalls != null && runtimeCalls.Count > 0);
@@ -1749,6 +1760,39 @@ namespace SP.EditorTools
 
         public static int FailedCheckCount => failedChecks;
         public static IReadOnlyList<string> FailedCheckMessages => failedCheckMessages;
+
+        // BUG REAL del audit del propio runner: GetField/GetMethod/GetProperty
+        // devuelven null en silencio si el miembro no existe (por ejemplo tras un
+        // rename en el codigo de gameplay), y el .SetValue/.GetValue/.Invoke de la
+        // linea siguiente revienta con un NullReferenceException que no dice ni
+        // el nombre del miembro ni el tipo. Estos wrappers fallan con un mensaje
+        // que dice exactamente que se busco y donde.
+        static System.Reflection.FieldInfo GetRequiredField(System.Type type, string name, System.Reflection.BindingFlags flags)
+        {
+            var fi = type.GetField(name, flags);
+            if (fi == null)
+                throw new System.InvalidOperationException($"[HeadlessTestRunner] No se encontro el campo '{name}' en {type.FullName} (flags={flags}). Se habra renombrado en el codigo de gameplay?");
+            return fi;
+        }
+
+        static System.Reflection.MethodInfo GetRequiredMethod(System.Type type, string name, System.Reflection.BindingFlags flags)
+        {
+            var mi = type.GetMethod(name, flags);
+            if (mi == null)
+                throw new System.InvalidOperationException($"[HeadlessTestRunner] No se encontro el metodo '{name}' en {type.FullName} (flags={flags}). Se habra renombrado en el codigo de gameplay?");
+            return mi;
+        }
+
+        static System.Reflection.MethodInfo GetRequiredMethod(System.Type type, string name)
+            => GetRequiredMethod(type, name, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+
+        static System.Reflection.PropertyInfo GetRequiredProperty(System.Type type, string name, System.Reflection.BindingFlags flags)
+        {
+            var pi = type.GetProperty(name, flags);
+            if (pi == null)
+                throw new System.InvalidOperationException($"[HeadlessTestRunner] No se encontro la propiedad '{name}' en {type.FullName} (flags={flags}). Se habra renombrado en el codigo de gameplay?");
+            return pi;
+        }
 
         static void Check(string message, bool condition)
         {
@@ -2039,6 +2083,7 @@ namespace SP.EditorTools
             instance.AddComponent<VehicleAudioFeedback>();
 
             var mat = CreateFlatMaterial(color);
+            transientRuntimeAssets.Add(mat);
             // El cañón queda afuera del repintado: necesita mantener SU
             // propio color oscuro (fijo) para leerse como "el arma" en vez
             // de camuflarse con el chasis, sea cual sea el color que le
@@ -2053,7 +2098,7 @@ namespace SP.EditorTools
                 if (rend.gameObject.name == "TurretBarrel") barrelRend = rend;
                 else rend.sharedMaterial = mat;
             }
-            if (barrelRend != null) barrelRend.sharedMaterial = CreateFlatMaterial(new Color(0.12f, 0.12f, 0.13f));
+            if (barrelRend != null) { var barrelMat = CreateFlatMaterial(new Color(0.12f, 0.12f, 0.13f)); transientRuntimeAssets.Add(barrelMat); barrelRend.sharedMaterial = barrelMat; }
 
             // Va despues de repintar el chasis por prolijidad, pero el orden
             // en realidad da igual: Awake NO corre al hacer AddComponent en
@@ -2167,6 +2212,18 @@ namespace SP.EditorTools
             panelGO.SetActive(false);
         }
 
+        // Materiales/RenderTexture creados para objetos de ESCENA (no assets
+        // persistidos como los prefabs) — huerfanos tras EditorSceneManager.NewScene
+        // si no se destruyen a mano. Se limpian al arrancar cada rebuild.
+        static readonly List<UnityEngine.Object> transientRuntimeAssets = new List<UnityEngine.Object>();
+
+        static void DestroyTransientRuntimeAssets()
+        {
+            foreach (var obj in transientRuntimeAssets)
+                if (obj != null) UnityEngine.Object.DestroyImmediate(obj);
+            transientRuntimeAssets.Clear();
+        }
+
         // Un material por COLOR pedido (o sea, por equipo), cacheado. La
         // clave es el color exacto: dos equipos distintos siguen teniendo
         // materiales distintos, pero los 50 soldados de un mismo equipo
@@ -2203,7 +2260,7 @@ namespace SP.EditorTools
             ground.name = "Ground";
             ground.transform.position = new Vector3(0f, -0.5f, 0f);
             ground.transform.localScale = new Vector3(160f, 1f, 160f);
-            ground.GetComponent<MeshRenderer>().sharedMaterial = CreateFlatMaterial(new Color(0.82f, 0.85f, 0.88f));
+            var groundMat = CreateFlatMaterial(new Color(0.82f, 0.85f, 0.88f)); transientRuntimeAssets.Add(groundMat); ground.GetComponent<MeshRenderer>().sharedMaterial = groundMat;
         }
 
         static void BuildObstacles()
@@ -2225,7 +2282,7 @@ namespace SP.EditorTools
                 o.name = $"Obstaculo_{i + 1}";
                 o.transform.position = new Vector3(positionsXZ[i].x, height * 0.5f, positionsXZ[i].z);
                 o.transform.localScale = new Vector3(2f, height, 2f);
-                o.GetComponent<MeshRenderer>().sharedMaterial = CreateFlatMaterial(new Color(0.93f, 0.78f, 0.55f));
+                var obsMat = CreateFlatMaterial(new Color(0.93f, 0.78f, 0.55f)); transientRuntimeAssets.Add(obsMat); o.GetComponent<MeshRenderer>().sharedMaterial = obsMat;
                 o.AddComponent<ObstacleMarker>();
             }
         }
@@ -2242,7 +2299,7 @@ namespace SP.EditorTools
                 prop.name = $"Bidon_{i + 1}";
                 prop.transform.position = new Vector3(spots[i].x, 0.45f, spots[i].z);
                 prop.transform.localScale = new Vector3(0.55f, 0.45f, 0.55f);
-                prop.GetComponent<MeshRenderer>().sharedMaterial = CreateFlatMaterial(new Color(0.45f, 0.55f, 0.35f));
+                var lightMat = CreateFlatMaterial(new Color(0.45f, 0.55f, 0.35f)); transientRuntimeAssets.Add(lightMat); prop.GetComponent<MeshRenderer>().sharedMaterial = lightMat;
                 var col = prop.GetComponent<Collider>();
                 if (col != null) UnityEngine.Object.DestroyImmediate(col);
                 prop.AddComponent<LightProp>();
@@ -2265,7 +2322,7 @@ namespace SP.EditorTools
                 go.name = d.name;
                 go.transform.position = d.pos;
                 go.transform.localScale = Vector3.one * 0.5f;
-                go.GetComponent<MeshRenderer>().sharedMaterial = CreateFlatMaterial(d.color);
+                var pickupMat = CreateFlatMaterial(d.color); transientRuntimeAssets.Add(pickupMat); go.GetComponent<MeshRenderer>().sharedMaterial = pickupMat;
 
                 var pickup = go.AddComponent<WeaponPickup>();
                 pickup.Configure(d.kind, d.dmg, d.cooldown, d.color);
@@ -3059,7 +3116,7 @@ namespace SP.EditorTools
             ring.useWorldSpace = true;
             ring.widthMultiplier = 0.12f;
             ring.positionCount = 0;
-            ring.sharedMaterial = CreateFlatMaterial(new Color(0.95f, 0.55f, 0.1f));
+            var ringMat = CreateFlatMaterial(new Color(0.95f, 0.55f, 0.1f)); transientRuntimeAssets.Add(ringMat); ring.sharedMaterial = ringMat;
             ring.enabled = false;
 
             var view = root.GetComponent<TurretAimView>();
@@ -3698,7 +3755,7 @@ namespace SP.EditorTools
             mmCamGO.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
             mmCamGO.transform.position = new Vector3(0f, 60f, 0f);
 
-            var rt = new RenderTexture(384, 384, 16) { name = "RT_Minimap" };
+            var rt = new RenderTexture(384, 384, 16) { name = "RT_Minimap" }; transientRuntimeAssets.Add(rt);
             mmCam.targetTexture = rt;
 
             var follow = mmCamGO.AddComponent<MinimapFollow>();
@@ -3783,7 +3840,7 @@ namespace SP.EditorTools
 
             for (int i = 0; i < entries.Length; i++)
             {
-                var swatchGO = new GameObject("Swatch", typeof(Image));
+                var swatchGO = new GameObject($"Swatch_{entries[i].label}", typeof(Image));
                 swatchGO.transform.SetParent(legendGO.transform, false);
                 swatchGO.GetComponent<Image>().color = entries[i].color;
                 var swRt = swatchGO.GetComponent<RectTransform>();
@@ -3792,7 +3849,7 @@ namespace SP.EditorTools
                 swRt.anchoredPosition = new Vector2(8f, -8f - i * 20f);
                 swRt.sizeDelta = new Vector2(12f, 12f);
 
-                var labelGO = new GameObject("Label", typeof(Text));
+                var labelGO = new GameObject($"Label_{entries[i].label}", typeof(Text));
                 labelGO.transform.SetParent(legendGO.transform, false);
                 var label = labelGO.GetComponent<Text>();
                 label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");

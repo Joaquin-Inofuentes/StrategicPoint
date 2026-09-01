@@ -11,8 +11,10 @@ namespace SP.Vehicles
         Vector3 velocity;
         Vector3 spin;
         bool landed;
+        float landedTimer;
 
         const float Gravity = -18f;
+        const float DestroyAfterLandedSeconds = 6f;
 
         public void Launch()
         {
@@ -22,7 +24,13 @@ namespace SP.Vehicles
 
         void Update()
         {
-            if (landed) return;
+            if (landed)
+            {
+                landedTimer += Time.deltaTime;
+                if (landedTimer >= DestroyAfterLandedSeconds) Destroy(gameObject);
+                return;
+            }
+
             float dt = Time.deltaTime;
             velocity.y += Gravity * dt;
             transform.position += velocity * dt;

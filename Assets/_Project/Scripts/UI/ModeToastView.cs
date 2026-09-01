@@ -17,6 +17,7 @@ namespace SP.UI
         {
             label = text;
             group = canvasGroup;
+            if (group == null) return;
             group.alpha = 0f;
         }
 
@@ -24,6 +25,13 @@ namespace SP.UI
         {
             if (label == null) label = GetComponentInChildren<Text>(true);
             if (group == null) group = GetComponent<CanvasGroup>();
+        }
+
+        void OnDisable()
+        {
+            StopAllCoroutines();
+            routine = null;
+            if (group != null) group.alpha = 0f;
         }
 
         public void Show(string text, float fadeSeconds = 1f)
@@ -39,13 +47,13 @@ namespace SP.UI
             group.alpha = 1f;
             float t = 0f;
             const float hold = 0.3f;
-            while (t < hold) { t += Time.deltaTime; yield return null; }
+            while (t < hold) { t += Time.unscaledDeltaTime; yield return null; }
 
             t = 0f;
             float fade = Mathf.Max(0.01f, duration - hold);
             while (t < fade)
             {
-                t += Time.deltaTime;
+                t += Time.unscaledDeltaTime;
                 group.alpha = 1f - (t / fade);
                 yield return null;
             }

@@ -27,13 +27,19 @@ namespace SP.Combat
             ActorId = actorId;
             maxHealth = max;
             Current = max;
+            // Revivir (HeadlessTestRunner y AutoDemoRunner llaman Initialize()
+            // para esto) tiene que borrar tambien quien te mato la vez
+            // anterior: si no, un soldado recien revivido queda con
+            // LastAttackerId apuntando al verdugo de su muerte ANTERIOR hasta
+            // que alguien le pegue de nuevo en esta vida.
+            LastAttackerId = -1;
         }
 
         public void TakeDamage(int amount, int attackerId)
         {
             if (!IsAlive) return;
 
-            Current = Mathf.Max(0, Current - amount);
+            Current = Mathf.Clamp(Current - amount, 0, maxHealth);
             LastAttackerId = attackerId;
             EventBus.Instance.Publish(new DamageTakenEvent(ActorId, attackerId, amount, Current));
 

@@ -87,7 +87,11 @@ namespace SP.Vehicles
             // algun dia hay un enemigo humano-controlado, ese enemigo).
             bool hasHumanGunner = vehicle.Gunner != null;
             PublishControlChange(!hasHumanGunner);
-            if (hasHumanGunner) return;
+            if (hasHumanGunner)
+            {
+                target = null;
+                return;
+            }
 
             // Pedido explicito: con UN solo tripulante (a bordo, de
             // cualquier equipo) esa persona maneja O dispara, nunca las

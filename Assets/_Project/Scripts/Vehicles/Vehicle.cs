@@ -144,6 +144,10 @@ namespace SP.Vehicles
         };
 
         readonly Dictionary<VehicleSeatRole, Soldier> seats = new Dictionary<VehicleSeatRole, Soldier>();
+        readonly Dictionary<Soldier, Coroutine> mountAnimations = new Dictionary<Soldier, Coroutine>();
+        readonly Dictionary<Soldier, Vector3> mountTrueScale = new Dictionary<Soldier, Vector3>();
+
+        public bool IsMountAnimating(Soldier soldier) => mountAnimations.ContainsKey(soldier);
 
         // Feedback de color: el chasis se pone un poco más oscuro/saturado
         // cuando tiene gente adentro, y vuelve a su color de base al vaciarse.
@@ -156,7 +160,13 @@ namespace SP.Vehicles
             if (colorCached) return;
             colorCached = true;
             chassisRenderers = GetComponentsInChildren<Renderer>();
-            if (chassisRenderers.Length > 0) baseColor = chassisRenderers[0].sharedMaterial.color;
+            for (int i = 0; i < chassisRenderers.Length; i++)
+            {
+                var r = chassisRenderers[i];
+                if (r == null || r.sharedMaterial == null) continue;
+                r.sharedMaterial = new Material(r.sharedMaterial);
+            }
+            if (chassisRenderers.Length > 0 && chassisRenderers[0].sharedMaterial != null) baseColor = chassisRenderers[0].sharedMaterial.color;
         }
 
         public void RefreshOccupancyColor()
@@ -235,7 +245,18 @@ namespace SP.Vehicles
             // ahi se desactiva. En Edit mode (la suite headless corre
             // Mount() sin Play) StartCoroutine no funciona -- se mantiene
             // el camino sincronico de siempre para no romper esos tests.
-            if (Application.isPlaying) StartCoroutine(PlayMountAnimation(soldier));
+            if (Application.isPlaying)
+            {
+                if (!mountTrueScale.ContainsKey(soldier)) mountTrueScale[soldier] = soldier.transform.localScale;
+
+                if (mountAnimations.TryGetValue(soldier, out var existingCo) && existingCo != null)
+                {
+                    StopCoroutine(existingCo);
+                    soldier.transform.localScale = mountTrueScale[soldier];
+                }
+
+                mountAnimations[soldier] = StartCoroutine(PlayMountAnimation(soldier, role));
+            }
             else soldier.gameObject.SetActive(false);
 
             RefreshOccupancyColor();
@@ -244,11 +265,12 @@ namespace SP.Vehicles
 
         const float MountAnimationSeconds = 0.35f;
 
-        IEnumerator PlayMountAnimation(Soldier soldier)
+        Vector3 MountOffsetFor(VehicleSeatRole role) => DismountOffsetFor(role) * 0.4f;
+
+        IEnumerator PlayMountAnimation(Soldier soldier, VehicleSeatRole role)
         {
             var startPos = soldier.transform.position;
-            var startScale = soldier.transform.localScale;
-            var targetPos = transform.position;
+            var startScale = mountTrueScale[soldier];
 
             float t = 0f;
             while (t < MountAnimationSeconds)
@@ -262,7 +284,14 @@ namespace SP.Vehicles
                 // desactivandolo (invisible) a alguien que se acababa de
                 // bajar y deberia seguir de pie afuera.
                 if (soldier == null) yield break;
-                if (RoleOf(soldier) == null) { soldier.transform.localScale = startScale; yield break; }
+                if (RoleOf(soldier) == null) 
+                { 
+                    soldier.transform.localScale = startScale; 
+                    mountAnimations.Remove(soldier);
+                    mountTrueScale.Remove(soldier);
+                    yield break; 
+                }
+                Vector3 targetPos = transform.position + MountOffsetFor(role);
                 t += Time.deltaTime;
                 float k = Mathf.Clamp01(t / MountAnimationSeconds);
                 // Ease-out: rapido al principio, se frena justo antes de
@@ -280,6 +309,9 @@ namespace SP.Vehicles
             // invisible la proxima vez que se baje.
             soldier.transform.localScale = startScale;
             soldier.gameObject.SetActive(false);
+            
+            mountAnimations.Remove(soldier);
+            mountTrueScale.Remove(soldier);
         }
 
         // Baja a un soldado y lo reaparece junto al vehículo.

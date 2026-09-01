@@ -16,6 +16,7 @@ namespace SP.Presentation
     // en OnEnable -- un campo público SÍ se serializa con la escena y
     // sobrevive al entrar en Play mode sin ayuda (mismo motivo por el que
     // PlayerInputDriver.Squad siempre funcionó sin Bind()).
+    [DefaultExecutionOrder(-50)]
     public class BattleManager : MonoBehaviour
     {
         public List<Soldier> Enemies;

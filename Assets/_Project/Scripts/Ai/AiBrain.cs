@@ -46,6 +46,7 @@ namespace SP.Ai
         Soldier target;
         Vector3 orderDestination;
         bool hasOrder;
+        bool orderIsAttack;
         bool bootstrapped;
         Vehicle mountTarget;
         IDisposable damageSub;
@@ -205,10 +206,11 @@ namespace SP.Ai
             // Me dispararon a mí: reacciono aunque esté fuera de mi rango de visión normal.
             if (evt.TargetId == self.Id)
             {
-                if (State == AiState.Idle || State == AiState.Patrol || State == AiState.MovingToOrder)
+                if (State == AiState.Idle || State == AiState.Patrol || State == AiState.MovingToOrder || State == AiState.Follow)
                 {
                     target = attacker;
                     hasOrder = false;
+                    followTarget = null;
                     SetState(AiState.Chase);
                 }
                 return;
@@ -242,6 +244,7 @@ namespace SP.Ai
 
             target = null;
             hasOrder = true;
+            orderIsAttack = false;
             mountTarget = null;
             orderQueue.Clear();
             orderDestination = point;
@@ -254,7 +257,9 @@ namespace SP.Ai
             if (!bootstrapped) Bootstrap();
             target = null;
             hasOrder = true;
+            orderIsAttack = false;
             mountTarget = vehicle;
+            orderQueue.Clear();
             orderDestination = vehicle.transform.position;
             SetState(AiState.MovingToOrder);
         }
@@ -269,6 +274,7 @@ namespace SP.Ai
             if (!bootstrapped) Bootstrap();
             target = null;
             hasOrder = true;
+            orderIsAttack = false;
             mountTarget = null;
             orderQueue.Clear();
             followTarget = leader;
@@ -280,6 +286,10 @@ namespace SP.Ai
             if (!bootstrapped) Bootstrap();
             target = enemy;
             hasOrder = true;
+            orderIsAttack = true;
+            mountTarget = null;
+            orderQueue.Clear();
+            orderDestination = self.transform.position;
             SetState(AiState.MovingToAttackOrder);
         }
 
@@ -293,6 +303,7 @@ namespace SP.Ai
         {
             if (!bootstrapped) Bootstrap();
             hasOrder = false;
+            orderIsAttack = false;
             mountTarget = null;
             followTarget = null;
             orderQueue.Clear();
@@ -325,7 +336,10 @@ namespace SP.Ai
                 target = null;
 
             if (target == null && (State == AiState.Chase || State == AiState.Attack))
+            {
+                if (orderIsAttack) { hasOrder = false; orderIsAttack = false; }
                 SetState(!hasOrder ? AiState.Patrol : followTarget != null ? AiState.Follow : AiState.MovingToOrder);
+            }
 
             // El sensado puede interrumpir una patrulla u orden de movimiento
             // simple, pero no una orden de ataque ni una de subir a un
@@ -361,7 +375,16 @@ namespace SP.Ai
                     break;
 
                 case AiState.MovingToOrder:
-                    if (self.Motor.MoveTowards(orderDestination, arriveThreshold, dt))
+                    if (mountTarget != null && (mountTarget.gameObject == null || mountTarget.IsDestroyed))
+                    {
+                        hasOrder = false;
+                        mountTarget = null;
+                        SetState(AiState.Patrol);
+                        break;
+                    }
+
+                    Vector3 moveTarget = mountTarget != null ? mountTarget.transform.position : orderDestination;
+                    if (self.Motor.MoveTowards(moveTarget, arriveThreshold, dt))
                     {
                         if (mountTarget != null)
                         {
@@ -371,16 +394,13 @@ namespace SP.Ai
                             return; // el GameObject quedó inactivo: no tocar más estado.
                         }
 
-                        EventBus.Instance.Publish(new OrderCompletedEvent(self.Id));
-
-                        // Tramo cumplido: si hay mas puntos planificados,
-                        // sigue con el proximo sin volver a Patrol.
                         if (orderQueue.Count > 0)
                         {
                             orderDestination = orderQueue.Dequeue();
                             break;
                         }
 
+                        EventBus.Instance.Publish(new OrderCompletedEvent(self.Id));
                         hasOrder = false;
                         SetState(AiState.Patrol);
                     }

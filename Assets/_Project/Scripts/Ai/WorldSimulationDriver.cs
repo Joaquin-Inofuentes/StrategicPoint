@@ -8,8 +8,31 @@ namespace SP.Ai
     // Avanza IA, armas y vehículos cada frame en Play mode real. El test
     // automático no usa esto: simula el mismo paso a mano para tener
     // control sobre el tiempo.
+    [DefaultExecutionOrder(-100)]
     public class WorldSimulationDriver : MonoBehaviour
     {
+        public static WorldSimulationDriver Instance { get; private set; }
+
+        void Awake()
+        {
+            // Guarda de instancia unica: dos WorldSimulationDriver activos
+            // tickearian el mundo (IA, armas, vehiculos, torretas) dos
+            // veces por frame cada uno -- silencioso pero grave (cadencia
+            // de disparo real al doble, doble avance de vehiculos).
+            if (Instance != null && Instance != this)
+            {
+                Debug.LogWarning($"Ya existe un WorldSimulationDriver activo ({Instance.name}); se desactiva esta segunda instancia ({name}) para no duplicar la simulacion.", this);
+                enabled = false;
+                return;
+            }
+            Instance = this;
+        }
+
+        void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
+        }
+
         void Update() => Step(Time.deltaTime);
 
         // Extraido a estatico para que HeadlessTestRunner.SimStep (la

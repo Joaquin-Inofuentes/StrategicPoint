@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using SP.Actors;
 using SP.Ai;
 using SP.Combat;
@@ -230,6 +231,16 @@ namespace SP.Player
                 Brain.Possess(Squad[0]);
                 Rig.FollowFps(Squad[0]);
             }
+
+            // Bug 14: PathPreview.Attach solo lo llamaba HeadlessTestRunner
+            // (herramienta de Editor). En una escena de juego real construida
+            // de otra forma, PathPreview.Instance.graph quedaba null para
+            // siempre y la vista previa de ruta nunca rodeaba obstaculos.
+            // Conectarlo aca, donde el driver SI corre en Play mode real,
+            // garantiza que la vista previa quede armada sin importar como
+            // se construyo la escena.
+            if (SP.Ai.PathPreview.Instance != null && NavGraph != null)
+                SP.Ai.PathPreview.Instance.Attach(NavGraph);
         }
 
         IDisposable deathSub;
@@ -333,7 +344,7 @@ namespace SP.Player
             // corriendo la simulacion (a diferencia de abrirlo desde
             // pausa), pero congela la entrada del jugador mientras esta
             // abierto para no mover ni disparar por error mientras lee.
-            if (kb.hKey.wasPressedThisFrame && PauseRef != null) PauseRef.ToggleControlsOverlay();
+            if (KeyBindings.WasPressed(KeyBindings.Controles) && PauseRef != null) PauseRef.ToggleControlsOverlay();
             // [P] panel de diagnostico: fps (mediana y p95), conteos de
             // actores, proyectiles y voces de audio. Solo lectura.
             if (kb.pKey.wasPressedThisFrame && PerfHud != null) PerfHud.Toggle();
@@ -358,7 +369,7 @@ namespace SP.Player
             // return de UpdateInVehicle lo comía entero) -- ahora alterna
             // entre manejar en primera persona y ver el auto desde arriba
             // en RTS, sin bajarse ni perder el asiento.
-            if (kb.tabKey.wasPressedThisFrame && !handlingDeath)
+            if (KeyBindings.WasPressed(KeyBindings.AlternarVista) && !handlingDeath)
             {
                 // Si Tab te saca de RTS a mitad de un arrastre de
                 // selección, el cuadrito quedaba prendido en pantalla
@@ -376,6 +387,7 @@ namespace SP.Player
                 // que el recordatorio de GameplaySceneBootstrap no vuelva a
                 // aparecer nunca mas en ninguna partida futura.
                 PlayerPrefs.SetInt("sp_used_tab", 1);
+                PlayerPrefs.Save();
 
                 if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue && Brain.Current != null && Vehicle != null)
                 {
@@ -504,6 +516,7 @@ namespace SP.Player
                 if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
                 deadSoldier.SetBodyVisible(true);
                 bodyHiddenFor = null;
+                ClearVehicleSeatState();
 
                 // La camara de muerte mostraba el cadaver propio pero no decia
                 // QUIEN te mato, que es lo que el jugador mas quiere saber en
@@ -543,8 +556,8 @@ namespace SP.Player
                 float t = 0f;
                 while (t < holdSeconds)
                 {
-                    t += Time.deltaTime;
-                    angle += orbitDegPerSec * Time.deltaTime;
+                    t += Time.unscaledDeltaTime;
+                    angle += orbitDegPerSec * Time.unscaledDeltaTime;
                     float rad = angle * Mathf.Deg2Rad;
                     Vector3 offset = new Vector3(Mathf.Cos(rad) * radius, height, Mathf.Sin(rad) * radius);
                     deathPullBackGO.transform.position = deadSoldier.transform.position + offset;
@@ -710,7 +723,7 @@ namespace SP.Player
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateAmmoWarning(Brain.Current.Weapon);
-            if (kb.rKey.wasPressedThisFrame) Brain.Current.Weapon.Reload();
+            if (KeyBindings.WasPressed(KeyBindings.Recargar)) Brain.Current.Weapon.Reload();
             if (PlayerHealth != null)
             {
                 PlayerHealth.gameObject.SetActive(true);
@@ -752,7 +765,7 @@ namespace SP.Player
                 if (Mathf.Abs(wheel) > 0.01f) CycleWeapon(wheel > 0f ? +1 : -1);
             }
 
-            if (kb.fKey.wasPressedThisFrame && result.Type == AimTargetType.Ally)
+            if (KeyBindings.WasPressed(KeyBindings.Poseer) && result.Type == AimTargetType.Ally)
                 TryPossess(result.Soldier);
 
             if (kb.tKey.wasPressedThisFrame && result.Type == AimTargetType.Ground)
@@ -823,7 +836,7 @@ namespace SP.Player
 
             // Interacción por cercanía (no por puntería): subir al vehículo
             // o equipar un arma tirada en el piso.
-            var nearVehicle = Vehicle != null && Vector3.Distance(Brain.Current.transform.position, Vehicle.transform.position) <= interactRadius
+            var nearVehicle = Vehicle != null && !Vehicle.IsDestroyed && Vector3.Distance(Brain.Current.transform.position, Vehicle.transform.position) <= interactRadius
                 ? Vehicle : null;
             var nearPickup = FindNearestPickup(Brain.Current.transform.position);
 
@@ -889,6 +902,17 @@ namespace SP.Player
         {
             if (nearestAllyRing != null) { Destroy(nearestAllyRing.gameObject); nearestAllyRing = null; }
             nearestAllyHighlighted = null;
+        }
+
+        void HideFpsOnlyIndicators()
+        {
+            ClearNearestAllyHighlight();
+            if (mountIndicator != null) mountIndicator.Hide();
+            if (highlightedRenderer != null)
+            {
+                SP.Presentation.CubeFxReactor.WriteTint(highlightedRenderer, highlightedOriginalColor);
+                highlightedRenderer = null;
+            }
         }
 
         void UpdateAimHighlight(AimResult result)
@@ -1249,11 +1273,14 @@ namespace SP.Player
             EnterPossessedVehicleSeat(role.Value);
 
             // Los aliados libres cerca también suben, en cualquier asiento libre.
-            foreach (var s in Squad)
+            if (Squad != null)
             {
-                if (s == null || s == driverSoldier || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
-                if (Vector3.Distance(s.transform.position, vehicle.transform.position) <= autoMountRadius)
-                    vehicle.Mount(s);
+                foreach (var s in Squad)
+                {
+                    if (s == null || s == driverSoldier || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                    if (Vector3.Distance(s.transform.position, vehicle.transform.position) <= autoMountRadius)
+                        vehicle.Mount(s);
+                }
             }
         }
 
@@ -1282,12 +1309,30 @@ namespace SP.Player
             var occupant = vehicle.Driver ?? vehicle.Occupants[0];
             if (occupant == null) return;
 
+            if (!occupant.Health.IsAlive)
+            {
+                if (DeadNotice != null) DeadNotice.Show($"{occupant.DisplayName} esta muerto: no se puede poseer");
+                OrderService.PlayRejectSound();
+                return;
+            }
+
             PossessionService.Swap(Brain, occupant);
             var role = vehicle.RoleOf(occupant);
             if (role == null) return;
 
             Rig.SetMode(ControlMode.Fps);
             EnterPossessedVehicleSeat(role.Value);
+        }
+
+        void ClearVehicleSeatState()
+        {
+            if (currentSeat.HasValue && Vehicle != null)
+            {
+                Vehicle.PlayerAboard = false;
+                var vb = Vehicle.GetComponent<VehicleBrain>();
+                if (vb != null && currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
+            }
+            currentSeat = null;
         }
 
         public void ExitVehicle()
@@ -1322,7 +1367,7 @@ namespace SP.Player
             if (AimUiRef != null) AimUiRef.SetVisible(false);
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
             if (SelectionCount != null) SelectionCount.SetModeVisible(false);
-            ClearNearestAllyHighlight();
+            HideFpsOnlyIndicators();
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
 
@@ -1334,7 +1379,7 @@ namespace SP.Player
             // corte, la cámara se queda pegada a una carcasa quemada.
             if (Vehicle.IsDestroyed)
             {
-                currentSeat = null;
+                ClearVehicleSeatState();
                 if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
                 if (TurretAim != null) TurretAim.SetVisible(false);
                 Rig.FollowFps(Brain.Current);
@@ -1345,7 +1390,7 @@ namespace SP.Player
             // El freno solo es una accion real cuando quien maneja es el
             // jugador (currentSeat==Driver) y esta apretando [G] -- para
             // un pasajero o el conductor IA esto no aplica.
-            bool isBraking = currentSeat == VehicleSeatRole.Driver && kb.gKey.isPressed;
+            bool isBraking = currentSeat == VehicleSeatRole.Driver && KeyBindings.IsPressed(KeyBindings.Frenar);
             if (VehicleStatus != null)
             {
                 VehicleStatus.UpdateFrom(Vehicle, motor, isBraking);
@@ -1394,7 +1439,7 @@ namespace SP.Player
                 return;
             }
 
-            if (kb.vKey.wasPressedThisFrame) vehicleFirstPerson = !vehicleFirstPerson;
+            if (KeyBindings.WasPressed(KeyBindings.CamaraVehiculo)) vehicleFirstPerson = !vehicleFirstPerson;
 
             var vb = Vehicle.GetComponent<VehicleBrain>();
             var turret = Vehicle.GetComponentInChildren<TurretWeapon>();
@@ -1411,7 +1456,7 @@ namespace SP.Player
                 }
 
                 vb.IsPlayerDriving = true;
-                if (kb.gKey.isPressed)
+                if (KeyBindings.IsPressed(KeyBindings.Frenar))
                 {
                     motor.Brake(Time.deltaTime);
                 }
@@ -1452,7 +1497,7 @@ namespace SP.Player
 
                     // [R] alterna municion: explosiva de area o
                     // perforante de daño concentrado.
-                    if (kb.rKey.wasPressedThisFrame)
+                    if (KeyBindings.WasPressed(KeyBindings.Recargar))
                     {
                         turret.CycleAmmo();
                         if (ModeToast != null)
@@ -1491,6 +1536,8 @@ namespace SP.Player
         public void SwitchSeat(VehicleSeatRole newRole)
         {
             var soldier = Brain.Current;
+            if (soldier != null && Vehicle.IsMountAnimating(soldier)) return;
+
             var vb = Vehicle.GetComponent<VehicleBrain>();
 
             // Libera el asiento actual sin reaparecer al soldado afuera.
@@ -1599,7 +1646,7 @@ namespace SP.Player
             if (AimUiRef != null) AimUiRef.SetVisible(false);
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
             if (SelectionCount != null) SelectionCount.SetModeVisible(true);
-            ClearNearestAllyHighlight();
+            HideFpsOnlyIndicators();
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
             UpdateVehicleSelectionRing();
             bool ctrlHeld = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
@@ -1645,7 +1692,14 @@ namespace SP.Player
             // decide con el mismo umbral en pixeles que ya usa la
             // seleccion por arrastre de click izquierdo, para que un
             // click tembloroso no dispare un paneo por error.
-            if (mouse.rightButton.wasPressedThisFrame) { rightDragStart = mouse.position.ReadValue(); rightDragging = false; }
+            if (mouse.rightButton.wasPressedThisFrame) 
+            { 
+                if (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
+                {
+                    rightDragStart = mouse.position.ReadValue(); 
+                    rightDragging = false; 
+                }
+            }
             if (mouse.rightButton.isPressed && !rightDragging &&
                 Vector2.Distance(mouse.position.ReadValue(), rightDragStart) > dragThresholdPixels)
                 rightDragging = true;
@@ -1679,7 +1733,7 @@ namespace SP.Player
                         // avisaba: el soldado se trababa contra el borde y
                         // el jugador creia que la orden se habia dado.
                         if (!OrderService.IsValidDestination(result.Point)) RejectOrder("DESTINO BLOQUEADO");
-                        else OrderService.IssueMoveOrderForSelection(Selection.Selected, result.Point, queued);
+                        else OrderService.IssueFormationOrderForSelection(Selection.Selected, result.Point, Vector3.forward, currentFormation, queued);
                     }
                 }
                 // IssueAttackOrder existia y funcionaba pero no estaba
@@ -1719,7 +1773,7 @@ namespace SP.Player
                 }
             }
 
-            if (kb.fKey.wasPressedThisFrame)
+            if (KeyBindings.WasPressed(KeyBindings.Poseer))
             {
                 var result = Aim.Evaluate(screenRay, null);
                 if (result.Type == AimTargetType.Ally) TryPossess(result.Soldier);
@@ -1797,7 +1851,7 @@ namespace SP.Player
                 Selection.SelectSameTypeOnScreen(Selection.Selected[0], Rig.Cam);
             }
 
-            if (kb.xKey.wasPressedThisFrame && Selection.Selected.Count > 0)
+            if (KeyBindings.WasPressed(KeyBindings.CancelarOrden) && Selection.Selected.Count > 0)
             {
                 foreach (var s in Selection.Selected)
                 {
@@ -1818,7 +1872,7 @@ namespace SP.Player
             // viva -- la tecla mas grande y accesible para la accion mas
             // repetida en vista tactica, para cuando la camara se pierde
             // paneando por el mapa.
-            if (kb.spaceKey.wasPressedThisFrame && Squad != null)
+            if (KeyBindings.WasPressed(KeyBindings.Recentrar) && Squad != null)
             {
                 Vector3 sum = Vector3.zero;
                 int count = 0;
@@ -1867,7 +1921,7 @@ namespace SP.Player
             var result = Aim.Evaluate(screenRay, null);
             if (result.Type != AimTargetType.Ground) { ClearFormationGhosts(); if (SP.Ai.PathPreview.Instance != null) SP.Ai.PathPreview.Instance.Hide(); return; }
 
-            var spots = OrderService.FormationPoints(result.Point, Selection.Selected.Count);
+            var spots = OrderService.FormationPoints(result.Point, Vector3.forward, Selection.Selected.Count, currentFormation);
             EnsureGhostCount(spots.Length);
             for (int i = 0; i < spots.Length; i++)
                 formationGhosts[i].transform.position = new Vector3(spots[i].x, 0.06f, spots[i].z);
@@ -2023,6 +2077,11 @@ namespace SP.Player
         // en cualquier RTS estilo Age of Empires.
         void UpdateDragSelection(Keyboard kb, Mouse mouse)
         {
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            {
+                if (!dragging) return;
+            }
+
             Vector2 mousePos = mouse.position.ReadValue();
 
             if (mouse.leftButton.wasPressedThisFrame)
@@ -2103,6 +2162,8 @@ namespace SP.Player
 
         void SelectAlliesInScreenRect(Vector2 a, Vector2 b, bool addToExisting)
         {
+            if (Squad == null) return;
+
             float minX = Mathf.Min(a.x, b.x), maxX = Mathf.Max(a.x, b.x);
             float minY = Mathf.Min(a.y, b.y), maxY = Mathf.Max(a.y, b.y);
 
@@ -2123,6 +2184,12 @@ namespace SP.Player
             }
 
             if (!any && !addToExisting) Selection.Clear();
+        }
+
+        void OnApplicationQuit() => PlayerPrefs.Save();
+        void OnApplicationPause(bool pauseStatus)
+        {
+            if (pauseStatus) PlayerPrefs.Save();
         }
     }
 }

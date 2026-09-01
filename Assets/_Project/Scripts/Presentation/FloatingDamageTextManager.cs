@@ -25,7 +25,10 @@ namespace SP.Presentation
         [SerializeField] float riseDistance = 1.2f;
         [SerializeField] float lifeTime = 0.8f;
 
+        public const int Budget = 32;
+
         readonly List<Text> pool = new List<Text>();
+        readonly List<int> activeOrder = new List<int>();
         readonly Dictionary<int, Entry> activeByTarget = new Dictionary<int, Entry>();
 
         class Entry
@@ -59,6 +62,18 @@ namespace SP.Presentation
         {
             foreach (var t in pool)
                 if (t != null && !t.transform.parent.gameObject.activeSelf) return t;
+
+            if (pool.Count >= Budget)
+            {
+                if (activeOrder.Count == 0) return null;
+                int oldestTargetId = activeOrder[0];
+                activeOrder.RemoveAt(0);
+                if (!activeByTarget.TryGetValue(oldestTargetId, out var oldEntry)) return null;
+                if (oldEntry.Routine != null) StopCoroutine(oldEntry.Routine);
+                activeByTarget.Remove(oldestTargetId);
+                oldEntry.Text.transform.parent.gameObject.SetActive(false);
+                return oldEntry.Text;
+            }
 
             var canvasGO = new GameObject("FloatingDamageText", typeof(Canvas));
             canvasGO.transform.SetParent(transform, false);
@@ -118,6 +133,7 @@ namespace SP.Presentation
 
             var newEntry = new Entry { Text = text, Total = evt.Amount, MergeUntil = Time.time + mergeWindow };
             activeByTarget[evt.TargetId] = newEntry;
+            activeOrder.Add(evt.TargetId);
             newEntry.Routine = StartCoroutine(RiseAndFade(newEntry, evt.TargetId, target.transform));
         }
 
@@ -145,7 +161,10 @@ namespace SP.Presentation
             entry.Text.transform.parent.gameObject.SetActive(false);
             entry.Text.color = new Color(color.r, color.g, color.b, 1f);
             if (activeByTarget.TryGetValue(targetId, out var current) && current == entry)
+            {
                 activeByTarget.Remove(targetId);
+                activeOrder.Remove(targetId);
+            }
         }
     }
 }

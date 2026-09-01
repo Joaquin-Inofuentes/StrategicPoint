@@ -48,6 +48,7 @@ namespace SP.Vehicles
         public void Tick(float dt)
         {
             if (!bootstrapped) Bootstrap();
+            if (motor == null) return;
             // Igual que TurretWeapon: Tick() se llama directo desde
             // WorldSimulationDriver, "enabled=false" no alcanza para
             // frenar un vehículo destruido -- una carcasa quemada no

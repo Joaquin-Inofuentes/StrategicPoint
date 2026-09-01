@@ -51,10 +51,19 @@ namespace SP.Presentation
             if (pick == null)
             {
                 if (all.Count < Budget) pick = Create();
-                // Todas encendidas: se roba la mas vieja. Con un tope de 6
-                // y destellos de 50 ms esto practicamente no pasa, pero el
-                // tope tiene que ser real igual.
-                else pick = all[0];
+                else
+                {
+                    pick = all[0];
+                    float earliestOffAt = pick != null ? pick.OffAt : float.MaxValue;
+                    for (int i = 1; i < all.Count; i++)
+                    {
+                        if (all[i] != null && all[i].OffAt < earliestOffAt)
+                        {
+                            earliestOffAt = all[i].OffAt;
+                            pick = all[i];
+                        }
+                    }
+                }
             }
 
             pick.Flash(position, color, intensity, range, FlashSeconds);
@@ -80,6 +89,7 @@ namespace SP.Presentation
         Light lightRef;
         float offAt;
         public bool IsOn => lightRef != null && lightRef.enabled;
+        public float OffAt => offAt;
 
         public void Flash(Vector3 position, Color color, float intensity, float range, float seconds)
         {

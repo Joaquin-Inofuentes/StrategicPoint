@@ -12,6 +12,16 @@ namespace SP.Player
     {
         readonly List<Soldier> selected = new List<Soldier>();
         public IReadOnlyList<Soldier> Selected => selected;
+        
+        System.IDisposable deathSub;
+        void OnEnable() => deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
+        void OnDisable() => deathSub?.Dispose();
+        void OnEntityDied(EntityDiedEvent evt)
+        {
+            int before = selected.Count;
+            selected.RemoveAll(s => s == null || s.Id == evt.ActorId);
+            if (selected.Count != before) Publish();
+        }
 
         // El vehículo es seleccionable, pero por separado de los soldados
         // (mutuamente excluyente, como en cualquier RTS: no tiene sentido

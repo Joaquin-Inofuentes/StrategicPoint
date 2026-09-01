@@ -90,11 +90,28 @@ namespace SP.Player
             return current.TryGetValue(actionId, out var k) ? k : Key.None;
         }
 
-        public static void Set(string actionId, Key key)
+        public static string Set(string actionId, Key key)
         {
             EnsureLoaded();
+            string freedAction = null;
+            if (key != Key.None)
+            {
+                foreach (var other in new List<string>(current.Keys))
+                {
+                    if (other == actionId) continue;
+                    if (current[other] == key)
+                    {
+                        current[other] = Key.None;
+                        PlayerPrefs.SetInt(PrefKey(other), (int)Key.None);
+                        freedAction = other;
+                        break; 
+                    }
+                }
+            }
             current[actionId] = key;
             PlayerPrefs.SetInt(PrefKey(actionId), (int)key);
+            PlayerPrefs.Save();
+            return freedAction;
         }
 
         public static void ResetToDefaults()
@@ -105,6 +122,7 @@ namespace SP.Player
                 current[kv.Key] = kv.Value;
                 PlayerPrefs.DeleteKey(PrefKey(kv.Key));
             }
+            PlayerPrefs.Save();
         }
 
         // Solo para tests: fuerza releer PlayerPrefs en la proxima consulta.

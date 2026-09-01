@@ -35,6 +35,7 @@ namespace SP.Presentation
         public Soldier LastKiller { get; private set; }
 
         public SP.Player.PlayerBrain Brain;
+        public SP.Presentation.GameOutcomeController Outcome;
         public UI.OffscreenKillMarkerView OffscreenMarker;
         public UI.KillFeedView Feed;
 
@@ -174,6 +175,7 @@ namespace SP.Presentation
         void TrySlowMotionOnLastKill()
         {
             if (SlowMotionActive) return;
+            if (Outcome != null && Outcome.IsShowing) return;
             if (ActorRegistry.CountAlive(TeamId.Enemy) > 0) return;
             if (Application.isPlaying) StartCoroutine(SlowMotionRoutine());
         }
@@ -214,6 +216,7 @@ namespace SP.Presentation
         {
             if (!SlowMotionActive) return;
             SlowMotionActive = false;
+            if (Outcome != null && Outcome.IsShowing) return;
             if (Mathf.Approximately(Time.timeScale, SlowMotionScale)) Time.timeScale = 1f;
         }
 

@@ -17,6 +17,14 @@ namespace SP.Actors
         [SerializeField] int maxHealth = 100;
 
         static int nextId = 1;
+
+        // Solo para tests/reinicios de escena en Edit mode, donde no hay
+        // domain reload entre corridas: sin esto, correr la suite dos
+        // veces en la misma sesion de Editor da Id's que no arrancan en 1,
+        // rompiendo cualquier comparacion "antes/despues" entre corridas
+        // (ej. RunEquivalenceCheck) o cualquier aserción que asuma IDs bajos.
+        public static void ResetIdCounterForTests() => nextId = 1;
+
         bool bootstrapped;
 
         public int Id { get; private set; }
@@ -59,12 +67,25 @@ namespace SP.Actors
         }
 
         // Fija identidad y equipo. Se llama una vez al construir la escena.
+        //
+        // BUG CRITICO CORREGIDO: Awake() ya corre Bootstrap() (que a su vez
+        // llama Health.Initialize(Id, maxHealth)) en el mismo instante en que
+        // Unity instancia el prefab -- ANTES de que este metodo tenga chance
+        // de correr. El "max" que se pasa aca antes se guardaba en el campo
+        // maxHealth pero jamas volvia a llegar a Health, que ya habia quedado
+        // inicializado con el default del prefab (100). Un enemigo "creado con
+        // 180 de vida" en realidad nacia con 100, sin ningun error ni log.
+        // Ahora, si el bootstrap ya corrio, se vuelve a sincronizar Health con
+        // el valor real pedido.
         public void Configure(string name, TeamId t, RoleType r, int max)
         {
             displayName = name;
             team = t;
             role = r;
             maxHealth = max;
+
+            if (bootstrapped && health != null)
+                health.Initialize(Id, maxHealth);
         }
 
         void Awake() => Bootstrap();
@@ -79,6 +100,12 @@ namespace SP.Actors
             motor = GetComponent<SoldierMotor>();
             weapon = GetComponent<WeaponHolder>();
             aiBrain = GetComponent<AiBrain>();
+
+            if (health == null)
+            {
+                Debug.LogError($"Soldier '{name}' no tiene un componente Health adjunto: no se puede inicializar.", this);
+                return; // deja bootstrapped=true para no reintentar en bucle, pero sin tocar un health nulo
+            }
 
             health.Initialize(Id, maxHealth);
             ActorRegistry.Register(this);

@@ -72,6 +72,12 @@ namespace SP.Presentation
         {
             if (running != null) StopCoroutine(running);
             IsRunning = false;
+            // Red de seguridad: si el corte pasó a mitad de un freeze de
+            // camara (Time.timeScale=0), el try/finally de cada bloque ya
+            // debería restaurarlo -- pero esto asegura que F9 NUNCA deja el
+            // juego trabado, ni siquiera si algún freeze futuro se olvida
+            // del try/finally.
+            Time.timeScale = 1f;
             TestLog.Warn("Demo automatico detenido a mano (F9).");
         }
 
@@ -99,18 +105,9 @@ namespace SP.Presentation
             yield return new WaitForSecondsRealtime(0.2f);
             yield return null;
 
-            // A pesar del margen de arriba, una fracción de los pasos
-            // salía DIRECTAMENTE EN NEGRO (mismo tamaño de archivo exacto,
-            // el mismo frame vacío) — pasa cuando el Editor no está
-            // enfocado y el Game View no repinta a tiempo entre ticks. No
-            // es determinístico (le pasa a distintos pasos en distintas
-            // corridas), así que en vez de adivinar cuánto esperar, se
-            // captura a una textura, se mide si de verdad quedó negra, y
-            // si es así se repinta a mano y se reintenta antes de escribir
-            // el archivo — mucho más confiable que una espera fija.
-            string dir = Path.Combine(Application.dataPath, "..", "DemoCaptures");
-            Directory.CreateDirectory(dir);
-            string fileName = $"{stepCounter:00}_{stepName}.png";
+            string fileName = $"step{stepCounter:00}_{stepName}.png";
+            string dir = Path.Combine(Application.dataPath, "../DemoCaptures");
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
             string path = Path.Combine(dir, fileName);
 
             Texture2D shot = null;
@@ -133,10 +130,20 @@ namespace SP.Presentation
             {
                 File.WriteAllBytes(path, shot.EncodeToPNG());
                 UnityEngine.Object.Destroy(shot);
+                stepCounter++;
+                TestLog.Step($"Captura: {fileName}");
+            }
+            else
+            {
+                // BUG REAL: antes esto igual incrementaba stepCounter y logueaba
+                // "Captura: ..." como si hubiera salido bien, aunque los 4
+                // intentos hubieran dado cuadro negro y NO se hubiera escrito
+                // ningun archivo -- no quedaba ningun rastro en el log de que
+                // esa captura en particular fallo.
+                stepCounter++;
+                TestLog.Warn($"Captura FALLIDA tras 4 intentos (frame negro persistente, no se escribio archivo): {fileName}");
             }
 
-            stepCounter++;
-            TestLog.Step($"Captura: {fileName}");
             yield return new WaitForSecondsRealtime(stepGap);
         }
 
@@ -390,15 +397,21 @@ namespace SP.Presentation
 
                 pickup.EquipOn(vega.Weapon, vega.Id);
                 Time.timeScale = 0f;
-                bool weaponFired = vega.Weapon.TryFire(vega.transform.position, vega.transform.forward);
-                if (weaponFired && Projectile.ActiveInstances.Count > 0)
+                try
                 {
-                    var proj = Projectile.ActiveInstances[Projectile.ActiveInstances.Count - 1];
-                    for (int i = 0; i < 5; i++) proj.Tick(0.03f);
+                    bool weaponFired = vega.Weapon.TryFire(vega.transform.position, vega.transform.forward);
+                    if (weaponFired && Projectile.ActiveInstances.Count > 0)
+                    {
+                        var proj = Projectile.ActiveInstances[Projectile.ActiveInstances.Count - 1];
+                        for (int i = 0; i < 5; i++) proj.Tick(0.03f);
+                    }
+                    TestLog.Step($"Arma {pickup.Kind} (color {pickup.Color}) equipada y disparada por {vega.DisplayName}: {weaponFired}");
+                    yield return CaptureStep($"fase4_arma_{pickup.Kind}_disparo");
                 }
-                TestLog.Step($"Arma {pickup.Kind} (color {pickup.Color}) equipada y disparada por {vega.DisplayName}: {weaponFired}");
-                yield return CaptureStep($"fase4_arma_{pickup.Kind}_disparo");
-                Time.timeScale = 1f;
+                finally
+                {
+                    Time.timeScale = 1f;
+                }
             }
 
             // ============================================================
@@ -425,15 +438,21 @@ namespace SP.Presentation
             {
                 InputDriver.EquipWeaponHotkey(kinds[i]);
                 Time.timeScale = 0f;
-                bool fired3 = vega.Weapon.TryFire(vega.transform.position, vega.transform.forward);
-                if (fired3 && Projectile.ActiveInstances.Count > 0)
+                try
                 {
-                    var proj = Projectile.ActiveInstances[Projectile.ActiveInstances.Count - 1];
-                    for (int k = 0; k < 5; k++) proj.Tick(0.03f);
+                    bool fired3 = vega.Weapon.TryFire(vega.transform.position, vega.transform.forward);
+                    if (fired3 && Projectile.ActiveInstances.Count > 0)
+                    {
+                        var proj = Projectile.ActiveInstances[Projectile.ActiveInstances.Count - 1];
+                        for (int k = 0; k < 5; k++) proj.Tick(0.03f);
+                    }
+                    TestLog.Step($"Tecla [{i + 1}]: arma {kinds[i]} equipada, color {vega.Weapon.CurrentWeaponKind}, disparo={fired3}");
+                    yield return CaptureStep($"fase5_tecla_{i + 1}_{kinds[i]}");
                 }
-                TestLog.Step($"Tecla [{i + 1}]: arma {kinds[i]} equipada, color {vega.Weapon.CurrentWeaponKind}, disparo={fired3}");
-                yield return CaptureStep($"fase5_tecla_{i + 1}_{kinds[i]}");
-                Time.timeScale = 1f;
+                finally
+                {
+                    Time.timeScale = 1f;
+                }
             }
 
             // Marcadores de orden de ataque y de subida (rojo y azul).

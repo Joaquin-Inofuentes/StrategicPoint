@@ -32,20 +32,35 @@ namespace SP.UI
             rows.Add(new Row { Soldier = soldier, RowObject = rowObject, Label = label, HealthFill = healthFill });
         }
 
+        const string RowPrefix = "NearbyRow_";
+
         void Start()
         {
             brain = FindFirstObjectByType<PlayerBrain>();
 
             if (rows.Count > 0) return;
 
-            var labels = GetComponentsInChildren<Text>(true);
-            var playerSoldiers = new List<Soldier>();
-            foreach (var s in ActorRegistry.All)
-                if (s.Team == TeamId.Player) playerSoldiers.Add(s);
+            var content = transform.Find("Viewport/Content");
+            if (content == null) return;
 
-            int n = Mathf.Min(labels.Length, playerSoldiers.Count);
-            for (int i = 0; i < n; i++)
-                rows.Add(new Row { Soldier = playerSoldiers[i], RowObject = labels[i].transform.parent.gameObject, Label = labels[i] });
+            foreach (Transform rowT in content)
+            {
+                if (!rowT.name.StartsWith(RowPrefix)) continue;
+                string soldierName = rowT.name.Substring(RowPrefix.Length);
+
+                Soldier match = null;
+                foreach (var s in ActorRegistry.All)
+                    if (s != null && s.Team == TeamId.Player && s.DisplayName == soldierName) { match = s; break; }
+                if (match == null) continue;
+
+                rows.Add(new Row
+                {
+                    Soldier = match,
+                    RowObject = rowT.gameObject,
+                    Label = rowT.Find("Label")?.GetComponent<Text>(),
+                    HealthFill = rowT.Find("HealthBG/HealthFill")?.GetComponent<Image>(),
+                });
+            }
         }
 
         void LateUpdate()
@@ -67,7 +82,7 @@ namespace SP.UI
                 float dist = Vector3.Distance(fromPos, row.Soldier.transform.position);
                 row.Label.text = $"{row.Soldier.DisplayName} - {row.Soldier.Role}\n{row.Soldier.Health.Current}/{row.Soldier.Health.MaxHealth} vida · {dist:0.0} m";
 
-                if (row.HealthFill != null)
+                if (row.HealthFill != null && row.Soldier.Health.MaxHealth > 0)
                     row.HealthFill.fillAmount = (float)row.Soldier.Health.Current / row.Soldier.Health.MaxHealth;
             }
         }

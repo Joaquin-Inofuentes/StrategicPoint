@@ -67,7 +67,7 @@ namespace SP.UI
             float t = 0f;
             while (t < punchTime)
             {
-                t += Time.deltaTime;
+                t += Time.unscaledDeltaTime;
                 float k = t / punchTime;
                 rt.localScale = Vector3.one * Mathf.Lerp(0.2f, 2f, k);
                 rt.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(k * 40f) * (1f - k) * 10f);
@@ -79,7 +79,7 @@ namespace SP.UI
             t = 0f;
             while (t < settleTime)
             {
-                t += Time.deltaTime;
+                t += Time.unscaledDeltaTime;
                 rt.localScale = Vector3.one * Mathf.Lerp(2f, 1f, t / settleTime);
                 rt.localRotation = Quaternion.Slerp(rt.localRotation, Quaternion.identity, t / settleTime);
                 yield return null;
@@ -88,13 +88,13 @@ namespace SP.UI
             rt.localRotation = Quaternion.identity;
 
             const float holdTime = 0.7f;
-            yield return new WaitForSeconds(holdTime);
+            yield return new WaitForSecondsRealtime(holdTime);
 
             const float fadeTime = 1f; // punch + settle + hold + fade ~= 2s en total
             t = 0f;
             while (t < fadeTime)
             {
-                t += Time.deltaTime;
+                t += Time.unscaledDeltaTime;
                 float a = 1f - (t / fadeTime);
                 label.color = new Color(baseColor.r, baseColor.g, baseColor.b, a);
                 yield return null;

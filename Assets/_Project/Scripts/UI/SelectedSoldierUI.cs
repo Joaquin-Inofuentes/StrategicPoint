@@ -165,11 +165,15 @@ namespace SP.UI
                     if (s != null && s.DisplayName == soldierName) { match = s; break; }
                 if (match == null) continue;
 
+                var background = child.GetComponent<Image>();
+                if (background == null)
+                    Debug.LogWarning($"[SelectedSoldierUI] La fila '{child.name}' no tiene Image en su GameObject raiz; queda sin resaltado de posesion/seleccion.");
+
                 rows.Add(new Row
                 {
                     SoldierId = match.Id,
                     Soldier = match,
-                    Background = child.GetComponent<Image>(),
+                    Background = background,
                     Label = child.Find("Label")?.GetComponent<Text>(),
                     HealthFill = child.Find("BarBG/BarFill")?.GetComponent<Image>(),
                     Brain = match.GetComponent<AiBrain>(),
@@ -211,6 +215,7 @@ namespace SP.UI
         {
             foreach (var row in rows)
             {
+                if (row.Background == null) continue; // sin fondo no hay nada que pintar, y sin este check Refresh() explota
                 // Un caído no se resalta ni como poseído ni como
                 // seleccionado: LateUpdate lo deja en gris y acá no hay
                 // que volver a pintarlo de azul/amarillo por un evento.

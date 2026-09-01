@@ -15,10 +15,16 @@ namespace SP.Combat
 
         void Awake() => Bootstrap();
 
+        int generation;
+
         public void Bootstrap()
         {
             if (pool != null) return;
-            if (prefab == null) return;
+            if (prefab == null)
+            {
+                Debug.LogWarning($"[ProjectilePool] {name}: 'prefab' no esta asignado en el Inspector -- el pool no se puede construir. Spawn() no va a disparar nada hasta que se asigne.", this);
+                return;
+            }
             pool = new ObjectPool<Projectile>(prefab, prewarm, transform);
         }
 
@@ -26,7 +32,9 @@ namespace SP.Combat
         {
             prefab = projectilePrefab;
             prewarm = prewarmCount;
+            pool?.Clear(); // destruye las instancias LIBRES del pool viejo antes de abandonarlo
             pool = null;
+            generation++; // cualquier proyectil en vuelo con la generacion anterior ya no calza con el pool nuevo
             // El contador mide a ESTE pool: al rearmarlo con otro tamanio, lo
             // medido antes ya no dice nada del nuevo.
             ExhaustedCount = 0;
@@ -82,17 +90,24 @@ namespace SP.Combat
         public Projectile Spawn(Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int damage, Color? color = null, float explosionRadius = 0f, float gravity = 0f, SP.Vehicles.Vehicle sourceVehicle = null, float speedMultiplier = 1f)
         {
             if (pool == null) Bootstrap();
+            if (pool == null) return null; // Bootstrap() ya logueo el motivo (prefab sin asignar)
             // Se pregunta ANTES del Get: ObjectPool.Get() instancia en el
             // acto cuando la pila de libres esta vacia, y despues de la
             // llamada ya no hay forma de distinguir un reuso de un
             // Instantiate.
-            if (pool != null && pool.FreeCount == 0) ExhaustedCount++;
+            if (pool.FreeCount == 0) ExhaustedCount++;
             var p = pool.Get();
+            p.PoolGeneration = generation;
             p.Configure(this, position, direction, shooterId, shooterTeam, damage, color, explosionRadius, gravity, sourceVehicle, speedMultiplier);
             return p;
         }
 
-        public void Release(Projectile p) => pool?.Release(p);
+        public void Release(Projectile p)
+        {
+            if (p == null) return;
+            if (pool != null && p.PoolGeneration == generation) pool.Release(p);
+            else Object.Destroy(p.gameObject); // instancia de una configuracion anterior: no se recicla en un pool que ya no coincide
+        }
 
         public int FreeCount => pool?.FreeCount ?? 0;
     }

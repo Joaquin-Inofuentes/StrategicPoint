@@ -96,6 +96,8 @@ namespace SP.Presentation
         void OnDamage(DamageTakenEvent evt)
         {
             if (!Application.isPlaying || !IsMe(evt.TargetId) || !gameObject.activeInHierarchy) return;
+            if (soldier == null || soldier.Health == null || !soldier.Health.IsAlive) return;
+            
             // Voz propia del herido, distinta del "tac" del impacto: mas
             // grave, para que se lea como un quejido y no como el mismo
             // golpe metalico que ya suena en la mirilla del que dispara.

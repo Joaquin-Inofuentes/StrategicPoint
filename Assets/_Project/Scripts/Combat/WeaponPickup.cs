@@ -23,6 +23,15 @@ namespace SP.Combat
         [SerializeField] float cooldown = 0.35f;
         [SerializeField] Color color = Color.white;
 
+        // Guarda de reentrancia: EquipOn() hoy tiene un unico llamador
+        // (PlayerInputDriver.Interactuar, gateado por una tecla de flanco),
+        // pero la clase en si no ofrece NINGUNA defensa si el dia de
+        // mañana aparece un segundo camino (ej. un boton de UI ademas de
+        // la tecla de cercania). Sin esta guarda, dos llamadas superpuestas
+        // a EquipOn() en el mismo pickup duplicarian EquipWeapon() y el
+        // WeaponPickedUpEvent.
+        bool equipping;
+
         public WeaponKind Kind => kind;
         public Color Color => color;
 
@@ -36,9 +45,17 @@ namespace SP.Combat
 
         public void EquipOn(WeaponHolder holder, int soldierId)
         {
-            if (holder == null) return;
-            holder.EquipWeapon(kind, damage, cooldown, color);
-            EventBus.Instance.Publish(new WeaponPickedUpEvent(soldierId, kind));
+            if (holder == null || equipping) return;
+            equipping = true;
+            try
+            {
+                holder.EquipWeapon(kind, damage, cooldown, color);
+                EventBus.Instance.Publish(new WeaponPickedUpEvent(soldierId, kind));
+            }
+            finally
+            {
+                equipping = false;
+            }
         }
     }
 }

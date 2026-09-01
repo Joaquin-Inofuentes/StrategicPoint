@@ -25,12 +25,14 @@ namespace SP.UI
         public readonly string Key;
         public readonly string Description;
         public readonly ControlContext Contexts;
+        public readonly string ActionId;
 
-        public ControlEntry(string key, string description, ControlContext contexts)
+        public ControlEntry(string key, string description, ControlContext contexts, string actionId = null)
         {
             Key = key;
             Description = description;
             Contexts = contexts;
+            ActionId = actionId;
         }
     }
 
@@ -102,7 +104,7 @@ namespace SP.UI
         // asi que este orden tambien manda adentro de cada grupo del panel.
         static readonly ControlEntry[] Entries =
         {
-            new ControlEntry("TAB", "alternar entre vista FPS y vista táctica RTS", Todos),
+            new ControlEntry("TAB", "alternar entre vista FPS y vista táctica RTS", Todos, SP.Player.KeyBindings.AlternarVista),
 
             new ControlEntry("WASD", "moverse", ControlContext.FpsAPie),
             new ControlEntry("WASD", "conducir: acelerar, retroceder y girar", ControlContext.VehiculoConductor),
@@ -115,7 +117,7 @@ namespace SP.UI
             new ControlEntry("Mouse", "mirar alrededor", ControlContext.FpsAPie),
             new ControlEntry("Mouse", "girar la torreta hacia donde apuntás", ControlContext.VehiculoArtillero),
 
-            new ControlEntry("R", "recargar el arma", ControlContext.FpsAPie),
+            new ControlEntry("R", "recargar el arma", ControlContext.FpsAPie, SP.Player.KeyBindings.Recargar),
             new ControlEntry("R", "alternar munición explosiva / perforante", ControlContext.VehiculoArtillero),
 
             new ControlEntry("1/2/3", "cambiar de arma: fusil, pistola, pesada", ControlContext.FpsAPie),
@@ -123,8 +125,8 @@ namespace SP.UI
             new ControlEntry("E", "subir al vehículo cercano, o equipar el arma del piso", ControlContext.FpsAPie),
             new ControlEntry("E", "bajarse del vehículo", AdentroDelVehiculo),
 
-            new ControlEntry("F", "poseer al aliado al que estás apuntando", ControlContext.FpsAPie),
-            new ControlEntry("F", "poseer al aliado bajo el cursor, o tomar el mando del vehículo ocupado", ControlContext.Rts),
+            new ControlEntry("F", "poseer al aliado al que estás apuntando", ControlContext.FpsAPie, SP.Player.KeyBindings.Poseer),
+            new ControlEntry("F", "poseer al aliado bajo el cursor, o tomar el mando del vehículo ocupado", ControlContext.Rts, SP.Player.KeyBindings.Poseer),
 
             new ControlEntry("T", "ordenarle al aliado libre más cercano que vaya al punto apuntado", ControlContext.FpsAPie),
             new ControlEntry("T/Clic der.", "mover la selección al punto, o atacar al enemigo señalado", ControlContext.Rts),
@@ -138,13 +140,13 @@ namespace SP.UI
 
             new ControlEntry("2", "pasar al asiento de artillero (si está libre)", ControlContext.VehiculoConductor),
             new ControlEntry("1", "pasar al asiento de conductor (si está libre)", ControlContext.VehiculoArtillero),
-            new ControlEntry("V", "alternar cámara en primera persona / exterior", AsientosFps),
+            new ControlEntry("V", "alternar cámara en primera persona / exterior", AsientosFps, SP.Player.KeyBindings.CamaraVehiculo),
 
             new ControlEntry("Arrastrar", "seleccionar a todos los aliados del recuadro", ControlContext.Rts),
             new ControlEntry("Shift+Clic", "sumar a la selección sin perder lo ya elegido", ControlContext.Rts),
             new ControlEntry("Ctrl+A", "seleccionar a toda la escuadra viva", ControlContext.Rts),
             new ControlEntry("X", "cancelar la orden de la selección y volver a patrullar", ControlContext.Rts),
-            new ControlEntry("Espacio", "recentrar la cámara en la escuadra", ControlContext.Rts),
+            new ControlEntry("Espacio", "recentrar la cámara en la escuadra", ControlContext.Rts, SP.Player.KeyBindings.Recentrar),
             new ControlEntry("Rueda", "acercar y alejar la cámara", VistasRts),
 
             new ControlEntry("Ctrl+1..9", "guardar la selección como grupo de control", ControlContext.Rts),
@@ -153,11 +155,21 @@ namespace SP.UI
             new ControlEntry("Clic der.", "mantener: vista previa de la formación antes de soltar la orden", ControlContext.Rts),
             new ControlEntry("Clic der.", "mandar la camioneta al punto del suelo apuntado", ControlContext.FpsAPie),
 
-            new ControlEntry("Q", "ciclar la posesión al siguiente aliado vivo", APieOTactico),
-            new ControlEntry("C", "poseer al aliado vivo más cercano", APieOTactico),
+            new ControlEntry("Q", "ciclar la posesión al siguiente aliado vivo", APieOTactico, SP.Player.KeyBindings.CiclarPosesion),
+            new ControlEntry("Z", "ciclar la posesión al aliado vivo anterior", APieOTactico, SP.Player.KeyBindings.CiclarPosesionAtras),
+            new ControlEntry("C", "poseer al aliado vivo más cercano", APieOTactico, SP.Player.KeyBindings.PoseerMasCercano),
             new ControlEntry("F1/F2/F3", "poseer directamente al soldado 1, 2 o 3 de la escuadra", APieOTactico),
 
-            new ControlEntry("H", "abrir y cerrar esta lista de controles sin pausar el juego", Todos),
+            new ControlEntry("U", "ordenarle a un aliado que suba al vehiculo, de a uno", ControlContext.FpsAPie | AdentroDelVehiculo),
+            new ControlEntry("I", "bajar a todos los aliados del vehiculo", ControlContext.FpsAPie),
+
+            new ControlEntry("Y", "reagrupar a la seleccion dispersa", ControlContext.Rts, SP.Player.KeyBindings.Reagrupar),
+            new ControlEntry("B", "retirada: alejar a la seleccion del enemigo mas cercano", ControlContext.Rts, SP.Player.KeyBindings.Retirada),
+            new ControlEntry("K", "ciclar la formacion con la que se emiten las ordenes", ControlContext.Rts, SP.Player.KeyBindings.CiclarFormacion),
+            new ControlEntry("J", "seleccionar solo a los heridos", ControlContext.Rts, SP.Player.KeyBindings.SeleccionarHeridos),
+            new ControlEntry("N", "seleccionar a todos los del mismo tipo en pantalla", ControlContext.Rts, SP.Player.KeyBindings.SeleccionarMismoTipo),
+
+            new ControlEntry("H", "abrir y cerrar esta lista de controles sin pausar el juego", Todos, SP.Player.KeyBindings.Controles),
             new ControlEntry("ESC", "pausa y libera el cursor; dentro de los menús vuelve un paso atrás", Todos),
             new ControlEntry("Clic", "capturar el cursor para poder mirar con el mouse", AsientosFps | ControlContext.FpsAPie)
         };
@@ -185,7 +197,7 @@ namespace SP.UI
             {
                 if (maxEntries > 0 && shown >= maxEntries) break;
                 if (shown > 0) sb.Append(LineSeparator);
-                sb.Append(FormatKey(e.Key)).Append(' ').Append(e.Description);
+                sb.Append(DisplayKeyFor(e)).Append(' ').Append(e.Description);
                 shown++;
             }
             return sb.ToString();
@@ -202,9 +214,18 @@ namespace SP.UI
                 if (i > 0) sb.Append('\n');
                 sb.Append(HeaderFor(ctx)).Append('\n');
                 foreach (var e in For(ctx))
-                    sb.Append(FormatKey(e.Key)).Append(' ').Append(e.Description).Append('\n');
+                    sb.Append(DisplayKeyFor(e)).Append(' ').Append(e.Description).Append('\n');
             }
             return sb.ToString();
+        }
+
+        public static string DisplayKeyFor(ControlEntry e)
+        {
+            if (e.ActionId != null)
+            {
+                return FormatKey(SP.Player.KeyBindings.DisplayName(e.ActionId));
+            }
+            return FormatKey(e.Key);
         }
 
         public static string HeaderFor(ControlContext ctx)

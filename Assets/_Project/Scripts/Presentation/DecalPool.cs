@@ -59,6 +59,7 @@ namespace SP.Presentation
                 root = rootGo.transform;
             }
             if (!pools.TryGetValue(kind, out var list)) { list = new List<GameObject>(); pools[kind] = list; }
+            list.RemoveAll(x => x == null);
 
             GameObject decal;
             if (list.Count >= Budget(kind))
