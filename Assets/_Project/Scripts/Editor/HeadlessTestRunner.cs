@@ -154,7 +154,6 @@ namespace SP.EditorTools
         }
 
         [MenuItem("Strategic Point/Run All Tests Headless")]
-        [Unity.Editor.Pipeline.CliCommand("run-suite")]
         public static void RunAll()
         {
             // Se resetea al arrancar: sin esto, una segunda corrida en la
@@ -679,6 +678,7 @@ namespace SP.EditorTools
             var killDirector = servicesGO.AddComponent<KillFeedbackDirector>();
             killDirector.Brain = playerBrain;
             killDirector.OffscreenMarker = offscreenKillRef;
+            killDirector.Outcome = outcomeControllerRef;
             // El feed ya no se suscribe solo al bus: lo dispara el director
             // despues de actualizar su estado, para que el texto no salga
             // corrido una baja (ver comentario en KillFeedView.ShowKill).
