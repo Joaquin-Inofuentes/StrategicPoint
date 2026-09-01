@@ -2312,7 +2312,7 @@ namespace SP.EditorTools
             {
                 ("Arma_Rifle",  WeaponKind.Rifle,  26, 0.30f, new Color(0.55f, 0.68f, 0.78f), new Vector3(3f, 0.4f, -3f)),
                 ("Arma_Pistola",WeaponKind.Pistol, 14, 0.15f, new Color(0.95f, 0.88f, 0.20f), new Vector3(4f, 0.4f, -3f)),
-                ("Arma_Pesada", WeaponKind.Heavy,  50, 0.80f, new Color(0.80f, 0.20f, 0.55f), new Vector3(5f, 0.4f, -3f)),
+                ("Arma_Pesada", WeaponKind.Heavy,  50, 0.80f, new Color(0.85f, 0.35f, 0.10f), new Vector3(5f, 0.4f, -3f)),
             };
 
             var list = new List<WeaponPickup>();

@@ -57,6 +57,8 @@ namespace SP.Vehicles
         [SerializeField] float projectileGravity = 9.8f;
         public float ProjectileGravity => Ammo == AmmoType.Explosive ? projectileGravity : projectileGravity * 0.45f;
 
+        public const float SpeedMultiplier = 2f;
+
         // El cooldown fijo permitia disparar indefinidamente al mismo
         // ritmo, o sea ninguna decision sobre CUANDO disparar. El calor
         // sube por disparo y baja con el tiempo, y estira el cooldown.
@@ -200,9 +202,12 @@ namespace SP.Vehicles
             var spawnPos = Muzzle != null ? Muzzle.position : transform.position;
             // Pedido explicito: la bala del cañon vuela al doble de la
             // velocidad base del pool (comun con las armas de mano, que
-            // siguen en 1x porque no pasan este parametro).
+            // siguen en 1x porque no pasan este parametro). SpeedMultiplier
+            // es publico porque TurretAimView.PredictedImpactPoint tiene que
+            // simular la MISMA velocidad real para que el anillo de impacto
+            // no quede corto.
             pool.Spawn(spawnPos, transform.forward, shooterId, team, CurrentDamage,
-                CurrentProjectileColor, ExplosionRadius, ProjectileGravity, vehicle, speedMultiplier: 2f);
+                CurrentProjectileColor, ExplosionRadius, ProjectileGravity, vehicle, speedMultiplier: SpeedMultiplier);
             cooldownTimer = EffectiveCooldown;
             Heat = Mathf.Clamp01(Heat + HeatPerShot);
 

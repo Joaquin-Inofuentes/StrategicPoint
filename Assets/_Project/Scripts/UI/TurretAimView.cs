@@ -147,7 +147,7 @@ namespace SP.UI
             // el vuelo real (que integra la misma parabola de forma
             // exacta) sin importar los fps.
             //   y(t) = y0 + vy*t - 0.5*g*t^2 = 0
-            Vector3 vel = dir * ProjectileSpeed;
+            Vector3 vel = dir * (ProjectileSpeed * TurretWeapon.SpeedMultiplier);
             float y0 = origin.y - groundY;
             float disc = vel.y * vel.y + 2f * g * y0;
             if (disc < 0f) disc = 0f;
@@ -155,8 +155,13 @@ namespace SP.UI
             return new Vector3(origin.x + vel.x * tImpact, groundY + 0.05f, origin.z + vel.z * tImpact);
         }
 
-        // Debe coincidir con Projectile.speed del prefab: la simulacion no
-        // sirve de nada si integra a otra velocidad que el vuelo real.
+        // Debe coincidir con Projectile.speed del prefab (velocidad BASE,
+        // antes del speedMultiplier): la simulacion no sirve de nada si
+        // integra a otra velocidad que el vuelo real. El cañon del tanque
+        // dispara a TurretWeapon.SpeedMultiplier veces esto, no a esto solo
+        // -- BUG REAL corregido: antes se simulaba a la mitad de la
+        // velocidad real del proyectil, y el anillo de impacto quedaba
+        // sistematicamente corto en cada tiro.
         public const float ProjectileSpeed = 40f;
 
         void DrawCircle(Vector3 center, float radius)
