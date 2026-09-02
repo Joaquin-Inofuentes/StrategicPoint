@@ -49,7 +49,12 @@ namespace SP.Presentation
 
         void Start()
         {
-            if (autoPlayOnStart) StartDemo();
+            // "-autodemo" en la linea de comandos del build (StrategicPoint.exe
+            // -autodemo) fuerza la demo sin tener que tildar autoPlayOnStart
+            // a mano en el Inspector: pensado para poder pedir una corrida de
+            // verificacion desde afuera (CLI) sin reconstruir el build cada vez.
+            if (autoPlayOnStart || System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-autodemo") >= 0)
+                StartDemo();
         }
 
         void Update()
