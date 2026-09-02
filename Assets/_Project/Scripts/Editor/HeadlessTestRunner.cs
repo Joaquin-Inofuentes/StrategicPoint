@@ -156,32 +156,104 @@ namespace SP.EditorTools
         [MenuItem("Strategic Point/Run All Tests Headless")]
         public static void RunAll()
         {
+            bool ok;
+            try
+            {
+                ok = RunOnceCore(logSuccessPhase: true);
+            }
+            catch (Exception)
+            {
+                if (Application.isBatchMode) EditorApplication.Exit(1);
+                throw;
+            }
+
+            if (Application.isBatchMode) EditorApplication.Exit(ok ? 0 : 1);
+        }
+
+        // Una corrida completa (construir escena + las 7 fases), extraida de
+        // RunAll para que RunMany pueda invocarla N veces seguidas en el
+        // mismo proceso sin duplicar el manejo de excepciones/exit code.
+        // Devuelve false (sin lanzar) ante un check fallido; SI relanza una
+        // excepcion real (bug de verdad, no una aserción) para que quede
+        // visible con su stack trace completo.
+        static bool RunOnceCore(bool logSuccessPhase)
+        {
             // Se resetea al arrancar: sin esto, una segunda corrida en la
             // misma sesion de Editor arrastraria las fallas de la anterior
             // (los estaticos sobreviven entre invocaciones de RunAll).
             failedChecks = 0;
             failedCheckMessages.Clear();
 
-            try
-            {
-                TestLog.Begin();
-                BuildAndRun();
+            TestLog.Begin();
+            BuildAndRun();
 
-                if (failedChecks > 0)
+            if (failedChecks > 0)
+            {
+                var detail = string.Join("\n  - ", failedCheckMessages);
+                Debug.LogError($"[TEST FALLIDO] {failedChecks} check(s) no se cumplieron:\n  - {detail}");
+                return false;
+            }
+
+            if (logSuccessPhase) TestLog.Phase("TODAS LAS FASES COMPLETADAS CON EXITO");
+            return true;
+        }
+
+        // Pedido explicito: correr la suite muchas veces seguidas (100 por
+        // defecto) para cazar dos clases de bug que UNA sola corrida no
+        // puede ver: flakiness (algo que depende de un orden/tiempo que a
+        // veces cae distinto) y fugas de estado estatico entre corridas
+        // (registros/pools/suscripciones que sobreviven a BuildAndRun y se
+        // acumulan). BuildAndRun ya reconstruye la escena entera cada vez
+        // (ver su comentario "BUG REAL encontrado al repetir RunAll()
+        // varias veces seguidas"), asi que esto reusa exactamente ese mismo
+        // camino real, no una copia aparte.
+        [MenuItem("Strategic Point/Correr 100 iteraciones (flakiness y fugas de estado)")]
+        public static void RunManyHeadless() => RunMany(100);
+
+        public static void RunMany(int iterations)
+        {
+            failedChecks = 0;
+            failedCheckMessages.Clear();
+
+            int failures = 0;
+            var failureDetails = new List<string>();
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            long memBefore = System.GC.GetTotalMemory(false);
+
+            for (int i = 1; i <= iterations; i++)
+            {
+                bool ok;
+                try
                 {
-                    var detail = string.Join("\n  - ", failedCheckMessages);
-                    Debug.LogError($"[TEST FALLIDO] {failedChecks} check(s) no se cumplieron:\n  - {detail}");
-                    if (Application.isBatchMode) EditorApplication.Exit(1);
-                    return;
+                    ok = RunOnceCore(logSuccessPhase: false);
+                }
+                catch (Exception ex)
+                {
+                    ok = false;
+                    Debug.LogError($"[ITER {i}/{iterations}] Excepcion no capturada (bug real, no un Check fallido): {ex}");
                 }
 
-                TestLog.Phase("TODAS LAS FASES COMPLETADAS CON EXITO");
+                if (!ok)
+                {
+                    failures++;
+                    string detail = failedCheckMessages.Count > 0 ? string.Join(" | ", failedCheckMessages) : "ver excepcion arriba";
+                    failureDetails.Add($"iter {i}: {detail}");
+                }
+                else if (i % 10 == 0 || i == iterations)
+                {
+                    Debug.Log($"[RunMany] {i}/{iterations} OK (memoria administrada: {System.GC.GetTotalMemory(false) / 1024 / 1024} MB)");
+                }
             }
-            catch (Exception ex)
+
+            sw.Stop();
+            long memAfter = System.GC.GetTotalMemory(true);
+            Debug.Log($"[RunMany] {iterations - failures}/{iterations} iteraciones OK en {sw.Elapsed.TotalSeconds:0.0}s ({sw.Elapsed.TotalSeconds / iterations:0.00}s/iter). Memoria administrada: {memBefore / 1024 / 1024} MB -> {memAfter / 1024 / 1024} MB (delta {(memAfter - memBefore) / 1024 / 1024} MB).");
+
+            if (failures > 0)
             {
-                Debug.LogError($"[TEST FALLIDO] {ex}");
+                Debug.LogError($"[RunMany] {failures}/{iterations} iteraciones fallaron:\n  - {string.Join("\n  - ", failureDetails)}");
                 if (Application.isBatchMode) EditorApplication.Exit(1);
-                throw;
+                return;
             }
 
             if (Application.isBatchMode) EditorApplication.Exit(0);
