@@ -1639,6 +1639,29 @@ namespace SP.EditorTools
             Check("Kes vuelve a estar activa tras bajar", kes.gameObject.activeInHierarchy);
             Check("Doc vuelve a estar activo tras bajar", doc.gameObject.activeInHierarchy);
 
+            // --- Orden de movimiento del vehiculo desde RTS: antes fallaba en
+            // silencio si nadie lo manejaba (TryIssueVehicleMoveOrder
+            // devolvia false sin avisar por que). El fix agrega feedback
+            // explicito en PlayerInputDriver y usa el vehiculo REALMENTE
+            // seleccionado (parametro opcional), no solo el campo Vehicle
+            // fijo por Inspector.
+            var selectionForVehicle = inputDriver.GetComponent<SelectionController>() ?? UnityEngine.Object.FindAnyObjectByType<SelectionController>();
+            selectionForVehicle.SelectVehicle(vehicle);
+            Check("SelectVehicle deja al vehiculo como seleccionado", selectionForVehicle.SelectedVehicle == vehicle);
+            var puntoLejano = vehicle.transform.position + new Vector3(50f, 0f, 50f);
+            bool ordenSinConductor = inputDriver.TryIssueVehicleMoveOrder(puntoLejano, vehicle);
+            Check("TryIssueVehicleMoveOrder rechaza la orden si nadie maneja (sin conductor)", !ordenSinConductor);
+
+            vehicle.Mount(vega, VehicleSeatRole.Driver);
+            var vbParaOrden = vehicle.GetComponent<VehicleBrain>();
+            bool ordenConConductor = inputDriver.TryIssueVehicleMoveOrder(puntoLejano, vehicle);
+            Check("TryIssueVehicleMoveOrder SI emite la orden una vez que hay conductor",
+                ordenConConductor && vbParaOrden.HasOrder);
+            vbParaOrden.Stop();
+            vehicle.Dismount(vega);
+            currentSeatField.SetValue(inputDriver, null);
+            inputDriver.TryPossess(vega);
+
             // --- Click derecho en FPS: seleccionar aliado y ordenarle una posicion ---
             var selection = inputDriver.GetComponent<SelectionController>() ?? UnityEngine.Object.FindAnyObjectByType<SelectionController>();
             selection.SelectSingle(kes);

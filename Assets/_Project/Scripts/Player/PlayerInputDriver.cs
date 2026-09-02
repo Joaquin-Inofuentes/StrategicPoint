@@ -1199,13 +1199,20 @@ namespace SP.Player
         // por frame y termina tirando marcadores repetidos sin parar.
         const float RedundantOrderDistance = 2f;
 
-        public bool TryIssueVehicleMoveOrder(Vector3 point)
+        public bool TryIssueVehicleMoveOrder(Vector3 point, Vehicle vehicle = null)
         {
-            if (Vehicle == null || Vehicle.Driver == null) return false;
+            // El vehiculo objetivo es un parametro opcional (no siempre el
+            // campo Vehicle fijo por Inspector): en RTS la orden tiene que
+            // ir al vehiculo REALMENTE seleccionado (Selection.SelectedVehicle),
+            // no al que el jugador ocupo alguna vez. Sin argumento se cae al
+            // campo de siempre, para no romper los llamadores de FPS/artillero
+            // que ya pasan por "el vehiculo en el que estoy".
+            if (vehicle == null) vehicle = Vehicle;
+            if (vehicle == null || vehicle.Driver == null) return false;
 
-            var vb = Vehicle.GetComponent<VehicleBrain>();
+            var vb = vehicle.GetComponent<VehicleBrain>();
 
-            if (Vector3.Distance(point, Vehicle.transform.position) < RedundantOrderDistance) return false;
+            if (Vector3.Distance(point, vehicle.transform.position) < RedundantOrderDistance) return false;
             if (vb.HasOrder && vb.CurrentDestination.HasValue &&
                 Vector3.Distance(point, vb.CurrentDestination.Value) < RedundantOrderDistance) return false;
 
@@ -1514,7 +1521,11 @@ namespace SP.Player
                 {
                     var groundRay = Rig.Cam.ScreenPointToRay(mouse.position.ReadValue());
                     var res = Aim.Evaluate(groundRay, null);
-                    if (res.Type == AimTargetType.Ground) TryIssueVehicleMoveOrder(res.Point);
+                    if (res.Type == AimTargetType.Ground)
+                    {
+                        if (Vehicle != null && Vehicle.Driver == null) RejectOrder("EL VEHICULO NECESITA UN CONDUCTOR");
+                        else TryIssueVehicleMoveOrder(res.Point);
+                    }
                 }
 
                 var gunnerEye = turret != null ? turret.transform.Find("GunnerEye") : null;
@@ -1726,7 +1737,20 @@ namespace SP.Player
 
                 if (result.Type == AimTargetType.Ground)
                 {
-                    if (Selection.SelectedVehicle != null) TryIssueVehicleMoveOrder(result.Point);
+                    if (Selection.SelectedVehicle != null)
+                    {
+                        // Antes esto fallaba en silencio si nadie manejaba
+                        // el vehiculo (TryIssueVehicleMoveOrder devuelve
+                        // false sin avisar por que): el jugador seleccionaba
+                        // el tanque, le daba la orden de moverse, y no
+                        // pasaba nada -- parecia que la seleccion O el
+                        // movimiento estaban rotos cuando en realidad hacia
+                        // falta un conductor adentro primero.
+                        if (Selection.SelectedVehicle.Driver == null)
+                            RejectOrder("EL VEHICULO NECESITA UN CONDUCTOR");
+                        else
+                            TryIssueVehicleMoveOrder(result.Point, Selection.SelectedVehicle);
+                    }
                     else if (Selection.Selected.Count > 0)
                     {
                         // Ordenar sobre un obstaculo no hacia nada y no
