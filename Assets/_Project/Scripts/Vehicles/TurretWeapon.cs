@@ -59,6 +59,14 @@ namespace SP.Vehicles
 
         public const float SpeedMultiplier = 2f;
 
+        // Debe coincidir con Projectile.speed del prefab (velocidad BASE,
+        // antes de SpeedMultiplier): TurretAimView.PredictedImpactPoint y
+        // el liderado de blanco de TurretAI simulan la trayectoria real
+        // con esta constante -- si Projectile.speed cambia algun dia hay
+        // que actualizarla aca tambien, no hay forma de leerla en runtime
+        // sin instanciar un proyectil.
+        public const float ProjectileSpeed = 40f;
+
         // El cooldown fijo permitia disparar indefinidamente al mismo
         // ritmo, o sea ninguna decision sobre CUANDO disparar. El calor
         // sube por disparo y baja con el tiempo, y estira el cooldown.

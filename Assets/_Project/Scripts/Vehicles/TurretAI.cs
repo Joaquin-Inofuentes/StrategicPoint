@@ -22,6 +22,17 @@ namespace SP.Vehicles
         float retargetTimer;
         bool bootstrapped;
 
+        // Liderado de blanco: antes se apuntaba siempre a la posicion
+        // ACTUAL del enemigo, sin importar que tan rapido se moviera --
+        // contra un blanco corriendo, el tiro (que tarda en llegar, no es
+        // instantaneo) sistematicamente caia atras. Se estima la
+        // velocidad por diferencia de posicion entre ticks (no hay
+        // Rigidbody: el soldado se mueve por transform directo) y se
+        // apunta a donde va a ESTAR cuando el proyectil llegue, no a
+        // donde esta ahora.
+        Vector3 lastTargetPos;
+        bool hasLastTargetPos;
+
         // VehicleBrain lo consulta para el otro lado de la misma regla:
         // con un solo tripulante, mientras la torreta esta trabada en un
         // blanco no hay que arrancar a manejar sola hacia una orden vieja
@@ -116,18 +127,43 @@ namespace SP.Vehicles
             var crewTeam = vehicle.Occupants[0].Team;
             var enemyTeam = crewTeam == TeamId.Player ? TeamId.Enemy : TeamId.Player;
 
+            var previousTarget = target;
             retargetTimer -= dt;
             if (retargetTimer <= 0f || target == null || !target.Health.IsAlive || target.Team != enemyTeam)
             {
                 retargetTimer = retargetInterval;
                 target = ActorRegistry.FindNearestEnemyInRange(transform.position, crewTeam, range);
             }
+            // Un blanco nuevo no tiene una posicion previa comparable: sin
+            // este corte, la "velocidad" saldria de restar la posicion del
+            // enemigo VIEJO contra la del nuevo -- un salto enorme y sin
+            // sentido que mandaria el primer tiro a cualquier lado.
+            if (target != previousTarget) hasLastTargetPos = false;
 
             if (target == null || !target.Health.IsAlive) return;
 
-            var aimPoint = target.transform.position;
+            var aimPoint = ComputeLeadAimPoint(target, dt);
             turret.AimAt(aimPoint, dt);
             if (turret.IsAimedAt(aimPoint)) turret.TryFire();
+        }
+
+        Vector3 ComputeLeadAimPoint(Soldier t, float dt)
+        {
+            var pos = t.transform.position;
+            Vector3 velocity = Vector3.zero;
+            if (hasLastTargetPos && dt > 0.0001f) velocity = (pos - lastTargetPos) / dt;
+            lastTargetPos = pos;
+            hasLastTargetPos = true;
+
+            float dist = Vector3.Distance(transform.position, pos);
+            float projectileSpeed = TurretWeapon.ProjectileSpeed * TurretWeapon.SpeedMultiplier;
+            float leadTime = projectileSpeed > 0.01f ? dist / projectileSpeed : 0f;
+            // Tope de 1.5s: mas alla de eso la prediccion lineal (un
+            // blanco puede girar o frenar en el medio) ya acumula mas
+            // error del que corrige, y liderar de mas es peor que no
+            // liderar.
+            leadTime = Mathf.Min(leadTime, 1.5f);
+            return pos + velocity * leadTime;
         }
     }
 }

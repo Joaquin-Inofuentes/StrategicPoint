@@ -25,10 +25,17 @@ namespace SP.Presentation
                 // el registro ya cacheado en Soldier no hace falta pagar
                 // GetComponent otra vez para lo mismo.
                 var brain = soldier.Brain;
-                bool attacking = brain != null && brain.State == AiState.Attack && brain.CurrentTarget != null
-                    && soldier.gameObject.activeInHierarchy;
+                // Pedido explicito: la linea roja tiene que verse en cuanto
+                // el soldado TIENE un enemigo trabado (Chase/MovingToAttackOrder
+                // ya persiguen a un target concreto, no solo Attack cuando ya
+                // esta disparando) -- antes solo se dibujaba con el gatillo
+                // apretado, y para entonces el jugador ya no llegaba a ver
+                // "a quien" estaba mirando el soldado un instante antes.
+                bool hasEnemyLocked = brain != null && brain.CurrentTarget != null &&
+                    (brain.State == AiState.Attack || brain.State == AiState.Chase || brain.State == AiState.MovingToAttackOrder) &&
+                    soldier.gameObject.activeInHierarchy;
 
-                if (!attacking)
+                if (!hasEnemyLocked)
                 {
                     RemoveLine(soldier.Id);
                     continue;

@@ -31,6 +31,13 @@ namespace SP.Ai
         [SerializeField] float alertRadius = 30f;
         [SerializeField] float arriveThreshold = 0.6f;
 
+        // Tolerancia de apuntado antes de disparar en Attack (ver el gate
+        // en el case Attack de Tick()): mas floja que los 4 grados del
+        // cañon del tanque a proposito -- un soldado de infanteria
+        // apuntando a ojo no es tan mecanicamente preciso, y una
+        // tolerancia muy ajustada haria el combate humano se sienta lento.
+        [SerializeField] float aimToleranceDeg = 15f;
+
         // Modificadores de la postura Defensiva. En Libre no se leen: el
         // multiplicador efectivo es la constante 1f y la correa ni se
         // consulta (StanceAllowsPursuit sale por el return de arriba).
@@ -249,6 +256,16 @@ namespace SP.Ai
             orderQueue.Clear();
             orderDestination = point;
             SetState(AiState.MovingToOrder);
+            // Pedido explicito ("usa mejor los estados"): una orden del
+            // jugador corta el combate en curso (a proposito, ver el
+            // comentario de arriba del metodo), pero antes el PROXIMO
+            // sensado quedaba sujeto al intervalo repartido de siempre
+            // (hasta senseIntervalTicks-1 ticks sirviendo el cache viejo).
+            // Justo despues de una orden es cuando mas importa que la
+            // proxima consulta sea fresca: si hay un enemigo encima, se
+            // re-engancha en Chase en el tick que sigue, no unos ticks
+            // despues.
+            forceSense = true;
         }
 
         public void IssueMountOrder(Vehicle vehicle)
@@ -262,6 +279,7 @@ namespace SP.Ai
             orderQueue.Clear();
             orderDestination = vehicle.transform.position;
             SetState(AiState.MovingToOrder);
+            forceSense = true;
         }
 
         // "Que me sigan": a diferencia de IssueMoveOrder, no hay un punto
@@ -279,6 +297,7 @@ namespace SP.Ai
             orderQueue.Clear();
             followTarget = leader;
             SetState(AiState.Follow);
+            forceSense = true;
         }
 
         public void IssueAttackOrder(Soldier enemy)
@@ -311,6 +330,7 @@ namespace SP.Ai
             {
                 target = null;
                 SetState(AiState.Patrol);
+                forceSense = true;
             }
         }
 
@@ -445,10 +465,26 @@ namespace SP.Ai
 
                     self.Motor.LookTowards(target.transform.position, dt);
                     self.Weapon.Tick(dt);
+                    // BUG REAL: antes se disparaba en el MISMO tick en que se
+                    // entraba en Attack, sin importar hacia donde mirara
+                    // todavia el cuerpo -- LookTowards gira gradual
+                    // (turnSpeedDegPerSec), pero TryFire calcula su propia
+                    // direccion al target de forma independiente, asi que el
+                    // proyectil salia perfecto mientras el arma en pantalla
+                    // seguia apuntando para otro lado. Se veia como "dispara
+                    // para cualquier lado", sobre todo al arrancar la
+                    // partida: varios aliados sensan un enemigo ya dentro de
+                    // rango en el mismo tick (Patrol/Idle -> Attack directo,
+                    // sin haber girado nunca hacia el). Mismo gate que ya
+                    // usa TurretAI (IsAimedAt) antes de su propio TryFire.
+                    Vector3 flatDir = target.transform.position - self.transform.position;
+                    flatDir.y = 0f;
+                    bool aimedAtTarget = flatDir.sqrMagnitude < 0.0001f ||
+                        Vector3.Angle(self.transform.forward, flatDir) <= aimToleranceDeg;
                     // En Libre StanceAllowsFire es true y el TryFire es el
                     // mismo de siempre. AltoElFuego encara y sigue al
                     // enemigo con la mira, pero no aprieta el gatillo.
-                    if (StanceAllowsFire)
+                    if (StanceAllowsFire && aimedAtTarget)
                         self.Weapon.TryFire(self.transform.position, (target.transform.position - self.transform.position).normalized);
                     break;
             }
