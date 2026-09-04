@@ -118,24 +118,36 @@ namespace SP.Combat
             // dibuja eso en el magenta de "sin material". El material ahora
             // se garantiza SIEMPRE (con blanco de base si no vino color),
             // y el tinte pedido se aplica encima si vino.
+            AsegurarMaterial();
+            if (color.HasValue && cachedRenderer != null) cachedRenderer.sharedMaterial.color = color.Value;
+        }
+
+        // El material se garantiza al DESPERTAR, no solo al disparar. Los
+        // proyectiles del pool nacen todos juntos al arrancar la partida y
+        // se quedan esperando; hasta que a uno le tocaba su primer disparo
+        // tenia el Renderer sin material, y un renderer sin material se
+        // dibuja magenta. Bastaba con que algo lo activara antes de
+        // llamarle Launch (o con que quedara guardado asi en la escena,
+        // que es lo que le paso a los 108 clones que habia horneados en
+        // SC_Gameplay) para tener cubos rosas por el mapa.
+        void Awake() => AsegurarMaterial();
+
+        void AsegurarMaterial()
+        {
+            if (ownMaterialReady) return;
+
             if (cachedRenderer == null) cachedRenderer = GetComponent<Renderer>();
             if (cachedRenderer == null)
             {
                 Debug.LogWarning($"[Projectile] {name}: no tiene Renderer, no se puede pintar.");
+                return;
             }
-            else
-            {
-                if (!ownMaterialReady)
-                {
-                    var baseMat = cachedRenderer.sharedMaterial;
-                    var freshMat = baseMat != null
-                        ? new Material(baseMat)
-                        : SP.Presentation.SafeMaterial.Create(Color.white);
-                    cachedRenderer.sharedMaterial = freshMat;
-                    ownMaterialReady = true;
-                }
-                if (color.HasValue) cachedRenderer.sharedMaterial.color = color.Value;
-            }
+
+            var baseMat = cachedRenderer.sharedMaterial;
+            cachedRenderer.sharedMaterial = baseMat != null
+                ? new Material(baseMat)
+                : SP.Presentation.SafeMaterial.Create(Color.white);
+            ownMaterialReady = true;
         }
 
         public void OnSpawn()

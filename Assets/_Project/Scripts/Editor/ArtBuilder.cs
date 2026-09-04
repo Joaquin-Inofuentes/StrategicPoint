@@ -314,8 +314,14 @@ namespace SP.EditorTools
                 // arregla igual pero obliga a recalcular la piel de CADA
                 // soldado en CADA frame aunque no se vea, y este juego
                 // apunta a 50 unidades en pantalla.
+                // La malla se cambia por la que tiene las UVs con las que
+                // se pinto la textura. Ver SkinTransfer: lego.fbx trae el
+                // esqueleto pero un mapeo de caja generico, y el camuflaje
+                // le salia untado en tiras.
+                var mallaBuena = SkinTransfer.Cargar();
                 foreach (var sk in visual.GetComponentsInChildren<SkinnedMeshRenderer>(true))
                 {
+                    if (mallaBuena != null) sk.sharedMesh = mallaBuena;
                     sk.updateWhenOffscreen = false;
                     sk.rootBone = visual.transform;
                     sk.localBounds = new Bounds(new Vector3(0f, 0.95f, 0f), new Vector3(1.4f, 2.1f, 1.4f));
