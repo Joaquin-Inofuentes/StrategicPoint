@@ -871,9 +871,12 @@ namespace SP.EditorTools
                 runner.DemoEnemy = demoEnemy;
                 runner.PatrolEnemies = patrolEnemies;
 
-                BuildTestButton(canvasRootRef, runner);
+                // Ya NO se planta el boton "Test" en el canvas: era UI de
+                // desarrollo colgada del mismo HUD que ve el jugador, y
+                // terminaba dentro del build. La demo se dispara desde
+                // afuera (StartDemo o "-autodemo"), no desde la pantalla.
 
-                TestLog.Step("Demo lista: Vega junto al vehiculo, Kes y Doc cerca. AutoDemoRunner armado (F9 o el boton 'Test' para arrancar/cortar a mano).");
+                TestLog.Step("Demo lista: Vega junto al vehiculo, Kes y Doc cerca. AutoDemoRunner armado (se arranca con StartDemo o con -autodemo).");
             }
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -3394,39 +3397,6 @@ namespace SP.EditorTools
             }
 
             squadListRef = listView;
-        }
-
-        // Botón real (no solo la tecla F9) para arrancar/cortar la demo
-        // automática a mano, sin que el jugador tenga que saber el atajo.
-        static void BuildTestButton(Transform canvasParent, SP.Presentation.AutoDemoRunner runner)
-        {
-            var go = new GameObject("TestButton", typeof(Image), typeof(Button));
-            go.transform.SetParent(canvasParent, false);
-            var img = go.GetComponent<Image>();
-            img.color = new Color(0.16f, 0.45f, 0.85f, 0.9f);
-            var rt = go.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(1f, 0f);
-            rt.anchorMax = new Vector2(1f, 0f);
-            rt.pivot = new Vector2(1f, 0f);
-            rt.anchoredPosition = new Vector2(-16f, 16f);
-            rt.sizeDelta = new Vector2(150f, 44f);
-
-            var labelGO = new GameObject("Label", typeof(Text));
-            labelGO.transform.SetParent(go.transform, false);
-            var label = labelGO.GetComponent<Text>();
-            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            label.alignment = TextAnchor.MiddleCenter;
-            label.color = Color.white;
-            label.fontSize = FontCuerpo;
-            label.text = "Test (F9)";
-            StretchFull(labelGO.GetComponent<RectTransform>());
-
-            var button = go.GetComponent<Button>();
-            button.onClick.AddListener(() =>
-            {
-                if (runner.IsRunning) runner.StopDemo();
-                else runner.StartDemo();
-            });
         }
 
         static Button BuildUIButton(Transform parent, string name, string label, Vector2 anchoredPos, Color color)

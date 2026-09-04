@@ -21,14 +21,14 @@ namespace SP.Presentation
     // todo con TestLog. Pensado para verificar que el flujo entero anda
     // en una corrida de Play mode de verdad, no solo en la simulación.
     //
-    // Desactivable: destildar autoPlayOnStart en el inspector antes de
-    // darle Play, o apretar F9 durante el juego (arranca/corta la demo).
+    // Solo se dispara desde afuera: autoPlayOnStart en el inspector, o
+    // "-autodemo" en la linea de comandos del build. No hay atajo de
+    // teclado ni boton en pantalla.
     public class AutoDemoRunner : MonoBehaviour
     {
         // Por defecto NO arranca sola: el usuario le da Play para probar el
         // juego a mano tranquilo, sin que la demo le agarre el control. Para
-        // correrla, un comando desde afuera llama a StartDemo() (o el propio
-        // usuario aprieta F9 si quiere verla).
+        // correrla, un comando desde afuera llama a StartDemo().
         [SerializeField] bool autoPlayOnStart = false;
 
         public PlayerBrain Brain;
@@ -57,15 +57,12 @@ namespace SP.Presentation
                 StartDemo();
         }
 
-        void Update()
-        {
-            if (Keyboard.current == null) return;
-            if (Keyboard.current.f9Key.wasPressedThisFrame)
-            {
-                if (IsRunning) StopDemo();
-                else StartDemo();
-            }
-        }
+        // EL ATAJO F9 SE FUE, a pedido. Era la otra mitad del boton "Test":
+        // cualquiera que apretara F9 jugando se quedaba sin control del
+        // juego mientras la demo hacia su recorrido. La demo sigue
+        // existiendo como herramienta, pero ya no se puede disparar desde
+        // adentro de la partida -- solo con "-autodemo" en la linea de
+        // comandos del build, que es un camino que un jugador no pisa.
 
         public void StartDemo()
         {
@@ -83,7 +80,7 @@ namespace SP.Presentation
             // juego trabado, ni siquiera si algún freeze futuro se olvida
             // del try/finally.
             Time.timeScale = 1f;
-            TestLog.Warn("Demo automatico detenido a mano (F9).");
+            TestLog.Warn("Demo automatico detenido a mano.");
         }
 
         // Holgura entre pasos: a propósito lenta, para que se pueda ver
