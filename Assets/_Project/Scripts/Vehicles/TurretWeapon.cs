@@ -27,6 +27,14 @@ namespace SP.Vehicles
         // Sigue siendo limitado: el peso del cañon es parte del diseño
         // ("que rote lento, que demore en tener la mira en el cursor").
         [SerializeField] float playerTurnSpeedDegPerSec = 110f;
+        // BUG REAL: el cañon solo giraba en yaw (eje Y) -- el mouse.delta.y
+        // (arriba/abajo) se leia y se tiraba, asi que un tanque nunca podia
+        // apuntar a nada mas alto o mas bajo que su propia altura. Limites
+        // asimetricos a proposito: un cañon de tanque real baja poco (el
+        // propio chasis lo tapa) pero sube bastante mas para poder pegarle
+        // a algo en una loma o un techo.
+        [SerializeField] float minPitchDeg = -8f;
+        [SerializeField] float maxPitchDeg = 35f;
         public Transform Muzzle;
 
         float cooldownTimer;
@@ -85,8 +93,19 @@ namespace SP.Vehicles
         public float DesiredYaw { get; private set; }
         bool desiredYawInit;
 
+        // Mismo concepto que DesiredYaw pero en elevacion. Separado porque
+        // el jugador los mueve con ejes de mouse distintos (x/y) y cada uno
+        // persigue su angulo objetivo de forma independiente.
+        public float DesiredPitch { get; private set; }
+        bool desiredPitchInit;
+
         public float YawGapDeg => Mathf.DeltaAngle(transform.eulerAngles.y, DesiredYaw);
         public bool IsOnTarget(float toleranceDeg = 4f) => Mathf.Abs(YawGapDeg) <= toleranceDeg;
+
+        // eulerAngles.x devuelve 0..360; para un pitch chico negativo (p.ej.
+        // -5) eso se lee como 355, y Clamp/MoveTowardsAngle contra un rango
+        // como (-8, 35) se rompe sin este pasaje a -180..180.
+        static float NormalizePitch(float x) => x > 180f ? x - 360f : x;
 
         void Awake() => Bootstrap();
 
@@ -113,15 +132,36 @@ namespace SP.Vehicles
             DesiredYaw += delta;
         }
 
-        // Giro bajo control del jugador: el cañon persigue DesiredYaw a
-        // velocidad limitada, igual que AimAt hace con el blanco de la IA.
+        void EnsureDesiredPitch()
+        {
+            if (desiredPitchInit) return;
+            desiredPitchInit = true;
+            DesiredPitch = NormalizePitch(transform.eulerAngles.x);
+        }
+
+        public void AddDesiredPitch(float delta)
+        {
+            EnsureDesiredPitch();
+            DesiredPitch = Mathf.Clamp(DesiredPitch + delta, minPitchDeg, maxPitchDeg);
+        }
+
+        // Giro bajo control del jugador: el cañon persigue DesiredYaw/Pitch
+        // a velocidad limitada, igual que AimAt hace con el blanco de la
+        // IA. Los dos ejes en la MISMA rotacion (Quaternion.Euler(pitch,
+        // yaw, 0) en vez de dos transforms separados): Unity compone Euler
+        // como yaw (mundo) por fuera y pitch (local, ya rotado por el yaw)
+        // por dentro -- exactamente el gimbal de una torreta real, así que
+        // transform.forward ya sale apuntando donde corresponde sin tocar
+        // el disparo ni el Muzzle (ambos cuelgan de este mismo transform).
         public void TickPlayerAim(float dt)
         {
             if (!bootstrapped) Bootstrap();
             EnsureDesiredYaw();
+            EnsureDesiredPitch();
             if (vehicle != null && vehicle.IsDestroyed) return;
             float newYaw = Mathf.MoveTowardsAngle(transform.eulerAngles.y, DesiredYaw, playerTurnSpeedDegPerSec * dt);
-            transform.rotation = Quaternion.Euler(0f, newYaw, 0f);
+            float newPitch = Mathf.MoveTowardsAngle(NormalizePitch(transform.eulerAngles.x), DesiredPitch, playerTurnSpeedDegPerSec * dt);
+            transform.rotation = Quaternion.Euler(newPitch, newYaw, 0f);
         }
 
         void OnDestroy() => WorldSystemsRegistry.Unregister(this);

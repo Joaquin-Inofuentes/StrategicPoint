@@ -28,6 +28,24 @@ namespace SP.Presentation
             pools.Clear();
         }
 
+        // BUG REAL: los decals quedaban manchando la escena despues de
+        // frenar Play mode. DontSaveInEditor evita que se escriban al
+        // archivo de escena, pero NO los destruye por si solo -- si algo
+        // dispara ANTES de que Unity termine de descartar el estado de
+        // Play, los quads sobreviven como huerfanos visibles en Editor.
+        // Se llama explicitamente al salir de Play (ver
+        // Scripts/Editor/PlaymodeCleanup.cs) para que la limpieza no
+        // dependa de ese timing.
+        public static void ClearAll()
+        {
+            foreach (var kv in pools)
+                foreach (var go in kv.Value)
+                    if (go != null) Object.DestroyImmediate(go);
+            pools.Clear();
+            DestroyOrphans();
+            if (root != null) { Object.DestroyImmediate(root.gameObject); root = null; }
+        }
+
         static readonly Color CraterColor = new Color(0.18f, 0.14f, 0.10f);
         static readonly Color BulletHoleColor = new Color(0.12f, 0.12f, 0.13f);
 

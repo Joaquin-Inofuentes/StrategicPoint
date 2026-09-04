@@ -33,6 +33,20 @@ namespace SP.Presentation
             inUse.Clear();
         }
 
+        // Mismo bug y mismo arreglo que DecalPool.ClearAll: se llama al
+        // salir de Play mode (Scripts/Editor/PlaymodeCleanup.cs) para que
+        // los escombros no sobrevivan como huerfanos.
+        public static void ClearAll()
+        {
+            foreach (var d in all)
+                if (d != null) Object.DestroyImmediate(d.gameObject);
+            all.Clear();
+            free.Clear();
+            inUse.Clear();
+            DestroyOrphans();
+            if (root != null) { Object.DestroyImmediate(root.gameObject); root = null; }
+        }
+
 
         // Entrar en Play mode NO destruye los objetos de la escena, pero
         // SI reinicia los estaticos: el root creado en tiempo de edicion

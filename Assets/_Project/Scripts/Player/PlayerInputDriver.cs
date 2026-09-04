@@ -641,7 +641,16 @@ namespace SP.Player
             // seguia preso e invisible, aunque esa vista es igual de
             // "arriba mirando el mapa" que la RTS de a pie, donde el
             // mouse siempre queda libre para clickear.
-            bool wantsLock = Rig.Mode == ControlMode.Fps;
+            // BUG REAL: el primer click del jugador sobre "Reintentar"/
+            // "Salir" (o sobre "Continuar" en el menu de pausa) volvia a
+            // bloquear y esconder el cursor ANTES de que le sirviera de
+            // algo al boton -- el modo seguia siendo Fps (nada lo cambia al
+            // ganar/perder/pausar), asi que wantsLock daba true igual con
+            // un panel modal tapando toda la pantalla. El click quedaba
+            // "comido" por este re-bloqueo en vez de llegarle al boton: se
+            // veia como que Reintentar/Salir no respondian a nada.
+            bool modalShowing = (Outcome != null && Outcome.IsShowing) || (PauseRef != null && PauseRef.IsPaused);
+            bool wantsLock = Rig.Mode == ControlMode.Fps && !modalShowing;
 
             if (wantsLock)
             {
@@ -1493,6 +1502,14 @@ namespace SP.Player
                     // girando" tenga algo que informar.
                     var delta = mouse.delta.ReadValue();
                     turret.AddDesiredYaw(delta.x * turretSensitivity);
+                    // BUG REAL: delta.y (arriba/abajo del mouse) se leia
+                    // completo mas arriba pero nunca se usaba -- el cañon
+                    // solo podia girar en el plano horizontal. Signo
+                    // invertido a proposito: mouse hacia arriba (delta.y
+                    // positivo) tiene que INCLINAR el cañon hacia arriba,
+                    // que en este rig es pitch NEGATIVO (ver
+                    // TurretWeapon.minPitchDeg/maxPitchDeg).
+                    turret.AddDesiredPitch(-delta.y * turretSensitivity);
                     turret.TickPlayerAim(Time.deltaTime);
                     if (mouse.leftButton.wasPressedThisFrame) turret.TryFire();
 

@@ -66,6 +66,14 @@ namespace SP.Ai
         // cancelen o lo interrumpa el combate.
         Soldier followTarget;
 
+        // Attack-move: una orden de movimiento dada mientras el soldado ya
+        // esta trabado en combate (Chase/Attack) NO corta el combate --
+        // redirige el CAMINAR hacia este punto pero el apuntado y el
+        // disparo (case Attack de Tick()) siguen atados al target de
+        // siempre. Separado de orderDestination porque ese SI corta el
+        // combate (ver IssueMoveOrder): dos campos, dos significados.
+        Vector3? attackMoveDestination;
+
         // Distancia a la que se detiene detras del lider: 0 lo pegaria
         // encima del jugador (empujones, camara tapada); demasiado lejos
         // y "seguir" se ve identico a quedarse atras sin hacer nada.
@@ -249,12 +257,27 @@ namespace SP.Ai
                 return;
             }
 
+            // Attack-move: pedido explicito ("que se mueva pero no deje de
+            // atacar"). Si ya esta trabado con un objetivo vivo, esta orden
+            // NO lo suelta -- solo le dice hacia donde caminar mientras
+            // sigue disparando. Encolar (Shift) durante combate no aplica:
+            // no hay "combate en curso" que encolar detras, se ignora el
+            // flag y se redirige igual.
+            if (target != null && target.Health.IsAlive &&
+                (State == AiState.Chase || State == AiState.Attack || State == AiState.MovingToAttackOrder))
+            {
+                attackMoveDestination = point;
+                GameLog.Line($"{self.DisplayName} avanza a {point} sin dejar de atacar a {target.DisplayName}");
+                return;
+            }
+
             target = null;
             hasOrder = true;
             orderIsAttack = false;
             mountTarget = null;
             orderQueue.Clear();
             orderDestination = point;
+            attackMoveDestination = null;
             SetState(AiState.MovingToOrder);
             // Pedido explicito ("usa mejor los estados"): una orden del
             // jugador corta el combate en curso (a proposito, ver el
@@ -325,6 +348,7 @@ namespace SP.Ai
             orderIsAttack = false;
             mountTarget = null;
             followTarget = null;
+            attackMoveDestination = null;
             orderQueue.Clear();
             if (State == AiState.MovingToOrder || State == AiState.MovingToAttackOrder || State == AiState.Follow)
             {
@@ -358,7 +382,20 @@ namespace SP.Ai
             if (target == null && (State == AiState.Chase || State == AiState.Attack))
             {
                 if (orderIsAttack) { hasOrder = false; orderIsAttack = false; }
-                SetState(!hasOrder ? AiState.Patrol : followTarget != null ? AiState.Follow : AiState.MovingToOrder);
+                // El objetivo murio/desaparecio a mitad de un attack-move:
+                // el destino pedido sigue en pie, se convierte en una
+                // orden de movimiento normal en vez de perderse.
+                if (attackMoveDestination.HasValue)
+                {
+                    orderDestination = attackMoveDestination.Value;
+                    attackMoveDestination = null;
+                    hasOrder = true;
+                    SetState(AiState.MovingToOrder);
+                }
+                else
+                {
+                    SetState(!hasOrder ? AiState.Patrol : followTarget != null ? AiState.Follow : AiState.MovingToOrder);
+                }
             }
 
             // El sensado puede interrumpir una patrulla u orden de movimiento
@@ -450,6 +487,15 @@ namespace SP.Ai
                     if (target == null) { SetState(AiState.Patrol); break; }
                     float d = Vector3.Distance(self.transform.position, target.transform.position);
                     if (d <= attackRange) SetState(AiState.Attack);
+                    // Attack-move con el objetivo todavia fuera de rango:
+                    // camina hacia el punto pedido (no hacia el enemigo) --
+                    // en cuanto entra en rango, el caso de arriba lo manda
+                    // a Attack igual, este destino ya no importa mas ahi.
+                    else if (attackMoveDestination.HasValue)
+                    {
+                        if (self.Motor.MoveTowards(attackMoveDestination.Value, arriveThreshold, dt))
+                            attackMoveDestination = null;
+                    }
                     // En Libre StanceAllowsPursuit devuelve true de entrada,
                     // asi que este else-if ejecuta el MISMO MoveTowards de
                     // antes y la rama de abajo es inalcanzable.
@@ -479,13 +525,36 @@ namespace SP.Ai
                     // usa TurretAI (IsAimedAt) antes de su propio TryFire.
                     Vector3 flatDir = target.transform.position - self.transform.position;
                     flatDir.y = 0f;
-                    bool aimedAtTarget = flatDir.sqrMagnitude < 0.0001f ||
-                        Vector3.Angle(self.transform.forward, flatDir) <= aimToleranceDeg;
+                    float aimAngleDeg = flatDir.sqrMagnitude < 0.0001f ? 0f : Vector3.Angle(self.transform.forward, flatDir);
+                    bool aimedAtTarget = flatDir.sqrMagnitude < 0.0001f || aimAngleDeg <= aimToleranceDeg;
                     // En Libre StanceAllowsFire es true y el TryFire es el
                     // mismo de siempre. AltoElFuego encara y sigue al
                     // enemigo con la mira, pero no aprieta el gatillo.
+                    if (StanceAllowsFire && !aimedAtTarget)
+                        Debug.Log($"[FireGate] BLOQUEADO: {self.name} encara a {target.name} pero angulo={aimAngleDeg:F1} > tolerancia {aimToleranceDeg} -- sin el gate esto disparaba a la nada", target.gameObject);
                     if (StanceAllowsFire && aimedAtTarget)
-                        self.Weapon.TryFire(self.transform.position, (target.transform.position - self.transform.position).normalized);
+                    {
+                        bool fired = self.Weapon.TryFire(self.transform.position, (target.transform.position - self.transform.position).normalized);
+                        if (fired)
+                        {
+                            string moving = attackMoveDestination.HasValue ? " (en movimiento)" : "";
+                            Debug.Log($"[FireGate] DISPARA{moving}: {self.name} -> {target.name} | angulo={aimAngleDeg:F1} (tolerancia {aimToleranceDeg}) | dist={dd:F1}", target.gameObject);
+                        }
+                    }
+
+                    // Attack-move: se traslada hacia el destino pedido SIN
+                    // reorientar el cuerpo (Motor.Move, no MoveTowards) --
+                    // LookTowards ya giro el torso hacia el target unas
+                    // lineas arriba, y girarlo de nuevo hacia el destino
+                    // aca rompería el angulo de apuntado que el gate de
+                    // arriba acaba de validar.
+                    if (attackMoveDestination.HasValue)
+                    {
+                        Vector3 amDelta = attackMoveDestination.Value - self.transform.position;
+                        amDelta.y = 0f;
+                        if (amDelta.magnitude <= arriveThreshold) attackMoveDestination = null;
+                        else self.Motor.Move(amDelta.normalized, dt);
+                    }
                     break;
             }
         }
