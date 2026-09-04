@@ -205,9 +205,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8628055174440087071}
-  - component: {fileID: 1680162296129265085}
+  - component: {fileID: 4652297581011481642}
   - component: {fileID: 5078673112745809039}
-  - component: {fileID: 2400494779763692330}
+  - component: {fileID: 7082516621620112041}
   - component: {fileID: 3893701791737241988}
   - component: {fileID: 9085332134279655003}
   - component: {fileID: 6733338003974624726}
@@ -215,8 +215,6 @@ GameObject:
   - component: {fileID: 4013127092663188433}
   - component: {fileID: 24397220861063659}
   - component: {fileID: 2165571436378007132}
-  - component: {fileID: 963880348016209545}
-  - component: {fileID: 2367930366003446138}
   m_Layer: 0
   m_Name: P_Soldier_Base
   m_TagString: Untagged
@@ -243,7 +241,7 @@ Transform:
   - {fileID: 1849552557564267314}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &1680162296129265085
+--- !u!33 &4652297581011481642
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -272,7 +270,7 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
---- !u!23 &2400494779763692330
+--- !u!23 &7082516621620112041
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -297,7 +295,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 0}
+  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -333,7 +331,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5936d212cb6719640ab268827fa51d3b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SP.Combat.Health
-  maxHealth: 180
+  maxHealth: 100
 --- !u!114 &9085332134279655003
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -360,8 +358,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c44a7e3931f04ca469b2e748a928418f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SP.Combat.WeaponHolder
-  fireCooldown: 0.3
-  damage: 26
+  fireCooldown: 0.35
+  damage: 34
   pool: {fileID: 0}
   Muzzle: {fileID: 8411902289599947111}
   WeaponVisualRenderer: {fileID: 2006268794634508391}
@@ -377,10 +375,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d27c8cc90068cc64da6404cc5b387491, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SP.Actors.Soldier
-  displayName: Soldado_3_Doc
-  team: 1
-  role: 2
-  maxHealth: 180
+  displayName: 
+  team: 0
+  role: 0
+  maxHealth: 100
   EyeAnchor: {fileID: 8966918372662514900}
 --- !u!114 &4013127092663188433
 MonoBehaviour:
@@ -403,11 +401,7 @@ MonoBehaviour:
   defensiveLeashRadius: 8
   senseIntervalTicks: 3
   followStopDistance: 2.5
-  patrolRoute:
-  - {x: 20, y: 0.8, z: 20}
-  - {x: 30, y: 0.8, z: 20}
-  - {x: 30, y: 0.8, z: 30}
-  - {x: 20, y: 0.8, z: 30}
+  patrolRoute: []
 --- !u!82 &24397220861063659
 AudioSource:
   m_ObjectHideFlags: 0
@@ -420,7 +414,7 @@ AudioSource:
   OutputAudioMixerGroup: {fileID: 0}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
-  m_PlayOnAwake: 0
+  m_PlayOnAwake: 1
   m_Volume: 1
   m_Pitch: 1
   Loop: 0
@@ -465,7 +459,7 @@ AudioSource:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 1
+      value: 0
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -517,34 +511,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 59b17d128e92d8748abd2094ea53d782, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SP.Presentation.CubeFxReactor
---- !u!114 &963880348016209545
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4908259142123204747}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fd2ac095011b76447805302136a17fdb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SP.Presentation.EnemyAlertIndicatorView
-  markerRenderer: {fileID: 0}
-  ownedMaterial: {fileID: 0}
---- !u!114 &2367930366003446138
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4908259142123204747}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cd88982dccf2cb74b8db7c9bb61c12f5, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::SP.Presentation.SquadStateIndicatorView
-  markerRenderer: {fileID: 0}
-  ownedMaterial: {fileID: 0}
 --- !u!1 &5062353477395285120
 GameObject:
   m_ObjectHideFlags: 0
@@ -741,7 +707,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.95, g: 0.3, b: 0.25, a: 1}
+  m_Color: {r: 0.35, g: 0.9, b: 0.4, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1

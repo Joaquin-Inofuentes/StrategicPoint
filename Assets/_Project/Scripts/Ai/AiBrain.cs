@@ -117,6 +117,32 @@ namespace SP.Ai
         public int QueuedOrderCount => orderQueue.Count;
         public System.Collections.Generic.IEnumerable<Vector3> QueuedDestinations => orderQueue;
 
+        // --- Rodeo de obstaculos (NavService) ---
+        // Ruta calculada para esquivar el "Muro" y compañia. VACIA es el
+        // caso normal y significa "linea recta": el A* solo corre cuando
+        // la linea recta esta cortada, y solo al RECIBIR la orden, no por
+        // frame. Un mapa despejado paga exactamente lo mismo que antes.
+        readonly System.Collections.Generic.List<Vector3> path = new System.Collections.Generic.List<Vector3>();
+        int pathIndex;
+
+        public int RemainingPathPoints => Mathf.Max(0, path.Count - pathIndex);
+        public System.Collections.Generic.IReadOnlyList<Vector3> CurrentPath => path;
+
+        // Llegada a un waypoint INTERMEDIO. Mas flojo que arriveThreshold a
+        // proposito: exigirle 0.6 a cada esquina hace que el soldado frene
+        // y corrija en cada una en vez de doblar de largo.
+        const float WaypointArriveThreshold = 1.2f;
+
+        // Anti-atasco. La grilla se construye una vez y no sabe de cuerpos
+        // que se mueven; si algo lo deja trabado (una esquina, un obstaculo
+        // que aparecio despues), se recalcula la ruta UNA vez en vez de
+        // quedarse empujando la pared para siempre.
+        const float StuckSeconds = 1f;
+        const float StuckProgressSqr = 0.09f; // 30 cm
+        float stuckTimer;
+        Vector3 stuckAnchor;
+        bool repathed;
+
         // Ronda de patrulla: mientras no haya nada más que hacer (Patrol),
         // camina de waypoint en waypoint en loop. Se corta solo si el
         // sensado detecta un enemigo (como cualquier otra cosa en Patrol).
@@ -267,6 +293,7 @@ namespace SP.Ai
                 (State == AiState.Chase || State == AiState.Attack || State == AiState.MovingToAttackOrder))
             {
                 attackMoveDestination = point;
+                PlanPathTo(point);
                 GameLog.Line($"{self.DisplayName} avanza a {point} sin dejar de atacar a {target.DisplayName}");
                 return;
             }
@@ -278,6 +305,7 @@ namespace SP.Ai
             orderQueue.Clear();
             orderDestination = point;
             attackMoveDestination = null;
+            PlanPathTo(point);
             SetState(AiState.MovingToOrder);
             // Pedido explicito ("usa mejor los estados"): una orden del
             // jugador corta el combate en curso (a proposito, ver el
@@ -291,6 +319,93 @@ namespace SP.Ai
             forceSense = true;
         }
 
+        // ------------------------------------------------------------------
+        // Rodeo de obstaculos
+        // ------------------------------------------------------------------
+        // Se llama UNA vez por orden, no por frame. Si la linea recta al
+        // destino esta libre (el caso comun) NavService devuelve false sin
+        // tocar el A*, la ruta queda vacia y todo se mueve como siempre.
+        void PlanPathTo(Vector3 destination)
+        {
+            path.Clear();
+            pathIndex = 0;
+            repathed = false;
+            ResetStuckWatch();
+
+            if (!SP.Core.NavService.TryFindDetour(self.transform.position, destination, path))
+            {
+                path.Clear();
+                return;
+            }
+
+            // El primer punto de la ruta ES la posicion actual: arrancar
+            // ahi seria "llegar" al instante y perder un tramo.
+            pathIndex = 1;
+            GameLog.Line($"{self.DisplayName} rodea un obstaculo: {path.Count - 1} tramos hasta {destination}");
+        }
+
+        void ClearPath()
+        {
+            path.Clear();
+            pathIndex = 0;
+            repathed = false;
+        }
+
+        void ResetStuckWatch()
+        {
+            stuckTimer = 0f;
+            stuckAnchor = self != null ? self.transform.position : Vector3.zero;
+        }
+
+        // Igual que Motor.MoveTowards, pero pasando por los waypoints de la
+        // ruta si hay una. Devuelve true al llegar al destino FINAL.
+        bool AdvanceTo(Vector3 destination, float threshold, float dt)
+        {
+            TickStuckWatch(destination, dt);
+
+            if (pathIndex >= path.Count)
+                return self.Motor.MoveTowards(destination, threshold, dt);
+
+            bool last = pathIndex == path.Count - 1;
+            // El ultimo punto de la ruta se reemplaza por el destino real:
+            // el A* devuelve el centro de un nodo de la grilla, y frenar
+            // ahi dejaria al soldado hasta a un nodo del punto pedido.
+            Vector3 waypoint = last ? destination : path[pathIndex];
+
+            if (!self.Motor.MoveTowards(waypoint, last ? threshold : WaypointArriveThreshold, dt))
+                return false;
+
+            pathIndex++;
+            if (pathIndex < path.Count) return false;
+
+            ClearPath();
+            return true;
+        }
+
+        void TickStuckWatch(Vector3 destination, float dt)
+        {
+            stuckTimer += dt;
+            if (stuckTimer < StuckSeconds) return;
+
+            Vector3 progress = self.transform.position - stuckAnchor;
+            progress.y = 0f;
+            bool stuck = progress.sqrMagnitude < StuckProgressSqr;
+            ResetStuckWatch();
+
+            // UNA sola vez por orden: reintentar sin limite seria correr un
+            // A* por segundo por cada soldado trabado contra otro cuerpo.
+            if (!stuck || repathed) return;
+            repathed = true;
+
+            path.Clear();
+            pathIndex = 0;
+            if (SP.Core.NavService.TryFindDetour(self.transform.position, destination, path))
+            {
+                pathIndex = 1;
+                GameLog.Line($"{self.DisplayName} estaba trabado: recalcula la ruta ({path.Count - 1} tramos)");
+            }
+        }
+
         public void IssueMountOrder(Vehicle vehicle)
         {
             if (vehicle == null) return;
@@ -301,6 +416,7 @@ namespace SP.Ai
             mountTarget = vehicle;
             orderQueue.Clear();
             orderDestination = vehicle.transform.position;
+            PlanPathTo(orderDestination);
             SetState(AiState.MovingToOrder);
             forceSense = true;
         }
@@ -318,6 +434,7 @@ namespace SP.Ai
             orderIsAttack = false;
             mountTarget = null;
             orderQueue.Clear();
+            ClearPath();
             followTarget = leader;
             SetState(AiState.Follow);
             forceSense = true;
@@ -332,6 +449,7 @@ namespace SP.Ai
             mountTarget = null;
             orderQueue.Clear();
             orderDestination = self.transform.position;
+            ClearPath();
             SetState(AiState.MovingToAttackOrder);
         }
 
@@ -350,6 +468,7 @@ namespace SP.Ai
             followTarget = null;
             attackMoveDestination = null;
             orderQueue.Clear();
+            ClearPath();
             if (State == AiState.MovingToOrder || State == AiState.MovingToAttackOrder || State == AiState.Follow)
             {
                 target = null;
@@ -389,6 +508,7 @@ namespace SP.Ai
                 {
                     orderDestination = attackMoveDestination.Value;
                     attackMoveDestination = null;
+                    PlanPathTo(orderDestination);
                     hasOrder = true;
                     SetState(AiState.MovingToOrder);
                 }
@@ -441,7 +561,7 @@ namespace SP.Ai
                     }
 
                     Vector3 moveTarget = mountTarget != null ? mountTarget.transform.position : orderDestination;
-                    if (self.Motor.MoveTowards(moveTarget, arriveThreshold, dt))
+                    if (AdvanceTo(moveTarget, arriveThreshold, dt))
                     {
                         if (mountTarget != null)
                         {
@@ -454,6 +574,7 @@ namespace SP.Ai
                         if (orderQueue.Count > 0)
                         {
                             orderDestination = orderQueue.Dequeue();
+                            PlanPathTo(orderDestination);
                             break;
                         }
 
@@ -493,7 +614,7 @@ namespace SP.Ai
                     // a Attack igual, este destino ya no importa mas ahi.
                     else if (attackMoveDestination.HasValue)
                     {
-                        if (self.Motor.MoveTowards(attackMoveDestination.Value, arriveThreshold, dt))
+                        if (AdvanceTo(attackMoveDestination.Value, arriveThreshold, dt))
                             attackMoveDestination = null;
                     }
                     // En Libre StanceAllowsPursuit devuelve true de entrada,
@@ -550,10 +671,30 @@ namespace SP.Ai
                     // arriba acaba de validar.
                     if (attackMoveDestination.HasValue)
                     {
-                        Vector3 amDelta = attackMoveDestination.Value - self.transform.position;
+                        // Si hay una ruta calculada (habia algo en el
+                        // medio), el que manda es el waypoint en curso y
+                        // no el destino final: caminar en linea recta
+                        // hacia el destino mientras se dispara es
+                        // exactamente lo que metia al soldado contra el
+                        // Muro con el gatillo apretado.
+                        bool onDetour = pathIndex < path.Count - 1;
+                        Vector3 amGoal = onDetour ? path[pathIndex] : attackMoveDestination.Value;
+
+                        Vector3 amDelta = amGoal - self.transform.position;
                         amDelta.y = 0f;
-                        if (amDelta.magnitude <= arriveThreshold) attackMoveDestination = null;
-                        else self.Motor.Move(amDelta.normalized, dt);
+                        float amDist = amDelta.magnitude;
+
+                        if (onDetour)
+                        {
+                            if (amDist <= WaypointArriveThreshold) pathIndex++;
+                            else self.Motor.Move(amDelta / amDist, dt);
+                        }
+                        else if (amDist <= arriveThreshold)
+                        {
+                            attackMoveDestination = null;
+                            ClearPath();
+                        }
+                        else self.Motor.Move(amDelta / amDist, dt);
                     }
                     break;
             }

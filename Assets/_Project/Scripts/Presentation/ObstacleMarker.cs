@@ -96,6 +96,10 @@ namespace SP.Presentation
             IsCollapsed = true;
             SpawnDebris(14, 7f);
             gameObject.SetActive(false);
+            // El obstaculo que se cayo abrio un paso que la grilla de
+            // navegacion todavia cree cerrado: sin esto los soldados
+            // seguirian rodeando un escombro que ya no existe.
+            SP.Core.NavService.Invalidate();
         }
 
         void SpawnDebris(int count, float speed)

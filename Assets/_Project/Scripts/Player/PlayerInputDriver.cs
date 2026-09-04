@@ -239,6 +239,15 @@ namespace SP.Player
             // Conectarlo aca, donde el driver SI corre en Play mode real,
             // garantiza que la vista previa quede armada sin importar como
             // se construyo la escena.
+            //
+            // ...pero seguia sin dibujar nada, porque NavGraph tampoco lo
+            // asignaba nadie fuera del HeadlessTestRunner: la unica linea
+            // que lo escribia vivia en la suite. Conectarlo a null es
+            // conectarlo a nada. NavService es el que ahora construye la
+            // grilla del mapa real; esto la comparte con la vista previa
+            // para que la linea azul dibuje el MISMO rodeo que van a hacer
+            // los soldados.
+            if (NavGraph == null) NavGraph = SP.Core.NavService.Graph;
             if (SP.Ai.PathPreview.Instance != null && NavGraph != null)
                 SP.Ai.PathPreview.Instance.Attach(NavGraph);
         }
