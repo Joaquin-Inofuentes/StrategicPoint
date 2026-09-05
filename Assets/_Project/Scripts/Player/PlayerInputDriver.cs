@@ -949,8 +949,8 @@ namespace SP.Player
 
             if (kb.tKey.wasPressedThisFrame && result.Type == AimTargetType.Ground)
             {
-                var nearest = OrderService.FindNearestFreeAlly(result.Point, TeamId.Player, Brain.Current);
-                if (nearest != null) OrderService.IssueMoveOrder(nearest, result.Point);
+                bool shiftHeld = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+                IssueGroundOrderT(result.Point, shiftHeld);
             }
 
             if (kb.gKey.wasPressedThisFrame && result.Type == AimTargetType.Vehicle)
@@ -1174,6 +1174,59 @@ namespace SP.Player
                 SP.Presentation.CubeFxReactor.WriteTint(highlightedRenderer, highlightedOriginalColor);
                 highlightedRenderer = null;
             }
+        }
+
+        // -----------------------------------------------------------
+        // E3: doble [T] reparte, Shift+[T] distribuye
+        // -----------------------------------------------------------
+        // Antes [T] siempre mandaba al mismo (el vivo libre mas cercano al
+        // punto): apretarlo dos veces seguidas al mismo lugar repetia la
+        // orden sobre el MISMO soldado en vez de sumar al segundo.
+        public const float VentanaDobleT = 0.5f;
+        float ultimoTUnscaledTime = -999f;
+        Soldier ultimoTSoldado;
+
+        // Separado de la lectura de teclado (shiftHeld entra como
+        // parametro) para poder probarlo desde la suite sin depender de
+        // Keyboard.current, que no existe en Edit mode -- mismo criterio
+        // que TryRevivir en A4.
+        public void IssueGroundOrderT(Vector3 punto, bool shiftHeld)
+        {
+            if (shiftHeld)
+            {
+                // Shift+[T]: TODA la escuadra libre, repartida en formacion
+                // -- no uno por uno, de una.
+                var libres = new List<Soldier>();
+                if (Squad != null)
+                {
+                    foreach (var s in Squad)
+                        if (s != null && s != Brain.Current && s.Health != null && s.Health.IsAlive && !OrderService.LoManejaElJugador(s))
+                            libres.Add(s);
+                }
+                if (libres.Count == 0) return;
+                var puntos = OrderService.FormationPoints(punto, libres.Count);
+                for (int i = 0; i < libres.Count; i++) OrderService.IssueMoveOrder(libres[i], puntos[i]);
+                GameLog.Line($"Shift+[T]: se repartieron {libres.Count} aliados en formacion");
+                return;
+            }
+
+            // Dos [T] rapidos (dentro de la ventana) al candidato de
+            // siempre reparten al SIGUIENTE mas cercano en vez de repetirle
+            // la orden al primero.
+            bool esRepique = Time.unscaledTime - ultimoTUnscaledTime < VentanaDobleT;
+            ultimoTUnscaledTime = Time.unscaledTime;
+
+            var candidato = OrderService.FindNearestFreeAlly(punto, TeamId.Player, Brain.Current);
+            if (esRepique && ultimoTSoldado != null && candidato == ultimoTSoldado)
+            {
+                candidato = ActorRegistry.FindNearest(punto, s =>
+                    s != Brain.Current && s != ultimoTSoldado && s.Team == TeamId.Player
+                    && s.Health != null && s.Health.IsAlive && !OrderService.LoManejaElJugador(s));
+            }
+            if (candidato == null) return;
+
+            OrderService.IssueMoveOrder(candidato, punto);
+            ultimoTSoldado = candidato;
         }
 
         void UpdateAimHighlight(AimResult result)

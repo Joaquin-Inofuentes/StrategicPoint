@@ -2649,9 +2649,55 @@ namespace SP.EditorTools
             kes.Brain.CancelOrder();
             doc.Brain.CancelOrder();
             inputDriver.Selection.Clear();
-            vega.Brain.IsPossessedByPlayer = false;
 
             TestLog.Phase("FASE 9 FINALIZADA (14/23)");
+
+            // --- #15 / E3: doble [T] reparte, Shift+[T] distribuye ---
+            TestLog.Phase("FASE 9 - Tarea #15: doble [T] reparte, Shift+[T] distribuye");
+            var puntoT = new Vector3(90f, 0f, 90f);
+            inputDriver.IssueGroundOrderT(puntoT, false);
+            Check("El primer [T] manda a alguien",
+                kes.Brain.CurrentOrderDestination.HasValue || doc.Brain.CurrentOrderDestination.HasValue);
+
+            inputDriver.IssueGroundOrderT(puntoT, false); // segundo T rapido, mismo punto
+            Check($"Y el segundo [T] rapido reparte al OTRO, no repite al mismo (Kes={kes.Brain.CurrentOrderDestination.HasValue}, Doc={doc.Brain.CurrentOrderDestination.HasValue})",
+                kes.Brain.CurrentOrderDestination.HasValue && doc.Brain.CurrentOrderDestination.HasValue);
+
+            kes.Brain.CancelOrder();
+            doc.Brain.CancelOrder();
+
+            // Shift+[T] con 3 libres: Vega esta poseido, asi que un
+            // conductor temporal toma el mando para dejar a Vega, Kes y
+            // Doc libres los tres a la vez.
+            var conductorTemporalE3 = SpawnSoldier(soldierPrefab, "ConductorTemporalE3", TeamId.Player, RoleType.Assault,
+                new Vector3(200f, 0.8f, 200f), new Color(0.25f, 0.55f, 0.98f), pool, 100);
+            inputDriver.Brain.Possess(conductorTemporalE3);
+            conductorTemporalE3.Brain.IsPossessedByPlayer = true;
+            vega.Brain.CancelOrder();
+
+            var puntoShiftT = new Vector3(-90f, 0f, -90f);
+            inputDriver.IssueGroundOrderT(puntoShiftT, true);
+
+            Vector3? destinoVega = vega.Brain.CurrentOrderDestination;
+            Vector3? destinoKes = kes.Brain.CurrentOrderDestination;
+            Vector3? destinoDoc = doc.Brain.CurrentOrderDestination;
+            Check($"Shift+[T] con 3 libres les da destino a los 3 (Vega={destinoVega.HasValue}, Kes={destinoKes.HasValue}, Doc={destinoDoc.HasValue})",
+                destinoVega.HasValue && destinoKes.HasValue && destinoDoc.HasValue);
+
+            float dVK = Vector3.Distance(destinoVega.Value, destinoKes.Value);
+            float dVD = Vector3.Distance(destinoVega.Value, destinoDoc.Value);
+            float dKD = Vector3.Distance(destinoKes.Value, destinoDoc.Value);
+            Check($"Y los 3 destinos quedan a mas de 1,8 m entre si ({dVK:0.00}, {dVD:0.00}, {dKD:0.00})",
+                dVK > 1.8f && dVD > 1.8f && dKD > 1.8f);
+
+            UnityEngine.Object.DestroyImmediate(conductorTemporalE3.gameObject);
+            inputDriver.Brain.Possess(vega);
+            vega.Brain.IsPossessedByPlayer = true;
+            vega.Brain.CancelOrder();
+            kes.Brain.CancelOrder();
+            doc.Brain.CancelOrder();
+
+            TestLog.Phase("FASE 9 FINALIZADA (15/23)");
         }
 
         // ---------------------------------------------------------------
