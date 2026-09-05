@@ -567,6 +567,11 @@ namespace SP.Player
         // cercano -- o a vista RTS si no queda ninguno.
         // -----------------------------------------------------------
         bool handlingDeath;
+        // A3: segundos que se espera un [Espacio] (A2) antes de pasar solo
+        // a vista tactica. Publica y const para que la suite pueda medir
+        // "a los 4 s sigue en FPS, a los 6 s ya paso a RTS" sin adivinar
+        // el numero.
+        public const float EsperaMaximaTrasMorir = 5f;
         // Para que PauseController no abra la pausa a mitad de la
         // cámara de muerte -- técnicamente no rompía nada (se congela
         // bien y sigue al continuar), pero pausar en medio de esa
@@ -662,55 +667,69 @@ namespace SP.Player
                 Rig.BeginTransition(deathPullBackGO.transform, 0.9f);
                 while (Rig.IsTransitioning) yield return null;
 
-                // 3 segundos mirando al cadáver, orbitando despacio alrededor
-                // (no una cámara congelada): "rotando mirándolo por 3
-                // segundos". Mismo radio/altura que el punto de partida, solo
-                // gira el ángulo alrededor del soldado.
-                const float holdSeconds = 3f;
-                const float orbitDegPerSec = 12f;
-                Vector3 toCam = deathPullBackGO.transform.position - deadSoldier.transform.position;
-                float radius = new Vector2(toCam.x, toCam.z).magnitude;
-                float height = toCam.y;
-                float angle = Mathf.Atan2(toCam.z, toCam.x) * Mathf.Rad2Deg;
-
-                float t = 0f;
-                while (t < holdSeconds)
-                {
-                    t += Time.unscaledDeltaTime;
-                    angle += orbitDegPerSec * Time.unscaledDeltaTime;
-                    float rad = angle * Mathf.Deg2Rad;
-                    Vector3 offset = new Vector3(Mathf.Cos(rad) * radius, height, Mathf.Sin(rad) * radius);
-                    deathPullBackGO.transform.position = deadSoldier.transform.position + offset;
-                    deathPullBackGO.transform.rotation = Quaternion.LookRotation((deadSoldier.transform.position + Vector3.up * 0.8f - deathPullBackGO.transform.position).normalized);
-                    Rig.FollowAnchor(deathPullBackGO.transform);
-                    yield return null;
-                }
-
-                Soldier nearest = null;
-                float bestDist = float.MaxValue;
-                if (Squad != null)
-                {
-                    foreach (var s in Squad)
-                    {
-                        if (s == null || s == deadSoldier || !s.Health.IsAlive) continue;
-                        float d = Vector3.Distance(deadSoldier.transform.position, s.transform.position);
-                        if (d < bestDist) { bestDist = d; nearest = s; }
-                    }
-                }
-
-                if (nearest != null)
-                {
-                    GameLog.Line($"Camara cambio de {deadSoldier.DisplayName} a {nearest.DisplayName} (aliado vivo mas cercano)");
-                    PossessionService.Swap(Brain, nearest);
-                    Rig.SetMode(ControlMode.Fps);
-                    Rig.BeginTransition(nearest.EyeAnchor != null ? nearest.EyeAnchor : nearest.transform);
-                }
-                else
+                // A1: antes, a los 3 s la camara pasaba SOLA al aliado vivo
+                // mas cercano -- el jugador nunca decidia nada. Ahora se
+                // queda orbitando el cadaver, esperando: A2 deja pedir el
+                // cambio con [Espacio] en cualquier momento, y A3 lo fuerza
+                // a los 5 s si nadie lo pidio. Sin NINGUN aliado vivo no hay
+                // nada que esperar: derrota en el acto, igual que siempre.
+                var candidatoAlMorir = OrderService.FindNearestFreeAlly(deadSoldier.transform.position, TeamId.Player, deadSoldier);
+                if (candidatoAlMorir == null)
                 {
                     GameLog.Line("Perdiste");
                     Rig.SetMode(ControlMode.Rts);
                     Rig.SetRtsView(deadSoldier.transform.position);
                     if (Outcome != null) Outcome.ShowDefeat();
+                }
+                else
+                {
+                    // Orbita despacio alrededor del cadaver mientras se
+                    // espera -- mismo radio/altura que el punto de partida,
+                    // solo gira el angulo alrededor del soldado.
+                    const float orbitDegPerSec = 12f;
+                    Vector3 toCam = deathPullBackGO.transform.position - deadSoldier.transform.position;
+                    float radius = new Vector2(toCam.x, toCam.z).magnitude;
+                    float height = toCam.y;
+                    float angle = Mathf.Atan2(toCam.z, toCam.x) * Mathf.Rad2Deg;
+
+                    float espera = 0f;
+                    while (true)
+                    {
+                        espera += Time.unscaledDeltaTime;
+                        angle += orbitDegPerSec * Time.unscaledDeltaTime;
+                        float rad = angle * Mathf.Deg2Rad;
+                        Vector3 offset = new Vector3(Mathf.Cos(rad) * radius, height, Mathf.Sin(rad) * radius);
+                        deathPullBackGO.transform.position = deadSoldier.transform.position + offset;
+                        deathPullBackGO.transform.rotation = Quaternion.LookRotation((deadSoldier.transform.position + Vector3.up * 0.8f - deathPullBackGO.transform.position).normalized);
+                        Rig.FollowAnchor(deathPullBackGO.transform);
+
+                        // A2: el jugador PIDE el cambio, no le llega solo.
+                        if (KeyBindings.WasPressed(KeyBindings.Recentrar))
+                        {
+                            var elegido = OrderService.FindNearestFreeAlly(deadSoldier.transform.position, TeamId.Player, deadSoldier);
+                            if (elegido != null)
+                            {
+                                GameLog.Line($"Camara cambio de {deadSoldier.DisplayName} a {elegido.DisplayName} (pedido con [Espacio])");
+                                PossessionService.Swap(Brain, elegido);
+                                Rig.SetMode(ControlMode.Fps);
+                                Rig.BeginTransition(elegido.EyeAnchor != null ? elegido.EyeAnchor : elegido.transform);
+                                break;
+                            }
+                        }
+
+                        // A3: nadie pidio el cambio a tiempo -- se pasa solo
+                        // a vista tactica, sin dar la partida por perdida
+                        // (todavia hay aliados vivos que podrian revivirte).
+                        if (espera >= EsperaMaximaTrasMorir)
+                        {
+                            GameLog.Line("Nadie pidio el cambio a tiempo: la vista pasa sola a RTS");
+                            Rig.SetMode(ControlMode.Rts);
+                            Rig.SetRtsView(deadSoldier.transform.position);
+                            break;
+                        }
+
+                        yield return null;
+                    }
                 }
             }
             finally

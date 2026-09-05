@@ -2538,7 +2538,29 @@ namespace SP.EditorTools
             Check($"Las 4 frecuencias de latido son distintas y positivas ({frecuenciaAliado}, {frecuenciaEnemigo}, {frecuenciaVehiculo}, {frecuenciaObstaculo})",
                 frecuenciasDistintas.Count == 4 && frecuenciaAliado > 0f && frecuenciaEnemigo > 0f && frecuenciaVehiculo > 0f && frecuenciaObstaculo > 0f);
 
-            TestLog.Phase("FASE 9 FINALIZADA (8/23)");
+            // --- #9-#11 / A1+A2+A3: la camara de muerte espera en vez de
+            // cambiar sola. DeathSequence es una corrutina
+            // (StartCoroutine): no corre en Edit mode, asi que el timing
+            // real -- la espera, [Espacio] adelantando el cambio, los 5 s
+            // de A3 -- se midio en Play mode sobre SC_Gameplay (no hay
+            // Check() posible aca para eso). Lo que si se puede verificar
+            // en Edit mode es la pieza de datos que esa espera usa.
+            TestLog.Phase("FASE 9 - Tareas #9-#11: A1+A2+A3, la camara de muerte espera en vez de cambiar sola");
+            Check($"La espera antes de pasar a RTS es de {PlayerInputDriver.EsperaMaximaTrasMorir} s (A3)",
+                PlayerInputDriver.EsperaMaximaTrasMorir == 5f);
+
+            foreach (var s in new[] { vega, kes, doc })
+            {
+                s.gameObject.SetActive(true);
+                s.Health.Initialize(s.Id, s.Health.MaxHealth);
+                s.Brain.CancelOrder();
+                s.Brain.IsPossessedByPlayer = false;
+            }
+            var elegidoTrasMorirVega = OrderService.FindNearestFreeAlly(vega.transform.position, TeamId.Player, vega);
+            Check($"El aliado que A2 pide con [Espacio] es el vivo mas cercano, nunca el propio muerto ({elegidoTrasMorirVega?.DisplayName})",
+                elegidoTrasMorirVega != null && elegidoTrasMorirVega != vega && elegidoTrasMorirVega.Health.IsAlive);
+
+            TestLog.Phase("FASE 9 FINALIZADA (11/23)");
         }
 
         // ---------------------------------------------------------------
