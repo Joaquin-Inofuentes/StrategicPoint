@@ -47,10 +47,11 @@ namespace SP.Combat
             // soldado se curaba. Curar tiene su propio metodo (Heal) y su
             // propio evento.
             //
-            // El caso amount == 0 tambien se corta: el daño por explosion
-            // se calcula con una caida (RoundToInt(damage * falloff)) que
-            // llega a 0 en el borde del radio, y publicarlo encendia todo
-            // el feedback de impacto sin quitar un solo punto de vida.
+            // El caso amount == 0 tambien se corta: cualquier calculo de
+            // daño que redondee a cero (una caida por distancia, un
+            // multiplicador chico) encendia todo el feedback de impacto
+            // -- numero flotante, viñeta, flecha -- sin quitar un solo
+            // punto de vida.
             if (amount <= 0) return;
 
             Current = Mathf.Clamp(Current - amount, 0, maxHealth);

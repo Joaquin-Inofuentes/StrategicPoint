@@ -251,77 +251,12 @@ namespace SP.Combat
             // tiro, no que se lo coma el muro que tiene atras.
             if (ChocoContraElMundo(posPrevia)) return;
 
-            // No hay soldado en el camino: probamos vehículo y obstáculo,
-            // para que el jugador tenga feedback de qué le pegó a qué (antes
-            // el proyectil los atravesaba sin avisar nada).
-            // WorldSystemsRegistry en vez de FindObjectsByType: esto corria
-            // POR PROYECTIL y POR FRAME, o sea un barrido completo de la
-            // escena por cada bala en vuelo. Ademas se toma el vehiculo MAS
-            // CERCANO en rango y no "el primero que aparezca": el orden de
-            // FindObjectsByType era arbitrario, asi que con dos vehiculos
-            // pegados era impredecible a cual le pegaba.
-            Vehicle nearestVehicle = null;
-            float nearestVehicleDist = float.MaxValue;
-            var vehicleList = SP.Core.WorldSystemsRegistry.Vehicles;
-            for (int i = 0; i < vehicleList.Count; i++)
-            {
-                var v = vehicleList[i];
-                if (v == null || v == ignoreVehicle) continue;
-                float d = Vector3.Distance(v.transform.position, transform.position);
-                if (d <= hitRadius + 1.5f && d < nearestVehicleDist) { nearestVehicleDist = d; nearestVehicle = v; }
-            }
-            {
-                var vehicle = nearestVehicle;
-                if (vehicle != null)
-                {
-                    if (explosionRadius > 0f) Explode(transform.position);
-                    else
-                    {
-                        vehicle.TakeDamage(damage, ownerId);
-                        EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, transform.position));
-                        PlayImpactSfx(EnvironmentHitKind.Vehicle, transform.position, 0.55f);
-                        // Blindaje: chispas metalicas rebotadas, no el
-                        // mismo polvo generico que contra el suelo.
-                        var awayFromHull = (transform.position - vehicle.transform.position).normalized;
-                        ImpactFx.SpawnArmorSparks(transform.position, awayFromHull);
-                    }
-                    Expire();
-                    return;
-                }
-            }
-
-            // Mismo caso que los vehiculos: barrido por proyectil por
-            // frame, reemplazado por el registro y el mas cercano en rango.
-            ObstacleMarker nearestObstacle = null;
-            float nearestObstacleDist = float.MaxValue;
-            var obstacleList = SP.Core.WorldSystemsRegistry.Obstacles;
-            for (int i = 0; i < obstacleList.Count; i++)
-            {
-                var o = obstacleList[i];
-                if (o == null) continue;
-                float d = Vector3.Distance(o.transform.position, transform.position);
-                if (d <= hitRadius + 1f && d < nearestObstacleDist) { nearestObstacleDist = d; nearestObstacle = o; }
-            }
-            {
-                var obstacle = nearestObstacle;
-                if (obstacle != null)
-                {
-                    if (explosionRadius > 0f) Explode(transform.position);
-                    else
-                    {
-                        // Los obstaculos eran inmortales: disparar contra
-                        // la cobertura no cambiaba nada.
-                        obstacle.TakeDamage(damage);
-                        EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Obstacle, transform.position));
-                        PlayImpactSfx(EnvironmentHitKind.Obstacle, transform.position, 0.5f);
-                        ImpactFx.SpawnScaledByDamage(transform.position, ImpactFx.ObstacleColor, damage);
-                        var awayFromWall = (transform.position - obstacle.transform.position).normalized;
-                        DecalPool.Spawn(DecalKind.BulletHole, transform.position, awayFromWall, 0.22f);
-                    }
-                    Expire();
-                    return;
-                }
-            }
+            // Los barridos por distancia al ORIGEN del vehiculo y del
+            // obstaculo que habia aca se fueron enteros: los dos estan
+            // resueltos arriba contra el collider real, en el mismo
+            // barrido del tramo. Eran la version que le pegaba al tanque
+            // por afuera del casco y que solo dañaba la barricada cerca
+            // de su pivote.
 
             // Suelo: el proyectil no tiene gravedad (viaja recto), así que
             // esto solo dispara si se apunta hacia abajo o desde baja
@@ -372,12 +307,23 @@ namespace SP.Combat
             for (int i = 0; i < n; i++)
             {
                 var h = BufferBarrido[i];
-                // Misma definicion de "pared" que usa SoldierMotor para no
+                // Paredes (misma definicion que usa SoldierMotor para no
                 // atravesar el Muro: si algo frena a un soldado, frena una
-                // bala. Soldados, vehiculos y proyectiles quedan afuera --
-                // esos tienen su propio camino unas lineas mas arriba, con
-                // su daño y sus efectos.
-                if (!SP.Core.NavService.BlocksMovement(h.collider)) continue;
+                // bala) MAS vehiculos, que para el movimiento no son pared
+                // -- hay que poder caminar hasta el tanque para montarlo --
+                // pero para una bala si lo son.
+                //
+                // Los soldados quedan afuera: tienen su propio camino unas
+                // lineas mas arriba, con su daño y sus efectos, y su
+                // radio de impacto propio.
+                bool esPared = SP.Core.NavService.BlocksMovement(h.collider);
+                bool esVehiculo = false;
+                if (!esPared && !h.collider.isTrigger)
+                {
+                    var v = h.collider.GetComponentInParent<SP.Vehicles.Vehicle>();
+                    esVehiculo = v != null && v != ignoreVehicle;
+                }
+                if (!esPared && !esVehiculo) continue;
                 if (h.distance >= mejor) continue;
                 mejor = h.distance;
                 impacto = h;
@@ -391,6 +337,22 @@ namespace SP.Combat
             if (explosionRadius > 0f)
             {
                 Explode(impacto.point);
+                Expire();
+                return true;
+            }
+
+            // VEHICULO. Antes esto se resolvia por distancia al ORIGEN del
+            // vehiculo (hitRadius + 1.5 = una esfera de 2,5 m), y el casco
+            // mide 1,1 m de medio ancho: se le pegaba al tanque disparando
+            // hasta 1,4 metros al costado, con la bala pasando a la vista
+            // por afuera. Ahora manda el collider de verdad.
+            var vehiculo = impacto.collider.GetComponentInParent<SP.Vehicles.Vehicle>();
+            if (vehiculo != null)
+            {
+                vehiculo.TakeDamage(damage, ownerId);
+                EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, impacto.point));
+                PlayImpactSfx(EnvironmentHitKind.Vehicle, impacto.point, 0.55f);
+                ImpactFx.SpawnArmorSparks(impacto.point, impacto.normal);
                 Expire();
                 return true;
             }
@@ -528,6 +490,33 @@ namespace SP.Combat
         // radio (soldados enemigos Y vehículos), y dibuja la esfera de
         // explosión que pide el jugador -- crece rápido y se achica de
         // golpe, representando visualmente la zona de daño real.
+        // Fraccion de daño que conserva la explosion en el borde del radio.
+        // No es 0 a proposito: una esquirla en el limite tiene que doler
+        // algo, y con 0 el ultimo metro del radio no haria nada.
+        const float DanoMinimoEnElBorde = 0.3f;
+
+        // Buffer del chequeo de cobertura contra la explosion.
+        static readonly RaycastHit[] BufferExplosion = new RaycastHit[8];
+
+        // La onda no dobla esquinas: si entre el centro de la explosion y
+        // la victima hay un solido, no le llega.
+        static bool LaExplosionAlcanza(Vector3 centro, Vector3 victima)
+        {
+            var delta = victima - centro;
+            float dist = delta.magnitude;
+            if (dist < 0.0001f) return true;
+
+            int n = Physics.RaycastNonAlloc(centro, delta / dist, BufferExplosion, dist, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = BufferExplosion[i].collider;
+                if (c == null) continue;
+                if (!SP.Core.NavService.BlocksMovement(c)) continue;
+                return false;
+            }
+            return true;
+        }
+
         void Explode(Vector3 point)
         {
             foreach (var s in ActorRegistry.All)
@@ -535,7 +524,24 @@ namespace SP.Combat
                 if (s == null || !s.Health.IsAlive || s.Team == ownerTeam || !s.gameObject.activeInHierarchy) continue;
                 float dist = Vector3.Distance(s.transform.position, point);
                 if (dist > explosionRadius) continue;
-                s.Health.TakeDamage(damage, ownerId);
+
+                // BUG REAL 1: la onda atravesaba las paredes. Reparte por
+                // distancia pura, sin mirar que hay en el medio, asi que
+                // un cañonazo del tanque de un lado del Muro mataba a los
+                // que estaban del otro. Con el escenario ya solido para
+                // balas y para caminar, la cobertura frenaba todo menos lo
+                // que mas deberia frenar.
+                if (!LaExplosionAlcanza(point, s.transform.position)) continue;
+
+                // BUG REAL 2: el daño era PLANO en todo el radio. El
+                // empujon si tenia caida (strength, unas lineas mas
+                // abajo), pero el daño no: estar rozando el borde de la
+                // explosion dolia exactamente igual que estar sentado en
+                // el epicentro. Ahora cae linealmente del centro al borde,
+                // con un piso para que el ultimo metro siga contando.
+                float cercania = 1f - Mathf.Clamp01(dist / explosionRadius);
+                int danoReal = Mathf.Max(1, Mathf.RoundToInt(damage * Mathf.Lerp(DanoMinimoEnElBorde, 1f, cercania)));
+                s.Health.TakeDamage(danoReal, ownerId);
 
                 // Antes el daño en area no movia a nadie: una granada se
                 // veia igual que un disparo puntual. El empuje es
@@ -566,8 +572,11 @@ namespace SP.Combat
             {
                 var vehicle = explosionVehicles[i];
                 if (vehicle == null || vehicle == ignoreVehicle) continue;
-                if (Vector3.Distance(vehicle.transform.position, point) <= explosionRadius)
-                    vehicle.TakeDamage(damage, ownerId);
+                float distV = Vector3.Distance(vehicle.transform.position, point);
+                if (distV > explosionRadius) continue;
+                if (!LaExplosionAlcanza(point, vehicle.transform.position)) continue;
+                float cercaniaV = 1f - Mathf.Clamp01(distV / explosionRadius);
+                vehicle.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * Mathf.Lerp(DanoMinimoEnElBorde, 1f, cercaniaV))), ownerId);
             }
 
             EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, point));
