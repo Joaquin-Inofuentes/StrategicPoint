@@ -2560,7 +2560,26 @@ namespace SP.EditorTools
             Check($"El aliado que A2 pide con [Espacio] es el vivo mas cercano, nunca el propio muerto ({elegidoTrasMorirVega?.DisplayName})",
                 elegidoTrasMorirVega != null && elegidoTrasMorirVega != vega && elegidoTrasMorirVega.Health.IsAlive);
 
-            TestLog.Phase("FASE 9 FINALIZADA (11/23)");
+            // --- #12 / A4: mantener [E] 5 s revive a un caido ---
+            // TryRevivir toma "sostenido lo suficiente" como parametro (no
+            // lee Keyboard.current el mismo) exactamente para esto: se
+            // puede simular con ForzarInicioDePulsacion + HayPulsacionRegistrada
+            // sin depender de un teclado real, que no existe en Edit mode.
+            TestLog.Phase("FASE 9 - Tarea #12: mantener [E] 5 s revive a un caido");
+            doc.Health.TakeDamage(999999, -1);
+            Check($"Doc esta muerto para la prueba ({doc.Health.Current} de vida)", !doc.Health.IsAlive);
+
+            KeyBindings.ForzarInicioDePulsacion(KeyBindings.Interactuar, 3f);
+            bool revivioA3s = inputDriver.TryRevivir(doc, KeyBindings.HayPulsacionRegistrada(KeyBindings.Interactuar, PlayerInputDriver.TiempoDeRevivir));
+            Check($"A los 3 s de {PlayerInputDriver.TiempoDeRevivir} sigue muerto ({doc.Health.IsAlive})",
+                !revivioA3s && !doc.Health.IsAlive);
+
+            KeyBindings.ForzarInicioDePulsacion(KeyBindings.Interactuar, PlayerInputDriver.TiempoDeRevivir);
+            bool revivioA5s = inputDriver.TryRevivir(doc, KeyBindings.HayPulsacionRegistrada(KeyBindings.Interactuar, PlayerInputDriver.TiempoDeRevivir));
+            Check($"Y a los {PlayerInputDriver.TiempoDeRevivir} s, Health.IsAlive pasa a true ({doc.Health.Current}/{doc.Health.MaxHealth})",
+                revivioA5s && doc.Health.IsAlive && doc.Health.Current == doc.Health.MaxHealth);
+
+            TestLog.Phase("FASE 9 FINALIZADA (12/23)");
         }
 
         // ---------------------------------------------------------------

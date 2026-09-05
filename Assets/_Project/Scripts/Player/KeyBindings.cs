@@ -201,6 +201,21 @@ namespace SP.Player
             return pressStart.TryGetValue(actionId, out float t0) && Time.unscaledTime - t0 >= holdSeconds;
         }
 
+        // A4: cuanto lleva sostenida la tecla ahora mismo, en segundos (0 si
+        // no esta apretada). IsHeld solo da el umbral cumplido o no -- esto
+        // es lo que necesita un progreso 0-1 (revivir a un caido).
+        public static float HeldSeconds(string actionId)
+        {
+            var kb = Keyboard.current;
+            if (kb == null) return 0f;
+            var key = Get(actionId);
+            if (key == Key.None) return 0f;
+            var control = kb[key];
+            if (control.wasPressedThisFrame) pressStart[actionId] = Time.unscaledTime;
+            if (!control.isPressed) return 0f;
+            return pressStart.TryGetValue(actionId, out float t0) ? Time.unscaledTime - t0 : 0f;
+        }
+
         // Solo para tests: simula que la tecla se apreto hace 'segundos'.
         // Sin esto no hay forma de probar el gesto de mantener en la suite,
         // que corre sin teclado real (Keyboard.current es null).

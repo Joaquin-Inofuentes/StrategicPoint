@@ -984,6 +984,17 @@ namespace SP.Player
                 }
             }
 
+            // A4: revivir a un caido tiene prioridad sobre subir al vehiculo
+            // o equipar un arma -- si hay un compañero caido al alcance,
+            // sostener [E] es lo unico que [E] hace ese frame.
+            var caidoCercano = FindNearestDownedAlly();
+            if (caidoCercano != null)
+            {
+                UpdateRevivalHold(caidoCercano);
+                return;
+            }
+            if (circuloRevivir != null) circuloRevivir.SetVisible(false);
+
             // Interacción por cercanía (no por puntería): subir al vehículo
             // o equipar un arma tirada en el piso.
             var nearVehicle = Vehicle != null && !Vehicle.IsDestroyed && Vector3.Distance(Brain.Current.transform.position, Vehicle.transform.position) <= interactRadius
@@ -1009,6 +1020,77 @@ namespace SP.Player
             SetInstructionText(nearVehicle != null ? "[E] Subir al vehiculo  ·  [U] sube a un aliado"
                 : nearPickup != null ? $"[E] Equipar {nearPickup.Kind}"
                 : BuildFpsInstruction(result));
+        }
+
+        // -----------------------------------------------------------
+        // A4: mantener [E] 5 s revive a un caido
+        // -----------------------------------------------------------
+        public const float TiempoDeRevivir = 5f;
+        CirculoDeProgreso circuloRevivir;
+
+        Soldier FindNearestDownedAlly()
+        {
+            if (Squad == null || Brain.Current == null) return null;
+            Soldier best = null;
+            float bestDist = interactRadius;
+            foreach (var s in Squad)
+            {
+                if (s == null || s.Health == null || s.Health.IsAlive) continue;
+                float d = Vector3.Distance(Brain.Current.transform.position, s.transform.position);
+                if (d <= bestDist) { bestDist = d; best = s; }
+            }
+            return best;
+        }
+
+        // La decision de "ya se sostuvo lo suficiente" entra como parametro
+        // en vez de leerse aca adentro -- mismo motivo que ResolverGestoDeQ
+        // en E2: asi la suite headless puede probar el revivir en si
+        // (KeyBindings.ForzarInicioDePulsacion + HayPulsacionRegistrada) sin
+        // depender de Keyboard.current, que no existe en Edit mode.
+        public bool TryRevivir(Soldier caido, bool sostenidoLoSuficiente)
+        {
+            if (caido == null || caido.Health == null || caido.Health.IsAlive || !sostenidoLoSuficiente) return false;
+            caido.Health.Initialize(caido.Id, caido.Health.MaxHealth);
+            GameLog.Line($"{caido.DisplayName} fue revivido");
+            return true;
+        }
+
+        void UpdateRevivalHold(Soldier caido)
+        {
+            SetInstructionText($"Mantener [E] para revivir a {caido.DisplayName}");
+            if (!KeyBindings.IsPressed(KeyBindings.Interactuar))
+            {
+                if (circuloRevivir != null) circuloRevivir.SetVisible(false);
+                return;
+            }
+
+            float progreso = KeyBindings.HeldSeconds(KeyBindings.Interactuar) / TiempoDeRevivir;
+            MostrarCirculoRevivir(Mathf.Clamp01(progreso));
+
+            if (TryRevivir(caido, KeyBindings.IsHeld(KeyBindings.Interactuar, TiempoDeRevivir)))
+            {
+                if (circuloRevivir != null) circuloRevivir.SetVisible(false);
+            }
+        }
+
+        static readonly Color RevivirFondo = new Color(0f, 0f, 0f, 0.4f);
+        static readonly Color RevivirRelleno = new Color(0.35f, 0.9f, 0.45f);
+
+        void MostrarCirculoRevivir(float progreso01)
+        {
+            if (circuloRevivir == null)
+            {
+                var canvasRoot = AimUiRef != null ? AimUiRef.transform.parent : null;
+                if (canvasRoot == null) return;
+                circuloRevivir = CirculoDeProgreso.Construir(canvasRoot, 46f, RevivirFondo, RevivirRelleno);
+                circuloRevivir.gameObject.name = "CirculoRevivir";
+                var rt = (RectTransform)circuloRevivir.transform;
+                // Debajo del centro de la pantalla: no tapa la mira.
+                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.32f);
+                rt.anchoredPosition = Vector2.zero;
+            }
+            circuloRevivir.SetVisible(true);
+            circuloRevivir.SetProgreso(progreso01);
         }
 
         // Resalta (aclara el color) el aliado o vehículo al que se le está
