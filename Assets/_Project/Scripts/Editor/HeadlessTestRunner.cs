@@ -2871,6 +2871,49 @@ namespace SP.EditorTools
             UnityEngine.Object.DestroyImmediate(barrilGo);
 
             TestLog.Phase("FASE 9 FINALIZADA (19/23)");
+
+            // --- #20 / G2: Ctrl para agacharse ---
+            TestLog.Phase("FASE 9 - Tarea #20: Ctrl para agacharse");
+
+            vega.gameObject.SetActive(true);
+            vega.Health.Initialize(vega.Id, vega.Health.MaxHealth);
+            vega.Brain.CancelOrder();
+            vega.Brain.IsPossessedByPlayer = true; // congela la IA durante la medicion
+            vega.Motor.SetCrouching(false); // estado limpio, por si algo lo dejo agachado antes
+
+            Physics.SyncTransforms();
+            var colliderVega = vega.GetComponent<Collider>();
+            float alturaDePie = colliderVega.bounds.size.y;
+
+            vega.Motor.SetCrouching(true);
+            Physics.SyncTransforms();
+            float alturaAgachado = colliderVega.bounds.size.y;
+            Check($"Agachado, la altura del collider baja ({alturaAgachado:0.00} m < {alturaDePie:0.00} m)",
+                alturaAgachado < alturaDePie);
+
+            vega.Motor.SetCrouching(false);
+            Physics.SyncTransforms();
+            float alturaFinal = colliderVega.bounds.size.y;
+            Check($"Al soltar Ctrl, la altura vuelve EXACTA a la de pie ({alturaFinal:0.0000} == {alturaDePie:0.0000})",
+                Mathf.Abs(alturaFinal - alturaDePie) < 0.0001f);
+
+            // Dispersion: misma racha acumulada (spreadDeg), leida DE PIE y
+            // AGACHADO -- SpreadDegEfectivo es el numero real que usa el
+            // proximo tiro, sin depender del azar de ApplySpread (Random.Range).
+            if (vega.Weapon.CurrentAmmo < 3) { vega.Weapon.Reload(); SimulateSeconds(2f); }
+            vega.Weapon.Tick(10f); // decae cualquier racha de una fase anterior a 0
+            for (int i = 0; i < 3; i++) { vega.Weapon.Tick(1f); vega.Weapon.TryFire(vega.transform.position, vega.transform.forward); }
+            float spreadDePie = vega.Weapon.SpreadDegEfectivo;
+            vega.Motor.SetCrouching(true);
+            float spreadAgachado = vega.Weapon.SpreadDegEfectivo;
+            Check($"Con la misma racha, agachado dispersa menos que de pie ({spreadAgachado:0.00} grados < {spreadDePie:0.00} grados)",
+                spreadDePie > 0f && spreadAgachado < spreadDePie);
+
+            vega.Motor.SetCrouching(false);
+            vega.Brain.IsPossessedByPlayer = false;
+            vega.Brain.CancelOrder();
+
+            TestLog.Phase("FASE 9 FINALIZADA (20/23)");
         }
 
         // ---------------------------------------------------------------

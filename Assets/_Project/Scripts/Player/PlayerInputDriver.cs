@@ -644,6 +644,7 @@ namespace SP.Player
                 if (AimUiRef != null) AimUiRef.SetVisible(false);
                 if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
                 deadSoldier.SetBodyVisible(true);
+                deadSoldier.Motor.SetCrouching(false);
                 bodyHiddenFor = null;
                 ClearVehicleSeatState();
 
@@ -875,6 +876,13 @@ namespace SP.Player
             // Balanceo al caminar: caminar y estar quieto se veian
             // exactamente igual, sin ninguna sensacion de pisada.
             Rig.SetWalking(moving);
+
+            // G2: mismo Ctrl que en RTS usan Ctrl+A y Ctrl+Click (trazar
+            // recorrido) -- no colisiona porque son ramas mutuamente
+            // excluyentes (UpdateFps vs UpdateRts, la misma separacion por
+            // cam.orthographic que ya usa todo el proyecto).
+            bool agacharHeld = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
+            Brain.Current.Motor.SetCrouching(agacharHeld);
 
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked)
             {
@@ -1874,7 +1882,7 @@ namespace SP.Player
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
             if (SelectionCount != null) SelectionCount.SetModeVisible(false);
             HideFpsOnlyIndicators();
-            if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
+            if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor.Motor.SetCrouching(false); bodyHiddenFor = null; }
             if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
 
             // El tanque se destruye y Vehicle.OnDestroyed() ya expulsa a
@@ -2165,7 +2173,7 @@ namespace SP.Player
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
             if (SelectionCount != null) SelectionCount.SetModeVisible(true);
             HideFpsOnlyIndicators();
-            if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
+            if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor.Motor.SetCrouching(false); bodyHiddenFor = null; }
             UpdateVehicleSelectionRing();
             bool ctrlHeld = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
 

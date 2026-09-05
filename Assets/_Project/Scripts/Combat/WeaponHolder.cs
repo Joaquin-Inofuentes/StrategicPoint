@@ -50,7 +50,16 @@ namespace SP.Combat
         // realmente ensanche el cono y solo se recupere al soltar el
         // gatillo por un rato.
         const float SpreadDecayPerSec = 3f;
-        public float SpreadFraction01 => Mathf.Clamp01(spreadDeg / MaxSpreadDeg);
+
+        // G2: agachado dispara mas preciso. spreadDeg (la racha acumulada)
+        // no cambia por agacharse -- lo que cambia es CUANTO de esa racha
+        // se aplica al tiro. Separado de SpreadFraction01/SpreadDegEfectivo
+        // de abajo para que un test pueda leer el numero real sin depender
+        // del azar de ApplySpread (Random.Range).
+        const float FactorAgachado = 0.4f;
+        float MultiplicadorPostura => (owner != null && owner.Motor != null && owner.Motor.IsCrouching) ? FactorAgachado : 1f;
+        public float SpreadDegEfectivo => spreadDeg * MultiplicadorPostura;
+        public float SpreadFraction01 => Mathf.Clamp01(SpreadDegEfectivo / MaxSpreadDeg);
 
         public float CooldownRemaining => Mathf.Max(0f, cooldownTimer);
         public WeaponKind CurrentWeaponKind { get; private set; } = WeaponKind.Rifle;
@@ -192,7 +201,7 @@ namespace SP.Combat
             // (el patron acumulado hasta ahora), y recien despues crece
             // para el proximo -- si no, hasta el primer disparo de una
             // rafaga saldria desviado por su propio impacto.
-            var spreadDir = ApplySpread(direction, spreadDeg);
+            var spreadDir = ApplySpread(direction, SpreadDegEfectivo);
             spreadDeg = Mathf.Min(MaxSpreadDeg, spreadDeg + SpreadGrowthPerShot);
 
             var spawnPos = Muzzle != null ? Muzzle.position : origin;

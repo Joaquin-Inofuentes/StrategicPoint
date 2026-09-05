@@ -20,10 +20,22 @@ namespace SP.Actors
     {
         [SerializeField] float moveSpeed = 5f;
         [SerializeField] float turnSpeedDegPerSec = 220f;
+        // G2: cuanto queda de la altura de pie al agacharse. El cuerpo del
+        // soldado es UN cubo (mesh + collider + EyeAnchor hijo todos bajo
+        // el mismo transform), asi que achicar transform.localScale.y baja
+        // a la vez el collider, la camara (EyeAnchor es hijo y su offset
+        // local se escala con el padre) y el perfil visual, en un solo
+        // cambio -- mismo patron que ObstacleMarker.ApplyStageLook.
+        [SerializeField] float fraccionAlturaAgachado = 0.6f;
 
         Collider body;
         float bodyRadius = 0.4f;
         bool bodyResolved;
+
+        Vector3 alturaDePie;
+        bool posturaCacheada;
+
+        public bool IsCrouching { get; private set; }
 
         void EnsureBody()
         {
@@ -32,6 +44,30 @@ namespace SP.Actors
 
             body = GetComponent<Collider>();
             bodyRadius = Deslizador.RadioDe(body, transform, 0.4f);
+        }
+
+        void EnsurePostura()
+        {
+            if (posturaCacheada) return;
+            posturaCacheada = true;
+            alturaDePie = transform.localScale;
+        }
+
+        // Ctrl (mantenido) agacha en FPS. Reusa el pivote centrado del
+        // cubo: al perder altura hay que bajar la posicion la MITAD de lo
+        // perdido para que los pies no floten, y al recuperarla subirla
+        // exactamente lo mismo -- por eso "vuelve exacta al soltar": es
+        // la misma resta invertida, no un valor puesto a mano.
+        public void SetCrouching(bool agachado)
+        {
+            EnsurePostura();
+            if (IsCrouching == agachado) return;
+            IsCrouching = agachado;
+
+            float alturaAntes = transform.localScale.y;
+            float alturaDespues = alturaDePie.y * (agachado ? fraccionAlturaAgachado : 1f);
+            transform.localScale = new Vector3(alturaDePie.x, alturaDespues, alturaDePie.z);
+            transform.position += Vector3.up * (alturaDespues - alturaAntes) * 0.5f;
         }
 
         public void Move(Vector3 worldDirection, float dt)
