@@ -53,6 +53,9 @@ namespace SP.Presentation
             DecalPool.ClearAll();
             DebrisPool.ClearAll();
             ImpactFx.ClearAll();
+            // El cuarto pool. Medido: sin esto, 7 marcadores de orden de la
+            // partida anterior quedaban pintados sobre el mapa nuevo.
+            OrderMarkerFx.LimpiarTodo();
             BarrerRootsSueltos();
             return antes - ContarHuerfanos();
         }
@@ -60,6 +63,7 @@ namespace SP.Presentation
         static readonly string[] NombresDeRoot =
         {
             "DecalPool", "DebrisPool", "ImpactFxPool", "ShockwaveRingPool",
+            "OrderMarkerPool",
         };
 
         // Los ClearAll de arriba solo destruyen el root que el pool tiene
@@ -94,6 +98,7 @@ namespace SP.Presentation
                 var go = t.gameObject;
                 if (go.scene.IsValid()) continue;
                 if (t.name.StartsWith("Decal_") || t.name.StartsWith("Debris")
+                    || t.name.StartsWith("OrderMarker")
                     || t.name == "DecalPool" || t.name == "DebrisPool"
                     || t.name == "ImpactFxPool" || t.name == "ShockwaveRingPool"
                     || go.GetComponent<ImpactFx>() != null)

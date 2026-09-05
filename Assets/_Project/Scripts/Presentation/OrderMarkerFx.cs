@@ -177,6 +177,37 @@ namespace SP.Presentation
 
         // Devuelve todo lo activo al pool. Existe para el Edit mode, donde
         // Update() NO corre y por lo tanto ningun marcador se recicla solo.
+        // Vaciado REAL, no reciclado. RecycleAll devuelve los marcadores al
+        // pool pero los objetos siguen existiendo, y como el root se crea
+        // con DontSaveInEditor|DontSaveInBuild no lo destruye la carga de
+        // una escena: quedan colgando fuera de toda escena.
+        //
+        // Medido: 13 marcadores puestos, SceneManager.LoadScene de la misma
+        // escena, y 7 seguian VISIBLES sobre el mapa nuevo. Es el mismo
+        // defecto que reporto el usuario para los decals ("Al re cargar la
+        // escena no se limpian los decals") y este cuarto pool se me habia
+        // escapado: cuando lo mire la primera vez sus marcadores estaban
+        // inactivos de casualidad y lo di por sano.
+        public static void LimpiarTodo()
+        {
+            for (int i = 0; i < all.Count; i++)
+            {
+                var m = all[i];
+                if (m == null) continue;
+                if (Application.isPlaying) Object.Destroy(m.gameObject);
+                else Object.DestroyImmediate(m.gameObject);
+            }
+            all.Clear();
+            free.Clear();
+            inUse.Clear();
+            if (root != null)
+            {
+                if (Application.isPlaying) Object.Destroy(root.gameObject);
+                else Object.DestroyImmediate(root.gameObject);
+                root = null;
+            }
+        }
+
         public static void RecycleAll()
         {
             Purge();
