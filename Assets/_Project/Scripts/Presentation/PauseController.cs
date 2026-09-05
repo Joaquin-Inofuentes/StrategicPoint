@@ -36,6 +36,9 @@ namespace SP.Presentation
 
         public bool IsPaused { get; private set; }
 
+        // Escala de tiempo previa a la pausa (ver ShowPause).
+        float escalaPrevia = 1f;
+
         public void Bind(GameObject pause, GameObject settings)
         {
             pausePanel = pause;
@@ -257,6 +260,14 @@ namespace SP.Presentation
             if (outcome != null && outcome.IsShowing) return;
             if (input != null && input.IsHandlingDeath) return;
             IsPaused = true;
+            // Se guarda la escala que HABIA, no se asume que era 1. El
+            // juego tiene otro sistema que la toca: al morir el ultimo
+            // enemigo, KillFeedbackDirector pone camara lenta (0.25) por
+            // 0,9 segundos reales. Pausar y despausar dentro de esa
+            // ventana escribia un 1 fijo encima y cancelaba la camara
+            // lenta de la victoria -- el momento mas cuidado del juego se
+            // perdia por abrir el menu.
+            escalaPrevia = Time.timeScale;
             Time.timeScale = 0f;
             pausePanel.SetActive(true);
             GameLog.Line("Se puso en pausa el juego");
@@ -266,7 +277,12 @@ namespace SP.Presentation
         {
             if (!IsPaused) return;
             IsPaused = false;
-            Time.timeScale = 1f;
+            // Se devuelve la escala que habia antes de pausar. El 0 no se
+            // restaura nunca: si se llego a pausar con el tiempo ya
+            // congelado por otra cosa, despausar tiene que devolver el
+            // control igual y no dejar el juego clavado.
+            Time.timeScale = escalaPrevia > 0.0001f ? escalaPrevia : 1f;
+            escalaPrevia = 1f;
             if (settingsPanel != null) settingsPanel.SetActive(false);
             if (controlsPanel != null) controlsPanel.SetActive(false);
             if (confirmExitPanel != null) confirmExitPanel.SetActive(false);

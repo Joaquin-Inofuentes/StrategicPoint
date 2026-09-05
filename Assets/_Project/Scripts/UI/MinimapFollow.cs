@@ -183,8 +183,25 @@ namespace SP.UI
             return cam.aspect > 1e-4f ? cam.aspect : 1f;
         }
 
+        // TERCER lugar donde vivia el mismo limite equivocado (los otros
+        // dos eran CameraRig y OrderService): un cuadrado de +-90 centrado
+        // en el ORIGEN. El terreno de esta escena va de x=-24,8 a 33,6 y de
+        // z=-22,3 a 137,7, asi que:
+        //   - clickear el minimapa por encima de z=90 se RECHAZABA, y son
+        //     casi cincuenta metros de terreno perfectamente jugable donde
+        //     el minimapa no daba ninguna orden;
+        //   - y al oeste aceptaba hasta x=-90, sesenta metros fuera del
+        //     piso, mandando la orden a un punto que no existe.
+        // Se usa el terreno medido por NavService, con el campo serializado
+        // como respaldo para una escena sin colliders.
         bool IsInsideWorld(Vector3 p)
         {
+            if (SP.Core.NavService.TryArea(out var limites))
+            {
+                return p.x >= limites.min.x - WorldTolerance && p.x <= limites.max.x + WorldTolerance
+                    && p.z >= limites.min.z - WorldTolerance && p.z <= limites.max.z + WorldTolerance;
+            }
+
             float limit = mapHalfExtent + WorldTolerance;
             return Mathf.Abs(p.x) <= limit && Mathf.Abs(p.z) <= limit;
         }
