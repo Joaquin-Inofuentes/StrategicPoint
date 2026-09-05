@@ -40,6 +40,13 @@ namespace SP.Presentation
             int apoyados = SP.Core.ApoyoEnElPiso.ApoyarATodos();
             if (apoyados > 0) GameLog.Line($"Se apoyaron {apoyados} soldados que estaban flotando o hundidos");
 
+            // El menu de ordenes ([Q] sostenido) no esta serializado en
+            // SC_Gameplay -- esa escena no la construye HeadlessTestRunner.
+            // Se arma aca para que la funcionalidad exista en el juego y no
+            // solo en la escena de pruebas.
+            if (SP.UI.MenuDeOrdenes.AsegurarEnEscena() != null)
+                GameLog.Line("Menu de ordenes listo ([Q] sostenido)");
+
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null)

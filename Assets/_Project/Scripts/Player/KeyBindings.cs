@@ -179,7 +179,31 @@ namespace SP.Player
 
         public static bool IsHeld(string actionId, float holdSeconds = 0.3f)
         {
-            if (!IsPressed(actionId)) return false;
+            // Registra el inicio de la pulsacion por su cuenta en vez de
+            // confiar en que alguien mas haya llamado a WasTapped este
+            // frame: pressStart solo se llenaba alla, asi que un llamador
+            // que use unicamente IsHeld nunca veia nada. Con el registro
+            // aca, cada gesto funciona pidiendo solo lo que le importa.
+            var kb = Keyboard.current;
+            if (kb == null) return false;
+            var key = Get(actionId);
+            if (key == Key.None) return false;
+            var control = kb[key];
+            if (control.wasPressedThisFrame) pressStart[actionId] = Time.unscaledTime;
+            if (!control.isPressed) return false;
+            return pressStart.TryGetValue(actionId, out float t0) && Time.unscaledTime - t0 >= holdSeconds;
+        }
+
+        // Solo para tests: simula que la tecla se apreto hace 'segundos'.
+        // Sin esto no hay forma de probar el gesto de mantener en la suite,
+        // que corre sin teclado real (Keyboard.current es null).
+        public static void ForzarInicioDePulsacion(string actionId, float segundos)
+        {
+            pressStart[actionId] = Time.unscaledTime - segundos;
+        }
+
+        public static bool HayPulsacionRegistrada(string actionId, float holdSeconds)
+        {
             return pressStart.TryGetValue(actionId, out float t0) && Time.unscaledTime - t0 >= holdSeconds;
         }
 

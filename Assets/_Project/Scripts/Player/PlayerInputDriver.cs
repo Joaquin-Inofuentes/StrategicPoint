@@ -41,6 +41,7 @@ namespace SP.Player
         public PlayerHealthView PlayerHealth;
         public UI.SelectionCountView SelectionCount;
         public UI.ModeToastView ModeToast;
+        public UI.MenuDeOrdenes OrdenesMenu;
         public InstructionBannerView Instructions;
         public Image SelectionBox;
         public Vehicle Vehicle;
@@ -481,7 +482,11 @@ namespace SP.Player
             if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
             // [Q] cicla entre vivos y [C] posee al mas cercano: ambas caen
             // bajo la mano izquierda sin soltar WASD, a diferencia de F1/F2/F3.
-            if (KeyBindings.WasPressed(KeyBindings.CiclarPosesion)) CycleLivingAlly(+1);
+            // El ciclado ya NO se dispara al apretar sino al SOLTAR rapido:
+            // apretar y soltar son el mismo gesto hasta que pasa el umbral,
+            // y decidir al apretar haria que mantener [Q] ciclara ademas de
+            // abrir el menu.
+            ActualizarMenuDeOrdenes();
             // 199: solo se podia ciclar hacia ADELANTE. Con una escuadra de
             // tres eso ya obliga a dar la vuelta entera para volver uno.
             if (KeyBindings.WasPressed(KeyBindings.CiclarPosesionAtras)) CycleLivingAlly(-1);
@@ -1212,6 +1217,134 @@ namespace SP.Player
         void CycleToNextLivingAlly() => CycleLivingAlly(+1);
 
         // direction +1 avanza y -1 retrocede sobre el mismo orden estable.
+        // -----------------------------------------------------------
+        // Menu de ordenes: [Q] sostenido
+        // -----------------------------------------------------------
+
+        // Umbral que separa los dos gestos de la MISMA tecla. 0,3 s es el
+        // valor por defecto de KeyBindings: bastante mas que un toque
+        // deliberado y bastante menos que "lo dejo apretado".
+        public const float SostenerParaMenu = 0.3f;
+
+        // Un unico lugar que decide, cada frame, cual de los dos gestos de
+        // [Q] esta ocurriendo. Estan juntos a proposito: separarlos en dos
+        // ifs sueltos es como se cuelan los casos en que los dos disparan
+        // en el mismo frame.
+        void ActualizarMenuDeOrdenes()
+        {
+            ResolverGestoDeQ(
+                KeyBindings.WasTapped(KeyBindings.CiclarPosesion, SostenerParaMenu),
+                KeyBindings.IsHeld(KeyBindings.CiclarPosesion, SostenerParaMenu),
+                KeyBindings.IsPressed(KeyBindings.CiclarPosesion));
+        }
+
+        // La decision, separada de la lectura del teclado. Los dos gestos de
+        // [Q] se deciden mirando los mismos tres booleanos, asi que se
+        // pueden ejercer sin un teclado: la suite corre sin ninguno
+        // (Keyboard.current es null) y con la lectura pegada aca adentro la
+        // rama del toque corto no tenia forma de probarse.
+        public void ResolverGestoDeQ(bool toque, bool sostenido, bool sigueApretada)
+        {
+            if (OrdenesMenu == null)
+            {
+                if (toque) CycleLivingAlly(+1);
+                return;
+            }
+
+            if (sostenido && !OrdenesMenu.Abierto) OrdenesMenu.Abrir();
+
+            if (OrdenesMenu.Abierto)
+            {
+                int elegida = MenuDeOrdenes.LeerTecla();
+                if (elegida > 0)
+                {
+                    EjecutarOrdenDelMenu(elegida);
+                    OrdenesMenu.Cerrar();
+                    return;
+                }
+                // Se cierra al soltar. El toque corto no puede llegar aca
+                // (para abrirse ya hubo que pasar el umbral), asi que
+                // soltar despues de mantener nunca cicla de soldado.
+                if (!sigueApretada) OrdenesMenu.Cerrar();
+                return;
+            }
+
+            if (toque) CycleLivingAlly(+1);
+        }
+
+        // A quien le hablan las ordenes del menu: a la seleccion de RTS si
+        // hay alguien seleccionado, y si no a la escuadra viva entera. En
+        // FPS la seleccion suele estar vacia y una orden que no le llega a
+        // nadie se lee como que el menu no funciona.
+        public List<Soldier> DestinatariosDeOrden()
+        {
+            var lista = new List<Soldier>();
+            if (Selection != null && Selection.Selected.Count > 0)
+            {
+                foreach (var s in Selection.Selected)
+                    if (s != null && s.Health != null && s.Health.IsAlive) lista.Add(s);
+                if (lista.Count > 0) return lista;
+            }
+            if (Squad != null)
+                foreach (var s in Squad)
+                    if (s != null && s.Health != null && s.Health.IsAlive
+                        && !OrderService.LoManejaElJugador(s)) lista.Add(s);
+            return lista;
+        }
+
+        // opcion es 1..5, en el mismo orden que MenuDeOrdenes.Opciones.
+        // Publico para que la suite pueda ejercerlo sin teclado.
+        public bool EjecutarOrdenDelMenu(int opcion)
+        {
+            var destinatarios = DestinatariosDeOrden();
+            Vector3 centro = Brain != null && Brain.Current != null
+                ? Brain.Current.transform.position : transform.position;
+            Vector3 frente = Rig != null && Rig.Cam != null
+                ? Vector3.ProjectOnPlane(Rig.Cam.transform.forward, Vector3.up).normalized
+                : Vector3.forward;
+            if (frente.sqrMagnitude < 0.01f) frente = Vector3.forward;
+
+            switch (opcion)
+            {
+                case 1:
+                    if (destinatarios.Count == 0) break;
+                    OrderService.IssueFormationOrderForSelection(destinatarios, centro + frente * 4f, frente, FormationKind.Linea);
+                    Avisar("FORMACION EN LINEA");
+                    return true;
+                case 2:
+                    if (destinatarios.Count == 0) break;
+                    OrderService.IssueFormationOrderForSelection(destinatarios, centro + frente * 4f, frente, FormationKind.Cuna);
+                    Avisar("FORMACION EN CUÑA");
+                    return true;
+                case 3:
+                    if (destinatarios.Count == 0 || Brain == null || Brain.Current == null) break;
+                    OrderService.IssueFollowOrderForSelection(destinatarios, Brain.Current);
+                    Avisar("SIGANME");
+                    return true;
+                case 4:
+                    if (destinatarios.Count == 0) break;
+                    foreach (var s in destinatarios) s.Brain?.CancelOrder();
+                    OrderMarkerFx.ClearQueuedMarkers();
+                    Avisar("ALTO");
+                    return true;
+                case 5:
+                    var herido = Brain != null ? Brain.Current : null;
+                    if (herido == null) break;
+                    if (PedidoDeCuracion.Solicitar(herido)) { Avisar("ENFERMERO EN CAMINO"); return true; }
+                    Avisar(herido.Health != null && herido.Health.Current >= herido.Health.MaxHealth
+                        ? "NO HACE FALTA" : "NO HAY QUIEN ATIENDA");
+                    return false;
+            }
+            OrderService.PlayRejectSound();
+            Avisar("NADIE A QUIEN ORDENAR");
+            return false;
+        }
+
+        void Avisar(string texto)
+        {
+            if (ModeToast != null) ModeToast.Show(texto);
+        }
+
         void CycleLivingAlly(int direction)
         {
             if (Squad == null || Squad.Count == 0) return;

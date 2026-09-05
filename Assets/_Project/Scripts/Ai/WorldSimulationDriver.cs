@@ -92,6 +92,12 @@ namespace SP.Ai
             }
             LastAiWeaponMs = profileWatch.Elapsed.TotalMilliseconds;
 
+            // El pedido de curacion del menu de ordenes ([Q] sostenido).
+            // Va aca y no en un Update propio porque este es el unico
+            // camino de simulacion que corren por igual el juego y la
+            // suite: un Update aparte quedaria sin cobertura.
+            SP.Player.PedidoDeCuracion.Tick(dt);
+
             profileWatch.Restart();
             var vehicleBrains = WorldSystemsRegistry.VehicleBrains;
             for (int i = 0; i < vehicleBrains.Count; i++)

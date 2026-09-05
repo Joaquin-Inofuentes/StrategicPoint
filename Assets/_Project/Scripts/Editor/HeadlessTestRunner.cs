@@ -41,6 +41,7 @@ namespace SP.EditorTools
         static MissionStatusView missionStatusRef;
         static SelectionCountView selectionCountRef;
         static ModeToastView modeToastRef;
+        static SP.UI.MenuDeOrdenes ordenesMenuRef;
         static CanvasScaler hudScalerRef;
         static Text victoryStatsRef;
         static Text defeatStatsRef;
@@ -743,6 +744,7 @@ namespace SP.EditorTools
             inputDriver.PlayerHealth = playerHealthRef;
             inputDriver.SelectionCount = selectionCountRef;
             inputDriver.ModeToast = modeToastRef;
+            inputDriver.OrdenesMenu = ordenesMenuRef;
             servicesGO.AddComponent<WorldSimulationDriver>();
             servicesGO.AddComponent<SelectionRingManager>();
             var possessedMarker = servicesGO.AddComponent<PossessedMarkerView>();
@@ -832,6 +834,7 @@ namespace SP.EditorTools
                 RunPhase5(rig, vehicle, vega, kes, doc);
                 RunPhase6(rig, vehicle, pool, vega, kes, doc);
                 RunPhase7(inputDriver, vehicle, vega, kes, doc);
+                RunPhase8(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia
@@ -1819,6 +1822,131 @@ namespace SP.EditorTools
             }
 
             TestLog.Phase("FASE 7 FINALIZADA");
+        }
+
+        // ---------------------------------------------------------------
+        // FASE 8: las cinco tareas grandes del plan -- menu de ordenes con
+        // [Q] sostenido, trazado de camino, coberturas, atropellar y mira.
+        // ---------------------------------------------------------------
+        static void RunPhase8(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc,
+            GameObject soldierPrefab, Color enemyColor, ProjectilePool pool)
+        {
+            TestLog.Phase("FASE 8 - Menu de ordenes, camino trazado, coberturas, atropello y mira");
+
+            // --- E2: el umbral que separa tocar de mantener ---
+            SP.Player.KeyBindings.ForzarInicioDePulsacion(SP.Player.KeyBindings.CiclarPosesion, 0.1f);
+            bool aLos100ms = SP.Player.KeyBindings.HayPulsacionRegistrada(
+                SP.Player.KeyBindings.CiclarPosesion, PlayerInputDriver.SostenerParaMenu);
+            Check("Un toque de 0,1 s NO llega al umbral de mantener (no abre el menu)", !aLos100ms);
+
+            SP.Player.KeyBindings.ForzarInicioDePulsacion(SP.Player.KeyBindings.CiclarPosesion, 0.4f);
+            bool aLos400ms = SP.Player.KeyBindings.HayPulsacionRegistrada(
+                SP.Player.KeyBindings.CiclarPosesion, PlayerInputDriver.SostenerParaMenu);
+            Check("Sostener 0,4 s SI llega al umbral de mantener (abre el menu)", aLos400ms);
+
+            var menu = inputDriver.OrdenesMenu;
+            Check("El menu de ordenes existe en el canvas y arranca cerrado", menu != null && !menu.Abierto);
+            if (menu != null)
+            {
+                menu.Abrir();
+                Check("Abrir() deja el menu visible", menu.Abierto);
+                menu.Cerrar();
+                Check("Cerrar() lo vuelve a esconder", !menu.Abierto);
+            }
+            Check($"El menu ofrece las 5 ordenes del plan ({SP.UI.MenuDeOrdenes.Opciones.Length})",
+                SP.UI.MenuDeOrdenes.Opciones.Length == SP.UI.MenuDeOrdenes.CantidadDeOpciones);
+
+            // --- E2: los dos gestos de la MISMA tecla, uno y el otro ---
+            // Se ejercen por ResolverGestoDeQ, que es adonde llega la
+            // lectura del teclado. Que la lectura produzca esos booleanos
+            // en el momento correcto lo prueba el umbral de arriba.
+            inputDriver.Squad = new List<Soldier> { vega, kes, doc };
+            foreach (var s in new[] { vega, kes, doc })
+            {
+                s.gameObject.SetActive(true);
+                s.Health.Initialize(s.Id, s.Health.MaxHealth);
+                s.Brain.IsPossessedByPlayer = false;
+            }
+            inputDriver.Brain.Possess(vega);
+            inputDriver.OrdenesMenu.Cerrar();
+
+            var antesDelToque = inputDriver.Brain.Current;
+            inputDriver.ResolverGestoDeQ(toque: true, sostenido: false, sigueApretada: false);
+            Check($"Toque corto: cicla de soldado ({antesDelToque.DisplayName} -> {inputDriver.Brain.Current.DisplayName}) y el menu NO aparece",
+                inputDriver.Brain.Current != antesDelToque && !inputDriver.OrdenesMenu.Abierto);
+
+            var antesDeMantener = inputDriver.Brain.Current;
+            inputDriver.ResolverGestoDeQ(toque: false, sostenido: true, sigueApretada: true);
+            Check("Mantener: aparece el menu y NO cicla de soldado",
+                inputDriver.OrdenesMenu.Abierto && inputDriver.Brain.Current == antesDeMantener);
+
+            inputDriver.ResolverGestoDeQ(toque: false, sostenido: false, sigueApretada: false);
+            Check("Al soltar despues de mantener, el menu se cierra y tampoco cicla",
+                !inputDriver.OrdenesMenu.Abierto && inputDriver.Brain.Current == antesDeMantener);
+
+            // --- E2: las cinco ordenes hacen algo medible ---
+            inputDriver.Squad = new List<Soldier> { vega, kes, doc };
+            foreach (var s in new[] { vega, kes, doc })
+            {
+                s.gameObject.SetActive(true);
+                s.Health.Initialize(s.Id, s.Health.MaxHealth);
+                s.Brain.IsPossessedByPlayer = false;
+                s.Brain.CancelOrder();
+            }
+            inputDriver.Brain.Possess(vega);
+            vega.Brain.IsPossessedByPlayer = true;
+            OrderService.ManejadoAMano = vega;
+            inputDriver.Selection.Clear();
+
+            var destinatarios = inputDriver.DestinatariosDeOrden();
+            Check($"Sin seleccion, las ordenes del menu igual le llegan a la escuadra viva menos el poseido ({destinatarios.Count})",
+                destinatarios.Count == 2 && !destinatarios.Contains(vega));
+
+            bool linea = inputDriver.EjecutarOrdenDelMenu(1);
+            Check("Opcion 1 (formacion en linea) se emite y les deja destino a los dos aliados",
+                linea && kes.Brain.CurrentOrderDestination.HasValue && doc.Brain.CurrentOrderDestination.HasValue);
+            Vector3 destinoKesLinea = kes.Brain.CurrentOrderDestination ?? Vector3.zero;
+
+            bool cuna = inputDriver.EjecutarOrdenDelMenu(2);
+            Check("Opcion 2 (cuña) tambien se emite y cambia el destino respecto de la linea",
+                cuna && kes.Brain.CurrentOrderDestination.HasValue
+                     && (kes.Brain.CurrentOrderDestination.Value - destinoKesLinea).sqrMagnitude > 0.01f);
+
+            bool seguir = inputDriver.EjecutarOrdenDelMenu(3);
+            Check("Opcion 3 (siganme) deja a los dos aliados siguiendo al poseido",
+                seguir && kes.Brain.State == AiState.Follow && doc.Brain.State == AiState.Follow);
+
+            bool alto = inputDriver.EjecutarOrdenDelMenu(4);
+            Check("Opcion 4 (alto) les cancela la orden a los dos",
+                alto && !kes.Brain.CurrentOrderDestination.HasValue
+                     && !doc.Brain.CurrentOrderDestination.HasValue
+                     && kes.Brain.State != AiState.Follow && doc.Brain.State != AiState.Follow);
+
+            // Opcion 5: el enfermero llega y cura de verdad.
+            SP.Player.PedidoDeCuracion.Cancelar();
+            vega.Health.TakeDamage(60, -1);
+            int vidaAntes = vega.Health.Current;
+            bool pedido = inputDriver.EjecutarOrdenDelMenu(5);
+            Check($"Opcion 5 (necesito curarme) encuentra a quien mandar ({(SP.Player.PedidoDeCuracion.Enfermero != null ? SP.Player.PedidoDeCuracion.Enfermero.DisplayName : "nadie")})",
+                pedido && SP.Player.PedidoDeCuracion.Activo);
+
+            // Se lo pone al lado a mano: lo que se prueba aca es que curar
+            // ocurre, no que sepa caminar (eso ya lo cubre la orden de seguir).
+            SP.Player.PedidoDeCuracion.Enfermero.transform.position = vega.transform.position + Vector3.right * 1f;
+            for (int i = 0; i < 60; i++) SimStep(0.05f);
+            Check($"Con el enfermero al lado, la vida del herido sube ({vidaAntes} -> {vega.Health.Current})",
+                vega.Health.Current > vidaAntes);
+
+            vega.Health.Initialize(vega.Id, vega.Health.MaxHealth);
+            SimStep(0.05f);
+            Check("Con el herido ya lleno, el pedido de curacion se cierra solo",
+                !SP.Player.PedidoDeCuracion.Activo);
+
+            SP.Player.PedidoDeCuracion.Cancelar();
+            OrderService.ManejadoAMano = null;
+            vega.Brain.IsPossessedByPlayer = false;
+
+            TestLog.Phase("FASE 8 FINALIZADA");
         }
 
         // ---------------------------------------------------------------
@@ -3082,6 +3210,11 @@ namespace SP.EditorTools
             var modeToast = toastGO.GetComponent<ModeToastView>();
             modeToast.Bind(toastText, toastGO.GetComponent<CanvasGroup>());
             modeToastRef = modeToast;
+
+            // Menu de ordenes ([Q] sostenido). Se construye con la misma
+            // fabrica que usa GameplaySceneBootstrap para la escena real,
+            // asi la suite prueba EXACTAMENTE el panel que ve el jugador.
+            ordenesMenuRef = SP.UI.MenuDeOrdenes.Construir(canvasGO.transform);
 
             var rosterGO = new GameObject("Roster", typeof(RectTransform), typeof(SelectedSoldierUI));
             rosterGO.transform.SetParent(canvasGO.transform, false);
