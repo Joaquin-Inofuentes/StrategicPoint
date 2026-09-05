@@ -227,11 +227,52 @@ namespace SP.Player
             recoilKick = Mathf.MoveTowards(recoilKick, 0f, Time.deltaTime * 8f);
             const float maxKickZ = 0.09f;
             const float maxKickY = 0.03f;
+
+            // BUG REAL encontrado al medir la optica: apuntando, el arma se
+            // iba FUERA DE PANTALLA. Cuelga en x=0,28 con z=0,65, o sea a
+            // 22 grados del eje; con el FOV de cadera (60 vertical) eso cae
+            // adentro, pero el zoom lo baja a 25 y el medio ancho horizontal
+            // pasa a ~22 grados. Medido: viewport x = 1,88, casi el doble
+            // del borde derecho. El arreglo anterior la puso por delante de
+            // las paredes, pero seguia saliendose del encuadre justo al
+            // apuntar -- y una mira invisible cuando se usa no sirve.
+            //
+            // Apuntando, el arma se centra, que es ademas lo que hace
+            // cualquier shooter: la optica queda sobre el eje de la camara.
+            apuntadoVisual = Mathf.MoveTowards(apuntadoVisual,
+                Rig.EstaConZoom ? 1f : 0f, Time.deltaTime * 8f);
+            var desdeLaCadera = new Vector3(0.28f, -0.22f, 0.65f);
+            // La y de apuntado sube el arma hasta que el tubo de la optica
+            // queda en el centro exacto de la pantalla.
+            var apuntando = new Vector3(0f, -0.135f, 0.62f);
+            var baseDelArma = Vector3.Lerp(desdeLaCadera, apuntando, apuntadoVisual);
+
             weaponViewmodel.transform.localPosition = new Vector3(
-                0.28f,
-                -0.22f + maxKickY * recoilKick,
-                0.65f - maxKickZ * recoilKick);
+                baseDelArma.x,
+                baseDelArma.y + maxKickY * recoilKick,
+                baseDelArma.z - maxKickZ * recoilKick);
+
+            // La optica (H1). El zoom que ya existia angosta el FOV de la
+            // camara principal, o sea que acerca TODA la pantalla; una mira
+            // de verdad amplia solo lo que se ve por el tubo. Ver
+            // SP.Presentation.MiraOptica.
+            if (Mira == null) Mira = MiraOptica.Asegurar(Rig.Cam.transform, weaponViewmodel.transform);
+            if (Mira != null)
+            {
+                if (Mira.Forma != weapon.CurrentWeaponKind) Mira.Configurar(weapon.CurrentWeaponKind);
+                Mira.Seguir(Rig.Cam, Rig.FovObjetivo);
+                Mira.Mostrar(Rig.EstaConZoom);
+            }
         }
+
+        // La optica del arma. Publica para que la suite la pueda mirar sin
+        // reflexion: es estado observable del arma, no un detalle interno.
+        public MiraOptica Mira { get; private set; }
+
+        // 0 = arma en la cadera, 1 = arma centrada apuntando. Se mueve
+        // gradual para que centrarla no sea un salto.
+        float apuntadoVisual;
+        public float ApuntadoVisual => apuntadoVisual;
 
         // Estado de "estoy adentro de un vehículo".
         VehicleSeatRole? currentSeat;

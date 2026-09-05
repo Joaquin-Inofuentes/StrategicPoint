@@ -49,6 +49,16 @@ namespace SP.CameraSystem
 
         public void SetZoomed(bool value) => zoomed = value;
 
+        // Lo consulta la optica del arma para saber si mostrarse. Estaba
+        // guardado en un bool privado que solo leia LateUpdate.
+        public bool EstaConZoom => zoomed;
+        public float FovDeZoom => zoomFov;
+        // Adonde VA el FOV, no donde esta: cam.fieldOfView pasa varios
+        // frames lerpeando entre 60 y 25, y quien necesite compararse
+        // contra el zoom tiene que mirar el destino o se queda con un
+        // valor a mitad de camino.
+        public float FovObjetivo => zoomed ? zoomFov : normalFov;
+
         void LateUpdate()
         {
             // El offset continuo se captura y se limpia SIEMPRE, incluso si

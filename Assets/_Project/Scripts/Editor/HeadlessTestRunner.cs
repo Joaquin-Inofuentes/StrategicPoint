@@ -2191,6 +2191,71 @@ namespace SP.EditorTools
             kes.Brain.CancelOrder();
             SP.Core.Coberturas.Limpiar();
 
+            // --- H1: la mira que amplia de verdad ---
+            // Se llega por el mismo camino que en el juego (el visor del
+            // arma), no construyendo la optica a mano: lo que se prueba es
+            // el cableado, no la clase suelta.
+            inputDriver.Brain.Possess(vega);
+            var visorMetodo = GetRequiredMethod(typeof(PlayerInputDriver), "UpdateWeaponViewmodel",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            inputDriver.Rig.SetZoomed(true);
+            vega.Weapon.EquipWeapon(WeaponKind.Rifle, 20, 0.2f, Color.white);
+            visorMetodo.Invoke(inputDriver, new object[] { vega.Weapon });
+
+            var mira = inputDriver.Mira;
+            Check("El arma tiene optica cuando se apunta", mira != null);
+
+            float fovPrincipal = inputDriver.Rig.Cam.fieldOfView;
+            Check($"El FOV de la optica es MENOR que el de la camara principal ({mira.Optica.fieldOfView:0.0} contra {fovPrincipal:0.0} grados)",
+                mira.Optica.fieldOfView < fovPrincipal);
+            // Y tambien menor que el DESTINO del zoom: la principal tarda
+            // varios frames en bajar de 60 a 25, y medido en Play la optica
+            // llegaba a quedar en 27 contra 25, o sea mas abierta.
+            Check($"Y tambien menor que el FOV al que va el zoom ({mira.Optica.fieldOfView:0.0} contra {inputDriver.Rig.FovObjetivo:0.0} grados)",
+                mira.Optica.fieldOfView < inputDriver.Rig.FovObjetivo);
+            Check($"La optica renderiza a su propia RenderTexture, ya creada ({SP.Presentation.MiraOptica.LadoDeLaTextura} px)",
+                mira.Textura != null && mira.Textura.IsCreated() && mira.Optica.targetTexture == mira.Textura);
+            Check($"Y no se filma a si misma: recorta por delante del visor del arma ({mira.Optica.nearClipPlane:0.00} m)",
+                mira.Optica.nearClipPlane >= SP.Presentation.MiraOptica.RecorteCercano);
+
+            // Apuntando, el arma y su optica tienen que ENTRAR en el
+            // encuadre. Medido antes del arreglo: viewport x = 1,88 con el
+            // FOV de zoom, o sea el arma casi al doble del borde derecho.
+            // Se fuerza el estado final del centrado (el lerp tarda unos
+            // frames y aca no hay frames que pasen).
+            var campoApuntado = GetRequiredField(typeof(PlayerInputDriver), "apuntadoVisual",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            campoApuntado.SetValue(inputDriver, 1f);
+            visorMetodo.Invoke(inputDriver, new object[] { vega.Weapon });
+            float fovAntes = inputDriver.Rig.Cam.fieldOfView;
+            inputDriver.Rig.Cam.fieldOfView = inputDriver.Rig.FovDeZoom;
+            var enPantalla = inputDriver.Rig.Cam.WorldToViewportPoint(mira.Tubo.transform.position);
+            inputDriver.Rig.Cam.fieldOfView = fovAntes;
+            Check($"Apuntando, la optica queda DENTRO del encuadre con el FOV de zoom (viewport {enPantalla.x:0.00}, {enPantalla.y:0.00})",
+                enPantalla.x > 0f && enPantalla.x < 1f && enPantalla.y > 0f && enPantalla.y < 1f && enPantalla.z > 0f);
+
+            Check("Con el rifle es un tubo que amplia, y lo que muestra ES la textura de la optica",
+                mira.Amplia && mira.Tubo.activeInHierarchy
+                && mira.Tubo.GetComponent<MeshRenderer>().sharedMaterial.mainTexture == mira.Textura
+                && mira.Optica.enabled);
+
+            vega.Weapon.EquipWeapon(WeaponKind.Pistol, 20, 0.2f, Color.white);
+            visorMetodo.Invoke(inputDriver, new object[] { vega.Weapon });
+            Check("Con la pistola es un cubo que marca el objetivo, sin aumento ni camara prendida",
+                !mira.Amplia && mira.Tubo.GetComponent<MeshRenderer>().sharedMaterial.mainTexture == null
+                && !mira.Optica.enabled);
+
+            vega.Weapon.EquipWeapon(WeaponKind.Heavy, 20, 0.2f, Color.white);
+            visorMetodo.Invoke(inputDriver, new object[] { vega.Weapon });
+            Check("Y el pesado vuelve a llevar tubo con aumento", mira.Amplia && mira.Optica.enabled);
+
+            inputDriver.Rig.SetZoomed(false);
+            visorMetodo.Invoke(inputDriver, new object[] { vega.Weapon });
+            Check("Sin apuntar, la optica se esconde y su camara se apaga (no se paga un render por frame de gusto)",
+                !mira.Tubo.activeInHierarchy && !mira.Optica.enabled);
+
+            vega.Weapon.EquipWeapon(WeaponKind.Rifle, 20, 0.2f, Color.white);
+
             TestLog.Phase("FASE 8 FINALIZADA");
         }
 
