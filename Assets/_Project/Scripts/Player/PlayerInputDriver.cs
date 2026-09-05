@@ -86,12 +86,9 @@ namespace SP.Player
         bool dragging;
         Vector2 dragStart;
 
-        // Paneo con click derecho sostenido, item pedido: mantener y
-        // arrastrar corre la camara, un solo click (sin arrastre) sigue
-        // siendo la orden de moverse/atacar de siempre -- mismo criterio
-        // de umbral en pixeles que ya usa la seleccion por arrastre.
-        ArrastreDerecho arrastreDerecho;
-        [SerializeField] float rightDragPanMultiplier = 2f;
+        // Si la pulsacion de click derecho actual empezo sobre un boton de
+        // UI: en ese caso soltar no debe emitir una orden al mundo.
+        bool rightPressStartedOverUi;
 
         // Resaltado de a qué le estoy apuntando (aliado o vehículo): se
         // guarda el renderer y su color original para poder devolvérselo
@@ -2220,37 +2217,23 @@ namespace SP.Player
             UpdateAimRing(resultRts);
             UpdateVehicleMountIndicatorRts(resultRts);
 
-            // Click derecho SOSTENIDO y arrastrado panea la camara (al
-            // doble de velocidad del paneo por teclado); SIN arrastre
-            // sigue siendo la orden de moverse/atacar de mas abajo. Se
-            // decide con el mismo umbral en pixeles que ya usa la
-            // seleccion por arrastre de click izquierdo, para que un
-            // click tembloroso no dispare un paneo por error.
-            // La decision "orden o paneo" vive en ArrastreDerecho, afuera y
-            // sin Unity adentro, para poder correrle clicks sinteticos y
-            // contar cuantas ordenes se pierden. Reportado: una de cada
-            // quince desaparecia sin ningun aviso.
+            // Pedido explicito: mantener click derecho apretado NO mueve
+            // la camara. Antes, sostenerlo y mover la mano de mas (aunque
+            // fuera solo para terminar de apuntar la orden, no para
+            // panear) corria la vista -- y si ademas se sostenia mas de
+            // 180ms, ArrastreDerecho lo clasificaba como paneo y la orden
+            // ni se emitia al soltar. El paneo de camara sigue existiendo
+            // (WASD, mas abajo), simplemente click derecho ya no es una
+            // de sus formas de dispararlo.
             if (mouse.rightButton.wasPressedThisFrame)
-            {
-                bool sobreUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
-                arrastreDerecho.AlPresionar(mouse.position.ReadValue(), sobreUi, Time.unscaledTime);
-            }
-            if (mouse.rightButton.isPressed)
-                arrastreDerecho.AlMover(mouse.position.ReadValue(), ArrastreDerecho.UmbralPorDefecto, Time.unscaledTime);
+                rightPressStartedOverUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
 
-            if (arrastreDerecho.Arrastrando && mouse.rightButton.isPressed)
-            {
-                var rightDelta = mouse.delta.ReadValue();
-                Vector3 dragPan = new Vector3(-rightDelta.x, 0f, -rightDelta.y);
-                if (dragPan.sqrMagnitude > 0.0001f)
-                    Rig.Pan(dragPan.normalized * (rtsPanSpeed * rightDragPanMultiplier) * Time.deltaTime);
-            }
+            bool rightClickOrder = mouse.rightButton.wasReleasedThisFrame && !rightPressStartedOverUi;
 
-            bool rightClickOrder = mouse.rightButton.wasReleasedThisFrame && arrastreDerecho.AlSoltar();
-
-            // [T] o click derecho (sin arrastre): mover a todos los
-            // seleccionados ahí -- o al vehículo, si es él quien está
-            // seleccionado (requiere conductor propio adentro, como en FPS).
+            // [T] o click derecho: mover a todos los seleccionados ahí --
+            // o al vehículo, si es él quien está seleccionado (requiere
+            // conductor propio adentro, como en FPS). "!dragging" es el
+            // recuadro de selección por click IZQUIERDO, no el derecho.
             bool pidioOrden = kb.tKey.wasPressedThisFrame || (rightClickOrder && !dragging);
 
             // Con Ctrl apretado el mismo gesto NO ordena: marca un punto

@@ -3000,6 +3000,61 @@ namespace SP.EditorTools
             UnityEngine.Object.DestroyImmediate(testigoH2.gameObject);
 
             TestLog.Phase("FASE 9 FINALIZADA (23/23)");
+
+            // --- Bug reportado: mantener click derecho paneaba la camara
+            // sola (bastaba mover la mano al terminar de apuntar una orden,
+            // sin querer arrastrar nada), y no se confiaba en que el mapa
+            // real tuviera un limite. Antes: 3 sitios llamaban a Rig.Pan()
+            // en PlayerInputDriver, uno de ellos disparado por
+            // mouse.rightButton mas ArrastreDerecho. Ahora: 2 sitios, los
+            // dos solo por WASD (Assets/_Project/Scripts/Player/
+            // PlayerInputDriver.cs). El limite en si (AcotarAlMapa) no se
+            // toco -- ya usaba el area real de NavService -- pero nunca
+            // tenia un Check() que lo pusiera a prueba con numeros.
+            TestLog.Phase("FASE 10 - Bug reportado: click derecho ya no panea, limites de camara reales");
+
+            bool sinCampoDeArrastre = typeof(PlayerInputDriver).GetField("arrastreDerecho",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance) == null;
+            bool sinMultiplicadorDeArrastre = typeof(PlayerInputDriver).GetField("rightDragPanMultiplier",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance) == null;
+            Check("PlayerInputDriver ya no tiene el campo arrastreDerecho (paneo por click derecho eliminado)",
+                sinCampoDeArrastre);
+            Check("PlayerInputDriver ya no tiene rightDragPanMultiplier (no queda perilla de un paneo que no existe)",
+                sinMultiplicadorDeArrastre);
+
+            bool hayLimites = SP.Core.NavService.TryArea(out var limitesMapa);
+            Check($"NavService calculo un area real para acotar la camara ({limitesMapa.min} .. {limitesMapa.max})",
+                hayLimites);
+
+            var rig = inputDriver.Rig;
+            if (rig != null && hayLimites)
+            {
+                var campoPanTarget = GetRequiredField(typeof(CameraRig), "panTarget",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+                // Empuja el paneo muchisimo mas alla del mapa en las 4
+                // direcciones: si AcotarAlMapa no clampeara, panTarget
+                // terminaria bien afuera del area real medida arriba.
+                rig.Pan(Vector3.right * 100000f);
+                float esteX = ((Vector3)campoPanTarget.GetValue(rig)).x;
+                rig.Pan(Vector3.left * 200000f);
+                float oesteX = ((Vector3)campoPanTarget.GetValue(rig)).x;
+                rig.Pan(Vector3.right * 100000f + Vector3.forward * 100000f);
+                float norteZ = ((Vector3)campoPanTarget.GetValue(rig)).z;
+                rig.Pan(Vector3.back * 200000f);
+                float surZ = ((Vector3)campoPanTarget.GetValue(rig)).z;
+
+                Check($"Paneo al Este se clampea dentro del mapa real ({esteX:0.0} <= {limitesMapa.max.x:0.0})",
+                    esteX <= limitesMapa.max.x + 0.01f);
+                Check($"Paneo al Oeste se clampea dentro del mapa real ({oesteX:0.0} >= {limitesMapa.min.x:0.0})",
+                    oesteX >= limitesMapa.min.x - 0.01f);
+                Check($"Paneo al Norte se clampea dentro del mapa real ({norteZ:0.0} <= {limitesMapa.max.z:0.0})",
+                    norteZ <= limitesMapa.max.z + 0.01f);
+                Check($"Paneo al Sur se clampea dentro del mapa real ({surZ:0.0} >= {limitesMapa.min.z:0.0})",
+                    surZ >= limitesMapa.min.z - 0.01f);
+            }
+
+            TestLog.Phase("FASE 10 FINALIZADA");
         }
 
         // ---------------------------------------------------------------
