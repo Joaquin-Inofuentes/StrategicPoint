@@ -657,9 +657,43 @@ namespace SP.Combat
                     x.Health.IsAlive &&
                     x.Team != ownerTeam &&
                     x.gameObject.activeInHierarchy);
-                if (s != null) { punto = muestra; return s; }
+                // La grilla es la fase AMPLIA: dice "hay alguien cerca".
+                // Quien decide si le dio es el cuerpo.
+                if (s != null && LeDioAlCuerpo(s, muestra)) { punto = muestra; return s; }
             }
             return null;
+        }
+
+        // Cuanto se le perdona a una bala. No es el tamaño del soldado:
+        // es el margen del muestreo, que avanza a saltos de hitRadius por
+        // el tramo y nunca cae exactamente sobre la superficie.
+        public const float RadioDeBala = 0.12f;
+
+        // BUG REAL, medido: el impacto se resolvia con la distancia al
+        // CENTRO del soldado contra hitRadius (1 m), y el cuerpo mide 0,98
+        // de ancho -- 0,49 de medio ancho. O sea que la caja de impacto era
+        // el doble de ancha que el soldado. Barriendo el costado de a 10 cm:
+        //
+        //     de 0,0 a 0,9 m de costado   6 de 6 impactos
+        //     de 1,0 m en adelante        0 de 6
+        //
+        // Una bala que pasa 41 cm POR FUERA del hombro hacia daño igual.
+        // Del lado del jugador se siente como que el juego regala tiros; y
+        // del otro lado, como que los enemigos te pegan por huecos por los
+        // que claramente no pasaron.
+        //
+        // La grilla sigue siendo la fase amplia (barata, por celdas): lo
+        // que cambia es que ahora la ultima palabra la tiene el collider
+        // del soldado, que es la misma forma que se ve en pantalla.
+        bool LeDioAlCuerpo(SP.Actors.Soldier victima, Vector3 punto)
+        {
+            if (victima == null) return false;
+            var cuerpo = victima.GetComponent<Collider>();
+            // Sin collider no hay con que afinar: se conserva el
+            // comportamiento viejo en vez de volverlo invulnerable.
+            if (cuerpo == null) return true;
+            var cercano = cuerpo.ClosestPoint(punto);
+            return (cercano - punto).sqrMagnitude <= RadioDeBala * RadioDeBala;
         }
 
         void Expire()
