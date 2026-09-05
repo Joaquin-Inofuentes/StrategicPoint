@@ -323,6 +323,26 @@ namespace SP.UI
         static readonly Color EnemyTint = new Color(1f, 0.45f, 0.4f);
         static readonly Color VehicleTint = new Color(0.5f, 0.7f, 1f);
         static readonly Color ObstacleTint = new Color(0.85f, 0.85f, 0.85f);
+        // B5: un obstaculo con ObstacleMarker aguanta disparos y se puede
+        // derrumbar (F1-F3, G1) -- uno sin ese componente (un Muro, por
+        // ejemplo) es pared fija. Antes los dos se veian identicos bajo
+        // la mira, sin ninguna forma de saber cual convenia tirotear.
+        static readonly Color DestructibleTint = new Color(0.9f, 0.15f, 0.1f);
+
+        // B5: "cada tipo late a una frecuencia distinta" -- un pulso
+        // continuo e independiente del flash de impacto, para que se
+        // note a simple vista que clase de cosa hay bajo la mira incluso
+        // sin leer el cartel. 0 = no pulsa (piso, nada).
+        public float CurrentPulseFrequency { get; private set; }
+
+        static float PulseFrequencyFor(AimTargetType type) => type switch
+        {
+            AimTargetType.Ally => 1.2f,
+            AimTargetType.Enemy => 2.4f,
+            AimTargetType.Vehicle => 1.8f,
+            AimTargetType.Obstacle => 3.2f,
+            _ => 0f,
+        };
 
         static readonly Color KillMarkerColor = new Color(1f, 0.85f, 0.15f);
         static readonly Color CriticalMarkerColor = new Color(1f, 0.45f, 0.05f);
@@ -392,6 +412,15 @@ namespace SP.UI
 
         bool flashing;
 
+        // El pulso continuo de B5: un latido suave de tamaño, aparte del
+        // flash de impacto (que ya maneja su propio tamaño mientras dura).
+        void Update()
+        {
+            if (crosshair == null || flashing || CurrentPulseFrequency <= 0f) return;
+            float k = (Mathf.Sin(Time.time * CurrentPulseFrequency) + 1f) * 0.5f;
+            crosshair.rectTransform.sizeDelta = crosshairBaseSize * (1f + k * 0.15f);
+        }
+
         // isKill agranda mas el flash y lo sostiene mas tiempo: la misma
         // logica de "impacto" pero con mas peso, para que una baja se
         // LEA como algo mas importante que un impacto cualquiera, no
@@ -450,8 +479,14 @@ namespace SP.UI
                     currentAimTint = result.Vehicle.IsDestroyed ? ObstacleTint : VehicleTint;
                     break;
                 case AimTargetType.Obstacle:
-                    CurrentPrompt = "Obstáculo";
-                    currentAimTint = ObstacleTint;
+                    // Destructible = tiene ObstacleMarker (F1-F3, G1 ya lo
+                    // usan como "esto se puede derrumbar"). Sin ese
+                    // componente es pared fija: no vale la pena gastar
+                    // municion contra ella.
+                    bool esDestructible = result.HitTransform != null
+                        && result.HitTransform.GetComponent<SP.Presentation.ObstacleMarker>() != null;
+                    CurrentPrompt = esDestructible ? "Obstáculo destructible" : "Obstáculo";
+                    currentAimTint = esDestructible ? DestructibleTint : ObstacleTint;
                     break;
                 case AimTargetType.Ground:
                     CurrentPrompt = "[T] Ir aquí";
@@ -462,6 +497,8 @@ namespace SP.UI
                     currentAimTint = crosshairBaseColor;
                     break;
             }
+
+            CurrentPulseFrequency = PulseFrequencyFor(result.Type);
 
             if (promptText != null)
             {

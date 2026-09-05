@@ -2503,7 +2503,42 @@ namespace SP.EditorTools
 
             UnityEngine.Object.DestroyImmediate(enemigoParaB4.gameObject);
 
-            TestLog.Phase("FASE 9 FINALIZADA (7/23)");
+            // --- #8 / B5: cursor rojo si es destruible, y latido por tipo ---
+            TestLog.Phase("FASE 9 - Tarea #8: cursor rojo si es destruible, y latido por tipo");
+            var campoTint = GetRequiredField(typeof(AimUI), "currentAimTint",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            var obstaculoConMarker = UnityEngine.Object.FindObjectsByType<ObstacleMarker>(FindObjectsInactive.Include)[0];
+            aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Obstacle,
+                Point = obstaculoConMarker.transform.position, HitTransform = obstaculoConMarker.transform });
+            var tintDestructible = (Color)campoTint.GetValue(aimUiRef);
+            Check($"Sobre un obstaculo CON ObstacleMarker (destructible), el tinte es rojo {tintDestructible}",
+                tintDestructible.r > 0.7f && tintDestructible.g < 0.3f && tintDestructible.b < 0.3f);
+
+            var muroDePrueba = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            muroDePrueba.name = "MuroDePrueba";
+            aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Obstacle,
+                Point = muroDePrueba.transform.position, HitTransform = muroDePrueba.transform });
+            var tintMuro = (Color)campoTint.GetValue(aimUiRef);
+            Check($"Y sobre uno SIN ObstacleMarker (pared fija, no destructible), el tinte NO es rojo {tintMuro}",
+                !(tintMuro.r > 0.7f && tintMuro.g < 0.3f && tintMuro.b < 0.3f));
+            UnityEngine.Object.DestroyImmediate(muroDePrueba);
+
+            aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Ally, Soldier = kes });
+            float frecuenciaAliado = aimUiRef.CurrentPulseFrequency;
+            aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Enemy, Soldier = kes });
+            float frecuenciaEnemigo = aimUiRef.CurrentPulseFrequency;
+            aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Vehicle, Vehicle = vehicle });
+            float frecuenciaVehiculo = aimUiRef.CurrentPulseFrequency;
+            aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Obstacle,
+                Point = obstaculoConMarker.transform.position, HitTransform = obstaculoConMarker.transform });
+            float frecuenciaObstaculo = aimUiRef.CurrentPulseFrequency;
+
+            var frecuenciasDistintas = new HashSet<float> { frecuenciaAliado, frecuenciaEnemigo, frecuenciaVehiculo, frecuenciaObstaculo };
+            Check($"Las 4 frecuencias de latido son distintas y positivas ({frecuenciaAliado}, {frecuenciaEnemigo}, {frecuenciaVehiculo}, {frecuenciaObstaculo})",
+                frecuenciasDistintas.Count == 4 && frecuenciaAliado > 0f && frecuenciaEnemigo > 0f && frecuenciaVehiculo > 0f && frecuenciaObstaculo > 0f);
+
+            TestLog.Phase("FASE 9 FINALIZADA (8/23)");
         }
 
         // ---------------------------------------------------------------
