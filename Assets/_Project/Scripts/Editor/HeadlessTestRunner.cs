@@ -2360,7 +2360,48 @@ namespace SP.EditorTools
             UnityEngine.Object.DestroyImmediate(enemigoDeNiebla.gameObject);
             vega.Brain.CancelOrder();
 
-            TestLog.Phase("FASE 9 FINALIZADA (1/23)");
+            // --- #2 / D2: [M] agranda y minimiza el minimapa ---
+            TestLog.Phase("FASE 9 - Tarea #2: [M] agranda y minimiza el minimapa");
+            var borderRect = GameObject.Find("MinimapBorder").GetComponent<RectTransform>();
+            Vector2 tamanoDePartida = borderRect.sizeDelta;
+
+            bool agrandadoTrasM = minimapFollowRef.AlternarTamano();
+            Check($"[M] agranda el minimapa ({tamanoDePartida} -> {borderRect.sizeDelta})",
+                agrandadoTrasM && borderRect.sizeDelta.x > tamanoDePartida.x);
+
+            bool agrandadoTrasSegundoM = minimapFollowRef.AlternarTamano();
+            Check($"Y el segundo [M] lo devuelve EXACTO al tamaño de partida ({borderRect.sizeDelta})",
+                !agrandadoTrasSegundoM && borderRect.sizeDelta == tamanoDePartida);
+
+            for (int i = 0; i < 10; i++) minimapFollowRef.AlternarTamano();
+            Check($"Ni tras 5 ciclos completos hay deriva ({borderRect.sizeDelta})",
+                borderRect.sizeDelta == tamanoDePartida);
+
+            // --- #3 / D3: [L] cicla el tamaño del minimapa ---
+            // El indice de PlayerPrefs es del jugador (persiste entre
+            // sesiones de Editor de verdad, igual que sp_crosshair_scale):
+            // la primera llamada fija un punto de referencia CONOCIDO en
+            // vez de asumir que el tamaño de partida de la escena (228)
+            // coincide con lo que haya quedado guardado de una corrida
+            // anterior -- si no, este Check() sale flaky segun el ultimo
+            // indice que alguien haya dejado guardado.
+            TestLog.Phase("FASE 9 - Tarea #3: [L] cicla el tamaño del minimapa");
+            int indiceDeReferencia = minimapFollowRef.CiclarTamanoFijo();
+            Vector2 tamanoDeReferencia = borderRect.sizeDelta;
+            minimapFollowRef.CiclarTamanoFijo();
+            minimapFollowRef.CiclarTamanoFijo();
+            int indiceTrasTres = minimapFollowRef.CiclarTamanoFijo();
+            Check($"Tres [L] seguidos vuelven al mismo tamaño (indice {indiceDeReferencia} -> {indiceTrasTres}, {tamanoDeReferencia} -> {borderRect.sizeDelta})",
+                indiceTrasTres == indiceDeReferencia && borderRect.sizeDelta == tamanoDeReferencia);
+
+            minimapFollowRef.CiclarTamanoFijo();
+            Vector2 tamanoElegido = borderRect.sizeDelta;
+            borderRect.sizeDelta = new Vector2(999f, 999f); // valor cualquiera, simulando la escena a medio cargar
+            minimapFollowRef.AplicarTamanoGuardado();
+            Check($"Y el tamaño elegido se recuerda: 'recargar la escena' lo vuelve a aplicar ({tamanoElegido})",
+                borderRect.sizeDelta == tamanoElegido);
+
+            TestLog.Phase("FASE 9 FINALIZADA (3/23)");
         }
 
         // ---------------------------------------------------------------

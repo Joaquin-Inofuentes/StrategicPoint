@@ -226,5 +226,95 @@ namespace SP.UI
             if (minimapCamera == null) minimapCamera = GetComponent<Camera>();
             return minimapCamera;
         }
+
+        // ------------------------------------------------------------
+        // D2: [M] agranda y minimiza el minimapa
+        // ------------------------------------------------------------
+        // Nombre del RectTransform que se agranda: el marco entero, no la
+        // RawImage sola -- MinimapBorder es el padre de MinimapImage y del
+        // resto de la decoracion (MinimapFrame, MinimapLegend), anclado
+        // por su esquina (pivot 1,1) para no desplazarse al crecer.
+        const string BorderName = "MinimapBorder";
+
+        [SerializeField] RectTransform borderRect;
+
+        // El doble de tamaño, sea cual sea el tamaño de partida (228 en
+        // SC_Gameplay hoy, pero no se hardcodea: D3 puede haber cambiado
+        // el tamaño de partida antes de que se toque [M] por primera vez).
+        public const float FactorAgrandado = 1.8f;
+
+        Vector2 tamanoOriginalM;
+        bool tamanoOriginalMCapturado;
+        public bool Agrandado { get; private set; }
+
+        RectTransform ResolveBorder()
+        {
+            if (borderRect != null) return borderRect;
+            var go = GameObject.Find(BorderName);
+            if (go != null) borderRect = go.GetComponent<RectTransform>();
+            return borderRect;
+        }
+
+        // Devuelve el nuevo estado (true = agrandado). El tamaño "original"
+        // se captura UNA sola vez, la primera vez que se llama -- nunca se
+        // recalcula despues, para que un segundo [M] siempre vuelva
+        // exactamente a donde estaba antes del primero, sin deriva.
+        public bool AlternarTamano()
+        {
+            var b = ResolveBorder();
+            if (b == null) return Agrandado;
+            if (!tamanoOriginalMCapturado)
+            {
+                tamanoOriginalMCapturado = true;
+                tamanoOriginalM = b.sizeDelta;
+            }
+            Agrandado = !Agrandado;
+            b.sizeDelta = Agrandado ? tamanoOriginalM * FactorAgrandado : tamanoOriginalM;
+            return Agrandado;
+        }
+
+        // ------------------------------------------------------------
+        // D3: [L] cicla el tamaño del minimapa entre 3 valores fijos
+        // ------------------------------------------------------------
+        // Mismo patron que PauseController con "sp_crosshair_scale": un
+        // entero en PlayerPrefs, sin serializar nada en la escena.
+        const string PrefTamanoFijo = "sp_minimap_size_index";
+
+        public static readonly Vector2[] TamanosFijos =
+        {
+            new Vector2(160f, 160f),
+            new Vector2(228f, 228f),
+            new Vector2(320f, 320f),
+        };
+
+        int indiceTamanoFijo = -1;
+
+        static int IndiceGuardado() => Mathf.Clamp(PlayerPrefs.GetInt(PrefTamanoFijo, 1), 0, TamanosFijos.Length - 1);
+
+        public int IndiceTamanoFijo => indiceTamanoFijo < 0 ? IndiceGuardado() : indiceTamanoFijo;
+
+        // Avanza al siguiente de los 3 tamaños fijos y lo deja guardado
+        // para la proxima partida. Tres llamadas seguidas vuelven al
+        // mismo indice de arranque (ciclo de largo 3).
+        public int CiclarTamanoFijo()
+        {
+            var b = ResolveBorder();
+            if (indiceTamanoFijo < 0) indiceTamanoFijo = IndiceGuardado();
+            indiceTamanoFijo = (indiceTamanoFijo + 1) % TamanosFijos.Length;
+            if (b != null) b.sizeDelta = TamanosFijos[indiceTamanoFijo];
+            PlayerPrefs.SetInt(PrefTamanoFijo, indiceTamanoFijo);
+            PlayerPrefs.Save();
+            return indiceTamanoFijo;
+        }
+
+        // Se llama al arrancar la escena para que el tamaño elegido en la
+        // partida anterior se vea desde el primer frame, no recien tras
+        // el primer [L].
+        public void AplicarTamanoGuardado()
+        {
+            indiceTamanoFijo = IndiceGuardado();
+            var b = ResolveBorder();
+            if (b != null) b.sizeDelta = TamanosFijos[indiceTamanoFijo];
+        }
     }
 }

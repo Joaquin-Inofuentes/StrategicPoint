@@ -44,6 +44,11 @@ namespace SP.Player
         public const string CiclarFormacion = "ciclar_formacion";
         public const string SeleccionarHeridos = "seleccionar_heridos";
         public const string SeleccionarMismoTipo = "seleccionar_mismo_tipo";
+        public const string MinimapAgrandar = "minimap_agrandar";
+        // N ya es SeleccionarMismoTipo: L queda libre y evita que una
+        // sola tecla dispare dos acciones sin relacion (elegir unidades
+        // del mismo tipo Y ciclar el minimapa) en el mismo frame.
+        public const string MinimapCiclarTamano = "minimap_ciclar_tamano";
 
         // Valores de fabrica. Son EXACTAMENTE los que el juego ya usaba, de
         // modo que sin tocar nada el remapeo es invisible.
@@ -67,6 +72,8 @@ namespace SP.Player
             { CiclarFormacion, Key.K },
             { SeleccionarHeridos, Key.J },
             { SeleccionarMismoTipo, Key.N },
+            { MinimapAgrandar, Key.M },
+            { MinimapCiclarTamano, Key.L },
         };
 
         static Dictionary<string, Key> current;

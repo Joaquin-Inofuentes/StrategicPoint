@@ -59,6 +59,11 @@ namespace SP.Presentation
             int obstaculosEnMinimapa = MinimapIcon.RegistrarObstaculos(MinimapIcon.ObstacleMinimapColor);
             if (obstaculosEnMinimapa > 0) GameLog.Line($"Se agregaron {obstaculosEnMinimapa} obstaculos al minimapa");
 
+            // D3: el tamaño de minimapa elegido en la partida anterior se
+            // ve desde el primer frame, no recien tras el primer [L].
+            var minimapFollow = FindAnyObjectByType<SP.UI.MinimapFollow>();
+            if (minimapFollow != null) minimapFollow.AplicarTamanoGuardado();
+
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null)

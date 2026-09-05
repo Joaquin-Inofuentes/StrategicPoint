@@ -441,6 +441,16 @@ namespace SP.Player
             // actores, proyectiles y voces de audio. Solo lectura.
             if (kb.pKey.wasPressedThisFrame && PerfHud != null) PerfHud.Toggle();
 
+            // D2/D3: tamaño del minimapa. [M] alterna grande/original,
+            // [L] cicla entre 3 tamaños fijos que se recuerdan entre
+            // partidas -- las dos formas de agrandarlo, pedidas por
+            // separado en el plan, conviven sobre el mismo RectTransform.
+            if (MinimapRef != null)
+            {
+                if (KeyBindings.WasPressed(KeyBindings.MinimapAgrandar)) MinimapRef.AlternarTamano();
+                if (KeyBindings.WasPressed(KeyBindings.MinimapCiclarTamano)) MinimapRef.CiclarTamanoFijo();
+            }
+
             // 216: un solo consumidor de la cola de alertas. Antes cada
             // vista emitia su aviso por su cuenta y con varios a la vez
             // ninguno quedaba legible. La cola decide cual se muestra.
