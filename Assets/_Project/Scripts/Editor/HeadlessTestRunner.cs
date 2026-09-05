@@ -2825,6 +2825,52 @@ namespace SP.EditorTools
             inputDriver.Selection.Clear();
 
             TestLog.Phase("FASE 9 FINALIZADA (18/23)");
+
+            // --- #19 / G1: el barril se incendia con un disparo y despues explota ---
+            TestLog.Phase("FASE 9 - Tarea #19: el barril se incendia con un disparo y despues explota");
+
+            var barrilGo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            barrilGo.name = "BarrilDePrueba";
+            barrilGo.transform.position = new Vector3(80f, 0.75f, 80f);
+            barrilGo.transform.localScale = new Vector3(1.5f, 1.5f, 1.5f);
+            var barril = barrilGo.AddComponent<ObstacleMarker>();
+            var campoEsExplosivo = GetRequiredField(typeof(ObstacleMarker), "esExplosivo",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            campoEsExplosivo.SetValue(barril, true);
+
+            var testigoCerca = SpawnSoldier(soldierPrefab, "TestigoCercaDelBarril", TeamId.Player, RoleType.Assault,
+                barrilGo.transform.position + new Vector3(3f, 0f, 0f), new Color(0.25f, 0.55f, 0.98f), pool, 100);
+            testigoCerca.Brain.CancelOrder();
+            testigoCerca.Brain.IsPossessedByPlayer = true; // no se mueve solo durante la medicion
+            SP.Core.ApoyoEnElPiso.Apoyar(testigoCerca.transform);
+
+            var testigoLejos = SpawnSoldier(soldierPrefab, "TestigoLejosDelBarril", TeamId.Player, RoleType.Assault,
+                barrilGo.transform.position + new Vector3(12f, 0f, 0f), new Color(0.25f, 0.55f, 0.98f), pool, 100);
+            testigoLejos.Brain.CancelOrder();
+            testigoLejos.Brain.IsPossessedByPlayer = true;
+            SP.Core.ApoyoEnElPiso.Apoyar(testigoLejos.transform);
+
+            int vidaCercaAntes = testigoCerca.Health.Current;
+            int vidaLejosAntes = testigoLejos.Health.Current;
+
+            barril.TakeDamage(10);
+            Check($"Un disparo enciende el barril y sigue en pie (encendido={barril.EstaEncendido}, colapsado={barril.IsCollapsed})",
+                barril.EstaEncendido && !barril.IsCollapsed);
+
+            bool exploto = SimulateUntil(() => barril.IsCollapsed, 6f);
+            Check($"A los pocos segundos el barril queda destruido ({exploto})", exploto);
+            Check($"El testigo a 3 m del barril perdio vida ({vidaCercaAntes} -> {testigoCerca.Health.Current})",
+                testigoCerca.Health.Current < vidaCercaAntes);
+            Check($"El testigo a 12 m del barril NO perdio vida ({vidaLejosAntes} -> {testigoLejos.Health.Current})",
+                testigoLejos.Health.Current == vidaLejosAntes);
+
+            testigoCerca.Brain.IsPossessedByPlayer = false;
+            testigoLejos.Brain.IsPossessedByPlayer = false;
+            UnityEngine.Object.DestroyImmediate(testigoCerca.gameObject);
+            UnityEngine.Object.DestroyImmediate(testigoLejos.gameObject);
+            UnityEngine.Object.DestroyImmediate(barrilGo);
+
+            TestLog.Phase("FASE 9 FINALIZADA (19/23)");
         }
 
         // ---------------------------------------------------------------

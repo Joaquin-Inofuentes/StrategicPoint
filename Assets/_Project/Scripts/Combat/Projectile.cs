@@ -541,13 +541,22 @@ namespace SP.Combat
             return true;
         }
 
-        void Explode(Vector3 point)
+        void Explode(Vector3 point) => ExplodeAt(point, explosionRadius, damage, ownerId, ownerTeam, ignoreVehicle);
+
+        // G1: el barril explosivo (ObstacleMarker.Estallar) necesita la
+        // MISMA explosión con caída de daño, línea de vista y feedback
+        // (VFX/SFX/sacudida de cámara) que ya tiene la granada del tanque,
+        // en vez de una copia que fuera divergiendo. Se extrajo a estática
+        // con spareTeam NULLABLE porque el barril no tiene equipo propio
+        // que perdonar -- a diferencia de un disparo, tiene que dañar a
+        // los dos bandos por igual.
+        public static void ExplodeAt(Vector3 point, float radius, int damage, int ownerId, TeamId? spareTeam, SP.Vehicles.Vehicle ignoreVehicle = null)
         {
             foreach (var s in ActorRegistry.All)
             {
-                if (s == null || !s.Health.IsAlive || s.Team == ownerTeam || !s.gameObject.activeInHierarchy) continue;
+                if (s == null || !s.Health.IsAlive || (spareTeam.HasValue && s.Team == spareTeam.Value) || !s.gameObject.activeInHierarchy) continue;
                 float dist = Vector3.Distance(s.transform.position, point);
-                if (dist > explosionRadius) continue;
+                if (dist > radius) continue;
 
                 // BUG REAL 1: la onda atravesaba las paredes. Reparte por
                 // distancia pura, sin mirar que hay en el medio, asi que
@@ -563,7 +572,7 @@ namespace SP.Combat
                 // explosion dolia exactamente igual que estar sentado en
                 // el epicentro. Ahora cae linealmente del centro al borde,
                 // con un piso para que el ultimo metro siga contando.
-                float cercania = 1f - Mathf.Clamp01(dist / explosionRadius);
+                float cercania = 1f - Mathf.Clamp01(dist / radius);
                 int danoReal = Mathf.Max(1, Mathf.RoundToInt(damage * Mathf.Lerp(DanoMinimoEnElBorde, 1f, cercania)));
                 s.Health.TakeDamage(danoReal, ownerId);
 
@@ -584,7 +593,7 @@ namespace SP.Combat
                     away = new Vector3(randomXZ.x, 0f, randomXZ.y);
                     if (away.sqrMagnitude < 0.0001f) away = Vector3.forward; // caso degenerado de insideUnitCircle (~(0,0)): direccion fija
                 }
-                float strength = 1f - Mathf.Clamp01(dist / explosionRadius);
+                float strength = 1f - Mathf.Clamp01(dist / radius);
                 s.transform.position += away.normalized * strength * 2.2f;
             }
 
@@ -597,9 +606,9 @@ namespace SP.Combat
                 var vehicle = explosionVehicles[i];
                 if (vehicle == null || vehicle == ignoreVehicle) continue;
                 float distV = Vector3.Distance(vehicle.transform.position, point);
-                if (distV > explosionRadius) continue;
+                if (distV > radius) continue;
                 if (!LaExplosionAlcanza(point, vehicle.transform.position)) continue;
-                float cercaniaV = 1f - Mathf.Clamp01(distV / explosionRadius);
+                float cercaniaV = 1f - Mathf.Clamp01(distV / radius);
                 vehicle.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * Mathf.Lerp(DanoMinimoEnElBorde, 1f, cercaniaV))), ownerId);
             }
 
@@ -610,7 +619,7 @@ namespace SP.Combat
             // explosion ES Ground, y inventarle un SfxKind aparte seria
             // diseño nuevo, no el item 192.
             PlayImpactSfx(EnvironmentHitKind.Ground, point, 0.85f, 0.8f);
-            ImpactFx.SpawnExplosion(point, explosionRadius);
+            ImpactFx.SpawnExplosion(point, radius);
 
             // Una explosion cerca se veia pero no se SENTIA: la camara
             // quedaba perfectamente quieta al lado de una granada. La
@@ -621,7 +630,7 @@ namespace SP.Combat
             if (rig != null)
             {
                 float dist = Vector3.Distance(rig.transform.position, point);
-                float falloff = 1f - Mathf.Clamp01(dist / Mathf.Max(0.01f, explosionRadius * 4f));
+                float falloff = 1f - Mathf.Clamp01(dist / Mathf.Max(0.01f, radius * 4f));
                 if (falloff > 0f)
                 {
                     Vector3 away = rig.transform.position - point;
@@ -631,7 +640,7 @@ namespace SP.Combat
                     // 181: fogonazo + sordera momentanea si la explosion
                     // fue MUY cerca. La sacudida sola no transmite que casi
                     // te alcanza; el destello si.
-                    float veryClose = 1f - Mathf.Clamp01(dist / Mathf.Max(0.01f, explosionRadius * 1.5f));
+                    float veryClose = 1f - Mathf.Clamp01(dist / Mathf.Max(0.01f, radius * 1.5f));
                     if (veryClose > 0f)
                     {
                         SP.UI.ScreenFlashView.Explosion(veryClose);

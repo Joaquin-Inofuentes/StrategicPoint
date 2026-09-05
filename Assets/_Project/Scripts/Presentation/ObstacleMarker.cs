@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using SP.Core;
 
@@ -15,6 +16,50 @@ namespace SP.Presentation
     {
         [SerializeField] int maxHealth = 150;
         [SerializeField] int currentHealth = -1;
+
+        // G1: el barril. No es un tipo de objeto aparte -- es este mismo
+        // obstaculo con un comportamiento extra: el primer impacto lo
+        // enciende (sigue en pie, sigue siendo cobertura) y unos segundos
+        // despues estalla solo, dañe alrededor y recien ahi colapsa. Un
+        // barril que ya colapso por daño normal mientras ardia no vuelve
+        // a estallar (Estallar() lo chequea).
+        [SerializeField] bool esExplosivo = false;
+        [SerializeField] float radioExplosion = 6f;
+        [SerializeField] int danoExplosion = 60;
+        [SerializeField] float demoraExplosion = 2.5f;
+
+        public bool EsExplosivo => esExplosivo;
+        public bool EstaEncendido { get; private set; }
+        float temporizadorExplosion;
+
+        static readonly Color ColorFuego = new Color(1f, 0.42f, 0.05f);
+        static readonly List<ObstacleMarker> Encendidos = new List<ObstacleMarker>();
+
+        // Los estaticos sobreviven a "Enter Play Mode" sin domain reload:
+        // sin este reset, Encendidos arrastraria referencias fake-null de
+        // barriles de la sesion de Play ANTERIOR (mismo patron que
+        // Projectile.ResetActiveInstancesOnLoad).
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetEncendidosOnLoad() => Encendidos.Clear();
+
+        // Se llama desde WorldSimulationDriver.Step, el mismo unico camino
+        // de simulacion que ya usan PedidoDeCuracion y RescateAutomatico:
+        // asi la suite headless (que avanza el tiempo a mano) ejercita
+        // exactamente esto, no una copia aparte.
+        public static void Tick(float dt)
+        {
+            for (int i = Encendidos.Count - 1; i >= 0; i--)
+            {
+                var m = Encendidos[i];
+                if (m == null) { Encendidos.RemoveAt(i); continue; }
+                m.temporizadorExplosion -= dt;
+                if (m.temporizadorExplosion <= 0f)
+                {
+                    Encendidos.RemoveAt(i);
+                    m.Estallar();
+                }
+            }
+        }
 
         public int MaxHealth => maxHealth;
         public int CurrentHealth => currentHealth < 0 ? maxHealth : currentHealth;
@@ -68,6 +113,13 @@ namespace SP.Presentation
             CacheIfNeeded();
             if (IsCollapsed) return;
 
+            // G1: "primer impacto: se prende fuego" -- va antes que
+            // cualquier otra cosa, para que encienda aunque ese mismo tiro
+            // ya lo hubiera dejado en la ultima etapa o lo hubiera matado
+            // por daño normal (Collapse() de abajo revisa IsCollapsed y no
+            // vuelve a colapsar dos veces).
+            if (esExplosivo && !EstaEncendido) Encender();
+
             int stageBefore = Stage;
             currentHealth = Mathf.Max(0, currentHealth - amount);
             int stageAfter = Stage;
@@ -80,7 +132,11 @@ namespace SP.Presentation
         {
             if (rend == null) return;
             float darken = stage * 0.22f;
-            CubeFxReactor.WriteTint(rend, Color.Lerp(baseColor, Color.black, darken));
+            // Si ya esta encendido, una etapa nueva (otro balazo mientras
+            // arde) no le pisa el tinte de fuego con el oscurecimiento
+            // normal -- se oscurece EL FUEGO, no el color de base.
+            var colorBase = EstaEncendido ? ColorFuego : baseColor;
+            CubeFxReactor.WriteTint(rend, Color.Lerp(colorBase, Color.black, darken));
 
             float squash = 1f - stage * 0.12f;
             transform.localScale = new Vector3(baseScale.x, baseScale.y * squash, baseScale.z);
@@ -104,6 +160,30 @@ namespace SP.Presentation
             // ya no cubren de nada: sin reregistrar, la IA seguiria yendo a
             // esconderse detras de un escombro.
             SP.Core.Coberturas.Registrar();
+        }
+
+        void Encender()
+        {
+            EstaEncendido = true;
+            temporizadorExplosion = demoraExplosion;
+            if (!Encendidos.Contains(this)) Encendidos.Add(this);
+            if (rend != null) CubeFxReactor.WriteTint(rend, ColorFuego);
+        }
+
+        // Estalla sola por el timer, no por quedarse sin vida -- un barril
+        // puede seguir de pie (Stage bajo) y explotar igual a los N
+        // segundos. Reusa Projectile.ExplodeAt (misma caida de daño y
+        // linea de vista que la granada del tanque) para el daño de area,
+        // y Collapse() para la destruccion propia del cubo (escombros,
+        // invalidar nav, reregistrar coberturas) -- ningun barril estalla
+        // dos veces porque Collapse ya puso IsCollapsed en true.
+        void Estallar()
+        {
+            EstaEncendido = false;
+            if (IsCollapsed) return;
+            var punto = transform.position + Vector3.up * baseScale.y * 0.5f;
+            SP.Combat.Projectile.ExplodeAt(punto, radioExplosion, danoExplosion, ownerId: -1, spareTeam: null);
+            Collapse();
         }
 
         void SpawnDebris(int count, float speed)

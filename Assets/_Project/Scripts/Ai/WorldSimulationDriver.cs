@@ -100,6 +100,9 @@ namespace SP.Ai
             // A5: rescate automatico cuando muere el jugador. Mismo camino
             // de simulacion por el mismo motivo.
             SP.Player.RescateAutomatico.Tick(dt);
+            // G1: cuenta regresiva de los barriles encendidos hasta que
+            // estallan solos. Mismo camino de simulacion por el mismo motivo.
+            SP.Presentation.ObstacleMarker.Tick(dt);
 
             profileWatch.Restart();
             var vehicleBrains = WorldSystemsRegistry.VehicleBrains;
