@@ -65,15 +65,18 @@ namespace SP.Vehicles
         [SerializeField] float projectileGravity = 9.8f;
         public float ProjectileGravity => Ammo == AmmoType.Explosive ? projectileGravity : projectileGravity * 0.45f;
 
-        public const float SpeedMultiplier = 2f;
+        // La bala de mano paso de 40 a 160 m/s. El obus del tanque NO
+        // tiene que acelerarse con ella: es un tiro con arco y gravedad, y
+        // cuadruplicarlo aplanaria la parabola hasta volverla otra arma.
+        // Con base 160 y multiplicador 0,5 la velocidad efectiva del obus
+        // sigue siendo 80 m/s, exactamente la de antes (40 x 2).
+        public const float SpeedMultiplier = 0.5f;
 
-        // Debe coincidir con Projectile.speed del prefab (velocidad BASE,
-        // antes de SpeedMultiplier): TurretAimView.PredictedImpactPoint y
-        // el liderado de blanco de TurretAI simulan la trayectoria real
-        // con esta constante -- si Projectile.speed cambia algun dia hay
-        // que actualizarla aca tambien, no hay forma de leerla en runtime
-        // sin instanciar un proyectil.
-        public const float ProjectileSpeed = 40f;
+        // Antes esto era un 40 escrito a mano con un comentario pidiendo
+        // que se actualizara junto con el prefab. Ahora se lee de la unica
+        // fuente: si la velocidad base cambia, la prediccion de impacto y
+        // el liderado de blanco la siguen solos.
+        public const float ProjectileSpeed = SP.Combat.Projectile.VelocidadBase;
 
         // El cooldown fijo permitia disparar indefinidamente al mismo
         // ritmo, o sea ninguna decision sobre CUANDO disparar. El calor

@@ -36,14 +36,25 @@ namespace SP.Presentation
         // Se llama explicitamente al salir de Play (ver
         // Scripts/Editor/PlaymodeCleanup.cs) para que la limpieza no
         // dependa de ese timing.
+        static void Destruir(GameObject go)
+        {
+            if (go == null) return;
+            if (Application.isPlaying) Object.Destroy(go);
+            else Object.DestroyImmediate(go);
+        }
+
         public static void ClearAll()
         {
+            // DestroyImmediate dentro de Play, ahora que esto corre
+            // tambien al cargar una escena y no solo al salir del
+            // Editor, destruye el objeto en medio del recorrido de
+            // otro sistema. Destroy espera al final del frame.
             foreach (var kv in pools)
                 foreach (var go in kv.Value)
-                    if (go != null) Object.DestroyImmediate(go);
+                    if (go != null) Destruir(go);
             pools.Clear();
             DestroyOrphans();
-            if (root != null) { Object.DestroyImmediate(root.gameObject); root = null; }
+            if (root != null) { Destruir(root.gameObject); root = null; }
         }
 
         static readonly Color CraterColor = new Color(0.18f, 0.14f, 0.10f);

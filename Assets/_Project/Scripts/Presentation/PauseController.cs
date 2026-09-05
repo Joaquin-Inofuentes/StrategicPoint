@@ -76,6 +76,9 @@ namespace SP.Presentation
                 var t = transform.Find("ConfirmExitPanel");
                 if (t != null) confirmExitPanel = t.gameObject;
             }
+            // CANCELAR y SALIR se solapaban 80 pixeles: en esa franja el
+            // click se lo llevaba el boton equivocado. Ver SP.UI.Diagramador.
+            SP.UI.Diagramador.AcomodarConfirmarSalida(confirmExitPanel);
             if (rebindPanel == null)
             {
                 var t = transform.Find("RebindPanel");

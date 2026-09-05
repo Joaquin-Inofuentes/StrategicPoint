@@ -61,8 +61,10 @@ namespace SP.EditorTools
             if (state != PlayModeStateChange.ExitingPlayMode &&
                 state != PlayModeStateChange.EnteredEditMode) return;
 
-            DecalPool.ClearAll();
-            DebrisPool.ClearAll();
+            // Antes faltaban los dos pools de ImpactFx: sus roots eran los
+            // unicos que nadie destruia nunca, y se acumulaban de a uno por
+            // sesion de Play. Limpiar() los cubre a los cuatro.
+            SP.Presentation.LimpiezaDeEscena.Limpiar();
             BarrerHuerfanos();
         }
 

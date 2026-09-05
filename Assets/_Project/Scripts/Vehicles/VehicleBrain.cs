@@ -11,6 +11,16 @@ namespace SP.Vehicles
         [SerializeField] float arriveThreshold = 1.2f;
         [SerializeField] float turnDegPerSec = 130f;
 
+        // A partir de que angulo el destino cuenta como "detras". 100 y no
+        // 90 para que un destino apenas al costado no dispare marcha atras.
+        public const float AnguloDeMarchaAtras = 100f;
+
+        // Hasta donde conviene retroceder en vez de dar la vuelta. 15 m
+        // cubre con margen toda la franja donde el arco no entraba (medido:
+        // fallaba de 2 a 6 m) sin volver la marcha atras el modo normal de
+        // recorrer el mapa, que a media velocidad seria tedioso.
+        public const float DistanciaDeMarchaAtras = 15f;
+
         VehicleMotor motor;
         Vehicle vehicle;
         TurretAI turretAi;
@@ -73,14 +83,43 @@ namespace SP.Vehicles
                 return;
             }
 
-            // La IA gira el chasis directamente (no depende de la velocidad,
-            // a diferencia del volante del jugador) y el motor solo empuja
-            // hacia adelante: así reorienta con fiabilidad sin importar
-            // desde qué ángulo llegó la orden.
+            // Del plan del usuario: "En tanque si selecciono una posicion
+            // atras de el. Empieza a dar circulos sin sentido. Deberia solo
+            // retroceder".
+            //
+            // Antes esto giraba el chasis hacia el destino Y ADEMAS pisaba
+            // el acelerador a fondo todo el tiempo. Con el destino atras,
+            // el vehiculo sale para adelante mientras gira: describe un
+            // arco cuyo radio, a maxima velocidad, es mas grande que la
+            // distancia al destino, asi que el destino queda ADENTRO del
+            // circulo y no se alcanza nunca. Medido, con el destino a 2 m
+            // atras: 231 metros recorridos en 20 segundos sin acercarse ni
+            // un centimetro. De 8 m para atras si llegaba, porque ahi el
+            // arco entra.
+            //
+            // Dos reglas, y la segunda sola ya rompe el circulo:
+            float anguloAlDestino = Vector3.Angle(transform.forward, delta.normalized);
+
+            // 1) Detras y cerca: se retrocede. Es lo que haria cualquiera
+            //    con el auto: no se da la vuelta para ir tres metros atras.
+            //    Se apunta la COLA al destino, no el morro.
+            if (anguloAlDestino > AnguloDeMarchaAtras && dist <= DistanciaDeMarchaAtras)
+            {
+                var rotAtras = Quaternion.LookRotation(-delta.normalized, Vector3.up);
+                transform.rotation = Quaternion.RotateTowards(transform.rotation, rotAtras, turnDegPerSec * dt);
+                motor.Drive(-1f, 0f, dt);
+                return;
+            }
+
+            // 2) Para adelante, pero el acelerador sigue al alineamiento:
+            //    mientras esta cruzado no avanza (gira casi en el lugar) y
+            //    recien pisa a fondo cuando ya mira al destino. Avanzar de
+            //    costado es exactamente lo que convertia el giro en arco.
             var targetRot = Quaternion.LookRotation(delta.normalized, Vector3.up);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, turnDegPerSec * dt);
 
-            motor.Drive(1f, 0f, dt);
+            float gas = Mathf.Clamp01(Mathf.Cos(anguloAlDestino * Mathf.Deg2Rad));
+            motor.Drive(gas, 0f, dt);
         }
     }
 }

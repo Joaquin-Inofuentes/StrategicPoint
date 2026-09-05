@@ -171,6 +171,10 @@ namespace SP.UI
                 var t = canvasRoot.Find("PromptText");
                 if (t != null) promptText = t.GetComponent<Text>();
             }
+            // El cartel de [F] Poseer era texto pelado sobre el terreno:
+            // claro sobre claro, justo donde aparece. Ver SP.UI.FondoOpaco,
+            // que es el MISMO fondo que usan los demas carteles.
+            FondoOpaco.Poner(promptText);
             if (crosshair == null)
             {
                 var t = canvasRoot.Find("Crosshair");

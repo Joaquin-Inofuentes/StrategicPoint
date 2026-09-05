@@ -68,6 +68,10 @@ namespace SP.Presentation
             {
                 var t = transform.Find("DefeatPanel");
                 if (t != null) defeatPanel = t.gameObject;
+                // Ver SP.UI.Diagramador: el titulo y REINTENTAR estaban los
+                // dos en y=0 y el boton tapaba el texto.
+                SP.UI.Diagramador.AcomodarResultado(victoryPanel);
+                SP.UI.Diagramador.AcomodarResultado(defeatPanel);
             }
             if (victoryStats == null && victoryPanel != null)
             {

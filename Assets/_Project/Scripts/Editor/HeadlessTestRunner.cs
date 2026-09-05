@@ -1592,9 +1592,18 @@ namespace SP.EditorTools
             Check($"speedMultiplier=2 duplica la velocidad real del proyectil (normal={speedNormal:0.0} doble={speedDoble:0.0})",
                 Mathf.Approximately(speedDoble, speedNormal * 2f));
 
-            // El cañon del tanque en si mismo tiene que pedir 2x: no alcanza
-            // con que el pool lo soporte, TurretWeapon.TryFire tiene que
-            // usarlo de verdad.
+            // El cañon del tanque tiene que pedir SU multiplicador: no
+            // alcanza con que el pool lo soporte, TurretWeapon.TryFire
+            // tiene que usarlo de verdad.
+            //
+            // Este check decia "el doble de la base" con un 2 escrito a
+            // mano, y fallo -- bien -- al subir la bala de mano de 40 a
+            // 160 m/s. El invariante que importa nunca fue el factor: es
+            // que el OBUS conserve su velocidad, porque vuela con arco y
+            // gravedad y cuadruplicarlo lo convertiria en otra arma. Por
+            // eso el multiplicador bajo de 2 a 0,5 en el mismo cambio.
+            // Ahora se comprueban las dos cosas: que use su constante, y
+            // que la velocidad absoluta siga siendo la historica de 80.
             var turret = vehicle.GetComponentInChildren<TurretWeapon>();
             var cdField = GetRequiredField(typeof(TurretWeapon), "cooldownTimer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             cdField.SetValue(turret, 0f);
@@ -1612,8 +1621,12 @@ namespace SP.EditorTools
             Check("El cañon del tanque efectivamente disparo un proyectil nuevo",
                 fired && shellFired != null);
             if (shellFired != null)
-                Check($"El proyectil real del cañon vuela al doble de la velocidad base (velocidad={shellFired.Velocity.magnitude:0.0} vs base={speedNormal:0.0})",
-                    Mathf.Approximately(shellFired.Velocity.magnitude, speedNormal * 2f));
+            {
+                Check($"El proyectil real del cañon usa el multiplicador del cañon (velocidad={shellFired.Velocity.magnitude:0.0} = base {speedNormal:0.0} x {TurretWeapon.SpeedMultiplier})",
+                    Mathf.Approximately(shellFired.Velocity.magnitude, speedNormal * TurretWeapon.SpeedMultiplier));
+                Check($"El obus conserva su velocidad historica de 80 m/s pese a que la bala de mano se cuadruplico (velocidad={shellFired.Velocity.magnitude:0.0})",
+                    Mathf.Abs(shellFired.Velocity.magnitude - 80f) < 0.5f);
+            }
 
             // --- Sin vibracion de camara al disparar (pedido explicito) ---
             // Antes disparar con el jugador adentro sacudia la camara
@@ -3711,6 +3724,10 @@ namespace SP.EditorTools
             noBtn.onClick.AddListener(pauseController.OnConfirmExitNo);
             var yesBtn = BuildUIButton(confirmExitGO.transform, "YesButton", "SALIR", new Vector2(90f, -70f), new Color(0.6f, 0.25f, 0.2f));
             yesBtn.onClick.AddListener(pauseController.OnConfirmExitYes);
+            // Las posiciones de arriba son historicas y se solapaban. El
+            // reparto real lo hace el diagramador, con las mismas cuentas
+            // que corrigen la escena ya guardada: una sola definicion.
+            SP.UI.Diagramador.AcomodarConfirmarSalida(confirmExitGO);
 
             controlsPanelGO.SetActive(false);
             confirmExitGO.SetActive(false);

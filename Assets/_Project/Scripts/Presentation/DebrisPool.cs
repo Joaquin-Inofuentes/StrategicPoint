@@ -36,15 +36,26 @@ namespace SP.Presentation
         // Mismo bug y mismo arreglo que DecalPool.ClearAll: se llama al
         // salir de Play mode (Scripts/Editor/PlaymodeCleanup.cs) para que
         // los escombros no sobrevivan como huerfanos.
+        static void Destruir(GameObject go)
+        {
+            if (go == null) return;
+            if (Application.isPlaying) Object.Destroy(go);
+            else Object.DestroyImmediate(go);
+        }
+
         public static void ClearAll()
         {
+            // DestroyImmediate dentro de Play, ahora que esto corre
+            // tambien al cargar una escena y no solo al salir del
+            // Editor, destruye el objeto en medio del recorrido de
+            // otro sistema. Destroy espera al final del frame.
             foreach (var d in all)
-                if (d != null) Object.DestroyImmediate(d.gameObject);
+                if (d != null) Destruir(d.gameObject);
             all.Clear();
             free.Clear();
             inUse.Clear();
             DestroyOrphans();
-            if (root != null) { Object.DestroyImmediate(root.gameObject); root = null; }
+            if (root != null) { Destruir(root.gameObject); root = null; }
         }
 
 

@@ -147,6 +147,16 @@ namespace SP.Presentation
         // pool barre lo que quedo suelto. Ojo: las esferas y los anillos
         // comparten el componente ImpactFx, asi que hay que preguntarle a
         // los DOS pools antes de dar algo por huerfano.
+        // Vaciado real, no reciclado: destruye los objetos y el root para
+        // que una escena nueva empiece sin nada del anterior. Ver
+        // SP.Presentation.LimpiezaDeEscena, que es quien lo llama.
+        public static void ClearAll()
+        {
+            spheres.LimpiarTodo();
+            rings.LimpiarTodo();
+            DestroyOrphans();
+        }
+
         internal static void DestroyOrphans()
         {
             foreach (var fx in Object.FindObjectsByType<ImpactFx>(FindObjectsInactive.Include, FindObjectsSortMode.None))
@@ -565,6 +575,29 @@ namespace SP.Presentation
             if (fx == null) return;
             inUse.Remove(fx);
             if (!free.Contains(fx)) free.Enqueue(fx);
+        }
+
+        // Destruye de verdad. RecycleAll solo devuelve al pool: los
+        // objetos siguen existiendo, que es justo lo que sobrevivia a la
+        // recarga de escena.
+        public void LimpiarTodo()
+        {
+            for (int i = 0; i < all.Count; i++)
+            {
+                var fx = all[i];
+                if (fx == null) continue;
+                if (Application.isPlaying) Object.Destroy(fx.gameObject);
+                else Object.DestroyImmediate(fx.gameObject);
+            }
+            all.Clear();
+            free.Clear();
+            inUse.Clear();
+            if (root != null)
+            {
+                if (Application.isPlaying) Object.Destroy(root.gameObject);
+                else Object.DestroyImmediate(root.gameObject);
+                root = null;
+            }
         }
 
         public void RecycleAll()

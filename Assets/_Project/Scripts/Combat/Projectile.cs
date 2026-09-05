@@ -16,7 +16,24 @@ namespace SP.Combat
     [DefaultExecutionOrder(-50)]
     public class Projectile : MonoBehaviour, IPoolable
     {
-        [SerializeField] float speed = 40f;
+        // Del plan del usuario: "La velocidad de los proyectiles todos
+        // deben ser rezonables rapidos. Ahora son muy lentos. Deben ser
+        // casi instantaneos". Medido con la velocidad vieja (40 m/s): la
+        // bala tardaba 1,25 s en cruzar 50 metros y 0,75 s en llegar a 30.
+        // Se le ve el viaje: no es un disparo, es un proyectil lento.
+        //
+        // 160 m/s deja 50 m en 0,31 s y 30 m en 0,19 s -- se lee como
+        // instantaneo y la trazadora todavia se ve. Mas rapido que esto la
+        // trazadora deja de existir en pantalla y el tiro pierde la unica
+        // lectura visual que tiene.
+        //
+        // Es const y publica porque TurretWeapon necesita EXACTAMENTE este
+        // numero para predecir donde va a caer su tiro. Antes lo tenia
+        // copiado a mano con un comentario pidiendo que se actualizaran
+        // los dos a la vez: eso es justo lo que no pasa.
+        public const float VelocidadBase = 160f;
+
+        [SerializeField] float speed = VelocidadBase;
         [SerializeField] float lifetime = 3f;
         [SerializeField] float hitRadius = 1f;
         [SerializeField] float groundImpactHeight = 0.15f;
@@ -217,18 +234,25 @@ namespace SP.Combat
             // La grilla ya esta reconstruida: WorldSimulationDriver tiene
             // orden de ejecucion -100 y la rehace al principio del tick,
             // antes de que ningun proyectil actualice.
-            var hit = SpatialGrid.FindNearestInRange(transform.position, hitRadius, s =>
-                s.Health.IsAlive &&
-                s.Team != ownerTeam &&
-                s.gameObject.activeInHierarchy);
+            // Se barre el TRAMO, igual que ya se hacia contra el mundo
+            // solido. Antes esto era un test PUNTUAL en la posicion del
+            // frame y colaba de casualidad: a 40 m/s la bala avanzaba
+            // 66 cm por frame, menos que hitRadius (1 m), asi que ningun
+            // soldado cabia entero en el hueco entre dos muestras. Al
+            // cuadruplicar la velocidad el paso pasa a 2,7 m y una bala
+            // apuntada al centro del pecho atraviesa al soldado sin
+            // tocarlo. Sin esto, subir la velocidad es cambiar un defecto
+            // por otro mucho peor.
+            var puntoDeImpacto = transform.position;
+            var hit = BuscarBlancoEnElTramo(posPrevia, transform.position, ref puntoDeImpacto);
 
             if (hit != null)
             {
-                if (explosionRadius > 0f) Explode(transform.position);
+                if (explosionRadius > 0f) Explode(puntoDeImpacto);
                 else
                 {
                     hit.Health.TakeDamage(damage, ownerId);
-                    ImpactFx.SpawnScaledByDamage(transform.position, ImpactFx.EnemyColor, damage);
+                    ImpactFx.SpawnScaledByDamage(puntoDeImpacto, ImpactFx.EnemyColor, damage);
                 }
                 Expire();
                 return;
@@ -615,6 +639,27 @@ namespace SP.Combat
                     }
                 }
             }
+        }
+
+        // Muestrea el segmento recorrido con paso <= hitRadius: asi no
+        // hay hueco por el que quepa un soldado, sea cual sea la
+        // velocidad. Devuelve tambien DONDE se lo alcanzo, para que el
+        // efecto de impacto (y el centro de una explosion) caigan en el
+        // punto real y no al final del salto del frame.
+        SP.Actors.Soldier BuscarBlancoEnElTramo(Vector3 desde, Vector3 hasta, ref Vector3 punto)
+        {
+            float largo = Vector3.Distance(desde, hasta);
+            int pasos = Mathf.Max(1, Mathf.CeilToInt(largo / Mathf.Max(0.05f, hitRadius)));
+            for (int i = 1; i <= pasos; i++)
+            {
+                var muestra = Vector3.Lerp(desde, hasta, i / (float)pasos);
+                var s = SpatialGrid.FindNearestInRange(muestra, hitRadius, x =>
+                    x.Health.IsAlive &&
+                    x.Team != ownerTeam &&
+                    x.gameObject.activeInHierarchy);
+                if (s != null) { punto = muestra; return s; }
+            }
+            return null;
         }
 
         void Expire()
