@@ -17,6 +17,23 @@ namespace SP.Presentation
 
         void Update()
         {
+            // H2: en FPS esta linea nace a centimetros de la camara (el
+            // soldado que la dispara puede ser el propio poseido, o uno
+            // pegado a el) y el ancho del LineRenderer se orienta DE CARA
+            // A LA CAMARA en cada punto (alignment View, el default) --
+            // de cerca y en un angulo rasante eso proyecta como un
+            // triangulo enorme y oscuro tapando media pantalla, no como
+            // la lineita fina que se ve bien desde arriba en RTS. Reusa
+            // la misma señal que ya separa FPS de RTS en todo el
+            // proyecto (CameraRig.SetMode pone cam.orthographic=true
+            // solo en RTS) para no dibujarla fuera de ahi.
+            var cam = Camera.main;
+            if (cam == null || !cam.orthographic)
+            {
+                if (lines.Count > 0) RemoveAllLines();
+                return;
+            }
+
             foreach (var soldier in ActorRegistry.All)
             {
                 if (soldier == null) continue;
@@ -50,6 +67,11 @@ namespace SP.Presentation
                 lr.SetPosition(0, soldier.transform.position + Vector3.up * 0.5f);
                 lr.SetPosition(1, brain.CurrentTarget.transform.position + Vector3.up * 0.5f);
             }
+        }
+
+        void RemoveAllLines()
+        {
+            foreach (var actorId in new List<int>(lines.Keys)) RemoveLine(actorId);
         }
 
         void RemoveLine(int actorId)

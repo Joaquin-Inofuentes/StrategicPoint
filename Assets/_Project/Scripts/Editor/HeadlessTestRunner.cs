@@ -2952,6 +2952,54 @@ namespace SP.EditorTools
             camTransform.rotation = rotOriginalCamara;
 
             TestLog.Phase("FASE 9 FINALIZADA (21/23)");
+
+            // --- #23 / H2: la linea roja de ataque no debe verse en FPS ---
+            // El usuario reportaba "algo negro que le apunta al enemigo en
+            // FPS": era AttackLineManager, una linea fina pensada para
+            // verse desde arriba en RTS. De cerca en FPS (alignment View,
+            // el default del LineRenderer, encara cada punto DE CARA A LA
+            // CAMARA) un extremo casi pegado a la camara proyecta como un
+            // triangulo enorme y oscuro. El arreglo: no dibujarla fuera de
+            // RTS (mismo cam.orthographic que ya separa los dos modos en
+            // todo el proyecto).
+            TestLog.Phase("FASE 9 - Tarea #23 / Bug H2: la linea de ataque no se dibuja en FPS");
+
+            doc.gameObject.SetActive(true);
+            doc.Health.Initialize(doc.Id, doc.Health.MaxHealth);
+            doc.Brain.CancelOrder();
+            doc.Brain.IsPossessedByPlayer = false;
+
+            var testigoH2 = SpawnSoldier(soldierPrefab, "TestigoDeAtaqueH2", TeamId.Enemy, RoleType.Enemy,
+                doc.transform.position + new Vector3(4f, 0f, 0f), enemyColor, pool, 100);
+
+            var campoTargetH2 = GetRequiredField(typeof(AiBrain), "target",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var metodoSetStateH2 = GetRequiredMethod(typeof(AiBrain), "SetState",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            campoTargetH2.SetValue(doc.Brain, testigoH2);
+            metodoSetStateH2.Invoke(doc.Brain, new object[] { AiState.Attack });
+
+            var attackLineManager = UnityEngine.Object.FindAnyObjectByType<AttackLineManager>();
+            var metodoUpdateAttackLine = GetRequiredMethod(typeof(AttackLineManager), "Update",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            bool orthographicOriginal = Camera.main.orthographic;
+
+            Camera.main.orthographic = true; // RTS: control -- la linea tiene que seguir existiendo aca
+            metodoUpdateAttackLine.Invoke(attackLineManager, null);
+            bool lineaEnRts = GameObject.Find("AttackLine") != null;
+            Check($"Control: en RTS la linea de ataque SI se dibuja ({lineaEnRts})", lineaEnRts);
+
+            Camera.main.orthographic = false; // FPS: H2 -- no tiene que existir
+            metodoUpdateAttackLine.Invoke(attackLineManager, null);
+            bool lineaEnFps = GameObject.Find("AttackLine") != null;
+            Check($"H2: en FPS la linea de ataque NO se dibuja ({lineaEnFps})", !lineaEnFps);
+
+            Camera.main.orthographic = orthographicOriginal;
+            campoTargetH2.SetValue(doc.Brain, null);
+            doc.Brain.CancelOrder();
+            UnityEngine.Object.DestroyImmediate(testigoH2.gameObject);
+
+            TestLog.Phase("FASE 9 FINALIZADA (23/23)");
         }
 
         // ---------------------------------------------------------------
