@@ -15,6 +15,11 @@ namespace SP.Player
         public Soldier Soldier;
         public Vehicle Vehicle;
         public Vector3 Point;
+        // B4: raiz del objeto golpeado, para el anillo generico de apuntado
+        // (SelectionRingFx necesita un Transform a quien seguir, y Point es
+        // solo el punto de impacto -- no sirve para seguir a algo que se
+        // mueve). Null en Ground/None: ahi no hay "algo" a marcar en su base.
+        public Transform HitTransform;
     }
 
     // Qué hay bajo el retículo o el cursor: un aliado poseíble, un vehículo,
@@ -37,21 +42,22 @@ namespace SP.Player
                     if (soldier.Team == TeamId.Player)
                     {
                         Highlight(soldier.Id);
-                        return new AimResult { Type = AimTargetType.Ally, Soldier = soldier, Point = hit.point };
+                        return new AimResult { Type = AimTargetType.Ally, Soldier = soldier, Point = hit.point, HitTransform = soldier.transform };
                     }
 
                     Highlight(soldier.Id);
-                    return new AimResult { Type = AimTargetType.Enemy, Soldier = soldier, Point = hit.point };
+                    return new AimResult { Type = AimTargetType.Enemy, Soldier = soldier, Point = hit.point, HitTransform = soldier.transform };
                 }
 
                 ClearHighlight();
 
                 var vehicle = hit.collider.GetComponentInParent<Vehicle>();
                 if (vehicle != null)
-                    return new AimResult { Type = AimTargetType.Vehicle, Vehicle = vehicle, Point = hit.point };
+                    return new AimResult { Type = AimTargetType.Vehicle, Vehicle = vehicle, Point = hit.point, HitTransform = vehicle.transform };
 
-                if (hit.collider.GetComponentInParent<ObstacleMarker>() != null)
-                    return new AimResult { Type = AimTargetType.Obstacle, Point = hit.point };
+                var obstaculo = hit.collider.GetComponentInParent<ObstacleMarker>();
+                if (obstaculo != null)
+                    return new AimResult { Type = AimTargetType.Obstacle, Point = hit.point, HitTransform = obstaculo.transform };
 
                 if (hit.collider.gameObject.name.StartsWith("Ground"))
                     return new AimResult { Type = AimTargetType.Ground, Point = hit.point };

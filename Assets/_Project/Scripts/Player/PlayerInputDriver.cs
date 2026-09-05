@@ -100,6 +100,14 @@ namespace SP.Player
         Color highlightedOriginalColor;
         VehicleMountIndicator mountIndicator;
 
+        // B4: anillo en la base de lo que se este apuntando (enemigo,
+        // aliado, vehiculo montable, obstaculo interactuable), en FPS y
+        // en RTS. Reusa SelectionRingFx tal cual -- el mismo que ya
+        // dibuja el anillo de seleccion -- en vez de armar un anillo
+        // nuevo desde cero.
+        SelectionRingFx aimRing;
+        static readonly Color AimRingColor = new Color(0.85f, 0.88f, 0.95f);
+
         // Cubo pegado a la cámara (no al cuerpo): así se ve en primera
         // persona el arma equipada apuntando siempre hacia donde mirás,
         // con su propia forma/color según qué arma tenés en mano.
@@ -840,6 +848,7 @@ namespace SP.Player
             var ray = Rig.GetForwardRay();
             var result = Aim.Evaluate(ray, Brain.Current);
             UpdateAimHighlight(result);
+            UpdateAimRing(result);
             UpdateVehicleMountIndicator(result);
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
@@ -1060,6 +1069,26 @@ namespace SP.Player
                 highlightedOriginalColor = SP.Presentation.CubeFxReactor.ReadTint(target);
                 SP.Presentation.CubeFxReactor.WriteTint(target, Color.Lerp(highlightedOriginalColor, Color.white, 0.65f));
             }
+        }
+
+        // B4: circulo en la base de lo apuntado. Se llama tanto desde el
+        // rayo de la mira FPS como desde el rayo del mouse en RTS -- el
+        // mismo AimResult, la misma logica, sin duplicar nada por modo.
+        void UpdateAimRing(AimResult result)
+        {
+            bool show = result.HitTransform != null && (
+                result.Type == AimTargetType.Ally || result.Type == AimTargetType.Enemy ||
+                result.Type == AimTargetType.Vehicle || result.Type == AimTargetType.Obstacle);
+
+            if (!show)
+            {
+                if (aimRing != null) aimRing.gameObject.SetActive(false);
+                return;
+            }
+
+            if (aimRing == null) aimRing = SelectionRingFx.Spawn(result.HitTransform, AimRingColor, 0.9f);
+            aimRing.gameObject.SetActive(true);
+            aimRing.Target = result.HitTransform;
         }
 
         // [G] apuntando a un vehículo: sube UN aliado por apretada, al
@@ -1969,6 +1998,11 @@ namespace SP.Player
             UpdateDragSelection(kb, mouse);
 
             var screenRay = Rig.Cam.ScreenPointToRay(mouse.position.ReadValue());
+
+            // B4 en RTS: mismo raycast que ya se calculaba para resolver
+            // el click, reusado para el anillo bajo el cursor sin pagar
+            // un segundo Physics.Raycast por frame.
+            UpdateAimRing(Aim.Evaluate(screenRay, null));
 
             // Click derecho SOSTENIDO y arrastrado panea la camara (al
             // doble de velocidad del paneo por teclado); SIN arrastre
