@@ -642,7 +642,21 @@ namespace SP.Ai
                 case AiState.MovingToAttackOrder:
                     if (target == null) { SetState(AiState.Patrol); break; }
                     float d = Vector3.Distance(self.transform.position, target.transform.position);
-                    if (d <= attackRange) SetState(AiState.Attack);
+
+                    // La linea de tiro se pregunta ACA, no solo al gatillar.
+                    // Sin esta mitad, el gate de disparo hacia oscilar el
+                    // estado: Chase veia al enemigo en rango y pasaba a
+                    // Attack, Attack no tenia linea y volvia a Chase, y asi
+                    // en cada tick. MEDIDO: 300 cambios de estado en 300
+                    // ticks, o sea sesenta AiStateChangedEvent por segundo
+                    // por soldado, cada uno repintando el indicador de
+                    // estado de la escuadra.
+                    //
+                    // Preguntando aca el estado queda quieto: sin linea se
+                    // sigue en Chase (acercandose o buscando el angulo), y
+                    // recien se entra en Attack cuando de verdad se puede
+                    // disparar.
+                    if (d <= attackRange && TieneLineaDeTiro(target)) SetState(AiState.Attack);
                     // Attack-move con el objetivo todavia fuera de rango:
                     // camina hacia el punto pedido (no hacia el enemigo) --
                     // en cuanto entra en rango, el caso de arriba lo manda
