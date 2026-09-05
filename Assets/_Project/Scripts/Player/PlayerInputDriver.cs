@@ -593,6 +593,10 @@ namespace SP.Player
             if (evt.ActorId == Brain.Current.Id)
             {
                 if (handlingDeath) return;
+                // A5: se pide ANTES de arrancar la corrutina -- si hay un
+                // aliado libre, ya viene en camino desde el primer frame de
+                // la camara de muerte, no recien despues de la espera.
+                SP.Player.RescateAutomatico.Solicitar(Brain.Current);
                 StartCoroutine(DeathSequence(Brain.Current));
                 return;
             }
@@ -695,13 +699,31 @@ namespace SP.Player
                     float espera = 0f;
                     while (true)
                     {
-                        espera += Time.unscaledDeltaTime;
+                        // A5: un aliado libre puede estar de camino a
+                        // revivirte (RescateAutomatico, pedido apenas
+                        // moriste). Mientras te esta reviviendo, el timer
+                        // de A3 NO avanza -- si avanzara igual, un rescate
+                        // que tarda en llegar caeria a RTS de todos modos y
+                        // el esfuerzo del aliado no serviria de nada.
+                        bool teEstanReviviendo = SP.Player.RescateAutomatico.Activo && SP.Player.RescateAutomatico.Caido == deadSoldier;
+                        if (!teEstanReviviendo) espera += Time.unscaledDeltaTime;
+
                         angle += orbitDegPerSec * Time.unscaledDeltaTime;
                         float rad = angle * Mathf.Deg2Rad;
                         Vector3 offset = new Vector3(Mathf.Cos(rad) * radius, height, Mathf.Sin(rad) * radius);
                         deathPullBackGO.transform.position = deadSoldier.transform.position + offset;
                         deathPullBackGO.transform.rotation = Quaternion.LookRotation((deadSoldier.transform.position + Vector3.up * 0.8f - deathPullBackGO.transform.position).normalized);
                         Rig.FollowAnchor(deathPullBackGO.transform);
+
+                        // A5: el rescate llego a buen puerto -- volves a
+                        // ser vos mismo, no otro soldado ni RTS.
+                        if (deadSoldier.Health.IsAlive)
+                        {
+                            GameLog.Line($"{deadSoldier.DisplayName} fue revivido por un aliado");
+                            Rig.SetMode(ControlMode.Fps);
+                            Rig.BeginTransition(deadSoldier.EyeAnchor != null ? deadSoldier.EyeAnchor : deadSoldier.transform);
+                            break;
+                        }
 
                         // A2: el jugador PIDE el cambio, no le llega solo.
                         if (KeyBindings.WasPressed(KeyBindings.Recentrar))

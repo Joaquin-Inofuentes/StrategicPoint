@@ -2579,7 +2579,35 @@ namespace SP.EditorTools
             Check($"Y a los {PlayerInputDriver.TiempoDeRevivir} s, Health.IsAlive pasa a true ({doc.Health.Current}/{doc.Health.MaxHealth})",
                 revivioA5s && doc.Health.IsAlive && doc.Health.Current == doc.Health.MaxHealth);
 
-            TestLog.Phase("FASE 9 FINALIZADA (12/23)");
+            // --- #13 / A5: un aliado libre va a revivirte y frena el timer ---
+            TestLog.Phase("FASE 9 - Tarea #13: un aliado libre va a revivirte y frena el timer");
+            SP.Player.RescateAutomatico.Cancelar();
+            vega.transform.position = new Vector3(95f, 0.8f, 95f);
+            kes.transform.position = vega.transform.position + new Vector3(10f, 0f, 0f);
+            SP.Core.ApoyoEnElPiso.Apoyar(kes.transform);
+            doc.transform.position = new Vector3(-95f, 0.8f, -95f); // lejos, no interfiere
+
+            vega.Health.TakeDamage(999999, -1);
+            bool solicitoRescate = SP.Player.RescateAutomatico.Solicitar(vega);
+            Check($"Con un aliado a 10 m y ningun enemigo cerca, se pide el rescate ({SP.Player.RescateAutomatico.Rescatista?.DisplayName})",
+                solicitoRescate && SP.Player.RescateAutomatico.Activo && SP.Player.RescateAutomatico.Rescatista == kes);
+
+            // Se lo pone al lado a mano: lo que se prueba aca es que
+            // revivir ocurre, no que sepa caminar (eso ya lo cubre la
+            // orden de seguir -- mismo criterio que el enfermero de
+            // PedidoDeCuracion unas fases atras).
+            kes.transform.position = vega.transform.position + Vector3.right * 1f;
+            for (int i = 0; i < 80; i++) SimStep(0.05f); // 4 s de canal
+            Check($"A los 4 s de canal (de {SP.Player.RescateAutomatico.TiempoDeCanal} s) sigue muerto", !vega.Health.IsAlive);
+
+            for (int i = 0; i < 30; i++) SimStep(0.05f); // +1.5 s: pasa los 5 s
+            Check($"Y a los ~{SP.Player.RescateAutomatico.TiempoDeCanal} s, Health.IsAlive pasa a true ({vega.Health.Current}/{vega.Health.MaxHealth})",
+                vega.Health.IsAlive && vega.Health.Current == vega.Health.MaxHealth);
+            Check("El rescate se cierra solo tras revivir", !SP.Player.RescateAutomatico.Activo);
+
+            SP.Player.RescateAutomatico.Cancelar();
+
+            TestLog.Phase("FASE 9 FINALIZADA (13/23)");
         }
 
         // ---------------------------------------------------------------

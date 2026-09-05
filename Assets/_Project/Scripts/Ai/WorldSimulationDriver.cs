@@ -97,6 +97,9 @@ namespace SP.Ai
             // camino de simulacion que corren por igual el juego y la
             // suite: un Update aparte quedaria sin cobertura.
             SP.Player.PedidoDeCuracion.Tick(dt);
+            // A5: rescate automatico cuando muere el jugador. Mismo camino
+            // de simulacion por el mismo motivo.
+            SP.Player.RescateAutomatico.Tick(dt);
 
             profileWatch.Restart();
             var vehicleBrains = WorldSystemsRegistry.VehicleBrains;
