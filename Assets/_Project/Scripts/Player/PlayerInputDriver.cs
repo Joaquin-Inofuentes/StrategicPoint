@@ -921,7 +921,7 @@ namespace SP.Player
                 else if (nearVehicle != null) EnterVehicle(nearVehicle);
             }
 
-            SetInstructionText(nearVehicle != null ? "[E] Subir al vehiculo (se suben los aliados cercanos)"
+            SetInstructionText(nearVehicle != null ? "[E] Subir al vehiculo  ·  [U] sube a un aliado"
                 : nearPickup != null ? $"[E] Equipar {nearPickup.Kind}"
                 : BuildFpsInstruction(result));
         }

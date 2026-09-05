@@ -33,6 +33,13 @@ namespace SP.Presentation
                 reparadas += SP.UI.SpriteBlanco.RepararTodo(raiz);
             if (reparadas > 0) GameLog.Line($"Se repararon {reparadas} barras de la interfaz (Filled sin sprite)");
 
+            // Los soldados estaban a cinco alturas distintas respecto del
+            // piso -- dos enemigos flotando 1,60 m, otros dos a 0,80, y la
+            // escuadra hundida 20 cm. Ver SP.Core.ApoyoEnElPiso: se apoya
+            // cada uno con su propio collider, una vez, al arrancar.
+            int apoyados = SP.Core.ApoyoEnElPiso.ApoyarATodos();
+            if (apoyados > 0) GameLog.Line($"Se apoyaron {apoyados} soldados que estaban flotando o hundidos");
+
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null)

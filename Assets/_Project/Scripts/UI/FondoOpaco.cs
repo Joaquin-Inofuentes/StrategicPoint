@@ -30,6 +30,27 @@ namespace SP.UI
         public const float MargenX = 18f;
         public const float MargenY = 10f;
 
+        // Poner un fondo oscuro detras de un texto que ya era oscuro lo
+        // deja PEOR que antes. Paso exactamente eso: la barra de
+        // instrucciones tenia el texto en (0,08 0,10 0,12) porque vivia
+        // sobre un fondo BLANCO al 80%; al cambiarle el fondo por este
+        // casi negro (0,06 0,07 0,09) el contraste quedo en practicamente
+        // 1 a 1 y el cartel se volvio ilegible. El fondo y el color del
+        // texto son una sola decision, asi que se toman en el mismo lugar.
+        public static readonly Color ColorDeTexto = new Color(0.94f, 0.96f, 0.98f);
+
+        // Luminancia relativa, para decidir si el texto se ve o no.
+        static float Luz(Color c) => 0.2126f * c.r + 0.7152f * c.g + 0.0722f * c.b;
+
+        public static void AsegurarContraste(Text texto)
+        {
+            if (texto == null) return;
+            // Solo se toca si de verdad no se lee: un texto que ya venia
+            // claro, o de color a proposito (un aviso rojo), se respeta.
+            if (Mathf.Abs(Luz(texto.color) - Luz(Color)) < 0.35f)
+                texto.color = ColorDeTexto;
+        }
+
         const string NombreDelFondo = "FondoOpaco";
 
         // Le cuelga un fondo al texto y lo deja DETRAS. Devuelve el fondo,
@@ -37,6 +58,13 @@ namespace SP.UI
         public static Image Poner(Text texto)
         {
             if (texto == null) return null;
+
+            // ANTES de la salida temprana: si el fondo ya estaba puesto
+            // pero el texto sigue siendo ilegible, arreglarlo es
+            // justamente lo que hace falta. Con el contraste despues del
+            // return, una segunda llamada (OnEnable corre mas de una vez)
+            // se saltaba el arreglo y el cartel quedaba negro sobre negro.
+            AsegurarContraste(texto);
 
             var rtTexto = texto.rectTransform;
             var previo = texto.transform.Find(NombreDelFondo);
