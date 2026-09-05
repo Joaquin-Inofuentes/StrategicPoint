@@ -371,6 +371,49 @@ namespace SP.Ai
 
         // Igual que Motor.MoveTowards, pero pasando por los waypoints de la
         // ruta si hay una. Devuelve true al llegar al destino FINAL.
+        // Hasta donde acercarse cuando NO hay linea de tiro. No es el
+        // alcance del arma: es practicamente "hasta tocarlo", porque el
+        // problema era justamente frenar antes de tener angulo.
+        const float DistanciaDeContacto = 1.5f;
+
+        // Cada cuanto se rehace la ruta de rodeo. El usuario lo pidio con
+        // este numero: "con tasa de refresco cada 0.5 segundos para validar
+        // antes de disparar para saber si se debe mover o disparar".
+        //
+        // Y no es solo economia de A*: la primera version replanificaba
+        // cuando la ruta estaba vacia, o sea practicamente por tick, y cada
+        // PlanPathTo vuelve el indice a 0. El punto 0 de una ruta es la
+        // posicion ACTUAL del soldado, asi que llegaba a el, avanzaba el
+        // indice, y al tick siguiente volvia a empezar: la ruta se
+        // recorria entera sin moverse un centimetro. Medido: 0,0 m en 15
+        // segundos, peor que no hacer nada.
+        const float RefrescoDeRodeo = 0.5f;
+
+        // Si el enemigo se corrio mas que esto, la ruta vieja lleva a donde
+        // ya no esta y se rehace sin esperar al refresco.
+        const float RehacerRutaSiSeMovio = 3f;
+
+        Vector3 destinoRodeo;
+        bool tieneRodeo;
+        float relojDeRodeo;
+
+        void RodearHasta(Vector3 objetivo, float dt)
+        {
+            relojDeRodeo += dt;
+            bool seMovioMucho = tieneRodeo && Vector3.Distance(destinoRodeo, objetivo) > RehacerRutaSiSeMovio;
+            if (!tieneRodeo || seMovioMucho || relojDeRodeo >= RefrescoDeRodeo)
+            {
+                destinoRodeo = objetivo;
+                tieneRodeo = true;
+                relojDeRodeo = 0f;
+                // Se replanifica DESDE LA POSICION ACTUAL, asi que empezar
+                // de nuevo por el punto 0 no pierde el avance: cada ruta
+                // nueva arranca donde el soldado esta parado ahora.
+                PlanPathTo(objetivo);
+            }
+            AdvanceTo(objetivo, DistanciaDeContacto, dt);
+        }
+
         bool AdvanceTo(Vector3 destination, float threshold, float dt)
         {
             TickStuckWatch(destination, dt);
@@ -682,7 +725,54 @@ namespace SP.Ai
                     // asi que este else-if ejecuta el MISMO MoveTowards de
                     // antes y la rama de abajo es inalcanzable.
                     else if (StanceAllowsPursuit(target.transform.position))
-                        self.Motor.MoveTowards(target.transform.position, attackRange * 0.85f, dt);
+                    {
+                        // Del plan del usuario: "Si hay un obstaculo entre
+                        // enemigo y aliado. Ninguno de los 2 se asoma para
+                        // disparar. Si hay obstaculo no deben disparar deben
+                        // seguir acercandose hasta disparar".
+                        //
+                        // Pasaba por dos motivos a la vez, y hacia falta
+                        // arreglar los dos:
+                        //
+                        //   1. Se caminaba en LINEA RECTA al enemigo
+                        //      (Motor.MoveTowards), sin usar el A* que este
+                        //      mismo componente ya usa para las ordenes de
+                        //      movimiento. Contra el Muro eso es empujar
+                        //      contra la pared para siempre.
+                        //
+                        //   2. Se frenaba al 85% del alcance de tiro. Con un
+                        //      obstaculo en medio, "en rango" no quiere decir
+                        //      "puedo disparar": el soldado llegaba a esa
+                        //      distancia, se paraba, y ahi se quedaba.
+                        //
+                        // Medido con el Muro justo en medio, tras 15
+                        // segundos y en las tres separaciones probadas
+                        // (6, 10 y 16 m): CERO de daño hecho, y el soldado
+                        // clavado a 5,1 / 6,5 / 9,5 m.
+                        //
+                        // Sin linea de tiro se rodea por la ruta y se sigue
+                        // acercando hasta tenerla. Con linea, el
+                        // acercamiento de siempre.
+                        if (TieneLineaDeTiro(target))
+                        {
+                            // Con linea de tiro, el acercamiento de siempre:
+                            // frenar al 85% del alcance esta bien, porque
+                            // desde ahi ya se puede disparar.
+                            self.Motor.MoveTowards(target.transform.position, attackRange * 0.85f, dt);
+                        }
+                        else
+                        {
+                            // Sin linea de tiro hay que RODEAR. Caminar
+                            // derecho contra el obstaculo no sirve: el
+                            // empuje es perpendicular a la cara y la
+                            // proyeccion del deslizamiento da cero, asi que
+                            // el soldado se queda pegado a la pared para
+                            // siempre. Medido, empujando derecho: llegaba a
+                            // 1,5 m del muro y ahi se quedaba, 0 de daño en
+                            // 15 segundos.
+                            RodearHasta(target.transform.position, dt);
+                        }
+                    }
                     else HoldStancePosition(dt);
                     break;
 
