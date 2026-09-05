@@ -2698,6 +2698,52 @@ namespace SP.EditorTools
             doc.Brain.CancelOrder();
 
             TestLog.Phase("FASE 9 FINALIZADA (15/23)");
+
+            // --- #16 / C1: bajo cada unidad: vida, tipo y ocupantes ---
+            TestLog.Phase("FASE 9 - Tarea #16: bajo cada unidad: vida, tipo y ocupantes");
+            foreach (var occupant in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(occupant);
+            vehicle.Mount(kes);
+            vehicle.Mount(doc);
+
+            var etiquetaVehiculo = UnitLabelView.Construir(vehicle.transform);
+            WorldUiDirector.Register(etiquetaVehiculo);
+            var etiquetaVega = UnitLabelView.Construir(vega.transform);
+            WorldUiDirector.Register(etiquetaVega);
+
+            var directorC1 = UnityEngine.Object.FindAnyObjectByType<WorldUiDirector>();
+            var campoProximaEvaluacionC1 = GetRequiredField(typeof(WorldUiDirector), "nextEvaluateAt",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var camaraPrincipalC1 = Camera.main;
+            bool orthoOriginalC1 = camaraPrincipalC1 != null && camaraPrincipalC1.orthographic;
+
+            // FPS primero: las etiquetas tienen que quedar apagadas.
+            if (camaraPrincipalC1 != null) camaraPrincipalC1.orthographic = false;
+            campoProximaEvaluacionC1.SetValue(directorC1, 0f);
+            directorC1.Tick();
+            Check($"En FPS (camara no ortografica), la etiqueta se apaga (visible={etiquetaVehiculo.IsVisible})",
+                !etiquetaVehiculo.IsVisible);
+
+            // RTS: aparecen, con la vida/tipo/ocupacion correctos.
+            if (camaraPrincipalC1 != null) camaraPrincipalC1.orthographic = true;
+            campoProximaEvaluacionC1.SetValue(directorC1, 0f);
+            directorC1.Tick();
+            Check($"En RTS, con 2 montados de 4, la etiqueta del vehiculo dice 2/4 (\"{etiquetaVehiculo.CurrentText}\")",
+                etiquetaVehiculo.IsVisible && etiquetaVehiculo.CurrentText == $"Vehiculo  2/{vehicle.Capacity}");
+            Check($"Y la del aliado muestra su tipo y su vida (\"{etiquetaVega.CurrentText}\")",
+                etiquetaVega.IsVisible && etiquetaVega.CurrentText == $"Aliado  {vega.Health.Current}/{vega.Health.MaxHealth}");
+
+            vehicle.Dismount(doc);
+            campoProximaEvaluacionC1.SetValue(directorC1, 0f);
+            directorC1.Tick();
+            Check($"Al bajar uno, pasa a 1/4 (\"{etiquetaVehiculo.CurrentText}\")",
+                etiquetaVehiculo.CurrentText == $"Vehiculo  1/{vehicle.Capacity}");
+
+            if (camaraPrincipalC1 != null) camaraPrincipalC1.orthographic = orthoOriginalC1;
+            vehicle.Dismount(kes);
+            UnityEngine.Object.DestroyImmediate(etiquetaVehiculo.transform.parent.gameObject);
+            UnityEngine.Object.DestroyImmediate(etiquetaVega.transform.parent.gameObject);
+
+            TestLog.Phase("FASE 9 FINALIZADA (16/23)");
         }
 
         // ---------------------------------------------------------------

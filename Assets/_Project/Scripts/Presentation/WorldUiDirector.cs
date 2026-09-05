@@ -38,6 +38,7 @@ namespace SP.Presentation
         static readonly List<HealthBarView> healthBars = new List<HealthBarView>();
         static readonly List<MinimapIcon> minimapIcons = new List<MinimapIcon>();
         static readonly List<PossessedMarkerView> possessedMarkers = new List<PossessedMarkerView>();
+        static readonly List<UnitLabelView> unitLabels = new List<UnitLabelView>();
 
         public static void Register(HealthBarView v) { if (v != null && !healthBars.Contains(v)) healthBars.Add(v); }
         public static void Unregister(HealthBarView v) => healthBars.Remove(v);
@@ -48,12 +49,15 @@ namespace SP.Presentation
         public static void Register(PossessedMarkerView v) { if (v != null && !possessedMarkers.Contains(v)) possessedMarkers.Add(v); }
         public static void Unregister(PossessedMarkerView v) => possessedMarkers.Remove(v);
 
+        public static void Register(UnitLabelView v) { if (v != null && !unitLabels.Contains(v)) unitLabels.Add(v); }
+        public static void Unregister(UnitLabelView v) => unitLabels.Remove(v);
+
         // ------------------------------------------------------------
         // Contadores de verificacion
         // ------------------------------------------------------------
         // Cuantos elementos de UI de mundo estan dados de alta ahora
         // mismo. Es el universo que recorre el unico LateUpdate.
-        public static int RegisteredCount => healthBars.Count + minimapIcons.Count + possessedMarkers.Count;
+        public static int RegisteredCount => healthBars.Count + minimapIcons.Count + possessedMarkers.Count + unitLabels.Count;
 
         // Cuantos de esos quedaron efectivamente dibujados en el ultimo
         // pase. Alejar la camara tiene que hacerlo bajar.
@@ -213,6 +217,19 @@ namespace SP.Presentation
                 if (icon.IsRendered) visible++;
             }
 
+            // C1: etiquetas al pie, solo en RTS. cam.orthographic es la
+            // MISMA marca que CameraRig.SetMode ya escribe para distinguir
+            // el modo (ver el comentario en UnitLabelView) -- no hace
+            // falta otra fuente de verdad ni consultar al driver de input.
+            bool enRts = hasCam && cam.orthographic;
+            for (int i = unitLabels.Count - 1; i >= 0; i--)
+            {
+                var label = unitLabels[i];
+                if (label == null) { unitLabels.RemoveAt(i); continue; }
+                if (hasCam) label.ApplyBillboard(camRot);
+                if (label.Tick(enRts)) visible++;
+            }
+
             VisibleCount = visible;
             CulledCount = culled;
         }
@@ -298,6 +315,8 @@ namespace SP.Presentation
                 Register(v);
             foreach (var v in UnityEngine.Object.FindObjectsByType<PossessedMarkerView>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 Register(v);
+            foreach (var v in UnityEngine.Object.FindObjectsByType<UnitLabelView>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                Register(v);
         }
 
         public static void Clear()
@@ -305,6 +324,7 @@ namespace SP.Presentation
             healthBars.Clear();
             minimapIcons.Clear();
             possessedMarkers.Clear();
+            unitLabels.Clear();
             VisibleCount = 0;
             CulledCount = 0;
             populated = false;

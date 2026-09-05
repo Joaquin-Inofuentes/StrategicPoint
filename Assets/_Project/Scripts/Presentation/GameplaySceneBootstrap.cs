@@ -64,6 +64,11 @@ namespace SP.Presentation
             var minimapFollow = FindAnyObjectByType<SP.UI.MinimapFollow>();
             if (minimapFollow != null) minimapFollow.AplicarTamanoGuardado();
 
+            // C1: etiqueta al pie de cada unidad (vida, tipo, ocupantes),
+            // solo visible en RTS. Ninguna escena la trae puesta a mano.
+            int etiquetas = UnitLabelView.RegistrarTodas();
+            if (etiquetas > 0) GameLog.Line($"Se armaron {etiquetas} etiquetas de unidad");
+
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null)
