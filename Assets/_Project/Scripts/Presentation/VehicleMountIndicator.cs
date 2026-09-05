@@ -12,9 +12,17 @@ namespace SP.Presentation
     public class VehicleMountIndicator : MonoBehaviour
     {
         static readonly Color ArrowColor = new Color(0.25f, 0.55f, 0.95f);
+        // C3: "muestra si se puede o no". El mismo azul de siempre no
+        // decia nada sobre si el vehiculo tenia lugar -- la unica señal
+        // era el rechazo DESPUES de apretar la tecla.
+        static readonly Color ColorPuede = new Color(0.35f, 0.85f, 0.4f);
+        static readonly Color ColorNoPuede = new Color(0.9f, 0.25f, 0.2f);
 
         GameObject arrowRoot;
         readonly List<LineRenderer> lines = new List<LineRenderer>();
+        Renderer shaftRenderer;
+        Renderer headRenderer;
+        bool? ultimoPuede;
 
         public static VehicleMountIndicator Create()
         {
@@ -36,6 +44,7 @@ namespace SP.Presentation
             shaft.transform.localPosition = new Vector3(0f, 0.9f, 0f);
             shaft.transform.localScale = new Vector3(0.12f, 0.5f, 0.12f);
             ApplyColor(shaft, ArrowColor);
+            shaftRenderer = shaft.GetComponent<Renderer>();
 
             var head = new GameObject("Head");
             head.transform.SetParent(arrowRoot.transform, false);
@@ -44,6 +53,27 @@ namespace SP.Presentation
             mf.sharedMesh = BuildConeMesh(0.3f, 0.55f, 14);
             var mr = head.AddComponent<MeshRenderer>();
             mr.sharedMaterial = SafeMaterial.Create(ArrowColor);
+            headRenderer = mr;
+        }
+
+        // C3: el material de cada pieza es propio (SafeMaterial.Create no
+        // comparte instancia con nada), asi que pintarlo directo no
+        // afecta a otro objeto -- no hace falta MaterialPropertyBlock
+        // aca, a diferencia de SelectionRingFx o los soldados en equipo.
+        // Se llama en cada Show() (una vez por frame mientras se apunta,
+        // no vale la pena cachear el ultimo valor para esto).
+        void AplicarColorSegunDisponibilidad(bool puedeMontar)
+        {
+            ultimoPuede = puedeMontar;
+            var color = puedeMontar ? ColorPuede : ColorNoPuede;
+            if (shaftRenderer != null) shaftRenderer.sharedMaterial.color = color;
+            if (headRenderer != null) headRenderer.sharedMaterial.color = color;
+            foreach (var lr in lines)
+            {
+                lr.startColor = color;
+                lr.endColor = color;
+                if (lr.sharedMaterial != null) lr.sharedMaterial.color = color;
+            }
         }
 
         static void DestroyCollider(GameObject go)
@@ -91,7 +121,12 @@ namespace SP.Presentation
             return mesh;
         }
 
-        public void Show(Vehicle vehicle, IEnumerable<Soldier> incomingAllies)
+        // puedeMontar en true/verde cuando el vehiculo tiene lugar, en
+        // rojo cuando esta lleno o destruido -- C3: "muestra si se puede
+        // o no" ANTES de intentar la orden, no solo el rechazo despues.
+        public bool? UltimoPuedeMontar => ultimoPuede;
+
+        public void Show(Vehicle vehicle, IEnumerable<Soldier> incomingAllies, bool puedeMontar)
         {
             EnsureArrow();
             arrowRoot.SetActive(true);
@@ -107,6 +142,8 @@ namespace SP.Presentation
                 i++;
             }
             for (int j = i; j < lines.Count; j++) lines[j].gameObject.SetActive(false);
+
+            AplicarColorSegunDisponibilidad(puedeMontar);
         }
 
         public void Hide()

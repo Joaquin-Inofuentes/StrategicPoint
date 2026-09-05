@@ -2772,6 +2772,59 @@ namespace SP.EditorTools
                 circulosDeUnidad == todosLosIconosC2.Length - obstaculosRegistradosC2);
 
             TestLog.Phase("FASE 9 FINALIZADA (17/23)");
+
+            // --- #18 / C3: marca de montable y orden de ir a montar ---
+            TestLog.Phase("FASE 9 - Tarea #18: marca de montable y orden de ir a montar");
+            foreach (var s in new[] { vega, kes, doc })
+            {
+                s.gameObject.SetActive(true);
+                s.Health.Initialize(s.Id, s.Health.MaxHealth);
+                s.Brain.CancelOrder();
+                s.Brain.IsPossessedByPlayer = false;
+            }
+            foreach (var occupant in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(occupant);
+
+            var rellenoC3 = new List<Soldier>();
+            for (int i = 0; i < vehicle.Capacity; i++)
+            {
+                var s = SpawnSoldier(soldierPrefab, $"RellenoC3_{i}", TeamId.Player, RoleType.Assault,
+                    vehicle.transform.position, new Color(0.25f, 0.55f, 0.98f), pool, 100);
+                vehicle.Mount(s);
+                rellenoC3.Add(s);
+            }
+            Check($"El vehiculo queda lleno ({vehicle.OccupantCount}/{vehicle.Capacity})", !vehicle.HasAnyRoom);
+
+            inputDriver.Selection.SelectSingle(vega);
+            var metodoIndicadorRts = GetRequiredMethod(typeof(PlayerInputDriver), "UpdateVehicleMountIndicatorRts",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var campoMountIndicator = GetRequiredField(typeof(PlayerInputDriver), "mountIndicator",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            metodoIndicadorRts.Invoke(inputDriver, new object[] { new AimResult { Type = AimTargetType.Vehicle, Vehicle = vehicle, Point = vehicle.transform.position } });
+            var indicadorC3 = (VehicleMountIndicator)campoMountIndicator.GetValue(inputDriver);
+            Check($"Con el vehiculo lleno, la marca dice IMPOSIBLE (puede={indicadorC3.UltimoPuedeMontar})",
+                indicadorC3.UltimoPuedeMontar == false);
+
+            vehicle.Dismount(rellenoC3[0]);
+            metodoIndicadorRts.Invoke(inputDriver, new object[] { new AimResult { Type = AimTargetType.Vehicle, Vehicle = vehicle, Point = vehicle.transform.position } });
+            Check($"Con lugar libre, la marca dice que SI se puede (puede={indicadorC3.UltimoPuedeMontar})",
+                indicadorC3.UltimoPuedeMontar == true);
+
+            foreach (var occupant in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(occupant);
+            foreach (var s in rellenoC3) if (s != null) UnityEngine.Object.DestroyImmediate(s.gameObject);
+
+            vehicle.transform.position = new Vector3(60f, 0.6f, 60f);
+            doc.transform.position = vehicle.transform.position + new Vector3(-8f, 0f, 0f);
+            SP.Core.ApoyoEnElPiso.Apoyar(doc.transform);
+            OrderService.IssueMountOrder(doc, vehicle);
+            bool subioC3 = SimulateUntil(() => vehicle.Occupants.Count > 0, 12f);
+            Check($"Con lugar, el soldado camina y sube (RoleOf={vehicle.RoleOf(doc)})",
+                subioC3 && vehicle.RoleOf(doc) != null);
+
+            vehicle.Dismount(doc);
+            inputDriver.Selection.Clear();
+
+            TestLog.Phase("FASE 9 FINALIZADA (18/23)");
         }
 
         // ---------------------------------------------------------------

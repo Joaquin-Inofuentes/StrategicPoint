@@ -1333,7 +1333,29 @@ namespace SP.Player
                         incoming.Add(s);
                 }
             }
-            mountIndicator.Show(result.Vehicle, incoming);
+            mountIndicator.Show(result.Vehicle, incoming, !result.Vehicle.IsDestroyed && result.Vehicle.HasAnyRoom);
+        }
+
+        // C3: "con una unidad seleccionada, apuntar a algo montable
+        // muestra si se puede o no" -- version RTS del mismo indicador,
+        // con la seleccion actual en vez de la heuristica de cercania de
+        // la version FPS (ahi no existe "seleccion").
+        void UpdateVehicleMountIndicatorRts(AimResult result)
+        {
+            if (result.Type != AimTargetType.Vehicle || Selection.Selected.Count == 0)
+            {
+                if (mountIndicator != null) mountIndicator.Hide();
+                return;
+            }
+
+            if (mountIndicator == null) mountIndicator = VehicleMountIndicator.Create();
+
+            var incoming = new List<Soldier>();
+            foreach (var s in Selection.Selected)
+                if (s != null && s.Health.IsAlive && s.gameObject.activeInHierarchy && result.Vehicle.RoleOf(s) == null)
+                    incoming.Add(s);
+
+            mountIndicator.Show(result.Vehicle, incoming, !result.Vehicle.IsDestroyed && result.Vehicle.HasAnyRoom);
         }
 
         void PossessSquadIndex(int index)
@@ -2182,10 +2204,13 @@ namespace SP.Player
 
             var screenRay = Rig.Cam.ScreenPointToRay(mouse.position.ReadValue());
 
-            // B4 en RTS: mismo raycast que ya se calculaba para resolver
-            // el click, reusado para el anillo bajo el cursor sin pagar
-            // un segundo Physics.Raycast por frame.
-            UpdateAimRing(Aim.Evaluate(screenRay, null));
+            // B4 y C3 en RTS: mismo raycast que ya se calculaba para
+            // resolver el click, reusado para el anillo bajo el cursor y
+            // la marca de montable sin pagar un segundo Physics.Raycast
+            // por frame.
+            var resultRts = Aim.Evaluate(screenRay, null);
+            UpdateAimRing(resultRts);
+            UpdateVehicleMountIndicatorRts(resultRts);
 
             // Click derecho SOSTENIDO y arrastrado panea la camara (al
             // doble de velocidad del paneo por teclado); SIN arrastre
