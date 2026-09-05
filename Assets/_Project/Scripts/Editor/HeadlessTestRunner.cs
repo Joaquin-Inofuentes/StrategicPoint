@@ -2914,6 +2914,44 @@ namespace SP.EditorTools
             vega.Brain.CancelOrder();
 
             TestLog.Phase("FASE 9 FINALIZADA (20/23)");
+
+            // --- #21 / G4: musica de lucha y de estrategia, que cambia sola ---
+            TestLog.Phase("FASE 9 - Tarea #21: musica de lucha y de estrategia");
+
+            var camTransform = Camera.main.transform;
+            var posOriginalCamara = camTransform.position;
+            var rotOriginalCamara = camTransform.rotation;
+            // Aislada: bien lejos de cualquier soldado que haya quedado de
+            // una fase anterior, para que "sin combate cerca" no dependa
+            // de que nadie mas haya quedado atacando por ahi.
+            camTransform.position = new Vector3(500f, 20f, 500f);
+            camTransform.rotation = Quaternion.identity;
+
+            SimulateSeconds(2f);
+            Check($"Sin combate cerca, la musica de lucha queda en 0 ({MusicDirector.GananciaLucha:0.00})",
+                MusicDirector.GananciaLucha < 0.01f);
+
+            var testigoLucha = SpawnSoldier(soldierPrefab, "TestigoDeLuchaG4", TeamId.Enemy, RoleType.Enemy,
+                camTransform.position + camTransform.forward * 10f, enemyColor, pool, 100);
+            var metodoSetState = GetRequiredMethod(typeof(AiBrain), "SetState",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            metodoSetState.Invoke(testigoLucha.Brain, new object[] { AiState.Attack });
+            testigoLucha.Brain.IsPossessedByPlayer = true; // congela el estado forzado: Tick() nunca corre y no lo pisa
+
+            bool subioRapido = SimulateUntil(() => MusicDirector.GananciaLucha > 0.8f, 2f);
+            Check($"Con un enemigo atacando a 10 m, la musica de lucha sube por encima de 0,8 en menos de 2 s ({MusicDirector.GananciaLucha:0.00})",
+                subioRapido);
+
+            testigoLucha.Health.TakeDamage(9999, -1);
+            bool bajoDeNuevo = SimulateUntil(() => MusicDirector.GananciaLucha < 0.05f, 3f);
+            Check($"Al morir el enemigo, la musica de lucha vuelve a bajar ({MusicDirector.GananciaLucha:0.00})",
+                bajoDeNuevo);
+
+            UnityEngine.Object.DestroyImmediate(testigoLucha.gameObject);
+            camTransform.position = posOriginalCamara;
+            camTransform.rotation = rotOriginalCamara;
+
+            TestLog.Phase("FASE 9 FINALIZADA (21/23)");
         }
 
         // ---------------------------------------------------------------

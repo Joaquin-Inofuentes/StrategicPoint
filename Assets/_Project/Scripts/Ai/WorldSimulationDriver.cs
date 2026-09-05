@@ -103,6 +103,9 @@ namespace SP.Ai
             // G1: cuenta regresiva de los barriles encendidos hasta que
             // estallan solos. Mismo camino de simulacion por el mismo motivo.
             SP.Presentation.ObstacleMarker.Tick(dt);
+            // G4: cruce entre musica de estrategia y de lucha segun si hay
+            // combate cerca de la camara. Mismo camino de simulacion.
+            SP.Presentation.MusicDirector.Tick(dt);
 
             profileWatch.Restart();
             var vehicleBrains = WorldSystemsRegistry.VehicleBrains;
