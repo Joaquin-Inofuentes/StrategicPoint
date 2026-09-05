@@ -768,19 +768,27 @@ namespace SP.EditorTools
             // Grafo de navegacion + vista previa de ruta (items 218/226/227).
             // Los obstaculos ya estan en el registro, asi que el predicado de
             // bloqueo no necesita ningun barrido de escena.
-            var navGraph = new SP.Core.WaypointGraph();
-            navGraph.Build(new Vector3(-90f, 0f, -90f), new Vector3(90f, 0f, 90f), 4f, worldPoint =>
-            {
-                var obstaculos = SP.Core.WorldSystemsRegistry.Obstacles;
-                for (int i = 0; i < obstaculos.Count; i++)
-                {
-                    var o = obstaculos[i];
-                    if (o == null) continue;
-                    if (Vector3.Distance(new Vector3(o.transform.position.x, 0f, o.transform.position.z),
-                                         new Vector3(worldPoint.x, 0f, worldPoint.z)) <= 2.5f) return true;
-                }
-                return false;
-            });
+            // EL GRAFO DEL JUEGO, no uno propio. Antes esto armaba un
+            // WaypointGraph a mano con: limites de -90 a 90 (el cuadrado
+            // que ya se corrigio en el resto del proyecto por no parecerse
+            // al terreno), espaciado 4 (el juego usa 2) y un predicado de
+            // bloqueo que solo conocia los ObstacleMarker por distancia.
+            //
+            // O sea que la suite validaba la vista previa de ruta contra un
+            // grafo con otra resolucion, otros limites y otra idea de que
+            // es un obstaculo que el que de verdad usan los soldados. El
+            // test podia pasar con el sistema real roto, que es la peor
+            // clase de test: da confianza sin cubrir nada.
+            //
+            // NO se construye la grilla aca: en este punto la escena esta a
+            // medio armar y medirla daria un mundo del tamaño de lo que ya
+            // exista (medido: devolvia el area del vehiculo, 2,2 x 3,6 m,
+            // en una escena cuyo piso mide 160 x 160). Se invalida y se
+            // deja que se construya sola la primera vez que alguien la
+            // use, con la escena ya completa.
+            SP.Core.ActorRegistry.Invalidate();
+            SP.Core.NavService.Invalidate();
+            var navGraph = SP.Core.NavService.Graph;
             var pathPreview = servicesGO.AddComponent<SP.Ai.PathPreview>();
             pathPreview.Attach(navGraph);
             inputDriverNavGraph = navGraph;
@@ -807,6 +815,11 @@ namespace SP.EditorTools
 
             Directory.CreateDirectory("Assets/_Project/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
+
+            // Ahora si: la escena esta completa, asi que la proxima consulta
+            // mide el mundo entero y no un mundo a medio armar.
+            SP.Core.NavService.Invalidate();
+            SP.Core.ActorRegistry.Invalidate();
 
             TestLog.Step("Entorno de prueba construido: 3 soldados, vehiculo, armas, minimapa, camara y UI listos");
 
