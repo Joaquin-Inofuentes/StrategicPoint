@@ -89,8 +89,7 @@ namespace SP.Player
         // arrastrar corre la camara, un solo click (sin arrastre) sigue
         // siendo la orden de moverse/atacar de siempre -- mismo criterio
         // de umbral en pixeles que ya usa la seleccion por arrastre.
-        bool rightDragging;
-        Vector2 rightDragStart;
+        ArrastreDerecho arrastreDerecho;
         [SerializeField] float rightDragPanMultiplier = 2f;
 
         // Resaltado de a qué le estoy apuntando (aliado o vehículo): se
@@ -1729,26 +1728,27 @@ namespace SP.Player
             // decide con el mismo umbral en pixeles que ya usa la
             // seleccion por arrastre de click izquierdo, para que un
             // click tembloroso no dispare un paneo por error.
-            if (mouse.rightButton.wasPressedThisFrame) 
-            { 
-                if (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
-                {
-                    rightDragStart = mouse.position.ReadValue(); 
-                    rightDragging = false; 
-                }
+            // La decision "orden o paneo" vive en ArrastreDerecho, afuera y
+            // sin Unity adentro, para poder correrle clicks sinteticos y
+            // contar cuantas ordenes se pierden. Reportado: una de cada
+            // quince desaparecia sin ningun aviso.
+            if (mouse.rightButton.wasPressedThisFrame)
+            {
+                bool sobreUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+                arrastreDerecho.AlPresionar(mouse.position.ReadValue(), sobreUi, Time.unscaledTime);
             }
-            if (mouse.rightButton.isPressed && !rightDragging &&
-                Vector2.Distance(mouse.position.ReadValue(), rightDragStart) > dragThresholdPixels)
-                rightDragging = true;
-            if (rightDragging && mouse.rightButton.isPressed)
+            if (mouse.rightButton.isPressed)
+                arrastreDerecho.AlMover(mouse.position.ReadValue(), ArrastreDerecho.UmbralPorDefecto, Time.unscaledTime);
+
+            if (arrastreDerecho.Arrastrando && mouse.rightButton.isPressed)
             {
                 var rightDelta = mouse.delta.ReadValue();
                 Vector3 dragPan = new Vector3(-rightDelta.x, 0f, -rightDelta.y);
                 if (dragPan.sqrMagnitude > 0.0001f)
                     Rig.Pan(dragPan.normalized * (rtsPanSpeed * rightDragPanMultiplier) * Time.deltaTime);
             }
-            bool rightClickOrder = mouse.rightButton.wasReleasedThisFrame && !rightDragging;
-            if (mouse.rightButton.wasReleasedThisFrame) rightDragging = false;
+
+            bool rightClickOrder = mouse.rightButton.wasReleasedThisFrame && arrastreDerecho.AlSoltar();
 
             // [T] o click derecho (sin arrastre): mover a todos los
             // seleccionados ahí -- o al vehículo, si es él quien está

@@ -265,6 +265,18 @@ namespace SP.Ai
             float dist = Vector3.Distance(self.transform.position, victim.transform.position);
             if (dist > alertRadius) return;
 
+            // BUG REAL: el radio se medía contra la VICTIMA y despues se
+            // tomaba de objetivo al ATACANTE, sin acotar a que distancia
+            // estaba ese atacante. O sea que si a un aliado a cinco metros
+            // le disparaba un francotirador desde ochenta, este soldado
+            // abandonaba su patrulla y se iba a cruzar medio mapa a
+            // perseguir a alguien que nunca vio. Con un mapa de 160 metros
+            // de largo y una torreta que alcanza 40, se llega solo.
+            //
+            // Escuchar el tiroteo tiene sentido; convertirlo en un objetivo
+            // a cualquier distancia, no.
+            if (Vector3.Distance(self.transform.position, attacker.transform.position) > alertRadius) return;
+
             target = attacker;
             hasOrder = false;
             SetState(AiState.Chase);

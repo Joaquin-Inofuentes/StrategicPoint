@@ -77,13 +77,46 @@ namespace SP.Core
         }
 
         // Un obstaculo que se derrumba abre un paso que antes no existia.
-        public static void Invalidate() => dirty = true;
+        // Tambien lo llama el cambio de escena (ver Reset).
+        public static void Invalidate()
+        {
+            dirty = true;
+            hayArea = false;
+        }
 
         // Los statics sobreviven entre corridas en Edit mode (la suite no
-        // hace domain reload), asi que la grilla de la escena anterior se
-        // reusaria en la siguiente.
+        // hace domain reload) Y entre CARGAS DE ESCENA en el juego real:
+        // una clase estatica no se entera de que cambio el mundo.
+        //
+        // BUG REAL, y de los peores porque es silencioso: una partida
+        // arranca en SC_MainMenu. Ahi alguien consulta el area (la camara
+        // lo hace al acotar su paneo), NavService construye contra los
+        // colliders del MENU -- que no tiene ninguno --, marca dirty en
+        // false y se queda con "no hay area". Al cargar SC_Gameplay nada
+        // vuelve a invalidar, asi que la grilla y los limites del mapa se
+        // quedaban con lo del menu para toda la partida: el rodeo de
+        // obstaculos no se calculaba y los limites de camara, minimapa y
+        // retirada caian al respaldo viejo de +-90. O sea que las
+        // correcciones de limites no llegaban a aplicarse nunca en una
+        // partida de verdad, solo al entrar en Play directo sobre la
+        // escena de gameplay.
+        //
+        // Se engancha a sceneLoaded para que el mundo nuevo siempre se
+        // vuelva a medir.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        public static void Reset() => dirty = true;
+        public static void Reset()
+        {
+            dirty = true;
+            hayArea = false;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= AlCargarEscena;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += AlCargarEscena;
+        }
+
+        static void AlCargarEscena(UnityEngine.SceneManagement.Scene escena,
+                                   UnityEngine.SceneManagement.LoadSceneMode modo)
+        {
+            Invalidate();
+        }
 
         public static void EnsureBuilt()
         {
