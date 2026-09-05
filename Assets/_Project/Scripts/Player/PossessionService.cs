@@ -7,11 +7,20 @@ namespace SP.Player
     // no se destruye ni se congela: su AiBrain se reactiva solo.
     public static class PossessionService
     {
-        public static void Swap(PlayerBrain brain, Soldier target)
+        // Devuelve false si la posesion no se pudo hacer. El evento solo se
+        // publica cuando de verdad cambio el control: antes se publicaba
+        // siempre, asi que un intento fallido igual movia toda la UI que
+        // escucha PossessionChangedEvent (marcador de poseido, HUD, camara)
+        // hacia un soldado que nadie estaba controlando.
+        public static bool Swap(PlayerBrain brain, Soldier target)
         {
+            if (brain == null || target == null) return false;
+
             int fromId = brain.Current != null ? brain.Current.Id : -1;
-            brain.Possess(target);
+            if (!brain.Possess(target)) return false;
+
             EventBus.Instance.Publish(new PossessionChangedEvent(fromId, target.Id));
+            return true;
         }
     }
 }
