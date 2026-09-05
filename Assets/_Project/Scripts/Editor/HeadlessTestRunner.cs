@@ -2401,7 +2401,29 @@ namespace SP.EditorTools
             Check($"Y el tamaño elegido se recuerda: 'recargar la escena' lo vuelve a aplicar ({tamanoElegido})",
                 borderRect.sizeDelta == tamanoElegido);
 
-            TestLog.Phase("FASE 9 FINALIZADA (3/23)");
+            // --- #4 / B1: un circulo radial reutilizable ---
+            TestLog.Phase("FASE 9 - Tarea #4: un circulo radial reutilizable");
+            var canvasGO = GameObject.Find("Canvas");
+            var circulo = SP.UI.CirculoDeProgreso.Construir(canvasGO.transform, 64f, Color.black, Color.cyan);
+            Check("El relleno es Filled/Radial360 y ya tiene sprite (sin eso fillAmount no dibuja nada, bug 30)",
+                circulo.Relleno.type == Image.Type.Filled
+                && circulo.Relleno.fillMethod == Image.FillMethod.Radial360
+                && circulo.Relleno.sprite != null
+                && circulo.Fondo.sprite != null);
+
+            float[] valoresDePrueba = { 0f, 0.33f, 0.5f, 1f };
+            bool todosExactos = true;
+            foreach (var v in valoresDePrueba)
+            {
+                circulo.SetProgreso(v);
+                if (!Mathf.Approximately(circulo.Relleno.fillAmount, v)) todosExactos = false;
+            }
+            Check($"Los 4 valores de prueba (0 / 0,33 / 0,5 / 1) dan el fillAmount exacto",
+                todosExactos);
+
+            UnityEngine.Object.DestroyImmediate(circulo.gameObject);
+
+            TestLog.Phase("FASE 9 FINALIZADA (4/23)");
         }
 
         // ---------------------------------------------------------------
