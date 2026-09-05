@@ -45,6 +45,7 @@ namespace SP.Vehicles
 
             Avanzar(CurrentSpeed * dt);
             KnockNearbyProps();
+            AtropellarSoldados();
         }
 
         public void Brake(float dt)
@@ -52,6 +53,7 @@ namespace SP.Vehicles
             CurrentSpeed = Mathf.MoveTowards(CurrentSpeed, 0f, brakeDeceleration * dt);
             Avanzar(CurrentSpeed * dt);
             KnockNearbyProps();
+            AtropellarSoldados();
         }
 
         Collider cuerpo;
@@ -86,6 +88,17 @@ namespace SP.Vehicles
         // que reforzaba la sensacion de que flota en vez de pesar. Solo
         // cuenta si va con algo de velocidad: estar apoyado contra un
         // bidon quieto no deberia voltearlo.
+        // Los soldados en el camino. Va pegado a KnockNearbyProps porque
+        // es el mismo barrido conceptual: lo que el vehiculo se lleva
+        // puesto cuando pasa. Ver SP.Vehicles.Atropello.
+        Vehicle datos;
+
+        void AtropellarSoldados()
+        {
+            if (datos == null) datos = GetComponent<Vehicle>();
+            Atropello.Barrer(transform, cuerpo, CurrentSpeed, datos);
+        }
+
         void KnockNearbyProps()
         {
             if (Mathf.Abs(CurrentSpeed) < 1f) return;

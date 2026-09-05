@@ -2005,6 +2005,68 @@ namespace SP.EditorTools
             SP.Player.TrazadoDeCamino.Limpiar();
             kes.Brain.CancelOrder();
 
+            // --- G3: atropellar con el vehiculo en movimiento ---
+            // Lejos de todo y con conductor propio adentro, asi el filtro
+            // de bando tiene a quien respetar.
+            foreach (var o in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(o);
+            vehicle.transform.position = new Vector3(50f, vehicle.transform.position.y, 50f);
+            vehicle.transform.rotation = Quaternion.identity;   // mira a +Z
+            vega.Brain.CancelOrder();
+            vehicle.Mount(vega, VehicleSeatRole.Driver);
+            var motorAtropello = vehicle.GetComponent<VehicleMotor>();
+
+            // Frenar hasta cero ANTES de poner a nadie delante: el
+            // vehiculo llega a esta fase con la velocidad que le dejaron
+            // las anteriores (11 m/s), y Drive(0) solo le saca 4 m/s por
+            // segundo. El primer intento de este test medio "quieto" a
+            // 7,3 m/s y atropello al enemigo antes de empezar.
+            for (int i = 0; i < 200 && !motorAtropello.IsStopped; i++) motorAtropello.Brake(0.05f);
+            vehicle.transform.position = new Vector3(50f, vehicle.transform.position.y, 50f);
+            vehicle.transform.rotation = Quaternion.identity;
+            Check($"El vehiculo arranca la prueba frenado ({motorAtropello.CurrentSpeed:0.00} m/s)",
+                motorAtropello.IsStopped);
+
+            var victima = SpawnSoldier(soldierPrefab, "Atropellado", TeamId.Enemy, RoleType.Enemy,
+                new Vector3(50f, 0f, 54f), enemyColor, pool, 100);
+            var aliadoEnMedio = SpawnSoldier(soldierPrefab, "AliadoEnMedio", TeamId.Player, RoleType.Assault,
+                new Vector3(50f, 0f, 54f), enemyColor, pool, 100);
+            SP.Core.ApoyoEnElPiso.Apoyar(victima.transform);
+            SP.Core.ApoyoEnElPiso.Apoyar(aliadoEnMedio.transform);
+            victima.Brain.enabled = false;
+            aliadoEnMedio.Brain.enabled = false;
+
+            // Quieto: el motor tiene que estar tocando al enemigo y no
+            // hacerle nada. Se lo pone pegado al casco a proposito.
+            victima.transform.position = vehicle.transform.position + new Vector3(0f, 0f, 1.6f);
+            int vidaQuieto = victima.Health.Current;
+            for (int i = 0; i < 20; i++) motorAtropello.Drive(0f, 0f, 0.05f);
+            Check($"Vehiculo quieto ({motorAtropello.CurrentSpeed:0.00} m/s) pegado al enemigo: 0 de daño ({vidaQuieto} -> {victima.Health.Current})",
+                Mathf.Abs(motorAtropello.CurrentSpeed) < SP.Vehicles.Atropello.VelocidadMinima
+                && victima.Health.Current == vidaQuieto);
+
+            // Andando: se acelera hasta 8 m/s con el enemigo mas adelante.
+            victima.transform.position = new Vector3(50f, victima.transform.position.y, 62f);
+            aliadoEnMedio.transform.position = new Vector3(50f, aliadoEnMedio.transform.position.y, 62.5f);
+            var rotAntes = aliadoEnMedio.transform.rotation;
+            var rotVictimaAntes = victima.transform.rotation;
+            float velocidadAlChocar = 0f;
+            for (int i = 0; i < 200 && victima.Health.IsAlive; i++)
+            {
+                motorAtropello.Drive(1f, 0f, 0.05f);
+                velocidadAlChocar = motorAtropello.CurrentSpeed;
+            }
+            Check($"Vehiculo a {velocidadAlChocar:0.0} m/s: el enemigo muere atropellado ({victima.Health.Current} de vida)",
+                !victima.Health.IsAlive && velocidadAlChocar >= 8f);
+            Check($"Y el cuerpo queda tirado, no de pie (angulo con la vertical: {Quaternion.Angle(rotVictimaAntes, victima.transform.rotation):0} grados)",
+                Quaternion.Angle(rotVictimaAntes, victima.transform.rotation) > 45f);
+            Check($"El aliado que iba en el camino NO fue atropellado por los suyos ({aliadoEnMedio.Health.Current} de vida)",
+                aliadoEnMedio.Health.IsAlive && aliadoEnMedio.Health.Current == aliadoEnMedio.Health.MaxHealth
+                && Quaternion.Angle(rotAntes, aliadoEnMedio.transform.rotation) < 1f);
+
+            vehicle.Dismount(vega);
+            UnityEngine.Object.DestroyImmediate(victima.gameObject);
+            UnityEngine.Object.DestroyImmediate(aliadoEnMedio.gameObject);
+
             TestLog.Phase("FASE 8 FINALIZADA");
         }
 
