@@ -835,6 +835,7 @@ namespace SP.EditorTools
                 RunPhase6(rig, vehicle, pool, vega, kes, doc);
                 RunPhase7(inputDriver, vehicle, vega, kes, doc);
                 RunPhase8(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
+                RunPhase9(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia
@@ -2257,6 +2258,109 @@ namespace SP.EditorTools
             vega.Weapon.EquipWeapon(WeaponKind.Rifle, 20, 0.2f, Color.white);
 
             TestLog.Phase("FASE 8 FINALIZADA");
+        }
+
+        // ---------------------------------------------------------------
+        // FASE 9 · las 23 tareas S/M que quedan del plan (numeradas #1 a
+        // #23 en la hoja de ruta). Se completa una a la vez: cada tarea
+        // suma sus Check() aca mismo, sin abrir una fase nueva por tarea.
+        // ---------------------------------------------------------------
+        static void RunPhase9(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc,
+            GameObject soldierPrefab, Color enemyColor, ProjectilePool pool)
+        {
+            TestLog.Phase("FASE 9 - Tarea #1: obstaculos y enemigos vistos en el minimapa");
+
+            foreach (var s in new[] { vega, kes, doc })
+            {
+                s.gameObject.SetActive(true);
+                s.Health.Initialize(s.Id, s.Health.MaxHealth);
+                s.Brain.CancelOrder();
+                s.Brain.IsPossessedByPlayer = false;
+            }
+
+            // --- #1 / D1: obstaculos y enemigos vistos en el minimapa ---
+            // El minimapa mostraba a la escuadra y a los vehiculos (puestos
+            // a mano en SC_Gameplay) pero MinimapIcon.Spawn nunca se llamaba
+            // para un obstaculo: grep confirma que el unico llamador vivia
+            // en este mismo archivo, para soldados y vehiculos.
+            int obstaculoIconosAntes = 0;
+            foreach (var ic in UnityEngine.Object.FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include))
+                if (ic.Target != null && ic.Target.GetComponent<ObstacleMarker>() != null) obstaculoIconosAntes++;
+            Check($"Antes de la tarea, ningun obstaculo tenia icono en el minimapa ({obstaculoIconosAntes})",
+                obstaculoIconosAntes == 0);
+
+            var obstaculosEnEscena = UnityEngine.Object.FindObjectsByType<ObstacleMarker>(FindObjectsInactive.Include);
+            int creados = MinimapIcon.RegistrarObstaculos(MinimapIcon.ObstacleMinimapColor);
+            Check($"Se crea un icono de minimapa por cada obstaculo ({creados} para {obstaculosEnEscena.Length} en escena)",
+                creados == obstaculosEnEscena.Length && creados == 4);
+
+            bool losCuatroVisibles = true;
+            foreach (var ic in UnityEngine.Object.FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include))
+                if (ic.Target != null && ic.Target.GetComponent<ObstacleMarker>() != null && !ic.IsRendered)
+                    losCuatroVisibles = false;
+            Check("Y los 4 quedan siempre visibles: son terreno, no dependen de la niebla de guerra", losCuatroVisibles);
+
+            // Idempotente por destruir-y-rearmar: llamarlo de nuevo no deja
+            // 8 iconos superpuestos sobre los mismos 4 obstaculos.
+            int segundaVez = MinimapIcon.RegistrarObstaculos(MinimapIcon.ObstacleMinimapColor);
+            int totalTrasRepetir = 0;
+            foreach (var ic in UnityEngine.Object.FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include))
+                if (ic.Target != null && ic.Target.GetComponent<ObstacleMarker>() != null) totalTrasRepetir++;
+            Check($"Registrarlos dos veces no duplica iconos ({totalTrasRepetir} tras llamarlo de nuevo, {segundaVez} creados la segunda vez)",
+                segundaVez == 4 && totalTrasRepetir == 4);
+
+            // La niebla de guerra sobre un enemigo (EnableFogOfWar +
+            // WorldUiDirector.ApplyFog) ya existia en el codigo pero nunca
+            // tuvo un Check(): la tarea pide explicitamente "enemigos que
+            // la escuadra tenga a la vista", que es este mecanismo.
+            // Rebarrer() de entrada: RebuildFogObservers lee
+            // ActorRegistry.All directo, y Soldier.Awake (quien registra)
+            // no corre en Edit mode -- sin esto el barrido de niebla ve
+            // CERO observadores aunque Vega, Kes y Doc esten vivos y
+            // parados ahi (medido: ActorRegistry.All.Count == 0).
+            SP.Core.ActorRegistry.Rebarrer();
+            // nextEvaluateAt se fuerza a 0 por reflexion para no depender
+            // de que pasen 0,25 s reales de Time.time entre las dos
+            // mediciones (lejos/cerca) de esta misma llamada a eval.
+            var director = UnityEngine.Object.FindAnyObjectByType<WorldUiDirector>();
+            var campoProximaEvaluacion = GetRequiredField(typeof(WorldUiDirector), "nextEvaluateAt",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            var enemigoDeNiebla = SpawnSoldier(soldierPrefab, "EnemigoDeNiebla", TeamId.Enemy, RoleType.Enemy,
+                new Vector3(60f, 0.8f, 60f), enemyColor, pool, 100);
+            enemigoDeNiebla.Brain.enabled = false;
+            enemigoDeNiebla.Brain.IsPossessedByPlayer = true;
+            MinimapIcon iconoEnemigoDeNiebla = null;
+            foreach (var ic in UnityEngine.Object.FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include))
+                if (ic.Target == enemigoDeNiebla.transform) iconoEnemigoDeNiebla = ic;
+
+            // OnEnable no corre en Edit mode (mismo motivo por el que
+            // WorldSystemsRegistry.EnsurePopulated existe unas lineas mas
+            // arriba, para obstaculos y vehiculos): sin esto el icono
+            // recien creado nunca se da de alta en la lista estatica que
+            // recorre Tick(), y ApplyFog no se le llama nunca aunque
+            // IsSpotted ya de por si de true. Se registra solo este icono
+            // (no EnsurePopulated entero) para no dejar el flag global
+            // "populated" en true y que una segunda corrida en la misma
+            // sesion de Editor se quede sin registrar sus propios iconos.
+            WorldUiDirector.Register(iconoEnemigoDeNiebla);
+
+            vega.transform.position = enemigoDeNiebla.transform.position + new Vector3(30f, 0f, 0f);
+            campoProximaEvaluacion.SetValue(director, 0f);
+            director.Tick();
+            Check($"Un enemigo a 30 m de la escuadra no se ve en el minimapa (visible={iconoEnemigoDeNiebla.IsRendered})",
+                !iconoEnemigoDeNiebla.IsRendered);
+
+            vega.transform.position = enemigoDeNiebla.transform.position + new Vector3(8f, 0f, 0f);
+            campoProximaEvaluacion.SetValue(director, 0f);
+            director.Tick();
+            Check($"Y acercando un aliado a 8 m, aparece (visible={iconoEnemigoDeNiebla.IsRendered})",
+                iconoEnemigoDeNiebla.IsRendered);
+
+            UnityEngine.Object.DestroyImmediate(enemigoDeNiebla.gameObject);
+            vega.Brain.CancelOrder();
+
+            TestLog.Phase("FASE 9 FINALIZADA (1/23)");
         }
 
         // ---------------------------------------------------------------

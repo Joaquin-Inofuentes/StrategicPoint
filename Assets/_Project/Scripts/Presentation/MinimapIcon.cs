@@ -111,7 +111,13 @@ namespace SP.Presentation
         // todos los iconos a la vez.
         public void ApplyFog(bool spotted)
         {
-            if (!fogEnabled || !Application.isPlaying) return;
+            // Sin el guard de Application.isPlaying: WorldUiDirector no
+            // tiene [ExecuteAlways], asi que su LateUpdate (el unico
+            // camino real hacia este metodo) ya no corre en Edit mode por
+            // si solo. El guard no protegia ningun caso real -- solo le
+            // impedia a la suite headless (D1) verificar la niebla, que
+            // hasta ahora no tenia ningun Check().
+            if (!fogEnabled) return;
             EnsureRenderer();
             if (selfRenderer == null) return;
             selfRenderer.enabled = spotted;
@@ -185,6 +191,42 @@ namespace SP.Presentation
             filtro.sharedMesh = MallaTriangulo();
             esTriangulo = true;
             return true;
+        }
+
+        // Color fijo para los obstaculos del minimapa (D1): no son un
+        // bando -- no atacan, no se poseen -- asi que no comparten paleta
+        // con el azul de la escuadra ni el rojo enemigo. Un gris piedra
+        // que se lee como "terreno", no como unidad.
+        public static readonly Color ObstacleMinimapColor = new Color(0.55f, 0.50f, 0.42f);
+
+        const string ObstaclesRootName = "ObstaculoIconosRoot";
+
+        // Un icono de minimapa por cada ObstacleMarker de la escena (D1).
+        // Los soldados y vehiculos ya traian el suyo puesto a mano en
+        // SC_Gameplay, pero nadie armaba el de los obstaculos: el
+        // minimapa no decia nada del terreno hasta acercarse. Idempotente
+        // por destruir-y-rearmar (mismo patron que
+        // SP.Core.Coberturas.Registrar): llamarlo de nuevo no duplica.
+        public static int RegistrarObstaculos(Color color, float radius = 1.4f)
+        {
+            var previo = GameObject.Find(ObstaclesRootName);
+            if (previo != null)
+            {
+                if (Application.isPlaying) Destroy(previo);
+                else DestroyImmediate(previo);
+            }
+
+            int layer = LayerMask.NameToLayer("Minimap");
+            if (layer < 0) layer = 8; // TagManager trae "Minimap" fijo en el indice 8.
+
+            var root = new GameObject(ObstaclesRootName).transform;
+            var marcas = FindObjectsByType<ObstacleMarker>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var marca in marcas)
+            {
+                var icon = Spawn(marca.transform, color, layer, radius);
+                icon.transform.SetParent(root, true);
+            }
+            return marcas.Length;
         }
 
         public static MinimapIcon Spawn(Transform target, Color color, int layer, float radius = 1.6f)

@@ -53,6 +53,12 @@ namespace SP.Presentation
             int coberturas = SP.Core.Coberturas.Registrar();
             if (coberturas > 0) GameLog.Line($"Se registraron {coberturas} puntos de cobertura");
 
+            // El minimapa mostraba a la escuadra y a los vehiculos (ya
+            // puestos a mano en la escena) pero nunca a los obstaculos: el
+            // mapa no decia nada del terreno hasta acercarse a mirarlo (D1).
+            int obstaculosEnMinimapa = MinimapIcon.RegistrarObstaculos(MinimapIcon.ObstacleMinimapColor);
+            if (obstaculosEnMinimapa > 0) GameLog.Line($"Se agregaron {obstaculosEnMinimapa} obstaculos al minimapa");
+
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null)
