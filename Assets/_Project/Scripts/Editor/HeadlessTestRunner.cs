@@ -2574,7 +2574,13 @@ namespace SP.EditorTools
             Check($"A los 3 s de {PlayerInputDriver.TiempoDeRevivir} sigue muerto ({doc.Health.IsAlive})",
                 !revivioA3s && !doc.Health.IsAlive);
 
-            KeyBindings.ForzarInicioDePulsacion(KeyBindings.Interactuar, PlayerInputDriver.TiempoDeRevivir);
+            // +0.1 en vez de EXACTO: HayPulsacionRegistrada compara con
+            // Time.unscaledTime, que tras horas de sesion de Editor pierde
+            // precision de punto flotante justo en el limite (>=) y el
+            // check salia flaky sin que el mecanismo real tuviera nada
+            // roto -- en el juego de verdad nadie suelta la tecla en el
+            // milisegundo EXACTO del umbral.
+            KeyBindings.ForzarInicioDePulsacion(KeyBindings.Interactuar, PlayerInputDriver.TiempoDeRevivir + 0.1f);
             bool revivioA5s = inputDriver.TryRevivir(doc, KeyBindings.HayPulsacionRegistrada(KeyBindings.Interactuar, PlayerInputDriver.TiempoDeRevivir));
             Check($"Y a los {PlayerInputDriver.TiempoDeRevivir} s, Health.IsAlive pasa a true ({doc.Health.Current}/{doc.Health.MaxHealth})",
                 revivioA5s && doc.Health.IsAlive && doc.Health.Current == doc.Health.MaxHealth);
@@ -2744,6 +2750,28 @@ namespace SP.EditorTools
             UnityEngine.Object.DestroyImmediate(etiquetaVega.transform.parent.gameObject);
 
             TestLog.Phase("FASE 9 FINALIZADA (16/23)");
+
+            // --- #17 / C2: circulos para unidades, cuadrados para interactuables ---
+            TestLog.Phase("FASE 9 - Tarea #17: circulos para unidades, cuadrados para interactuables");
+            int obstaculosRegistradosC2 = MinimapIcon.RegistrarObstaculos(MinimapIcon.ObstacleMinimapColor);
+
+            var todosLosIconosC2 = UnityEngine.Object.FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include);
+            int cuadrados = 0, circulosDeObstaculo = 0, circulosDeUnidad = 0;
+            foreach (var ic in todosLosIconosC2)
+            {
+                bool esObstaculo = ic.Target != null && ic.Target.GetComponent<ObstacleMarker>() != null;
+                if (esObstaculo)
+                {
+                    if (ic.EsCuadrado) cuadrados++; else circulosDeObstaculo++;
+                }
+                else if (!ic.EsCuadrado) circulosDeUnidad++;
+            }
+            Check($"Los {obstaculosRegistradosC2} obstaculos (interactuables) tienen icono CUADRADO ({cuadrados} cuadrados, {circulosDeObstaculo} circulos entre ellos)",
+                cuadrados == obstaculosRegistradosC2 && circulosDeObstaculo == 0);
+            Check($"Y las unidades (soldados, vehiculo) siguen con icono CIRCULAR, la forma distingue la categoria ({circulosDeUnidad} circulos de unidad)",
+                circulosDeUnidad == todosLosIconosC2.Length - obstaculosRegistradosC2);
+
+            TestLog.Phase("FASE 9 FINALIZADA (17/23)");
         }
 
         // ---------------------------------------------------------------

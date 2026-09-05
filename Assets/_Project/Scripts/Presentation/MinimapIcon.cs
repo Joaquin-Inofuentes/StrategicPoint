@@ -193,6 +193,49 @@ namespace SP.Presentation
             return true;
         }
 
+        // C2: la forma distingue la categoria (unidad vs interactuable),
+        // el color distingue el bando. Mismo patron que esTriangulo/
+        // MallaTriangulo, para un cuadrado en vez de una cuña.
+        [SerializeField] bool esCuadrado;
+        public bool EsCuadrado => esCuadrado;
+
+        static Mesh mallaCuadrado;
+
+        static Mesh MallaCuadrado()
+        {
+            if (mallaCuadrado != null) return mallaCuadrado;
+            var m = new Mesh();
+            m.name = "MinimapCuadrado";
+            // Mismo radio 0,5 que el disco/triangulo, para que el
+            // localScale del icono (radius, 0.2, radius) siga sirviendo.
+            const float lado = 0.5f;
+            m.vertices = new[]
+            {
+                new Vector3(-lado, 0f, -lado),
+                new Vector3(-lado, 0f, lado),
+                new Vector3(lado, 0f, lado),
+                new Vector3(lado, 0f, -lado),
+            };
+            // Dos caras (arriba y abajo), mismo motivo que MallaTriangulo:
+            // una sola cara desaparece el icono si se erra el sentido de
+            // giro visto desde la camara cenital.
+            m.triangles = new[] { 0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2 };
+            m.normals = new[] { Vector3.up, Vector3.up, Vector3.up, Vector3.up };
+            m.RecalculateBounds();
+            m.hideFlags = HideFlags.HideAndDontSave;
+            mallaCuadrado = m;
+            return m;
+        }
+
+        public bool ConvertirEnCuadrado()
+        {
+            var filtro = GetComponent<MeshFilter>();
+            if (filtro == null) return false;
+            filtro.sharedMesh = MallaCuadrado();
+            esCuadrado = true;
+            return true;
+        }
+
         // Color fijo para los obstaculos del minimapa (D1): no son un
         // bando -- no atacan, no se poseen -- asi que no comparten paleta
         // con el azul de la escuadra ni el rojo enemigo. Un gris piedra
@@ -225,6 +268,9 @@ namespace SP.Presentation
             {
                 var icon = Spawn(marca.transform, color, layer, radius);
                 icon.transform.SetParent(root, true);
+                // C2: cuadrado, no circulo -- lo interactuable se
+                // distingue de una unidad por la FORMA, no solo el color.
+                icon.ConvertirEnCuadrado();
             }
             return marcas.Length;
         }
