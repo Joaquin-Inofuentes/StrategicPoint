@@ -157,6 +157,44 @@ namespace SP.Player
                 // Unlit + oscurecido garantiza contraste sin depender de la
                 // iluminación de la escena.
                 weaponViewmodelRenderer.sharedMaterial = SP.Presentation.SafeMaterial.Create(Color.white);
+
+                // Del plan del usuario: "Al hacer zoom debe poner el arma
+                // adelante de todo".
+                //
+                // El viewmodel cuelga de la camara a 0,65 m y mide 0,22 de
+                // largo, o sea que su cara delantera queda a ~0,76 m. El
+                // jugador puede pegarse a una pared hasta ~0,5 m de la
+                // camara, asi que el arma queda literalmente DENTRO de la
+                // pared: mismo buffer de profundidad que el mundo, la
+                // pared gana, y el arma desaparece. Comprobado con una
+                // captura contra el Muro: la pantalla entera es pared y no
+                // se ve nada del arma.
+                //
+                // Un arma en primera persona no es geometria del mundo: es
+                // parte de la interfaz. Se dibuja SIEMPRE por delante
+                // (ZTest Always) y despues de toda la geometria opaca, que
+                // es lo que hace cualquier shooter y lo que pide el plan.
+                // El shader propio es la parte que de verdad lo arregla.
+                // Probe primero con renderQueue = Overlay sobre URP/Lit y NO
+                // alcanza: la cola cambia el orden de dibujado, no el test
+                // de profundidad, asi que la pared se dibuja antes, escribe
+                // su profundidad y el arma se descarta igual. Y URP/Lit ni
+                // siquiera expone _ZTest (verificado con HasProperty), asi
+                // que forzarlo por material era una llamada que no hacia
+                // nada. Ver Assets/_Project/Shaders/ArmaEnPrimeraPersona.
+                var shaderArma = Shader.Find("SP/ArmaEnPrimeraPersona");
+                if (shaderArma != null)
+                {
+                    var matArma = new Material(shaderArma);
+                    matArma.hideFlags = HideFlags.HideAndDontSave;
+                    // Transparent y no Overlay: con Overlay el arma se
+                    // dibujaba TAMBIEN por encima del HUD y tapaba la barra
+                    // de vida. Alcanza con quedar despues de la geometria
+                    // opaca; el ZTest Always del shader es lo que la saca
+                    // de adentro de la pared.
+                    matArma.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                    weaponViewmodelRenderer.sharedMaterial = matArma;
+                }
             }
 
             weaponViewmodel.SetActive(true);
@@ -2152,6 +2190,39 @@ namespace SP.Player
         // en cualquier RTS estilo Age of Empires.
         void UpdateDragSelection(Keyboard kb, Mouse mouse)
         {
+            // Del plan del usuario, dos renglones que resultaron ser EL
+            // MISMO defecto:
+            //
+            //   "El cuadro de seleccion aveces se rompe. Testear 20 veces
+            //    cuando se rompe y porq y solucionar"
+            //   "Aveces en RTS cuando selecciono un soldado y aprieto click
+            //    derecho en varios destinos algunos los omite"
+            //
+            // `dragging` solo se apagaba en wasReleasedThisFrame. Si la
+            // soltada no llega -- porque el juego se pauso a mitad del
+            // arrastre, porque el soldado murio y arranco la camara de
+            // muerte, porque se recargo la escena, o simplemente porque se
+            // fue el foco de la ventana con el boton apretado -- queda
+            // encendido PARA SIEMPRE. Medido: con dragging en true y el
+            // boton izquierdo suelto, un frame entero de este metodo lo
+            // deja igual, encendido y con el cuadro pintado.
+            //
+            // Y lo que lo vuelve grave es lo otro: la orden de click
+            // derecho en RTS se emite con "rightClickOrder && !dragging".
+            // O sea que mientras el cuadro esta colgado, TODAS las ordenes
+            // de click derecho se descartan en silencio. El jugador ve un
+            // rectangulo pegado en pantalla y clicks que no hacen nada, y
+            // parecen dos fallas distintas.
+            //
+            // La regla: si creo estar arrastrando pero el boton no esta
+            // apretado, no estoy arrastrando. Cierra todas las salidas de
+            // una vez, incluidas las que todavia no existen.
+            if (dragging && !mouse.leftButton.isPressed && !mouse.leftButton.wasReleasedThisFrame)
+            {
+                dragging = false;
+                if (SelectionBox != null) SelectionBox.gameObject.SetActive(false);
+            }
+
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
             {
                 if (!dragging) return;

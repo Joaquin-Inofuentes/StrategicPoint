@@ -67,11 +67,49 @@ namespace SP.Player
                 s.Health.IsAlive && s.Team == team && s != exclude);
         }
 
+        // Del plan del usuario: "Si los aliados los 2 estan en un tanque no
+        // funciona lo de T y se rompe con lo del FPS click derecho" -- y
+        // tambien "Dar orden de bajarse".
+        //
+        // Medido: con dos aliados montados y la escuadra entera
+        // seleccionada, [T] les dejaba el estado en MovingToOrder MIENTRAS
+        // seguian sentados adentro (RoleOf != null). O sea una orden
+        // aceptada, con su sonido y su marca en el piso, que no podia
+        // cumplirse: el pasajero no camina.
+        //
+        // La orden de ir a un punto ahora BAJA al pasajero primero. Es lo
+        // que espera cualquiera que juegue un RTS -- mandar a alguien a una
+        // posicion implica que se baje -- y de paso es la orden de bajarse
+        // que pedia el plan, sin inventar una tecla nueva.
+        static void BajarSiVaMontado(Soldier soldier)
+        {
+            if (soldier == null) return;
+            // Filtro barato PRIMERO. Esto corre una vez por soldado y por
+            // orden: con la escuadra entera seleccionada serian tantos
+            // barridos de escena como soldados, por cada click derecho, y
+            // este proyecto ya pago ese precio antes (los proyectiles
+            // buscando soldados uno por uno). Vehicle.Mount apaga el
+            // AiBrain y Dismount lo vuelve a prender, asi que un cerebro
+            // apagado es la señal de "va montado" -- una lectura de campo
+            // en vez de recorrer la escena.
+            var cerebro = soldier.Brain;
+            if (cerebro == null || cerebro.enabled) return;
+
+            foreach (var v in UnityEngine.Object.FindObjectsByType<SP.Vehicles.Vehicle>(FindObjectsInactive.Include))
+            {
+                if (v == null || v.RoleOf(soldier) == null) continue;
+                v.Dismount(soldier);
+                GameLog.Line($"{soldier.DisplayName} se baja del vehiculo para cumplir la orden");
+                return;
+            }
+        }
+
         public static void IssueMoveOrder(Soldier soldier, Vector3 point, bool queued = false)
         {
             // Cierre por si alguna ruta suelta (la lista del roster, un
             // atajo) apunta al soldado que el jugador tiene en las manos.
             if (LoManejaElJugador(soldier)) return;
+            BajarSiVaMontado(soldier);
             var brain = soldier.GetComponent<AiBrain>();
             // Una orden explícita manda igual aunque el soldado sea el que
             // estás poseyendo: en RTS no lo estás manejando con WASD, así
