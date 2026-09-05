@@ -39,6 +39,20 @@ namespace SP.Combat
         {
             if (!IsAlive) return;
 
+            // BUG REAL medido: con amount negativo esto CURABA. Con 70 de
+            // vida, TakeDamage(-50) dejaba al soldado en 100 y ademas
+            // publicaba un DamageTakenEvent de -50, que es lo que mueve el
+            // numero flotante de daño, la viñeta roja y la flecha de
+            // direccion: en pantalla se leia como un golpe mientras el
+            // soldado se curaba. Curar tiene su propio metodo (Heal) y su
+            // propio evento.
+            //
+            // El caso amount == 0 tambien se corta: el daño por explosion
+            // se calcula con una caida (RoundToInt(damage * falloff)) que
+            // llega a 0 en el borde del radio, y publicarlo encendia todo
+            // el feedback de impacto sin quitar un solo punto de vida.
+            if (amount <= 0) return;
+
             Current = Mathf.Clamp(Current - amount, 0, maxHealth);
             LastAttackerId = attackerId;
             EventBus.Instance.Publish(new DamageTakenEvent(ActorId, attackerId, amount, Current));

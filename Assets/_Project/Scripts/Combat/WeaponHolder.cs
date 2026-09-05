@@ -142,6 +142,17 @@ namespace SP.Combat
         {
             spreadDeg = Mathf.MoveTowards(spreadDeg, 0f, SpreadDecayPerSec * dt);
 
+            // El enfriamiento corre SIEMPRE, tambien durante la recarga.
+            // Antes esto estaba despues del return de abajo, asi que el
+            // cooldown quedaba congelado mientras se recargaba: al
+            // terminar la recarga todavia faltaba esperar el enfriamiento
+            // del ultimo tiro. MEDIDO: una recarga de 1,50 s tardaba en
+            // realidad 1,80 s hasta poder volver a disparar (18 ticks
+            // extra). El arma mentia sobre su propia estadistica en un
+            // 20%, y de paso hacia que recargar a proposito (Reload())
+            // costara mas de lo que dice la UI.
+            if (cooldownTimer > 0f) cooldownTimer -= dt;
+
             if (IsReloading)
             {
                 reloadTimer -= dt;
@@ -152,7 +163,6 @@ namespace SP.Combat
                 }
                 return;
             }
-            if (cooldownTimer > 0f) cooldownTimer -= dt;
         }
 
         public bool TryFire(Vector3 origin, Vector3 direction)
