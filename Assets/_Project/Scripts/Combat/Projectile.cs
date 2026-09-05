@@ -204,11 +204,23 @@ namespace SP.Combat
 
             // Un soldado montado en un vehículo queda inactivo (oculto); no
             // debe poder recibir impactos mientras está ahí adentro.
-            var hit = ActorRegistry.FindNearest(transform.position, s =>
+            //
+            // SpatialGrid y no ActorRegistry.FindNearest: esa version
+            // barria linealmente a TODOS los soldados vivos, por bala y por
+            // frame. El benchmark del proyecto lo dejaba a la vista -- con
+            // N=200 el peor paso eran 20,7 ms totales de los cuales 16,9 ms
+            // (el 81%) se los llevaban los proyectiles, mas que la IA, los
+            // vehiculos y la grilla juntos. Es exactamente el mismo O(n*m)
+            // que SpatialGrid vino a resolver para el sensado, solo que
+            // este camino nunca se habia pasado a la grilla.
+            //
+            // La grilla ya esta reconstruida: WorldSimulationDriver tiene
+            // orden de ejecucion -100 y la rehace al principio del tick,
+            // antes de que ningun proyectil actualice.
+            var hit = SpatialGrid.FindNearestInRange(transform.position, hitRadius, s =>
                 s.Health.IsAlive &&
                 s.Team != ownerTeam &&
-                s.gameObject.activeInHierarchy &&
-                Vector3.Distance(s.transform.position, transform.position) <= hitRadius);
+                s.gameObject.activeInHierarchy);
 
             if (hit != null)
             {

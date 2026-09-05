@@ -482,7 +482,12 @@ namespace SP.Player
         // CameraRig como campo serializado PRIVADO (mapHalfExtent = 90) y
         // no lo expone ninguna API, asi que se recibe como parametro con
         // ese mismo valor por defecto en vez de espiarlo por reflexion.
-        public static void IssueRetreatOrderForSelection(IEnumerable<Soldier> selection, float distance = RetreatDistance, float mapHalfExtent = 90f)
+        // mapHalfExtent <= 0 (el default) significa "usa el terreno real".
+        // Antes el default era 90, un cuadrado centrado en el origen que no
+        // se parece al piso de esta escena (58 x 160, centrado en 4.4/57.7):
+        // una retirada podia mandar a la escuadra hasta x=-90, sesenta
+        // metros fuera del terreno, a caminar sobre el vacio.
+        public static void IssueRetreatOrderForSelection(IEnumerable<Soldier> selection, float distance = RetreatDistance, float mapHalfExtent = 0f)
         {
             if (selection == null) return;
 
@@ -517,8 +522,16 @@ namespace SP.Player
                 away = away.sqrMagnitude < 0.0001f ? Vector3.forward : away.normalized;
 
                 Vector3 dest = pos + away * distance;
-                dest.x = Mathf.Clamp(dest.x, -mapHalfExtent, mapHalfExtent);
-                dest.z = Mathf.Clamp(dest.z, -mapHalfExtent, mapHalfExtent);
+                if (mapHalfExtent > 0f)
+                {
+                    dest.x = Mathf.Clamp(dest.x, -mapHalfExtent, mapHalfExtent);
+                    dest.z = Mathf.Clamp(dest.z, -mapHalfExtent, mapHalfExtent);
+                }
+                else if (SP.Core.NavService.TryArea(out var limites))
+                {
+                    dest.x = Mathf.Clamp(dest.x, limites.min.x, limites.max.x);
+                    dest.z = Mathf.Clamp(dest.z, limites.min.z, limites.max.z);
+                }
                 IssueMoveOrder(soldier, dest);
             }
 

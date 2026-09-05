@@ -330,12 +330,34 @@ namespace SP.CameraSystem
         Vector3 panTarget;
         bool panTargetInitialized;
 
+        // BUG REAL: el limite era un cuadrado fijo de +-mapHalfExtent (90)
+        // centrado en el ORIGEN, y el terreno de esta escena no es ni
+        // cuadrado ni esta centrado ahi: mide 58 x 160 y su centro cae en
+        // (4.4, 57.7). O sea que la camara podia irse 60 metros fuera del
+        // piso por el oeste -- pantalla vacia, sin nada con que orientarse
+        // para volver -- y en cambio se frenaba 47 metros ANTES del borde
+        // norte, que si es terreno jugable.
+        //
+        // Ahora se acota al terreno de verdad, medido por NavService desde
+        // los colliders de la escena. El campo serializado queda como
+        // respaldo para una escena sin colliders.
+        void AcotarAlMapa(ref Vector3 punto)
+        {
+            if (SP.Core.NavService.TryArea(out var limites))
+            {
+                punto.x = Mathf.Clamp(punto.x, limites.min.x, limites.max.x);
+                punto.z = Mathf.Clamp(punto.z, limites.min.z, limites.max.z);
+                return;
+            }
+            punto.x = Mathf.Clamp(punto.x, -mapHalfExtent, mapHalfExtent);
+            punto.z = Mathf.Clamp(punto.z, -mapHalfExtent, mapHalfExtent);
+        }
+
         public void Pan(Vector3 worldDelta)
         {
             if (!panTargetInitialized) { panTarget = transform.position; panTargetInitialized = true; }
             panTarget += worldDelta;
-            panTarget.x = Mathf.Clamp(panTarget.x, -mapHalfExtent, mapHalfExtent);
-            panTarget.z = Mathf.Clamp(panTarget.z, -mapHalfExtent, mapHalfExtent);
+            AcotarAlMapa(ref panTarget);
         }
 
         // Si la camara se pierde en RTS no habia forma rapida de volver a
@@ -346,10 +368,9 @@ namespace SP.CameraSystem
         public void RecenterOn(Vector3 point)
         {
             panTargetInitialized = true;
-            panTarget = new Vector3(
-                Mathf.Clamp(point.x, -mapHalfExtent, mapHalfExtent),
-                transform.position.y,
-                Mathf.Clamp(point.z, -mapHalfExtent, mapHalfExtent));
+            var destino = new Vector3(point.x, transform.position.y, point.z);
+            AcotarAlMapa(ref destino);
+            panTarget = destino;
         }
 
         // Zoom ya hacia clamp, pero no decia nada al llegar al limite: el

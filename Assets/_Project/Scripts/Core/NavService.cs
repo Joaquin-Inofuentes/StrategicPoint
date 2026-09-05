@@ -54,6 +54,28 @@ namespace SP.Core
         public static WaypointGraph Graph { get { EnsureBuilt(); return graph; } }
         public static bool IsReady => graph.IsBuilt;
 
+        // Limites REALES del terreno jugable, sacados de los colliders de
+        // la escena al construir la grilla. Existe porque antes el unico
+        // limite del proyecto era un cuadrado fijo de +-90 centrado en el
+        // origen (CameraRig.mapHalfExtent), y el piso de esta escena no es
+        // ni cuadrado ni esta centrado: mide 58 x 160 y su centro esta en
+        // (4.4, 57.7). Con el limite viejo la camara RTS paneaba 60 metros
+        // fuera del terreno -- pantalla vacia, sin referencia para volver --
+        // y una orden de retirada podia mandar a la escuadra a caminar
+        // fuera del mundo.
+        static Bounds area;
+        static bool hayArea;
+
+        // Devuelve false si todavia no se pudo medir (escena sin colliders
+        // o fuera de Play); el que llama decide su propio respaldo en vez
+        // de comerse un Bounds vacio sin enterarse.
+        public static bool TryArea(out Bounds limites)
+        {
+            EnsureBuilt();
+            limites = area;
+            return hayArea;
+        }
+
         // Un obstaculo que se derrumba abre un paso que antes no existia.
         public static void Invalidate() => dirty = true;
 
@@ -111,25 +133,28 @@ namespace SP.Core
         static void Build()
         {
             bool any = false;
-            Bounds area = default;
+            Bounds area_ = default;
 
             var colliders = Object.FindObjectsByType<Collider>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
             foreach (var c in colliders)
             {
                 if (c == null || c.isTrigger) continue;
-                if (!any) { area = c.bounds; any = true; }
-                else area.Encapsulate(c.bounds);
+                if (!any) { area_ = c.bounds; any = true; }
+                else area_.Encapsulate(c.bounds);
             }
 
+            hayArea = any;
             if (!any) return; // graph queda sin construir: TryFindDetour devuelve false y todo sigue en linea recta
+
+            area = area_;
 
             float pad = Spacing * 2f;
             var min = new Vector3(
-                Mathf.Max(area.min.x - pad, -MaxHalfExtent), 0f,
-                Mathf.Max(area.min.z - pad, -MaxHalfExtent));
+                Mathf.Max(area_.min.x - pad, -MaxHalfExtent), 0f,
+                Mathf.Max(area_.min.z - pad, -MaxHalfExtent));
             var max = new Vector3(
-                Mathf.Min(area.max.x + pad, MaxHalfExtent), 0f,
-                Mathf.Min(area.max.z + pad, MaxHalfExtent));
+                Mathf.Min(area_.max.x + pad, MaxHalfExtent), 0f,
+                Mathf.Min(area_.max.z + pad, MaxHalfExtent));
 
             graph.Build(min, max, Spacing, IsBlockedAt);
 
