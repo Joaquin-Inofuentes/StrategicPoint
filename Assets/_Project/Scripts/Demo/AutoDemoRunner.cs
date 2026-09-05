@@ -591,6 +591,72 @@ namespace SP.Presentation
                 TestLog.Step($"Resultado: {enemiesDown}/3 enemigos caidos. Vega {vega.Health.Current}/{vega.Health.MaxHealth} vida, {kes.DisplayName} {kes.Health.Current}/{kes.Health.MaxHealth}, {doc.DisplayName} {doc.Health.Current}/{doc.Health.MaxHealth}");
             }
 
+            // ============================================================
+            // FASE 10 - G5: orden final, a pie y en vehiculo hasta el destino
+            // ============================================================
+            // Del guion original del plan: "...dar orden, seguir a pie,
+            // subir a la moto, llegar al destino". Este prototipo nunca
+            // tuvo una moto como vehiculo aparte -- en todo el proyecto hay
+            // UN solo tipo de vehiculo, la camioneta -- asi que el ultimo
+            // tramo reusa esa MISMA camioneta y la MISMA VehicleBrain que
+            // ya maneja sola en la Fase 4 (VehicleBrain.IssueMoveOrder no
+            // le importa quien va adentro, solo que no lo maneje el
+            // jugador a mano), ahora con Doc de conductor en vez del
+            // jugador. No hace falta inventar un vehiculo nuevo para
+            // completar el verbo que faltaba del guion.
+            TestLog.Phase("FASE 10 - Orden final: a pie y en vehiculo hasta el destino");
+
+            FullHeal(vega, kes, doc);
+            foreach (var occupant in new List<Soldier>(DemoVehicle.Occupants)) DemoVehicle.Dismount(occupant);
+            doc.Brain.CancelOrder();
+
+            Vector3 puntoDeEncuentro = DemoVehicle.transform.position + new Vector3(-16f, 0f, 10f);
+            doc.transform.position = puntoDeEncuentro + new Vector3(-10f, 0f, 0f);
+            Rig.SetMode(ControlMode.Rts);
+            Rig.SetRtsView(doc.transform.position);
+            yield return Tutorial("FASE 10: se le da a Doc la orden de ir a pie hasta el punto de encuentro.");
+            OrderService.IssueMoveOrder(doc, puntoDeEncuentro);
+            yield return CaptureStep("fase10_orden_a_pie");
+
+            float footTimeout = 12f;
+            while (Vector3.Distance(doc.transform.position, puntoDeEncuentro) > 1.5f && footTimeout > 0f)
+            {
+                footTimeout -= Time.deltaTime;
+                yield return null;
+            }
+            TestLog.Step($"{doc.DisplayName} {(footTimeout > 0f ? "llego a pie al punto de encuentro" : "no llego a tiempo")} (distancia final {Vector3.Distance(doc.transform.position, puntoDeEncuentro):0.00} m)");
+            yield return CaptureStep("fase10_llego_a_pie");
+
+            DemoVehicle.transform.position = puntoDeEncuentro + new Vector3(3f, 0f, 0f);
+            yield return Tutorial("Ultimo tramo: Doc sube al vehiculo y lo lleva sola hasta el destino final.");
+            OrderService.IssueMountOrder(doc, DemoVehicle);
+            float mountTimeout = 8f;
+            while (DemoVehicle.RoleOf(doc) == null && mountTimeout > 0f)
+            {
+                mountTimeout -= Time.deltaTime;
+                yield return null;
+            }
+            TestLog.Step($"{doc.DisplayName} {(DemoVehicle.RoleOf(doc) != null ? "subio al vehiculo (conductora)" : "no llego a subir a tiempo")}");
+            yield return CaptureStep("fase10_subio_al_vehiculo");
+
+            Vector3 destinoFinal = DemoVehicle.transform.position + new Vector3(12f, 0f, -5f);
+            var vBrainFinal = DemoVehicle.GetComponent<VehicleBrain>();
+            vBrainFinal.IssueMoveOrder(destinoFinal);
+            Rig.SetRtsView(DemoVehicle.transform.position);
+            yield return CaptureStep("fase10_viaje_final");
+
+            float driveTimeout = 18f;
+            while (vBrainFinal.HasOrder && driveTimeout > 0f)
+            {
+                driveTimeout -= Time.deltaTime;
+                yield return null;
+            }
+            TestLog.Step($"El vehiculo, manejado por {doc.DisplayName}, {(vBrainFinal.HasOrder ? "no llego a tiempo" : "llego sola al destino final")} (distancia {Vector3.Distance(DemoVehicle.transform.position, destinoFinal):0.00} m)");
+            yield return Tutorial("Llegamos al destino final. Recorrido completo.");
+            yield return CaptureStep("fase10_llegada_final");
+
+            TestLog.Phase("FASE 10 FINALIZADA");
+
             TestLog.Phase("DEMO AUTOMATICO EN PLAY MODE - COMPLETADO");
             IsRunning = false;
         }
