@@ -211,21 +211,35 @@ namespace SP.Player
         // Un destino no es valido si cae encima de un obstaculo: el
         // soldado camina hasta el borde y se queda trabado ahi para
         // siempre, sin que nada avise que la orden no se pudo cumplir.
+        // Media caja de sondeo alrededor del destino: el cuerpo del soldado
+        // mide 0.9 de lado, mas un margen para no dejarlo pegado a la cara.
+        const float RadioDeSondeo = 0.55f;
+        // El sondeo va de 0.4 a 1.4 de alto: por ENCIMA del piso (que
+        // tambien es un collider solido) y dentro del cuerpo de cualquier
+        // cosa parada sobre el. A ras del suelo daria "todo bloqueado".
+        const float AlturaDeSondeo = 0.9f;
+        const float MediaAlturaDeSondeo = 0.5f;
+        static readonly Collider[] BufferDestino = new Collider[16];
+
         public static bool IsValidDestination(Vector3 point)
         {
-            // WorldSystemsRegistry en vez de FindObjectsByType: esto solo
-            // corre una vez por orden (no por frame), asi que nunca fue el
-            // cuello de botella real -- pero el registro ya existe y esta
-            // poblado, asi que evitar el barrido es gratis.
-            var obstacles = SP.Core.WorldSystemsRegistry.Obstacles;
-            for (int i = 0; i < obstacles.Count; i++)
-            {
-                var obstacle = obstacles[i];
-                if (obstacle == null) continue;
-                var d = obstacle.transform.position - point;
-                d.y = 0f;
-                if (d.magnitude <= obstacle.transform.localScale.x * 0.5f + 0.5f) return false;
-            }
+            // ANTES SOLO MIRABA LOS ObstacleMarker, o sea los cuatro cubos
+            // de cobertura, y por distancia a su origen. No sabia nada del
+            // Muro, ni de los arboles, ni de las barricadas, ni de los
+            // barriles: todos los solidos que de verdad frenan a un
+            // soldado quedaban fuera del chequeo, asi que el aviso
+            // "DESTINO BLOQUEADO" no saltaba casi nunca y la orden se
+            // emitia igual contra una pared.
+            //
+            // Ahora se pregunta a la fisica con la MISMA definicion de
+            // pared que usan el motor, el proyectil y la linea de tiro.
+            var centro = new Vector3(point.x, AlturaDeSondeo, point.z);
+            var extension = new Vector3(RadioDeSondeo, MediaAlturaDeSondeo, RadioDeSondeo);
+            int n = Physics.OverlapBoxNonAlloc(centro, extension, BufferDestino,
+                                               Quaternion.identity, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+                if (SP.Core.NavService.BlocksMovement(BufferDestino[i])) return false;
+
             return true;
         }
 

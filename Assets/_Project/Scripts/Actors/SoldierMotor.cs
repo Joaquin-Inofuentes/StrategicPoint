@@ -21,21 +21,6 @@ namespace SP.Actors
         [SerializeField] float moveSpeed = 5f;
         [SerializeField] float turnSpeedDegPerSec = 220f;
 
-        // Margen que se deja SIEMPRE entre el cuerpo y lo que choca. Sin
-        // el, el soldado queda apoyado a distancia exactamente 0 de la
-        // pared y el barrido del frame siguiente devuelve un impacto a
-        // distancia 0: se traba en vez de deslizar.
-        const float SkinWidth = 0.03f;
-
-        // Cuantas veces se reproyecta el movimiento restante al chocar.
-        // 1 alcanza para una pared, 2 para una esquina; la tercera es el
-        // caso raro de quedar encajado entre tres caras. Mas que eso es
-        // gastar barridos para no moverse igual.
-        const int MaxSlides = 3;
-
-        static readonly RaycastHit[] HitBuffer = new RaycastHit[16];
-        static readonly Collider[] OverlapBuffer = new Collider[16];
-
         Collider body;
         float bodyRadius = 0.4f;
         bool bodyResolved;
@@ -46,21 +31,7 @@ namespace SP.Actors
             bodyResolved = true;
 
             body = GetComponent<Collider>();
-            // El radio se saca de la escala, no de bounds: bounds es una
-            // caja alineada al mundo y CRECE al girar el cuerpo, asi que
-            // un soldado a 45 grados se creeria 40% mas gordo y frenaria
-            // antes de tocar nada.
-            if (body is BoxCollider box)
-            {
-                var s = transform.lossyScale;
-                float side = Mathf.Min(Mathf.Abs(box.size.x * s.x), Mathf.Abs(box.size.z * s.z));
-                bodyRadius = Mathf.Max(0.05f, side * 0.5f - SkinWidth);
-            }
-            else if (body != null)
-            {
-                var e = body.bounds.extents;
-                bodyRadius = Mathf.Max(0.05f, Mathf.Min(e.x, e.z) - SkinWidth);
-            }
+            bodyRadius = Deslizador.RadioDe(body, transform, 0.4f);
         }
 
         public void Move(Vector3 worldDirection, float dt)
@@ -97,119 +68,14 @@ namespace SP.Actors
         }
 
         // ------------------------------------------------------------------
-        // Colision: barrer y deslizar
+        // Colision
         // ------------------------------------------------------------------
-        // Toma el desplazamiento pedido y devuelve el que de verdad se
-        // puede hacer. La componente vertical pasa intacta: este es un
-        // juego sobre un piso unico y no hay salto ni gravedad que
-        // resolver; meter la Y aca solo agregaria casos sin dueño.
+        // La resolucion vive en SP.Core.Deslizador: la necesitan este motor
+        // Y el del vehiculo, y dos copias se habrian ido separando.
         Vector3 Resolve(Vector3 delta)
         {
             EnsureBody();
-
-            float vertical = delta.y;
-            Vector3 horizontal = new Vector3(delta.x, 0f, delta.z);
-            float remaining = horizontal.magnitude;
-            if (remaining < 0.00001f) return delta;
-
-            Vector3 dir = horizontal / remaining;
-            Vector3 start = transform.position;
-
-            // Primero salir de adentro de algo, si ya estaba metido: un
-            // cuerpo superpuesto devuelve impactos a distancia 0 con una
-            // normal que no sirve, y sin esto quedaria clavado para
-            // siempre justo donde mas se nota (dentro del Muro).
-            Vector3 pos = start + Depenetrate(start);
-
-            for (int i = 0; i < MaxSlides && remaining > 0.00001f; i++)
-            {
-                if (!TryHit(pos, dir, remaining + SkinWidth, out float hitDistance, out Vector3 normal))
-                {
-                    pos += dir * remaining;
-                    remaining = 0f;
-                    break;
-                }
-
-                float advance = Mathf.Max(0f, hitDistance - SkinWidth);
-                pos += dir * advance;
-                remaining -= advance;
-
-                Vector3 n = new Vector3(normal.x, 0f, normal.z);
-                if (n.sqrMagnitude < 0.000001f) break; // cara horizontal: no hay por donde deslizar
-
-                n.Normalize();
-
-                // Se le saca al movimiento restante la componente que
-                // entra en la pared. Lo que queda es lo que corre PARALELO
-                // a ella: por eso el soldado se desliza en vez de frenar
-                // en seco contra el Muro.
-                Vector3 slide = Vector3.ProjectOnPlane(dir * remaining, n);
-                slide.y = 0f;
-                remaining = slide.magnitude;
-                if (remaining < 0.00001f) break;
-                dir = slide / remaining;
-            }
-
-            Vector3 result = pos - start;
-            result.y = vertical;
-            return result;
-        }
-
-        bool TryHit(Vector3 pos, Vector3 dir, float distance, out float hitDistance, out Vector3 normal)
-        {
-            hitDistance = 0f;
-            normal = Vector3.zero;
-
-            int n = Physics.SphereCastNonAlloc(pos, bodyRadius, dir, HitBuffer, distance, ~0, QueryTriggerInteraction.Ignore);
-            float best = float.MaxValue;
-            bool found = false;
-
-            for (int i = 0; i < n; i++)
-            {
-                var h = HitBuffer[i];
-                if (h.collider == null) continue;
-                if (h.collider.transform.IsChildOf(transform)) continue;
-                // distance 0 significa que la esfera ya arrancaba
-                // superpuesta: la normal que devuelve Unity ahi no es la
-                // de la cara. Eso lo arregla Depenetrate, no este barrido.
-                if (h.distance <= 0f) continue;
-                if (h.distance >= best) continue;
-                if (!NavService.BlocksMovement(h.collider)) continue;
-
-                best = h.distance;
-                normal = h.normal;
-                found = true;
-            }
-
-            hitDistance = best;
-            return found;
-        }
-
-        Vector3 Depenetrate(Vector3 pos)
-        {
-            if (body == null) return Vector3.zero;
-
-            int n = Physics.OverlapSphereNonAlloc(pos, bodyRadius, OverlapBuffer, ~0, QueryTriggerInteraction.Ignore);
-            Vector3 push = Vector3.zero;
-
-            for (int i = 0; i < n; i++)
-            {
-                var other = OverlapBuffer[i];
-                if (other == null || other == body) continue;
-                if (other.transform.IsChildOf(transform)) continue;
-                if (!NavService.BlocksMovement(other)) continue;
-
-                if (!Physics.ComputePenetration(body, pos, transform.rotation,
-                                                other, other.transform.position, other.transform.rotation,
-                                                out Vector3 pushDir, out float pushDist))
-                    continue;
-
-                pushDir.y = 0f;
-                if (pushDir.sqrMagnitude < 0.000001f) continue;
-                push += pushDir.normalized * (pushDist + SkinWidth);
-            }
-
-            return push;
+            return Deslizador.Resolver(transform, body, delta, bodyRadius);
         }
     }
 }

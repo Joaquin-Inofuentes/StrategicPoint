@@ -392,9 +392,44 @@ namespace SP.Ai
             bool stuck = progress.sqrMagnitude < StuckProgressSqr;
             ResetStuckWatch();
 
-            // UNA sola vez por orden: reintentar sin limite seria correr un
-            // A* por segundo por cada soldado trabado contra otro cuerpo.
-            if (!stuck || repathed) return;
+            if (!stuck) return;
+
+            // SEGUNDO ATASCO: la ruta ya se recalculo una vez y el soldado
+            // sigue sin avanzar. Eso significa que el destino no se puede
+            // alcanzar -- tipicamente porque cae DENTRO de un solido (un
+            // arbol, el Muro, una barricada).
+            //
+            // BUG REAL medido: sin esto el soldado empujaba contra el
+            // obstaculo indefinidamente. A los 20 segundos seguia en
+            // MovingToOrder a 0,70 m del destino, y como la orden nunca
+            // terminaba tampoco publicaba OrderCompletedEvent, ni sacaba
+            // el siguiente punto de la cola, ni volvia a Patrol: el
+            // soldado quedaba inutil por el resto de la partida.
+            //
+            // Se da la orden por cumplida donde se pudo llegar. Es lo
+            // honesto: el jugador ve al soldado detenerse y volver a estar
+            // disponible, en vez de un cuerpo empujando una pared.
+            if (repathed && State == AiState.MovingToOrder)
+            {
+                GameLog.Line($"{self.DisplayName} no puede acercarse mas: el destino esta bloqueado");
+                if (orderQueue.Count > 0)
+                {
+                    orderDestination = orderQueue.Dequeue();
+                    PlanPathTo(orderDestination);
+                    return;
+                }
+                EventBus.Instance.Publish(new OrderCompletedEvent(self.Id));
+                hasOrder = false;
+                ClearPath();
+                SetState(AiState.Patrol);
+                forceSense = true;
+                return;
+            }
+
+            // Primer atasco: se recalcula la ruta UNA vez. Reintentar sin
+            // limite seria correr un A* por segundo por cada soldado
+            // trabado contra otro cuerpo.
+            if (repathed) return;
             repathed = true;
 
             path.Clear();
