@@ -24,12 +24,40 @@ namespace SP.Player
     // del soldado elegido. No decide combate, solo entrega la orden.
     public static class OrderService
     {
+        // El soldado que el jugador esta manejando A MANO ahora mismo, con
+        // WASD en primera persona. En RTS vale null: alli el jugador no
+        // maneja a nadie con las teclas y ordenarle a tu propio soldado es
+        // legitimo (por eso IssueMoveOrder apaga IsPossessedByPlayer).
+        //
+        // En FPS esa misma linea era el bug reportado ("que jamas se mueva
+        // solo el soldado seleccionado actual en FPS"): con la escuadra
+        // entera seleccionada -- que es lo que deja [T], o volver de RTS --
+        // un click derecho al piso te sacaba el control de tu propio cuerpo
+        // y la IA se lo llevaba caminando. Medido en SC_Gameplay: de
+        // (2.5, 4.0) a (25.1, 12.7), 24 metros sin tocar una tecla.
+        public static Soldier ManejadoAMano;
+
+        // Una sola definicion de "a este no se le ordena", para que ninguna
+        // de las entradas de orden pueda olvidarsela.
+        public static bool LoManejaElJugador(Soldier s)
+        {
+            return s != null && ManejadoAMano != null && ReferenceEquals(s, ManejadoAMano);
+        }
+
         static List<Soldier> AliveOnly(IEnumerable<Soldier> selection)
         {
             var list = new List<Soldier>();
             if (selection == null) return list;
             foreach (var s in selection)
-                if (s != null && s.Health != null && s.Health.IsAlive) list.Add(s);
+            {
+                if (s == null || s.Health == null || !s.Health.IsAlive) continue;
+                // Se filtra ACA y no en cada orden para que el conteo del
+                // lote sea honesto: si dice "3 soldados" tienen que moverse
+                // tres, y las posiciones de la formacion se reparten entre
+                // los que de verdad la reciben.
+                if (LoManejaElJugador(s)) continue;
+                list.Add(s);
+            }
             return list;
         }
 
@@ -41,6 +69,9 @@ namespace SP.Player
 
         public static void IssueMoveOrder(Soldier soldier, Vector3 point, bool queued = false)
         {
+            // Cierre por si alguna ruta suelta (la lista del roster, un
+            // atajo) apunta al soldado que el jugador tiene en las manos.
+            if (LoManejaElJugador(soldier)) return;
             var brain = soldier.GetComponent<AiBrain>();
             // Una orden explícita manda igual aunque el soldado sea el que
             // estás poseyendo: en RTS no lo estás manejando con WASD, así
@@ -362,6 +393,7 @@ namespace SP.Player
         // caminara un paso.
         public static void IssueFollowOrder(Soldier soldier, Soldier leader)
         {
+            if (LoManejaElJugador(soldier)) return;
             var brain = soldier.GetComponent<AiBrain>();
             if (brain != null) brain.IsPossessedByPlayer = false;
             brain?.IssueFollowOrder(leader);
@@ -491,9 +523,9 @@ namespace SP.Player
         {
             if (selection == null) return;
 
-            var list = new List<Soldier>();
-            foreach (var s in selection)
-                if (s != null && s.Health != null && s.Health.IsAlive) list.Add(s);
+            // Tenia su propia copia del filtro de vivos, que se quedaba
+            // afuera de cualquier regla nueva: ahora usa la de todos.
+            var list = AliveOnly(selection);
             if (list.Count == 0) return;
 
             for (int i = 0; i < list.Count; i++)

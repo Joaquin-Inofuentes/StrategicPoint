@@ -78,6 +78,14 @@ namespace SP.Presentation
             PintarPorEquipo();
             var fx = GetComponent<CubeFxReactor>();
             if (fx != null) fx.Bootstrap();
+
+            // Tener cuerpo animado y tener el arma en la mano son la misma
+            // condicion: se agrega aca y no en el prefab para que valga
+            // igual para los soldados de la escena, los de los prefabs y
+            // los que aparezcan despues, sin tocar ninguna escena. Los
+            // soldados-cubo, que no tienen este componente, siguen con el
+            // arma al costado y la suite headless no ve ningun cambio.
+            if (GetComponent<ArmaEnLaMano>() == null) gameObject.AddComponent<ArmaEnLaMano>();
         }
 
         void PintarPorEquipo()

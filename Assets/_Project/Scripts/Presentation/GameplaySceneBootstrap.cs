@@ -24,6 +24,15 @@ namespace SP.Presentation
             // de 64 objetos, y nada de esto termina guardado en la escena.
             DebrisPool.Prewarm();
 
+            // TODAS las barras del juego estaban rotas: una Image con
+            // type = Filled solo respeta fillAmount si tiene sprite, y no
+            // habia una sola que lo tuviera. Ver SP.UI.SpriteBlanco.
+            // Un barrido al arrancar, no por frame.
+            int reparadas = 0;
+            foreach (var raiz in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects())
+                reparadas += SP.UI.SpriteBlanco.RepararTodo(raiz);
+            if (reparadas > 0) GameLog.Line($"Se repararon {reparadas} barras de la interfaz (Filled sin sprite)");
+
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null)

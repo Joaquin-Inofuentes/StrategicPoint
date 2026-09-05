@@ -121,9 +121,21 @@ namespace SP.Combat
             // que compensarla para que el cubo del arma no salga deformado.
             if (WeaponVisualRenderer != null)
             {
-                var rootScale = transform.lossyScale;
+                // La escala a compensar es la del PADRE DEL ARMA, no la de
+                // la raiz del soldado. Daban lo mismo mientras el arma
+                // colgaba de la raiz; desde que SP.Presentation.ArmaEnLaMano
+                // la cuelga del hueso de la mano, usar la de la raiz le
+                // aplicaba dos veces la escala del rig y el rifle salia
+                // deformado o enorme.
+                var padre = WeaponVisualRenderer.transform.parent;
+                var escalaPadre = padre != null ? padre.lossyScale : Vector3.one;
+                // Un eje en cero convertiria la division en infinito y la
+                // malla desapareceria sin ningun error en consola.
+                if (Mathf.Abs(escalaPadre.x) < 0.0001f) escalaPadre.x = 1f;
+                if (Mathf.Abs(escalaPadre.y) < 0.0001f) escalaPadre.y = 1f;
+                if (Mathf.Abs(escalaPadre.z) < 0.0001f) escalaPadre.z = 1f;
                 var wanted = WeaponCatalog.Get(kind).VisualScale;
-                WeaponVisualRenderer.transform.localScale = new Vector3(wanted.x / rootScale.x, wanted.y / rootScale.y, wanted.z / rootScale.z);
+                WeaponVisualRenderer.transform.localScale = new Vector3(wanted.x / escalaPadre.x, wanted.y / escalaPadre.y, wanted.z / escalaPadre.z);
             }
         }
 

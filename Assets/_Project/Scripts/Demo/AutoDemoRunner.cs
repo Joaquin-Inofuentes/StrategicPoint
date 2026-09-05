@@ -333,11 +333,14 @@ namespace SP.Presentation
             bool deniedNoDriver = InputDriver.TryIssueVehicleMoveOrder(DemoVehicle.transform.position + Vector3.right * 10f);
             TestLog.Step($"Orden a camioneta VACIA: {(deniedNoDriver ? "ACEPTADA (mal, no deberia)" : "rechazada correctamente, no hay conductor")}");
 
-            yield return Tutorial("FASE 4: Acercate a la camioneta y apreta [E] para subir (se suben los aliados cercanos solos).");
+            yield return Tutorial("FASE 4: Acercate a la camioneta y apreta [E] para subir. Los aliados NO suben solos: esperan la orden ([U] sube al mas cercano).");
             yield return CaptureStep("fase4_acercandose");
 
             InputDriver.EnterVehicle(DemoVehicle);
-            TestLog.Step($"Vega subio de conductor. Ocupantes: {DemoVehicle.OccupantCount}/{DemoVehicle.Capacity} (Kes subio sola: {(DemoVehicle.RoleOf(kes) != null)}, Doc lejos no subio: {DemoVehicle.RoleOf(doc) == null})");
+            TestLog.Step($"Vega subio de conductor y NADIE mas: ocupantes {DemoVehicle.OccupantCount}/{DemoVehicle.Capacity} (Kes espera la orden: {(DemoVehicle.RoleOf(kes) == null)})");
+            // Y ahora la orden, que es lo que ahora hace subir a alguien.
+            OrderService.IssueMountOrder(kes, DemoVehicle);
+            TestLog.Step($"Se le dio a Kes la orden de subir; Doc, lejos, sigue sin recibirla");
             yield return CaptureStep("fase4_montado_camara_lerp");
             while (Rig.IsTransitioning) yield return null;
             yield return CaptureStep("fase4_montado");
@@ -524,7 +527,10 @@ namespace SP.Presentation
 
             InputDriver.EnterVehicle(DemoVehicle);
             while (Rig.IsTransitioning) yield return null;
-            TestLog.Step($"Vega subio, {kes.DisplayName} y {doc.DisplayName} subieron solos. Ocupantes: {DemoVehicle.OccupantCount}/{DemoVehicle.Capacity}");
+            // Los aliados ya no suben solos: se les ordena, como en juego.
+            OrderService.IssueMountOrder(kes, DemoVehicle);
+            OrderService.IssueMountOrder(doc, DemoVehicle);
+            TestLog.Step($"Vega subio y a {kes.DisplayName} y {doc.DisplayName} se les DIO la orden de subir. Ocupantes ahora: {DemoVehicle.OccupantCount}/{DemoVehicle.Capacity}");
             yield return Tutorial("Camioneta ocupada: deberia verse mas oscura que antes.");
             yield return CaptureStep("fase8_vehiculo_ocupado_color");
 

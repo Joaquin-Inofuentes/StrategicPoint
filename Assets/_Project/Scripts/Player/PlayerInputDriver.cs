@@ -265,6 +265,10 @@ namespace SP.Player
         }
         void OnDisable()
         {
+            // Es un estatico: si se queda apuntando al soldado de la
+            // partida anterior, la siguiente arranca con un soldado
+            // fantasma al que nadie le puede dar ordenes.
+            OrderService.ManejadoAMano = null;
             deathSub?.Dispose();
             vehicleDestroyedSub?.Dispose();
             turretControlSub?.Dispose();
@@ -444,6 +448,12 @@ namespace SP.Player
             // tres eso ya obliga a dar la vuelta entera para volver uno.
             if (KeyBindings.WasPressed(KeyBindings.CiclarPosesionAtras)) CycleLivingAlly(-1);
             if (KeyBindings.WasPressed(KeyBindings.PoseerMasCercano)) PossessNearestAlly();
+
+            // Quien esta manejando el jugador CON LAS MANOS. Se calcula
+            // aca, en el unico punto por donde pasa todo frame, y no en
+            // cada cambio de modo o de posesion: asi no hay transicion
+            // (morirse, ciclar con [Q], volver de RTS) que se lo pierda.
+            OrderService.ManejadoAMano = Rig.Mode == ControlMode.Fps ? Brain.Current : null;
 
             if (Rig.Mode == ControlMode.Fps) UpdateFps(kb, Mouse.current);
             else UpdateRts(kb, Mouse.current);
@@ -1296,16 +1306,31 @@ namespace SP.Player
 
             EnterPossessedVehicleSeat(role.Value);
 
-            // Los aliados libres cerca también suben, en cualquier asiento libre.
+            // Antes los aliados cercanos subian SOLOS con vos. Pedido
+            // explicito: "al subirme al auto los aliados se suben, deberian
+            // esperar la orden". Subir a la camioneta es una decision de
+            // cada uno, no un efecto secundario de la tuya -- si querias
+            // dejar a dos cubriendo una posicion, acercarte al vehiculo te
+            // los levantaba sin avisar y no habia forma de evitarlo.
+            //
+            // Ahora suben con orden: [U] uno por vez (el mas cercano que
+            // todavia no va en camino) o la orden de montaje apuntandole al
+            // vehiculo en RTS. [I] los baja a todos.
+            int esperando = 0;
             if (Squad != null)
             {
                 foreach (var s in Squad)
                 {
                     if (s == null || s == driverSoldier || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                    if (vehicle.RoleOf(s) != null) continue;
                     if (Vector3.Distance(s.transform.position, vehicle.transform.position) <= autoMountRadius)
-                        vehicle.Mount(s);
+                        esperando++;
                 }
             }
+            // El cambio se avisa: sin esto, el que ya tenia la costumbre
+            // arranca creyendo que los lleva atras y los deja tirados.
+            if (esperando > 0 && ModeToast != null)
+                ModeToast.Show(esperando == 1 ? "1 ALIADO ESPERA LA ORDEN - [U] PARA SUBIRLO" : $"{esperando} ALIADOS ESPERAN LA ORDEN - [U] SUBE DE A UNO", 2f);
         }
 
         // Toma control de un asiento en el que el soldado poseído YA está

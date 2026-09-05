@@ -115,7 +115,14 @@ namespace SP.Presentation
             var fillTransform = transform.Find("Fill");
             fill = fillTransform != null ? fillTransform.GetComponent<Image>() : null;
             if (fill != null)
+            {
                 fill.color = soldier.Team == TeamId.Player ? new Color(0.35f, 0.9f, 0.4f) : new Color(0.95f, 0.3f, 0.25f);
+                // Tambien aca y no solo en el barrido de arranque: un
+                // soldado instanciado despues (un refuerzo, un respawn)
+                // trae su barra sin pasar por ese barrido, y volveria a
+                // quedarse llena para siempre.
+                SP.UI.SpriteBlanco.Reparar(fill);
+            }
         }
 
         // La comparacion contra childCount cuesta un int y cubre el caso
