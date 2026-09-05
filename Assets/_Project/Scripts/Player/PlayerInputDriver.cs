@@ -1910,7 +1910,7 @@ namespace SP.Player
             }
 
             string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
-            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [Click der. sostenido] panear · [X] cancelar orden · [G] subir al vehículo · [F] poseer · [Q] ciclar · [C] mas cercano · [TAB] vista FPS · {selectionLabel}");
+            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [Ctrl+Click der.] trazar recorrido · [Espacio] arrancarlo · [Click der. sostenido] panear · [X] cancelar orden · [G] subir al vehículo · [F] poseer · [Q] ciclar · [C] mas cercano · [TAB] vista FPS · {selectionLabel}");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -1949,7 +1949,26 @@ namespace SP.Player
             // [T] o click derecho (sin arrastre): mover a todos los
             // seleccionados ahí -- o al vehículo, si es él quien está
             // seleccionado (requiere conductor propio adentro, como en FPS).
-            if (kb.tKey.wasPressedThisFrame || (rightClickOrder && !dragging))
+            bool pidioOrden = kb.tKey.wasPressedThisFrame || (rightClickOrder && !dragging);
+
+            // Con Ctrl apretado el mismo gesto NO ordena: marca un punto
+            // del recorrido, que no arranca hasta [Espacio]. Se resuelve
+            // antes y apaga el pedido de orden -- si cayera adentro del
+            // bloque de abajo, el mismo click emitiria la orden ademas de
+            // marcar el punto.
+            if (pidioOrden && ctrlHeld)
+            {
+                pidioOrden = false;
+                var marca = Aim.Evaluate(screenRay, null);
+                if (marca.Type != AimTargetType.Ground) RejectOrder("MARCA EN EL PISO");
+                else if (!TrazadoDeCamino.Marcar(marca.Point))
+                    RejectOrder(TrazadoDeCamino.Cantidad >= TrazadoDeCamino.MaximoDePuntos
+                        ? "RECORRIDO LLENO" : "PUNTO NO VALIDO");
+                else if (ModeToast != null)
+                    ModeToast.Show($"PUNTO {TrazadoDeCamino.Cantidad}  ·  [ESPACIO] ARRANCA", 1.0f);
+            }
+
+            if (pidioOrden)
             {
                 var result = Aim.Evaluate(screenRay, null);
                 // Con Shift la orden se ENCOLA detras de lo ya planificado
@@ -2097,6 +2116,15 @@ namespace SP.Player
                 Selection.SelectSameTypeOnScreen(Selection.Selected[0], Rig.Cam);
             }
 
+            // Descartar un recorrido todavia sin arrancar es lo mismo que
+            // cancelar una orden, y no necesita seleccion: los puntos son
+            // del jugador, no de nadie en particular.
+            if (KeyBindings.WasPressed(KeyBindings.CancelarOrden) && TrazadoDeCamino.HayTrazado)
+            {
+                TrazadoDeCamino.Limpiar();
+                if (ModeToast != null) ModeToast.Show("RECORRIDO DESCARTADO");
+            }
+
             if (KeyBindings.WasPressed(KeyBindings.CancelarOrden) && Selection.Selected.Count > 0)
             {
                 foreach (var s in Selection.Selected)
@@ -2118,7 +2146,17 @@ namespace SP.Player
             // viva -- la tecla mas grande y accesible para la accion mas
             // repetida en vista tactica, para cuando la camara se pierde
             // paneando por el mapa.
-            if (KeyBindings.WasPressed(KeyBindings.Recentrar) && Squad != null)
+            // [Espacio] tiene dos trabajos y el recorrido gana: si hay uno
+            // trazado, recentrar la camara es lo ultimo que el jugador
+            // quiere en ese momento. Sin trazado se comporta igual que
+            // siempre.
+            if (KeyBindings.WasPressed(KeyBindings.Recentrar) && TrazadoDeCamino.HayTrazado)
+            {
+                int tramos = TrazadoDeCamino.Ejecutar(Selection.Selected);
+                if (tramos > 0) { if (ModeToast != null) ModeToast.Show($"RECORRIDO DE {tramos} TRAMOS"); }
+                else { RejectOrder("NADIE SELECCIONADO"); TrazadoDeCamino.Limpiar(); }
+            }
+            else if (KeyBindings.WasPressed(KeyBindings.Recentrar) && Squad != null)
             {
                 Vector3 sum = Vector3.zero;
                 int count = 0;

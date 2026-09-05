@@ -1946,6 +1946,65 @@ namespace SP.EditorTools
             OrderService.ManejadoAMano = null;
             vega.Brain.IsPossessedByPlayer = false;
 
+            // --- C4: trazar un recorrido y ejecutarlo ---
+            SP.Player.TrazadoDeCamino.Limpiar();
+            kes.Brain.CancelOrder();
+            // Lejos del origen a proposito: todos los obstaculos y los
+            // enemigos de la escena viven dentro de |x|,|z| < 8, y un
+            // recorrido que los cruza mide la navegacion (o el combate),
+            // no el recorrido. El primer intento trazaba por (6,6), que
+            // pasa por adentro de Obstaculo_1.
+            kes.transform.position = new Vector3(30f, kes.transform.position.y, 30f);
+
+            var recorrido = new Vector3[]
+            {
+                new Vector3(36f, 0f, 30f), new Vector3(36f, 0f, 36f),
+                new Vector3(30f, 0f, 36f), new Vector3(24f, 0f, 30f),
+            };
+            int marcados = 0;
+            foreach (var punto in recorrido)
+                if (SP.Player.TrazadoDeCamino.Marcar(punto)) marcados++;
+            Check($"Trazar 4 puntos con [Ctrl] deja 4 puntos en el recorrido ({marcados})",
+                marcados == 4 && SP.Player.TrazadoDeCamino.Cantidad == 4);
+
+            Check("Un punto pegado al anterior no suma un tramo de la nada",
+                !SP.Player.TrazadoDeCamino.Marcar(recorrido[3] + new Vector3(0.2f, 0f, 0f))
+                && SP.Player.TrazadoDeCamino.Cantidad == 4);
+
+            int tramos = SP.Player.TrazadoDeCamino.Ejecutar(new List<Soldier> { kes });
+            Check($"[Espacio] emite los 4 tramos y deja el trazado vacio ({tramos})",
+                tramos == 4 && SP.Player.TrazadoDeCamino.Cantidad == 0);
+            Check($"El soldado queda con 1 tramo en curso y 3 encolados ({kes.Brain.QueuedOrderCount} en cola)",
+                kes.Brain.QueuedOrderCount == 3 && kes.Brain.CurrentOrderDestination.HasValue);
+
+            // Que de verdad los recorra, y en orden: se anota a que
+            // distancia minima paso de cada punto y en que instante.
+            var masCerca = new float[recorrido.Length];
+            var cuando = new int[recorrido.Length];
+            for (int i = 0; i < recorrido.Length; i++) { masCerca[i] = float.MaxValue; cuando[i] = -1; }
+            for (int paso = 0; paso < 1600; paso++)
+            {
+                SimStep(0.05f);
+                for (int i = 0; i < recorrido.Length; i++)
+                {
+                    var plano = kes.transform.position; plano.y = 0f;
+                    float d = Vector3.Distance(plano, recorrido[i]);
+                    if (d < masCerca[i]) { masCerca[i] = d; if (d < 2f && cuando[i] < 0) cuando[i] = paso; }
+                }
+            }
+            bool pasoPorTodos = true, enOrden = true;
+            for (int i = 0; i < recorrido.Length; i++)
+            {
+                if (masCerca[i] >= 2f) pasoPorTodos = false;
+                if (i > 0 && (cuando[i] < 0 || cuando[i - 1] < 0 || cuando[i] < cuando[i - 1])) enOrden = false;
+            }
+            Check($"Pasa a menos de 2 m de los 4 puntos (minimos: {masCerca[0]:0.0} / {masCerca[1]:0.0} / {masCerca[2]:0.0} / {masCerca[3]:0.0} m)",
+                pasoPorTodos);
+            Check($"Y los recorre EN ORDEN (pasos: {cuando[0]} -> {cuando[1]} -> {cuando[2]} -> {cuando[3]})", enOrden);
+
+            SP.Player.TrazadoDeCamino.Limpiar();
+            kes.Brain.CancelOrder();
+
             TestLog.Phase("FASE 8 FINALIZADA");
         }
 
