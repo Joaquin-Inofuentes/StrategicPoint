@@ -100,6 +100,10 @@ namespace SP.Presentation
             // navegacion todavia cree cerrado: sin esto los soldados
             // seguirian rodeando un escombro que ya no existe.
             SP.Core.NavService.Invalidate();
+            // Y por el mismo motivo, las coberturas que daba este obstaculo
+            // ya no cubren de nada: sin reregistrar, la IA seguiria yendo a
+            // esconderse detras de un escombro.
+            SP.Core.Coberturas.Registrar();
         }
 
         void SpawnDebris(int count, float speed)

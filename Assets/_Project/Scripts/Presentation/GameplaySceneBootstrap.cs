@@ -47,6 +47,12 @@ namespace SP.Presentation
             if (SP.UI.MenuDeOrdenes.AsegurarEnEscena() != null)
                 GameLog.Line("Menu de ordenes listo ([Q] sostenido)");
 
+            // Los puntos de cobertura del mapa (F1): los cuatro costados
+            // de cada obstaculo solido. Se calculan una vez al arrancar y
+            // se rehacen si un obstaculo se derrumba (ver ObstacleMarker).
+            int coberturas = SP.Core.Coberturas.Registrar();
+            if (coberturas > 0) GameLog.Line($"Se registraron {coberturas} puntos de cobertura");
+
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null)

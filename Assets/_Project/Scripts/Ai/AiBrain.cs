@@ -233,6 +233,11 @@ namespace SP.Ai
         void SetState(AiState next)
         {
             if (State == next) return;
+            // La cobertura elegida vale para la persecucion en curso. Si el
+            // soldado sale de Chase (llego, lo perdio, le dieron una orden),
+            // arrastrarla al proximo combate lo mandaria a esconderse detras
+            // de un obstaculo que ya no tiene nada que ver.
+            if (next != AiState.Chase) SoltarCobertura();
             State = next;
             EventBus.Instance.Publish(new AiStateChangedEvent(self.Id, next.ToString()));
         }
@@ -397,6 +402,24 @@ namespace SP.Ai
         bool tieneRodeo;
         float relojDeRodeo;
 
+        // --- Cobertura (F3) ---
+        // A que distancia como maximo se acepta ir a buscar una cobertura.
+        // Mas lejos que esto, caminar hasta ahi cuesta mas que el rodeo
+        // directo y el soldado se aleja del combate.
+        public const float RadioDeBusquedaDeCobertura = 25f;
+        // Mismo criterio que el rodeo: la eleccion se rehace cada medio
+        // segundo, no cada tick. Sin el reloj, PlanPathTo resetea el indice
+        // de la ruta todos los frames y el soldado consume el camino sin
+        // moverse (bug ya medido en el rodeo: 0,0 m en 15 s).
+        const float RefrescoDeCobertura = 0.5f;
+        const float DistanciaEnLaCobertura = 0.6f;
+        Vector3 coberturaElegida;
+        bool tieneCobertura;
+        float relojDeCobertura;
+
+        public bool VaHaciaUnaCobertura => tieneCobertura;
+        public Vector3 CoberturaElegida => coberturaElegida;
+
         void RodearHasta(Vector3 objetivo, float dt)
         {
             relojDeRodeo += dt;
@@ -412,6 +435,53 @@ namespace SP.Ai
                 PlanPathTo(objetivo);
             }
             AdvanceTo(objetivo, DistanciaDeContacto, dt);
+        }
+
+        // F3: en vez de rodear al enemigo al descubierto, ir a la cobertura
+        // mas cercana DESDE LA QUE SE LE PUEDE DISPARAR. La segunda mitad
+        // es la que importa: esconderse donde no se puede tirar es peor que
+        // quedarse afuera -- se deja de hacer daño y ademas no hay motivo
+        // para volver a salir.
+        //
+        // Devuelve false si no hay ninguna que sirva, y ahi el llamador se
+        // queda con el rodeo de siempre.
+        bool CubrirseDe(Soldier objetivo, float dt)
+        {
+            relojDeCobertura += dt;
+            if (!tieneCobertura || relojDeCobertura >= RefrescoDeCobertura)
+            {
+                relojDeCobertura = 0f;
+                Vector3 elegida;
+                // El 0,85 del alcance es el mismo margen con el que ya se
+                // frena el acercamiento normal: una cobertura a esa
+                // distancia del enemigo es una posicion de tiro de verdad,
+                // no una que queda a un paso de quedarse corta.
+                tieneCobertura = SP.Core.Coberturas.TryMejorCobertura(
+                    self.transform.position, objetivo, self, RadioDeBusquedaDeCobertura,
+                    attackRange * 0.85f, out elegida);
+                if (!tieneCobertura) return false;
+                // Solo se replanifica cuando la eleccion CAMBIA: repetir
+                // PlanPathTo al mismo punto cada medio segundo tira el
+                // avance de la ruta a la basura.
+                if ((elegida - coberturaElegida).sqrMagnitude > 0.01f || RemainingPathPoints == 0)
+                {
+                    coberturaElegida = elegida;
+                    PlanPathTo(elegida);
+                }
+            }
+            if (!tieneCobertura) return false;
+
+            // Se para ENCIMA de la cobertura, no a distancia de contacto:
+            // el punto de una cobertura es ocuparla. Frenando a 1,5 m el
+            // soldado queda al descubierto justo al lado del obstaculo.
+            AdvanceTo(coberturaElegida, DistanciaEnLaCobertura, dt);
+            return true;
+        }
+
+        void SoltarCobertura()
+        {
+            tieneCobertura = false;
+            relojDeCobertura = 0f;
         }
 
         bool AdvanceTo(Vector3 destination, float threshold, float dt)
@@ -559,6 +629,7 @@ namespace SP.Ai
             attackMoveDestination = null;
             orderQueue.Clear();
             ClearPath();
+            SoltarCobertura();
             if (State == AiState.MovingToOrder || State == AiState.MovingToAttackOrder || State == AiState.Follow)
             {
                 target = null;
@@ -770,7 +841,12 @@ namespace SP.Ai
                             // siempre. Medido, empujando derecho: llegaba a
                             // 1,5 m del muro y ahi se quedaba, 0 de daño en
                             // 15 segundos.
-                            RodearHasta(target.transform.position, dt);
+                            // F3: primero se busca una cobertura desde la
+                            // que SI se pueda disparar. Solo si no hay
+                            // ninguna a mano se cae al rodeo de siempre,
+                            // que es lo que arreglo el caso del Muro.
+                            if (!CubrirseDe(target, dt))
+                                RodearHasta(target.transform.position, dt);
                         }
                     }
                     else HoldStancePosition(dt);
@@ -879,32 +955,16 @@ namespace SP.Ai
         // SoldierMotor y que el proyectil. Si las tres no coincidieran,
         // habria angulos donde la IA cree tener tiro, la bala choca y nadie
         // entiende por que.
-        static readonly RaycastHit[] BufferVision = new RaycastHit[8];
-
+        // El raycast en si vive en NavService.HayLineaDeTiro: para elegir
+        // una cobertura hay que poder preguntar lo mismo desde un punto
+        // cualquiera, no solo desde el propio cuerpo. Aca queda la version
+        // comoda de "yo, hacia ese soldado".
         public bool TieneLineaDeTiro(Soldier objetivo)
         {
             if (objetivo == null || self == null) return false;
-
-            var desde = self.transform.position;
-            var hasta = objetivo.transform.position;
-            var delta = hasta - desde;
-            float dist = delta.magnitude;
-            if (dist < 0.0001f) return true;
-
-            var dir = delta / dist;
-            int n = Physics.RaycastNonAlloc(desde, dir, BufferVision, dist, ~0, QueryTriggerInteraction.Ignore);
-            for (int i = 0; i < n; i++)
-            {
-                var c = BufferVision[i].collider;
-                if (c == null) continue;
-                // El propio cuerpo y el del objetivo no tapan nada: son las
-                // dos puntas del rayo.
-                if (c.transform.IsChildOf(self.transform)) continue;
-                if (c.transform.IsChildOf(objetivo.transform)) continue;
-                if (!SP.Core.NavService.BlocksMovement(c)) continue;
-                return false;
-            }
-            return true;
+            return SP.Core.NavService.HayLineaDeTiro(
+                self.transform.position, objetivo.transform.position,
+                self.transform, objetivo.transform);
         }
 
         // ------------------------------------------------------------------

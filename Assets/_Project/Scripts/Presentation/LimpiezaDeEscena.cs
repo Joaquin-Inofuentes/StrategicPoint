@@ -63,7 +63,7 @@ namespace SP.Presentation
         static readonly string[] NombresDeRoot =
         {
             "DecalPool", "DebrisPool", "ImpactFxPool", "ShockwaveRingPool",
-            "OrderMarkerPool",
+            "OrderMarkerPool", SP.Core.Coberturas.NombreDelRoot,
         };
 
         // Los ClearAll de arriba solo destruyen el root que el pool tiene

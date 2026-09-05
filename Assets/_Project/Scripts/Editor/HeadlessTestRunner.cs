@@ -2067,6 +2067,130 @@ namespace SP.EditorTools
             UnityEngine.Object.DestroyImmediate(victima.gameObject);
             UnityEngine.Object.DestroyImmediate(aliadoEnMedio.gameObject);
 
+            // --- F1: registrar los puntos de cobertura ---
+            var solidos = SP.Core.Coberturas.Solidos();
+            Check($"Los obstaculos solidos de la escena son los 4 Obstaculo_N, ni el piso ni las armas tiradas ({solidos.Count})",
+                solidos.Count == 4);
+
+            int coberturas = SP.Core.Coberturas.Registrar();
+            Check($"Se registran 4 coberturas por obstaculo solido ({coberturas} para {solidos.Count})",
+                coberturas == 4 * solidos.Count);
+
+            bool ningunaAdentro = true;
+            float masCercaDeUnMuro = float.MaxValue;
+            foreach (var p in SP.Core.Coberturas.Puntos)
+            {
+                var alrededor = Physics.OverlapSphere(p + Vector3.up * 0.5f, SP.Core.Coberturas.RadioLibre,
+                    ~0, QueryTriggerInteraction.Ignore);
+                foreach (var c in alrededor)
+                    if (SP.Core.NavService.BlocksMovement(c)) ningunaAdentro = false;
+                foreach (var c in solidos)
+                    masCercaDeUnMuro = Mathf.Min(masCercaDeUnMuro, Vector3.Distance(c.ClosestPoint(p), p));
+            }
+            Check("Ninguna cobertura cae adentro de un collider", ningunaAdentro);
+            Check($"Y todas quedan pegadas a su obstaculo (la mas cercana a {masCercaDeUnMuro:0.00} m de la cara)",
+                masCercaDeUnMuro < SP.Core.Coberturas.DistanciaDeLaCara + 0.1f);
+
+            var marcasEnEscena = GameObject.Find(SP.Core.Coberturas.NombreDelRoot);
+            Check($"Las coberturas quedan marcadas en el mapa ({(marcasEnEscena != null ? marcasEnEscena.transform.childCount : 0)} marcas)",
+                marcasEnEscena != null && marcasEnEscena.transform.childCount == coberturas);
+
+            // --- F2: linea de tiro desde una cobertura ---
+            // Obstaculo_1 esta en (6, 3) y mide 2x2. El enemigo se pone
+            // justo del otro lado: la cobertura de la cara opuesta al
+            // enemigo NO puede tirarle, la del costado SI.
+            var bloqueo = solidos[0];
+            foreach (var c in solidos) if (c.name == "Obstaculo_1") bloqueo = c;
+            var centroBloqueo = bloqueo.bounds.center;
+            // Muy resistente a proposito: lo que se mide es DONDE termina
+            // parado el soldado, y si el blanco se muere a mitad de camino
+            // el combate se corta y la medicion no dice nada.
+            var blanco = SpawnSoldier(soldierPrefab, "BlancoDetrasDelMuro", TeamId.Enemy, RoleType.Enemy,
+                centroBloqueo + new Vector3(0f, 0f, 4f), enemyColor, pool, 100000);
+            SP.Core.ApoyoEnElPiso.Apoyar(blanco.transform);
+            blanco.Brain.enabled = false;
+
+            var caraOpuesta = new Vector3(centroBloqueo.x, bloqueo.bounds.min.y, centroBloqueo.z - (bloqueo.bounds.extents.z + 1f));
+            var costado = new Vector3(centroBloqueo.x + (bloqueo.bounds.extents.x + 1f), bloqueo.bounds.min.y, centroBloqueo.z);
+            bool desdeOpuesta = SP.Core.Coberturas.HayLineaDeTiroDesde(caraOpuesta + Vector3.up, blanco, null);
+            bool desdeCostado = SP.Core.Coberturas.HayLineaDeTiroDesde(costado + Vector3.up, blanco, null);
+            Check($"Con el obstaculo en medio, la cobertura de la cara OPUESTA no tiene linea de tiro ({desdeOpuesta})",
+                !desdeOpuesta);
+            Check($"Y la del costado SI la tiene ({desdeCostado})", desdeCostado);
+
+            // --- F3: el soldado va a cubrirse y desde ahi tiene tiro ---
+            // Con su propio obstaculo a campo abierto y no con los de la
+            // escena: el primer intento medio junto al origen y el soldado
+            // se trababa contra las tres armas tiradas en el piso (que
+            // bloquean el paso), asi que lo que se media era eso y no la
+            // cobertura.
+            var obstaculoDePrueba = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            obstaculoDePrueba.name = "ObstaculoDePrueba";
+            obstaculoDePrueba.transform.position = new Vector3(40f, 1f, 40f);
+            obstaculoDePrueba.transform.localScale = new Vector3(2f, 2f, 2f);
+            UnityEngine.Object.DestroyImmediate(blanco.gameObject);
+            blanco = SpawnSoldier(soldierPrefab, "BlancoDetrasDelObstaculo", TeamId.Enemy, RoleType.Enemy,
+                new Vector3(40f, 0f, 44f), enemyColor, pool, 100000);
+            SP.Core.ApoyoEnElPiso.Apoyar(blanco.transform);
+            // enabled = false NO alcanza: SimStep llama Tick() a mano sobre
+            // todos los cerebros, sin mirar el enabled del componente. Sin
+            // esto el blanco devuelve el fuego y mata al soldado a mitad de
+            // la medicion. IsPossessedByPlayer es la unica salida temprana
+            // real de Tick.
+            blanco.Brain.enabled = false;
+            blanco.Brain.IsPossessedByPlayer = true;
+            SP.Core.NavService.Invalidate();
+            int coberturasConPrueba = SP.Core.Coberturas.Registrar();
+            Check($"El obstaculo nuevo suma sus 4 coberturas ({coberturasConPrueba})",
+                coberturasConPrueba == coberturas + 4);
+
+            kes.Brain.CancelOrder();
+            kes.Brain.IsPossessedByPlayer = false;
+            kes.transform.position = new Vector3(40f, kes.transform.position.y, blanco.transform.position.z - 15f);
+            SP.Core.ApoyoEnElPiso.Apoyar(kes.transform);
+            // La vision de la IA es de 10 m y el escenario del plan pide
+            // 15: sin esto el soldado ni se entera de que hay un enemigo y
+            // lo que se mediria es el sensado, no la cobertura.
+            var campoDeVision = GetRequiredField(typeof(AiBrain), "visionRange",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            float visionOriginal = (float)campoDeVision.GetValue(kes.Brain);
+            campoDeVision.SetValue(kes.Brain, 20f);
+            // A la misma altura que el soldado: el blanco recien creado
+            // quedaba con y=0 y el soldado apoyado en y=0,80, asi que el
+            // rayo de la linea de tiro bajaba hasta rozar el piso y daba
+            // false por el Ground, no por el obstaculo. En terreno plano
+            // los dos estan a la misma altura.
+            blanco.transform.position = new Vector3(blanco.transform.position.x,
+                kes.transform.position.y, blanco.transform.position.z);
+            Physics.SyncTransforms();
+
+            float distInicial = Vector3.Distance(kes.transform.position, blanco.transform.position);
+            bool tiroAlEmpezar = kes.Brain.TieneLineaDeTiro(blanco);
+
+            for (int i = 0; i < 400; i++) SimStep(0.05f);
+
+            float aLaCobertura = float.MaxValue;
+            Vector3 masCercana = Vector3.zero;
+            foreach (var p in SP.Core.Coberturas.Puntos)
+            {
+                float d = Vector3.Distance(new Vector3(kes.transform.position.x, p.y, kes.transform.position.z), p);
+                if (d < aLaCobertura) { aLaCobertura = d; masCercana = p; }
+            }
+            bool tiroAlFinal = kes.Brain.TieneLineaDeTiro(blanco);
+            Check($"Y termina ATACANDO desde ahi, no solo parado ({kes.Brain.State}, vivo={kes.Health.IsAlive})",
+                kes.Brain.State == AiState.Attack && kes.Health.IsAlive);
+            Check($"Arranca a {distInicial:0.0} m del enemigo y SIN linea de tiro (verificacion de la propia prueba)",
+                distInicial > 12f && !tiroAlEmpezar);
+            Check($"Termina a menos de 1,5 m de una cobertura ({aLaCobertura:0.00} m de {masCercana}), no donde arranco",
+                aLaCobertura < 1.5f);
+            Check($"Y desde ahi SI le puede disparar ({tiroAlFinal})", tiroAlFinal);
+
+            campoDeVision.SetValue(kes.Brain, visionOriginal);
+            UnityEngine.Object.DestroyImmediate(obstaculoDePrueba);
+            UnityEngine.Object.DestroyImmediate(blanco.gameObject);
+            kes.Brain.CancelOrder();
+            SP.Core.Coberturas.Limpiar();
+
             TestLog.Phase("FASE 8 FINALIZADA");
         }
 

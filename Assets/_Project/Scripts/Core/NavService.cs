@@ -132,6 +132,35 @@ namespace SP.Core
         // de armas, zonas). Queda lo que de verdad es escenario: Muro,
         // Obstaculo_*, y cualquier cubo que alguien agregue mañana sin
         // tener que acordarse de marcarlo con nada.
+        // Linea de tiro entre dos PUNTOS, sin pedir que ninguno sea un
+        // soldado. Salio de AiBrain.TieneLineaDeTiro, que solo sabia
+        // preguntar "desde mi cuerpo hasta ese soldado": para elegir una
+        // cobertura hay que poder preguntarlo ANTES de estar parado ahi.
+        //
+        // ignorarA/ignorarB son las dos puntas del rayo: el propio cuerpo
+        // y el del objetivo no tapan nada.
+        static readonly RaycastHit[] BufferDeTiro = new RaycastHit[8];
+
+        public static bool HayLineaDeTiro(Vector3 desde, Vector3 hasta, Transform ignorarA, Transform ignorarB)
+        {
+            var delta = hasta - desde;
+            float dist = delta.magnitude;
+            if (dist < 0.0001f) return true;
+
+            var dir = delta / dist;
+            int n = Physics.RaycastNonAlloc(desde, dir, BufferDeTiro, dist, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = BufferDeTiro[i].collider;
+                if (c == null) continue;
+                if (ignorarA != null && c.transform.IsChildOf(ignorarA)) continue;
+                if (ignorarB != null && c.transform.IsChildOf(ignorarB)) continue;
+                if (!BlocksMovement(c)) continue;
+                return false;
+            }
+            return true;
+        }
+
         public static bool BlocksMovement(Collider c)
         {
             if (c == null || !c.enabled || c.isTrigger) return false;
