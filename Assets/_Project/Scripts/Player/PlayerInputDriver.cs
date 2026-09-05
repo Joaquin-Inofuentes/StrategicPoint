@@ -940,6 +940,13 @@ namespace SP.Player
             if (KeyBindings.WasPressed(KeyBindings.Poseer) && result.Type == AimTargetType.Ally)
                 TryPossess(result.Soldier);
 
+            // E1: [F] sobre un enemigo manda la orden de atacar a lo
+            // seleccionado -- misma tecla que "poseer" sobre un aliado,
+            // pero AimTargetType ya distingue cual es cual, asi que no hay
+            // ambiguedad en que rama entra.
+            if (KeyBindings.WasPressed(KeyBindings.Poseer) && result.Type == AimTargetType.Enemy)
+                OrderService.IssueAttackOrderForSelection(Selection.Selected, result.Soldier);
+
             if (kb.tKey.wasPressedThisFrame && result.Type == AimTargetType.Ground)
             {
                 var nearest = OrderService.FindNearestFreeAlly(result.Point, TeamId.Player, Brain.Current);

@@ -467,7 +467,9 @@ namespace SP.UI
                     currentAimTint = AllyTint;
                     break;
                 case AimTargetType.Enemy:
-                    CurrentPrompt = $"Enemigo: {result.Soldier.DisplayName}";
+                    // E1: antes solo decia el nombre -- no invitaba a
+                    // ninguna accion, aunque [F] ya la ejecutara.
+                    CurrentPrompt = $"[F] Atacar a {result.Soldier.DisplayName}";
                     currentAimTint = EnemyTint;
                     break;
                 case AimTargetType.Vehicle:

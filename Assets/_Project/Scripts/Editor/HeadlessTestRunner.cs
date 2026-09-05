@@ -2608,6 +2608,50 @@ namespace SP.EditorTools
             SP.Player.RescateAutomatico.Cancelar();
 
             TestLog.Phase("FASE 9 FINALIZADA (13/23)");
+
+            // --- #14 / E1: [F] sobre un enemigo da la orden de atacar ---
+            TestLog.Phase("FASE 9 - Tarea #14: [F] sobre un enemigo da la orden de atacar");
+            foreach (var s in new[] { vega, kes, doc })
+            {
+                s.gameObject.SetActive(true);
+                s.Health.Initialize(s.Id, s.Health.MaxHealth);
+                s.Brain.CancelOrder();
+                s.Brain.IsPossessedByPlayer = false;
+            }
+            inputDriver.Brain.Possess(vega);
+            vega.Brain.IsPossessedByPlayer = true;
+            var estadoDeVegaAntes = vega.Brain.State;
+
+            inputDriver.Selection.SelectSingle(kes);
+            inputDriver.Selection.AddToSelection(doc);
+
+            var enemigoParaE1 = SpawnSoldier(soldierPrefab, "EnemigoParaE1", TeamId.Enemy, RoleType.Enemy,
+                new Vector3(85f, 0.8f, 85f), enemyColor, pool, 150);
+            enemigoParaE1.Brain.enabled = false;
+            enemigoParaE1.Brain.IsPossessedByPlayer = true;
+
+            aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Enemy, Soldier = enemigoParaE1,
+                Point = enemigoParaE1.transform.position, HitTransform = enemigoParaE1.transform });
+            Check($"Apuntando a un enemigo, el cartel invita a atacar (\"{aimUiRef.CurrentPrompt}\")",
+                aimUiRef.CurrentPrompt.Contains("F") && aimUiRef.CurrentPrompt.Contains(enemigoParaE1.DisplayName));
+
+            OrderService.IssueAttackOrderForSelection(inputDriver.Selection.Selected, enemigoParaE1);
+            SimulateSeconds(1f); // deja que Chase/Attack se resuelva tras la orden
+
+            bool kesEnCombate = kes.Brain.State == AiState.Chase || kes.Brain.State == AiState.MovingToAttackOrder || kes.Brain.State == AiState.Attack;
+            bool docEnCombate = doc.Brain.State == AiState.Chase || doc.Brain.State == AiState.MovingToAttackOrder || doc.Brain.State == AiState.Attack;
+            Check($"[F] deja a los 2 seleccionados yendo a atacar o atacando ({kes.Brain.State}, {doc.Brain.State})",
+                kesEnCombate && docEnCombate);
+            Check($"Y al poseido no le llega la orden: su estado no cambio ({estadoDeVegaAntes} -> {vega.Brain.State})",
+                vega.Brain.State == estadoDeVegaAntes);
+
+            UnityEngine.Object.DestroyImmediate(enemigoParaE1.gameObject);
+            kes.Brain.CancelOrder();
+            doc.Brain.CancelOrder();
+            inputDriver.Selection.Clear();
+            vega.Brain.IsPossessedByPlayer = false;
+
+            TestLog.Phase("FASE 9 FINALIZADA (14/23)");
         }
 
         // ---------------------------------------------------------------
