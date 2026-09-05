@@ -648,6 +648,15 @@ namespace SP.Ai
                     flatDir.y = 0f;
                     float aimAngleDeg = flatDir.sqrMagnitude < 0.0001f ? 0f : Vector3.Angle(self.transform.forward, flatDir);
                     bool aimedAtTarget = flatDir.sqrMagnitude < 0.0001f || aimAngleDeg <= aimToleranceDeg;
+
+                    // Sin linea de tiro no se gatilla: se vuelve a Chase para
+                    // buscar el angulo. Quedarse quieto disparandole a la
+                    // pared es lo que hacia antes.
+                    if (!TieneLineaDeTiro(target))
+                    {
+                        SetState(hasOrder ? AiState.MovingToAttackOrder : AiState.Chase);
+                        break;
+                    }
                     // En Libre StanceAllowsFire es true y el TryFire es el
                     // mismo de siempre. AltoElFuego encara y sigue al
                     // enemigo con la mira, pero no aprieta el gatillo.
@@ -698,6 +707,53 @@ namespace SP.Ai
                     }
                     break;
             }
+        }
+
+        // ------------------------------------------------------------------
+        // Linea de tiro
+        // ------------------------------------------------------------------
+        // BUG REAL: la IA no miraba NUNCA si habia algo en el medio. Sensaba
+        // por distancia pura y disparaba con solo tener al enemigo en rango
+        // y encarado. O sea que "veia" a traves del Muro, de las barricadas
+        // y de los arboles.
+        //
+        // Mientras las balas atravesaban el escenario el sintoma era otro
+        // (te mataban a traves de una pared). Ahora que el proyectil choca
+        // de verdad, sin esto el soldado se queda parado descargando el
+        // cargador contra la cobertura, sin hacerle un rasguño al enemigo y
+        // sin moverse jamas: el combate se traba para siempre.
+        //
+        // El rayo va de cuerpo a cuerpo -- el transform del soldado ya esta
+        // a la altura del pecho -- y usa la MISMA definicion de pared que
+        // SoldierMotor y que el proyectil. Si las tres no coincidieran,
+        // habria angulos donde la IA cree tener tiro, la bala choca y nadie
+        // entiende por que.
+        static readonly RaycastHit[] BufferVision = new RaycastHit[8];
+
+        public bool TieneLineaDeTiro(Soldier objetivo)
+        {
+            if (objetivo == null || self == null) return false;
+
+            var desde = self.transform.position;
+            var hasta = objetivo.transform.position;
+            var delta = hasta - desde;
+            float dist = delta.magnitude;
+            if (dist < 0.0001f) return true;
+
+            var dir = delta / dist;
+            int n = Physics.RaycastNonAlloc(desde, dir, BufferVision, dist, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = BufferVision[i].collider;
+                if (c == null) continue;
+                // El propio cuerpo y el del objetivo no tapan nada: son las
+                // dos puntas del rayo.
+                if (c.transform.IsChildOf(self.transform)) continue;
+                if (c.transform.IsChildOf(objetivo.transform)) continue;
+                if (!SP.Core.NavService.BlocksMovement(c)) continue;
+                return false;
+            }
+            return true;
         }
 
         // ------------------------------------------------------------------

@@ -56,6 +56,21 @@ namespace SP.Player
                 if (hit.collider.gameObject.name.StartsWith("Ground"))
                     return new AimResult { Type = AimTargetType.Ground, Point = hit.point };
 
+                // CUALQUIER OTRO SOLIDO cuenta como suelo para el mando, con
+                // el punto proyectado sobre el piso. Antes esto devolvia
+                // None, y como todas las ordenes de RTS (mover, marcador,
+                // fantasmas de formacion, vista previa de ruta) exigen
+                // AimTargetType.Ground, un click derecho sobre un arbol,
+                // una barricada o un barril no hacia NADA: ni orden, ni
+                // marcador, ni aviso. El jugador clickea al lado de una
+                // cobertura para reposicionarse y la escuadra lo ignora.
+                //
+                // Se ordena sobre el piso debajo del click y no sobre el
+                // punto de impacto: si no, el destino quedaria a un metro
+                // de altura arriba de la barricada.
+                if (TryPuntoEnElPiso(ray, out var puntoPiso))
+                    return new AimResult { Type = AimTargetType.Ground, Point = puntoPiso };
+
                 return new AimResult { Type = AimTargetType.None };
             }
 
@@ -75,6 +90,21 @@ namespace SP.Player
             if (lastHighlightedId == -1) return;
             lastHighlightedId = -1;
             EventBus.Instance.Publish(new SwapTargetClearedEvent());
+        }
+
+        // Altura del piso jugable. El suelo de la escena tiene su cara
+        // superior en y=0; se cruza el rayo contra ese plano.
+        const float AlturaDelPiso = 0f;
+
+        static bool TryPuntoEnElPiso(Ray ray, out Vector3 punto)
+        {
+            punto = default;
+            // Rayo paralelo al piso (o apuntando hacia arriba): no lo cruza.
+            if (ray.direction.y >= -0.0001f) return false;
+            float t = (AlturaDelPiso - ray.origin.y) / ray.direction.y;
+            if (t < 0f) return false;
+            punto = ray.origin + ray.direction * t;
+            return true;
         }
     }
 }

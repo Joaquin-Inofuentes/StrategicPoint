@@ -178,6 +178,8 @@ namespace SP.Combat
         {
             if (!active) return;
 
+            var posPrevia = transform.position;
+
             if (gravity != 0f)
             {
                 // Integracion exacta para aceleracion constante (velocity
@@ -219,6 +221,23 @@ namespace SP.Combat
                 Expire();
                 return;
             }
+
+            // MUNDO SOLIDO. Hasta aca el proyectil solo sabia de soldados,
+            // vehiculos y obstaculos REGISTRADOS, todos por distancia a su
+            // origen: nunca consultaba fisica. O sea que las balas
+            // atravesaban el Muro, los arboles, las barricadas y los
+            // barriles como si no existieran. Justo despues de dejar el
+            // Muro solido para caminar, seguia sin serlo para disparar:
+            // el jugador se cubria detras de una barricada y le pegaban
+            // igual.
+            //
+            // Se barre el TRAMO recorrido este frame, no la posicion
+            // puntual: a 40 m/s y 60 fps la bala avanza 66 cm por frame, y
+            // un chequeo puntual se saltea cualquier pared mas fina que
+            // eso. Va DESPUES del chequeo de soldados a proposito: un
+            // enemigo pegado a la pared tiene que seguir recibiendo el
+            // tiro, no que se lo coma el muro que tiene atras.
+            if (ChocoContraElMundo(posPrevia)) return;
 
             // No hay soldado en el camino: probamos vehículo y obstáculo,
             // para que el jugador tenga feedback de qué le pegó a qué (antes
@@ -319,6 +338,67 @@ namespace SP.Combat
             TryPlayNearMissWhizz();
 
             if (age >= lifetime) Expire();
+        }
+
+        // Buffer compartido: un barrido por bala por frame no puede estar
+        // asignando un array cada vez.
+        static readonly RaycastHit[] BufferBarrido = new RaycastHit[8];
+
+        // Devuelve true si la bala se murio contra el escenario.
+        bool ChocoContraElMundo(Vector3 desde)
+        {
+            var tramo = transform.position - desde;
+            float largo = tramo.magnitude;
+            if (largo < 0.00001f) return false;
+
+            var dir = tramo / largo;
+            int n = Physics.RaycastNonAlloc(desde, dir, BufferBarrido, largo, ~0, QueryTriggerInteraction.Ignore);
+
+            float mejor = float.MaxValue;
+            RaycastHit impacto = default;
+            bool hay = false;
+            for (int i = 0; i < n; i++)
+            {
+                var h = BufferBarrido[i];
+                // Misma definicion de "pared" que usa SoldierMotor para no
+                // atravesar el Muro: si algo frena a un soldado, frena una
+                // bala. Soldados, vehiculos y proyectiles quedan afuera --
+                // esos tienen su propio camino unas lineas mas arriba, con
+                // su daño y sus efectos.
+                if (!SP.Core.NavService.BlocksMovement(h.collider)) continue;
+                if (h.distance >= mejor) continue;
+                mejor = h.distance;
+                impacto = h;
+                hay = true;
+            }
+
+            if (!hay) return false;
+
+            transform.position = impacto.point;
+
+            if (explosionRadius > 0f)
+            {
+                Explode(impacto.point);
+                Expire();
+                return true;
+            }
+
+            // Si lo que frena la bala es un obstaculo destructible, cobra
+            // el daño. Antes esto dependia de estar a menos de 1 metro del
+            // ORIGEN del obstaculo, que con una barricada de casi 6 metros
+            // de largo significaba que solo le pegabas cerca del pivote.
+            var marca = impacto.collider.GetComponentInParent<SP.Presentation.ObstacleMarker>();
+            var clase = marca != null ? EnvironmentHitKind.Obstacle : EnvironmentHitKind.Ground;
+            if (marca != null) marca.TakeDamage(damage);
+
+            EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, clase, impacto.point));
+            PlayImpactSfx(clase, impacto.point, 0.5f);
+            ImpactFx.SpawnScaledByDamage(impacto.point,
+                marca != null ? ImpactFx.ObstacleColor : ImpactFx.GroundColor, damage);
+            DecalPool.Spawn(DecalKind.BulletHole, impacto.point, impacto.normal, 0.22f);
+
+            Expire();
+            return true;
         }
 
         // ------------------------------------------------------------------

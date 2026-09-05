@@ -144,7 +144,13 @@ namespace SP.Vehicles
 
             var aimPoint = ComputeLeadAimPoint(target, dt);
             turret.AimAt(aimPoint, dt);
-            if (turret.IsAimedAt(aimPoint)) turret.TryFire();
+            // Mismo motivo que el gate de AiBrain: sin linea de tiro no se
+            // gatilla. Antes la torreta elegia al enemigo mas cercano en 40
+            // metros y disparaba, hubiera o no una pared en el medio --
+            // invisible mientras los proyectiles atravesaban el escenario,
+            // pero ahora seria el tanque bombardeando la barricada que
+            // tiene adelante mientras el enemigo mira.
+            if (turret.IsAimedAt(aimPoint) && HayLineaDeTiro(aimPoint)) turret.TryFire();
         }
 
         Vector3 ComputeLeadAimPoint(Soldier t, float dt)
@@ -164,6 +170,34 @@ namespace SP.Vehicles
             // liderar.
             leadTime = Mathf.Min(leadTime, 1.5f);
             return pos + velocity * leadTime;
+        }
+
+        static readonly RaycastHit[] BufferVision = new RaycastHit[8];
+
+        // Rayo desde la boca del cañon (o desde la torreta si no hay boca)
+        // hasta el punto al que se apunta, con la MISMA definicion de pared
+        // que usan SoldierMotor, Projectile y AiBrain.
+        bool HayLineaDeTiro(Vector3 punto)
+        {
+            var desde = turret != null && turret.Muzzle != null
+                ? turret.Muzzle.position
+                : transform.position;
+
+            var delta = punto - desde;
+            float dist = delta.magnitude;
+            if (dist < 0.0001f) return true;
+
+            int n = Physics.RaycastNonAlloc(desde, delta / dist, BufferVision, dist, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = BufferVision[i].collider;
+                if (c == null) continue;
+                // El propio vehiculo no se tapa a si mismo.
+                if (c.transform.IsChildOf(transform.root)) continue;
+                if (!SP.Core.NavService.BlocksMovement(c)) continue;
+                return false;
+            }
+            return true;
         }
     }
 }

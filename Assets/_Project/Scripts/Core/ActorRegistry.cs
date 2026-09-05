@@ -12,16 +12,42 @@ namespace SP.Core
     {
         static readonly List<Soldier> soldiers = new List<Soldier>();
 
+        // El set existe SOLO para que Register sea O(1). Antes la unica
+        // estructura era la lista y Register hacia soldiers.Contains(),
+        // que es un barrido lineal: como EnsureAllRegistered vuelve a dar
+        // de alta a todos, el alta completa costaba O(n^2). Con cincuenta
+        // soldados eso son 2.500 comparaciones cada vez que alguien la
+        // llamaba.
+        static readonly HashSet<Soldier> registrados = new HashSet<Soldier>();
+
         public static void Register(Soldier soldier)
         {
-            if (!soldiers.Contains(soldier)) soldiers.Add(soldier);
+            if (soldier == null) return;
+            if (registrados.Add(soldier)) soldiers.Add(soldier);
         }
 
-        public static void Unregister(Soldier soldier) => soldiers.Remove(soldier);
+        public static void Unregister(Soldier soldier)
+        {
+            if (soldier == null) return;
+            if (registrados.Remove(soldier)) soldiers.Remove(soldier);
+        }
 
-        public static void Clear() => soldiers.Clear();
+        public static void Clear()
+        {
+            soldiers.Clear();
+            registrados.Clear();
+            proximoBarrido = 0f;
+        }
 
         public static IReadOnlyList<Soldier> All => soldiers;
+
+        // Fuerza que el proximo EnsureAllRegistered vuelva a barrer. Lo
+        // llama quien instancia soldados fuera del ciclo normal: un
+        // soldado creado ya DESACTIVADO no corre Awake y por lo tanto no
+        // se registra solo.
+        public static void Invalidate() => proximoBarrido = 0f;
+
+        static float proximoBarrido;
 
         // Soldier.Awake() -- que es quien registra -- NO corre en un
         // GameObject que ya está desactivado cuando carga la escena (un
@@ -30,7 +56,36 @@ namespace SP.Core
         // sensado de la IA, para la condición de victoria y para los
         // contadores del HUD, aunque estuviera perfectamente vivo. Este
         // barrido incluye los inactivos y los da de alta.
+        // EL BARRIDO YA NO SE PAGA POR TICK. Antes esto corria entero en
+        // cada llamada, y SpatialGrid.Rebuild() lo llama UNA VEZ POR TICK
+        // (60 veces por segundo): un FindObjectsByType completo de la
+        // escena mas un alta O(n^2), justo adentro de la funcion que
+        // existe para que el sensado deje de ser O(n^2). La grilla
+        // arreglaba el sensado y volvia a meter el costo por la puerta de
+        // atras. Medido con 70 soldados: 0,202 ms por tick, o sea 12 ms
+        // de CPU por cada segundo de partida solo para esto.
+        //
+        // No se cachea "para siempre" a proposito: el barrido existe
+        // justamente para encontrar soldados que arrancan DESACTIVADOS y
+        // por lo tanto nunca corren Awake ni se registran solos. Si se
+        // hiciera una unica vez, uno creado despues del primer tick
+        // quedaria invisible para la IA y para la condicion de victoria
+        // -- que es el bug que este barrido vino a tapar. Con el
+        // intervalo, el peor caso es que tarde medio segundo en verlo, y
+        // el costo cae de 60 barridos por segundo a 2.
+        const float IntervaloDeBarrido = 0.5f;
+
         public static void EnsureAllRegistered()
+        {
+            float ahora = Time.realtimeSinceStartup;
+            if (ahora < proximoBarrido) return;
+            proximoBarrido = ahora + IntervaloDeBarrido;
+            Rebarrer();
+        }
+
+        // El barrido de verdad, sin la guarda. Se puede forzar cuando hace
+        // falta certeza absoluta (la suite lo usa entre escenarios).
+        public static void Rebarrer()
         {
             var found = UnityEngine.Object.FindObjectsByType<Soldier>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             foreach (var s in found)

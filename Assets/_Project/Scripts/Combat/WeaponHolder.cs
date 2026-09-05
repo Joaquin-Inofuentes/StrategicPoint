@@ -185,14 +185,32 @@ namespace SP.Combat
         static Vector3 ApplySpread(Vector3 direction, float maxDeg)
         {
             if (maxDeg <= 0f) return direction;
-            // Desvio dentro de un cono: un angulo al azar en cada eje
-            // perpendicular a la direccion de disparo, no una unica
-            // rotacion en un solo plano (eso se veria como un abanico
-            // plano en vez de una nube redonda de impactos).
+            if (direction.sqrMagnitude < 0.000001f) return direction;
+
+            // BUG REAL: esto giraba sobre Vector3.up y Vector3.right, que
+            // son ejes del MUNDO, mientras el comentario decia -- y el
+            // juego necesitaba -- ejes perpendiculares AL DISPARO. La
+            // diferencia se nota segun hacia donde mire el soldado:
+            // disparando hacia el norte los dos ejes desviaban de verdad,
+            // pero disparando hacia el este el giro sobre Vector3.right
+            // era un ROLL sobre el propio eje de tiro, que no mueve la
+            // bala ni un grado. La dispersion valia la mitad en unas
+            // direcciones y entera en otras, y el arma se sentia mas
+            // precisa mirando para un lado que para el otro.
+            //
+            // Ahora los ejes se construyen contra la direccion real.
+            var adelante = direction.normalized;
+            var derecha = Vector3.Cross(Vector3.up, adelante);
+            // Disparo casi vertical: 'up' y la direccion son paralelos y el
+            // producto cruz se va a cero. Cualquier perpendicular sirve.
+            if (derecha.sqrMagnitude < 0.000001f) derecha = Vector3.Cross(Vector3.forward, adelante);
+            derecha.Normalize();
+            var arriba = Vector3.Cross(adelante, derecha);
+
             float yaw = UnityEngine.Random.Range(-maxDeg, maxDeg);
             float pitch = UnityEngine.Random.Range(-maxDeg, maxDeg);
-            var rot = Quaternion.AngleAxis(yaw, Vector3.up) * Quaternion.AngleAxis(pitch, Vector3.right);
-            return rot * direction;
+            var rot = Quaternion.AngleAxis(yaw, arriba) * Quaternion.AngleAxis(pitch, derecha);
+            return rot * adelante;
         }
 
         void StartReload()
