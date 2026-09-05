@@ -66,6 +66,84 @@ namespace SP.UI
         Text ammoWarningText;
         public void BindAmmoWarning(Text text) => ammoWarningText = text;
 
+        // B2: la recarga como circulo sobre la mira. WeaponStatusView ya
+        // muestra una barra recta en la esquina del HUD -- esto es la
+        // MISMA fraccion (ReadinessFraction01), pero donde el jugador ya
+        // tiene puesta la vista mientras apunta, no en un panel aparte.
+        const string ReloadCircleName = "CirculoRecarga";
+        const float ReloadCircleDiameter = 34f;
+        static readonly Color ReloadCircleFondo = new Color(0f, 0f, 0f, 0.35f);
+        static readonly Color ReloadCircleRelleno = new Color(0.95f, 0.6f, 0.2f);
+
+        CirculoDeProgreso circuloRecarga;
+
+        // Comun a B2 (recarga) y B3 (vida del enemigo): un circulo
+        // concentrico con la mirilla, auto-construido la primera vez que
+        // se necesita. Diametros distintos para que, si algun dia
+        // coinciden encendidos a la vez (recargando mientras se le sigue
+        // apuntando a un enemigo), no queden exactamente superpuestos.
+        CirculoDeProgreso EnsureCentralCircle(ref CirculoDeProgreso campo, Transform canvasRoot, string nombre, float diametro, Color colorFondo, Color colorRelleno)
+        {
+            if (campo != null) return campo;
+            var t = canvasRoot.Find(nombre);
+            if (t != null)
+            {
+                campo = t.GetComponent<CirculoDeProgreso>();
+                return campo;
+            }
+            campo = CirculoDeProgreso.Construir(canvasRoot, diametro, colorFondo, colorRelleno);
+            campo.gameObject.name = nombre;
+            var rt = (RectTransform)campo.transform;
+            if (crosshair != null)
+            {
+                // Mismo anclaje y centro que la mirilla: el circulo tiene
+                // que quedar concentrico con ella, no en otro lugar de la
+                // pantalla.
+                rt.anchorMin = crosshair.rectTransform.anchorMin;
+                rt.anchorMax = crosshair.rectTransform.anchorMax;
+                rt.pivot = crosshair.rectTransform.pivot;
+                rt.anchoredPosition = crosshair.rectTransform.anchoredPosition;
+            }
+            campo.SetVisible(false);
+            return campo;
+        }
+
+        // Llamado cada frame en FPS junto a UpdateAmmoWarning. Solo se ve
+        // mientras se esta recargando -- fuera de eso no aporta nada que
+        // el jugador necesite mirar en medio de la mira.
+        public void UpdateReloadCircle(SP.Combat.WeaponHolder weapon)
+        {
+            if (weapon == null) return;
+            var canvasRoot = transform.parent;
+            if (canvasRoot == null) return;
+            EnsureCentralCircle(ref circuloRecarga, canvasRoot, ReloadCircleName, ReloadCircleDiameter, ReloadCircleFondo, ReloadCircleRelleno);
+            if (circuloRecarga == null) return;
+            circuloRecarga.SetVisible(weapon.IsReloading);
+            if (weapon.IsReloading) circuloRecarga.SetProgreso(weapon.ReadinessFraction01);
+        }
+
+        // B3: la vida del enemigo bajo la mira, como circulo. Solo
+        // mientras se le apunta -- UpdateFromAimResult es quien decide
+        // eso y llama a este metodo con el resultado.
+        const string EnemyHealthCircleName = "CirculoVidaEnemigo";
+        const float EnemyHealthCircleDiameter = 50f;
+        static readonly Color EnemyHealthCircleFondo = new Color(0f, 0f, 0f, 0.35f);
+        static readonly Color EnemyHealthCircleRelleno = new Color(0.9f, 0.25f, 0.2f);
+
+        CirculoDeProgreso circuloVidaEnemigo;
+
+        void UpdateEnemyHealthCircle(AimResult result)
+        {
+            var canvasRoot = transform.parent;
+            if (canvasRoot == null) return;
+            EnsureCentralCircle(ref circuloVidaEnemigo, canvasRoot, EnemyHealthCircleName, EnemyHealthCircleDiameter, EnemyHealthCircleFondo, EnemyHealthCircleRelleno);
+            if (circuloVidaEnemigo == null) return;
+
+            bool show = result.Type == AimTargetType.Enemy && result.Soldier != null && result.Soldier.Health != null;
+            circuloVidaEnemigo.SetVisible(show);
+            if (show) circuloVidaEnemigo.SetProgreso((float)result.Soldier.Health.Current / result.Soldier.Health.MaxHealth);
+        }
+
         public void UpdateAmmoWarning(SP.Combat.WeaponHolder weapon)
         {
             if (ammoWarningText == null || weapon == null) return;
@@ -399,6 +477,7 @@ namespace SP.UI
 
             UpdateSoldierInfo(result);
             UpdateVehicleInfo(result);
+            UpdateEnemyHealthCircle(result);
         }
 
         void UpdateSoldierInfo(AimResult result)

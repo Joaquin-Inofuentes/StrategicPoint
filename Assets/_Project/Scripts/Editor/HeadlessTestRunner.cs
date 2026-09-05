@@ -2423,7 +2423,55 @@ namespace SP.EditorTools
 
             UnityEngine.Object.DestroyImmediate(circulo.gameObject);
 
-            TestLog.Phase("FASE 9 FINALIZADA (4/23)");
+            // --- #5 / B2: la recarga se ve como circulo sobre la mira ---
+            TestLog.Phase("FASE 9 - Tarea #5: la recarga se ve como circulo sobre la mira");
+            var campoReloadDuration = GetRequiredField(typeof(WeaponHolder), "reloadDuration",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            float duracionDeRecarga = (float)campoReloadDuration.GetValue(vega.Weapon);
+
+            // Reload() se rechaza en silencio con el cargador lleno (y
+            // H1, arriba, lo deja lleno tras EquipWeapon): hay que gastar
+            // al menos una bala antes de poder recargar de verdad.
+            vega.Weapon.TryFire(vega.transform.position, vega.transform.forward);
+            bool sePudoRecargar = vega.Weapon.Reload();
+            Check("Se pudo iniciar la recarga (habia menos balas que el cargador)", sePudoRecargar);
+            aimUiRef.UpdateReloadCircle(vega.Weapon);
+            var campoCirculoRecarga = GetRequiredField(typeof(AimUI), "circuloRecarga",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var circuloRecarga = (CirculoDeProgreso)campoCirculoRecarga.GetValue(aimUiRef);
+            Check("Al recargar, el circulo de progreso aparece sobre la mira", circuloRecarga.gameObject.activeSelf);
+
+            vega.Weapon.Tick(duracionDeRecarga * 0.5f);
+            aimUiRef.UpdateReloadCircle(vega.Weapon);
+            Check($"A los {duracionDeRecarga * 0.5f:0.00} s de {duracionDeRecarga:0.00}, el circulo va por la mitad (fillAmount={circuloRecarga.Relleno.fillAmount:0.00})",
+                Mathf.Abs(circuloRecarga.Relleno.fillAmount - 0.5f) < 0.05f);
+
+            vega.Weapon.Tick(duracionDeRecarga);
+            aimUiRef.UpdateReloadCircle(vega.Weapon);
+            Check("Y al terminar la recarga, el circulo se esconde", !circuloRecarga.gameObject.activeSelf);
+
+            // --- #6 / B3: al apuntar a un enemigo, su vida como circulo ---
+            TestLog.Phase("FASE 9 - Tarea #6: al apuntar a un enemigo, su vida como circulo");
+            var enemigoParaB3 = SpawnSoldier(soldierPrefab, "EnemigoParaB3", TeamId.Enemy, RoleType.Enemy,
+                new Vector3(70f, 0.8f, 70f), enemyColor, pool, 180);
+            enemigoParaB3.Brain.enabled = false;
+            enemigoParaB3.Brain.IsPossessedByPlayer = true;
+            enemigoParaB3.Health.TakeDamage(120, -1); // 180 - 120 = 60 de 180 => 0,33
+
+            aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Enemy, Soldier = enemigoParaB3, Point = enemigoParaB3.transform.position });
+            var campoCirculoVida = GetRequiredField(typeof(AimUI), "circuloVidaEnemigo",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var circuloVida = (CirculoDeProgreso)campoCirculoVida.GetValue(aimUiRef);
+            float fraccionEsperada = (float)enemigoParaB3.Health.Current / enemigoParaB3.Health.MaxHealth;
+            Check($"Apuntando a un enemigo con {enemigoParaB3.Health.Current}/{enemigoParaB3.Health.MaxHealth} de vida, el circulo muestra esa fraccion ({circuloVida.Relleno.fillAmount:0.00} vs {fraccionEsperada:0.00})",
+                circuloVida.gameObject.activeSelf && Mathf.Abs(circuloVida.Relleno.fillAmount - fraccionEsperada) < 0.01f);
+
+            aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Ground, Point = enemigoParaB3.transform.position });
+            Check("Y apuntando al piso, el circulo de vida se apaga", !circuloVida.gameObject.activeSelf);
+
+            UnityEngine.Object.DestroyImmediate(enemigoParaB3.gameObject);
+
+            TestLog.Phase("FASE 9 FINALIZADA (6/23)");
         }
 
         // ---------------------------------------------------------------

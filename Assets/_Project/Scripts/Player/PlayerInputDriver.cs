@@ -844,6 +844,7 @@ namespace SP.Player
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateAmmoWarning(Brain.Current.Weapon);
+            if (AimUiRef != null) AimUiRef.UpdateReloadCircle(Brain.Current.Weapon);
             if (KeyBindings.WasPressed(KeyBindings.Recargar)) Brain.Current.Weapon.Reload();
             if (PlayerHealth != null)
             {
