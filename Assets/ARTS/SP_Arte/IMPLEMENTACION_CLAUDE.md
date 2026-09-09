@@ -13,7 +13,7 @@ SP_Arte/
   MY_Ambiente.mb        vegetacion, coberturas, destruccion, props, emplazamiento
   MY_Soldado.mb         escuadron de 5 + arsenal de 12 armas + malla base
   MY_Vehiculos.mb       tanque en 3 piezas
-  MY_Nivel.mb           DISENO DE NIVEL armado con el kit
+  MY_Nivel.mb           DISENO DE NIVEL semi-laberintico, 51 x 131 unidades
   MY_Showcase.mb        referencia a las 4 librerias, para ver todo junto
   Trimsheet_1024.png          LA textura, 1024x1024, 64 colores, sin texto
   Trimsheet_1024_GUIA.png     hoja de referencia (documentacion)
@@ -32,7 +32,7 @@ SP_Arte/
 | MY_Soldado.mb | 23 | 160 | 2886 | 5260 |
 | MY_Vehiculos.mb | 3 | 39 | 718 | 1112 |
 | **Libreria** | **77** | **871** | **10158** | **18496** |
-| MY_Nivel.mb | 125 colocados | 1557 | 25484 | 48552 |
+| MY_Nivel.mb | 979 colocados | 1097 | 112126 | 210780 |
 
 ## 3. Low poly
 
@@ -97,20 +97,42 @@ del grupo ahi mismo: se parentean a cualquier soldado sin recolocar.
 
 ## 8. Diseno de nivel — `MY_Nivel.mb`
 
-Sector de **48 x 34** unidades, 96 baldosas de piso y 114 props colocados:
+Sector de **51 x 131** unidades: cuatro veces mas largo hacia adelante que la primera version,
+con estructura **semi-laberintica** y cobertura repartida.
 
-- Ruta de asfalto N-S con vereda de concreto a los lados
-- Edificio de dos plantas a la izquierda (muros, losas, escalera), armado con el kit
-- Edificio en ruinas detras, con escombro y muro caido
-- Puesto de control sobre la ruta: erizos, barreras, sacos, emplazamiento y cartel
-- Tanque sobre la ruta, auto quemado, 2 crateres, poste caido, faroles, barriles
-- Zona verde a la derecha con 7 arboles y 8 arbustos
-- Perimetro cerrado con las 4 vallas
-- El escuadron de 5 desplegado en el puesto
+| Tramo | Z | Contenido |
+|---|---|---|
+| Puesto de control | -16 a 16 | ruta, edificio de dos plantas, erizos, barreras, sacos, emplazamiento, tanque y el escuadron desplegado |
+| Laberinto urbano | 18 a 50 | la ruta se adentra y se corta; muros, escombro, cajas |
+| Laberinto industrial | 52 a 84 | pisos de chapa y grava, autos quemados, neumaticos |
+| Laberinto de campo | 86 a 114 | tierra y arena, vegetacion densa, crateres |
 
-Cada baldosa de piso se **unifica en una sola malla** (`polyUnite`) antes de repetirse: 96
-mallas de piso en vez de ~1200. Al importar las 4 librerias quedaban 4 shadingEngines (uno por
-namespace); se unificaron a uno solo.
+**Como se genera el laberinto.** Sobre celdas de 4x4 (12 x 24 celdas) se corre un DFS con
+semilla fija que carva un laberinto perfecto, y despues se **trenza**: se saca el 35% de las
+paredes que quedaron. Un laberinto perfecto es una sola ruta con callejones sin salida, algo
+horrible para un shooter; el trenzado abre rutas alternativas y bucles, que es lo que hace que
+se pueda flanquear. De ahi lo de "medio laberintoso".
+
+**Cobertura.** 3 de cada 10 paredes son bajas (`Muro_RotoBajo`, `Muro_RotoAlto`) o con ventana:
+se ve y se dispara por encima, asi el jugador no queda ciego entre paredes de 3 metros. Ademas
+171 objetos de cobertura repartidos por las celdas: sacos, barreras, erizos, cajas, palets,
+neumaticos, barriles, pilas de escombro, muros caidos, crateres y autos.
+
+| | |
+|---|---|
+| Baldosas de piso | 384 |
+| Muros de laberinto | 171 |
+| Coberturas | 171 |
+| Total colocado | 979 |
+| Mallas | 1097 |
+| Triangulos | 210780 |
+
+**Optimizacion.** Cada asset estatico se **unifica en una sola malla** (`polyUnite`) antes de
+repetirse: 979 objetos colocados dan 1097 mallas en vez de las ~9000 que habria sin unificar.
+Las paletas de piso estan **pesadas hacia las baldosas baratas**: una de concreto son 42 caras,
+una de adoquin 222, una de pasto 162. Repitiendo las caras el promedio baja sin que se note.
+
+Al importar las 4 librerias quedan 4 shadingEngines (uno por namespace); se unifican a uno solo.
 
 > El nivel es una **maqueta de layout**. En produccion conviene rearmarlo en Unity con los
 > prefabs, que es donde se le pone colision, navegacion y spawns.
@@ -123,8 +145,8 @@ namespace); se unificaron a uno solo.
 | MY_Soldado.mb | 160 | 2886 | 0 | **0** | 1 | solo el trimsheet | OK |
 | MY_Vehiculos.mb | 39 | 718 | 0 | **0** | 1 | solo el trimsheet | OK |
 | MY_Modulares.mb | 396 | 2376 | 0 | **0** | 1 | solo el trimsheet | OK |
-| MY_Nivel.mb | 1557 | 25484 | 0 | **0** | 1 | solo el trimsheet | OK |
-| **Total** | **2428** | **35642** | **0** | **0** | **1** | **1** | **OK** |
+| MY_Nivel.mb | 1097 | 112126 | 0 | **0** | 1 | solo el trimsheet | OK |
+| **Total** | **1968** | **122284** | **0** | **0** | **1** | **1** | **OK** |
 
 Se verifica que cada cara caiga entera dentro de una sola celda con el 90% del margen hasta el
 borde, que exista un unico shadingEngine, que el unico nodo `file` apunte al trimsheet, y que
