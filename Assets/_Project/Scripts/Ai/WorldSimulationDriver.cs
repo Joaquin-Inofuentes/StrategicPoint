@@ -89,6 +89,11 @@ namespace SP.Ai
                 if (s == null || !s.gameObject.activeInHierarchy) continue;
                 s.Brain?.Tick(dt);
                 if (s.Weapon != null) s.Weapon.Tick(dt);
+                // Pedido explicito: a los 3 s sin recibir daño, regenera
+                // solo. Mismo camino de simulacion que Brain/Weapon, para
+                // que la suite headless (SimStep) lo ejercite igual que el
+                // juego real.
+                s.Health?.Tick(dt);
             }
             LastAiWeaponMs = profileWatch.Elapsed.TotalMilliseconds;
 

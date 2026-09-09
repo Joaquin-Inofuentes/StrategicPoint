@@ -236,7 +236,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 8530009578936225425}
+  - {fileID: 5201961465556322510}
   - {fileID: 8966918372662514900}
   - {fileID: 8411902289599947111}
   - {fileID: 7252558737591414230}
@@ -291,6 +291,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SP.Actors.SoldierMotor
   moveSpeed: 5
   turnSpeedDegPerSec: 220
+  fraccionAlturaAgachado: 0.6
 --- !u!114 &6733338003974624726
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -500,7 +501,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2009c20afbece024aa69c41ff684f1ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SP.Presentation.SoldierAnimatorDriver
-  animator: {fileID: 2342015086984533227}
+  animator: {fileID: 2220618423270675124}
   velocidadDeCarrera: 5
   sostenidoDeDisparo: 0.45
   velocidadDeMezcla: 8
@@ -717,7 +718,7 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!1001 &8208399632767723898
+--- !u!1001 &5745376073457872677
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -772,7 +773,7 @@ PrefabInstance:
     - target: {fileID: -3540725318260445992, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
       propertyPath: m_RootBone
       value: 
-      objectReference: {fileID: 8530009578936225425}
+      objectReference: {fileID: 5201961465556322510}
     - target: {fileID: -3540725318260445992, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
       propertyPath: m_AABB.m_Center.x
       value: 0
@@ -818,13 +819,13 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
---- !u!95 &2342015086984533227 stripped
+--- !u!95 &2220618423270675124 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
-  m_PrefabInstance: {fileID: 8208399632767723898}
+  m_PrefabInstance: {fileID: 5745376073457872677}
   m_PrefabAsset: {fileID: 0}
---- !u!4 &8530009578936225425 stripped
+--- !u!4 &5201961465556322510 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
-  m_PrefabInstance: {fileID: 8208399632767723898}
+  m_PrefabInstance: {fileID: 5745376073457872677}
   m_PrefabAsset: {fileID: 0}

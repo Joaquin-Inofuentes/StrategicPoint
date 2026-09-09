@@ -33,18 +33,40 @@ namespace SP.UI
             if (fill == null) fill = transform.Find("BarBG/BarFill")?.GetComponent<Image>();
         }
 
+        // Verde bien saturado y mas claro que HighColor: tiene que leerse
+        // como "subiendo sola", no confundirse con el verde de "estas
+        // bien" de siempre.
+        static readonly Color RegenColor = new Color(0.45f, 1f, 0.55f);
+
         public void UpdateFrom(Soldier soldier)
         {
             if (soldier == null || soldier.Health == null) return;
 
-            float frac = soldier.Health.MaxHealth > 0
-                ? (float)soldier.Health.Current / soldier.Health.MaxHealth
-                : 0f;
+            var health = soldier.Health;
+            float frac = health.MaxHealth > 0 ? (float)health.Current / health.MaxHealth : 0f;
 
-            if (label != null) label.text = $"VIDA   {soldier.Health.Current}/{soldier.Health.MaxHealth}";
+            // Feedback de "curandose" pedido explicito: el numero solo (que
+            // ademas cambia de a poco, un punto entero por vez) no se nota
+            // en medio de un tiroteo. La flecha y el "+" en el texto se ven
+            // sin tener que hacer cuentas con el numero de antes.
+            if (label != null)
+                label.text = health.IsRegenerating
+                    ? $"VIDA   {health.Current}/{health.MaxHealth}  ▲+"
+                    : $"VIDA   {health.Current}/{health.MaxHealth}";
 
             if (fill == null) return;
             fill.fillAmount = frac;
+
+            if (health.IsRegenerating)
+            {
+                // Pulso mas lento y mas suave que el de vida critica: es
+                // una buena noticia, no una alarma. Mismo patron de seno
+                // que ya usa el pulso critico de mas abajo, para no
+                // inventar una segunda forma de animar lo mismo.
+                float pulse = 0.7f + 0.3f * Mathf.Abs(Mathf.Sin(Time.unscaledTime * 2.5f));
+                fill.color = new Color(RegenColor.r * pulse, RegenColor.g * pulse, RegenColor.b * pulse);
+                return;
+            }
 
             var baseColor = frac > 0.6f ? HighColor : frac > 0.25f ? MidColor : LowColor;
 

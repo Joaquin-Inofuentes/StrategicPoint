@@ -2881,21 +2881,24 @@ namespace SP.EditorTools
             vega.Brain.IsPossessedByPlayer = true; // congela la IA durante la medicion
             vega.Motor.SetCrouching(false); // estado limpio, por si algo lo dejo agachado antes
 
-            Physics.SyncTransforms();
-            var colliderVega = vega.GetComponent<Collider>();
-            float alturaDePie = colliderVega.bounds.size.y;
+            // Desde que el soldado tiene rig animado, agacharse ya NO
+            // encoge el collider (ver el comentario en SoldierMotor.SetCrouching:
+            // escalar el transform en vivo reventaria el rig humanoide, el
+            // mismo bug que ArtBuilder.NormalizarEscala documenta para el
+            // import). Lo que SI cambia, y es lo que se mide aca, es la
+            // altura del ancla de camara en primera persona -- la pose
+            // visible de agachado la da enteramente el Animator.
+            float ojoDePie = vega.EyeAnchor.localPosition.y;
 
             vega.Motor.SetCrouching(true);
-            Physics.SyncTransforms();
-            float alturaAgachado = colliderVega.bounds.size.y;
-            Check($"Agachado, la altura del collider baja ({alturaAgachado:0.00} m < {alturaDePie:0.00} m)",
-                alturaAgachado < alturaDePie);
+            float ojoAgachado = vega.EyeAnchor.localPosition.y;
+            Check($"Agachado, la camara en primera persona baja ({ojoAgachado:0.00} m < {ojoDePie:0.00} m)",
+                ojoAgachado < ojoDePie);
 
             vega.Motor.SetCrouching(false);
-            Physics.SyncTransforms();
-            float alturaFinal = colliderVega.bounds.size.y;
-            Check($"Al soltar Ctrl, la altura vuelve EXACTA a la de pie ({alturaFinal:0.0000} == {alturaDePie:0.0000})",
-                Mathf.Abs(alturaFinal - alturaDePie) < 0.0001f);
+            float ojoFinal = vega.EyeAnchor.localPosition.y;
+            Check($"Al soltar Ctrl, la camara vuelve EXACTA a la de pie ({ojoFinal:0.0000} == {ojoDePie:0.0000})",
+                Mathf.Abs(ojoFinal - ojoDePie) < 0.0001f);
 
             // Dispersion: misma racha acumulada (spreadDeg), leida DE PIE y
             // AGACHADO -- SpreadDegEfectivo es el numero real que usa el
@@ -3055,6 +3058,239 @@ namespace SP.EditorTools
             }
 
             TestLog.Phase("FASE 10 FINALIZADA");
+
+            // -----------------------------------------------------------
+            // FASE 11 - pedido del usuario: balanceo de daño, autocuracion,
+            // agache de la IA en combate y escucha de disparos aliados.
+            // -----------------------------------------------------------
+            TestLog.Phase("FASE 11 - Tarea: balanceo de daño (dps sostenido)");
+
+            // dps SOSTENIDO: cargador entero mas la recarga, no el tiro
+            // suelto -- es el numero que de verdad importa en un tiroteo
+            // largo, y el que estaba invertido antes del ajuste (pistola
+            // por encima de rifle y de pesada).
+            float DpsSostenido(WeaponKind k)
+            {
+                var s = WeaponCatalog.Get(k);
+                float cicloTotal = s.MagazineSize * s.Cooldown + s.ReloadDuration;
+                return (s.MagazineSize * s.Damage) / cicloTotal;
+            }
+            float dpsPistola = DpsSostenido(WeaponKind.Pistol);
+            float dpsRifle = DpsSostenido(WeaponKind.Rifle);
+            float dpsPesada = DpsSostenido(WeaponKind.Heavy);
+            Check($"El rifle queda como el de mayor dps sostenido (rifle {dpsRifle:0.0} > pesada {dpsPesada:0.0} > pistola {dpsPistola:0.0})",
+                dpsRifle > dpsPesada && dpsPesada > dpsPistola);
+
+            TestLog.Phase("FASE 11 - Tarea: autocuracion 3 s despues del ultimo golpe");
+
+            vega.gameObject.SetActive(true);
+            vega.Brain.CancelOrder();
+            vega.Brain.IsPossessedByPlayer = true; // congela la IA, no la regeneracion
+            vega.Motor.SetCrouching(false);
+            vega.Health.Initialize(vega.Id, 100);
+            vega.Health.TakeDamage(40, -1);
+            Check($"Recien golpeado (100 -> {vega.Health.Current}), todavia no regenera ({vega.Health.IsRegenerating})",
+                vega.Health.Current == 60 && !vega.Health.IsRegenerating);
+
+            SimulateSeconds(2f);
+            Check($"A los 2 s de gracia AUN no subio ({vega.Health.Current} == 60, regenerando={vega.Health.IsRegenerating})",
+                vega.Health.Current == 60 && !vega.Health.IsRegenerating);
+
+            SimulateSeconds(1.5f); // total 3.5 s: ya cruzo el umbral de 3 s
+            Check($"Pasados los 3 s, esta regenerando y ya subio de 60 ({vega.Health.Current} > 60, regenerando={vega.Health.IsRegenerating})",
+                vega.Health.Current > 60 && vega.Health.IsRegenerating);
+
+            int vidaAlRegolpear = vega.Health.Current;
+            vega.Health.TakeDamage(5, -1);
+            Check($"Un golpe nuevo apaga la regeneracion al instante ({vega.Health.IsRegenerating})",
+                !vega.Health.IsRegenerating);
+            SimulateSeconds(1f);
+            Check($"Y no vuelve a subir antes de esperar los 3 s de nuevo ({vega.Health.Current} <= {vidaAlRegolpear - 5})",
+                vega.Health.Current <= vidaAlRegolpear - 5);
+
+            bool llegoAFull = SimulateUntil(() => vega.Health.Current >= vega.Health.MaxHealth, 20f);
+            Check($"Dejandolo en paz, termina curandose del todo ({llegoAFull}, {vega.Health.Current}/{vega.Health.MaxHealth})",
+                llegoAFull);
+            Check("Y al llegar al maximo, la regeneracion se apaga sola", !vega.Health.IsRegenerating);
+
+            vega.Health.Initialize(vega.Id, vega.Health.MaxHealth);
+            vega.Brain.IsPossessedByPlayer = false;
+
+            TestLog.Phase("FASE 11 - Tarea: con un obstaculo de por medio, cero disparos");
+
+            var muroDePruebaF11 = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            muroDePruebaF11.name = "MuroDePruebaF11";
+            muroDePruebaF11.transform.position = new Vector3(10f, 1f, 60f);
+            muroDePruebaF11.transform.localScale = new Vector3(4f, 2f, 1f);
+            SP.Core.NavService.Invalidate();
+
+            kes.Brain.CancelOrder();
+            kes.Brain.IsPossessedByPlayer = false;
+            kes.Health.Initialize(kes.Id, kes.Health.MaxHealth);
+            kes.transform.position = new Vector3(10f, kes.transform.position.y, 57f);
+            SP.Core.ApoyoEnElPiso.Apoyar(kes.transform);
+            if (kes.Weapon.CurrentAmmo < kes.Weapon.MagazineSize) { kes.Weapon.Reload(); SimulateSeconds(3f); }
+
+            var blancoBloqueadoF11 = SpawnSoldier(soldierPrefab, "BlancoBloqueadoF11", TeamId.Enemy, RoleType.Enemy,
+                new Vector3(10f, 0f, 63f), enemyColor, pool, 100000);
+            blancoBloqueadoF11.Brain.enabled = false;
+            blancoBloqueadoF11.Brain.IsPossessedByPlayer = true;
+            blancoBloqueadoF11.transform.position = new Vector3(blancoBloqueadoF11.transform.position.x, kes.transform.position.y, blancoBloqueadoF11.transform.position.z);
+            Physics.SyncTransforms();
+
+            int municionAntesF11 = kes.Weapon.CurrentAmmo;
+            float distanciaBloqueoF11 = Vector3.Distance(kes.transform.position, blancoBloqueadoF11.transform.position);
+            bool tiroBloqueadoF11 = kes.Brain.TieneLineaDeTiro(blancoBloqueadoF11);
+            Check($"Arranca a {distanciaBloqueoF11:0.0} m (dentro del alcance) pero SIN linea de tiro por el muro ({tiroBloqueadoF11})",
+                distanciaBloqueoF11 <= 6f && !tiroBloqueadoF11);
+
+            for (int i = 0; i < 20; i++) SimStep(0.05f); // 1 s: alcanza para varias rafagas si el gate fallara
+
+            Check($"En 1 s nunca entra en Attack estando bloqueado ({kes.Brain.State})", kes.Brain.State != AiState.Attack);
+            Check($"Y no disparo ni una bala: el cargador sigue igual ({kes.Weapon.CurrentAmmo} == {municionAntesF11})",
+                kes.Weapon.CurrentAmmo == municionAntesF11);
+
+            kes.Brain.CancelOrder();
+            UnityEngine.Object.DestroyImmediate(blancoBloqueadoF11.gameObject);
+            UnityEngine.Object.DestroyImmediate(muroDePruebaF11);
+            SP.Core.NavService.Invalidate();
+
+            TestLog.Phase("FASE 11 - Tarea: la IA se agacha mientras dispara desde Attack");
+
+            kes.Brain.CancelOrder();
+            kes.Health.Initialize(kes.Id, kes.Health.MaxHealth);
+            kes.Motor.SetCrouching(false);
+            kes.transform.position = new Vector3(10f, kes.transform.position.y, 40f);
+            SP.Core.ApoyoEnElPiso.Apoyar(kes.transform);
+            Check($"De pie antes de trabar combate ({kes.Motor.IsCrouching})", !kes.Motor.IsCrouching);
+
+            var blancoAgacheF11 = SpawnSoldier(soldierPrefab, "BlancoParaAgacheF11", TeamId.Enemy, RoleType.Enemy,
+                new Vector3(10f, 0f, 44f), enemyColor, pool, 100000);
+            blancoAgacheF11.Brain.enabled = false;
+            blancoAgacheF11.Brain.IsPossessedByPlayer = true;
+            blancoAgacheF11.transform.position = new Vector3(blancoAgacheF11.transform.position.x, kes.transform.position.y, blancoAgacheF11.transform.position.z);
+            Physics.SyncTransforms();
+
+            bool entroEnAttackF11 = SimulateUntil(() => kes.Brain.State == AiState.Attack, 5f);
+            Check($"kes entra en Attack contra el blanco cercano ({kes.Brain.State})", entroEnAttackF11);
+            // El agache vive DENTRO del case Attack de Tick(): en el mismo
+            // tick que Chase pasa a Attack, SetState corta con un break
+            // antes de llegar a ese case, asi que hace falta UN tick mas
+            // (imperceptible a 60 fps reales) para que se aplique.
+            if (entroEnAttackF11) SimStep(0.05f);
+            Check($"Y se agacha mientras dispara ({kes.Motor.IsCrouching})", entroEnAttackF11 && kes.Motor.IsCrouching);
+
+            blancoAgacheF11.Health.Initialize(blancoAgacheF11.Id, 1);
+            blancoAgacheF11.Health.TakeDamage(1, kes.Id);
+            SimStep(0.05f);
+            Check($"Al morir el objetivo, se para de nuevo en vez de quedar agachado caminando ({kes.Brain.State}, agachado={kes.Motor.IsCrouching})",
+                !kes.Motor.IsCrouching);
+
+            kes.Brain.CancelOrder();
+            kes.Motor.SetCrouching(false);
+            UnityEngine.Object.DestroyImmediate(blancoAgacheF11.gameObject);
+
+            TestLog.Phase("FASE 11 - Tarea: se escucha un disparo enemigo aunque no le pegue a nadie");
+
+            doc.gameObject.SetActive(true);
+            doc.Health.Initialize(doc.Id, doc.Health.MaxHealth);
+            doc.Brain.CancelOrder();
+            doc.Brain.IsPossessedByPlayer = false;
+            doc.transform.position = new Vector3(10f, doc.transform.position.y, 90f);
+            SP.Core.ApoyoEnElPiso.Apoyar(doc.transform);
+            Check($"doc arranca sin combate ({doc.Brain.State})",
+                doc.Brain.State == AiState.Patrol || doc.Brain.State == AiState.Idle);
+
+            var tiradorF11 = SpawnSoldier(soldierPrefab, "TiradorLejanoF11", TeamId.Enemy, RoleType.Enemy,
+                new Vector3(10f, 0f, 110f), enemyColor, pool, 100000);
+            tiradorF11.Brain.enabled = false;
+            tiradorF11.Brain.IsPossessedByPlayer = true;
+
+            float distanciaOidoF11 = Vector3.Distance(doc.transform.position, tiradorF11.transform.position);
+            Check($"El tirador esta fuera de la vision normal (10 m) pero dentro del oido ({distanciaOidoF11:0.0} m < 30 m)",
+                distanciaOidoF11 > 10f && distanciaOidoF11 < 30f);
+
+            SimStep(0.05f);
+            Check($"Sin que nadie haya disparado, doc no reacciona ({doc.Brain.State})", doc.Brain.State != AiState.Chase);
+
+            SP.Core.EventBus.Instance.Publish(new SP.Core.ShotFiredEvent(tiradorF11.Id));
+            SimStep(0.05f);
+            Check($"Un solo tiro sin pegarle a nadie alcanza para que doc vaya a investigar ({doc.Brain.State}, target={doc.Brain.CurrentTarget?.DisplayName})",
+                doc.Brain.State == AiState.Chase && doc.Brain.CurrentTarget == tiradorF11);
+
+            doc.Brain.CancelOrder();
+            UnityEngine.Object.DestroyImmediate(tiradorF11.gameObject);
+
+            TestLog.Phase("FASE 11 FINALIZADA");
+
+            // FASE 12 - pedido del usuario: "no quiero que se desplacen [al
+            // caminar], solo que hagan la animacion". Reproduce el ciclo de
+            // "caminar" a mano (Animator.Update, sin Play mode) y mide la
+            // cadera real del rig -- no transform.position, que nunca se
+            // entera de un desplazamiento horneado DENTRO de la pose (ver
+            // el comentario de ArtSetup.ConfigurarAnimaciones). Si algun
+            // dia vuelve a arrastrar, este test lo mide en metros y no deja
+            // que se cuele de nuevo sin que la suite lo note.
+            TestLog.Phase("FASE 12 - Tarea: caminar no desplaza la geometria (root motion)");
+
+            var caminanteF12 = SpawnSoldier(soldierPrefab, "CaminanteF12", TeamId.Player, RoleType.Assault,
+                new Vector3(20f, 0f, 20f), Color.white, pool, 100);
+            caminanteF12.Brain.enabled = false;
+            caminanteF12.Brain.IsPossessedByPlayer = true;
+
+            var animatorF12 = caminanteF12.GetComponentInChildren<Animator>(true);
+            if (animatorF12 == null)
+            {
+                TestLog.Step("Sin Animator en el prefab (arte todavia no importado): se saltea FASE 12.");
+            }
+            else
+            {
+                var caderaF12 = animatorF12.GetBoneTransform(HumanBodyBones.Hips);
+                Check("El rig humanoide expone el hueso de cadera para medir deriva", caderaF12 != null);
+
+                if (caderaF12 != null)
+                {
+                    Vector3 raizAntesF12 = caminanteF12.transform.position;
+                    Vector3 caderaInicialF12 = caderaF12.position;
+
+                    animatorF12.applyRootMotion = false;
+                    animatorF12.SetFloat(SP.Presentation.SoldierAnimatorDriver.ParamVelocidad, 1f);
+                    animatorF12.SetFloat(SP.Presentation.SoldierAnimatorDriver.ParamAdelante, 1f);
+                    animatorF12.SetFloat(SP.Presentation.SoldierAnimatorDriver.ParamLateral, 0f);
+                    animatorF12.SetBool(SP.Presentation.SoldierAnimatorDriver.ParamAgachado, false);
+                    animatorF12.Update(0f); // aplica los parametros antes de arrancar a medir
+
+                    float pasoMaximoF12 = 0f;
+                    Vector3 caderaPreviaF12 = caderaF12.position;
+                    for (int i = 0; i < 90; i++) // 3 s a 30 pasos/seg: un par de ciclos completos de "walking"
+                    {
+                        animatorF12.Update(1f / 30f);
+                        float pasoF12 = Vector3.Distance(
+                            new Vector3(caderaF12.position.x, 0f, caderaF12.position.z),
+                            new Vector3(caderaPreviaF12.x, 0f, caderaPreviaF12.z));
+                        // Un paso de bamboleo normal a 30 fps no salta varios
+                        // centimetros de golpe; un root motion de "caminar"
+                        // sin anular (1-2 m/s reales) se nota enseguida
+                        // contra este limite.
+                        pasoMaximoF12 = Mathf.Max(pasoMaximoF12, pasoF12);
+                        caderaPreviaF12 = caderaF12.position;
+                    }
+
+                    float derivaTotalF12 = Vector3.Distance(
+                        new Vector3(caderaF12.position.x, 0f, caderaF12.position.z),
+                        new Vector3(caderaInicialF12.x, 0f, caderaInicialF12.z));
+
+                    Check($"El transform del soldado no se movio solo ({Vector3.Distance(caminanteF12.transform.position, raizAntesF12):0.000} m)",
+                        Vector3.Distance(caminanteF12.transform.position, raizAntesF12) < 0.001f);
+                    Check($"La cadera no salta de golpe cuadro a cuadro (maximo {pasoMaximoF12:0.000} m/frame < 0.15 m/frame)",
+                        pasoMaximoF12 < 0.15f);
+                    Check($"Tras 3 s 'caminando', la cadera no derivo del lugar mas de 20 cm ({derivaTotalF12:0.000} m)",
+                        derivaTotalF12 < 0.2f);
+                }
+            }
+
+            UnityEngine.Object.DestroyImmediate(caminanteF12.gameObject);
+            TestLog.Phase("FASE 12 FINALIZADA");
         }
 
         // ---------------------------------------------------------------
@@ -3668,24 +3904,32 @@ namespace SP.EditorTools
 
         static List<WeaponPickup> BuildWeaponPickups()
         {
-            var defs = new (string name, WeaponKind kind, int dmg, float cooldown, Color color, Vector3 pos)[]
+            // Sin numeros propios copiados a mano: los tres pickups toman
+            // damage/cooldown/color DEL CATALOGO, igual que EquipOn() en
+            // juego real. Antes esta tabla tenia su propia copia de 26/14/50
+            // -- el mismo patron que el bug real de WeaponPickup.EquipOn
+            // (una foto vieja en vez de leer el catalogo) -- asi que
+            // rebalancear un arma sin tocar este archivo dejaba a la suite
+            // probando numeros que el juego real ya no usaba.
+            var defs = new (string name, WeaponKind kind, Vector3 pos)[]
             {
-                ("Arma_Rifle",  WeaponKind.Rifle,  26, 0.30f, new Color(0.55f, 0.68f, 0.78f), new Vector3(3f, 0.4f, -3f)),
-                ("Arma_Pistola",WeaponKind.Pistol, 14, 0.15f, new Color(0.95f, 0.88f, 0.20f), new Vector3(4f, 0.4f, -3f)),
-                ("Arma_Pesada", WeaponKind.Heavy,  50, 0.80f, new Color(0.85f, 0.35f, 0.10f), new Vector3(5f, 0.4f, -3f)),
+                ("Arma_Rifle",  WeaponKind.Rifle,  new Vector3(3f, 0.4f, -3f)),
+                ("Arma_Pistola",WeaponKind.Pistol, new Vector3(4f, 0.4f, -3f)),
+                ("Arma_Pesada", WeaponKind.Heavy,  new Vector3(5f, 0.4f, -3f)),
             };
 
             var list = new List<WeaponPickup>();
             foreach (var d in defs)
             {
+                var spec = WeaponCatalog.Get(d.kind);
                 var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 go.name = d.name;
                 go.transform.position = d.pos;
                 go.transform.localScale = Vector3.one * 0.5f;
-                var pickupMat = CreateFlatMaterial(d.color); transientRuntimeAssets.Add(pickupMat); go.GetComponent<MeshRenderer>().sharedMaterial = pickupMat;
+                var pickupMat = CreateFlatMaterial(spec.Color); transientRuntimeAssets.Add(pickupMat); go.GetComponent<MeshRenderer>().sharedMaterial = pickupMat;
 
                 var pickup = go.AddComponent<WeaponPickup>();
-                pickup.Configure(d.kind, d.dmg, d.cooldown, d.color);
+                pickup.Configure(d.kind, spec.Damage, spec.Cooldown, spec.Color);
                 list.Add(pickup);
             }
             return list;

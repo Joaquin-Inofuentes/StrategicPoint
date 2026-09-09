@@ -59,6 +59,14 @@ namespace SP.EditorTools
         //   El peso va por codigo y no por una transicion con parametro
         //   bool porque una capa con peso fijo 1 y un estado vacio impone
         //   la pose de reposo sobre el tren superior aunque no dispare.
+        // Nombres de los 6 clips de muerte del pack, en el mismo orden que
+        // CubeFxReactor sortea con Random.Range(0, SoldierAnimatorDriver.CantidadDeMuertes).
+        static readonly string[] NombresDeMuerte =
+        {
+            "death from the front", "death from the back", "death from right",
+            "death from front headshot", "death from back headshot", "death crouching headshot front",
+        };
+
         public static AnimatorController CrearAnimator()
         {
             Directory.CreateDirectory(AnimDir);
@@ -78,24 +86,59 @@ namespace SP.EditorTools
             AssetDatabase.DeleteAsset(ControllerPath);
             var ctrl = AnimatorController.CreateAnimatorControllerAtPath(ControllerPath);
             ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamVelocidad, AnimatorControllerParameterType.Float);
+            ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamAdelante, AnimatorControllerParameterType.Float);
+            ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamLateral, AnimatorControllerParameterType.Float);
+            ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamAgachado, AnimatorControllerParameterType.Bool);
+            ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamMuerto, AnimatorControllerParameterType.Bool);
+            ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamMuerteVariante, AnimatorControllerParameterType.Int);
 
             ctrl.layers[0].name = "Locomocion";
-            var bt = new BlendTree
-            {
-                name = "Locomocion",
-                blendType = BlendTreeType.Simple1D,
-                blendParameter = SP.Presentation.SoldierAnimatorDriver.ParamVelocidad,
-                useAutomaticThresholds = false,
-            };
-            AssetDatabase.AddObjectToAsset(bt, ctrl);
-            bt.AddChild(idle, 0f);
-            bt.AddChild(walk, 0.45f);
-            bt.AddChild(run, 1f);
-
             var sm0 = ctrl.layers[0].stateMachine;
-            var estado = sm0.AddState("Locomocion");
-            estado.motion = bt;
-            sm0.defaultState = estado;
+
+            // Dos estados de cuerpo completo (de pie / agachado), cada uno
+            // con su propio blend "velocidad -> quieto/caminar/correr" y,
+            // adentro de caminar y correr, un segundo blend 2D por
+            // direccion. Dos estados y no una sola maquina con banderas
+            // porque las 8 direcciones de agachado son clips DISTINTOS de
+            // las de pie (no hay forma de compartir un blend entre dos
+            // sets de clips) y porque un bool no puede empujar un tercer
+            // eje dentro de un blend tree 2D.
+            var dePie = sm0.AddState("DePie");
+            dePie.motion = CrearBlendDePie(ctrl, idle, walk, run);
+            sm0.defaultState = dePie;
+
+            var agachado = sm0.AddState("Agachado");
+            agachado.motion = CrearBlendAgachado(ctrl);
+
+            AgregarTransicionBool(dePie, agachado, SP.Presentation.SoldierAnimatorDriver.ParamAgachado, true);
+            AgregarTransicionBool(agachado, dePie, SP.Presentation.SoldierAnimatorDriver.ParamAgachado, false);
+
+            // Muerte: una variante por clip, alcanzable desde CUALQUIER
+            // estado (AnyState) -- de pie, agachado, a mitad de un blend,
+            // no importa, una bala no espera a que termine el paso -- y
+            // que vuelve sola a DePie si el bool se apaga (HeadlessTestRunner
+            // y AutoDemoRunner reviven llamando Health.Initialize(); ver el
+            // comentario de CubeFxReactor.OnEnable).
+            for (int i = 0; i < NombresDeMuerte.Length; i++)
+            {
+                var clip = Clip(NombresDeMuerte[i]);
+                if (clip == null) { Debug.LogWarning("[ArtBuilder] Falta el clip de muerte '" + NombresDeMuerte[i] + "'."); continue; }
+
+                var muerte = sm0.AddState("Muerte_" + i);
+                muerte.motion = clip;
+
+                var entrada = sm0.AddAnyStateTransition(muerte);
+                entrada.hasExitTime = false;
+                entrada.duration = 0.1f;
+                entrada.canTransitionToSelf = false;
+                entrada.AddCondition(AnimatorConditionMode.If, 0f, SP.Presentation.SoldierAnimatorDriver.ParamMuerto);
+                entrada.AddCondition(AnimatorConditionMode.Equals, i, SP.Presentation.SoldierAnimatorDriver.ParamMuerteVariante);
+
+                var salida = muerte.AddTransition(dePie);
+                salida.hasExitTime = false;
+                salida.duration = 0.25f;
+                salida.AddCondition(AnimatorConditionMode.IfNot, 0f, SP.Presentation.SoldierAnimatorDriver.ParamMuerto);
+            }
 
             var sm1 = new AnimatorStateMachine { name = "Disparo", hideFlags = HideFlags.HideInHierarchy };
             AssetDatabase.AddObjectToAsset(sm1, ctrl);
@@ -115,6 +158,99 @@ namespace SP.EditorTools
 
             EditorUtility.SetDirty(ctrl);
             return ctrl;
+        }
+
+        static void AgregarTransicionBool(AnimatorState desde, AnimatorState hacia, string parametro, bool valor)
+        {
+            var t = desde.AddTransition(hacia);
+            t.hasExitTime = false;
+            t.duration = 0.15f;
+            t.AddCondition(valor ? AnimatorConditionMode.If : AnimatorConditionMode.IfNot, 0f, parametro);
+        }
+
+        static BlendTree CrearBlendDePie(AnimatorController ctrl, AnimationClip idle, AnimationClip walkAdelante, AnimationClip runAdelante)
+        {
+            var top = new BlendTree
+            {
+                name = "Locomocion",
+                blendType = BlendTreeType.Simple1D,
+                blendParameter = SP.Presentation.SoldierAnimatorDriver.ParamVelocidad,
+                useAutomaticThresholds = false,
+            };
+            AssetDatabase.AddObjectToAsset(top, ctrl);
+
+            var caminar = CrearBlendDireccional(ctrl, "Caminar", walkAdelante,
+                Clip("walk backward"), Clip("walk left"), Clip("walk right"),
+                Clip("walk forward left"), Clip("walk forward right"),
+                Clip("walk backward left"), Clip("walk backward right"));
+
+            var correr = CrearBlendDireccional(ctrl, "Correr", runAdelante,
+                Clip("run backward"), Clip("run left"), Clip("run right"),
+                Clip("run forward left"), Clip("run forward right"),
+                Clip("run backward left"), Clip("run backward right"));
+
+            top.AddChild(idle, 0f);
+            top.AddChild(caminar, 0.45f);
+            top.AddChild(correr, 1f);
+            return top;
+        }
+
+        static BlendTree CrearBlendAgachado(AnimatorController ctrl)
+        {
+            var top = new BlendTree
+            {
+                name = "LocomocionAgachado",
+                blendType = BlendTreeType.Simple1D,
+                blendParameter = SP.Presentation.SoldierAnimatorDriver.ParamVelocidad,
+                useAutomaticThresholds = false,
+            };
+            AssetDatabase.AddObjectToAsset(top, ctrl);
+
+            var caminar = CrearBlendDireccional(ctrl, "CaminarAgachado", Clip("walk crouching forward"),
+                Clip("walk crouching backward"), Clip("walk crouching left"), Clip("walk crouching right"),
+                Clip("walk crouching forward left"), Clip("walk crouching forward right"),
+                Clip("walk crouching backward left"), Clip("walk crouching backward right"));
+
+            top.AddChild(Clip("idle crouching aiming"), 0f);
+            top.AddChild(caminar, 1f);
+            return top;
+        }
+
+        // Blend "Simple Directional" de 8 puntos: es el tipo que Unity
+        // recomienda justo para esto -- un clip por rumbo (mas las 4
+        // diagonales) alrededor de un centro, sin clip de reposo adentro
+        // (el reposo ya lo pone el blend de arriba en Velocidad=0). Eje X =
+        // Lateral (derecha positivo, como Vector3.Dot(.., transform.right)
+        // en SoldierAnimatorDriver), eje Y = Adelante.
+        static BlendTree CrearBlendDireccional(AnimatorController ctrl, string nombre,
+            AnimationClip adelante, AnimationClip atras, AnimationClip izquierda, AnimationClip derecha,
+            AnimationClip adelanteIzq, AnimationClip adelanteDer, AnimationClip atrasIzq, AnimationClip atrasDer)
+        {
+            var bt = new BlendTree
+            {
+                name = nombre,
+                blendType = BlendTreeType.SimpleDirectional2D,
+                blendParameter = SP.Presentation.SoldierAnimatorDriver.ParamLateral,
+                blendParameterY = SP.Presentation.SoldierAnimatorDriver.ParamAdelante,
+                useAutomaticThresholds = false,
+            };
+            AssetDatabase.AddObjectToAsset(bt, ctrl);
+
+            void Agregar(AnimationClip c, Vector2 pos)
+            {
+                if (c == null) { Debug.LogWarning("[ArtBuilder] Falta un clip direccional para '" + nombre + "' en " + pos + "."); return; }
+                bt.AddChild(c, pos);
+            }
+
+            Agregar(adelante, new Vector2(0f, 1f));
+            Agregar(atras, new Vector2(0f, -1f));
+            Agregar(izquierda, new Vector2(-1f, 0f));
+            Agregar(derecha, new Vector2(1f, 0f));
+            Agregar(adelanteIzq, new Vector2(-0.7f, 0.7f));
+            Agregar(adelanteDer, new Vector2(0.7f, 0.7f));
+            Agregar(atrasIzq, new Vector2(-0.7f, -0.7f));
+            Agregar(atrasDer, new Vector2(0.7f, -0.7f));
+            return bt;
         }
 
         static AvatarMask CrearMascaraTrenSuperior()

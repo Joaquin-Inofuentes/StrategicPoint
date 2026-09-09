@@ -73,12 +73,53 @@ namespace SP.EditorTools
         // soldado dispara en rafagas mientras el gatillo siga apretado, y
         // una animacion de disparo que corre una sola vez se congela en el
         // ultimo frame apenas la segunda bala sale del caño.
+        //
+        // "Todas las que hay" -- pedido explicito -- menos las que no
+        // tienen ningun gatillo real en este juego, y usarlas igual seria
+        // simular un movimiento que nunca pasa:
+        //   * jump up/down/loop: no hay salto.
+        //   * turn 90 left/right, crouching turn 90 left/right: el soldado
+        //     gira de forma continua (SoldierMotor.LookTowards/RotateYaw),
+        //     nunca en un giro discreto de 90 grados.
+        //   * sprint *: una sola velocidad de movimiento en todo el juego
+        //     (SoldierMotor.moveSpeed); no existe un segundo cambio de
+        //     marcha que la dispare.
+        //   * idle (la relajada, sin apuntar): el soldado SIEMPRE tiene el
+        //     arma en la mano (ArmaEnLaMano se agrega solo), asi que el
+        //     idle que se usa es siempre "rifle aiming idle".
+        //   * strafe / strafe (2): ambiguas y sin usar desde que se
+        //     agregaron; "walk left"/"walk right", con nombre claro, cubren
+        //     lo mismo dentro del blend 2D de abajo.
+        //   * lego.fbx (el rig en si) y M_Soldado.fbx (la pieza de
+        //     exhibicion estatica): no son animaciones, ya se usan aparte
+        //     (ver SoldadoRig y ArtBuilder.Definiciones).
         static readonly string[] Animaciones =
         {
-            "walking", "rifle run", "rifle aiming idle", "firing rifle", "reloading", "strafe", "strafe (2)"
+            "walking", "rifle run", "rifle aiming idle", "firing rifle", "reloading",
+            // Blend 2D de caminar/correr (layer 0, de pie): las 8 direcciones
+            // de cada velocidad menos la de avance, que ya cubren "walking"
+            // y "rifle run" de arriba.
+            "walk backward", "walk left", "walk right",
+            "walk forward left", "walk forward right", "walk backward left", "walk backward right",
+            "run backward", "run left", "run right",
+            "run forward left", "run forward right", "run backward left", "run backward right",
+            // Agachado (layer 0, estado alterno): idle + las 8 direcciones
+            // de caminar agachado que trae el pack.
+            "idle crouching aiming",
+            "walk crouching forward", "walk crouching backward", "walk crouching left", "walk crouching right",
+            "walk crouching forward left", "walk crouching forward right",
+            "walk crouching backward left", "walk crouching backward right",
+            // Muerte: variantes elegidas al azar en CubeFxReactor.OnDeath.
+            "death from the front", "death from the back", "death from right",
+            "death from front headshot", "death from back headshot", "death crouching headshot front",
         };
 
-        static readonly HashSet<string> NoLoop = new HashSet<string> { "reloading" };
+        static readonly HashSet<string> NoLoop = new HashSet<string>
+        {
+            "reloading",
+            "death from the front", "death from the back", "death from right",
+            "death from front headshot", "death from back headshot", "death crouching headshot front",
+        };
 
         [MenuItem("Strategic Point/Arte/1. Configurar importacion y materiales")]
         public static void ConfigurarTodo()
@@ -345,16 +386,54 @@ namespace SP.EditorTools
                     // Sin esto la animacion arrastra al personaje: el juego
                     // mueve el transform por su cuenta (SoldierMotor) y la
                     // raiz de la animacion pelearia contra el.
+                    //
+                    // BUG REAL medido por el usuario: con lockRootPositionXZ
+                    // en true (que es "Root Transform Position (XZ): Bake
+                    // Into Pose" tildado) el desplazamiento del ciclo de
+                    // caminar queda HORNEADO en la propia pose -- la cadera
+                    // avanza como parte de la animacion, no como root
+                    // motion -- asi que anim.applyRootMotion = false (en
+                    // ArtBuilder.MontarSoldados) no tiene NADA que
+                    // interceptar y el modelo se desliza igual, separandose
+                    // del collider que sí se queda quieto. En false, el
+                    // desplazamiento se extrae como root motion (curvas
+                    // RootT.x/RootT.z) en vez de hornearse en la pose, que
+                    // es lo que applyRootMotion=false SI puede anular.
                     clips[i].lockRootRotation = true;
                     clips[i].keepOriginalOrientation = true;
                     clips[i].lockRootHeightY = true;
                     clips[i].keepOriginalPositionY = true;
-                    clips[i].lockRootPositionXZ = true;
+                    clips[i].lockRootPositionXZ = false;
                     clips[i].keepOriginalPositionXZ = false;
                 }
                 imp.clipAnimations = clips;
                 imp.SaveAndReimport();
+
+                // Doble seguro, y no redundancia de mas: no hay forma de
+                // confirmar sin Play mode que el toggle de arriba alcanza
+                // por si solo (la semantica exacta de Bake Into Pose no se
+                // puede probar por lectura de codigo). Esto anula el
+                // desplazamiento horizontal en la fuente de verdad final --
+                // las curvas de root motion del clip ya importado -- sin
+                // depender de acertarle a ese toggle: si algun clip todavia
+                // trae X/Z de root motion (horneado o extraido, cualquiera
+                // haya sido), queda en cero aca sin excepcion.
+                foreach (var o in AssetDatabase.LoadAllAssetsAtPath(ruta))
+                    if (o is AnimationClip clip && !clip.name.StartsWith("__preview__"))
+                        AnularDesplazamientoHorizontal(clip);
             }
+        }
+
+        static void AnularDesplazamientoHorizontal(AnimationClip clip)
+        {
+            bool tocado = false;
+            foreach (var binding in AnimationUtility.GetCurveBindings(clip))
+            {
+                if (binding.propertyName != "RootT.x" && binding.propertyName != "RootT.z") continue;
+                AnimationUtility.SetEditorCurve(clip, binding, AnimationCurve.Constant(0f, clip.length, 0f));
+                tocado = true;
+            }
+            if (tocado) EditorUtility.SetDirty(clip);
         }
 
         // ------------------------------------------------------------------

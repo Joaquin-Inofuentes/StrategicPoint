@@ -12,9 +12,15 @@ namespace SP.Presentation
     [RequireComponent(typeof(AudioSource))]
     public class CubeFxReactor : MonoBehaviour
     {
+        // Cuanto queda tirado el cuerpo, ya con la animacion de morir
+        // terminada, antes de desaparecer. Pedido explicito del usuario:
+        // "quiero q ... luego desaparescan al cabo de 2 segundos".
+        const float SegundosHastaDesaparecer = 2f;
+
         Soldier soldier;
         AudioSource audioSource;
         Renderer rend;
+        Animator animator;
         Color baseColor;
         Vector3 baseScale;
         bool bootstrapped;
@@ -23,6 +29,25 @@ namespace SP.Presentation
 
         void Awake() => Bootstrap();
 
+        // Revivir (HeadlessTestRunner y AutoDemoRunner llaman Health.Initialize()
+        // y despues, en los casos donde el cuerpo se habia ocultado,
+        // gameObject.SetActive(true)) tiene que deshacer TODO lo que
+        // OnDeath dejo puesto -- collider apagado, cuerpo oculto, Animator
+        // trabado en "Muerto" -- y no hay un RevivedEvent en el bus para
+        // engancharse. OnEnable es el momento correcto igual: es lo que
+        // Unity ya llama cada vez que el GameObject se reactiva, y en el
+        // primer spawn (con el soldado ya vivo y de pie) simplemente repite
+        // valores que ya eran esos, sin costo.
+        void OnEnable()
+        {
+            if (!bootstrapped || soldier == null || soldier.Health == null || !soldier.Health.IsAlive) return;
+
+            var col = GetComponent<Collider>();
+            if (col != null) col.enabled = true;
+            soldier.SetBodyVisible(true);
+            if (animator != null) animator.SetBool(SP.Presentation.SoldierAnimatorDriver.ParamMuerto, false);
+        }
+
         public void Bootstrap()
         {
             if (bootstrapped) return;
@@ -30,6 +55,7 @@ namespace SP.Presentation
 
             soldier = GetComponent<Soldier>();
             rend = GetComponentInChildren<Renderer>();
+            animator = GetComponentInChildren<Animator>(true);
             // El color propio del soldado ya no vive en un material por
             // instancia (item 230: eso eran 50 materiales y cero batching).
             // Se lee del bloque de propiedades, que es donde lo dejo el
@@ -139,7 +165,31 @@ namespace SP.Presentation
             transform.localScale = baseScale;
             WriteTint(rend, baseColor);
 
-            StartCoroutine(FallOver());
+            var col = GetComponent<Collider>();
+            if (col != null) col.enabled = false;
+
+            // Con arte real y Animator, la muerte es una animacion de
+            // verdad (una de las 6 del pack, sorteada) y no el volteo de
+            // 90 grados que fingia caerse un cubo. Los soldados sin
+            // Animator (cubos de la suite headless, si queda alguno) siguen
+            // con el volteo de siempre.
+            if (animator != null) StartCoroutine(MorirAnimado());
+            else StartCoroutine(FallOver());
+        }
+
+        // Pedido explicito: reproducir la animacion de morir y, pasados 2
+        // segundos, desaparecer -- SetBodyVisible(false) y no
+        // gameObject.SetActive(false), para no cortar de golpe ningun otro
+        // componente (barra de vida, marcador de kill feed) que todavia
+        // tenga una referencia viva a este soldado en el mismo frame.
+        IEnumerator MorirAnimado()
+        {
+            animator.SetInteger(SP.Presentation.SoldierAnimatorDriver.ParamMuerteVariante,
+                UnityEngine.Random.Range(0, SP.Presentation.SoldierAnimatorDriver.CantidadDeMuertes));
+            animator.SetBool(SP.Presentation.SoldierAnimatorDriver.ParamMuerto, true);
+
+            yield return new WaitForSeconds(SegundosHastaDesaparecer);
+            soldier.SetBodyVisible(false);
         }
 
 

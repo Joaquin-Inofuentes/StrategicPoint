@@ -25,8 +25,18 @@ namespace SP.Combat
             switch (kind)
             {
                 case WeaponKind.Pistol:
-                    // Chica y corta.
-                    return new Spec { Damage = 14, Cooldown = 0.15f, Color = new Color(0.95f, 0.88f, 0.20f), VisualScale = new Vector3(0.13f, 0.13f, 0.28f), MagazineSize = 12, ReloadDuration = 1.0f };
+                    // Chica y corta. BALANCE REAL medido: con Damage=14 el
+                    // dps SOSTENIDO (cargador completo + recarga, no solo
+                    // el tiro suelto) daba Pistola 60,0 > Rifle 53,3 >
+                    // Pesada 37,1 -- el arma pensada como respaldo debil
+                    // superaba a las otras dos en el numero que de verdad
+                    // importa en un tiroteo largo. Bajado a 8: 34,3 < 37,1
+                    // < 53,3, o sea Rifle (el arma principal) > Pesada
+                    // (pega fuerte pero recarga eterna) > Pistola
+                    // (respaldo rapido, el mas debil de los tres). Cadencia
+                    // y cargador intactos: sigue siendo la mas rapida de
+                    // sacar y recargar, solo pega menos por tiro.
+                    return new Spec { Damage = 8, Cooldown = 0.15f, Color = new Color(0.95f, 0.88f, 0.20f), VisualScale = new Vector3(0.13f, 0.13f, 0.28f), MagazineSize = 12, ReloadDuration = 1.0f };
                 case WeaponKind.Heavy:
                     // Grande y gruesa. Naranja quemado a proposito: el rosa/
                     // magenta anterior (0.80, 0.20, 0.55) se confundia a

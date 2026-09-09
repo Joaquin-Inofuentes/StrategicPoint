@@ -57,6 +57,7 @@ namespace SP.Ai
         bool bootstrapped;
         Vehicle mountTarget;
         IDisposable damageSub;
+        IDisposable shotSub;
 
         // Item pedido: "que le pueda decir a mis aliados que me sigan".
         // A quien sigo -- normalmente el soldado poseido por el jugador.
@@ -226,9 +227,14 @@ namespace SP.Ai
             self = GetComponent<Soldier>();
             homePosition = transform.position;
             damageSub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnAnyDamage);
+            shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFiredNearby);
         }
 
-        void OnDestroy() => damageSub?.Dispose();
+        void OnDestroy()
+        {
+            damageSub?.Dispose();
+            shotSub?.Dispose();
+        }
 
         void SetState(AiState next)
         {
@@ -238,6 +244,12 @@ namespace SP.Ai
             // arrastrarla al proximo combate lo mandaria a esconderse detras
             // de un obstaculo que ya no tiene nada que ver.
             if (next != AiState.Chase) SoltarCobertura();
+            // Agachado (ver el case Attack de Tick()) solo tiene sentido
+            // MIENTRAS se dispara: al salir de Attack por cualquier motivo
+            // -- el objetivo murio, se perdio la linea de tiro, una orden
+            // lo saco -- hay que pararse de nuevo, no dejarlo agachado
+            // caminando o persiguiendo.
+            if (State == AiState.Attack && self != null && self.Motor != null) self.Motor.SetCrouching(false);
             State = next;
             EventBus.Instance.Publish(new AiStateChangedEvent(self.Id, next.ToString()));
         }
@@ -283,6 +295,31 @@ namespace SP.Ai
             if (Vector3.Distance(self.transform.position, attacker.transform.position) > alertRadius) return;
 
             target = attacker;
+            hasOrder = false;
+            SetState(AiState.Chase);
+        }
+
+        // Pedido explicito ("zona de escucha de disparos aliados"): antes
+        // SOLO se reaccionaba a OnAnyDamage, es decir, a un tiro que
+        // CONECTA. Un enemigo tirandole a un aliado detras de una cobertura
+        // -- disparo tras disparo sin acertar ni uno -- no atraia a nadie
+        // mas a la pelea, por mas cerca que estuviera. Un tiroteo se OYE
+        // aunque no le pegue a nadie: mismo radio que ya usaba el aviso por
+        // impacto (alertRadius), asi que "que tan lejos se escucha" queda
+        // definido en un solo numero para las dos señales.
+        void OnShotFiredNearby(ShotFiredEvent evt)
+        {
+            if (self == null || !self.Health.IsAlive) return;
+            // Mismo criterio que OnAnyDamage: si ya esta ocupado (Chase,
+            // Attack, siguiendo una orden) el tiro no lo interrumpe.
+            if (State != AiState.Idle && State != AiState.Patrol) return;
+
+            var shooter = ActorRegistry.FindById(evt.ShooterId);
+            if (shooter == null || !shooter.Health.IsAlive || shooter.Team == self.Team) return;
+
+            if (Vector3.Distance(self.transform.position, shooter.transform.position) > alertRadius) return;
+
+            target = shooter;
             hasOrder = false;
             SetState(AiState.Chase);
         }
@@ -856,6 +893,16 @@ namespace SP.Ai
                     if (target == null || !target.Health.IsAlive) { SetState(AiState.Patrol); break; }
                     float dd = Vector3.Distance(self.transform.position, target.transform.position);
                     if (dd > attackRange) { SetState(hasOrder ? AiState.MovingToAttackOrder : AiState.Chase); break; }
+
+                    // Pedido explicito ("se agachan y disparan?"): mismo
+                    // SetCrouching de G2 que ya usa el jugador con Ctrl --
+                    // WeaponHolder.MultiplicadorPostura ya lee
+                    // owner.Motor.IsCrouching sin importar si el dueño es
+                    // el jugador o la IA, solo que del lado de la IA nadie
+                    // lo llamaba nunca. Agachado TODO el tiempo que dura
+                    // Attack, haya cobertura cerca o no: presentar menos
+                    // blanco mientras se dispara vale hasta a cielo abierto.
+                    self.Motor.SetCrouching(true);
 
                     self.Motor.LookTowards(target.transform.position, dt);
                     self.Weapon.Tick(dt);

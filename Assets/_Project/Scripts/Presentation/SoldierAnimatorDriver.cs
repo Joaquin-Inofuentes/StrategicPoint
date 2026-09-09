@@ -52,6 +52,32 @@ namespace SP.Presentation
         static readonly Color TinteEnemigo = new Color(1f, 0.62f, 0.55f);
 
         public const string ParamVelocidad = "Velocidad";
+        // Componentes de la velocidad en el espacio del propio soldado, no
+        // del mundo: alimentan los blend tree 2D de caminar/correr para que
+        // el jugador (que puede strafear con WASD sin mirar hacia donde
+        // camina) vea caminar de costado o hacia atras, y no una animacion
+        // de avance deslizandose de lado. La IA, que siempre mira hacia
+        // donde se mueve (MoveTowards), cae siempre en Adelante=1/Lateral=0
+        // sin saber que estos parametros existen.
+        public const string ParamAdelante = "Adelante";
+        public const string ParamLateral = "Lateral";
+        // Mismo booleano que ya lee WeaponHolder.MultiplicadorPostura: la
+        // pose del Animator y la dispersion del arma comparten una sola
+        // fuente de verdad (SoldierMotor.IsCrouching), asi que agacharse
+        // siempre se ve Y se siente igual.
+        public const string ParamAgachado = "Agachado";
+        // Muerte: un bool (no un Trigger) para que revivir sea la misma
+        // moneda al reves -- CubeFxReactor lo pone en true al morir, y en
+        // false al reactivarse ya viva (ver CubeFxReactor.OnEnable), y el
+        // Animator vuelve solo a "DePie" con la transicion de salida que
+        // arma ArtBuilder. Un Trigger no tiene "estado actual" que
+        // consultar para saber si conviene, o no, reforzarlo al revivir.
+        public const string ParamMuerto = "Muerto";
+        public const string ParamMuerteVariante = "MuerteVariante";
+        // Cuantas variantes de "morir" arma ArtBuilder (una por clip de
+        // muerte del pack). CubeFxReactor sortea un numero en este rango;
+        // vive aca y no en el Editor porque el runtime tambien lo necesita.
+        public const int CantidadDeMuertes = 6;
         public const int CapaDisparo = 1;
 
         Soldier soldier;
@@ -131,6 +157,7 @@ namespace SP.Presentation
             // spawn) tiene un delta que no es movimiento: sin esta guarda
             // el soldado arranca la partida en plena carrera.
             float velocidad = arrancado ? delta.magnitude / dt : 0f;
+            Vector3 direccion = arrancado && dt > 0f ? delta / dt : Vector3.zero;
             arrancado = true;
 
             velocidadSuavizada = Mathf.MoveTowards(velocidadSuavizada, velocidad, 20f * dt);
@@ -138,6 +165,21 @@ namespace SP.Presentation
                 ? Mathf.Clamp01(velocidadSuavizada / velocidadDeCarrera)
                 : 0f;
             animator.SetFloat(ParamVelocidad, normalizada);
+
+            // Se proyecta la velocidad SUAVIZADA (no la cruda de este
+            // frame) sobre los ejes propios del soldado: asi el blend 2D
+            // recibe la misma curva de arranque/frenado que ya tenia el
+            // parametro "Velocidad", solo que repartida en adelante/atras
+            // y derecha/izquierda en vez de un solo numero de magnitud.
+            Vector3 direccionSuavizada = direccion.sqrMagnitude > 0.0001f
+                ? direccion.normalized * velocidadSuavizada
+                : Vector3.zero;
+            float escala = velocidadDeCarrera > 0.01f ? velocidadDeCarrera : 1f;
+            animator.SetFloat(ParamAdelante, Vector3.Dot(direccionSuavizada, transform.forward) / escala);
+            animator.SetFloat(ParamLateral, Vector3.Dot(direccionSuavizada, transform.right) / escala);
+
+            if (soldier != null && soldier.Motor != null)
+                animator.SetBool(ParamAgachado, soldier.Motor.IsCrouching);
 
             restanteDeDisparo = Mathf.Max(0f, restanteDeDisparo - dt);
             float objetivo = restanteDeDisparo > 0f ? 1f : 0f;

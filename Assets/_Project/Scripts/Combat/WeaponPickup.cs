@@ -49,7 +49,17 @@ namespace SP.Combat
             equipping = true;
             try
             {
-                holder.EquipWeapon(kind, damage, cooldown, color);
+                // BUG REAL encontrado al rebalancear la pistola (WeaponCatalog:
+                // Damage 14 -> 8): este pickup seguia entregando 14 igual,
+                // porque damage/cooldown/color son una FOTO tomada por
+                // Configure() y guardada aparte en la escena -- exactamente
+                // lo que el comentario de WeaponCatalog promete que NO pasa
+                // ("recogibles del piso... usan los mismos valores"). Cualquier
+                // rebalanceo futuro se hubiera perdido en silencio para todo
+                // pickup ya horneado en SC_Gameplay o SC_TestLevel. Ahora la
+                // unica fuente es el catalogo, siempre fresca.
+                var spec = WeaponCatalog.Get(kind);
+                holder.EquipWeapon(kind, spec.Damage, spec.Cooldown, spec.Color);
                 EventBus.Instance.Publish(new WeaponPickedUpEvent(soldierId, kind));
             }
             finally

@@ -20,20 +20,28 @@ namespace SP.Actors
     {
         [SerializeField] float moveSpeed = 5f;
         [SerializeField] float turnSpeedDegPerSec = 220f;
-        // G2: cuanto queda de la altura de pie al agacharse. El cuerpo del
-        // soldado es UN cubo (mesh + collider + EyeAnchor hijo todos bajo
-        // el mismo transform), asi que achicar transform.localScale.y baja
-        // a la vez el collider, la camara (EyeAnchor es hijo y su offset
-        // local se escala con el padre) y el perfil visual, en un solo
-        // cambio -- mismo patron que ObstacleMarker.ApplyStageLook.
+        // G2, version cubo: cuanto quedaba de la altura de pie al agacharse.
+        // ORIGINALMENTE esto encogia transform.localScale.y entero -- valia
+        // porque el soldado ERA un cubo (mesh + collider + EyeAnchor, todo
+        // bajo el mismo transform, sin animacion). Con el rig humanoide de
+        // ArtBuilder eso ya NO es seguro: "Visual" cuelga del mismo
+        // transform y hereda esa escala, y Unity no soporta un rig
+        // humanoide bajo una cadena de escala no uniforme (el mismo bug que
+        // ArtBuilder.NormalizarEscala documenta para el import -- ahi el
+        // esqueleto explotaba, cabeza a metros de los pies). Escalar en
+        // vivo cada vez que alguien se agacha habria reproducido ese
+        // desastre en pleno Play mode. La pose de agachado ahora la da el
+        // Animator (parametro "Agachado", ver SoldierAnimatorDriver); esto
+        // solo baja la camara en primera persona.
         [SerializeField] float fraccionAlturaAgachado = 0.6f;
 
         Collider body;
         float bodyRadius = 0.4f;
         bool bodyResolved;
 
-        Vector3 alturaDePie;
-        bool posturaCacheada;
+        Soldier soldierCacheado;
+        float alturaOjoDePie;
+        bool ojoCacheado;
 
         public bool IsCrouching { get; private set; }
 
@@ -46,28 +54,33 @@ namespace SP.Actors
             bodyRadius = Deslizador.RadioDe(body, transform, 0.4f);
         }
 
-        void EnsurePostura()
+        // Se resuelve recien al primer agachado (no en Awake): ArtBuilder
+        // agrega/reubica EyeAnchor sobre el prefab en tiempo de edicion, y
+        // cachear antes de tiempo se arriesgaria a guardar una referencia a
+        // un GameObject que ArtBuilder todavia va a mover.
+        void EnsureOjo()
         {
-            if (posturaCacheada) return;
-            posturaCacheada = true;
-            alturaDePie = transform.localScale;
+            if (ojoCacheado) return;
+            ojoCacheado = true;
+            soldierCacheado = GetComponent<Soldier>();
+            if (soldierCacheado != null && soldierCacheado.EyeAnchor != null)
+                alturaOjoDePie = soldierCacheado.EyeAnchor.localPosition.y;
         }
 
-        // Ctrl (mantenido) agacha en FPS. Reusa el pivote centrado del
-        // cubo: al perder altura hay que bajar la posicion la MITAD de lo
-        // perdido para que los pies no floten, y al recuperarla subirla
-        // exactamente lo mismo -- por eso "vuelve exacta al soltar": es
-        // la misma resta invertida, no un valor puesto a mano.
+        // Ctrl (mantenido) agacha en FPS. Ya no toca transform.localScale
+        // (ver el comentario de arriba): solo baja el ancla de la camara en
+        // primera persona la misma fraccion que antes, y deja la pose
+        // visible (piernas, silueta) enteramente al Animator.
         public void SetCrouching(bool agachado)
         {
-            EnsurePostura();
+            EnsureOjo();
             if (IsCrouching == agachado) return;
             IsCrouching = agachado;
 
-            float alturaAntes = transform.localScale.y;
-            float alturaDespues = alturaDePie.y * (agachado ? fraccionAlturaAgachado : 1f);
-            transform.localScale = new Vector3(alturaDePie.x, alturaDespues, alturaDePie.z);
-            transform.position += Vector3.up * (alturaDespues - alturaAntes) * 0.5f;
+            if (soldierCacheado == null || soldierCacheado.EyeAnchor == null) return;
+            float y = alturaOjoDePie * (agachado ? fraccionAlturaAgachado : 1f);
+            var p = soldierCacheado.EyeAnchor.localPosition;
+            soldierCacheado.EyeAnchor.localPosition = new Vector3(p.x, y, p.z);
         }
 
         public void Move(Vector3 worldDirection, float dt)
