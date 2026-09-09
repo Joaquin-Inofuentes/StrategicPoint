@@ -13,7 +13,7 @@ SP_Arte/
   MY_Ambiente.mb        vegetacion, coberturas, destruccion, props, emplazamiento
   MY_Soldado.mb         escuadron de 5 + arsenal de 12 armas + malla base
   MY_Vehiculos.mb       tanque en 3 piezas
-  MY_Nivel.mb           DISENO DE NIVEL semi-laberintico, 51 x 131 unidades
+  MY_Nivel.mb           DISENO DE NIVEL: trama urbana de 51 x 131 unidades
   MY_Showcase.mb        referencia a las 4 librerias, para ver todo junto
   Trimsheet_1024.png          LA textura, 1024x1024, 64 colores, sin texto
   Trimsheet_1024_GUIA.png     hoja de referencia (documentacion)
@@ -32,7 +32,7 @@ SP_Arte/
 | MY_Soldado.mb | 23 | 160 | 2886 | 5260 |
 | MY_Vehiculos.mb | 3 | 39 | 718 | 1112 |
 | **Libreria** | **77** | **871** | **10158** | **18496** |
-| MY_Nivel.mb | 979 colocados | 1097 | 112126 | 210780 |
+| MY_Nivel.mb | 737 colocados | 855 | 67682 | 130008 |
 
 ## 3. Low poly
 
@@ -97,42 +97,49 @@ del grupo ahi mismo: se parentean a cualquier soldado sin recolocar.
 
 ## 8. Diseno de nivel — `MY_Nivel.mb`
 
-Sector de **51 x 131** unidades: cuatro veces mas largo hacia adelante que la primera version,
-con estructura **semi-laberintica** y cobertura repartida.
+Sector de **51 x 131** unidades, cuatro veces mas largo hacia adelante que la primera version.
+No es un laberinto: es una **trama urbana regular**, espaciosa y despejada.
 
-| Tramo | Z | Contenido |
-|---|---|---|
-| Puesto de control | -16 a 16 | ruta, edificio de dos plantas, erizos, barreras, sacos, emplazamiento, tanque y el escuadron desplegado |
-| Laberinto urbano | 18 a 50 | la ruta se adentra y se corta; muros, escombro, cajas |
-| Laberinto industrial | 52 a 84 | pisos de chapa y grava, autos quemados, neumaticos |
-| Laberinto de campo | 86 a 114 | tierra y arena, vegetacion densa, crateres |
+| Elemento | Medida |
+|---|---|
+| Avenida central | 8 de ancho, todo el largo |
+| Veredas de la avenida | 4 a cada lado |
+| Calles transversales | 8 de ancho, tres cruces |
+| Manzanas | 16 x 24 |
+| Edificio por manzana | 8 x 16, centrado, deja 4 de vereda alrededor |
 
-**Como se genera el laberinto.** Sobre celdas de 4x4 (12 x 24 celdas) se corre un DFS con
-semilla fija que carva un laberinto perfecto, y despues se **trenza**: se saca el 35% de las
-paredes que quedaron. Un laberinto perfecto es una sola ruta con callejones sin salida, algo
-horrible para un shooter; el trenzado abre rutas alternativas y bucles, que es lo que hace que
-se pueda flanquear. De ahi lo de "medio laberintoso".
+**Por que se cambio.** La version anterior era un laberinto generado con DFS y trenzado. Se
+veia bien en planta pero a ras de suelo era claustrofobico: pasillos de 4 y paredes de 3 en
+todas las direcciones. La trama de manzanas da la misma superficie con lineas de vision largas
+y varias rutas obvias, que es lo que hace falta para moverse y flanquear.
 
-**Cobertura.** 3 de cada 10 paredes son bajas (`Muro_RotoBajo`, `Muro_RotoAlto`) o con ventana:
-se ve y se dispara por encima, asi el jugador no queda ciego entre paredes de 3 metros. Ademas
-171 objetos de cobertura repartidos por las celdas: sacos, barreras, erizos, cajas, palets,
-neumaticos, barriles, pilas de escombro, muros caidos, crateres y autos.
+**Los 6 edificios salen del mismo molde** (`edificio()`): perimetro de muros de 4, una puerta
+centrada en el frente, ventanas alternadas en los laterales, pilares en las esquinas y losa de
+techo. Dos de los seis se generan como ruina (muros rotos, sin techo, con escombro adentro), lo
+que rompe la uniformidad sin desordenarla.
+
+**La cobertura esta pautada, no desparramada**: sacos y barreras en las esquinas de cada
+manzana, erizos en los cruces, y barriles / cajas / palets / neumaticos alineados sobre las
+veredas a intervalo fijo. Arbolado cada 8 sobre los bordes, faroles cada 24 sobre la avenida,
+arbustos en las cuatro esquinas de cada edificio.
 
 | | |
 |---|---|
 | Baldosas de piso | 384 |
-| Muros de laberinto | 171 |
-| Coberturas | 171 |
-| Total colocado | 979 |
-| Mallas | 1097 |
-| Triangulos | 210780 |
+| Edificios | 6 |
+| Coberturas | 39 |
+| Total colocado | 737 |
+| Mallas | 855 |
+| Triangulos | 130008 |
+
+Paso de 171 coberturas sueltas a 39 puestas a proposito, y de 210780 a **130008 triangulos**.
 
 **Optimizacion.** Cada asset estatico se **unifica en una sola malla** (`polyUnite`) antes de
-repetirse: 979 objetos colocados dan 1097 mallas en vez de las ~9000 que habria sin unificar.
-Las paletas de piso estan **pesadas hacia las baldosas baratas**: una de concreto son 42 caras,
-una de adoquin 222, una de pasto 162. Repitiendo las caras el promedio baja sin que se note.
+repetirse: 737 objetos colocados dan 855 mallas en vez de las ~7000 que habria sin unificar.
+La baldosa de asfalto trae la linea pintada a lo largo de Z, asi que en las calles
+transversales se gira 90 grados para que la linea siga la calle.
 
-Al importar las 4 librerias quedan 4 shadingEngines (uno por namespace); se unifican a uno solo.
+Al importar las 4 librerias quedan 4 shadingEngines (uno por namespace); se unifican a uno.
 
 > El nivel es una **maqueta de layout**. En produccion conviene rearmarlo en Unity con los
 > prefabs, que es donde se le pone colision, navegacion y spawns.
@@ -145,8 +152,8 @@ Al importar las 4 librerias quedan 4 shadingEngines (uno por namespace); se unif
 | MY_Soldado.mb | 160 | 2886 | 0 | **0** | 1 | solo el trimsheet | OK |
 | MY_Vehiculos.mb | 39 | 718 | 0 | **0** | 1 | solo el trimsheet | OK |
 | MY_Modulares.mb | 396 | 2376 | 0 | **0** | 1 | solo el trimsheet | OK |
-| MY_Nivel.mb | 1097 | 112126 | 0 | **0** | 1 | solo el trimsheet | OK |
-| **Total** | **1968** | **122284** | **0** | **0** | **1** | **1** | **OK** |
+| MY_Nivel.mb | 855 | 67682 | 0 | **0** | 1 | solo el trimsheet | OK |
+| **Total** | **1726** | **77840** | **0** | **0** | **1** | **1** | **OK** |
 
 Se verifica que cada cara caiga entera dentro de una sola celda con el 90% del margen hasta el
 borde, que exista un unico shadingEngine, que el unico nodo `file` apunte al trimsheet, y que
