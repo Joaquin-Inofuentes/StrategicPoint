@@ -51,6 +51,68 @@ namespace SP.Combat
             _ => 0.5f,
         };
 
+        // Prisma (ancho x alto x largo) que cada arma NUNCA debe superar,
+        // a escala 1. Se deriva de dos numeros ya calibrados en vez de
+        // inventar medidas nuevas: el largo real medido de arriba
+        // (NaturalLength) y la PROPORCION ancho/alto/largo del cubo de
+        // WeaponCatalog.VisualScale -- ese cubo ya distingue a ojo el
+        // fusil flaco y largo de la pesada gruesa y corta, asi que estirar
+        // esa misma proporcion hasta el largo real da una caja razonable
+        // por arma sin medir cada FBX a mano.
+        public static Vector3 Prisma(WeaponKind kind)
+        {
+            var cubo = WeaponCatalog.Get(kind).VisualScale;
+            float largoCubo = Mathf.Max(0.0001f, cubo.z);
+            float largoReal = NaturalLength(kind);
+            float factor = largoReal / largoCubo;
+            var base_ = new Vector3(cubo.x * factor, cubo.y * factor, largoReal);
+
+            // MEDIDO: contra el modelo real, esta proporcion (heredada del
+            // cubo viejo, nunca calibrada contra la malla de verdad) se
+            // queda corta en altura para el fusil (0.237 real contra 0.208
+            // de caja) y sobre todo la pistola (0.144 contra 0.097) -- el
+            // grip/mira de la malla real sobresale mas de lo que el cubo
+            // planito asumia. El prisma NUNCA puede ser mas chico que el
+            // arma ya autorizada: encogerla para que "entre" en una
+            // proporcion vieja rompería el arte de verdad, y el pedido es
+            // que el arma entre en el prisma, no que el prisma mande sobre
+            // el arte. Se toma el mayor de los dos por eje, asi el prisma
+            // sigue siendo un limite real (frena una malla rota o mal
+            // escalada a futuro) sin recortar la actual.
+            var medido = MeasuredNaturalSize(kind);
+            return new Vector3(
+                Mathf.Max(base_.x, medido.x),
+                Mathf.Max(base_.y, medido.y),
+                Mathf.Max(base_.z, medido.z));
+        }
+
+        static readonly Dictionary<WeaponKind, Vector3> tamañoMedidoCache = new Dictionary<WeaponKind, Vector3>();
+
+        // Tamaño real (ancho x alto x largo) del modelo real de esta arma,
+        // medido sobre el propio prefab-asset (sin instanciar en escena:
+        // sus renderers ya tienen mesh y transform propios, alcanza para
+        // encapsular sus bounds). Se cachea por arma -- es geometria fija,
+        // no cambia entre soldados ni entre partidas.
+        public static Vector3 MeasuredNaturalSize(WeaponKind kind)
+        {
+            if (tamañoMedidoCache.TryGetValue(kind, out var cached)) return cached;
+
+            Vector3 tamaño = Vector3.zero;
+            var prefab = Get(kind);
+            if (prefab != null)
+            {
+                var renderers = prefab.GetComponentsInChildren<Renderer>(true);
+                if (renderers.Length > 0)
+                {
+                    var caja = renderers[0].bounds;
+                    for (int i = 1; i < renderers.Length; i++) caja.Encapsulate(renderers[i].bounds);
+                    tamaño = caja.size;
+                }
+            }
+            tamañoMedidoCache[kind] = tamaño;
+            return tamaño;
+        }
+
         // La metralleta del vehiculo no es un WeaponKind del loadout de un
         // soldado -- es el arma montada de un asiento del tanque -- asi que
         // no entra en el switch de arriba. Nombre propio, mismo cache.

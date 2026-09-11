@@ -180,8 +180,23 @@ namespace SP.Combat
         void ApplyWeaponVisualModel(WeaponKind kind)
         {
             if (WeaponVisualRenderer == null) return;
+
+            // BUG REAL (el "cubito" visible en juego): este return temprano
+            // vivia DESPUES del if de abajo, asi que si WeaponModels.Get
+            // fallaba (Resources.Load sin encontrar el prefab), el metodo
+            // se iba antes de apagar el Renderer del cubo -- quedaba el
+            // cubo de color plano flotando junto al arma real (o solo, si
+            // el arma real nunca llego a cargar). El cubo es un pivote
+            // puro (Muzzle y ArmaEnLaMano cuelgan de el): nunca debe
+            // dibujarse, haya o no malla real disponible.
+            WeaponVisualRenderer.enabled = false;
+
             var prefab = WeaponModels.Get(kind);
-            if (prefab == null) return;
+            if (prefab == null)
+            {
+                Debug.LogWarning($"[WeaponHolder] No se encontro el modelo real de {kind}: el arma se queda sin malla visible (el cubo permanece oculto a proposito).");
+                return;
+            }
 
             // BUG REAL: Destroy() no hace nada util fuera de Play mode --
             // Unity tira "Destroy may not be called from edit mode" y NO
@@ -195,7 +210,6 @@ namespace SP.Combat
                 if (Application.isPlaying) Destroy(visualModelInstance);
                 else DestroyImmediate(visualModelInstance);
             }
-            WeaponVisualRenderer.enabled = false;
 
             visualModelInstance = Instantiate(prefab, WeaponVisualRenderer.transform);
             visualModelInstance.name = "RealModel";
@@ -211,10 +225,30 @@ namespace SP.Combat
             // siempre sale a su tamaño natural sin importar que escala
             // tenga el cubo en ese momento.
             var padreEscala = WeaponVisualRenderer.transform.lossyScale;
+            float cancelaX = Mathf.Abs(padreEscala.x) > 0.0001f ? 1f / padreEscala.x : 1f;
+            float cancelaY = Mathf.Abs(padreEscala.y) > 0.0001f ? 1f / padreEscala.y : 1f;
+            float cancelaZ = Mathf.Abs(padreEscala.z) > 0.0001f ? 1f / padreEscala.z : 1f;
+
+            // Pedido explicito: "las armas sean representadas con prismas y
+            // siempre siempre el arma debe entrar en ese prisma" -- cada
+            // WeaponKind tiene ahora una caja limite (WeaponModels.Prisma,
+            // ancho x alto x largo a escala 1) y esto mide el modelo real
+            // (WeaponModels.MeasuredNaturalSize, medido una sola vez y
+            // cacheado) contra esa caja. Si al escalarse a tamaño natural
+            // se pasa de la caja en cualquier eje, se lo achica de forma
+            // UNIFORME (un solo factor para los tres ejes, nunca por eje
+            // separado) lo suficiente para entrar entero -- uniforme para
+            // no deformar el modelo, y solo hacia abajo (nunca agranda un
+            // arma que ya entraba de sobra).
+            float factorPrisma = 1f;
+            var medido = WeaponModels.MeasuredNaturalSize(kind);
+            var prisma = WeaponModels.Prisma(kind);
+            if (medido.x > 0.0001f) factorPrisma = Mathf.Min(factorPrisma, prisma.x / medido.x);
+            if (medido.y > 0.0001f) factorPrisma = Mathf.Min(factorPrisma, prisma.y / medido.y);
+            if (medido.z > 0.0001f) factorPrisma = Mathf.Min(factorPrisma, prisma.z / medido.z);
+
             visualModelInstance.transform.localScale = new Vector3(
-                Mathf.Abs(padreEscala.x) > 0.0001f ? 1f / padreEscala.x : 1f,
-                Mathf.Abs(padreEscala.y) > 0.0001f ? 1f / padreEscala.y : 1f,
-                Mathf.Abs(padreEscala.z) > 0.0001f ? 1f / padreEscala.z : 1f);
+                cancelaX * factorPrisma, cancelaY * factorPrisma, cancelaZ * factorPrisma);
 
             // El modelo real ya trae su propio material (el trimsheet
             // compartido de WeaponPrefabBuilder): antes se lo pisaba aca con
@@ -411,6 +445,21 @@ namespace SP.Combat
             if (IsReloading || CurrentAmmo >= magazineSize) return false;
             StartReload();
             return true;
+        }
+
+        // Prueba visual del prisma (WeaponModels.Prisma): dibuja la caja
+        // limite del arma equipada alrededor de su pivote. OnDrawGizmos es
+        // exclusivo de la Scene View -- Unity nunca lo llama en Game View
+        // ni en un build -- asi que esto no aparece en gameplay, solo
+        // sirve para confirmar a ojo en el editor que el modelo real
+        // siempre entra adentro.
+        void OnDrawGizmos()
+        {
+            if (WeaponVisualRenderer == null) return;
+            var prisma = WeaponModels.Prisma(CurrentWeaponKind);
+            Gizmos.color = new Color(0.2f, 1f, 0.4f, 0.9f);
+            Gizmos.matrix = WeaponVisualRenderer.transform.localToWorldMatrix;
+            Gizmos.DrawWireCube(Vector3.zero, prisma);
         }
     }
 }

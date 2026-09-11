@@ -429,25 +429,46 @@ namespace SP.Player
         // no hay OrderMarkerFx.Spawn por soldado porque el destino se
         // mueve con el lider, un cubo fijo en el piso mentiria apenas
         // caminara un paso.
-        public static void IssueFollowOrder(Soldier soldier, Soldier leader)
+        public static void IssueFollowOrder(Soldier soldier, Soldier leader, Vector3 formationOffsetLocal = default)
         {
             if (LoManejaElJugador(soldier)) return;
             var brain = soldier.GetComponent<AiBrain>();
             if (brain != null) brain.IsPossessedByPlayer = false;
-            brain?.IssueFollowOrder(leader);
+            brain?.IssueFollowOrder(leader, formationOffsetLocal);
         }
+
+        // BUG REAL ("los aliados se solapan al seguirme"): esto llamaba a
+        // IssueFollowOrder para cada soldado con el MISMO lider y sin
+        // ranura -- todos terminaban persiguiendo el mismo punto (el
+        // lider) al mismo followStopDistance, o sea el mismo circulo, y
+        // se apilaban unos sobre otros. Ahora se reparte una cuña de
+        // formacion DETRAS del lider (mismo criterio que
+        // IssueFormationOrderForSelection para ordenes de movimiento),
+        // en espacio LOCAL del lider -- AiBrain.Follow la reaplica cada
+        // tick contra la posicion y rotacion actuales de el, asi que la
+        // cuña gira con el lider en vez de quedar fija en el mundo.
+        // Mas angosto que FormationSpacing (pensado para una formacion de
+        // movimiento deliberada, mas abierta): al seguir, la cuña de
+        // Cuna suma rango + costado por cada escalon, y con el espaciado
+        // normal el segundo/tercer aliado terminaba casi 4m atras del
+        // lider -- separados de sobra, pero un grupo "que me sigue" se
+        // lee mas natural pegado, no desparramado. 1.3m sigue siendo mas
+        // del doble del cuerpo de un soldado (~0.55m de radio de sondeo),
+        // asi que la separacion entre ellos sigue garantizada.
+        const float FollowSpacing = 1.3f;
 
         public static void IssueFollowOrderForSelection(IEnumerable<Soldier> selection, Soldier leader)
         {
             if (selection == null || leader == null) return;
             var list = new List<Soldier>(selection);
+            list.RemoveAll(s => s == leader);
             if (list.Count == 0) return;
 
+            Vector3 puntoDeReferencia = Vector3.back * FollowSpacing;
+            Vector3[] ranuras = FormationPoints(puntoDeReferencia, Vector3.forward, list.Count, FormationKind.Cuna, FollowSpacing);
+
             for (int i = 0; i < list.Count; i++)
-            {
-                if (list[i] == leader) continue;
-                IssueFollowOrder(list[i], leader);
-            }
+                IssueFollowOrder(list[i], leader, ranuras[i]);
 
             OrderMarkerFx.Spawn(leader.transform.position, OrderMarkerFx.FollowColor);
             AnnounceBatch(list, list.Count == 1 ? "Se dio la orden de seguir a 1 soldado" : $"Se dio la orden de seguir a {list.Count} soldados");

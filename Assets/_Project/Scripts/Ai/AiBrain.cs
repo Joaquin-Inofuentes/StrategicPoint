@@ -67,6 +67,15 @@ namespace SP.Ai
         // cancelen o lo interrumpa el combate.
         Soldier followTarget;
 
+        // Ranura de formacion al seguir, en espacio LOCAL del lider (Z+ =
+        // su frente): (0,0,0) por defecto, que preserva el comportamiento
+        // historico (seguir pegado al lider mismo, a followStopDistance
+        // de el). OrderService.IssueFollowOrderForSelection le asigna una
+        // ranura distinta a cada aliado de una escuadra para que no
+        // converjan todos al mismo punto -- ver comentario en Follow mas
+        // abajo.
+        Vector3 followOffsetLocal;
+
         // Attack-move: una orden de movimiento dada mientras el soldado ya
         // esta trabado en combate (Chase/Attack) NO corta el combate --
         // redirige el CAMINAR hacia este punto pero el apuntado y el
@@ -655,7 +664,7 @@ namespace SP.Ai
         // fijo que borrar/reemplazar -- Follow se re-evalua cada Tick
         // contra la posicion ACTUAL de leader. Pisa cualquier orden previa
         // (mueve, ataca, montar) igual que las demas Issue*.
-        public void IssueFollowOrder(Soldier leader)
+        public void IssueFollowOrder(Soldier leader, Vector3 formationOffsetLocal = default)
         {
             if (leader == null || leader == self) return;
             if (!bootstrapped) Bootstrap();
@@ -666,6 +675,7 @@ namespace SP.Ai
             orderQueue.Clear();
             ClearPath();
             followTarget = leader;
+            followOffsetLocal = formationOffsetLocal;
             SetState(AiState.Follow);
             forceSense = true;
         }
@@ -696,6 +706,7 @@ namespace SP.Ai
             orderIsAttack = false;
             mountTarget = null;
             followTarget = null;
+            followOffsetLocal = Vector3.zero;
             attackMoveDestination = null;
             orderQueue.Clear();
             ClearPath();
@@ -843,7 +854,22 @@ namespace SP.Ai
                     // recalcula CADA tick contra la posicion actual del
                     // lider: por eso Follow nunca "llega" y termina solo,
                     // solo se corta si lo cancelan o el combate lo saca.
-                    self.Motor.MoveTowards(followTarget.transform.position, followStopDistance, dt);
+                    //
+                    // BUG REAL: sin ranura, TODOS los aliados de una orden
+                    // de seguir en grupo apuntaban al mismo punto (el
+                    // lider) con el mismo followStopDistance -- llegaban
+                    // al mismo circulo alrededor de el y quedaban parados
+                    // unos encima de otros. Con una ranura asignada
+                    // (OrderService.IssueFollowOrderForSelection reparte
+                    // una por soldado, en formacion) cada uno persigue un
+                    // punto DISTINTO relativo al lider, expresado en su
+                    // espacio local para que rote con el.
+                    bool tieneRanura = followOffsetLocal.sqrMagnitude > 0.0001f;
+                    Vector3 destinoSeguimiento = tieneRanura
+                        ? followTarget.transform.position + followTarget.transform.TransformDirection(followOffsetLocal)
+                        : followTarget.transform.position;
+                    float umbralSeguimiento = tieneRanura ? Mathf.Max(arriveThreshold, 0.5f) : followStopDistance;
+                    self.Motor.MoveTowards(destinoSeguimiento, umbralSeguimiento, dt);
                     break;
 
                 case AiState.Chase:

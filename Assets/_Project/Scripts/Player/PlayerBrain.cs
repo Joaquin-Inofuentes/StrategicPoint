@@ -1,6 +1,7 @@
 using UnityEngine;
 using SP.Actors;
 using SP.Ai;
+using SP.CameraSystem;
 
 namespace SP.Player
 {
@@ -54,7 +55,20 @@ namespace SP.Player
         public bool Fire()
         {
             if (Current == null) return false;
-            return Current.Weapon.TryFire(Current.transform.position, Current.transform.forward);
+
+            // BUG REAL: el disparo salia siempre por transform.forward del
+            // soldado, que solo gira en yaw (RotateYaw) -- mirar arriba/
+            // abajo con el mouse movia la camara pero la bala seguia
+            // saliendo perfectamente horizontal. Se suma el mismo pitch
+            // que ya usa CameraRig.FollowOverShoulder para orientar la
+            // camara, con la misma formula, asi que apuntar al piso o al
+            // cielo ahora sí manda la bala ahí.
+            Vector3 direction = Current.transform.forward;
+            var rig = CameraRig.Instance;
+            if (rig != null)
+                direction = (Current.transform.rotation * Quaternion.Euler(-rig.Pitch, 0f, 0f)) * Vector3.forward;
+
+            return Current.Weapon.TryFire(Current.transform.position, direction);
         }
     }
 }

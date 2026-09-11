@@ -1,6 +1,8 @@
 using System.Collections;
 using UnityEngine;
 using SP.Combat;
+using SP.Ai;
+using SP.CameraSystem;
 
 namespace SP.Presentation
 {
@@ -55,6 +57,13 @@ namespace SP.Presentation
 
         bool colgada;
         Transform arma;
+        AiBrain aiBrain;
+
+        // Rotacion local (respecto de la mano) con la que Colgar() dejo el
+        // arma calibrada contra la pose real del cuerpo. Se guarda para
+        // poder sumarle el pitch del jugador cada frame en LateUpdate sin
+        // perder esa calibracion ni tener que volver a colgarla.
+        Quaternion baseLocalRotation = Quaternion.identity;
 
         // Direcciones "adelante" y "arriba" del cuerpo en el momento de
         // colgar el arma, expresadas en el espacio LOCAL de la mano. Al
@@ -110,6 +119,8 @@ namespace SP.Presentation
             arma.rotation = Quaternion.LookRotation(transform.forward, transform.up);
             arma.position = mano.position;
             arma.SetParent(mano, true);
+            baseLocalRotation = arma.localRotation;
+            aiBrain = GetComponent<AiBrain>();
 
             // El canio pasa a ser hijo del arma, no de la raiz: si se
             // queda arriba, el fogonazo sale de la cadera mientras el
@@ -142,6 +153,22 @@ namespace SP.Presentation
             float largoNatural = WeaponModels.NaturalLength(kind);
             float adelanto = Mathf.Max(0f, largoNatural * 0.5f - MargenCulataDetrasDelPuno);
             arma.localPosition = dirAdelanteLocal * adelanto + dirArribaLocal * AlturaSobreLaMano;
+        }
+
+        // Solo el soldado que el jugador esta manejando tiene un pitch de
+        // camara que signifique algo -- el resto (IA) no gira la mira con
+        // el mouse, y aplicarles el pitch global del jugador les habria
+        // hecho apuntar arriba/abajo cada vez que ESE mouse se moviera.
+        // Corre en LateUpdate (despues de que el Animator poso la mano
+        // este frame) para sumar el tilt sobre la pose ya animada y no al
+        // reves.
+        void LateUpdate()
+        {
+            if (!colgada || arma == null) return;
+            float pitch = 0f;
+            if (aiBrain != null && aiBrain.IsPossessedByPlayer && CameraRig.Instance != null)
+                pitch = CameraRig.Instance.Pitch;
+            arma.localRotation = baseLocalRotation * Quaternion.Euler(-pitch, 0f, 0f);
         }
     }
 }

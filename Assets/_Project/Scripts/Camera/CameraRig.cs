@@ -117,6 +117,12 @@ namespace SP.CameraSystem
         public void AddPitch(float delta) => pitch = Mathf.Clamp(pitch + delta, -MaxPitch, MaxPitch);
         public void ResetPitch() => pitch = 0f;
 
+        // Expuesto para quien tenga que apuntar de verdad con este pitch
+        // (no solo mostrarlo): el disparo del jugador y el arma en la
+        // mano necesitan el mismo angulo que ya mueve la camara, o mirar
+        // arriba/abajo giraria la vista sin mover ni la mira ni la bala.
+        public float Pitch => pitch;
+
         // Culatazo de camara: un canal SEPARADO del pitch que controla el
         // mouse, para que decaiga solo sin que el jugador tenga que
         // compensarlo bajando el mouse el mismo tanto que subio (eso

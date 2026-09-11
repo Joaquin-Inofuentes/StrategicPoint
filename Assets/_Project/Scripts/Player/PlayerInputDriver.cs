@@ -204,6 +204,21 @@ namespace SP.Player
             }
 
             weaponViewmodel.SetActive(true);
+            // Pedido explicito: "hay un cubito a la derecha, quitalo, ya
+            // no debe verse -- ahora el arma esta sobre el soldado". Este
+            // cubo nacio para representar el arma en primera persona
+            // cuando el cuerpo no tenia un arma real colgada de la mano.
+            // Ahora que ArmaEnLaMano cuelga el modelo real del hueso (ver
+            // ArmaEnLaMano.Colgar) y la camara sigue por encima del
+            // hombro (FollowOverShoulder, no un ojo en primera persona
+            // pura), el jugador ya ve el arma real sobre el cuerpo del
+            // soldado -- este segundo cubo de color solido pegado a la
+            // camara quedo como un duplicado sin textura, siempre visible
+            // en la esquina inferior derecha. Se sigue actualizando su
+            // transform (retroceso, encuadre al apuntar) porque
+            // MiraOptica.Asegurar cuelga el tubo de la mira de este mismo
+            // transform -- solo se apaga lo que se DIBUJA de el.
+            if (weaponViewmodelRenderer != null) weaponViewmodelRenderer.enabled = false;
             var spec = WeaponCatalog.Get(weapon.CurrentWeaponKind);
             // OJO: escalar spec.VisualScale (pensado para el cuerpo, con
             // el largo del cañón en Z) de golpe x2/x4 y ubicarlo a solo
