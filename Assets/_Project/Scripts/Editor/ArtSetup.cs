@@ -402,6 +402,7 @@ namespace SP.EditorTools
                     clips[i].lockRootRotation = true;
                     clips[i].keepOriginalOrientation = true;
                     clips[i].lockRootHeightY = true;
+                    clips[i].heightFromFeet = true;
                     clips[i].keepOriginalPositionY = true;
                     clips[i].lockRootPositionXZ = false;
                     clips[i].keepOriginalPositionXZ = false;
@@ -422,6 +423,107 @@ namespace SP.EditorTools
                     if (o is AnimationClip clip && !clip.name.StartsWith("__preview__"))
                         AnularDesplazamientoHorizontal(clip);
             }
+
+            CorregirAlturaDeCadera();
+        }
+
+        // Los 14 clips del blend 2D de pie (Caminar/Correr, ver
+        // ArtBuilder.CrearBlendDePie) menos "walking"/"rifle run" -- esos
+        // dos son el punto de referencia, no algo a corregir.
+        static readonly string[] ClipsDeMarchaACorregir =
+        {
+            "walk backward", "walk left", "walk right",
+            "walk forward left", "walk forward right", "walk backward left", "walk backward right",
+            "run backward", "run left", "run right",
+            "run forward left", "run forward right", "run backward left", "run backward right",
+        };
+
+        // BUG REAL medido por el usuario: "camina para cualquier lado que
+        // no sea adelante y se entierra". Ninguno de los ajustes del
+        // importer (lockRootHeightY, heightFromFeet, keepOriginalPositionY)
+        // cambio esto de verdad -- medido en juego forzando el blend a
+        // cada direccion, la cadera quedaba a MENOS DE LA MITAD de su
+        // altura real (Y=0.34-0.42) en cualquier direccion que no fuera
+        // "walking", sin importar la combinacion de esos flags.
+        //
+        // La causa real, medida leyendo la curva ya importada
+        // (AnimationUtility.GetEditorCurve, RootT.y): "walking" trae
+        // RootT.y ~0.94-0.95 (espacio de musculo normalizado de Mecanim) y
+        // "walk right" trae ~0.37-0.39 -- los ~20 exports de Mixamo de
+        // este pack, uno por clip, NO vienen calibrados a la misma altura
+        // de referencia entre si. Y a diferencia del arrastre horizontal
+        // (que applyRootMotion=false SI anula si sale como root motion
+        // puro), la altura de RootT.y participa de como Mecanim reconstruye
+        // la POSE humanoide completa cuadro a cuadro -- aplica igual con
+        // applyRootMotion en false, medido probando ambas formas.
+        //
+        // El arreglo real es el mismo principio que ya usa
+        // AnularDesplazamientoHorizontal: corregir la curva ya importada
+        // en la fuente de verdad final, no confiar en que el importer la
+        // calibre solo. Se DESPLAZA (no se reemplaza) la curva entera de
+        // cada clip por una constante, para conservar el bamboleo natural
+        // del paso -- solo se corrige el nivel base para que coincida con
+        // "walking", que es el que ya se mide correcto en juego.
+        static void CorregirAlturaDeCadera()
+        {
+            var referencia = CargarClip("walking");
+            if (referencia == null)
+            {
+                Debug.LogWarning("[ArtSetup] No se encontro el clip 'walking' de referencia; se omite la correccion de altura.");
+                return;
+            }
+            if (!TryPromedioRootTy(referencia, out float alturaReferencia))
+            {
+                Debug.LogWarning("[ArtSetup] 'walking' no tiene curva RootT.y; se omite la correccion de altura.");
+                return;
+            }
+
+            foreach (var nombre in ClipsDeMarchaACorregir)
+            {
+                var clip = CargarClip(nombre);
+                if (clip == null) continue;
+                if (!TryPromedioRootTy(clip, out float alturaPropia)) continue;
+
+                float delta = alturaReferencia - alturaPropia;
+                if (Mathf.Abs(delta) < 0.01f) continue; // ya calibrado, no tocar keys de mas
+
+                foreach (var binding in AnimationUtility.GetCurveBindings(clip))
+                {
+                    if (binding.propertyName != "RootT.y") continue;
+                    var curva = AnimationUtility.GetEditorCurve(clip, binding);
+                    var keys = curva.keys;
+                    for (int k = 0; k < keys.Length; k++) keys[k].value += delta;
+                    curva.keys = keys;
+                    AnimationUtility.SetEditorCurve(clip, binding, curva);
+                }
+                EditorUtility.SetDirty(clip);
+                Debug.Log($"[ArtSetup] '{nombre}': cadera corregida de {alturaPropia:F3} a {alturaReferencia:F3} (delta {delta:F3}).");
+            }
+            AssetDatabase.SaveAssets();
+        }
+
+        static AnimationClip CargarClip(string nombre)
+        {
+            string ruta = Pack + "/" + nombre + ".fbx";
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(ruta))
+                if (o is AnimationClip c && !c.name.StartsWith("__preview__")) return c;
+            return null;
+        }
+
+        static bool TryPromedioRootTy(AnimationClip clip, out float promedio)
+        {
+            foreach (var binding in AnimationUtility.GetCurveBindings(clip))
+            {
+                if (binding.propertyName != "RootT.y") continue;
+                var curva = AnimationUtility.GetEditorCurve(clip, binding);
+                if (curva == null || curva.length == 0) continue;
+                float suma = 0f;
+                foreach (var k in curva.keys) suma += k.value;
+                promedio = suma / curva.length;
+                return true;
+            }
+            promedio = 0f;
+            return false;
         }
 
         static void AnularDesplazamientoHorizontal(AnimationClip clip)
