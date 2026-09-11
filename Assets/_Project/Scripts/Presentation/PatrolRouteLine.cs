@@ -18,10 +18,21 @@ namespace SP.Presentation
         // distancias reales del mapa (peleas a 40-80m).
         const float SphereRadius = 0.6f;
 
+        // Pedido explicito: "quiero que siempre siga las posiciones reales
+        // del mundo, no las relativas". Antes AiBrain.patrolRoute guardaba
+        // una COPIA congelada de estos puntos (un Vector3[] tomado en el
+        // instante de Spawn); mover una esfera en el editor no cambiaba en
+        // nada la ronda real. Exponer los Transform de las esferas deja que
+        // AiBrain.SetPatrolWaypoints los use directamente: la IA lee
+        // marker.position cada vez, asi que sigue la posicion de verdad,
+        // la mueva quien la mueva y cuando sea.
+        public Transform[] Markers { get; private set; }
+
         public static PatrolRouteLine Spawn(Vector3[] points, Color color, float height = 0.05f)
         {
             var root = new GameObject("PatrolRoute");
             var marker = root.AddComponent<PatrolRouteLine>();
+            marker.Markers = new Transform[points.Length];
 
             int layer = LayerMask.NameToLayer(LayerName);
 
@@ -43,6 +54,8 @@ namespace SP.Presentation
                 if (rend != null) rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
                 if (layer >= 0) sphere.layer = layer;
+
+                marker.Markers[i] = sphere.transform;
             }
 
             // El material se aplica en Awake, no aca -- ver el comentario

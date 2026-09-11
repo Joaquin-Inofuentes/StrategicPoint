@@ -371,10 +371,17 @@ namespace SP.Vehicles
             return null;
         }
 
+        // Gunner pasa de "torreta" a "cañón" y Passenger1 de "tripulante" a
+        // "metralleta": pedido explicito ("ahora es cañon y metralleta y
+        // conductor") -- el tanque tiene DOS armas montadas distintas
+        // (TurretPivot=cañón, MetralletaPivot=metralleta) y el log tiene
+        // que nombrar la que corresponde, no una etiqueta generica que las
+        // mezclaba.
         static string RoleLabelEs(VehicleSeatRole role) => role switch
         {
             VehicleSeatRole.Driver => "conductor",
-            VehicleSeatRole.Gunner => "torreta",
+            VehicleSeatRole.Gunner => "cañón",
+            VehicleSeatRole.Passenger1 => "metralleta",
             _ => "tripulante",
         };
 

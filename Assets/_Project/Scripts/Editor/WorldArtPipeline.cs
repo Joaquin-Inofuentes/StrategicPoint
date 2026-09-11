@@ -565,6 +565,24 @@ namespace SP.EditorTools
                 {
                     var tile = (GameObject)PrefabUtility.InstantiatePrefab(pisoPrefab, raiz.transform);
                     tile.transform.position = new Vector3(xIni + cx * tileX, y, zIni + fz * tileZ);
+
+                    // BUG REAL que esto corrige: P_Mod_Piso_Concreto (y las
+                    // variantes CespedSeco/Grava) traen su propio BoxCollider
+                    // -- util cuando ese prefab se usa como obstaculo suelto,
+                    // pero acá se instancia CIENTOS de veces solo como piso
+                    // VISUAL sobre el area que el BoxCollider de Ground ya
+                    // cubre entero. Con todos esos colliders vivos, cualquier
+                    // cuerpo con radio de barrido grande (el tanque, ~1,8 m)
+                    // queda solapado con el piso constantemente -- el sphere
+                    // cast de Deslizador no distingue "vertical, es el suelo"
+                    // de "horizontal, es una pared", asi que el tanque se
+                    // trababa contra su propio piso a los pocos segundos de
+                    // arrancar a andar. Medido en SC_Gameplay: 630 tiles, los
+                    // 630 con collider propio. El collider de Ground (unico,
+                    // uno solo) ya alcanza para lo unico que hace falta que
+                    // el piso resuelva: el rayo hacia abajo de ApoyoEnElPiso.
+                    var tileCol = tile.GetComponent<Collider>();
+                    if (tileCol != null) Object.DestroyImmediate(tileCol);
                 }
 
             var groundMr = ground.GetComponent<MeshRenderer>();

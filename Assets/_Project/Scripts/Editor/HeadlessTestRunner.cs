@@ -3952,8 +3952,12 @@ namespace SP.EditorTools
             for (int i = 0; i < routes.Length; i++)
             {
                 var enemy = SpawnSoldier(soldierPrefab, $"Enemigo_Patrulla_{i + 1}", TeamId.Enemy, RoleType.Enemy, routes[i][0], enemyColor, pool, 180);
-                enemy.GetComponent<AiBrain>().SetPatrolRoute(routes[i]);
-                PatrolRouteLine.Spawn(routes[i], new Color(0.95f, 0.6f, 0.2f));
+                var line = PatrolRouteLine.Spawn(routes[i], new Color(0.95f, 0.6f, 0.2f));
+                // SetPatrolWaypoints (no SetPatrolRoute): la ronda queda
+                // atada a las esferas de verdad, no a una copia congelada
+                // de sus posiciones -- ver el comentario en
+                // PatrolRouteLine.Markers.
+                enemy.GetComponent<AiBrain>().SetPatrolWaypoints(line.Markers);
                 enemies.Add(enemy);
             }
             return enemies;

@@ -237,6 +237,7 @@ Transform:
   - {fileID: 386385901131163709}
   - {fileID: 118709542462445626}
   - {fileID: 6206481019606442257}
+  - {fileID: 8611476964786802216}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!33 &6906530683572266101
@@ -482,6 +483,62 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7dff06f63d0f2884785ba8f8b8d7ef61, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SP.Presentation.VehicleFxReactor
+--- !u!1 &2031936881402213342
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8611476964786802216}
+  - component: {fileID: 1059693031219936185}
+  m_Layer: 0
+  m_Name: MetralletaPivot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8611476964786802216
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2031936881402213342}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0.35999995, z: 0.07277781}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 6844550875141791060}
+  m_Father: {fileID: 7013702220749121913}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1059693031219936185
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2031936881402213342}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da17fe153427b9a42b894a0ea3f5eeb4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SP.Vehicles.TurretWeapon
+  fireCooldown: 0.1
+  damage: 14
+  projectileColor: {r: 0.95, g: 0.85, b: 0.25, a: 1}
+  pool: {fileID: 0}
+  explosionRadius: 0
+  turnSpeedDegPerSec: 90
+  playerTurnSpeedDegPerSec: 160
+  minPitchDeg: -8
+  maxPitchDeg: 35
+  Muzzle: {fileID: 6844550875141791060}
+  projectileGravity: 0
 --- !u!1 &2176122023549344388
 GameObject:
   m_ObjectHideFlags: 0
@@ -635,6 +692,37 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &8057557057440120943
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 6844550875141791060}
+  m_Layer: 0
+  m_Name: Muzzle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &6844550875141791060
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8057557057440120943}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0.0033090333, y: 0.021893889, z: 0.15158044}
+  m_LocalScale: {x: 0.45454547, y: 0.7142857, z: 0.2777778}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 8611476964786802216}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1084677213282223184
 PrefabInstance:
   m_ObjectHideFlags: 0

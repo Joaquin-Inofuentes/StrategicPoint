@@ -109,8 +109,31 @@ namespace SP.Ai
         // dibujando los circuitos naranjas en el mapa. Se leia como una IA
         // rota, y no daba ningun error: el case Patrol hace un no-op
         // silencioso cuando patrolRoute es null.
+        //
+        // patrolRoute (Vector3[]) es el camino VIEJO: una copia CONGELADA
+        // de las posiciones en el momento en que se llamo SetPatrolRoute.
+        // BUG REAL reportado: "movi los waypoints y no se corrigio, quiero
+        // que siempre siga las posiciones reales del mundo, no las
+        // relativas" -- mover la esfera de un waypoint en el editor (o en
+        // runtime) no cambiaba nada, porque el soldado caminaba contra el
+        // Vector3 copiado, no contra la esfera. patrolWaypoints (Transform[])
+        // es el camino NUEVO: referencias reales a los marcadores (las
+        // mismas esferas de PatrolRouteLine), asi que leer su .position
+        // siempre da la posicion ACTUAL en el mundo, la mueva quien la
+        // mueva. patrolRoute se mantiene solo como respaldo para la suite
+        // headless, que construye la escena en Edit mode sin marcadores de
+        // verdad.
         [SerializeField] Vector3[] patrolRoute;
+        [SerializeField] Transform[] patrolWaypoints;
         int patrolIndex;
+
+        int PatrolCount => patrolWaypoints != null && patrolWaypoints.Length > 0
+            ? patrolWaypoints.Length
+            : (patrolRoute != null ? patrolRoute.Length : 0);
+
+        Vector3 PatrolPointAt(int i) => patrolWaypoints != null && patrolWaypoints.Length > 0 && patrolWaypoints[i] != null
+            ? patrolWaypoints[i].position
+            : patrolRoute[i];
 
         // Antes IssueMoveOrder reemplazaba el destino anterior, asi que no
         // se podian planificar rutas: cada orden borraba la anterior.
@@ -150,6 +173,16 @@ namespace SP.Ai
         public void SetPatrolRoute(Vector3[] points)
         {
             patrolRoute = points;
+            patrolWaypoints = null;
+            patrolIndex = 0;
+        }
+
+        // Camino nuevo (ver el comentario arriba de patrolWaypoints): la
+        // ronda queda atada a los Transform reales, no a una copia.
+        public void SetPatrolWaypoints(Transform[] waypoints)
+        {
+            patrolWaypoints = waypoints;
+            patrolRoute = null;
             patrolIndex = 0;
         }
 
@@ -739,10 +772,11 @@ namespace SP.Ai
             switch (State)
             {
                 case AiState.Patrol:
-                    if (patrolRoute != null && patrolRoute.Length > 0)
+                    int patrolCount = PatrolCount;
+                    if (patrolCount > 0)
                     {
-                        if (self.Motor.MoveTowards(patrolRoute[patrolIndex], 1f, dt))
-                            patrolIndex = (patrolIndex + 1) % patrolRoute.Length;
+                        if (self.Motor.MoveTowards(PatrolPointAt(patrolIndex), 1f, dt))
+                            patrolIndex = (patrolIndex + 1) % patrolCount;
                     }
                     break;
 

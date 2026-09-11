@@ -22,6 +22,15 @@ namespace SP.Combat
         // simple vista con qué arma anda cada uno, sin abrir ningún menú.
         public Renderer WeaponVisualRenderer;
 
+        // Modelo real (mallas de Assets/ARTS/SP_Arte/_FBX_Export/05_Armas,
+        // armadas en prefab por WeaponPrefabBuilder) colgado como hijo del
+        // cubo de siempre. Pedido explicito: "quiero que los enemigos, los
+        // aliados y el jugador usen las geometrias correctas -- usa sus
+        // geometrias". El cubo NO desaparece: sigue siendo el pivote que
+        // ArmaEnLaMano cuelga de la mano y del que Muzzle saca su posicion
+        // (ver ApplyWeaponVisualModel) -- solo se apaga su Renderer.
+        GameObject visualModelInstance;
+
         Soldier owner;
         float cooldownTimer;
         bool bootstrapped;
@@ -105,6 +114,7 @@ namespace SP.Combat
             // magenta de "sin material" toda la partida. Se autocura acá
             // con el color de catálogo del arma con la que ya arranca.
             ApplyWeaponVisualColor(WeaponCatalog.Get(CurrentWeaponKind).Color);
+            ApplyWeaponVisualModel(CurrentWeaponKind);
         }
 
         public void SetPool(ProjectilePool projectilePool) => pool = projectilePool;
@@ -156,6 +166,50 @@ namespace SP.Combat
                 if (Mathf.Abs(escalaPadre.z) < 0.0001f) escalaPadre.z = 1f;
                 var wanted = WeaponCatalog.Get(kind).VisualScale;
                 WeaponVisualRenderer.transform.localScale = new Vector3(wanted.x / escalaPadre.x, wanted.y / escalaPadre.y, wanted.z / escalaPadre.z);
+            }
+
+            ApplyWeaponVisualModel(kind);
+        }
+
+        // Cuelga la malla REAL (multi-parte: cañon, cuerpo, culata, etc.)
+        // como hijo del cubo, y apaga el Renderer del cubo -- el cubo sigue
+        // vivo como pivote (Muzzle y ArmaEnLaMano dependen de su transform),
+        // solo deja de dibujarse. Si el prefab no esta (Resources.Load
+        // devolvio null) no toca nada y se queda con el cubo de color de
+        // siempre: mismo respaldo silencioso que ya usa ApplyWeaponVisualColor.
+        void ApplyWeaponVisualModel(WeaponKind kind)
+        {
+            if (WeaponVisualRenderer == null) return;
+            var prefab = WeaponModels.Get(kind);
+            if (prefab == null) return;
+
+            if (visualModelInstance != null) Destroy(visualModelInstance);
+            WeaponVisualRenderer.enabled = false;
+
+            visualModelInstance = Instantiate(prefab, WeaponVisualRenderer.transform);
+            visualModelInstance.name = "RealModel";
+            visualModelInstance.transform.localPosition = Vector3.zero;
+            visualModelInstance.transform.localRotation = Quaternion.identity;
+
+            // El cubo (padre) puede llevar una escala no uniforme -- el
+            // VisualScale de mas arriba, pensado para que un cubo sin
+            // textura se distinga por forma -- que deformaria el modelo
+            // real si se le dejara heredarla. Se cancela con la escala
+            // MUNDO efectiva del cubo (incluye la compensacion del hueso
+            // de la mano, no solo el VisualScale), asi que el arma real
+            // siempre sale a su tamaño natural sin importar que escala
+            // tenga el cubo en ese momento.
+            var padreEscala = WeaponVisualRenderer.transform.lossyScale;
+            visualModelInstance.transform.localScale = new Vector3(
+                Mathf.Abs(padreEscala.x) > 0.0001f ? 1f / padreEscala.x : 1f,
+                Mathf.Abs(padreEscala.y) > 0.0001f ? 1f / padreEscala.y : 1f,
+                Mathf.Abs(padreEscala.z) > 0.0001f ? 1f / padreEscala.z : 1f);
+
+            var tint = WeaponCatalog.Get(kind).Color;
+            foreach (var r in visualModelInstance.GetComponentsInChildren<MeshRenderer>())
+            {
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.sharedMaterial = SP.Presentation.SafeMaterial.Create(tint);
             }
         }
 

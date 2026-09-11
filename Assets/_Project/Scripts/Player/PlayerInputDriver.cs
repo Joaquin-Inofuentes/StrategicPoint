@@ -1971,16 +1971,30 @@ namespace SP.Player
             }
 
             var vb = Vehicle.GetComponent<VehicleBrain>();
-            var turret = Vehicle.GetComponentInChildren<TurretWeapon>();
-            // El HUD de torreta es solo del artillero: conduciendo o de
-            // pasajero no aporta nada y taparia la vista.
-            if (TurretAim != null && currentSeat != VehicleSeatRole.Gunner) TurretAim.SetVisible(false);
+            // BUG REAL que esto corrige: GetComponentInChildren<TurretWeapon>()
+            // devolvia CUALQUIERA de los dos TurretWeapon del tanque (el del
+            // cañon en "TurretPivot" y, desde que existe, el de la
+            // metralleta en "MetralletaPivot") segun el orden de la
+            // jerarquia -- ambiguo apenas se agrego un segundo. Cada asiento
+            // busca el suyo por nombre, sin adivinar.
+            var turretPivotT = Vehicle.transform.Find("TurretPivot");
+            var turret = turretPivotT != null ? turretPivotT.GetComponent<TurretWeapon>() : null;
+            var mgPivotT = Vehicle.transform.Find("MetralletaPivot");
+            var mgTurret = mgPivotT != null ? mgPivotT.GetComponent<TurretWeapon>() : null;
+            // El HUD de torreta es solo de quien esta apuntando un arma
+            // montada: conduciendo no aporta nada y taparia la vista.
+            if (TurretAim != null && currentSeat != VehicleSeatRole.Gunner && currentSeat != VehicleSeatRole.Passenger1) TurretAim.SetVisible(false);
 
             if (currentSeat == VehicleSeatRole.Driver)
             {
                 if (kb.digit2Key.wasPressedThisFrame && Vehicle.IsSeatFree(VehicleSeatRole.Gunner))
                 {
                     SwitchSeat(VehicleSeatRole.Gunner);
+                    return;
+                }
+                if (kb.digit3Key.wasPressedThisFrame && mgTurret != null && Vehicle.IsSeatFree(VehicleSeatRole.Passenger1))
+                {
+                    SwitchSeat(VehicleSeatRole.Passenger1);
                     return;
                 }
 
@@ -2003,6 +2017,11 @@ namespace SP.Player
                 if (kb.digit1Key.wasPressedThisFrame && Vehicle.IsSeatFree(VehicleSeatRole.Driver))
                 {
                     SwitchSeat(VehicleSeatRole.Driver);
+                    return;
+                }
+                if (kb.digit3Key.wasPressedThisFrame && mgTurret != null && Vehicle.IsSeatFree(VehicleSeatRole.Passenger1))
+                {
+                    SwitchSeat(VehicleSeatRole.Passenger1);
                     return;
                 }
 
@@ -2061,16 +2080,49 @@ namespace SP.Player
                 var gunnerEye = turret != null ? turret.transform.Find("GunnerEye") : null;
                 UpdateVehicleCamera(gunnerEye != null ? gunnerEye : Vehicle.transform);
             }
+            // Pedido explicito: "ahora es cañon y metralleta y conductor" --
+            // un tercer puesto operable de verdad, no un pasajero mudo.
+            // Mismo patron que el artillero del cañon (mouse apunta, click
+            // dispara) pero sobre mgTurret -- su propio TurretWeapon,
+            // independiente del cañon (ver MetralletaPivot).
+            else if (currentSeat == VehicleSeatRole.Passenger1)
+            {
+                if (kb.digit1Key.wasPressedThisFrame && Vehicle.IsSeatFree(VehicleSeatRole.Driver))
+                {
+                    SwitchSeat(VehicleSeatRole.Driver);
+                    return;
+                }
+                if (kb.digit2Key.wasPressedThisFrame && Vehicle.IsSeatFree(VehicleSeatRole.Gunner))
+                {
+                    SwitchSeat(VehicleSeatRole.Gunner);
+                    return;
+                }
+
+                if (mouse != null && mgTurret != null)
+                {
+                    var delta = mouse.delta.ReadValue();
+                    mgTurret.AddDesiredYaw(delta.x * turretSensitivity);
+                    mgTurret.AddDesiredPitch(-delta.y * turretSensitivity);
+                    mgTurret.TickPlayerAim(Time.deltaTime);
+                    if (mouse.leftButton.isPressed) mgTurret.TryFire();
+                    Rig.SetZoomed(mouse.rightButton.isPressed);
+                }
+                if (TurretAim != null) TurretAim.UpdateFrom(mgTurret);
+
+                UpdateVehicleCamera(Vehicle.transform);
+            }
             else
             {
                 UpdateVehicleCamera(Vehicle.transform);
             }
 
             string role = currentSeat == VehicleSeatRole.Driver
-                ? "[WASD] conducir · [G] frenar · [2] ir a la torreta · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
+                ? "[WASD] conducir · [G] frenar · [2] ir al cañón · [3] ir a la metralleta · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
                 : currentSeat == VehicleSeatRole.Gunner
-                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom de mira · [R] munición · [T] mandar la camioneta ahí · [1] conducir · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
-                    : "[U] llamar a un aliado cercano · [E] bajar · [TAB] vista RTS";
+                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom de mira · [R] munición · [T] mandar la camioneta ahí · [1] conducir · [3] ir a la metralleta · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
+                    : currentSeat == VehicleSeatRole.Passenger1
+                        ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom de mira · [1] conducir · [2] ir al cañón · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
+                        : "[U] llamar a un aliado cercano · [E] bajar · [TAB] vista RTS";
             SetInstructionText(role);
         }
 
@@ -2089,7 +2141,12 @@ namespace SP.Player
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
             currentSeat = newRole;
             if (newRole == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
-            if (newRole == VehicleSeatRole.Gunner) GameLog.Line("Se monto en la metralleta");
+            // BUG REAL que esto corrige: decia "se monto en la metralleta"
+            // para el asiento del CAÑON (el que dispara obuses explosivos/
+            // perforantes) -- confundia las dos armas del tanque entre si.
+            // Ahora cada asiento nombra la suya.
+            if (newRole == VehicleSeatRole.Gunner) GameLog.Line("Se montó en el cañón");
+            if (newRole == VehicleSeatRole.Passenger1) GameLog.Line("Se montó en la metralleta");
 
             // La vista de vehiculo es siempre en 3ra persona orbitando el
             // chasis (Vehicle.transform): cambiar de asiento no mueve el
