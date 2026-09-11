@@ -76,7 +76,14 @@ namespace SP.Presentation
                 // +Y -- este giro la acuesta de canto contra la espalda,
                 // en diagonal, en vez de dejarla apuntando hacia adelante
                 // como quedaba con el angulo pensado para el cubo viejo.
-                go.transform.localRotation = Quaternion.Euler(80f, 100f, 20f);
+                // BUG REAL que esto corrige: con 80 grados de pitch el
+                // cañon (eje +Z local) quedaba casi vertical -- el arma
+                // apuntaba para arriba y se salia por encima de la cabeza
+                // en vez de quedar acostada en diagonal contra la espalda.
+                // Medido en juego con captura de la Scene View (mismo
+                // metodo que el resto de la sesion: nunca solo mirar
+                // numeros). 35 grados la acuesta mucho mas plana.
+                go.transform.localRotation = Quaternion.Euler(35f, 100f, 20f);
 
                 // Pedido explicito: geometria real (no un cubo de color)
                 // tambien en el arma colgada de la espalda -- mismos
@@ -97,11 +104,14 @@ namespace SP.Presentation
                     float factor = TargetBackLength / WeaponModels.NaturalLength(kind);
                     var escalaReal = new Vector3(factor / escalaPadre.x, factor / escalaPadre.y, factor / escalaPadre.z);
                     real.transform.localScale = escalaReal;
+                    // El modelo real ya trae el material del trimsheet
+                    // (WeaponPrefabBuilder); antes se lo pisaba con un
+                    // SafeMaterial.Create(spec.Color) por renderer -- mismo
+                    // problema que ArmaEnLaMano/WeaponHolder: tapaba la
+                    // textura real y clonaba un Material nuevo por arma por
+                    // soldado. Se deja solo apagar la sombra.
                     foreach (var r in real.GetComponentsInChildren<Renderer>())
-                    {
                         r.shadowCastingMode = ShadowCastingMode.Off;
-                        r.sharedMaterial = SafeMaterial.Create(spec.Color);
-                    }
                 }
                 else
                 {

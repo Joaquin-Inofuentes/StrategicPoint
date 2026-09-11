@@ -216,12 +216,17 @@ namespace SP.Combat
                 Mathf.Abs(padreEscala.y) > 0.0001f ? 1f / padreEscala.y : 1f,
                 Mathf.Abs(padreEscala.z) > 0.0001f ? 1f / padreEscala.z : 1f);
 
-            var tint = WeaponCatalog.Get(kind).Color;
+            // El modelo real ya trae su propio material (el trimsheet
+            // compartido de WeaponPrefabBuilder): antes se lo pisaba aca con
+            // un SafeMaterial.Create(tint) por renderer -- un Material
+            // CLONADO por cada arma de cada soldado, ninguno compartible
+            // entre si (rompe SRP/static batching) y encima tapaba la
+            // textura real con un color solido. Pedido explicito: usar el
+            // material nuevo del trimsheet. La forma de cada arma (rifle
+            // flaco y largo, pistola chica, pesada gruesa) ya distingue cual
+            // esta equipada; no hace falta ademas un tinte por tipo.
             foreach (var r in visualModelInstance.GetComponentsInChildren<MeshRenderer>())
-            {
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                r.sharedMaterial = SP.Presentation.SafeMaterial.Create(tint);
-            }
         }
 
         // Cambia al arma en la posición `index` del Loadout público y la

@@ -4331,7 +4331,11 @@ namespace SP.EditorTools
             // texto de ayuda de RTS.
             var selCountGO = new GameObject("SelectionCount", typeof(Image), typeof(SelectionCountView));
             selCountGO.transform.SetParent(canvasGO.transform, false);
-            selCountGO.GetComponent<Image>().color = new Color(0.85f, 0.65f, 0.1f, 0.85f);
+            // Pedido explicito: fondo oscuro consistente con el resto del
+            // HUD (antes era un panel naranja para "destacarse" -- pero
+            // eso significaba texto NEGRO, rompiendo la regla de texto
+            // blanco unica en toda la UI).
+            selCountGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.9f);
             var selCountRt = selCountGO.GetComponent<RectTransform>();
             selCountRt.anchorMin = new Vector2(0.5f, 1f);
             selCountRt.anchorMax = new Vector2(0.5f, 1f);
@@ -4344,7 +4348,7 @@ namespace SP.EditorTools
             var selCountText = selCountTextGO.GetComponent<Text>();
             selCountText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             selCountText.alignment = TextAnchor.MiddleCenter;
-            selCountText.color = Color.black;
+            selCountText.color = Color.white;
             selCountText.fontSize = FontChico;
             selCountText.fontStyle = FontStyle.Bold;
             StretchFull(selCountTextGO.GetComponent<RectTransform>());
@@ -4387,7 +4391,7 @@ namespace SP.EditorTools
             var vsSeatTxt = vsSeatGO.GetComponent<Text>();
             vsSeatTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             vsSeatTxt.alignment = TextAnchor.UpperCenter;
-            vsSeatTxt.color = new Color(0.6f, 0.85f, 1f);
+            vsSeatTxt.color = Color.white;
             vsSeatTxt.fontSize = FontMicro;
             vsSeatTxt.fontStyle = FontStyle.Bold;
             var vsSeatRt = vsSeatGO.GetComponent<RectTransform>();
@@ -4402,7 +4406,7 @@ namespace SP.EditorTools
             var vsGunnerTxt = vsGunnerGO.GetComponent<Text>();
             vsGunnerTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             vsGunnerTxt.alignment = TextAnchor.UpperCenter;
-            vsGunnerTxt.color = new Color(0.85f, 0.85f, 0.85f);
+            vsGunnerTxt.color = Color.white;
             vsGunnerTxt.fontSize = FontMicro;
             var vsGunnerRt = vsGunnerGO.GetComponent<RectTransform>();
             vsGunnerRt.anchorMin = new Vector2(0f, 1f);
@@ -4537,7 +4541,7 @@ namespace SP.EditorTools
             var perfTxt = perfTextGO.GetComponent<Text>();
             perfTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             perfTxt.alignment = TextAnchor.UpperLeft;
-            perfTxt.color = new Color(0.6f, 1f, 0.7f);
+            perfTxt.color = Color.white;
             perfTxt.fontSize = FontChico;
             perfTxt.raycastTarget = false;
             StretchFull(perfTextGO.GetComponent<RectTransform>());
@@ -4596,11 +4600,27 @@ namespace SP.EditorTools
             killFeedTxt.alignment = TextAnchor.MiddleCenter;
             killFeedTxt.fontSize = FontTitulo;
             killFeedTxt.fontStyle = FontStyle.Bold;
-            killFeedTxt.color = new Color(0.95f, 0.25f, 0.15f);
+            // El color real (naranja propio / azul de escuadra) lo pisa
+            // KillFeedView.PunchAndFade() en cada baja -- comunica quien
+            // matheo a quien, no es un simple texto de HUD. Se deja ese
+            // codigo de color (es informacion, no solo estetica) y se le
+            // agrega el panel oscuro que le faltaba (no tenia NINGUN fondo:
+            // texto grande flotando directo sobre el mundo 3D, se podia
+            // perder contra un cielo o piso claro).
             var killFeedRt = killFeedTextGO.GetComponent<RectTransform>();
             killFeedRt.anchorMin = killFeedRt.anchorMax = new Vector2(0.5f, 0.5f);
             killFeedRt.anchoredPosition = new Vector2(0f, 160f);
             killFeedRt.sizeDelta = new Vector2(700f, 60f);
+
+            var killFeedBgGO = new GameObject("BG", typeof(Image));
+            killFeedBgGO.transform.SetParent(killFeedTextGO.transform, false);
+            killFeedBgGO.transform.SetAsFirstSibling();
+            killFeedBgGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.75f);
+            var killFeedBgRt = killFeedBgGO.GetComponent<RectTransform>();
+            killFeedBgRt.anchorMin = Vector2.zero;
+            killFeedBgRt.anchorMax = Vector2.one;
+            killFeedBgRt.offsetMin = new Vector2(-16f, -8f);
+            killFeedBgRt.offsetMax = new Vector2(16f, 8f);
 
             var killFeedView = killFeedGO.GetComponent<KillFeedView>();
             killFeedView.Bind(killFeedTxt);
@@ -4864,7 +4884,11 @@ namespace SP.EditorTools
             var text = textGO.GetComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.alignment = TextAnchor.MiddleCenter;
-            text.color = new Color(0.08f, 0.1f, 0.12f);
+            // Pedido explicito: todo texto blanco sobre fondo oscuro,
+            // consistente en toda la UI (antes era texto oscuro sobre un
+            // panel casi blanco -- funcionaba, pero rompia el patron unico
+            // que pide el resto del HUD).
+            text.color = Color.white;
             text.fontSize = FontSubtitulo;
             var rt = textGO.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 0f);
@@ -4876,7 +4900,7 @@ namespace SP.EditorTools
             var bgGO = new GameObject("BG", typeof(Image));
             bgGO.transform.SetParent(go.transform, false);
             bgGO.transform.SetAsFirstSibling();
-            bgGO.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.8f);
+            bgGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.85f);
             var bgRt = bgGO.GetComponent<RectTransform>();
             bgRt.anchorMin = new Vector2(0.5f, 0f);
             bgRt.anchorMax = new Vector2(0.5f, 0f);
@@ -4901,7 +4925,15 @@ namespace SP.EditorTools
             var text = textGO.GetComponent<Text>();
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             text.alignment = TextAnchor.MiddleCenter;
-            text.color = new Color(0.08f, 0.35f, 0.15f);
+            // Pedido explicito: texto blanco, fondo oscuro. Antes este
+            // cartel no tenia NI panel NI contorno -- texto verde oscuro
+            // flotando directo sobre el mundo 3D, que se podia perder
+            // contra un cielo o terreno claro. El panel va COLGADO DE
+            // textGO (no de "go"): PhaseBannerView.Show()/OnDisable()
+            // activan y desactivan el GameObject del texto, no el de la
+            // raiz -- si el panel colgara de la raiz se veria aunque el
+            // texto estuviera oculto.
+            text.color = Color.white;
             text.fontSize = FontTitulo;
             text.fontStyle = FontStyle.Bold;
             var rt = textGO.GetComponent<RectTransform>();
@@ -4910,6 +4942,16 @@ namespace SP.EditorTools
             rt.pivot = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = new Vector2(0f, 80f);
             rt.sizeDelta = new Vector2(900f, 120f);
+
+            var phaseBgGO = new GameObject("BG", typeof(Image));
+            phaseBgGO.transform.SetParent(textGO.transform, false);
+            phaseBgGO.transform.SetAsFirstSibling();
+            phaseBgGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.85f);
+            var phaseBgRt = phaseBgGO.GetComponent<RectTransform>();
+            phaseBgRt.anchorMin = Vector2.zero;
+            phaseBgRt.anchorMax = Vector2.one;
+            phaseBgRt.offsetMin = new Vector2(-20f, -10f);
+            phaseBgRt.offsetMax = new Vector2(20f, 10f);
 
             var view = go.GetComponent<PhaseBannerView>();
             view.Bind(text);
@@ -5065,7 +5107,7 @@ namespace SP.EditorTools
             var valueTxt = valueGO.GetComponent<Text>();
             valueTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             valueTxt.alignment = TextAnchor.MiddleRight;
-            valueTxt.color = new Color(0.8f, 0.85f, 0.9f);
+            valueTxt.color = Color.white;
             valueTxt.fontSize = FontChico;
             valueTxt.text = value.ToString("0.00");
             var valueRt = valueGO.GetComponent<RectTransform>();
@@ -5262,7 +5304,7 @@ namespace SP.EditorTools
             var controlsListTxt = controlsListGO.GetComponent<Text>();
             controlsListTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             controlsListTxt.alignment = TextAnchor.UpperLeft;
-            controlsListTxt.color = new Color(0.9f, 0.9f, 0.92f);
+            controlsListTxt.color = Color.white;
             controlsListTxt.fontSize = FontChico;
             // Fuente UNICA: antes esto era un literal a mano que ya habia
             // divergido del cartel contextual y del codigo. Le faltaban ~20
@@ -5377,7 +5419,7 @@ namespace SP.EditorTools
             var statsTxt = statsGO.GetComponent<Text>();
             statsTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             statsTxt.alignment = TextAnchor.MiddleCenter;
-            statsTxt.color = new Color(0.9f, 0.9f, 0.9f);
+            statsTxt.color = Color.white;
             statsTxt.fontSize = FontSubtitulo;
             var statsRt = statsGO.GetComponent<RectTransform>();
             statsRt.anchorMin = statsRt.anchorMax = new Vector2(0.5f, 0.6f);

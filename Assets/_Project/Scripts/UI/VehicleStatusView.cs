@@ -219,9 +219,13 @@ namespace SP.UI
                 string prefix = reversing ? "R " : "";
                 string suffix = braking ? "  FRENANDO" : "";
                 speedLabel.text = $"{prefix}{Mathf.Abs(motor.CurrentSpeed):0.0} u/s{suffix}";
-                speedLabel.color = braking ? new Color(0.95f, 0.6f, 0.2f)
-                    : reversing ? new Color(0.95f, 0.85f, 0.3f)
-                    : Color.white;
+                // Pedido explicito: texto blanco siempre en la UI del
+                // tanque (este es justo el ejemplo que dio el pedido --
+                // "cuando entro al tanque... necesito que sea texto
+                // blanco"). Antes se pintaba naranja/amarillo segun
+                // frenando/marcha atras; esos dos estados ya se leen en el
+                // propio texto ("FRENANDO", el prefijo "R ").
+                speedLabel.color = Color.white;
             }
 
             if (healthFill != null)
@@ -241,7 +245,9 @@ namespace SP.UI
                 bool solo = vehicle.OccupantCount == 1;
                 string crew = solo ? $"Tripulación: 1/{vehicle.Capacity} (SOLO)" : $"Tripulación: {vehicle.OccupantCount}/{vehicle.Capacity}";
                 gunnerLabel.text = crew;
-                gunnerLabel.color = solo ? new Color(0.95f, 0.65f, 0.2f) : new Color(0.85f, 0.85f, 0.85f);
+                // Texto blanco siempre (ver comentario de speedLabel mas
+                // arriba) -- el "(SOLO)" ya esta en el propio texto.
+                gunnerLabel.color = Color.white;
             }
 
             UpdateCrewRows(vehicle);
