@@ -792,8 +792,19 @@ namespace SP.Ai
                         break;
                     }
 
-                    Vector3 moveTarget = mountTarget != null ? mountTarget.transform.position : orderDestination;
-                    if (AdvanceTo(moveTarget, arriveThreshold, dt))
+                    // Apuntar al PIVOTE del vehiculo (adentro del chasis)
+                    // solo funcionaba porque el chasis era atravesable para
+                    // el movimiento. Ahora que NavService.BlocksMovement
+                    // trata al vehiculo como pared solida (el soldado ya no
+                    // lo atraviesa caminando), el destino real de la
+                    // caminata es el punto abordable mas cercano DEL LADO
+                    // DE AFUERA del casco (Vehicle.ClosestBoardingPoint) --
+                    // si no, el soldado quedaria empujado contra el casco
+                    // sin poder acercarse lo suficiente al pivote como para
+                    // disparar arriveThreshold.
+                    Vector3 moveTarget = mountTarget != null ? mountTarget.ClosestBoardingPoint(self.transform.position) : orderDestination;
+                    float umbralLlegada = mountTarget != null ? Mathf.Max(arriveThreshold, 1.0f) : arriveThreshold;
+                    if (AdvanceTo(moveTarget, umbralLlegada, dt))
                     {
                         if (mountTarget != null)
                         {
@@ -1151,6 +1162,72 @@ namespace SP.Ai
         {
             return s != null && s.Health != null && s.Health.IsAlive &&
                    s.gameObject.activeInHierarchy;
+        }
+
+        // ------------------------------------------------------------------
+        // Gizmos de depuracion: radios de deteccion/ataque y hacia donde
+        // apunta o va cada unidad, aliada o enemiga. Pedido explicito:
+        // "solo visibles en escena, NO en gameplay". OnDrawGizmos es
+        // exactamente eso por definicion de Unity -- se dibuja en la vista
+        // Scene del editor (con Gizmos activado) y NUNCA en Game view, ni
+        // en un build final, sin necesidad de ningun #if ni chequeo de
+        // Application.isPlaying: Unity ni siquiera llama a este metodo
+        // fuera del editor. No usa Debug.DrawLine (eso SI queda dibujado
+        // sobre Game view mientras Gizmos este activado ahi) ni ningun
+        // LineRenderer/mesh real (eso SI seria visible en gameplay/build).
+        // ------------------------------------------------------------------
+        void OnDrawGizmos()
+        {
+            if (self == null) self = GetComponent<Soldier>();
+            if (self == null) return;
+
+            bool esAliado = self.Team == SP.Combat.TeamId.Player;
+            Color colorDeteccion = esAliado ? new Color(0.3f, 0.7f, 1f, 0.6f) : new Color(1f, 0.55f, 0.15f, 0.6f);
+            Color colorAtaque = new Color(1f, 0.15f, 0.15f, 0.7f);
+
+            Vector3 pos = transform.position;
+
+            Gizmos.color = colorDeteccion;
+            DibujarCirculo(pos, EffectiveVisionRange, colorDeteccion);
+
+            Gizmos.color = colorAtaque;
+            DibujarCirculo(pos, attackRange, colorAtaque);
+
+            // Linea hacia el objetivo trabado (a donde "apunta"/pelea).
+            if (target != null)
+            {
+                Gizmos.color = Color.red;
+                Gizmos.DrawLine(pos + Vector3.up * 1.5f, target.transform.position + Vector3.up * 1.5f);
+            }
+
+            // Linea hacia adonde va caminando (orden de movimiento o
+            // abordaje de vehiculo en curso).
+            if (hasOrder && State == AiState.MovingToOrder)
+            {
+                Vector3 destino = mountTarget != null ? mountTarget.ClosestBoardingPoint(pos) : orderDestination;
+                Gizmos.color = Color.green;
+                Gizmos.DrawLine(pos + Vector3.up * 0.1f, destino + Vector3.up * 0.1f);
+                Gizmos.DrawWireSphere(destino, 0.3f);
+            }
+        }
+
+        // Circulo PLANO (en XZ) de radio dado, aproximado con segmentos --
+        // Gizmos.DrawWireSphere dibuja una esfera completa (3 anillos), que
+        // en una vista de arriba se lee peor que un solo anillo en el
+        // plano del piso.
+        static void DibujarCirculo(Vector3 centro, float radio, Color color)
+        {
+            if (radio <= 0f) return;
+            Gizmos.color = color;
+            const int segmentos = 32;
+            Vector3 anterior = centro + new Vector3(radio, 0f, 0f);
+            for (int i = 1; i <= segmentos; i++)
+            {
+                float ang = (i / (float)segmentos) * Mathf.PI * 2f;
+                Vector3 actual = centro + new Vector3(Mathf.Cos(ang) * radio, 0f, Mathf.Sin(ang) * radio);
+                Gizmos.DrawLine(anterior, actual);
+                anterior = actual;
+            }
         }
     }
 }

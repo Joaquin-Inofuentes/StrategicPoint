@@ -127,11 +127,20 @@ namespace SP.Core
 
         // QUE CUENTA COMO PARED. Un soldado NO frena a otro (siempre se
         // atravesaron entre ellos; cambiarlo seria rediseñar formaciones y
-        // reagrupamiento), un vehiculo tampoco -- hay que poder llegar
-        // hasta el para montarlo -- y los triggers menos todavia (pickups
-        // de armas, zonas). Queda lo que de verdad es escenario: Muro,
-        // Obstaculo_*, y cualquier cubo que alguien agregue mañana sin
+        // reagrupamiento), y los triggers menos todavia (pickups de armas,
+        // zonas). Queda lo que de verdad es escenario: Muro, Obstaculo_*,
+        // el VEHICULO, y cualquier cubo que alguien agregue mañana sin
         // tener que acordarse de marcarlo con nada.
+        //
+        // BUG REAL reportado por el usuario: "el soldado atraviesa el
+        // tanque" -- el vehiculo SI estaba excluido aca ("hay que poder
+        // llegar hasta el para montarlo"), asi que su chasis nunca conto
+        // como pared para nadie, ni para caminar ni para la resolucion de
+        // colision de Deslizador. Ahora el vehiculo es solido: quien
+        // necesite "llegar hasta el" para subir ya no apunta al pivote de
+        // adentro del chasis, sino al punto de afuera que devuelve
+        // Vehicle.ClosestBoardingPoint (ver AiBrain.cs, caso
+        // AiState.MovingToOrder con mountTarget).
         // Linea de tiro entre dos PUNTOS, sin pedir que ninguno sea un
         // soldado. Salio de AiBrain.TieneLineaDeTiro, que solo sabia
         // preguntar "desde mi cuerpo hasta ese soldado": para elegir una
@@ -167,7 +176,6 @@ namespace SP.Core
             if (!c.gameObject.activeInHierarchy) return false;
             var t = c.transform;
             if (t.GetComponentInParent<SP.Actors.Soldier>() != null) return false;
-            if (t.GetComponentInParent<SP.Vehicles.Vehicle>() != null) return false;
             if (t.GetComponentInParent<SP.Combat.Projectile>() != null) return false;
             return true;
         }

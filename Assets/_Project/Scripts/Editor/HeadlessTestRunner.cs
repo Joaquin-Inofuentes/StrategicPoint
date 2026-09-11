@@ -2080,13 +2080,30 @@ namespace SP.EditorTools
             UnityEngine.Object.DestroyImmediate(aliadoEnMedio.gameObject);
 
             // --- F1: registrar los puntos de cobertura ---
+            // 4 Obstaculo_N + el 'vehicle' de la prueba de atropello de mas
+            // arriba, que sigue vivo en la escena (nunca se destruye, solo
+            // se le hace Dismount) -- desde que NavService.BlocksMovement
+            // trata al vehiculo como solido (bug real corregido: "el
+            // soldado atraviesa el tanque"), tambien cuenta como obstaculo
+            // de cobertura como cualquier otro. Antes daba 4 porque el
+            // vehiculo estaba explicitamente excluido de "esto es pared".
             var solidos = SP.Core.Coberturas.Solidos();
-            Check($"Los obstaculos solidos de la escena son los 4 Obstaculo_N, ni el piso ni las armas tiradas ({solidos.Count})",
-                solidos.Count == 4);
+            Check($"Los obstaculos solidos de la escena son los 4 Obstaculo_N + el vehiculo, ni el piso ni las armas tiradas ({solidos.Count})",
+                solidos.Count == 5);
 
+            // El vehiculo (a diferencia de los 4 Obstaculo_N, cajas simples
+            // y aisladas) puede traer MAS de un collider solido propio
+            // (chasis + torreta): un candidato de cobertura calculado
+            // contra el chasis puede caer igual dentro del radio libre de
+            // la torreta, y Candidato() lo descarta -- no es un bug, es el
+            // mismo criterio de "no generar cobertura adentro de un
+            // vecino" que ya se usa entre dos Obstaculo_N pegados, aplicado
+            // ahora tambien a los propios colliders de un mismo cuerpo. Por
+            // eso el vehiculo puede aportar MENOS de 4; los 4 Obstaculo_N
+            // (cajas simples, sin sorpresas) siguen dando 4 cada uno.
             int coberturas = SP.Core.Coberturas.Registrar();
-            Check($"Se registran 4 coberturas por obstaculo solido ({coberturas} para {solidos.Count})",
-                coberturas == 4 * solidos.Count);
+            Check($"Los 4 Obstaculo_N dan 4 coberturas cada uno, el resto (vehiculo) aporta lo que su geometria permita ({coberturas} para {solidos.Count} solidos)",
+                coberturas >= 16 && coberturas <= 4 * solidos.Count);
 
             bool ningunaAdentro = true;
             float masCercaDeUnMuro = float.MaxValue;

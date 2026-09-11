@@ -211,6 +211,46 @@ namespace SP.Vehicles
             }
         }
 
+        // A donde debe CAMINAR un soldado para subir, ahora que el chasis
+        // del vehiculo es solido para el movimiento (ver NavService.
+        // BlocksMovement) -- antes AiBrain apuntaba directo a
+        // transform.position (el pivote, adentro del chasis) porque total
+        // el vehiculo no frenaba a nadie; con el chasis solido, apuntar al
+        // pivote dejaria al soldado empujado contra el casco para siempre,
+        // sin llegar nunca al arriveThreshold. El punto mas cercano de la
+        // caja de colision, empujado un poco hacia afuera, es a donde de
+        // verdad se puede LLEGAR caminando.
+        [SerializeField] float margenAbordaje = 0.5f;
+
+        Collider colliderPrincipal;
+        Collider ColliderPrincipal()
+        {
+            if (colliderPrincipal == null)
+                foreach (var c in GetComponentsInChildren<Collider>(true))
+                    if (!c.isTrigger) { colliderPrincipal = c; break; }
+            return colliderPrincipal;
+        }
+
+        public Vector3 ClosestBoardingPoint(Vector3 desde)
+        {
+            var col = ColliderPrincipal();
+            if (col == null) return transform.position;
+
+            var puntoEnCaja = col.ClosestPoint(desde);
+            // ClosestPoint devuelve un punto SOBRE la superficie (o adentro
+            // si 'desde' ya estaba adentro) -- se empuja hacia afuera en la
+            // direccion desde el centro del collider, para que el destino
+            // de caminata quede fuera del casco y no justo pegado a él.
+            var centro = col.bounds.center;
+            var dir = puntoEnCaja - centro;
+            dir.y = 0f;
+            if (dir.sqrMagnitude < 0.0001f) dir = -transform.forward;
+            dir.Normalize();
+            var destino = puntoEnCaja + dir * margenAbordaje;
+            destino.y = desde.y;
+            return destino;
+        }
+
         public bool IsSeatFree(VehicleSeatRole role) => !seats.ContainsKey(role);
 
         public VehicleSeatRole? FirstFreeSeat()

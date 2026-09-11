@@ -554,6 +554,28 @@ namespace SP.EditorTools
 
             var previo = GameObject.Find("PisoMundo");
             if (previo != null) Object.DestroyImmediate(previo);
+
+            // BUG REAL que esto corrige ("los pisos se solapan"): en algun
+            // momento se genero a mano un "PisoMundo_Combined" (36 chunks
+            // combinados, mismo MAT_Trimsheet) para bajar los draw calls de
+            // este piso -- 630 tiles x 7 sub-mallas cada uno son 4410
+            // renderers, el combinado los deja en 36 -- pero esa combinacion
+            // no la genera ningun script (no hay ninguna referencia a
+            // "PisoMundo_Combined" ni "Piso_Chunk" en todo el proyecto: es
+            // un artefacto suelto, hecho una sola vez a mano). Quedo VIVO
+            // al lado de los tiles individuales en vez de reemplazarlos, así
+            // que las dos capas del piso renderizaban superpuestas (mismo
+            // area en XZ, 10 cm de diferencia en Y) -- eso es el
+            // "solapamiento" visible, no un bug de la grilla en si (la
+            // grilla individual mide bien: step == tamaño real del tile).
+            // Si esto se reconstruye, el combinado queda desactualizado
+            // (el Ground pudo haber cambiado) y volveria a superponerse con
+            // el rearmado fresco: se destruye aca para que un rebuild nunca
+            // deje dos capas de piso vivas a la vez, aunque eso signifique
+            // perder la optimizacion hasta que alguien la rehaga a proposito.
+            var combinadoViejo = GameObject.Find("PisoMundo_Combined");
+            if (combinadoViejo != null) Object.DestroyImmediate(combinadoViejo);
+
             var raiz = new GameObject("PisoMundo");
 
             float xIni = centro.x - tam.x * 0.5f + tileX * 0.5f;

@@ -204,5 +204,28 @@ namespace SP.Vehicles
             }
             return true;
         }
+
+        // Mismo criterio que AiBrain.OnDrawGizmos: solo Scene view, nunca
+        // Game view ni build (asi es OnDrawGizmos por definicion de Unity).
+        void OnDrawGizmos()
+        {
+            Vector3 pos = transform.position;
+            Gizmos.color = new Color(1f, 0.15f, 0.15f, 0.6f);
+            const int segmentos = 32;
+            Vector3 anterior = pos + new Vector3(range, 0f, 0f);
+            for (int i = 1; i <= segmentos; i++)
+            {
+                float ang = (i / (float)segmentos) * Mathf.PI * 2f;
+                Vector3 actual = pos + new Vector3(Mathf.Cos(ang) * range, 0f, Mathf.Sin(ang) * range);
+                Gizmos.DrawLine(anterior, actual);
+                anterior = actual;
+            }
+
+            if (target != null)
+            {
+                Gizmos.color = Color.red;
+                Gizmos.DrawLine(pos + Vector3.up * 1f, target.transform.position + Vector3.up * 1f);
+            }
+        }
     }
 }

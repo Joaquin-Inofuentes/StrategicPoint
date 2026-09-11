@@ -382,7 +382,21 @@ namespace SP.EditorTools
                 for (int i = 0; i < clips.Length; i++)
                 {
                     clips[i].name = nombre;
-                    clips[i].loopTime = !NoLoop.Contains(nombre);
+                    bool loopea = !NoLoop.Contains(nombre);
+                    clips[i].loopTime = loopea;
+                    // BUG REAL reportado por el usuario: "la animacion no
+                    // termina bien" -- el ciclo pega un salto visible al
+                    // reiniciar. loopTime por si solo (arriba) hace que
+                    // Mecanim vuelva al frame 0 al llegar al final, pero NO
+                    // ajusta nada para que el frame final y el frame inicial
+                    // sean la MISMA pose -- si un export de Mixamo no cierra
+                    // el ciclo exacto (lo habitual), el salto se nota. Loop
+                    // Pose (loopPose) es justamente el algoritmo de Mecanim
+                    // que empareja cierre y apertura del ciclo; estaba
+                    // apagado (loopBlend:0) en los .meta de los 34 clips que
+                    // administra este archivo, para ninguno se habia tocado
+                    // nunca desde el importer.
+                    clips[i].loopPose = loopea;
                     // Sin esto la animacion arrastra al personaje: el juego
                     // mueve el transform por su cuenta (SoldierMotor) y la
                     // raiz de la animacion pelearia contra el.
@@ -428,14 +442,35 @@ namespace SP.EditorTools
         }
 
         // Los 14 clips del blend 2D de pie (Caminar/Correr, ver
-        // ArtBuilder.CrearBlendDePie) menos "walking"/"rifle run" -- esos
-        // dos son el punto de referencia, no algo a corregir.
+        // ArtBuilder.CrearBlendDePie) menos "walking" -- ese es el punto de
+        // referencia, no algo a corregir.
+        //
+        // "rifle run" SE AGREGA A CORREGIR (antes se trataba como segunda
+        // referencia, junto con "walking"): medido, trae RootT.y ~0.895
+        // contra ~0.946 de "walking" -- 0.05 de diferencia, la misma
+        // magnitud de descalibracion que el resto de este grupo, no un
+        // segundo punto de referencia válido.
         static readonly string[] ClipsDeMarchaACorregir =
         {
+            "rifle run",
             "walk backward", "walk left", "walk right",
             "walk forward left", "walk forward right", "walk backward left", "walk backward right",
             "run backward", "run left", "run right",
             "run forward left", "run forward right", "run backward left", "run backward right",
+        };
+
+        // Mismo bug, mismo arreglo, grupo agachado: los 8 "walk crouching
+        // *" no vienen calibrados contra "idle crouching aiming" (que se
+        // usa como pose base del agachado, ArtBuilder.CrearBlendDeAgachado).
+        // Medido: dispersion de hasta 0.023 en RootT.y, todos POR ENCIMA de
+        // "idle crouching aiming" (mismo signo en los 8, tipico de exports
+        // Mixamo sin calibrar entre si -- misma causa raiz que el grupo de
+        // pie, escala menor porque agachado ya arranca mas cerca del piso).
+        static readonly string[] ClipsAgachadoACorregir =
+        {
+            "walk crouching forward", "walk crouching backward", "walk crouching left", "walk crouching right",
+            "walk crouching forward left", "walk crouching forward right",
+            "walk crouching backward left", "walk crouching backward right",
         };
 
         // BUG REAL medido por el usuario: "camina para cualquier lado que
@@ -466,19 +501,26 @@ namespace SP.EditorTools
         // "walking", que es el que ya se mide correcto en juego.
         static void CorregirAlturaDeCadera()
         {
-            var referencia = CargarClip("walking");
+            CorregirGrupoDeAltura("walking", ClipsDeMarchaACorregir);
+            CorregirGrupoDeAltura("idle crouching aiming", ClipsAgachadoACorregir);
+            AssetDatabase.SaveAssets();
+        }
+
+        static void CorregirGrupoDeAltura(string nombreReferencia, string[] clipsACorregir)
+        {
+            var referencia = CargarClip(nombreReferencia);
             if (referencia == null)
             {
-                Debug.LogWarning("[ArtSetup] No se encontro el clip 'walking' de referencia; se omite la correccion de altura.");
+                Debug.LogWarning($"[ArtSetup] No se encontro el clip '{nombreReferencia}' de referencia; se omite la correccion de altura de su grupo.");
                 return;
             }
             if (!TryPromedioRootTy(referencia, out float alturaReferencia))
             {
-                Debug.LogWarning("[ArtSetup] 'walking' no tiene curva RootT.y; se omite la correccion de altura.");
+                Debug.LogWarning($"[ArtSetup] '{nombreReferencia}' no tiene curva RootT.y; se omite la correccion de altura de su grupo.");
                 return;
             }
 
-            foreach (var nombre in ClipsDeMarchaACorregir)
+            foreach (var nombre in clipsACorregir)
             {
                 var clip = CargarClip(nombre);
                 if (clip == null) continue;
@@ -497,9 +539,8 @@ namespace SP.EditorTools
                     AnimationUtility.SetEditorCurve(clip, binding, curva);
                 }
                 EditorUtility.SetDirty(clip);
-                Debug.Log($"[ArtSetup] '{nombre}': cadera corregida de {alturaPropia:F3} a {alturaReferencia:F3} (delta {delta:F3}).");
+                Debug.Log($"[ArtSetup] '{nombre}': cadera corregida de {alturaPropia:F3} a {alturaReferencia:F3} (delta {delta:F3}), referencia '{nombreReferencia}'.");
             }
-            AssetDatabase.SaveAssets();
         }
 
         static AnimationClip CargarClip(string nombre)
