@@ -27,6 +27,12 @@ namespace SP.UI
         readonly List<Row> rows = new List<Row>();
         PlayerBrain brain;
 
+        // Igual que GroupCardsView: nombre, vida y distancia no necesitan
+        // refrescarse 60 veces por segundo, y cada refresco arma un string
+        // nuevo por fila (GC). A este intervalo el ojo no nota la diferencia.
+        const float RefreshInterval = 0.15f;
+        float timer;
+
         public void AddEntry(Soldier soldier, GameObject rowObject, Text label, Image healthFill)
         {
             rows.Add(new Row { Soldier = soldier, RowObject = rowObject, Label = label, HealthFill = healthFill });
@@ -65,6 +71,10 @@ namespace SP.UI
 
         void LateUpdate()
         {
+            timer -= Time.unscaledDeltaTime;
+            if (timer > 0f) return;
+            timer = RefreshInterval;
+
             if (brain == null) brain = FindFirstObjectByType<PlayerBrain>();
             Vector3 fromPos = brain != null && brain.Current != null ? brain.Current.transform.position : transform.position;
 
