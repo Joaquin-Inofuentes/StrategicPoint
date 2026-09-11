@@ -69,7 +69,11 @@ namespace SP.Player
             { PoseerMasCercano, Key.C },
             { AlternarVista, Key.Tab },
             { Controles, Key.H },
-            { Frenar, Key.G },
+            // Pedido explicito: G -> T. No pisa el [T] de "mandar la
+            // camioneta ahi" del artillero (PlayerInputDriver, tecla
+            // hardcodeada aparte, kb.tKey) porque son asientos excluyentes
+            // -- Frenar solo se lee en Driver, ese T solo en Gunner.
+            { Frenar, Key.T },
             { AtaqueCuchillo, Key.V },
             { Recentrar, Key.Space },
             { CancelarOrden, Key.X },

@@ -132,7 +132,10 @@ namespace SP.UI
             new ControlEntry("T/Clic der.", "mover la selección al punto, o atacar al enemigo señalado", ControlContext.Rts),
             new ControlEntry("T", "mandar el vehículo al punto del suelo que señalás", ControlContext.VehiculoArtillero),
 
-            new ControlEntry("G", "frenar (mantener)", ControlContext.VehiculoConductor),
+            // Con ActionId: el label se resuelve solo desde KeyBindings
+            // (ver linea 223 mas abajo), asi que sigue el remapeo real en
+            // vez de quedar una tecla vieja hardcodeada (paso de G a T).
+            new ControlEntry("T", "frenar (mantener)", ControlContext.VehiculoConductor, SP.Player.KeyBindings.Frenar),
             new ControlEntry("G", "ordenarle al aliado más cercano que suba al vehículo apuntado", ControlContext.FpsAPie),
             new ControlEntry("G", "subir la selección al vehículo señalado, o bajar a todos si ya está ocupado", ControlContext.Rts),
 

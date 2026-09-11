@@ -43,7 +43,7 @@ namespace SP.Vehicles
             if (Mathf.Abs(CurrentSpeed) > 0.05f)
                 transform.Rotate(Vector3.up, steer * turnDegPerSec * speedFactor * Mathf.Sign(CurrentSpeed) * dt, Space.World);
 
-            Avanzar(CurrentSpeed * dt);
+            Avanzar(CurrentSpeed * dt, dt);
             KnockNearbyProps();
             AtropellarSoldados();
         }
@@ -51,7 +51,7 @@ namespace SP.Vehicles
         public void Brake(float dt)
         {
             CurrentSpeed = Mathf.MoveTowards(CurrentSpeed, 0f, brakeDeceleration * dt);
-            Avanzar(CurrentSpeed * dt);
+            Avanzar(CurrentSpeed * dt, dt);
             KnockNearbyProps();
             AtropellarSoldados();
         }
@@ -72,7 +72,22 @@ namespace SP.Vehicles
             radio = Deslizador.RadioDe(cuerpo, transform, 1f, usarMayor: true);
         }
 
-        void Avanzar(float distancia)
+        // BUG REAL que esto corrige ("se siente como rebote, es un tanque,
+        // es pesado"): el corte de velocidad al chocar usaba
+        // Mathf.MoveTowards(CurrentSpeed, 0f, Mathf.Abs(CurrentSpeed)) --
+        // el delta maximo es LA VELOCIDAD ENTERA, asi que un tanque a
+        // 9,8 m/s pasaba a 0,00 en UN SOLO frame (0,02s) al tocar algo.
+        // Medido: de 9,76 a 0,00 instantaneo. Eso no es una desaceleracion,
+        // es un freno de mano infinito -- se siente como pegar contra una
+        // pared de goma (rebote), no como el impacto de algo pesado que
+        // tarda una fraccion de segundo en frenar. ImpactoDecelPerSec (mas
+        // dura que el frenado normal, brakeDeceleration=14, porque no fue
+        // una decision del jugador) reemplaza el snap por una frenada
+        // fuerte pero real: a 12 m/s tarda ~0,34s en pararse en vez de
+        // 0,02s.
+        const float ImpactoDecelPerSec = 35f;
+
+        void Avanzar(float distancia, float dt)
         {
             EnsureCuerpo();
 
@@ -88,7 +103,7 @@ namespace SP.Vehicles
             {
                 var realPlano = new Vector3(real.x, 0f, real.z);
                 if (realPlano.magnitude < pedidoLargo * 0.25f)
-                    CurrentSpeed = Mathf.MoveTowards(CurrentSpeed, 0f, Mathf.Abs(CurrentSpeed));
+                    CurrentSpeed = Mathf.MoveTowards(CurrentSpeed, 0f, ImpactoDecelPerSec * dt);
             }
         }
 

@@ -2077,7 +2077,7 @@ namespace SP.Player
                     }
                 }
 
-                UpdateVehicleCamera();
+                UpdateVehicleCameraAimed(turret != null ? turret.transform : null);
             }
             // Pedido explicito: "ahora es cañon y metralleta y conductor" --
             // un tercer puesto operable de verdad, no un pasajero mudo.
@@ -2108,7 +2108,7 @@ namespace SP.Player
                 }
                 if (TurretAim != null) TurretAim.UpdateFrom(mgTurret);
 
-                UpdateVehicleCamera();
+                UpdateVehicleCameraAimed(mgTurret != null ? mgTurret.transform : null);
             }
             else
             {
@@ -2116,7 +2116,7 @@ namespace SP.Player
             }
 
             string role = currentSeat == VehicleSeatRole.Driver
-                ? "[WASD] conducir · [G] frenar · [2] ir al cañón · [3] ir a la metralleta · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
+                ? "[WASD] conducir · [T] frenar · [2] ir al cañón · [3] ir a la metralleta · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
                 : currentSeat == VehicleSeatRole.Gunner
                     ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom de mira · [R] munición · [T] mandar la camioneta ahí · [1] conducir · [3] ir a la metralleta · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
                     : currentSeat == VehicleSeatRole.Passenger1
@@ -2193,6 +2193,20 @@ namespace SP.Player
         void UpdateVehicleCamera()
         {
             Rig.FollowThirdPerson(Vehicle.transform, 8f, 3.5f);
+            ApplyVehicleCameraFeel();
+            ApplyVehicleSpeedFx();
+        }
+
+        // Pedido explicito: "quiero q cuando este usando la torreta la
+        // camara rote mirando hacia donde apunto". Cañon y metralleta
+        // llaman a esta en vez de UpdateVehicleCamera: la camara orbita
+        // el forward del ARMA (gira con el mouse), no el del casco.
+        void UpdateVehicleCameraAimed(Transform aimSource)
+        {
+            if (aimSource != null)
+                Rig.FollowThirdPersonAimed(Vehicle.transform.position + Vector3.up * 1f, aimSource.forward, 8f, 3.5f);
+            else
+                Rig.FollowThirdPerson(Vehicle.transform, 8f, 3.5f);
             ApplyVehicleCameraFeel();
             ApplyVehicleSpeedFx();
         }

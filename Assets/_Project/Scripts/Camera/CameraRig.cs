@@ -394,6 +394,38 @@ namespace SP.CameraSystem
             transform.rotation = Quaternion.Slerp(transform.rotation, desiredRot, k);
         }
 
+        // Tercera persona QUE SIGUE LA PUNTERIA -- pedido explicito:
+        // "cuando este usando la torreta la camara rote mirando hacia
+        // donde apunto". FollowThirdPerson (arriba) orbita el FORWARD DEL
+        // CASCO, que solo cambia si el conductor gira el vehiculo entero
+        // -- apuntar con el cañon o la metralleta no lo movia un grado.
+        // Esta en cambio orbita el forward del ARMA (el que el jugador
+        // gira con el mouse), asi que la camara barre junto con la
+        // punteria, como estar mirando por encima del hombro de quien
+        // apunta.
+        //
+        // Solo yaw: se aplana aimForward a horizontal para que la camara
+        // no cabecee con la elevacion del cañon (apuntar al cielo o al
+        // piso giraria la camara entera, mareador). Velocidad propia
+        // (mas rapida que CurrentFollowSpeed, pensada para transiciones
+        // de 1-2s entre asientos) porque esto responde al mouse cuadro a
+        // cuadro -- con la misma velocidad lenta de siempre la camara se
+        // quedaria visiblemente atras de hacia donde ya esta apuntando.
+        const float AimFollowSpeed = 6f;
+
+        public void FollowThirdPersonAimed(Vector3 pivotPos, Vector3 aimForward, float distance = 7f, float height = 3f)
+        {
+            if (IsTransitioning) return;
+            var flat = new Vector3(aimForward.x, 0f, aimForward.z);
+            if (flat.sqrMagnitude < 0.0001f) flat = Vector3.forward;
+            flat.Normalize();
+            Vector3 desired = pivotPos - flat * distance + Vector3.up * height;
+            Quaternion desiredRot = Quaternion.LookRotation((pivotPos + Vector3.up * 1.2f - desired).normalized);
+            float k = Mathf.Clamp01(Time.deltaTime * AimFollowSpeed);
+            transform.position = Vector3.Lerp(transform.position, desired, k);
+            transform.rotation = Quaternion.Slerp(transform.rotation, desiredRot, k);
+        }
+
         public void SetRtsView(Vector3 center)
         {
             CancelTransition();

@@ -3718,6 +3718,16 @@ namespace SP.EditorTools
             mgMuzzle.localPosition = new Vector3(0f, 0f, 0.5f);
             mgWeapon.Muzzle = mgMuzzle;
 
+            // Pedido explicito: "quiero una captura clara donde 1 soldado
+            // esta arriba en la metralleta" -- a diferencia de
+            // MetralletaEye (colgado de mgPivot, que GIRA con la punteria),
+            // este es hijo directo del CHASIS: el cuerpo del artillero no
+            // tiene por que inclinarse cada vez que el cañon de la
+            // metralleta se mueve, solo tiene que seguir al tanque.
+            var mgStand = new GameObject("MetralletaStandPoint").transform;
+            mgStand.SetParent(root.transform, false);
+            mgStand.localPosition = new Vector3(0.30f, 0.55f, 0.05f);
+
             Directory.CreateDirectory("Assets/_Project/Prefabs");
             string path = "Assets/_Project/Prefabs/P_Vehicle_Blindado.prefab";
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);

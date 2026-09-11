@@ -293,6 +293,70 @@ namespace SP.Vehicles
             var startPos = soldier.transform.position;
             var startScale = mountTrueScale[soldier];
 
+            // Metralleta ("de arriba"): pedido explicito -- a diferencia
+            // del conductor y el cañon (van ADENTRO del casco, por eso se
+            // esconden), el artillero de la metralleta esta de pie,
+            // visible, asomando por la escotilla. No se achica ni
+            // desaparece: camina/sube hasta el punto de pie y se queda
+            // ahi visible, colgado del CHASIS (transform, para seguir al
+            // tanque al andar) y no de MetralletaPivot -- ese gira con la
+            // punteria, y colgarlo de ahi lo haria inclinarse con el cañon
+            // cada vez que alguien apunta.
+            if (role == VehicleSeatRole.Passenger1)
+            {
+                var standPoint = transform.Find("MetralletaStandPoint");
+                var startRot = soldier.transform.rotation;
+                float tMg = 0f;
+                while (tMg < MountAnimationSeconds)
+                {
+                    if (soldier == null) yield break;
+                    if (RoleOf(soldier) == null)
+                    {
+                        mountAnimations.Remove(soldier);
+                        mountTrueScale.Remove(soldier);
+                        yield break;
+                    }
+                    tMg += Time.deltaTime;
+                    float kMg = Mathf.Clamp01(tMg / MountAnimationSeconds);
+                    float easedMg = 1f - (1f - kMg) * (1f - kMg);
+                    Vector3 targetPosMg = standPoint != null ? standPoint.position : transform.position + MountOffsetFor(role);
+                    Quaternion targetRotMg = standPoint != null ? standPoint.rotation : transform.rotation;
+                    soldier.transform.position = Vector3.Lerp(startPos, targetPosMg, easedMg);
+                    soldier.transform.rotation = Quaternion.Slerp(startRot, targetRotMg, easedMg);
+                    yield return null;
+                }
+                if (soldier == null) yield break;
+                if (RoleOf(soldier) == null)
+                {
+                    mountAnimations.Remove(soldier);
+                    mountTrueScale.Remove(soldier);
+                    yield break;
+                }
+                // Se cuelga del chasis DESPUES de llegar, con valores
+                // LOCALES puestos a mano (worldPositionStays=false) en vez
+                // de dejar que Unity los derive del mundo: el chasis tiene
+                // escala no uniforme (2.2/1.4/3.6), y un SetParent con
+                // worldPositionStays=true sobre eso puede terminar
+                // estirando al soldado en vez de solo reposicionarlo. Se
+                // replica el mismo patron de contra-escala que ya usan
+                // TurretPivot/MetralletaPivot: escala local = 1/escala del
+                // padre, para que el tamaño real del soldado no cambie.
+                if (standPoint != null)
+                {
+                    var chassisScale = transform.localScale;
+                    soldier.transform.SetParent(transform, false);
+                    soldier.transform.localPosition = standPoint.localPosition;
+                    soldier.transform.localRotation = standPoint.localRotation;
+                    soldier.transform.localScale = new Vector3(
+                        startScale.x / (Mathf.Abs(chassisScale.x) > 0.0001f ? chassisScale.x : 1f),
+                        startScale.y / (Mathf.Abs(chassisScale.y) > 0.0001f ? chassisScale.y : 1f),
+                        startScale.z / (Mathf.Abs(chassisScale.z) > 0.0001f ? chassisScale.z : 1f));
+                }
+                mountAnimations.Remove(soldier);
+                mountTrueScale.Remove(soldier);
+                yield break;
+            }
+
             float t = 0f;
             while (t < MountAnimationSeconds)
             {
@@ -345,6 +409,15 @@ namespace SP.Vehicles
             seats.Remove(foundRole.Value);
 
             soldier.gameObject.SetActive(true);
+            // El artillero de la metralleta quedo colgado del chasis
+            // (transform) para seguir al tanque de pie y visible -- hay
+            // que soltarlo antes de reposicionarlo, o se queda pegado al
+            // tanque para siempre (siguiendolo incluso ya "afuera").
+            // worldPositionStays=true porque la posicion de mundo actual
+            // no importa: dos lineas mas abajo se pisa con el offset de
+            // desmontaje de todas formas.
+            if (soldier.transform.parent == transform) soldier.transform.SetParent(null, true);
+            soldier.transform.localScale = Vector3.one;
             // Antes todos bajaban exactamente al mismo punto (derecha del
             // chasis), sin importar el asiento -- con varios ocupantes
             // quedaban superpuestos o dentro del chasis. Cada asiento
