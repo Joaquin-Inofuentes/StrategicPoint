@@ -54,8 +54,8 @@ namespace SP.UI
         {
             SP.Vehicles.VehicleSeatRole.Driver => "Conductor",
             SP.Vehicles.VehicleSeatRole.Gunner => "Artillero",
-            SP.Vehicles.VehicleSeatRole.Passenger1 => "Pasajero",
-            SP.Vehicles.VehicleSeatRole.Passenger2 => "Pasajero",
+            SP.Vehicles.VehicleSeatRole.Passenger1 => "Pasajero 1",
+            SP.Vehicles.VehicleSeatRole.Passenger2 => "Pasajero 2",
             _ => "-",
         };
 
@@ -103,8 +103,21 @@ namespace SP.UI
                 // de responder solo al arrancar a andar.
                 bool solo = vehicle.OccupantCount == 1;
                 string crew = solo ? $"Tripulación: 1/{vehicle.Capacity} (SOLO)" : $"Tripulación: {vehicle.OccupantCount}/{vehicle.Capacity}";
-                string gunnerPart = vehicle.Gunner != null ? $" · Artillero: {vehicle.Gunner.DisplayName}" : "";
-                gunnerLabel.text = crew + gunnerPart;
+
+                // Puestos ocupados: antes solo se veia el nombre del
+                // artillero (por la vibracion del cañon), pero el pedido es
+                // saber el roster completo -- quien maneja, quien tira y
+                // si quedan asientos libres, sin tener que abrir la vista
+                // RTS y contar cabezas.
+                var seats = new System.Text.StringBuilder();
+                foreach (var role in vehicle.AllSeatRoles)
+                {
+                    var occ = vehicle.SoldierInSeat(role);
+                    if (seats.Length > 0) seats.Append(" · ");
+                    seats.Append(RoleLabel(role)).Append(": ").Append(occ != null ? occ.DisplayName : "—");
+                }
+
+                gunnerLabel.text = crew + "\n" + seats;
                 gunnerLabel.color = solo ? new Color(0.95f, 0.65f, 0.2f) : new Color(0.85f, 0.85f, 0.85f);
             }
         }

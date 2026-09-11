@@ -36,7 +36,13 @@ namespace SP.Player
         public const string AlternarVista = "alternar_vista";
         public const string Controles = "controles";
         public const string Frenar = "frenar";
-        public const string CamaraVehiculo = "camara_vehiculo";
+        // Era "camara_vehiculo" (V alternaba primera/tercera persona en el
+        // vehiculo) -- ese toggle ya no existe, la vista de vehiculo es
+        // siempre 3ra persona. V queda libre y pasa a ser el golpe de
+        // cuchillo, el mismo id de PlayerPrefs se reutiliza a proposito
+        // para no dejar una tecla remapeada por el jugador apuntando a
+        // una accion que ya no existe.
+        public const string AtaqueCuchillo = "camara_vehiculo";
         public const string Recentrar = "recentrar";
         public const string CancelarOrden = "cancelar_orden";
         public const string Reagrupar = "reagrupar";
@@ -64,7 +70,7 @@ namespace SP.Player
             { AlternarVista, Key.Tab },
             { Controles, Key.H },
             { Frenar, Key.G },
-            { CamaraVehiculo, Key.V },
+            { AtaqueCuchillo, Key.V },
             { Recentrar, Key.Space },
             { CancelarOrden, Key.X },
             { Reagrupar, Key.Y },   // Z ya es ciclar-posesion-atras y las dos se leen en RTS

@@ -75,13 +75,13 @@ namespace SP.Player
         [SerializeField] float interactRadius = 3.5f;
         [SerializeField] float autoMountRadius = 6f;
 
-        // Item pedido: "que el cambiar entre soldados dure el doble de
-        // tiempo con lerp". CameraRig.BeginTransition ya lerpea; el
-        // default (0.35s) era el mismo para posesion, muerte y asientos
-        // de vehiculo. Esta es la duracion base x2, la usan todas las
-        // transiciones de POSESION (no la de la camara de muerte, que ya
-        // tiene su propia duracion explicita de 0.9s sin relacion con esto).
-        const float PossessTransitionDuration = 0.7f;
+        // Pedido explicito: 2 segundos de lerp al cambiar a otro soldado
+        // apuntado (poseer), contra 1 segundo al entrar a un vehiculo o
+        // asiento (ver EnterPossessedVehicleSeat/SwitchSeat) -- cambiar de
+        // cuerpo es un salto de punto de vista mas grande que cambiar de
+        // asiento en el mismo vehiculo, y se pidio que se note mas.
+        const float PossessBlendSeconds = 2f;
+        const float VehicleBlendSeconds = 1f;
 
         bool dragging;
         Vector2 dragStart;
@@ -281,9 +281,11 @@ namespace SP.Player
 
         // Estado de "estoy adentro de un vehículo".
         VehicleSeatRole? currentSeat;
-        bool vehicleFirstPerson = true;
 
-        public void ToggleVehicleCameraView() => vehicleFirstPerson = !vehicleFirstPerson;
+        // Vestigial: la vista de vehiculo es siempre 3ra persona ahora (ver
+        // UpdateVehicleCamera). Se deja el metodo -- sin efecto -- para que
+        // AutoDemoRunner, que lo llama, siga compilando sin tocarlo.
+        public void ToggleVehicleCameraView() { }
 
         // Mensaje de tutorial que pisa temporalmente el texto contextual
         // normal (usado por el nivel tutorial / demo automática para narrar
@@ -313,7 +315,7 @@ namespace SP.Player
             if (Brain.Current == null && Squad != null && Squad.Count > 0)
             {
                 Brain.Possess(Squad[0]);
-                Rig.FollowFps(Squad[0]);
+                Rig.FollowOverShoulder(Squad[0].transform);
             }
 
             // Bug 14: PathPreview.Attach solo lo llamaba HeadlessTestRunner
@@ -854,12 +856,13 @@ namespace SP.Player
             }
             if (SelectionCount != null) SelectionCount.SetModeVisible(false);
 
-            if (bodyHiddenFor != Brain.Current)
-            {
-                if (bodyHiddenFor != null) bodyHiddenFor.SetBodyVisible(true);
-                Brain.Current.SetBodyVisible(false);
-                bodyHiddenFor = Brain.Current;
-            }
+            // Pedido explicito: "quiero poder ver el soldado q manejo y sus
+            // armas en su espalda". Antes esto ocultaba el cuerpo entero a
+            // pie (Brain.Current.SetBodyVisible(false)) -- necesario con
+            // una camara en el ojo, pero la vista a pie ahora es por
+            // encima del hombro (Rig.FollowOverShoulder mas abajo), asi
+            // que el cuerpo se deja visible a proposito.
+            if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
 
             Vector3 f = Brain.Current.transform.forward;
             Vector3 r = Brain.Current.transform.right;
@@ -888,7 +891,7 @@ namespace SP.Player
                 Rig.AddPitch(delta.y * lookSensitivity * (InvertLookY ? -1f : 1f));
             }
 
-            Rig.FollowFps(Brain.Current);
+            Rig.FollowOverShoulder(Brain.Current.transform);
             UpdateNearestAllyHighlight();
 
             var ray = Rig.GetForwardRay();
@@ -941,6 +944,14 @@ namespace SP.Player
                 float wheel = mouse.scroll.ReadValue().y;
                 if (Mathf.Abs(wheel) > 0.01f) CycleWeapon(wheel > 0f ? +1 : -1);
             }
+
+            // Pedido explicito: "con V quiero q sea el ataque de cuchillo
+            // rapido". No pasa por Brain.Fire() ni depende del arma a
+            // distancia equipada -- es una accion aparte con su propio
+            // enfriamiento (ver WeaponHolder.TryMelee), asi que funciona
+            // igual sin importar si llevas rifle, pistola o pesada.
+            if (KeyBindings.WasPressed(KeyBindings.AtaqueCuchillo))
+                Brain.Current.Weapon.TryMelee();
 
             if (KeyBindings.WasPressed(KeyBindings.Poseer) && result.Type == AimTargetType.Ally)
                 TryPossess(result.Soldier);
@@ -1424,7 +1435,7 @@ namespace SP.Player
             // el angulo vertical del anterior y podes aparecer mirando al
             // piso sin ningun motivo.
             Rig.ResetPitch();
-            Rig.BeginTransition(target.EyeAnchor != null ? target.EyeAnchor : target.transform, PossessTransitionDuration);
+            Rig.BeginFollowBlend(PossessBlendSeconds);
             if (Rig.Mode == ControlMode.Rts) Rig.SetMode(ControlMode.Fps);
 
             if (ModeToast != null) ModeToast.Show($"CONTROLAS A {target.DisplayName.ToUpperInvariant()}", 1.2f);
@@ -1656,24 +1667,29 @@ namespace SP.Player
 
         void EquipFromCatalog(WeaponKind kind) => EquipWeaponHotkey(kind);
 
-        // Orden fijo del ciclo, el mismo que las teclas 1/2/3.
-        static readonly WeaponKind[] WeaponCycle = { WeaponKind.Rifle, WeaponKind.Pistol, WeaponKind.Heavy };
-
+        // La rueda del mouse cicla la MISMA lista pública que expone
+        // WeaponHolder.Loadout -- antes esto tenía su propio array fijo en
+        // paralelo (WeaponCycle) que por construcción no podía divergir del
+        // catálogo 1/2/3, pero eran dos fuentes de la "verdad" separadas.
+        // Ahora hay una sola.
         void CycleWeapon(int direction)
         {
             if (Brain.Current == null || Brain.Current.Weapon == null) return;
-            var actual = Brain.Current.Weapon.CurrentWeaponKind;
-            int idx = System.Array.IndexOf(WeaponCycle, actual);
-            if (idx < 0) idx = 0;
-            int next = ((idx + direction) % WeaponCycle.Length + WeaponCycle.Length) % WeaponCycle.Length;
-            EquipFromCatalog(WeaponCycle[next]);
+            if (direction >= 0) Brain.Current.Weapon.CycleNext();
+            else Brain.Current.Weapon.CyclePrevious();
         }
 
         // Público para que la demo/tutorial automáticos puedan probar los
-        // atajos 1/2/3 sin depender de que haya un teclado físico.
+        // atajos 1/2/3 sin depender de que haya un teclado físico. Pasa por
+        // EquipFromLoadout (no EquipWeapon directo) para que CurrentLoadoutIndex
+        // quede sincronizado -- si no, elegir "2" con la tecla y después
+        // seguir con la rueda arrancaría el ciclo desde el índice viejo.
         public void EquipWeaponHotkey(WeaponKind kind)
         {
-            if (Brain.Current == null) return;
+            if (Brain.Current == null || Brain.Current.Weapon == null) return;
+            int idx = Brain.Current.Weapon.Loadout.IndexOf(kind);
+            if (idx >= 0) { Brain.Current.Weapon.EquipFromLoadout(idx); return; }
+
             var spec = WeaponCatalog.Get(kind);
             Brain.Current.Weapon.EquipWeapon(kind, spec.Damage, spec.Cooldown, spec.Color);
         }
@@ -1740,7 +1756,7 @@ namespace SP.Player
                 case AimTargetType.Ground:
                     return "[T] ordenar ir aquí   ·   [Y] que me sigan   ·   [Click der.] mandar la camioneta aquí (si hay alguien manejando)   ·   [Click] disparar   ·   [TAB] vista RTS";
                 default:
-                    return "[WASD] moverse   ·   [Y] que me sigan   ·   [U] subir al auto   ·   [I] bajar del auto   ·   [Click] disparar   ·   [1][2][3] cambiar de arma   ·   [TAB] vista RTS";
+                    return "[WASD] moverse   ·   [Y] que me sigan   ·   [U] subir al auto   ·   [I] bajar del auto   ·   [Click] disparar   ·   [1][2][3] cambiar de arma   ·   [V] cuchillo   ·   [TAB] vista RTS";
             }
         }
 
@@ -1806,8 +1822,12 @@ namespace SP.Player
             var vb = Vehicle.GetComponent<VehicleBrain>();
             if (role == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
 
-            Transform seatAnchor = role == VehicleSeatRole.Driver ? Vehicle.transform.Find("DriverEye") : Vehicle.transform;
-            if (seatAnchor != null) Rig.BeginTransition(seatAnchor, PossessTransitionDuration);
+            // La vista de vehiculo es siempre en 3ra persona, y
+            // CameraRig.FollowThirdPerson ya converge sola cada frame hacia
+            // la pose del vehiculo (ver UpdateVehicleCamera). BeginFollowBlend
+            // le pide que esta vez tarde 1s en llegar en vez de su
+            // seguimiento ajustado de siempre -- pedido explicito.
+            Rig.BeginFollowBlend(VehicleBlendSeconds);
         }
 
         // Aim, en RTS, apuntando a un vehículo con gente adentro: toma
@@ -1860,7 +1880,7 @@ namespace SP.Player
             // colgada mientras el modo sigue en ortográfico: hay que
             // recentrar la vista RTS en vez de FollowFps.
             if (Rig.Mode == ControlMode.Rts) Rig.SetRtsView(Brain.Current.transform.position);
-            else Rig.FollowFps(Brain.Current);
+            else Rig.FollowOverShoulder(Brain.Current.transform);
         }
 
         void UpdateInVehicle(Keyboard kb, Mouse mouse)
@@ -1893,7 +1913,7 @@ namespace SP.Player
                 ClearVehicleSeatState();
                 if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
                 if (TurretAim != null) TurretAim.SetVisible(false);
-                Rig.FollowFps(Brain.Current);
+                Rig.FollowOverShoulder(Brain.Current.transform);
                 return;
             }
 
@@ -1949,8 +1969,6 @@ namespace SP.Player
                 SetInstructionText("[TAB] volver a manejar en primera persona   ·   [E] bajar");
                 return;
             }
-
-            if (KeyBindings.WasPressed(KeyBindings.CamaraVehiculo)) vehicleFirstPerson = !vehicleFirstPerson;
 
             var vb = Vehicle.GetComponent<VehicleBrain>();
             var turret = Vehicle.GetComponentInChildren<TurretWeapon>();
@@ -2049,10 +2067,10 @@ namespace SP.Player
             }
 
             string role = currentSeat == VehicleSeatRole.Driver
-                ? "[WASD] conducir · [G] frenar · [2] ir a la torreta · [U] llamar a un aliado cercano · [V] cámara · [TAB] vista RTS · [E] bajar"
+                ? "[WASD] conducir · [G] frenar · [2] ir a la torreta · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
                 : currentSeat == VehicleSeatRole.Gunner
-                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom de mira · [R] munición · [T] mandar la camioneta ahí · [1] conducir · [U] llamar a un aliado cercano · [V] cámara · [TAB] vista RTS · [E] bajar"
-                    : "[U] llamar a un aliado cercano · [E] bajar · [V] cámara · [TAB] vista RTS";
+                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom de mira · [R] munición · [T] mandar la camioneta ahí · [1] conducir · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
+                    : "[U] llamar a un aliado cercano · [E] bajar · [TAB] vista RTS";
             SetInstructionText(role);
         }
 
@@ -2073,25 +2091,21 @@ namespace SP.Player
             if (newRole == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
             if (newRole == VehicleSeatRole.Gunner) GameLog.Line("Se monto en la metralleta");
 
-            // Antes la camara saltaba de golpe al cambiar de asiento --
-            // de conductor a artillero es un cambio de punto de vista
-            // igual de brusco que subir al vehiculo por primera vez, que
-            // ya usa esta misma transicion.
-            if (vehicleFirstPerson)
-            {
-                Transform newAnchor = newRole == VehicleSeatRole.Driver
-                    ? Vehicle.transform.Find("DriverEye")
-                    : newRole == VehicleSeatRole.Gunner
-                        ? Vehicle.GetComponentInChildren<TurretWeapon>()?.transform.Find("GunnerEye")
-                        : null;
-                if (newAnchor != null) Rig.BeginTransition(newAnchor);
-            }
+            // La vista de vehiculo es siempre en 3ra persona orbitando el
+            // chasis (Vehicle.transform): cambiar de asiento no mueve el
+            // punto de origen de la camara, pero igual se pide 1s de lerp
+            // -- es el mismo gesto que entrar por primera vez.
+            Rig.BeginFollowBlend(VehicleBlendSeconds);
         }
 
+        // La vista de vehiculo -- manejando o de artillero -- es siempre en
+        // 3ra persona. Pedido explicito: antes el conductor veia en
+        // primera persona (el ancla "DriverEye") y solo el artillero (o
+        // con [V]) pasaba a 3ra, una inconsistencia entre asientos que
+        // ademas hacia mas dificil ver el vehiculo entero al manejar.
         void UpdateVehicleCamera(Transform anchor)
         {
-            if (vehicleFirstPerson && anchor != null) Rig.FollowAnchor(anchor);
-            else Rig.FollowThirdPerson(Vehicle.transform, 8f, 3.5f);
+            Rig.FollowThirdPerson(Vehicle.transform, 8f, 3.5f);
             ApplyVehicleCameraFeel();
             ApplyVehicleSpeedFx();
         }

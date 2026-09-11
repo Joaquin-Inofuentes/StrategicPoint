@@ -358,5 +358,12 @@ namespace SP.Vehicles
             foreach (var kv in seats) if (kv.Value == soldier) return kv.Key;
             return null;
         }
+
+        // Lo usa el HUD (VehicleStatusView) para mostrar la lista completa
+        // de puestos ocupados, no solo el del jugador: seats es privado a
+        // proposito (nadie de afuera deberia mutarlo), esto es la unica
+        // puerta de lectura por asiento.
+        public IReadOnlyList<VehicleSeatRole> AllSeatRoles => AllRoles;
+        public Soldier SoldierInSeat(VehicleSeatRole role) => seats.TryGetValue(role, out var s) ? s : null;
     }
 }

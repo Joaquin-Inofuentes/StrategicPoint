@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using SP.Core;
 using SP.Actors;
@@ -63,6 +64,16 @@ namespace SP.Combat
 
         public float CooldownRemaining => Mathf.Max(0f, cooldownTimer);
         public WeaponKind CurrentWeaponKind { get; private set; } = WeaponKind.Rifle;
+
+        // Lista pública de armas a distancia disponibles para este soldado,
+        // en el orden en que [Rueda del mouse] las cicla. Pedido explícito:
+        // antes 1/2/3 saltaban directo al catálogo entero (cualquier arma,
+        // la tuvieras o no) -- esto es lo que de verdad "tiene" este
+        // soldado. Pública y de instancia (no static) porque cada soldado
+        // podría terminar con un loadout distinto (recoger/perder armas),
+        // aunque hoy todos arrancan con el mismo trío.
+        public readonly List<WeaponKind> Loadout = new List<WeaponKind> { WeaponKind.Rifle, WeaponKind.Pistol, WeaponKind.Heavy };
+        public int CurrentLoadoutIndex { get; private set; }
 
         // Para la barra de recarga/enfriamiento en la UI: 0 = recién
         // disparada (o recargando), 1 = lista para disparar de nuevo.
@@ -148,6 +159,67 @@ namespace SP.Combat
             }
         }
 
+        // Cambia al arma en la posición `index` del Loadout público y la
+        // deja como CurrentWeaponKind, leyendo sus stats del catálogo --
+        // mismo camino que EquipWeapon (recogida del piso), para que no
+        // existan dos formas distintas de "tener puesta" un arma.
+        public void EquipFromLoadout(int index)
+        {
+            if (Loadout.Count == 0) return;
+            index = ((index % Loadout.Count) + Loadout.Count) % Loadout.Count;
+            CurrentLoadoutIndex = index;
+            var kind = Loadout[index];
+            var spec = WeaponCatalog.Get(kind);
+            EquipWeapon(kind, spec.Damage, spec.Cooldown, spec.Color);
+        }
+
+        public void CycleNext() => EquipFromLoadout(CurrentLoadoutIndex + 1);
+        public void CyclePrevious() => EquipFromLoadout(CurrentLoadoutIndex - 1);
+
+        // --------------------------------------------------------------
+        // Cuchillo: golpe rápido cuerpo a cuerpo. Pedido explícito ([V] =
+        // "ataque de cuchillo rapido"). Independiente del arma a distancia
+        // equipada -- no la reemplaza ni la toca -- con su propio
+        // enfriamiento corto, sin munición ni recarga. No usa
+        // WeaponCatalog: no es un arma del loadout, es una acción aparte
+        // siempre disponible.
+        // --------------------------------------------------------------
+        const float KnifeRange = 2.2f;
+        const float KnifeArcDeg = 70f;
+        const int KnifeDamage = 55;
+        const float KnifeCooldown = 0.55f;
+        float knifeCooldownTimer;
+        public float KnifeCooldownRemaining => Mathf.Max(0f, knifeCooldownTimer);
+
+        // Busca el enemigo vivo más cercano dentro del arco/alcance del
+        // cuchillo. ActorRegistry.All (mismo patrón que NearbySquadListView)
+        // en vez de SpatialGrid: el cuchillo es de uso ocasional, no un
+        // disparo por frame -- no justifica la complejidad de la grilla que
+        // sí paga Projectile por volumen.
+        public bool TryMelee()
+        {
+            if (owner == null) Bootstrap();
+            if (owner == null || knifeCooldownTimer > 0f) return false;
+            knifeCooldownTimer = KnifeCooldown;
+
+            Soldier best = null;
+            float bestDist = KnifeRange;
+            foreach (var s in ActorRegistry.All)
+            {
+                if (s == null || s == owner || s.Team == owner.Team || !s.Health.IsAlive) continue;
+                var to = s.transform.position - owner.transform.position;
+                to.y = 0f;
+                float dist = to.magnitude;
+                if (dist > KnifeRange) continue;
+                if (dist > 0.05f && Vector3.Angle(owner.transform.forward, to) > KnifeArcDeg) continue;
+                if (dist < bestDist) { bestDist = dist; best = s; }
+            }
+
+            if (best != null) best.Health.TakeDamage(KnifeDamage, owner.Id);
+            EventBus.Instance.Publish(new MeleeAttackEvent(owner.Id, best != null));
+            return true;
+        }
+
         // Igual que con el material de Projectile: un Material creado en
         // runtime y guardado dentro de un prefab (PrefabUtility.SaveAsPrefabAsset)
         // puede quedar null en la instancia — se recrea sola si hace falta.
@@ -161,6 +233,7 @@ namespace SP.Combat
 
         public void Tick(float dt)
         {
+            if (knifeCooldownTimer > 0f) knifeCooldownTimer -= dt;
             spreadDeg = Mathf.MoveTowards(spreadDeg, 0f, SpreadDecayPerSec * dt);
 
             // El enfriamiento corre SIEMPRE, tambien durante la recarga.

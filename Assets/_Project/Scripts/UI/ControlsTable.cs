@@ -140,7 +140,6 @@ namespace SP.UI
 
             new ControlEntry("2", "pasar al asiento de artillero (si está libre)", ControlContext.VehiculoConductor),
             new ControlEntry("1", "pasar al asiento de conductor (si está libre)", ControlContext.VehiculoArtillero),
-            new ControlEntry("V", "alternar cámara en primera persona / exterior", AsientosFps, SP.Player.KeyBindings.CamaraVehiculo),
 
             new ControlEntry("Arrastrar", "seleccionar a todos los aliados del recuadro", ControlContext.Rts),
             new ControlEntry("Shift+Clic", "sumar a la selección sin perder lo ya elegido", ControlContext.Rts),

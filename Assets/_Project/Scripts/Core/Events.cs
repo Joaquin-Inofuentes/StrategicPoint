@@ -51,6 +51,17 @@ namespace SP.Core
         public ShotFiredEvent(int shooterId) => ShooterId = shooterId;
     }
 
+    // Ataque de cuchillo (tecla [V]): independiente del arma a distancia
+    // equipada, con su propio enfriamiento. HitSomething separa "golpeó al
+    // aire" de "conectó", para que la presentación (animación, sonido) no
+    // tenga que adivinar mirando la vida de nadie.
+    public readonly struct MeleeAttackEvent
+    {
+        public readonly int AttackerId;
+        public readonly bool HitSomething;
+        public MeleeAttackEvent(int attackerId, bool hitSomething) { AttackerId = attackerId; HitSomething = hitSomething; }
+    }
+
     public readonly struct ProjectileReturnedEvent
     {
         public readonly int ProjectileInstanceId;

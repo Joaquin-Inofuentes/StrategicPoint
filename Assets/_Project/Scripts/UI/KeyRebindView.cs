@@ -140,7 +140,7 @@ namespace SP.UI
             { KeyBindings.AlternarVista, "Alternar vista FPS/RTS" },
             { KeyBindings.Controles, "Ver controles" },
             { KeyBindings.Frenar, "Frenar" },
-            { KeyBindings.CamaraVehiculo, "Camara del vehiculo" },
+            { KeyBindings.AtaqueCuchillo, "Ataque de cuchillo" },
             { KeyBindings.Recentrar, "Recentrar camara" },
             { KeyBindings.CancelarOrden, "Cancelar orden" },
             { KeyBindings.Reagrupar, "Reagrupar" },

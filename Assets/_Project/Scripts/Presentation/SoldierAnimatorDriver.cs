@@ -112,6 +112,10 @@ namespace SP.Presentation
             // soldados-cubo, que no tienen este componente, siguen con el
             // arma al costado y la suite headless no ve ningun cambio.
             if (GetComponent<ArmaEnLaMano>() == null) gameObject.AddComponent<ArmaEnLaMano>();
+            // Mismo criterio: las armas que no lleva en la mano, colgadas
+            // de la espalda (ver WeaponBackRack) -- pedido explicito de
+            // poder verle el resto del loadout a quien manejas.
+            if (GetComponent<SP.Presentation.WeaponBackRack>() == null) gameObject.AddComponent<SP.Presentation.WeaponBackRack>();
         }
 
         void PintarPorEquipo()

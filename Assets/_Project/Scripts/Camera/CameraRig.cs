@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using SP.Actors;
+using SP.Presentation;
 
 namespace SP.CameraSystem
 {
@@ -15,7 +16,7 @@ namespace SP.CameraSystem
         // barrido de escena en el peor momento posible.
         public static CameraRig Instance { get; private set; }
 
-        void OnEnable() { Instance = this; }
+        void OnEnable() { Instance = this; HideWaypointsFromMainCamera(); }
         void OnDisable() { if (Instance == this) Instance = null; }
 
         [SerializeField] Camera cam;
@@ -45,6 +46,22 @@ namespace SP.CameraSystem
         {
             cam = c;
             if (cam != null && !cam.orthographic) normalFov = cam.fieldOfView;
+            HideWaypointsFromMainCamera();
+        }
+
+        // Pedido explicito: los marcadores de ruta de patrulla
+        // (PatrolRouteLine, capa "Waypoints") son referencia de diseño/
+        // depuración, no algo que el jugador deba ver en pantalla. Se
+        // sacan del culling mask de la única cámara del juego -- FPS y RTS
+        // comparten la misma Camera, así que esto alcanza para los dos
+        // modos. Si la capa todavía no existe en el proyecto (-1), no hay
+        // nada que enmascarar todavía y se deja tal cual.
+        void HideWaypointsFromMainCamera()
+        {
+            if (cam == null) return;
+            int layer = LayerMask.NameToLayer(PatrolRouteLine.LayerName);
+            if (layer < 0) return;
+            cam.cullingMask &= ~(1 << layer);
         }
 
         public void SetZoomed(bool value) => zoomed = value;
@@ -298,6 +315,55 @@ namespace SP.CameraSystem
             transform.rotation = eye.rotation * Quaternion.Euler(-(pitch + recoilPitch), 0f, 0f);
         }
 
+        // Pedido explicito: "que cambiar de camara (poseer otro soldado,
+        // subir a un vehiculo/asiento) sea con un lerp de 1 o 2 segundos".
+        // FollowThirdPerson/FollowOverShoulder ya convergen solas hacia el
+        // objetivo cada frame (no son un salto instantaneo), pero antes lo
+        // hacian siempre a la MISMA velocidad fija -- no habia forma de
+        // pedir "esta vez que tarde mas". BeginFollowBlend marca una
+        // ventana de tiempo real durante la cual esas dos usan una
+        // velocidad de convergencia mas lenta (derivada de la duracion
+        // pedida); pasada la ventana, vuelven solas a su seguimiento
+        // ajustado de siempre. Sigue trackeando un objetivo que se mueve
+        // durante la transicion (a diferencia de BeginTransition, que
+        // lerpea hacia la posicion FIJA que un Transform tenia al arrancar).
+        [SerializeField] float normalFollowSpeed = 10f;
+        float blendUntilRealtime = -1f;
+        float blendDurationActual = 1f;
+
+        public void BeginFollowBlend(float seconds)
+        {
+            blendDurationActual = Mathf.Max(0.05f, seconds);
+            blendUntilRealtime = Time.unscaledTime + blendDurationActual;
+        }
+
+        float CurrentFollowSpeed()
+        {
+            if (Time.unscaledTime < blendUntilRealtime)
+                // Velocidad equivalente a un tau de duracion/3 (~95% de
+                // convergencia visual hacia el final de la ventana pedida).
+                return 3f / blendDurationActual;
+            return normalFollowSpeed;
+        }
+
+        // Pedido explicito: "quiero poder ver el soldado q manejo y sus
+        // armas en su espalda" -- una camara en el ojo (FollowFps) nunca
+        // puede mostrar ni el cuerpo ni la espalda de quien la lleva. Por
+        // encima del hombro, a diferencia de FollowThirdPerson (pensado
+        // para vehiculos, que no cabecean): acá el pitch del mouse SI
+        // mueve la camara -- si no, apuntar arriba/abajo a pie dejaria de
+        // funcionar apenas se dejo de mirar desde el ojo.
+        public void FollowOverShoulder(Transform target, float distance = 4f, float height = 1.7f)
+        {
+            if (target == null || IsTransitioning) return;
+            Vector3 pivot = target.position + Vector3.up * height;
+            Quaternion look = target.rotation * Quaternion.Euler(-(pitch + recoilPitch), 0f, 0f);
+            Vector3 desired = pivot - (look * Vector3.forward) * distance;
+            float k = Mathf.Clamp01(Time.deltaTime * CurrentFollowSpeed());
+            transform.position = Vector3.Lerp(transform.position, desired, k);
+            transform.rotation = Quaternion.Slerp(transform.rotation, look, k);
+        }
+
         // Primera persona genérica: sirve para el ojo de un soldado o el
         // asiento de un vehículo, cualquier ancla con posición y rotación.
         public void FollowAnchor(Transform anchor)
@@ -308,12 +374,22 @@ namespace SP.CameraSystem
         }
 
         // Tercera persona: orbita detrás y arriba del objetivo, mirándolo.
+        // Antes esto pisaba transform.position/rotation de golpe cada
+        // frame: entrar a un vehiculo (viniendo de la vista a pie) o
+        // cambiar de asiento se sentia como un corte de camara, no una
+        // transicion. Ahora converge con un Lerp/Slerp hacia la pose
+        // deseada -- la primera vez que se llama (recien subido al
+        // vehiculo) la camara arranca lejos de "desired" y se desliza
+        // hasta ahi sola, sin que nadie tenga que orquestar un
+        // BeginTransition aparte para este caso.
         public void FollowThirdPerson(Transform target, float distance = 7f, float height = 3f)
         {
             if (target == null || IsTransitioning) return;
             Vector3 desired = target.position - target.forward * distance + Vector3.up * height;
-            transform.position = desired;
-            transform.rotation = Quaternion.LookRotation((target.position + Vector3.up * 1.2f - transform.position).normalized);
+            Quaternion desiredRot = Quaternion.LookRotation((target.position + Vector3.up * 1.2f - desired).normalized);
+            float k = Mathf.Clamp01(Time.deltaTime * CurrentFollowSpeed());
+            transform.position = Vector3.Lerp(transform.position, desired, k);
+            transform.rotation = Quaternion.Slerp(transform.rotation, desiredRot, k);
         }
 
         public void SetRtsView(Vector3 center)
