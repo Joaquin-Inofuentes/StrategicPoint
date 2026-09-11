@@ -237,7 +237,19 @@ namespace SP.Vehicles
             seats[role] = soldier;
 
             var brain = soldier.Brain;
+            bool esJugador = brain != null && brain.IsPossessedByPlayer;
             if (brain != null) brain.enabled = false;
+
+            // Pedido explicito: un log legible de quien ocupa que asiento
+            // de que vehiculo -- distinto segun sea el jugador (cambia de
+            // camara, es la accion mas visible) o un aliado que sube por
+            // su cuenta (orden de montaje, auto-mount). GameObject.name
+            // (no solo DisplayName) porque el pedido explicito fue
+            // "gameobject" -- para poder ubicar la instancia exacta en la
+            // jerarquia si hace falta, no solo el nombre de fantasía.
+            SP.Core.GameLog.Line(esJugador
+                ? $"Usuario ocupó el asiento {RoleLabelEs(role)} del vehículo {gameObject.name}"
+                : $"El aliado {soldier.DisplayName} se subió al vehículo {gameObject.name} como {RoleLabelEs(role)}");
 
             // Pedido explicito: una animacion real al subir, no el
             // desaparecer instantaneo de antes. En Play mode el soldado
@@ -358,6 +370,13 @@ namespace SP.Vehicles
             foreach (var kv in seats) if (kv.Value == soldier) return kv.Key;
             return null;
         }
+
+        static string RoleLabelEs(VehicleSeatRole role) => role switch
+        {
+            VehicleSeatRole.Driver => "conductor",
+            VehicleSeatRole.Gunner => "torreta",
+            _ => "tripulante",
+        };
 
         // Lo usa el HUD (VehicleStatusView) para mostrar la lista completa
         // de puestos ocupados, no solo el del jugador: seats es privado a

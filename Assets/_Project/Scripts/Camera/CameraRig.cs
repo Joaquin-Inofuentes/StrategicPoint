@@ -16,7 +16,7 @@ namespace SP.CameraSystem
         // barrido de escena en el peor momento posible.
         public static CameraRig Instance { get; private set; }
 
-        void OnEnable() { Instance = this; HideWaypointsFromMainCamera(); }
+        void OnEnable() { Instance = this; ShowWaypointsOnMainCamera(); }
         void OnDisable() { if (Instance == this) Instance = null; }
 
         [SerializeField] Camera cam;
@@ -46,22 +46,24 @@ namespace SP.CameraSystem
         {
             cam = c;
             if (cam != null && !cam.orthographic) normalFov = cam.fieldOfView;
-            HideWaypointsFromMainCamera();
+            ShowWaypointsOnMainCamera();
         }
 
-        // Pedido explicito: los marcadores de ruta de patrulla
-        // (PatrolRouteLine, capa "Waypoints") son referencia de diseño/
-        // depuración, no algo que el jugador deba ver en pantalla. Se
-        // sacan del culling mask de la única cámara del juego -- FPS y RTS
-        // comparten la misma Camera, así que esto alcanza para los dos
-        // modos. Si la capa todavía no existe en el proyecto (-1), no hay
-        // nada que enmascarar todavía y se deja tal cual.
-        void HideWaypointsFromMainCamera()
+        // Pedido explicito: "el enemigo esta muy lejos y no veo las
+        // esferas amarillas del waypoints" -- esta capa se habia sacado
+        // del culling mask a proposito en una sesion anterior (era
+        // referencia de diseño, no algo pensado para el jugador). Ese
+        // criterio cambio: ahora el jugador SI tiene que poder verlas
+        // (para poder confirmar visualmente que un enemigo sigue su
+        // ronda), asi que en vez de excluir la capa, se fuerza a que este
+        // incluida. FPS y RTS comparten la unica Camera del juego, asi
+        // que esto alcanza para los dos modos.
+        void ShowWaypointsOnMainCamera()
         {
             if (cam == null) return;
             int layer = LayerMask.NameToLayer(PatrolRouteLine.LayerName);
             if (layer < 0) return;
-            cam.cullingMask &= ~(1 << layer);
+            cam.cullingMask |= (1 << layer);
         }
 
         public void SetZoomed(bool value) => zoomed = value;

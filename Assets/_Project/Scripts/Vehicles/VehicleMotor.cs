@@ -59,14 +59,22 @@ namespace SP.Vehicles
         Collider cuerpo;
         float radio = -1f;
 
+        void EnsureCuerpo()
+        {
+            if (cuerpo != null) return;
+            cuerpo = GetComponent<Collider>();
+            if (cuerpo == null) cuerpo = GetComponentInChildren<Collider>();
+            // usarMayor=true: un tanque es mucho mas largo que ancho (acá
+            // 3.6 x 2.2), y el lado corto que usa el resto de los cuerpos
+            // (pensado para algo casi cuadrado, como un soldado) dejaba la
+            // punta/cola sobresalir del radio de barrido -- ver el
+            // comentario en Deslizador.RadioDe.
+            radio = Deslizador.RadioDe(cuerpo, transform, 1f, usarMayor: true);
+        }
+
         void Avanzar(float distancia)
         {
-            if (cuerpo == null)
-            {
-                cuerpo = GetComponent<Collider>();
-                if (cuerpo == null) cuerpo = GetComponentInChildren<Collider>();
-                radio = Deslizador.RadioDe(cuerpo, transform, 1f);
-            }
+            EnsureCuerpo();
 
             var pedido = transform.forward * distancia;
             var real = Deslizador.Resolver(transform, cuerpo, pedido, radio);
@@ -114,5 +122,22 @@ namespace SP.Vehicles
         }
 
         public bool IsStopped => Mathf.Abs(CurrentSpeed) < 0.05f;
+
+        // Empujoncito que NO viene de acelerar (el retroceso del cañon al
+        // disparar, ver TurretWeapon.KickChassis/RecoverChassisShake).
+        // BUG REAL que esto corrige: antes esas dos escribian
+        // vehicle.transform.position DIRECTO, sin pasar por Deslizador --
+        // un tanque apoyado contra un obstaculo se metia un poco adentro
+        // en cada cañonazo (el empuje no chocaba con nada) y, con rafagas
+        // sostenidas cerca de una pared, terminaba visiblemente enterrado.
+        // Nudge corre el mismo desplazamiento por el resolutor de
+        // colisiones que ya usa Avanzar, asi que el retroceso tambien
+        // choca contra el escenario en vez de atravesarlo.
+        public void Nudge(Vector3 worldDelta)
+        {
+            EnsureCuerpo();
+            var real = Deslizador.Resolver(transform, cuerpo, worldDelta, radio);
+            transform.position += real;
+        }
     }
 }

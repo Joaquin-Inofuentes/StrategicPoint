@@ -145,12 +145,26 @@ namespace SP.Core
         // bounds: bounds es una caja alineada al mundo y crece al girar el
         // cuerpo, asi que un tanque en diagonal se creeria 40% mas ancho y
         // frenaria antes de tocar nada.
-        public static float RadioDe(Collider col, Transform cuerpo, float porDefecto = 0.4f)
+        //
+        // usarMayor=true usa el lado LARGO en vez del corto. Pensado para
+        // cuerpos alargados (un tanque: 3.6m de largo x 2.2m de ancho, no
+        // un soldado casi cuadrado): BUG REAL que esto corrige -- con el
+        // lado corto, el radio de barrido (1.07m) quedaba muy por debajo
+        // de la mitad del largo real (1.8m), asi que la punta/cola del
+        // tanque podia atravesar 70+ cm de pared antes de que el barrido
+        // -- centrado en el pivote -- registrara colision alguna. Se leia
+        // como "choca con todo mal": el chasis se metia visiblemente
+        // adentro de un obstaculo y recien ahi frenaba de golpe. El lado
+        // largo es mas conservador (frena un poco antes de lo justo de
+        // costado) pero nunca deja que la punta atraviese nada.
+        public static float RadioDe(Collider col, Transform cuerpo, float porDefecto = 0.4f, bool usarMayor = false)
         {
             if (col is BoxCollider caja)
             {
                 var e = cuerpo.lossyScale;
-                float lado = Mathf.Min(Mathf.Abs(caja.size.x * e.x), Mathf.Abs(caja.size.z * e.z));
+                float x = Mathf.Abs(caja.size.x * e.x);
+                float z = Mathf.Abs(caja.size.z * e.z);
+                float lado = usarMayor ? Mathf.Max(x, z) : Mathf.Min(x, z);
                 return Mathf.Max(0.05f, lado * 0.5f - Piel);
             }
             if (col is CapsuleCollider capsula)
@@ -161,7 +175,8 @@ namespace SP.Core
             if (col != null)
             {
                 var ext = col.bounds.extents;
-                return Mathf.Max(0.05f, Mathf.Min(ext.x, ext.z) - Piel);
+                float lado = usarMayor ? Mathf.Max(ext.x, ext.z) : Mathf.Min(ext.x, ext.z);
+                return Mathf.Max(0.05f, lado - Piel);
             }
             return porDefecto;
         }

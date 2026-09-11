@@ -17,7 +17,6 @@ namespace SP.Vehicles
 
         TurretWeapon turret;
         Vehicle vehicle;
-        VehicleMotor motor;
         Soldier target;
         float retargetTimer;
         bool bootstrapped;
@@ -55,7 +54,6 @@ namespace SP.Vehicles
             bootstrapped = true;
             turret = GetComponent<TurretWeapon>();
             vehicle = GetComponentInParent<Vehicle>();
-            if (vehicle != null) motor = vehicle.GetComponent<VehicleMotor>();
             WorldSystemsRegistry.Register(this);
         }
 
@@ -104,16 +102,23 @@ namespace SP.Vehicles
                 return;
             }
 
-            // Pedido explicito: con UN solo tripulante (a bordo, de
-            // cualquier equipo) esa persona maneja O dispara, nunca las
-            // dos cosas a la vez -- no puede estar conduciendo Y
-            // operando la torreta al mismo tiempo. Con dos o mas adentro
-            // esto no aplica (uno bien puede manejar mientras el otro
-            // tira). Se corta ANTES de retargetear: si ya tenia un
-            // blanco trabado, arrancar a andar se lo hace soltar en vez
-            // de dispararle igual mientras el chasis se mueve.
-            if (vehicle.OccupantCount == 1 && motor != null && !motor.IsStopped)
+            // BUG REAL reportado: con UN solo tripulante (el conductor,
+            // sin artillero) la IA solo se abstenia MIENTRAS el vehiculo
+            // se movia (motor.IsStopped == false) -- apenas frenaba o se
+            // quedaba quieto un instante, la torreta se "apropiaba" del
+            // control solita y empezaba a apuntar y disparar automatico,
+            // aunque el unico tripulante fuera el conductor sentado en
+            // otro asiento. Eso es exactamente lo que este chequeo decia
+            // evitar ("esa persona maneja O dispara") pero en los hechos
+            // dejaba pasar el disparo automatico apenas se detenia.
+            //
+            // Con un solo tripulante no hay NADIE operando la torreta --
+            // ni humano ni otra IA -- asi que no debe apuntar ni disparar
+            // nunca, este el vehiculo parado o en movimiento. Si el
+            // jugador quiere usarla, cambia de asiento a mano (SwitchSeat).
+            if (vehicle.OccupantCount == 1)
             {
+                PublishControlChange(false);
                 target = null;
                 return;
             }

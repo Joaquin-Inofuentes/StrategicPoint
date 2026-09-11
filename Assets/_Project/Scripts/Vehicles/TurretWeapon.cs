@@ -371,18 +371,28 @@ namespace SP.Vehicles
         const float ChassisKickDistance = 0.22f;
         const float ChassisRecoverPerSec = 1.4f;
 
+        // BUG REAL que esto corrige: antes las dos escribian
+        // vehicle.transform.position directo, saltandose a Deslizador --
+        // un tanque apoyado contra un obstaculo se enterraba un poco mas
+        // en cada cañonazo porque el retroceso nunca chocaba con nada.
+        // Ahora pasa por VehicleMotor.Nudge, que resuelve el mismo
+        // desplazamiento contra el escenario que usa el propio manejo.
+        VehicleMotor motorParaRetroceso;
+        VehicleMotor MotorParaRetroceso => motorParaRetroceso != null ? motorParaRetroceso
+            : (motorParaRetroceso = vehicle != null ? vehicle.GetComponent<VehicleMotor>() : null);
+
         void KickChassis()
         {
-            if (vehicle == null) return;
+            if (vehicle == null || MotorParaRetroceso == null) return;
             chassisKick = -transform.forward * ChassisKickDistance;
-            vehicle.transform.position += chassisKick;
+            MotorParaRetroceso.Nudge(chassisKick);
         }
 
         void RecoverChassisShake(float dt)
         {
-            if (vehicle == null || chassisKick.sqrMagnitude < 0.000001f) return;
+            if (vehicle == null || chassisKick.sqrMagnitude < 0.000001f || MotorParaRetroceso == null) return;
             var step = Vector3.MoveTowards(chassisKick, Vector3.zero, ChassisRecoverPerSec * dt);
-            vehicle.transform.position -= (chassisKick - step);
+            MotorParaRetroceso.Nudge(step - chassisKick);
             chassisKick = step;
         }
 
