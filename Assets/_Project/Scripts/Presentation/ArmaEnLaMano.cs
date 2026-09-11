@@ -29,10 +29,21 @@ namespace SP.Presentation
     [RequireComponent(typeof(WeaponHolder))]
     public class ArmaEnLaMano : MonoBehaviour
     {
-        // Cuanto se adelanta el CENTRO del arma respecto de la mano. El
-        // cubo mide 0,55 de largo, asi que con 0,15 la culata queda 12 cm
-        // por detras del puño: se lee como agarrada, no como pegada.
-        public const float AdelantoDeLaMano = 0.15f;
+        // Cuanto se adelanta el CENTRO del arma respecto de la mano, para
+        // el arma con la que se calibro este numero originalmente (el
+        // cubo viejo, de 0,55 de largo): con 0,15 la culata quedaba 12 cm
+        // por detras del puño, se leia como agarrada, no como pegada.
+        //
+        // BUG REAL: esto era una CONSTANTE, la misma para las tres armas.
+        // El cubo median 0,55 sin importar cual arma representara, pero el
+        // modelo real de WeaponPrefabBuilder no -- va de 0,21 m (pistola) a
+        // 1,12 m (pesada), con el rifle en 0,76 m. Contra un rifle real
+        // (mucho mas largo que el cubo con el que se afino este numero) la
+        // culata quedaba enterrada 20+ cm dentro del torso/brazo en vez de
+        // 12 cm detras del puño. Ahora el adelanto se calcula por arma, a
+        // partir de su largo real (WeaponModels.NaturalLength), con el
+        // mismo criterio de siempre: culata ~12 cm detras del puño.
+        public const float MargenCulataDetrasDelPuno = 0.12f;
 
         // Un pelo por encima del hueso: el hueso de la mano cae en el
         // centro de la palma y el arma se apoya arriba de ella.
@@ -43,6 +54,17 @@ namespace SP.Presentation
         public const float PuntaDelCanio = 0.5f;
 
         bool colgada;
+        Transform arma;
+
+        // Direcciones "adelante" y "arriba" del cuerpo en el momento de
+        // colgar el arma, expresadas en el espacio LOCAL de la mano. Al
+        // ser locales sobreviven a que la mano rote despues por la
+        // animacion (el espacio local de un hijo no cambia aunque el
+        // padre gire), asi que sirven para reajustar cuanto se adelanta
+        // el arma cada vez que se cambia de arma, sin tener que volver a
+        // colgarla desde cero.
+        Vector3 dirAdelanteLocal = Vector3.forward;
+        Vector3 dirArribaLocal = Vector3.up;
 
         void Start()
         {
@@ -69,8 +91,16 @@ namespace SP.Presentation
             var mano = anim.GetBoneTransform(HumanBodyBones.RightHand);
             if (mano == null) return false;
 
-            var arma = transform.Find("WeaponVisual");
+            arma = transform.Find("WeaponVisual");
             if (arma == null) return false;
+
+            // Direcciones del cuerpo, congeladas en espacio local de la
+            // mano ANTES de tocar nada -- este es el mismo "adelante"/
+            // "arriba" que antes se usaba una sola vez para calcular la
+            // posicion en mundo, ahora guardado para poder reaplicarlo
+            // con un adelanto distinto cada vez que cambie el arma.
+            dirAdelanteLocal = mano.InverseTransformDirection(transform.forward);
+            dirArribaLocal = mano.InverseTransformDirection(transform.up);
 
             // Se coloca en MUNDO -- con el cuerpo ya posado -- y recien
             // despues se cuelga del hueso conservando esa pose. Es
@@ -78,9 +108,7 @@ namespace SP.Presentation
             // editor, y por eso el offset local que queda es el correcto
             // para el resto de las poses y no solo para esta.
             arma.rotation = Quaternion.LookRotation(transform.forward, transform.up);
-            arma.position = mano.position
-                          + transform.forward * AdelantoDeLaMano
-                          + transform.up * AlturaSobreLaMano;
+            arma.position = mano.position;
             arma.SetParent(mano, true);
 
             // El canio pasa a ser hijo del arma, no de la raiz: si se
@@ -97,7 +125,23 @@ namespace SP.Presentation
             }
 
             colgada = true;
+            Reposicionar(holder != null ? holder.CurrentWeaponKind : WeaponKind.Rifle);
             return true;
+        }
+
+        // Ajusta cuanto se adelanta el arma respecto de la mano segun cual
+        // arma sea -- una pistola chica se centra casi sobre el puño, un
+        // rifle o una pesada (mucho mas largos) necesitan adelantarse mas
+        // para que la culata no termine adentro del torso. Si todavia no
+        // se colgo el arma (Colgar() no corrio) no hace nada: Colgar()
+        // llama esto solo por su cuenta apenas cuelga, con el arma que
+        // este equipada en ese momento.
+        public void Reposicionar(WeaponKind kind)
+        {
+            if (!colgada || arma == null) return;
+            float largoNatural = WeaponModels.NaturalLength(kind);
+            float adelanto = Mathf.Max(0f, largoNatural * 0.5f - MargenCulataDetrasDelPuno);
+            arma.localPosition = dirAdelanteLocal * adelanto + dirArribaLocal * AlturaSobreLaMano;
         }
     }
 }

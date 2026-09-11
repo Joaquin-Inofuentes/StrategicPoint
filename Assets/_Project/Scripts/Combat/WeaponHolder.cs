@@ -227,6 +227,16 @@ namespace SP.Combat
             // esta equipada; no hace falta ademas un tinte por tipo.
             foreach (var r in visualModelInstance.GetComponentsInChildren<MeshRenderer>())
                 r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            // Cada arma tiene un largo real distinto (la pistola cabe casi
+            // sobre el puño, el rifle y la pesada necesitan adelantarse
+            // mas o la culata queda enterrada en el torso) -- ver
+            // ArmaEnLaMano.Reposicionar. No-op silencioso si el arma
+            // todavia no se colgo de la mano (soldado sin Animator humano,
+            // como los cubos de la suite headless) o si este soldado no
+            // tiene ArmaEnLaMano (nunca deberia faltar, es RequireComponent,
+            // pero GetComponent nunca revienta si falta).
+            GetComponent<SP.Presentation.ArmaEnLaMano>()?.Reposicionar(kind);
         }
 
         // Cambia al arma en la posición `index` del Loadout público y la
