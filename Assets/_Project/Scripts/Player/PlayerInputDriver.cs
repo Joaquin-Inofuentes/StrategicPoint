@@ -1977,9 +1977,9 @@ namespace SP.Player
             // metralleta en "MetralletaPivot") segun el orden de la
             // jerarquia -- ambiguo apenas se agrego un segundo. Cada asiento
             // busca el suyo por nombre, sin adivinar.
-            var turretPivotT = Vehicle.transform.Find("TurretPivot");
+            var turretPivotT = Vehicle.transform.Find("TurretMount/TurretPivot");
             var turret = turretPivotT != null ? turretPivotT.GetComponent<TurretWeapon>() : null;
-            var mgPivotT = Vehicle.transform.Find("MetralletaPivot");
+            var mgPivotT = Vehicle.transform.Find("MetralletaMount/MetralletaPivot");
             var mgTurret = mgPivotT != null ? mgPivotT.GetComponent<TurretWeapon>() : null;
             // El HUD de torreta es solo de quien esta apuntando un arma
             // montada: conduciendo no aporta nada y taparia la vista.

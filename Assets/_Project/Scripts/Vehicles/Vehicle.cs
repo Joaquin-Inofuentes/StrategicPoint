@@ -134,7 +134,7 @@ namespace SP.Vehicles
             // de "se ve desde cualquier zoom" que pide el comentario de
             // arriba. Se busca la torreta del cañon por nombre, sin
             // adivinar.
-            var turretPivotT = transform.Find("TurretPivot");
+            var turretPivotT = transform.Find("TurretMount/TurretPivot");
             var turret = turretPivotT != null ? turretPivotT.GetComponent<TurretWeapon>() : GetComponentInChildren<TurretWeapon>(true);
             if (turret == null) return;
             var t = turret.transform;

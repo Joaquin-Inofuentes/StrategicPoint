@@ -350,7 +350,7 @@ namespace SP.Presentation
             // GetComponentInChildren<TurretWeapon>() es ambiguo desde que el
             // tanque tiene dos (cañon en TurretPivot, metralleta en
             // MetralletaPivot) -- el demo quiere especificamente el cañon.
-            var turretPivotDemo = DemoVehicle.transform.Find("TurretPivot");
+            var turretPivotDemo = DemoVehicle.transform.Find("TurretMount/TurretPivot");
             var turret = turretPivotDemo != null ? turretPivotDemo.GetComponent<TurretWeapon>() : DemoVehicle.GetComponentInChildren<TurretWeapon>();
 
             vBrain.IsPlayerDriving = true;

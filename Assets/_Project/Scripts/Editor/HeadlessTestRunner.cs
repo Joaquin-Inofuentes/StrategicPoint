@@ -1135,7 +1135,7 @@ namespace SP.EditorTools
             var vBrain = vehicle.GetComponent<VehicleBrain>();
             // Ambiguo desde que hay dos TurretWeapon (cañon + metralleta):
             // esta fase prueba especificamente el cañon (TurretPivot).
-            var turret = vehicle.transform.Find("TurretPivot").GetComponent<TurretWeapon>();
+            var turret = vehicle.transform.Find("TurretMount/TurretPivot").GetComponent<TurretWeapon>();
 
             // Reubicamos todo cerca para que la prueba sea determinista.
             vehicle.transform.position = new Vector3(20f, 0.6f, 20f);
@@ -1612,7 +1612,7 @@ namespace SP.EditorTools
             // que la velocidad absoluta siga siendo la historica de 80.
             // Ambiguo desde que hay dos TurretWeapon (cañon + metralleta):
             // esta prueba es especificamente sobre el cañon (TurretPivot).
-            var turret = vehicle.transform.Find("TurretPivot").GetComponent<TurretWeapon>();
+            var turret = vehicle.transform.Find("TurretMount/TurretPivot").GetComponent<TurretWeapon>();
             var cdField = GetRequiredField(typeof(TurretWeapon), "cooldownTimer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             cdField.SetValue(turret, 0f);
             // Snapshot POR IDENTIDAD y no "distinto de pNormal/pDoble": el
@@ -3622,13 +3622,30 @@ namespace SP.EditorTools
             // como sentado arriba en vez de adentro del bloque.
             driverEye.localPosition = new Vector3(0f, 0.65f, 0.45f);
 
-            // TurretPivot neutraliza la escala no uniforme del chasis (2.2/1.4/3.6)
-            // para que sus hijos (torreta, mira, boca) usen unidades normales.
-            var turretPivot = new GameObject("TurretPivot");
-            turretPivot.transform.SetParent(root.transform, false);
-            turretPivot.transform.localPosition = new Vector3(0f, 0.36f, -0.08f);
+            // TurretMount: ancla ESTATICA que cancela la escala no uniforme
+            // del chasis (2.2/1.4/3.6) -- nunca rota. TurretPivot (el que
+            // SI rota para apuntar) cuelga de ESTE, no directo del chasis,
+            // con escala identidad.
+            //
+            // BUG REAL que esto corrige ("rota mal, se rompe toda la
+            // torreta"): antes la cancelacion de escala vivia en el MISMO
+            // transform que rota para apuntar. Escala no uniforme +
+            // rotacion en el mismo nodo CORTA (shear) todo lo que cuelga
+            // de ahi en cualquier angulo que no sea 0/90/180/270 --
+            // medido: el cañon a 45 grados de yaw daba 4,85 VECES el
+            // volumen de reposo (el mismo mesh, mismo tamaño real,
+            // deformado). Con la cancelacion de escala en un ancla que
+            // nunca rota, y el pivote de apuntado en escala identidad,
+            // rotar ya no puede cortar nada -- es una rotacion rigida de
+            // una forma ya correcta, el "2-3 huesos" de siempre en un rig.
+            var turretMount = new GameObject("TurretMount");
+            turretMount.transform.SetParent(root.transform, false);
+            turretMount.transform.localPosition = new Vector3(0f, 0.36f, -0.08f);
             var parentScale = root.transform.localScale;
-            turretPivot.transform.localScale = new Vector3(1f / parentScale.x, 1f / parentScale.y, 1f / parentScale.z);
+            turretMount.transform.localScale = new Vector3(1f / parentScale.x, 1f / parentScale.y, 1f / parentScale.z);
+
+            var turretPivot = new GameObject("TurretPivot");
+            turretPivot.transform.SetParent(turretMount.transform, false);
 
             var turretVisual = GameObject.CreatePrimitive(PrimitiveType.Cube);
             turretVisual.name = "TurretVisual";
@@ -3685,10 +3702,17 @@ namespace SP.EditorTools
             // es parte del molde, sobrevive cualquier reconstruccion.
             // Sin TurretAI a proposito: la metralleta hoy solo la opera el
             // jugador (ver PlayerInputDriver, seat Passenger1).
+            // MetralletaMount: mismo ancla estatica que TurretMount, mismo
+            // motivo -- sin esto la metralleta corta igual que cortaba el
+            // cañon al girar (y ademas tiene pitch, asi que shereaba en
+            // DOS ejes en vez de uno).
+            var mgMount = new GameObject("MetralletaMount");
+            mgMount.transform.SetParent(root.transform, false);
+            mgMount.transform.localPosition = new Vector3(0.35f, 0.30f, 0.1f);
+            mgMount.transform.localScale = new Vector3(1f / parentScale.x, 1f / parentScale.y, 1f / parentScale.z);
+
             var mgPivot = new GameObject("MetralletaPivot");
-            mgPivot.transform.SetParent(root.transform, false);
-            mgPivot.transform.localPosition = new Vector3(0.35f, 0.30f, 0.1f);
-            mgPivot.transform.localScale = new Vector3(1f / parentScale.x, 1f / parentScale.y, 1f / parentScale.z);
+            mgPivot.transform.SetParent(mgMount.transform, false);
 
             var mgVisual = GameObject.CreatePrimitive(PrimitiveType.Cube);
             mgVisual.name = "MetralletaVisual";
@@ -4937,7 +4961,14 @@ namespace SP.EditorTools
             {
                 var rowGO = new GameObject($"NearbyRow_{squad[i].DisplayName}", typeof(Image));
                 rowGO.transform.SetParent(contentGO.transform, false);
-                rowGO.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.08f);
+                // BUG REAL que esto corrige ("necesito q sea texto blanco y
+                // fondo oscuro"): el fondo era blanco casi transparente
+                // (alfa 0,08) detras de texto BLANCO -- misma luminancia
+                // que el texto, cero contraste. Con el mundo de fondo
+                // (terreno claro) el texto quedaba practicamente invisible.
+                // Mismo tono oscuro y opaco que ya usa el resto del HUD
+                // (VehicleStatus, WeaponStatus, etc.).
+                rowGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.85f);
                 var rowRt = rowGO.GetComponent<RectTransform>();
                 rowRt.anchorMin = new Vector2(0f, 1f);
                 rowRt.anchorMax = new Vector2(1f, 1f);
@@ -5442,7 +5473,11 @@ namespace SP.EditorTools
             var nLabel = nLabelGO.GetComponent<Text>();
             nLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             nLabel.alignment = TextAnchor.MiddleCenter;
-            nLabel.color = new Color(0.85f, 0.9f, 0.95f);
+            // BUG REAL: casi blanco (0.85,0.9,0.95) sobre el marco del
+            // minimapa, que TAMBIEN es casi blanco (0.75,0.78,0.82) --
+            // la "N" se leia apenas. Oscuro sobre ese fondo claro, no al
+            // reves.
+            nLabel.color = new Color(0.08f, 0.09f, 0.11f);
             nLabel.fontSize = FontChico;
             nLabel.fontStyle = FontStyle.Bold;
             nLabel.text = "N";

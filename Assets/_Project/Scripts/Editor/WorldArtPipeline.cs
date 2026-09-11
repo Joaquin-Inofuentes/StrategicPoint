@@ -478,7 +478,7 @@ namespace SP.EditorTools
 
             ReemplazarVisualEnCollider(veh, CargarPrefab("P_Veh_Tanque_Cuerpo"));
 
-            var pivot = veh.transform.Find("TurretPivot");
+            var pivot = veh.transform.Find("TurretMount/TurretPivot");
             if (pivot == null) { Debug.LogWarning("[WorldArtPipeline] Vehiculo_Blindado no tiene TurretPivot."); return; }
 
             var torreta = CargarPrefab("P_Veh_Tanque_Torreta");
