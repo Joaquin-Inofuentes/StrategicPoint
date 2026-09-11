@@ -245,6 +245,17 @@ namespace SP.Vehicles
             // Unity, así que "enabled=false" solo no alcanza para
             // frenarlo: hay que chequear el estado real acá.
             if (vehicle != null && vehicle.IsDestroyed) return false;
+            // BUG REAL medido esta sesion: `pool` es una referencia
+            // serializada a mano (HeadlessTestRunner.SetPool), y una
+            // reconstruccion de prefab (cualquier "Run All Tests Headless")
+            // puede reasignar el FileID interno del GameObject y dejar la
+            // referencia guardada en la escena huerfana -- sin ningun error
+            // visible, el arma simplemente dejaba de disparar en silencio
+            // (TryFire devolvia false para siempre). Se cura sola: si falta,
+            // busca el unico ProjectilePool de la escena una vez y se la
+            // guarda, en vez de depender para siempre de que el wireo a
+            // mano haya sobrevivido intacto.
+            if (pool == null) pool = UnityEngine.Object.FindFirstObjectByType<ProjectilePool>();
             if (cooldownTimer > 0f || pool == null) return false;
 
             int shooterId = vehicle != null && vehicle.Gunner != null ? vehicle.Gunner.Id : -1;

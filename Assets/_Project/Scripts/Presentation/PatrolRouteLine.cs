@@ -47,8 +47,22 @@ namespace SP.Presentation
                 // Es un marcador visual, no un obstáculo: sin esto cada
                 // esfera bloquearía el navmesh/raycasts de apuntado en el
                 // punto exacto donde un enemigo patrulla.
+                //
+                // BUG REAL: Object.Destroy() no borra nada fuera de Play
+                // mode (tira "Destroy may not be called from edit mode" y
+                // deja el collider vivo) -- la suite headless corre en Edit
+                // mode, asi que las 16 esferas de los 4 enemigos de
+                // patrulla se quedaban con su SphereCollider de siempre.
+                // Se leia como "hay 20 obstaculos solidos" en vez de los 4
+                // reales (Coberturas.Solidos), porque el filtro por tamaño
+                // no las descarta (1,2 m de diametro no es ni el piso ni un
+                // arma tirada). DestroyImmediate funciona en los dos modos.
                 var col = sphere.GetComponent<Collider>();
-                if (col != null) Object.Destroy(col);
+                if (col != null)
+                {
+                    if (Application.isPlaying) Object.Destroy(col);
+                    else Object.DestroyImmediate(col);
+                }
 
                 var rend = sphere.GetComponent<Renderer>();
                 if (rend != null) rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;

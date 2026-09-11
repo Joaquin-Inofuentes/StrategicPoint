@@ -126,7 +126,16 @@ namespace SP.Vehicles
         // volando por el aire se ve desde cualquier zoom.
         void DetachTurret()
         {
-            var turret = GetComponentInChildren<TurretWeapon>(true);
+            // BUG REAL que esto corrige: GetComponentInChildren<TurretWeapon>()
+            // devolvia CUALQUIERA de los dos TurretWeapon del tanque desde
+            // que existe MetralletaPivot -- segun el orden de la jerarquia,
+            // la explosion final podia terminar lanzando por el aire la
+            // metralleta chica en vez del cañon grande, justo lo opuesto
+            // de "se ve desde cualquier zoom" que pide el comentario de
+            // arriba. Se busca la torreta del cañon por nombre, sin
+            // adivinar.
+            var turretPivotT = transform.Find("TurretPivot");
+            var turret = turretPivotT != null ? turretPivotT.GetComponent<TurretWeapon>() : GetComponentInChildren<TurretWeapon>(true);
             if (turret == null) return;
             var t = turret.transform;
             if (t.parent == null) return;

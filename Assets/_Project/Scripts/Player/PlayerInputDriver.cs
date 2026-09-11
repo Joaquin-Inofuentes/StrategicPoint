@@ -2010,7 +2010,7 @@ namespace SP.Player
                     motor.Drive(throttle, steer, Time.deltaTime);
                 }
 
-                UpdateVehicleCamera(Vehicle.transform.Find("DriverEye"));
+                UpdateVehicleCamera();
             }
             else if (currentSeat == VehicleSeatRole.Gunner)
             {
@@ -2077,8 +2077,7 @@ namespace SP.Player
                     }
                 }
 
-                var gunnerEye = turret != null ? turret.transform.Find("GunnerEye") : null;
-                UpdateVehicleCamera(gunnerEye != null ? gunnerEye : Vehicle.transform);
+                UpdateVehicleCamera();
             }
             // Pedido explicito: "ahora es cañon y metralleta y conductor" --
             // un tercer puesto operable de verdad, no un pasajero mudo.
@@ -2109,11 +2108,11 @@ namespace SP.Player
                 }
                 if (TurretAim != null) TurretAim.UpdateFrom(mgTurret);
 
-                UpdateVehicleCamera(Vehicle.transform);
+                UpdateVehicleCamera();
             }
             else
             {
-                UpdateVehicleCamera(Vehicle.transform);
+                UpdateVehicleCamera();
             }
 
             string role = currentSeat == VehicleSeatRole.Driver
@@ -2131,6 +2130,22 @@ namespace SP.Player
             var soldier = Brain.Current;
             if (soldier != null && Vehicle.IsMountAnimating(soldier)) return;
 
+            // BUG REAL que esto corrige: si newRole ya estaba ocupado,
+            // Vehicle.Mount caia a FirstFreeSeat() y sentaba al jugador en
+            // un asiento DISTINTO al pedido -- pero currentSeat se ponia
+            // en newRole de todas formas, sin chequear donde termino
+            // sentado en los hechos. El jugador podia terminar en un
+            // asiento con los controles de otro (ver mgTurret/turret mas
+            // arriba, que leen currentSeat para decidir que arma manejar).
+            // Los llamadores de [1]/[2]/[3] ya chequean IsSeatFree antes de
+            // llamar, asi que esto no se pisa en el uso normal -- es la
+            // guarda que le faltaba al metodo en si.
+            if (!Vehicle.IsSeatFree(newRole))
+            {
+                RejectOrder("ASIENTO OCUPADO");
+                return;
+            }
+
             var vb = Vehicle.GetComponent<VehicleBrain>();
 
             // Libera el asiento actual sin reaparecer al soldado afuera.
@@ -2139,8 +2154,12 @@ namespace SP.Player
             Vehicle.Mount(soldier, newRole);
 
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
-            currentSeat = newRole;
-            if (newRole == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
+            // Se lee el asiento REAL tras montar, no se asume newRole: si
+            // alguna vez Mount vuelve a caer a un asiento distinto (otra
+            // carrera, otro llamador que no valido antes), currentSeat
+            // sigue reflejando la verdad en vez de mentir.
+            currentSeat = Vehicle.RoleOf(soldier) ?? newRole;
+            if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
             // BUG REAL que esto corrige: decia "se monto en la metralleta"
             // para el asiento del CAÑON (el que dispara obuses explosivos/
             // perforantes) -- confundia las dos armas del tanque entre si.
@@ -2160,7 +2179,18 @@ namespace SP.Player
         // primera persona (el ancla "DriverEye") y solo el artillero (o
         // con [V]) pasaba a 3ra, una inconsistencia entre asientos que
         // ademas hacia mas dificil ver el vehiculo entero al manejar.
-        void UpdateVehicleCamera(Transform anchor)
+        // BUG REAL (cosmetico, no de gameplay): el parametro "anchor" no se
+        // usaba para nada -- FollowThirdPerson siempre orbita
+        // Vehicle.transform sin importar que ancla se le pase. Los tres
+        // llamadores (conductor, cañon, metralleta) calculaban
+        // DriverEye/GunnerEye/MetralletaEye y los pasaban para nada, lo que
+        // hacia parecer que "faltaba" un ancla propia por asiento cuando en
+        // realidad NINGUNO se usaba jamas: la vista de vehiculo es a
+        // proposito la misma orbita de 3ra persona sobre el chasis para
+        // cualquier asiento (pedido explicito de una sesion anterior). Se
+        // saca el parametro muerto en vez de dejarlo prometiendo algo que
+        // no hace.
+        void UpdateVehicleCamera()
         {
             Rig.FollowThirdPerson(Vehicle.transform, 8f, 3.5f);
             ApplyVehicleCameraFeel();

@@ -347,7 +347,11 @@ namespace SP.Presentation
 
             var motor = DemoVehicle.GetComponent<VehicleMotor>();
             var vBrain = DemoVehicle.GetComponent<VehicleBrain>();
-            var turret = DemoVehicle.GetComponentInChildren<TurretWeapon>();
+            // GetComponentInChildren<TurretWeapon>() es ambiguo desde que el
+            // tanque tiene dos (cañon en TurretPivot, metralleta en
+            // MetralletaPivot) -- el demo quiere especificamente el cañon.
+            var turretPivotDemo = DemoVehicle.transform.Find("TurretPivot");
+            var turret = turretPivotDemo != null ? turretPivotDemo.GetComponent<TurretWeapon>() : DemoVehicle.GetComponentInChildren<TurretWeapon>();
 
             vBrain.IsPlayerDriving = true;
             InputDriver.ToggleVehicleCameraView(); // 3ra persona, para que se vea el vehiculo andando

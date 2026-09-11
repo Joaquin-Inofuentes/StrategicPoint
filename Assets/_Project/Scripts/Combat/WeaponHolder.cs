@@ -183,7 +183,18 @@ namespace SP.Combat
             var prefab = WeaponModels.Get(kind);
             if (prefab == null) return;
 
-            if (visualModelInstance != null) Destroy(visualModelInstance);
+            // BUG REAL: Destroy() no hace nada util fuera de Play mode --
+            // Unity tira "Destroy may not be called from edit mode" y NO
+            // destruye el objeto (queda huerfano colgando del cubo para
+            // siempre). La suite headless corre sus fases en Edit mode
+            // (HeadlessTestRunner prueba equipar las 3 armas una tras otra
+            // sobre el mismo soldado), asi que cada cambio de arma dejaba
+            // un "RealModel" viejo acumulado en vez de reemplazarlo.
+            if (visualModelInstance != null)
+            {
+                if (Application.isPlaying) Destroy(visualModelInstance);
+                else DestroyImmediate(visualModelInstance);
+            }
             WeaponVisualRenderer.enabled = false;
 
             visualModelInstance = Instantiate(prefab, WeaponVisualRenderer.transform);

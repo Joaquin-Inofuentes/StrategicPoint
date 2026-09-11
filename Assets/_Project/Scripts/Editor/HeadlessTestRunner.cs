@@ -1133,7 +1133,9 @@ namespace SP.EditorTools
 
             var motor = vehicle.GetComponent<VehicleMotor>();
             var vBrain = vehicle.GetComponent<VehicleBrain>();
-            var turret = vehicle.GetComponentInChildren<TurretWeapon>();
+            // Ambiguo desde que hay dos TurretWeapon (cañon + metralleta):
+            // esta fase prueba especificamente el cañon (TurretPivot).
+            var turret = vehicle.transform.Find("TurretPivot").GetComponent<TurretWeapon>();
 
             // Reubicamos todo cerca para que la prueba sea determinista.
             vehicle.transform.position = new Vector3(20f, 0.6f, 20f);
@@ -1608,7 +1610,9 @@ namespace SP.EditorTools
             // eso el multiplicador bajo de 2 a 0,5 en el mismo cambio.
             // Ahora se comprueban las dos cosas: que use su constante, y
             // que la velocidad absoluta siga siendo la historica de 80.
-            var turret = vehicle.GetComponentInChildren<TurretWeapon>();
+            // Ambiguo desde que hay dos TurretWeapon (cañon + metralleta):
+            // esta prueba es especificamente sobre el cañon (TurretPivot).
+            var turret = vehicle.transform.Find("TurretPivot").GetComponent<TurretWeapon>();
             var cdField = GetRequiredField(typeof(TurretWeapon), "cooldownTimer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             cdField.SetValue(turret, 0f);
             // Snapshot POR IDENTIDAD y no "distinto de pNormal/pDoble": el
@@ -1689,11 +1693,18 @@ namespace SP.EditorTools
             currentSeatField.SetValue(inputDriver, null);
             inputDriver.TryPossess(vega);
 
-            // --- Duracion de transicion x2 con lerp ---
-            var durField = GetRequiredField(typeof(PlayerInputDriver), "PossessTransitionDuration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            // --- Duracion de transicion con lerp ---
+            // BUG REAL que esto corrige: el campo se renombro de
+            // PossessTransitionDuration (0.35s x2=0.7s) a PossessBlendSeconds
+            // (2f fijo, pedido explicito: "2 segundos de lerp al cambiar a
+            // otro soldado apuntado") cuando se implemento ese pedido, pero
+            // esta prueba se quedo buscando el nombre y el valor viejos por
+            // reflection -- tiraba una excepcion y cortaba TODA la suite
+            // ahi mismo, sin llegar a correr ninguna fase despues de la 7.
+            var durField = GetRequiredField(typeof(PlayerInputDriver), "PossessBlendSeconds", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
             float duracion = (float)durField.GetRawConstantValue();
-            Check($"La duracion de transicion de posesion es el doble de la base (0.35s x2 = {duracion:0.00}s)",
-                Mathf.Approximately(duracion, 0.7f));
+            Check($"La duracion de transicion de posesion es de 2 segundos (pedido explicito, valor={duracion:0.00}s)",
+                Mathf.Approximately(duracion, 2f));
 
             // --- Ciclar con [Q] ahora SI incluye a los montados ---
             vehicle.Mount(kes, VehicleSeatRole.Passenger1);
@@ -3662,6 +3673,51 @@ namespace SP.EditorTools
             muzzle.localPosition = new Vector3(0f, 0f, 0.8f);
             turret.Muzzle = muzzle;
 
+            // MetralletaPivot: segunda arma montada, independiente del
+            // cañon -- pedido explicito ("ahora es cañon y metralleta y
+            // conductor", un tercer puesto operable de verdad). BUG REAL
+            // que esto corrige: se habia agregado antes a mano sobre el
+            // .prefab ya guardado (PrefabUtility.ApplyPrefabInstance desde
+            // un script suelto), no aca en el generador -- la primera vez
+            // que se corrio "Run All Tests Headless" de nuevo, este mismo
+            // metodo SOBREESCRIBIO el prefab entero (SaveAsPrefabAsset mas
+            // abajo, sin condicion) y se llevo puesta la metralleta. Ahora
+            // es parte del molde, sobrevive cualquier reconstruccion.
+            // Sin TurretAI a proposito: la metralleta hoy solo la opera el
+            // jugador (ver PlayerInputDriver, seat Passenger1).
+            var mgPivot = new GameObject("MetralletaPivot");
+            mgPivot.transform.SetParent(root.transform, false);
+            mgPivot.transform.localPosition = new Vector3(0.35f, 0.30f, 0.1f);
+            mgPivot.transform.localScale = new Vector3(1f / parentScale.x, 1f / parentScale.y, 1f / parentScale.z);
+
+            var mgVisual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            mgVisual.name = "MetralletaVisual";
+            mgVisual.transform.SetParent(mgPivot.transform, false);
+            mgVisual.transform.localPosition = new Vector3(0f, 0f, 0.25f);
+            mgVisual.transform.localScale = new Vector3(0.12f, 0.12f, 0.5f);
+            var mgVisCol = mgVisual.GetComponent<Collider>();
+            if (mgVisCol != null) UnityEngine.Object.DestroyImmediate(mgVisCol);
+
+            var mgWeapon = mgPivot.AddComponent<TurretWeapon>();
+            var mgSo = new SerializedObject(mgWeapon);
+            mgSo.FindProperty("fireCooldown").floatValue = 0.10f;
+            mgSo.FindProperty("damage").intValue = 14;
+            mgSo.FindProperty("explosionRadius").floatValue = 0f;
+            mgSo.FindProperty("projectileColor").colorValue = new Color(0.95f, 0.85f, 0.25f);
+            mgSo.FindProperty("turnSpeedDegPerSec").floatValue = 90f;
+            mgSo.FindProperty("playerTurnSpeedDegPerSec").floatValue = 160f;
+            mgSo.FindProperty("projectileGravity").floatValue = 0f;
+            mgSo.ApplyModifiedPropertiesWithoutUndo();
+
+            var mgEye = new GameObject("MetralletaEye").transform;
+            mgEye.SetParent(mgPivot.transform, false);
+            mgEye.localPosition = new Vector3(0f, 0.35f, -0.6f);
+
+            var mgMuzzle = new GameObject("Muzzle").transform;
+            mgMuzzle.SetParent(mgPivot.transform, false);
+            mgMuzzle.localPosition = new Vector3(0f, 0f, 0.5f);
+            mgWeapon.Muzzle = mgMuzzle;
+
             Directory.CreateDirectory("Assets/_Project/Prefabs");
             string path = "Assets/_Project/Prefabs/P_Vehicle_Blindado.prefab";
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
@@ -3703,8 +3759,13 @@ namespace SP.EditorTools
             // el material pintado ya esta serializado en la escena.
             instance.AddComponent<VehicleFxReactor>();
 
-            var turret = instance.GetComponentInChildren<TurretWeapon>();
-            turret.SetPool(pool);
+            // BUG REAL: GetComponentInChildren<TurretWeapon>() es ambiguo
+            // desde que el tanque tiene dos armas montadas -- antes de
+            // este fix, uno de los dos TurretWeapon (segun el orden de la
+            // jerarquia) se quedaba sin ProjectilePool y TryFire fallaba
+            // en silencio (pool == null) para esa arma. Los dos se
+            // resuelven por nombre y los dos reciben el pool.
+            foreach (var t in instance.GetComponentsInChildren<TurretWeapon>()) t.SetPool(pool);
 
             MinimapIcon.Spawn(instance.transform, color, GetOrCreateMinimapLayer(), 2.4f);
 

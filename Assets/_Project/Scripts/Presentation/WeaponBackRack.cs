@@ -108,8 +108,19 @@ namespace SP.Presentation
                     var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
                     cube.name = "Cubo";
                     cube.transform.SetParent(go.transform, false);
+                    // Mismo bug de Destroy()-en-Edit-mode que WeaponHolder/
+                    // PatrolRouteLine (ver sus comentarios): en Edit mode no
+                    // borra nada y deja un collider vivo colgando de la
+                    // espalda. Este camino en particular casi nunca corre
+                    // (las 3 armas del loadout tienen modelo real), pero si
+                    // el dia de mañana falta un modelo, mejor que el
+                    // respaldo tambien sea correcto.
                     var col = cube.GetComponent<Collider>();
-                    if (col != null) Destroy(col);
+                    if (col != null)
+                    {
+                        if (Application.isPlaying) Destroy(col);
+                        else DestroyImmediate(col);
+                    }
                     var rend = cube.GetComponent<Renderer>();
                     rend.sharedMaterial = SafeMaterial.Create(spec.Color);
                     rend.shadowCastingMode = ShadowCastingMode.Off;
