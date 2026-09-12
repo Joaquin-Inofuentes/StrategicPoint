@@ -35,9 +35,21 @@ namespace SP.Presentation
         VolumeProfile profile;
         ChromaticAberration aberration;
         MotionBlur motionBlur;
+        DepthOfField depthOfField;
 
         float damageAberration;
         float speedBlur;
+
+        // Pedido explicito: "la mirilla con click derecho... y el resto de
+        // la escena difuminado como con blur". Gaussian (no Bokeh): anda
+        // en cualquier nivel de calidad de URP y no depende de que el post
+        // procesado tenga habilitado el muestreo de Bokeh. Con el arranque
+        // cerca de la camara, casi todo lo que no sea el punto exacto de
+        // mira queda desenfocado -- el efecto de "mira que enfoca" que se
+        // pidio.
+        const float ZoomDofStart = 3f;
+        const float ZoomDofEnd = 22f;
+        const float ZoomDofMaxRadius = 1f;
 
         // La aberracion por daño decae sola; el desenfoque lo reescribe el
         // conductor cada frame mientras maneja.
@@ -70,11 +82,23 @@ namespace SP.Presentation
             volume.isGlobal = true;
             volume.priority = 1000f;
 
-            if (volume.profile != null)
+            // BUG REAL: Volume.profile es un getter CON EFECTO DE LADO -- si
+            // el Volume no tiene profile asignado, Unity crea uno VACIO en
+            // el momento mismo de leerlo (para no devolver null), y esa
+            // lectura sola ya deja volume.profile != null para siempre.
+            // Comparar contra null para decidir "ya esta construido" daba
+            // TRUE incluso la primerisima vez -- NeutralizeTemplateLook() y
+            // los Add<> de mas abajo nunca llegaban a correr, y todo el
+            // post-procesado (aberracion por daño, blur de velocidad, y el
+            // blur de zoom) quedaba muerto en silencio sin ningun error.
+            // Identificar "ya construido por este componente" por el NOMBRE
+            // que nosotros mismos le ponemos, no por "no es null".
+            if (volume.profile != null && volume.profile.name == "SP_RuntimePostFx")
             {
                 profile = volume.profile;
                 profile.TryGet(out aberration);
                 profile.TryGet(out motionBlur);
+                profile.TryGet(out depthOfField);
                 return;
             }
 
@@ -83,6 +107,7 @@ namespace SP.Presentation
             volume.profile = profile;
 
             NeutralizeTemplateLook();
+            profile.TryGet(out depthOfField);
 
             aberration = profile.Add<ChromaticAberration>(true);
             aberration.intensity.Override(0f);
@@ -128,6 +153,8 @@ namespace SP.Presentation
             speedBlur = Mathf.Clamp01(amount01);
         }
 
+        bool zoomBlurOn;
+
         void Update()
         {
             if (aberration == null || motionBlur == null) return;
@@ -143,6 +170,19 @@ namespace SP.Presentation
             aberration.intensity.Override(fxOn ? damageAberration : 0f);
             motionBlur.intensity.Override(fxOn ? speedBlur * 0.35f : 0f);
 
+            var rig = SP.CameraSystem.CameraRig.Instance;
+            zoomBlurOn = fxOn && rig != null && rig.EstaConZoom;
+            if (depthOfField != null)
+            {
+                depthOfField.mode.Override(zoomBlurOn ? DepthOfFieldMode.Gaussian : DepthOfFieldMode.Off);
+                if (zoomBlurOn)
+                {
+                    depthOfField.gaussianStart.Override(ZoomDofStart);
+                    depthOfField.gaussianEnd.Override(ZoomDofEnd);
+                    depthOfField.gaussianMaxRadius.Override(ZoomDofMaxRadius);
+                }
+            }
+
             ApplyWeight();
         }
 
@@ -151,7 +191,7 @@ namespace SP.Presentation
         void ApplyWeight()
         {
             if (volume == null) return;
-            bool anything = damageAberration > 0.001f || speedBlur > 0.001f;
+            bool anything = damageAberration > 0.001f || speedBlur > 0.001f || zoomBlurOn;
             volume.weight = anything && SP.CameraSystem.CameraFxSettings.Enabled ? 1f : 0f;
         }
 

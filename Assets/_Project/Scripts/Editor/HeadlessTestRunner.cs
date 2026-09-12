@@ -4138,7 +4138,12 @@ namespace SP.EditorTools
             promptTxt.fontSize = FontSubtitulo;
             var prt = promptGO.GetComponent<RectTransform>();
             prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f);
-            prt.anchoredPosition = new Vector2(0f, -40f);
+            // Pedido explicito: "que el texto y rectangulo negro de [T] Ir
+            // aqui este 50% mas abajo que no tape la mira" -- a -40 el
+            // fondo negro (FondoOpaco) quedaba pegado al circulo de mira
+            // central (CirculoDeProgreso, 34-50px de diametro). 50% mas
+            // lejos del centro (-40 -> -60) deja un margen real.
+            prt.anchoredPosition = new Vector2(0f, -60f);
             prt.sizeDelta = new Vector2(420f, 30f);
             AddOutline(promptTxt);
 
@@ -4155,7 +4160,9 @@ namespace SP.EditorTools
             ammoWarnTxt.fontStyle = FontStyle.Bold;
             var awrt = ammoWarnGO.GetComponent<RectTransform>();
             awrt.anchorMin = awrt.anchorMax = new Vector2(0.5f, 0.5f);
-            awrt.anchoredPosition = new Vector2(0f, -70f);
+            // Corrido junto con PromptText (arriba) para mantener el mismo
+            // margen entre los dos y no generar un solapamiento nuevo.
+            awrt.anchoredPosition = new Vector2(0f, -90f);
             awrt.sizeDelta = new Vector2(320f, 30f);
             AddOutline(ammoWarnTxt);
             ammoWarnGO.SetActive(false);

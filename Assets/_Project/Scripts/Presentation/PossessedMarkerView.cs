@@ -90,9 +90,19 @@ namespace SP.Presentation
         public bool Tick()
         {
             if (marker == null) return false;
+            // BUG REAL: el marcador se armo pensando solo en RTS (ver el
+            // comentario de arriba de la clase), pero Tick() nunca chequeo
+            // el modo de camara -- se quedaba prendido tambien en FPS,
+            // flotando sobre la propia cabeza de a quien estabas
+            // manejando (a pie o en vehiculo, mientras el soldado siguiera
+            // activo). Pedido explicito: "quita ese cubito cuando lo
+            // estoy manejando". En FPS el jugador ya esta viendo/siendo
+            // ese soldado -- el marcador no aporta nada y solo tapa vista.
+            bool enRts = SP.CameraSystem.CameraRig.Instance != null
+                && SP.CameraSystem.CameraRig.Instance.Mode == SP.CameraSystem.ControlMode.Rts;
             // El LOD se COMPONE con la regla de siempre (hay poseido, esta
             // vivo y su objeto esta activo); solo puede restar.
-            bool show = lodAllowed && current != null && current.Health.IsAlive && current.gameObject.activeInHierarchy;
+            bool show = enRts && lodAllowed && current != null && current.Health.IsAlive && current.gameObject.activeInHierarchy;
             if (marker.gameObject.activeSelf != show) marker.gameObject.SetActive(show);
             if (!show) return false;
 

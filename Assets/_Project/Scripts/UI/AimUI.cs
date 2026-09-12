@@ -31,6 +31,20 @@ namespace SP.UI
             RecomputeCrosshairSize();
         }
 
+        // Multiplicador APARTE del de arriba: ese es la preferencia del
+        // jugador (guardada en PlayerPrefs desde el menu de opciones), este
+        // es puramente el zoom de mirilla con click derecho (CameraRig.
+        // EstaConZoom). Pedido explicito: "la mirilla con click derecho
+        // que tenga el doble de tamaño". Si compartieran el mismo campo,
+        // activar/soltar el zoom pisaria la preferencia guardada del
+        // jugador cada vez.
+        float crosshairZoomMultiplier = 1f;
+        public void SetCrosshairZoomScale(float multiplier)
+        {
+            crosshairZoomMultiplier = multiplier;
+            RecomputeCrosshairSize();
+        }
+
         // La mirilla antes no decia nada de la precision real del arma:
         // se veia igual de chica disparando en rafaga sostenida que
         // recien equipada. Ahora se abre con la dispersion real que
@@ -44,7 +58,48 @@ namespace SP.UI
 
         void RecomputeCrosshairSize()
         {
-            crosshairBaseSize = crosshairSpriteSize * crosshairUserScale + Vector2.one * (crosshairSpreadFraction * 9f);
+            crosshairBaseSize = crosshairSpriteSize * crosshairUserScale * crosshairZoomMultiplier + Vector2.one * (crosshairSpreadFraction * 9f);
+        }
+
+        // Pedido explicito: "a donde apunto que sea un circulo para saber
+        // donde impactara el disparo" -- antes la Image no tenia sprite
+        // asignado, asi que uGUI la dibujaba como un cuadrado blanco
+        // solido (la textura de relleno por defecto). Un anillo (no un
+        // disco relleno) para que el circulo marque el area de impacto
+        // sin tapar del todo lo que hay debajo. Mismo patron que
+        // SP.UI.CirculoDeProgreso.Disco(): una textura chica generada una
+        // sola vez y cacheada, con el borde suavizado para que no se vea
+        // dentada a este tamaño.
+        static Sprite anilloCache;
+        static Sprite AnilloDeMira()
+        {
+            if (anilloCache != null) return anilloCache;
+            const int lado = 64;
+            const float grosor = 7f;
+            var tex = new Texture2D(lado, lado, TextureFormat.RGBA32, false);
+            float radioExterior = lado * 0.5f;
+            float radioInterior = radioExterior - grosor;
+            var centro = new Vector2(radioExterior, radioExterior);
+            var pixeles = new Color32[lado * lado];
+            for (int y = 0; y < lado; y++)
+            {
+                for (int x = 0; x < lado; x++)
+                {
+                    float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), centro);
+                    float alfaBordeExterior = Mathf.Clamp01(radioExterior - d);
+                    float alfaBordeInterior = Mathf.Clamp01(d - radioInterior);
+                    float alfa = Mathf.Min(alfaBordeExterior, alfaBordeInterior);
+                    pixeles[y * lado + x] = new Color32(255, 255, 255, (byte)(alfa * 255f));
+                }
+            }
+            tex.SetPixels32(pixeles);
+            tex.Apply();
+            tex.hideFlags = HideFlags.HideAndDontSave;
+
+            anilloCache = Sprite.Create(tex, new Rect(0f, 0f, lado, lado), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+            anilloCache.name = "AnilloDeMira";
+            anilloCache.hideFlags = HideFlags.HideAndDontSave;
+            return anilloCache;
         }
 
         // El tinte real de cada frame lo recalcula UpdateFromAimResult a
@@ -188,6 +243,7 @@ namespace SP.UI
             crosshair = cross;
             if (cross != null)
             {
+                cross.sprite = AnilloDeMira();
                 crosshairBaseColor = cross.color;
                 crosshairSpriteSize = cross.rectTransform.sizeDelta;
                 RecomputeCrosshairSize();
@@ -261,6 +317,7 @@ namespace SP.UI
                     crosshair = t.GetComponent<Image>();
                     if (crosshair != null)
                     {
+                        crosshair.sprite = AnilloDeMira();
                         crosshairBaseColor = crosshair.color;
                         crosshairSpriteSize = crosshair.rectTransform.sizeDelta;
                         RecomputeCrosshairSize();
@@ -414,10 +471,21 @@ namespace SP.UI
 
         // El pulso continuo de B5: un latido suave de tamaño, aparte del
         // flash de impacto (que ya maneja su propio tamaño mientras dura).
+        // BUG REAL: este Update() era el UNICO lugar que aplicaba
+        // crosshairBaseSize al RectTransform de verdad -- SetSpread01,
+        // SetCrosshairScale y SetCrosshairZoomScale solo tocan el CAMPO,
+        // no el tamaño en pantalla. Con "return" temprano cuando no hay
+        // pulso (CurrentPulseFrequency<=0, el caso normal: apuntando al
+        // piso, al cielo o a nada), un cambio de escala -- el doble de
+        // tamaño del zoom con click derecho, pedido explicito -- nunca
+        // llegaba a verse salvo que justo hubiera un aliado/enemigo/
+        // vehiculo/obstaculo bajo la mira. Ahora SIEMPRE escribe el
+        // tamaño base (con el pulso encima solo si corresponde), asi el
+        // tamaño de mira refleja el estado real en todo momento.
         void Update()
         {
-            if (crosshair == null || flashing || CurrentPulseFrequency <= 0f) return;
-            float k = (Mathf.Sin(Time.time * CurrentPulseFrequency) + 1f) * 0.5f;
+            if (crosshair == null || flashing) return;
+            float k = CurrentPulseFrequency > 0f ? (Mathf.Sin(Time.time * CurrentPulseFrequency) + 1f) * 0.5f : 0f;
             crosshair.rectTransform.sizeDelta = crosshairBaseSize * (1f + k * 0.15f);
         }
 

@@ -336,22 +336,68 @@ namespace SP.CameraSystem
         // durante la transicion (a diferencia de BeginTransition, que
         // lerpea hacia la posicion FIJA que un Transform tenia al arrancar).
         [SerializeField] float normalFollowSpeed = 10f;
-        float blendUntilRealtime = -1f;
+
+        // BUG REAL corregido aca: la ventana de blend antes solo cambiaba
+        // la VELOCIDAD de un lerp exponencial de toda la vida (nunca llega
+        // del todo al objetivo, solo se acerca). Al cumplirse la duracion
+        // pedida, la velocidad saltaba de golpe a normalFollowSpeed (mucho
+        // mas rapida) para terminar de cerrar el resto que habia quedado
+        // sin converger -- ese salto de velocidad, justo en el ultimo
+        // tramo de la transicion, se leia como un tiron/glitch. Pedido
+        // explicito: "en el ultimo segundo se ve raro, quiero que sea
+        // fluido". Ahora la ventana interpola por FRACCION DE TIEMPO
+        // (0 a 1, suavizada), asi que al llegar a `seconds` la camara ya
+        // esta EXACTAMENTE en la pose deseada -- no queda ningun resto que
+        // la velocidad normal tenga que compensar de un salto.
+        float blendStartRealtime = -1f;
         float blendDurationActual = 1f;
+        Vector3 blendStartPos;
+        Quaternion blendStartRot;
+        bool blendActive;
 
         public void BeginFollowBlend(float seconds)
         {
             blendDurationActual = Mathf.Max(0.05f, seconds);
-            blendUntilRealtime = Time.unscaledTime + blendDurationActual;
+            blendStartRealtime = Time.unscaledTime;
+            blendStartPos = transform.position;
+            blendStartRot = transform.rotation;
+            blendActive = true;
         }
 
-        float CurrentFollowSpeed()
+        static float SmoothStep01(float f) => f * f * (3f - 2f * f);
+
+        // Fraccion 0..1 de la ventana de blend actual, ya suavizada. Marca
+        // la ventana como terminada al llegar a 1 (una sola vez, el mismo
+        // frame en que se aplica la pose final exacta) para que el
+        // proximo Follow* vuelva solo a su convergencia de siempre sin
+        // ningun resto pendiente.
+        float BlendEased()
         {
-            if (Time.unscaledTime < blendUntilRealtime)
-                // Velocidad equivalente a un tau de duracion/3 (~95% de
-                // convergencia visual hacia el final de la ventana pedida).
-                return 3f / blendDurationActual;
-            return normalFollowSpeed;
+            float f = Mathf.Clamp01((Time.unscaledTime - blendStartRealtime) / blendDurationActual);
+            if (f >= 1f) blendActive = false;
+            return SmoothStep01(f);
+        }
+
+        // Pedido explicito: "al comienzo que mire hacia donde esta el
+        // soldado de manera disimulada hasta que encuadre bien". Un solo
+        // salto de rotacion (la de siempre -> la del encuadre final) se
+        // sentia brusco cuando el nuevo soldado no estaba ya casi de
+        // frente a la camara vieja. Se parte en dos tramos: el primer 40%
+        // de la ventana gira SUAVEMENTE desde la rotacion de arranque
+        // hacia un simple mirar-al-soldado (orientacion, no encuadre); el
+        // 60% restante converge desde ese mirar-al-soldado hacia la
+        // rotacion final de encuadre (hombro/vehiculo). El punto de mira
+        // se calcula una sola vez con la posicion de arranque, no cada
+        // frame, para no perseguir un objetivo que ya se esta moviendo.
+        const float LookAtPortion = 0.4f;
+
+        Quaternion BlendLookThenFrame(Vector3 lookAtPoint, Quaternion finalFrameRot, float eased)
+        {
+            Quaternion lookAtObjetivo = Quaternion.LookRotation((lookAtPoint - blendStartPos).normalized, Vector3.up);
+            float haciaMirada = SmoothStep01(Mathf.Clamp01(eased / LookAtPortion));
+            float haciaEncuadre = SmoothStep01(Mathf.Clamp01((eased - LookAtPortion) / (1f - LookAtPortion)));
+            Quaternion trasMirada = Quaternion.Slerp(blendStartRot, lookAtObjetivo, haciaMirada);
+            return Quaternion.Slerp(trasMirada, finalFrameRot, haciaEncuadre);
         }
 
         // Pedido explicito: "quiero poder ver el soldado q manejo y sus
@@ -361,13 +407,26 @@ namespace SP.CameraSystem
         // para vehiculos, que no cabecean): acá el pitch del mouse SI
         // mueve la camara -- si no, apuntar arriba/abajo a pie dejaria de
         // funcionar apenas se dejo de mirar desde el ojo.
-        public void FollowOverShoulder(Transform target, float distance = 4f, float height = 1.7f)
+        // Altura 10% mas baja que antes (1.7 -> 1.53): pedido explicito
+        // ("que la camara este un 10% abajo"), medido sobre esta vista
+        // por encima del hombro, que es la que el jugador tiene puesta la
+        // mayor parte del tiempo a pie.
+        public void FollowOverShoulder(Transform target, float distance = 4f, float height = 1.53f)
         {
             if (target == null || IsTransitioning) return;
             Vector3 pivot = target.position + Vector3.up * height;
             Quaternion look = target.rotation * Quaternion.Euler(-(pitch + recoilPitch), 0f, 0f);
             Vector3 desired = pivot - (look * Vector3.forward) * distance;
-            float k = Mathf.Clamp01(Time.deltaTime * CurrentFollowSpeed());
+
+            if (blendActive)
+            {
+                float eased = BlendEased();
+                transform.position = Vector3.Lerp(blendStartPos, desired, eased);
+                transform.rotation = BlendLookThenFrame(pivot, look, eased);
+                return;
+            }
+
+            float k = Mathf.Clamp01(Time.deltaTime * normalFollowSpeed);
             transform.position = Vector3.Lerp(transform.position, desired, k);
             transform.rotation = Quaternion.Slerp(transform.rotation, look, k);
         }
@@ -395,7 +454,16 @@ namespace SP.CameraSystem
             if (target == null || IsTransitioning) return;
             Vector3 desired = target.position - target.forward * distance + Vector3.up * height;
             Quaternion desiredRot = Quaternion.LookRotation((target.position + Vector3.up * 1.2f - desired).normalized);
-            float k = Mathf.Clamp01(Time.deltaTime * CurrentFollowSpeed());
+
+            if (blendActive)
+            {
+                float eased = BlendEased();
+                transform.position = Vector3.Lerp(blendStartPos, desired, eased);
+                transform.rotation = Quaternion.Slerp(blendStartRot, desiredRot, eased);
+                return;
+            }
+
+            float k = Mathf.Clamp01(Time.deltaTime * normalFollowSpeed);
             transform.position = Vector3.Lerp(transform.position, desired, k);
             transform.rotation = Quaternion.Slerp(transform.rotation, desiredRot, k);
         }
