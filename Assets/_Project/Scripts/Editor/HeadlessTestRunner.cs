@@ -2769,18 +2769,31 @@ namespace SP.EditorTools
             var directorC1 = UnityEngine.Object.FindAnyObjectByType<WorldUiDirector>();
             var campoProximaEvaluacionC1 = GetRequiredField(typeof(WorldUiDirector), "nextEvaluateAt",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var camaraPrincipalC1 = Camera.main;
-            bool orthoOriginalC1 = camaraPrincipalC1 != null && camaraPrincipalC1.orthographic;
+            // Antes esto simulaba el cambio de modo pisando
+            // Camera.main.orthographic directo (era la marca real que
+            // usaba WorldUiDirector). Con la RTS en perspectiva (pedido
+            // explicito de que no sea ortogonal) esa marca ya no existe:
+            // el modo real pasa por CameraRig.SetMode, y WorldUiDirector
+            // consulta el singleton CameraRig.Instance -- pero
+            // HeadlessTestRunner corre en Edit Mode, donde Unity no manda
+            // OnEnable a un MonoBehaviour comun (medido: ni recreando el
+            // ciclo enabled=false/true en el rig real de la escena
+            // Instance se llega a fijar fuera de Play). EnsureInstanceForTests
+            // es el escape valvula explicito para este harness.
+            CameraRig.EnsureInstanceForTests(inputDriver.Rig);
+            var rigC1 = CameraRig.Instance;
+            if (rigC1 == null) { Check("CameraRig.Instance disponible para el test C1", false); return; }
+            var modoOriginalC1 = rigC1.Mode;
 
             // FPS primero: las etiquetas tienen que quedar apagadas.
-            if (camaraPrincipalC1 != null) camaraPrincipalC1.orthographic = false;
+            rigC1.SetMode(ControlMode.Fps);
             campoProximaEvaluacionC1.SetValue(directorC1, 0f);
             directorC1.Tick();
-            Check($"En FPS (camara no ortografica), la etiqueta se apaga (visible={etiquetaVehiculo.IsVisible})",
+            Check($"En FPS, la etiqueta se apaga (visible={etiquetaVehiculo.IsVisible})",
                 !etiquetaVehiculo.IsVisible);
 
             // RTS: aparecen, con la vida/tipo/ocupacion correctos.
-            if (camaraPrincipalC1 != null) camaraPrincipalC1.orthographic = true;
+            rigC1.SetMode(ControlMode.Rts);
             campoProximaEvaluacionC1.SetValue(directorC1, 0f);
             directorC1.Tick();
             Check($"En RTS, con 2 montados de 4, la etiqueta del vehiculo dice 2/4 (\"{etiquetaVehiculo.CurrentText}\")",
@@ -2794,7 +2807,7 @@ namespace SP.EditorTools
             Check($"Al bajar uno, pasa a 1/4 (\"{etiquetaVehiculo.CurrentText}\")",
                 etiquetaVehiculo.CurrentText == $"Vehiculo  1/{vehicle.Capacity}");
 
-            if (camaraPrincipalC1 != null) camaraPrincipalC1.orthographic = orthoOriginalC1;
+            rigC1.SetMode(modoOriginalC1);
             vehicle.Dismount(kes);
             UnityEngine.Object.DestroyImmediate(etiquetaVehiculo.transform.parent.gameObject);
             UnityEngine.Object.DestroyImmediate(etiquetaVega.transform.parent.gameObject);
@@ -3013,8 +3026,8 @@ namespace SP.EditorTools
             // el default del LineRenderer, encara cada punto DE CARA A LA
             // CAMARA) un extremo casi pegado a la camara proyecta como un
             // triangulo enorme y oscuro. El arreglo: no dibujarla fuera de
-            // RTS (mismo cam.orthographic que ya separa los dos modos en
-            // todo el proyecto).
+            // RTS (CameraRig.Instance.Mode; ya no cam.orthographic, que
+            // dejo de distinguir los modos al pasar RTS a perspectiva).
             TestLog.Phase("FASE 9 - Tarea #23 / Bug H2: la linea de ataque no se dibuja en FPS");
 
             doc.gameObject.SetActive(true);
@@ -3035,19 +3048,26 @@ namespace SP.EditorTools
             var attackLineManager = UnityEngine.Object.FindAnyObjectByType<AttackLineManager>();
             var metodoUpdateAttackLine = GetRequiredMethod(typeof(AttackLineManager), "Update",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            bool orthographicOriginal = Camera.main.orthographic;
+            // CameraRig.Instance, no inputDriver.Rig -- mismo motivo que
+            // en el bloque C1 de arriba: AttackLineManager consulta el
+            // singleton real, y este harness en Edit Mode nunca le manda
+            // OnEnable (ver el comentario junto a EnsureInstanceForTests).
+            CameraRig.EnsureInstanceForTests(inputDriver.Rig);
+            var rigH2 = CameraRig.Instance;
+            if (rigH2 == null) { Check("CameraRig.Instance disponible para el test H2", false); return; }
+            var modoOriginalH2 = rigH2.Mode;
 
-            Camera.main.orthographic = true; // RTS: control -- la linea tiene que seguir existiendo aca
+            rigH2.SetMode(ControlMode.Rts); // control -- la linea tiene que seguir existiendo aca
             metodoUpdateAttackLine.Invoke(attackLineManager, null);
             bool lineaEnRts = GameObject.Find("AttackLine") != null;
             Check($"Control: en RTS la linea de ataque SI se dibuja ({lineaEnRts})", lineaEnRts);
 
-            Camera.main.orthographic = false; // FPS: H2 -- no tiene que existir
+            rigH2.SetMode(ControlMode.Fps); // H2: no tiene que existir
             metodoUpdateAttackLine.Invoke(attackLineManager, null);
             bool lineaEnFps = GameObject.Find("AttackLine") != null;
             Check($"H2: en FPS la linea de ataque NO se dibuja ({lineaEnFps})", !lineaEnFps);
 
-            Camera.main.orthographic = orthographicOriginal;
+            rigH2.SetMode(modoOriginalH2);
             campoTargetH2.SetValue(doc.Brain, null);
             doc.Brain.CancelOrder();
             UnityEngine.Object.DestroyImmediate(testigoH2.gameObject);

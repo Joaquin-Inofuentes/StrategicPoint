@@ -39,6 +39,49 @@ namespace SP.Actors
         float bodyRadius = 0.4f;
         bool bodyResolved;
 
+        // Salto (G3). Sin Rigidbody en este motor (ver el comentario de
+        // arriba: mover a mano, no fisica de verdad), asi que la parabola
+        // se integra a mano, igual de simple que cualquier otro
+        // movimiento de este motor.
+        // jumpSpeed/gravity elegidos para un salto corto y rapido (~0.45 m
+        // de alto, ~0.4 s en el aire) -- esto es un shooter tactico, no un
+        // plataformero, asi que un salto alto y lento (lo que da la
+        // combinacion original, ~0.84 m) se sentia flotante y lento de
+        // recuperar para volver a disparar.
+        [SerializeField] float jumpSpeed = 4.5f;
+        [SerializeField] float gravity = 22f;
+        float verticalVelocity;
+        float groundY;
+        public bool IsJumping { get; private set; }
+
+        // Se guarda la altura de PISO al saltar (no 0 fijo): el terreno de
+        // la escena no es perfectamente plano en todos lados (ver
+        // ApoyoEnElPiso), asi que aterrizar tiene que volver a donde el
+        // soldado estaba parado, no a un y=0 que podria quedar hundido o
+        // flotando segun el lugar.
+        public void Jump()
+        {
+            if (IsJumping || IsCrouching) return;
+            IsJumping = true;
+            groundY = transform.position.y;
+            verticalVelocity = jumpSpeed;
+        }
+
+        void Update()
+        {
+            if (!IsJumping) return;
+            verticalVelocity -= gravity * Time.deltaTime;
+            var pos = transform.position;
+            pos.y += verticalVelocity * Time.deltaTime;
+            if (pos.y <= groundY && verticalVelocity <= 0f)
+            {
+                pos.y = groundY;
+                IsJumping = false;
+                verticalVelocity = 0f;
+            }
+            transform.position = pos;
+        }
+
         Soldier soldierCacheado;
         float alturaOjoDePie;
         bool ojoCacheado;
@@ -84,6 +127,11 @@ namespace SP.Actors
         // visible (piernas, silueta) enteramente al Animator.
         public void SetCrouching(bool agachado)
         {
+            // No se puede agachar en el aire: Jump() ya rechaza saltar
+            // estando agachado, y esto cierra el otro sentido -- si no, el
+            // jugador podia mantener Ctrl a mitad de salto y el Animator
+            // intentaria mezclar la pose de agachado con la de salto.
+            if (agachado && IsJumping) return;
             EnsureOjo();
             if (IsCrouching == agachado) return;
             IsCrouching = agachado;

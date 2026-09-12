@@ -236,7 +236,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1262875027867414668}
+  - {fileID: 8472259278453605474}
   - {fileID: 8966918372662514900}
   - {fileID: 8411902289599947111}
   - {fileID: 7252558737591414230}
@@ -292,6 +292,8 @@ MonoBehaviour:
   moveSpeed: 5
   turnSpeedDegPerSec: 220
   fraccionAlturaAgachado: 0.6
+  jumpSpeed: 5.5
+  gravity: 18
 --- !u!114 &6733338003974624726
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -348,6 +350,7 @@ MonoBehaviour:
   senseIntervalTicks: 3
   followStopDistance: 2.5
   patrolRoute: []
+  patrolWaypoints: []
 --- !u!82 &24397220861063659
 AudioSource:
   m_ObjectHideFlags: 0
@@ -497,7 +500,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2009c20afbece024aa69c41ff684f1ed, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SP.Presentation.SoldierAnimatorDriver
-  animator: {fileID: 5144956790370364150}
+  animator: {fileID: 2554576975704481304}
   velocidadDeCarrera: 5
   sostenidoDeDisparo: 0.45
   velocidadDeMezcla: 8
@@ -714,7 +717,7 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
---- !u!1001 &1588674837235292007
+--- !u!1001 &8221668086542066569
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
@@ -769,7 +772,7 @@ PrefabInstance:
     - target: {fileID: -3540725318260445992, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
       propertyPath: m_RootBone
       value: 
-      objectReference: {fileID: 1262875027867414668}
+      objectReference: {fileID: 8472259278453605474}
     - target: {fileID: -3540725318260445992, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
       propertyPath: m_AABB.m_Center.x
       value: 0
@@ -807,6 +810,17 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
+      propertyPath: m_WarningMessage
+      value: "\nBinding warning: Some generic clip(s) animate transforms that are
+        already bound by a Humanoid avatar. These transforms can only be changed
+        by Humanoid clips.\n\tTransform 'mixamorig:Hips'\n\tTransform 'mixamorig:LeftFoot'\n\tTransform
+        'mixamorig:Spine1'\n\tTransform 'mixamorig:LeftToeBase'\n\tTransform 'mixamorig:RightArm'\n\tTransform
+        'mixamorig:LeftLeg'\n\tTransform 'mixamorig:LeftShoulder'\n\tTransform 'mixamorig:RightFoot'\n\tTransform
+        'mixamorig:Head'\n\tTransform 'mixamorig:LeftUpLeg'\n\tand more ...\n\tFrom
+        animation clip 'mixamo.com'\n\tFrom animation clip 'mixamo.com'\n\tFrom animation
+        clip 'mixamo.com'"
+      objectReference: {fileID: 0}
+    - target: {fileID: 5866666021909216657, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
       propertyPath: m_ApplyRootMotion
       value: 0
       objectReference: {fileID: 0}
@@ -815,13 +829,13 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
---- !u!4 &1262875027867414668 stripped
-Transform:
-  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
-  m_PrefabInstance: {fileID: 1588674837235292007}
-  m_PrefabAsset: {fileID: 0}
---- !u!95 &5144956790370364150 stripped
+--- !u!95 &2554576975704481304 stripped
 Animator:
   m_CorrespondingSourceObject: {fileID: 5866666021909216657, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
-  m_PrefabInstance: {fileID: 1588674837235292007}
+  m_PrefabInstance: {fileID: 8221668086542066569}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &8472259278453605474 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 01edf7ff8aac1c64da1dfc354068cd37, type: 3}
+  m_PrefabInstance: {fileID: 8221668086542066569}
   m_PrefabAsset: {fileID: 0}

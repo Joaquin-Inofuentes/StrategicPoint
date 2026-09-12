@@ -27,6 +27,10 @@ namespace SP.Player
     public class AimTargeting : MonoBehaviour
     {
         [SerializeField] float maxDistance = 200f;
+        // Expuesto para quien necesite un punto de mundo valido incluso
+        // cuando no se golpeo nada (apuntando al cielo): un punto lejano
+        // sobre el mismo rayo, en vez de Vector3.zero.
+        public float MaxDistance => maxDistance;
 
         int lastHighlightedId = -1;
 

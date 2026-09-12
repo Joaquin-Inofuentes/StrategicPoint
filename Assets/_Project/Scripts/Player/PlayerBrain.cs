@@ -52,21 +52,43 @@ namespace SP.Player
 
         public void RotateYaw(float yawDeltaDegrees) => Current?.Motor.RotateYaw(yawDeltaDegrees);
 
-        public bool Fire()
+        // aimPoint: el punto de mundo que el cursor/mira esta apuntando
+        // DE VERDAD (el resultado del mismo rayo de camara que ya usa
+        // AimTargeting para resolver a que le apunta el jugador).
+        //
+        // BUG REAL encontrado al revisar la punteria: sin esto, la
+        // direccion del disparo salia de transform.forward del soldado mas
+        // el pitch de la camara -- una direccion calculada desde el CUERPO,
+        // mientras que la bala en si sale del Muzzle (la punta del arma,
+        // colgada de la mano, a una posicion distinta del cuerpo) y el
+        // reticulo en pantalla apunta con el rayo de la CAMARA (que ahora
+        // ademas esta corrida al costado por el encuadre a hombro). Tres
+        // puntos de origen distintos (cuerpo, camara, boca del arma) nunca
+        // van a alinearse por casualidad: de cerca, o apuntando al costado,
+        // la bala salia notoriamente desviada de donde mostraba la mira.
+        // Ahora la bala apunta desde la boca del arma HACIA el mismo punto
+        // que el reticulo esta marcando -- sea el impacto real (result.Point)
+        // o, si no hay nada que golpear, un punto lejano sobre el mismo
+        // rayo de camara -- que es justo lo que cualquier shooter hace.
+        public bool Fire(Vector3? aimPoint = null)
         {
             if (Current == null) return false;
 
-            // BUG REAL: el disparo salia siempre por transform.forward del
-            // soldado, que solo gira en yaw (RotateYaw) -- mirar arriba/
-            // abajo con el mouse movia la camara pero la bala seguia
-            // saliendo perfectamente horizontal. Se suma el mismo pitch
-            // que ya usa CameraRig.FollowOverShoulder para orientar la
-            // camara, con la misma formula, asi que apuntar al piso o al
-            // cielo ahora sí manda la bala ahí.
+            // Sin aimPoint (IA, demo automatica): se mantiene el
+            // comportamiento de siempre, forward del cuerpo + pitch de la
+            // camara del jugador si la hay.
             Vector3 direction = Current.transform.forward;
             var rig = CameraRig.Instance;
             if (rig != null)
                 direction = (Current.transform.rotation * Quaternion.Euler(-rig.Pitch, 0f, 0f)) * Vector3.forward;
+
+            if (aimPoint.HasValue)
+            {
+                var muzzle = Current.Weapon.Muzzle;
+                Vector3 origen = muzzle != null ? muzzle.position : Current.transform.position;
+                Vector3 haciaElPunto = aimPoint.Value - origen;
+                if (haciaElPunto.sqrMagnitude > 0.0001f) direction = haciaElPunto.normalized;
+            }
 
             return Current.Weapon.TryFire(Current.transform.position, direction);
         }

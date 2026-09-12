@@ -907,10 +907,15 @@ namespace SP.Player
 
             // G2: mismo Ctrl que en RTS usan Ctrl+A y Ctrl+Click (trazar
             // recorrido) -- no colisiona porque son ramas mutuamente
-            // excluyentes (UpdateFps vs UpdateRts, la misma separacion por
-            // cam.orthographic que ya usa todo el proyecto).
+            // excluyentes (UpdateFps vs UpdateRts).
             bool agacharHeld = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
             Brain.Current.Motor.SetCrouching(agacharHeld);
+
+            // G3: [Espacio] salta. No choca con el mismo [Espacio] de RTS
+            // (recentrar camara) ni con el de la camara de muerte (pedir
+            // cambio de cuerpo): son ramas mutuamente excluyentes, esta
+            // vive solo adentro de UpdateFps.
+            if (kb.spaceKey.wasPressedThisFrame) Brain.Current.Motor.Jump();
 
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked)
             {
@@ -946,7 +951,11 @@ namespace SP.Player
             if (mouse != null && mouse.leftButton.isPressed)
             {
                 bool emptyBeforeFire = Brain.Current.Weapon.CurrentAmmo <= 0 && !Brain.Current.Weapon.IsReloading;
-                bool fired = Brain.Fire();
+                // El mismo punto que ya muestra la mira (result.Point): si
+                // no golpeo nada (apuntando al cielo) se usa un punto lejano
+                // sobre el mismo rayo de camara, nunca Vector3.zero.
+                Vector3 aimPoint = result.Type != AimTargetType.None ? result.Point : ray.origin + ray.direction * Aim.MaxDistance;
+                bool fired = Brain.Fire(aimPoint);
                 // Clic seco de gatillo vacio: solo si de verdad no
                 // disparo por falta de municion (no por estar en
                 // cooldown normal entre tiros, que no deberia sonar

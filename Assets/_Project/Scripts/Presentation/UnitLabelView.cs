@@ -48,9 +48,8 @@ namespace SP.Presentation
         }
 
         // Lo llama WorldUiDirector una vez por frame, con si la camara
-        // esta en RTS ahora mismo (cam.orthographic, que CameraRig.SetMode
-        // ya usa como la marca real de "estamos en RTS" -- no hace falta
-        // otra fuente de verdad). Devuelve true si quedo visible.
+        // esta en RTS ahora mismo (CameraRig.Instance.Mode). Devuelve true
+        // si quedo visible.
         public bool Tick(bool enRts)
         {
             if (!bootstrapped) Bootstrap();

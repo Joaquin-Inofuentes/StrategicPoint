@@ -19,13 +19,38 @@ namespace SP.CameraSystem
         void OnEnable() { Instance = this; ShowWaypointsOnMainCamera(); }
         void OnDisable() { if (Instance == this) Instance = null; }
 
+        // Solo para HeadlessTestRunner: ese harness corre en Edit Mode, y
+        // Unity no manda OnEnable a un MonoBehaviour comun (sin
+        // ExecuteAlways) fuera de Play -- medido: ni siquiera forzando un
+        // ciclo enabled=false/true en el rig real de la escena, Instance
+        // se queda en null. Sin este hook, cualquier sistema que dependa
+        // de CameraRig.Instance (WorldUiDirector, AttackLineManager) es
+        // imposible de probar en ese harness.
+        public static void EnsureInstanceForTests(CameraRig rig)
+        {
+            if (rig != null) Instance = rig;
+        }
+
         [SerializeField] Camera cam;
         [SerializeField] float rtsHeight = 30f;
-        [SerializeField] float rtsOrthoSize = 20f;
-        // Pura vista de pájaro: 90° en X (mirando derecho hacia abajo), sin
-        // inclinación en Y/Z. Antes eran 55° (una vista en ángulo, no un
-        // top-down real).
-        [SerializeField] Vector3 rtsLookEuler = new Vector3(90f, 0f, 0f);
+        [SerializeField] float rtsMinHeight = 12f;
+        [SerializeField] float rtsMaxHeight = 70f;
+        // Pedido explicito: "no quiero que sea ortogonal, quiero que sea
+        // perspectiva". 90° puros (mirando derecho hacia abajo) en una
+        // camara en perspectiva se ve IGUAL que ortografico -- sin angulo no
+        // hay profundidad que mostrar. 55° es un picado real (estilo
+        // Age of Empires/Company of Heroes): se sigue leyendo el mapa desde
+        // arriba pero los soldados y el terreno muestran volumen de verdad.
+        [SerializeField] Vector3 rtsLookEuler = new Vector3(55f, 0f, 0f);
+
+        // Punto del SUELO que la camara de RTS esta mirando. En ortografico
+        // alcanzaba con la posicion XZ de la camara (miraba derecho hacia
+        // abajo, asi que lo que habia debajo YA era el foco); en perspectiva
+        // con picado la camara tiene que vivir detras-y-arriba de ese punto,
+        // no exactamente encima, o el encuadre queda corrido. Ver
+        // RtsCameraPositionFor.
+        Vector3 rtsFocusPoint;
+        float rtsCurrentHeight;
 
         // Pitch (mirar arriba/abajo) es propio de la cámara, no del cuerpo
         // del soldado: el cuerpo solo gira en yaw (RotateYaw), y acá se le
@@ -45,7 +70,9 @@ namespace SP.CameraSystem
         public void SetCamera(Camera c)
         {
             cam = c;
-            if (cam != null && !cam.orthographic) normalFov = cam.fieldOfView;
+            // La camara es SIEMPRE en perspectiva ahora (RTS incluido):
+            // pedido explicito de que no sea ortogonal.
+            if (cam != null) { cam.orthographic = false; normalFov = cam.fieldOfView; }
             ShowWaypointsOnMainCamera();
         }
 
@@ -91,9 +118,9 @@ namespace SP.CameraSystem
 
             recoilPitch = Mathf.MoveTowards(recoilPitch, 0f, Time.deltaTime * recoilRecoverySpeed);
 
-            UpdateBob(!cam.orthographic);
+            UpdateBob(Mode == ControlMode.Fps);
 
-            if (!cam.orthographic)
+            if (Mode == ControlMode.Fps)
             {
                 float goal = zoomed ? zoomFov : normalFov;
                 cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, goal, Time.deltaTime * zoomLerpSpeed);
@@ -101,17 +128,44 @@ namespace SP.CameraSystem
                 return;
             }
 
-            // En RTS: converge hacia el objetivo de paneo (ya acotado a
-            // los bordes del mapa en Pan()). No corre durante una
-            // transicion de camara (BeginTransition), que ya tiene su
-            // propio control total de la posicion.
-            if (panTargetInitialized && !IsTransitioning)
+            // En RTS: converge el PUNTO DE FOCO hacia el objetivo de paneo
+            // (ya acotado a los bordes del mapa en Pan()), y la posicion de
+            // la camara se deriva de ese foco + altura + el angulo de
+            // picado (RtsCameraPositionFor) -- no se mueve directo, porque
+            // en perspectiva la camara no vive exactamente encima de lo que
+            // mira. No corre durante una transicion de camara
+            // (BeginTransition), que ya tiene su propio control total de la
+            // posicion.
+            if (!IsTransitioning)
             {
-                var target = new Vector3(panTarget.x, transform.position.y, panTarget.z);
-                transform.position = Vector3.Lerp(transform.position, target, Time.deltaTime * panSmoothSpeed);
+                if (panTargetInitialized)
+                {
+                    var focusXZ = new Vector3(rtsFocusPoint.x, 0f, rtsFocusPoint.z);
+                    var targetXZ = new Vector3(panTarget.x, 0f, panTarget.z);
+                    var lerped = Vector3.Lerp(focusXZ, targetXZ, Time.deltaTime * panSmoothSpeed);
+                    rtsFocusPoint = new Vector3(lerped.x, rtsFocusPoint.y, lerped.z);
+                }
+                transform.rotation = Quaternion.Euler(rtsLookEuler);
+                transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
             }
 
             ApplyCameraOffsets(frame);
+        }
+
+        // Deriva la posicion de la camara a partir de DONDE mira (foco en
+        // el suelo) y de QUE TAN ALTO esta -- inverso de "la camara esta en
+        // (x,height,z) mirando con rtsLookEuler, ¿que punto del suelo cae
+        // en el centro de pantalla?". Con picado puro (90°) la camara vive
+        // justo encima del foco; con picado angulado (el caso real ahora)
+        // tiene que vivir ademas retrasada en Z, si no el foco queda
+        // arriba/abajo del centro de la pantalla en vez de en el medio.
+        Vector3 RtsCameraPositionFor(Vector3 focus, float height)
+        {
+            Vector3 forward = Quaternion.Euler(rtsLookEuler) * Vector3.forward;
+            float descenso = -forward.y; // positivo: cuanto mira hacia abajo
+            if (descenso < 0.01f) return focus + Vector3.up * height; // picado casi nulo: evita dividir por ~0
+            float t = height / descenso;
+            return focus - forward * t;
         }
 
         public void AddPitch(float delta) => pitch = Mathf.Clamp(pitch + delta, -MaxPitch, MaxPitch);
@@ -174,7 +228,8 @@ namespace SP.CameraSystem
         }
 
         // Balanceo al caminar (183). Solo en primera persona: en RTS la
-        // camara es ortografica y cenital, balancearla ahi solo marea.
+        // camara mira el mapa desde arriba con picado fijo, balancearla
+        // ahi solo marea.
         bool walking;
         float bobPhase;
         public Vector3 BobOffset { get; private set; }
@@ -207,8 +262,8 @@ namespace SP.CameraSystem
         // jugador armo (paneo + zoom) cada vez que vuelve. Sin esto, cada
         // regreso a RTS recentraba en el poseido, tirando cualquier
         // observacion de otra zona del mapa.
-        Vector3? savedRtsPosition;
-        float savedRtsOrthoSize = -1f;
+        Vector3? savedRtsFocus;
+        float savedRtsHeight = -1f;
 
         public void SetMode(ControlMode mode, Vector3? rtsFallbackCenter = null)
         {
@@ -218,14 +273,18 @@ namespace SP.CameraSystem
             // Guardar la vista RTS justo antes de dejarla, no al entrar:
             // es la unica forma de capturar el ultimo estado real (paneo,
             // zoom) que el jugador dejo, en vez de un valor viejo.
-            if (wasRts && !goingToRts && cam != null)
+            if (wasRts && !goingToRts)
             {
-                savedRtsPosition = transform.position;
-                savedRtsOrthoSize = cam.orthographicSize;
+                savedRtsFocus = rtsFocusPoint;
+                savedRtsHeight = rtsCurrentHeight;
             }
 
             Mode = mode;
-            if (cam != null) cam.orthographic = mode == ControlMode.Rts;
+            // Volver a FPS con el FOV que habia quedado a mitad de zoom de
+            // RTS (o viceversa) se veria como un salto -- cada modo arranca
+            // con su FOV de reposo, y el lerp de LateUpdate (solo en FPS)
+            // se encarga de la mirilla desde ahi.
+            if (cam != null) cam.fieldOfView = normalFov;
 
             if (goingToRts && !wasRts && rtsFallbackCenter.HasValue)
                 RestoreOrSetRtsView(rtsFallbackCenter.Value);
@@ -239,13 +298,14 @@ namespace SP.CameraSystem
         public void RestoreOrSetRtsView(Vector3 fallbackCenter)
         {
             CancelTransition();
-            if (savedRtsPosition.HasValue && savedRtsOrthoSize > 0f)
+            if (savedRtsFocus.HasValue && savedRtsHeight > 0f)
             {
-                transform.position = savedRtsPosition.Value;
+                rtsFocusPoint = savedRtsFocus.Value;
+                rtsCurrentHeight = savedRtsHeight;
                 transform.rotation = Quaternion.Euler(rtsLookEuler);
-                if (cam != null) cam.orthographicSize = savedRtsOrthoSize;
+                transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
                 // El objetivo de paneo suavizado debe re-sincronizarse con
-                // la posicion recien restaurada -- si no, el primer Pan()
+                // el foco recien restaurado -- si no, el primer Pan()
                 // arrancaria el lerp desde donde haya quedado el objetivo
                 // de la sesion RTS anterior (o de FPS), un salto visible.
                 panTargetInitialized = false;
@@ -415,12 +475,24 @@ namespace SP.CameraSystem
         // usa el agachado (ver SoldierMotor.EyeHeightDrop) para que la
         // camara baje junto con el cuerpo en vez de quedarse flotando a la
         // altura de pie de siempre. 0 = sin cambios, comportamiento previo.
+        //
+        // Pedido explicito: "la camara estara con el soldado actual
+        // encuadrado a la izquierda". Antes la camara vivia justo detras
+        // del pivote mirando derecho adelante: el soldado quedaba
+        // perfectamente centrado (tapando su propio punto de mira). El
+        // desplazamiento lateral mueve la CAMARA hacia la derecha del
+        // cuerpo sin reapuntarla hacia el (misma rotacion "look" de
+        // siempre) -- eso es justo lo que hace que el soldado se vea
+        // correrse al lado izquierdo de la pantalla, como en cualquier
+        // shooter en tercera persona por encima del hombro.
+        [SerializeField] float shoulderSideOffset = 0.55f;
+
         public void FollowOverShoulder(Transform target, float distance = 4f, float height = 1.53f, float heightOffset = 0f)
         {
             if (target == null || IsTransitioning) return;
             Vector3 pivot = target.position + Vector3.up * (height - heightOffset);
             Quaternion look = target.rotation * Quaternion.Euler(-(pitch + recoilPitch), 0f, 0f);
-            Vector3 desired = pivot - (look * Vector3.forward) * distance;
+            Vector3 desired = pivot - (look * Vector3.forward) * distance + (look * Vector3.right) * shoulderSideOffset;
 
             if (blendActive)
             {
@@ -507,9 +579,10 @@ namespace SP.CameraSystem
         public void SetRtsView(Vector3 center)
         {
             CancelTransition();
-            if (cam != null) cam.orthographicSize = rtsOrthoSize;
-            transform.position = center + Vector3.up * rtsHeight;
+            rtsFocusPoint = new Vector3(center.x, 0f, center.z);
+            rtsCurrentHeight = rtsHeight;
             transform.rotation = Quaternion.Euler(rtsLookEuler);
+            transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
             panTargetInitialized = false;
         }
 
@@ -553,7 +626,7 @@ namespace SP.CameraSystem
 
         public void Pan(Vector3 worldDelta)
         {
-            if (!panTargetInitialized) { panTarget = transform.position; panTargetInitialized = true; }
+            if (!panTargetInitialized) { panTarget = rtsFocusPoint; panTargetInitialized = true; }
             panTarget += worldDelta;
             AcotarAlMapa(ref panTarget);
         }
@@ -566,7 +639,7 @@ namespace SP.CameraSystem
         public void RecenterOn(Vector3 point)
         {
             panTargetInitialized = true;
-            var destino = new Vector3(point.x, transform.position.y, point.z);
+            var destino = new Vector3(point.x, 0f, point.z);
             AcotarAlMapa(ref destino);
             panTarget = destino;
         }
@@ -576,17 +649,16 @@ namespace SP.CameraSystem
         // nada mas. Expone si el ultimo Zoom se topo con un extremo.
         public bool ZoomAtLimit { get; private set; }
 
+        // En perspectiva no hay "orthographicSize" que acercar/alejar: el
+        // equivalente es la ALTURA de la camara sobre su foco (mas cerca
+        // del suelo = mas zoom). Mismo signo que antes (delta positivo
+        // acerca) para que la rueda del mouse se siga sintiendo igual.
         public void Zoom(float delta)
         {
-            if (cam == null) return;
-            // OJO: comparar "antes vs despues del clamp" esta mal si ya
-            // se estaba justo en el limite (antes==despues sin que este
-            // Zoom haya pedido nada extra). Lo que importa es si el
-            // valor SIN acotar se hubiera ido afuera del rango.
-            float raw = cam.orthographicSize - delta;
-            float clamped = Mathf.Clamp(raw, 6f, 60f);
+            float raw = rtsCurrentHeight - delta;
+            float clamped = Mathf.Clamp(raw, rtsMinHeight, rtsMaxHeight);
             ZoomAtLimit = Mathf.Abs(raw - clamped) > 0.001f;
-            cam.orthographicSize = clamped;
+            rtsCurrentHeight = clamped;
         }
     }
 }

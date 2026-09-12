@@ -4,6 +4,7 @@ using UnityEngine.SceneManagement;
 using SP.Actors;
 using SP.Combat;
 using SP.Core;
+using SP.CameraSystem;
 
 namespace SP.Presentation
 {
@@ -217,11 +218,11 @@ namespace SP.Presentation
                 if (icon.IsRendered) visible++;
             }
 
-            // C1: etiquetas al pie, solo en RTS. cam.orthographic es la
-            // MISMA marca que CameraRig.SetMode ya escribe para distinguir
-            // el modo (ver el comentario en UnitLabelView) -- no hace
-            // falta otra fuente de verdad ni consultar al driver de input.
-            bool enRts = hasCam && cam.orthographic;
+            // C1: etiquetas al pie, solo en RTS. Antes se usaba
+            // cam.orthographic como marca de modo (CameraRig.SetMode la
+            // escribia); con la RTS en perspectiva (pedido explicito) esa
+            // marca deja de existir y se consulta el modo real del rig.
+            bool enRts = CameraRig.Instance != null && CameraRig.Instance.Mode == ControlMode.Rts;
             for (int i = unitLabels.Count - 1; i >= 0; i--)
             {
                 var label = unitLabels[i];

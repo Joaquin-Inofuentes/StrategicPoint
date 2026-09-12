@@ -89,6 +89,7 @@ namespace SP.EditorTools
             ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamAdelante, AnimatorControllerParameterType.Float);
             ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamLateral, AnimatorControllerParameterType.Float);
             ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamAgachado, AnimatorControllerParameterType.Bool);
+            ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamSalto, AnimatorControllerParameterType.Bool);
             ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamMuerto, AnimatorControllerParameterType.Bool);
             ctrl.AddParameter(SP.Presentation.SoldierAnimatorDriver.ParamMuerteVariante, AnimatorControllerParameterType.Int);
 
@@ -112,6 +113,37 @@ namespace SP.EditorTools
 
             AgregarTransicionBool(dePie, agachado, SP.Presentation.SoldierAnimatorDriver.ParamAgachado, true);
             AgregarTransicionBool(agachado, dePie, SP.Presentation.SoldierAnimatorDriver.ParamAgachado, false);
+
+            // Salto (G3): tres clips en secuencia -- despegue (una vez),
+            // aire (en loop mientras el bool siga prendido) y aterrizaje
+            // (una vez, al apagarse). SoldierMotor.IsJumping ya garantiza
+            // que no se pueda saltar estando agachado, asi que esta rama
+            // solo hace falta desde DePie.
+            var saltoArriba = sm0.AddState("SaltoArriba");
+            var saltoAire = sm0.AddState("SaltoAire");
+            var saltoAbajo = sm0.AddState("SaltoAbajo");
+            saltoArriba.motion = Clip("jump up");
+            saltoAire.motion = Clip("jump loop");
+            saltoAbajo.motion = Clip("jump down");
+
+            AgregarTransicionBool(dePie, saltoArriba, SP.Presentation.SoldierAnimatorDriver.ParamSalto, true);
+
+            var arribaAAire = saltoArriba.AddTransition(saltoAire);
+            arribaAAire.hasExitTime = true;
+            arribaAAire.exitTime = 0.85f;
+            arribaAAire.duration = 0.1f;
+
+            AgregarTransicionBool(saltoAire, saltoAbajo, SP.Presentation.SoldierAnimatorDriver.ParamSalto, false);
+            // Si el salto termina (aterrizo) ANTES de que la subida
+            // termine de reproducirse -- un salto corto, cadencia normal
+            // de juego -- tiene que poder bajar igual sin esperar a que
+            // SaltoArriba llegue a su exit time.
+            AgregarTransicionBool(saltoArriba, saltoAbajo, SP.Presentation.SoldierAnimatorDriver.ParamSalto, false);
+
+            var abajoADePie = saltoAbajo.AddTransition(dePie);
+            abajoADePie.hasExitTime = true;
+            abajoADePie.exitTime = 0.85f;
+            abajoADePie.duration = 0.15f;
 
             // Muerte: una variante por clip, alcanzable desde CUALQUIER
             // estado (AnyState) -- de pie, agachado, a mitad de un blend,

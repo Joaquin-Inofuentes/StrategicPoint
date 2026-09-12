@@ -66,6 +66,10 @@ namespace SP.Presentation
         // fuente de verdad (SoldierMotor.IsCrouching), asi que agacharse
         // siempre se ve Y se siente igual.
         public const string ParamAgachado = "Agachado";
+        // Salto (G3): igual que Agachado, un bool atado a SoldierMotor.
+        // IsJumping -- la presentacion no decide saltar, solo muestra lo
+        // que el motor ya esta haciendo.
+        public const string ParamSalto = "Salto";
         // Muerte: un bool (no un Trigger) para que revivir sea la misma
         // moneda al reves -- CubeFxReactor lo pone en true al morir, y en
         // false al reactivarse ya viva (ver CubeFxReactor.OnEnable), y el
@@ -183,7 +187,10 @@ namespace SP.Presentation
             animator.SetFloat(ParamLateral, Vector3.Dot(direccionSuavizada, transform.right) / escala);
 
             if (soldier != null && soldier.Motor != null)
+            {
                 animator.SetBool(ParamAgachado, soldier.Motor.IsCrouching);
+                animator.SetBool(ParamSalto, soldier.Motor.IsJumping);
+            }
 
             restanteDeDisparo = Mathf.Max(0f, restanteDeDisparo - dt);
             float objetivo = restanteDeDisparo > 0f ? 1f : 0f;

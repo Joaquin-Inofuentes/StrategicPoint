@@ -502,8 +502,55 @@ namespace SP.EditorTools
         internal static void CorregirAlturaDeCadera()
         {
             CorregirGrupoDeAltura("walking", ClipsDeMarchaACorregir);
+            CorregirPisoDeAgachado();
             CorregirGrupoDeAltura("idle crouching aiming", ClipsAgachadoACorregir);
             AssetDatabase.SaveAssets();
+        }
+
+        // BUG REAL reportado por el usuario: "cuando se agacha con Ctrl no
+        // se entierre". El grupo agachado entero (CorregirGrupoDeAltura de
+        // abajo) se calibra CONTRA "idle crouching aiming", pero esa
+        // calibracion solo garantiza que los 9 clips agachados queden
+        // CONSISTENTES entre si -- nunca valido que la referencia misma
+        // tocara el piso de verdad. Medido en Play mode con los huesos del
+        // Humanoid (Animator.GetBoneTransform): con el clip tal como lo
+        // exporta Mixamo, LeftToes/RightToes quedan en Y=-0.087/-0.083 --
+        // POR DEBAJO del piso (Y=0) -- mientras de pie ("walking", ya
+        // validado en juego) quedan en +0.13. Mismo principio que
+        // CorregirGrupoDeAltura (desplazar la curva entera por una
+        // constante, no reemplazarla) pero el objetivo es una ALTURA
+        // ABSOLUTA fija, no relativa a otro clip: asi corregirla dos veces
+        // (por ejemplo en dos cargas de dominio distintas) converge al
+        // mismo resultado en vez de acumular el offset cada vez, que es
+        // justo el riesgo de cualquier correccion que sume sin mirar el
+        // estado actual.
+        //
+        // Constante medida: RootT.y promedio del clip crudo = 0.32742; para
+        // levantar los dedos del pie ~0.10 (de -0.085 de promedio a +0.015,
+        // un margen chico por encima del piso) el promedio objetivo es
+        // 0.32742 + 0.10 = 0.4274.
+        const float AlturaDePisoObjetivoAgachado = 0.4274f;
+
+        static void CorregirPisoDeAgachado()
+        {
+            var clip = CargarClip("idle crouching aiming");
+            if (clip == null) return;
+            if (!TryPromedioRootTy(clip, out float alturaActual)) return;
+
+            float delta = AlturaDePisoObjetivoAgachado - alturaActual;
+            if (Mathf.Abs(delta) < 0.005f) return; // ya calibrado, no tocar keys de mas
+
+            foreach (var binding in AnimationUtility.GetCurveBindings(clip))
+            {
+                if (binding.propertyName != "RootT.y") continue;
+                var curva = AnimationUtility.GetEditorCurve(clip, binding);
+                var keys = curva.keys;
+                for (int k = 0; k < keys.Length; k++) keys[k].value += delta;
+                curva.keys = keys;
+                AnimationUtility.SetEditorCurve(clip, binding, curva);
+            }
+            EditorUtility.SetDirty(clip);
+            Debug.Log($"[ArtSetup] 'idle crouching aiming': piso corregido de {alturaActual:F4} a {AlturaDePisoObjetivoAgachado:F4} (delta {delta:F4}).");
         }
 
         static void CorregirGrupoDeAltura(string nombreReferencia, string[] clipsACorregir)

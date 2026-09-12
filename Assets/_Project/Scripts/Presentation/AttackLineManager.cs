@@ -3,6 +3,7 @@ using UnityEngine;
 using SP.Core;
 using SP.Actors;
 using SP.Ai;
+using SP.CameraSystem;
 
 namespace SP.Presentation
 {
@@ -23,12 +24,14 @@ namespace SP.Presentation
             // A LA CAMARA en cada punto (alignment View, el default) --
             // de cerca y en un angulo rasante eso proyecta como un
             // triangulo enorme y oscuro tapando media pantalla, no como
-            // la lineita fina que se ve bien desde arriba en RTS. Reusa
-            // la misma señal que ya separa FPS de RTS en todo el
-            // proyecto (CameraRig.SetMode pone cam.orthographic=true
-            // solo en RTS) para no dibujarla fuera de ahi.
-            var cam = Camera.main;
-            if (cam == null || !cam.orthographic)
+            // la lineita fina que se ve bien desde arriba en RTS. Antes
+            // esto leia cam.orthographic como marca de "estamos en RTS"
+            // (CameraRig.SetMode la ponia en true solo ahi); con la RTS
+            // ahora en perspectiva (pedido explicito de que no sea
+            // ortogonal) esa marca ya no existe, asi que se consulta
+            // directamente el modo del rig.
+            var rig = CameraRig.Instance;
+            if (rig == null || rig.Mode != ControlMode.Rts)
             {
                 if (lines.Count > 0) RemoveAllLines();
                 return;
