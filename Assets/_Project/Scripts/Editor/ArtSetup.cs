@@ -663,5 +663,41 @@ namespace SP.EditorTools
                 finally { encolado = false; }
             }
         }
+
+        // BUG REAL, tercera vuelta: el usuario reporto la cadera hundida
+        // de nuevo en SC_Gameplay DESPUES de que el postprocessor de
+        // arriba ya estuviera en el proyecto. Medido: "walking" seguia en
+        // 0.9457 (su propio valor, no depende de nada) pero "walk
+        // backward"/"walk right"/"walk left"/etc volvieron a su altura
+        // cruda de Mixamo (~0.38-0.40) -- exactamente el patron de antes.
+        // RecalibrarAlturaAlReimportar de arriba SOLO reacciona a un
+        // reimport EN VIVO de un FBX del pack: si la cache de Library ya
+        // nacio sin la correccion (por ejemplo, un entorno que no
+        // persiste Library entre sesiones, que es lo que parece haber
+        // pasado aca) no hay ningun reimport que lo dispare, y el bug
+        // queda asentado hasta que alguien se acuerde de correr
+        // ConfigurarTodo() a mano -- que es justo el problema original
+        // que todo este archivo existe para evitar.
+        //
+        // [InitializeOnLoad] corre en CADA carga de dominio (arranque del
+        // Editor, recompilacion de scripts, entrar o salir de Play mode)
+        // sin depender de que algo dispare un reimport: una red de
+        // seguridad adicional, no un reemplazo del postprocessor de
+        // arriba (que sigue haciendo falta para el caso de un reimport
+        // suelto en pleno uso del Editor, que no recarga el dominio).
+        // Llamada directa y no por delayCall, mismo motivo medido que en
+        // RecalibrarAlturaAlReimportar: delayCall no es confiable en esta
+        // automatizacion. CorregirAlturaDeCadera ya sale rapido si algo
+        // no esta importado todavia (CargarClip devuelve null) o si el
+        // grupo ya esta calibrado (delta < 0.01), asi que correrla en
+        // cada carga de dominio no es trabajo de mas en el caso normal.
+        [InitializeOnLoad]
+        static class RecalibrarAlturaAlCargarDominio
+        {
+            static RecalibrarAlturaAlCargarDominio()
+            {
+                CorregirAlturaDeCadera();
+            }
+        }
     }
 }
