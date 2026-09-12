@@ -2895,7 +2895,21 @@ namespace SP.Player
         Vector2 ScreenToCanvasLocal(Vector2 screenPoint)
         {
             var canvasRect = SelectionBox.rectTransform.parent as RectTransform;
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPoint, Rig.Cam, out var local);
+            // BUG REAL encontrado sacando capturas de RTS: el Canvas de
+            // UI_Canvas es Screen Space - Overlay (verificado en runtime),
+            // no Screen Space - Camera. Para Overlay, RectTransformUtility
+            // exige pasar cam=null -- pasarle Rig.Cam (como hacia esto
+            // antes) le pide a Unity que haga un raycast de camara y
+            // proyecte sobre el plano del RectTransform en 3D, un calculo
+            // que no tiene nada que ver con como el Overlay en realidad se
+            // dibuja (mapeo directo pixel-a-local). Con la camara de FPS
+            // (cerca del origen) el resultado quedaba, por coincidencia,
+            // parecido al correcto; con la camara RTS (lejos y en angulo)
+            // el cuadro de seleccion salia consistentemente minusculo --
+            // medido: pedir un rectangulo de 1400x650 px en pantalla daba
+            // un tamano de canvas de apenas 16x15, en vez de los 700x325
+            // esperados (con el factor 2 del CanvasScaler).
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, screenPoint, null, out var local);
             // El SelectionBox tiene pivot/anchors en (0,0): sus coordenadas
             // son relativas a la esquina inferior-izquierda del Canvas, no a
             // su centro (que es de donde sale "local").
