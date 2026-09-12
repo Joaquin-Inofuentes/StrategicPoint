@@ -43,7 +43,13 @@ namespace SP.UI
             int enemiesAlive = ActorRegistry.CountAlive(TeamId.Enemy);
             int squadAlive = ActorRegistry.CountAlive(TeamId.Player);
 
-            label.text = $"ENEMIGOS  {enemiesAlive}          ESCUADRA  {squadAlive}";
+            // Formato compacto (antes 10 espacios sueltos entre los dos
+            // valores): con las letras dobladas de tamaño, ese relleno
+            // pedia una caja mucho mas ancha y esa caja arrancaba a
+            // pisar el roster de la escuadra (arriba a la izquierda) en
+            // pantallas o zoom de HUD mas chicos. El separador "·" es el
+            // mismo que ya usa el resto del HUD (roster, panel de arma).
+            label.text = $"ENEMIGOS {enemiesAlive}   ·   ESCUADRA {squadAlive}";
         }
 
         // Nota: se cuenta contra el registro global (ActorRegistry), no

@@ -25,7 +25,15 @@ namespace SP.Presentation
         // accesibilidad: tamaño de HUD y de mirilla.
         public CanvasScaler HudScaler;
         public AimUI AimUiRef;
-        static readonly Vector2 BaseReferenceResolution = new Vector2(1920f, 1080f);
+        // Pedido explicito: "duplica los tamaños de letras de todo" -- esta
+        // es la resolucion que representa el 1.00 de la barra de "Tamaño de
+        // HUD" (ver mas abajo, HudScaler.referenceResolution = Base / v).
+        // Bajarla a la mitad de la resolucion real de referencia (1920x1080)
+        // duplica el HUD entero para CUALQUIER valor guardado de la barra,
+        // sin correrle el rango ni el 1.00 de default que el jugador ya
+        // conoce -- ver el mismo numero y la misma explicacion en
+        // HeadlessTestRunner.BuildUI.
+        static readonly Vector2 BaseReferenceResolution = new Vector2(960f, 540f);
 
         const string PrefVolume = "sp_volume";
         const string PrefSensitivity = "sp_sensitivity";

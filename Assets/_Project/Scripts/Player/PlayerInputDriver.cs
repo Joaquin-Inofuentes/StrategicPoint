@@ -868,10 +868,12 @@ namespace SP.Player
                 AimUiRef.SetVisible(true);
                 AimUiRef.SetWatchedShooter(Brain.Current.Id);
                 AimUiRef.SetSpread01(Brain.Current.Weapon.SpreadFraction01);
-                // Pedido explicito: "la mirilla con click derecho que tenga
-                // el doble de tamaño". El blur de fondo mientras se apunta
-                // (PostFxDirector) ya lee Rig.EstaConZoom por su cuenta.
-                AimUiRef.SetCrosshairZoomScale(Rig.EstaConZoom ? 2f : 1f);
+                // Pedido explicito (segunda vuelta): "el tamaño de la lupa
+                // que sea 4 veces mas tamaño que el actual" -- el doble
+                // pedido antes se quedaba corto. El blur de fondo mientras
+                // se apunta (PostFxDirector) ya lee Rig.EstaConZoom por su
+                // cuenta.
+                AimUiRef.SetCrosshairZoomScale(Rig.EstaConZoom ? 4f : 1f);
             }
             if (SelectionCount != null) SelectionCount.SetModeVisible(false);
 

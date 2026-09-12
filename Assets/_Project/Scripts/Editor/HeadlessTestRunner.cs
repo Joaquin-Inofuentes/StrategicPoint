@@ -31,7 +31,6 @@ namespace SP.EditorTools
         static SelectedSoldierUI rosterUiRef;
         static InstructionBannerView instructionUiRef;
         static PhaseBannerView phaseBannerRef;
-        static NearbySquadListView squadListRef;
         static Image selectionBoxRef;
         static MinimapFollow minimapFollowRef;
         static Transform canvasRootRef;
@@ -1034,7 +1033,13 @@ namespace SP.EditorTools
             Check("Se apunto al suelo", resultGround.Type == AimTargetType.Ground);
 
             aimUiRef.UpdateFromAimResult(resultGround);
-            Check($"Aparecio UI: \"{aimUiRef.CurrentPrompt}\" (tecla T para ir a esa posicion)", aimUiRef.CurrentPrompt.Contains("T"));
+            // Pedido explicito: el cartel de "[T] Ir aqui" se apaga al
+            // apuntar al piso raso -- es el estado por default de la mira
+            // (todo lo que no es aliado/enemigo/vehiculo/obstaculo), asi
+            // que mostrarlo ahi era ruido permanente por una accion que el
+            // jugador ya sabe que existe. El chequeo real de que T sigue
+            // funcionando viene dos lineas mas abajo (IssueMoveOrder).
+            Check("No aparece cartel de UI al apuntar al piso (accion ya conocida)", string.IsNullOrEmpty(aimUiRef.CurrentPrompt));
 
             TestLog.Step("Se simula apretar T");
             var nearestFree = OrderService.FindNearestFreeAlly(resultGround.Point, TeamId.Player, kes);
@@ -4117,7 +4122,24 @@ namespace SP.EditorTools
 
             var scaler = canvasGO.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            // Pedido explicito: "duplica los tamaños de letras de todo" +
+            // "son muy chicos... letras mas grandes y mejores iconos".
+            // Con ScaleWithScreenSize el multiplicador real de toda la UI
+            // no es un numero que se pueda tocar directo -- es la relacion
+            // entre la resolucion real de pantalla y esta "resolucion de
+            // referencia": a MENOS referencia, cada unidad de diseño ocupa
+            // MAS pixeles reales. Reducir el ancho y el alto a la mitad
+            // duplica ese factor EXACTO (es una potencia de 2 en ambos
+            // ejes, asi que da lo mismo cual sea matchWidthOrHeight) para
+            // TODO lo que cuelga de este Canvas a la vez -- texto, barras,
+            // paneles, iconos -- sin tener que ir elemento por elemento
+            // duplicando fontSize y volver a acomodar a mano cada
+            // sizeDelta para que no se recorten entre si. PauseController
+            // pisa este valor con su propio BaseReferenceResolution (mismo
+            // numero, ver ahi) apenas arranca Play mode; se deja igual aca
+            // para que Edit mode y las capturas de la suite headless
+            // coincidan con lo que ve el jugador.
+            scaler.referenceResolution = new Vector2(960f, 540f);
             scaler.matchWidthOrHeight = 0.5f;
             hudScalerRef = scaler;
 
@@ -4355,7 +4377,14 @@ namespace SP.EditorTools
             msRt.anchorMax = new Vector2(0.5f, 1f);
             msRt.pivot = new Vector2(0.5f, 1f);
             msRt.anchoredPosition = new Vector2(0f, -14f);
-            msRt.sizeDelta = new Vector2(360f, 34f);
+            // Pedido explicito: "duplica los tamaños de letras de todo".
+            // Con el HUD entero al doble, este panel centrado (360 de
+            // ancho) empezaba a pisar el roster de la escuadra (arriba a
+            // la izquierda, hasta x=256) en pantallas mas angostas o con
+            // el HUD escalado mas grande via el slider de accesibilidad.
+            // El texto se acorto (ver MissionStatusView.Refresh) para que
+            // 280 le siga alcanzando de sobra.
+            msRt.sizeDelta = new Vector2(280f, 34f);
 
             var msTextGO = new GameObject("Text", typeof(Text));
             msTextGO.transform.SetParent(msGO.transform, false);
@@ -4799,7 +4828,6 @@ namespace SP.EditorTools
 
             BuildInstructionBanner(canvasGO.transform);
             BuildPhaseBanner(canvasGO.transform);
-            BuildNearbySquadList(canvasGO.transform, squad);
             BuildSelectionBox(canvasGO.transform);
             BuildMinimap(canvasGO.transform, cam);
             BuildPauseUI(canvasGO.transform);
@@ -4997,106 +5025,6 @@ namespace SP.EditorTools
             var view = go.GetComponent<PhaseBannerView>();
             view.Bind(text);
             phaseBannerRef = view;
-        }
-
-        static void BuildNearbySquadList(Transform canvasParent, List<Soldier> squad)
-        {
-            var panelGO = new GameObject("NearbySquadPanel", typeof(RectTransform), typeof(Image));
-            panelGO.transform.SetParent(canvasParent, false);
-            panelGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.45f);
-            var panelRt = panelGO.GetComponent<RectTransform>();
-            panelRt.anchorMin = new Vector2(0f, 0f);
-            panelRt.anchorMax = new Vector2(0f, 0f);
-            panelRt.pivot = new Vector2(0f, 0f);
-            // Margen unificado a 16px con el resto del HUD (antes 20).
-            panelRt.anchoredPosition = new Vector2(16f, 16f);
-            panelRt.sizeDelta = new Vector2(260f, 120f);
-
-            var viewportGO = new GameObject("Viewport", typeof(RectTransform), typeof(Image), typeof(Mask));
-            viewportGO.transform.SetParent(panelGO.transform, false);
-            viewportGO.GetComponent<Image>().color = new Color(1f, 1f, 1f, 0.02f);
-            viewportGO.GetComponent<Mask>().showMaskGraphic = false;
-            var viewportRt = viewportGO.GetComponent<RectTransform>();
-            viewportRt.anchorMin = Vector2.zero;
-            viewportRt.anchorMax = Vector2.one;
-            viewportRt.offsetMin = new Vector2(4f, 4f);
-            viewportRt.offsetMax = new Vector2(-4f, -4f);
-
-            var contentGO = new GameObject("Content", typeof(RectTransform));
-            contentGO.transform.SetParent(viewportGO.transform, false);
-            var contentRt = contentGO.GetComponent<RectTransform>();
-            contentRt.anchorMin = new Vector2(0f, 1f);
-            contentRt.anchorMax = new Vector2(0f, 1f);
-            contentRt.pivot = new Vector2(0f, 1f);
-            contentRt.sizeDelta = new Vector2(252f, squad.Count * 48f);
-            contentRt.anchoredPosition = Vector2.zero;
-
-            var scrollRect = panelGO.AddComponent<ScrollRect>();
-            scrollRect.content = contentRt;
-            scrollRect.viewport = viewportRt;
-            scrollRect.horizontal = false;
-            scrollRect.vertical = true;
-            scrollRect.movementType = ScrollRect.MovementType.Clamped;
-
-            var listView = panelGO.AddComponent<NearbySquadListView>();
-
-            for (int i = 0; i < squad.Count; i++)
-            {
-                var rowGO = new GameObject($"NearbyRow_{squad[i].DisplayName}", typeof(Image));
-                rowGO.transform.SetParent(contentGO.transform, false);
-                // BUG REAL que esto corrige ("necesito q sea texto blanco y
-                // fondo oscuro"): el fondo era blanco casi transparente
-                // (alfa 0,08) detras de texto BLANCO -- misma luminancia
-                // que el texto, cero contraste. Con el mundo de fondo
-                // (terreno claro) el texto quedaba practicamente invisible.
-                // Mismo tono oscuro y opaco que ya usa el resto del HUD
-                // (VehicleStatus, WeaponStatus, etc.).
-                rowGO.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.85f);
-                var rowRt = rowGO.GetComponent<RectTransform>();
-                rowRt.anchorMin = new Vector2(0f, 1f);
-                rowRt.anchorMax = new Vector2(1f, 1f);
-                rowRt.pivot = new Vector2(0.5f, 1f);
-                rowRt.anchoredPosition = new Vector2(0f, -i * 48f);
-                rowRt.sizeDelta = new Vector2(0f, 44f);
-
-                var labelGO = new GameObject("Label", typeof(Text));
-                labelGO.transform.SetParent(rowGO.transform, false);
-                var labelTxt = labelGO.GetComponent<Text>();
-                labelTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                labelTxt.color = Color.white;
-                labelTxt.fontSize = FontChico;
-                labelTxt.alignment = TextAnchor.UpperLeft;
-                var labelRt = labelGO.GetComponent<RectTransform>();
-                labelRt.anchorMin = new Vector2(0f, 0f);
-                labelRt.anchorMax = new Vector2(1f, 1f);
-                labelRt.offsetMin = new Vector2(6f, 6f);
-                labelRt.offsetMax = new Vector2(0f, 0f);
-
-                // Barra de vida real (no solo el número), fina, abajo del todo.
-                var healthBgGO = new GameObject("HealthBG", typeof(Image));
-                healthBgGO.transform.SetParent(rowGO.transform, false);
-                healthBgGO.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.5f);
-                var healthBgRt = healthBgGO.GetComponent<RectTransform>();
-                healthBgRt.anchorMin = new Vector2(0f, 0f);
-                healthBgRt.anchorMax = new Vector2(1f, 0f);
-                healthBgRt.pivot = new Vector2(0f, 0f);
-                healthBgRt.anchoredPosition = new Vector2(6f, 3f);
-                healthBgRt.sizeDelta = new Vector2(-12f, 5f);
-
-                var healthFillGO = new GameObject("HealthFill", typeof(Image));
-                healthFillGO.transform.SetParent(healthBgGO.transform, false);
-                var healthFillImg = healthFillGO.GetComponent<Image>();
-                healthFillImg.color = new Color(0.35f, 0.85f, 0.4f);
-                healthFillImg.type = Image.Type.Filled;
-                healthFillImg.fillMethod = Image.FillMethod.Horizontal;
-                healthFillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
-                healthFillImg.fillAmount = 1f;
-                StretchFull(healthFillGO.GetComponent<RectTransform>());
-
-                listView.AddEntry(squad[i], rowGO, labelTxt, healthFillImg);
-            }
-
-            squadListRef = listView;
         }
 
         static Button BuildUIButton(Transform parent, string name, string label, Vector2 anchoredPos, Color color)

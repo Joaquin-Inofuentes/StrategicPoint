@@ -559,7 +559,16 @@ namespace SP.UI
                     currentAimTint = esDestructible ? DestructibleTint : ObstacleTint;
                     break;
                 case AimTargetType.Ground:
-                    CurrentPrompt = "[T] Ir aquí";
+                    // Pedido explicito: "q se vea solo cuando apunto a algo.
+                    // Ya se sabe q con T iran a esa posicion. Asi omites
+                    // pisos" -- el piso raso es el estado por default de la
+                    // mira (todo lo que no sea aliado/enemigo/vehiculo/
+                    // obstaculo cae aca), asi que el cartel quedaba prendido
+                    // casi todo el tiempo de juego, tapando pantalla por una
+                    // accion que el jugador ya sabe que existe. Ahora el
+                    // piso no dispara cartel -- el anillo de la mira ya
+                    // marca el punto de impacto sin hacer falta el texto.
+                    CurrentPrompt = "";
                     currentAimTint = crosshairBaseColor;
                     break;
                 default:

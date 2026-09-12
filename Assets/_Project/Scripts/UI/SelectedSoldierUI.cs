@@ -119,8 +119,20 @@ namespace SP.UI
                 string estado = isPossessed ? "(vos)" : (row.Brain != null ? StateLabel(row.Brain.State) : "");
                 string estadoSuffix = string.IsNullOrEmpty(estado) ? "" : $"   ·   {estado}";
 
+                // Distancia al jugador: era lo unico que le faltaba a este
+                // roster frente al panel duplicado de abajo a la izquierda
+                // (NearbySquadPanel) -- absorbida aca para no mostrar la
+                // misma lista de escuadra dos veces en pantalla. Al propio
+                // soldado poseido no tiene sentido mostrarsela (siempre 0).
+                string distancia = "";
+                if (!isPossessed && alive && brain != null && brain.Current != null)
+                {
+                    float dist = Vector3.Distance(brain.Current.transform.position, row.Soldier.transform.position);
+                    distancia = $"   ·   {dist:0.0} m";
+                }
+
                 row.Label.text = alive
-                    ? $"{marker}{row.Soldier.DisplayName} ({row.Soldier.Role})\n     {row.Soldier.Health.Current}/{row.Soldier.Health.MaxHealth}   ·   {weapon}{estadoSuffix}"
+                    ? $"{marker}{row.Soldier.DisplayName} ({row.Soldier.Role})\n     {row.Soldier.Health.Current}/{row.Soldier.Health.MaxHealth}   ·   {weapon}{estadoSuffix}{distancia}"
                     : $"   {row.Soldier.DisplayName} — CAIDO";
                 row.Label.color = alive ? Color.white : deadTextColor;
 
