@@ -16,6 +16,11 @@ namespace SP.UI
         class Row
         {
             public int SoldierId;
+            // Numero de posicion fijo en la lista (1, 2, 3...) -- pedido
+            // explicito de formato: "numero, profesion y barra de vida".
+            // No es el Id interno del soldado (ese es arbitrario); es
+            // simplemente el orden en que aparece la fila.
+            public int Index;
             public Image Background;
             // El roster antes era solo un nombre y un color de fondo: no
             // decía la vida, ni el arma, ni si el soldado seguía vivo.
@@ -50,13 +55,14 @@ namespace SP.UI
             rows.Add(new Row
             {
                 SoldierId = soldier.Id,
+                Index = rows.Count + 1,
                 Background = background,
                 Soldier = soldier,
                 Label = label,
                 HealthFill = healthFill,
                 Brain = soldier.GetComponent<AiBrain>(),
             });
-            label.text = $"{soldier.DisplayName} ({soldier.Role})";
+            label.text = $"<size=16><b>{rows.Count} · {soldier.Role}</b></size>\n<size=10><color=#9aa0ac>{soldier.DisplayName}</color></size>";
             background.color = normalColor;
         }
 
@@ -131,9 +137,14 @@ namespace SP.UI
                     distancia = $"   ·   {dist:0.0} m";
                 }
 
+                // Formato pedido explicito: numero + profesion primero y
+                // grande (lo que se necesita de un vistazo para [F1]/[F2]/
+                // [F3]), nombre/vida/arma/estado abajo, chico y apagado --
+                // la barra de HealthFill ya es la vida "de un vistazo", este
+                // texto es el detalle para quien lo busca.
                 row.Label.text = alive
-                    ? $"{marker}{row.Soldier.DisplayName} ({row.Soldier.Role})\n     {row.Soldier.Health.Current}/{row.Soldier.Health.MaxHealth}   ·   {weapon}{estadoSuffix}{distancia}"
-                    : $"   {row.Soldier.DisplayName} — CAIDO";
+                    ? $"{marker}<size=16><b>{row.Index} · {row.Soldier.Role}</b></size>\n<size=10><color=#9aa0ac>{row.Soldier.DisplayName}   ·   {row.Soldier.Health.Current}/{row.Soldier.Health.MaxHealth}   ·   {weapon}{estadoSuffix}{distancia}</color></size>"
+                    : $"<size=16><b>{row.Index} · {row.Soldier.Role}</b></size>\n<size=10><color=#6f7278>{row.Soldier.DisplayName} — CAIDO</color></size>";
                 row.Label.color = alive ? Color.white : deadTextColor;
 
                 if (row.HealthFill != null)
@@ -184,6 +195,10 @@ namespace SP.UI
                 rows.Add(new Row
                 {
                     SoldierId = match.Id,
+                    // Orden de aparicion en la jerarquia (Row_Soldado_1_...
+                    // primero) = numero que se muestra. No hace falta
+                    // guardar nada nuevo en la escena para esto.
+                    Index = rows.Count + 1,
                     Soldier = match,
                     Background = background,
                     Label = child.Find("Label")?.GetComponent<Text>(),

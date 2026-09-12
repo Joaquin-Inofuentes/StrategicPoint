@@ -411,10 +411,14 @@ namespace SP.CameraSystem
         // ("que la camara este un 10% abajo"), medido sobre esta vista
         // por encima del hombro, que es la que el jugador tiene puesta la
         // mayor parte del tiempo a pie.
-        public void FollowOverShoulder(Transform target, float distance = 4f, float height = 1.53f)
+        // heightOffset: cuanto restarle a la altura fija del pivote -- lo
+        // usa el agachado (ver SoldierMotor.EyeHeightDrop) para que la
+        // camara baje junto con el cuerpo en vez de quedarse flotando a la
+        // altura de pie de siempre. 0 = sin cambios, comportamiento previo.
+        public void FollowOverShoulder(Transform target, float distance = 4f, float height = 1.53f, float heightOffset = 0f)
         {
             if (target == null || IsTransitioning) return;
-            Vector3 pivot = target.position + Vector3.up * height;
+            Vector3 pivot = target.position + Vector3.up * (height - heightOffset);
             Quaternion look = target.rotation * Quaternion.Euler(-(pitch + recoilPitch), 0f, 0f);
             Vector3 desired = pivot - (look * Vector3.forward) * distance;
 

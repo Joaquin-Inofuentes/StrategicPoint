@@ -45,6 +45,17 @@ namespace SP.Actors
 
         public bool IsCrouching { get; private set; }
 
+        // BUG REAL: la camara por-encima-del-hombro (CameraRig.
+        // FollowOverShoulder, la que de verdad usa el jugador a pie) pivotea
+        // sobre "target.position + altura FIJA" -- nunca lee EyeAnchor. Al
+        // agacharse, el Animator SI baja la pose del cuerpo pero la camara
+        // se quedaba clavada a la misma altura de siempre: cuanto mas
+        // agachado, mas "flotaba" la camara por encima de la cabeza del
+        // soldado. Este offset es cuanto bajo el ojo ahora mismo respecto de
+        // pie (0 si no esta agachado); FollowOverShoulder lo resta de su
+        // altura fija para que la vista baje junto con el cuerpo.
+        public float EyeHeightDrop => IsCrouching ? alturaOjoDePie * (1f - fraccionAlturaAgachado) : 0f;
+
         void EnsureBody()
         {
             if (bodyResolved) return;

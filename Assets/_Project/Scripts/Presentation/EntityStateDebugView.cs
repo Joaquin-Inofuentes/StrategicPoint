@@ -23,7 +23,11 @@ namespace SP.Presentation
     // runtime si estorba.
     public class EntityStateDebugView : MonoBehaviour
     {
-        public static bool Visible { get; private set; } = true;
+        // Apagado por defecto: son esferas de depuracion, no HUD de juego,
+        // y competian a simple vista con la UI real (pedido explicito:
+        // "nada nunca use la GUI, todo sea Canvas"). [F10] las prende para
+        // quien las siga necesitando mientras debuggea IA.
+        public static bool Visible { get; private set; } = false;
 
         const float SoldierHeight = 2.15f;
         const float VehicleHeight = 2.7f;

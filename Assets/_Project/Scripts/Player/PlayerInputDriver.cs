@@ -912,7 +912,7 @@ namespace SP.Player
                 Rig.AddPitch(delta.y * lookSensitivity * (InvertLookY ? -1f : 1f));
             }
 
-            Rig.FollowOverShoulder(Brain.Current.transform);
+            Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDrop);
             UpdateNearestAllyHighlight();
 
             var ray = Rig.GetForwardRay();
@@ -1901,7 +1901,7 @@ namespace SP.Player
             // colgada mientras el modo sigue en ortográfico: hay que
             // recentrar la vista RTS en vez de FollowFps.
             if (Rig.Mode == ControlMode.Rts) Rig.SetRtsView(Brain.Current.transform.position);
-            else Rig.FollowOverShoulder(Brain.Current.transform);
+            else Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDrop);
         }
 
         void UpdateInVehicle(Keyboard kb, Mouse mouse)
@@ -1934,7 +1934,7 @@ namespace SP.Player
                 ClearVehicleSeatState();
                 if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
                 if (TurretAim != null) TurretAim.SetVisible(false);
-                Rig.FollowOverShoulder(Brain.Current.transform);
+                Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDrop);
                 return;
             }
 
