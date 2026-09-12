@@ -23,8 +23,22 @@ namespace SP.UI
     public static class FondoOpaco
     {
         // Casi negro y opaco de verdad. Con alfa 0,8 sobre el terreno claro
-        // del mapa el texto blanco seguia costando de leer.
-        public static readonly Color Color = new Color(0.06f, 0.07f, 0.09f, 0.94f);
+        // del mapa el texto blanco seguia costando de leer. Subido a 1
+        // (antes 0,94): con Screen Space - Camera, ese 6% restante de
+        // transparencia deja pasar el cielo/terreno de fondo -- medido en
+        // captura real, el panel del cartel de instrucciones salia
+        // notablemente mas claro (~(62,69,71) de 255) que el negro casi
+        // puro que pedia el color (~(15,18,23)). Opaco de punta a punta
+        // saca esa fuga de contraste de la ecuacion.
+        public static readonly Color Color = new Color(0.06f, 0.07f, 0.09f, 1f);
+
+        // Contorno oscuro para el TEXTO en si, no solo el fondo: aunque el
+        // fondo sea opaco, un texto sin borde se lee peor apenas roza un
+        // borde de panel, una transicion de escala o cualquier variacion
+        // de brillo detras. El contorno lo hace legible SIEMPRE, sin
+        // depender de que el fondo rinda exactamente como su valor
+        // nominal.
+        public static readonly Color ColorDeContorno = new Color(0f, 0f, 0f, 0.85f);
 
         // Cuanto sobresale el fondo del texto, en pixeles de UI.
         public const float MargenX = 18f;
@@ -66,22 +80,44 @@ namespace SP.UI
             // se saltaba el arreglo y el cartel quedaba negro sobre negro.
             AsegurarContraste(texto);
 
+            var contorno = texto.GetComponent<Outline>();
+            if (contorno == null) contorno = texto.gameObject.AddComponent<Outline>();
+            contorno.effectColor = ColorDeContorno;
+            contorno.effectDistance = new Vector2(1.3f, -1.3f);
+
             var rtTexto = texto.rectTransform;
-            var previo = texto.transform.Find(NombreDelFondo);
+            var padre = rtTexto.parent;
+            var previo = padre != null ? padre.Find(NombreDelFondo) : texto.transform.Find(NombreDelFondo);
             if (previo != null) return previo.GetComponent<Image>();
 
-            // Hijo del propio texto y estirado sobre el: asi lo sigue a
-            // donde lo muevan, sin que nadie tenga que acordarse de mover
-            // dos cosas. Y va primero en la lista de hijos para dibujarse
-            // por debajo (uGUI dibuja en orden de jerarquia).
+            // BUG REAL (el cartel de instrucciones se leia con el texto
+            // "lavado", casi invisible, y DESPUES de subir el fondo a
+            // opaco total paso a taparlo por completo): esto colgaba el
+            // fondo como HIJO del propio texto para que lo siguiera si lo
+            // movian. Pero en uGUI un hijo se dibuja SIEMPRE despues (por
+            // lo tanto encima) de su padre, sin importar el orden de
+            // hermanos entre sus propios hijos -- SetAsFirstSibling()
+            // solo ordena entre hermanos DEL MISMO padre, y el fondo no
+            // tenia hermanos ahi (era hijo unico del texto). O sea que el
+            // fondo quedaba SIEMPRE adelante del texto, no detras. Con el
+            // alfa viejo (0,94) se colaba un 6% del texto por debajo (por
+            // eso se leia mal, no invisible); apenas el fondo llego a
+            // opaco total lo tapo entero.
+            //
+            // Ahora el fondo es HERMANO del texto (mismo padre), copia su
+            // posicion/tamaño una sola vez (los llamadores actuales ya
+            // terminaron de acomodar el texto antes de llamar a Poner) y
+            // se inserta un lugar ANTES en la jerarquia -- eso si lo deja
+            // detras de verdad.
             var go = new GameObject(NombreDelFondo, typeof(Image));
             var rt = go.GetComponent<RectTransform>();
-            rt.SetParent(rtTexto, false);
-            rt.anchorMin = Vector2.zero;
-            rt.anchorMax = Vector2.one;
-            rt.offsetMin = new Vector2(-MargenX, -MargenY);
-            rt.offsetMax = new Vector2(MargenX, MargenY);
-            rt.SetAsFirstSibling();
+            rt.SetParent(padre, false);
+            rt.anchorMin = rtTexto.anchorMin;
+            rt.anchorMax = rtTexto.anchorMax;
+            rt.pivot = rtTexto.pivot;
+            rt.anchoredPosition = rtTexto.anchoredPosition;
+            rt.sizeDelta = rtTexto.sizeDelta + new Vector2(MargenX * 2f, MargenY * 2f);
+            rt.SetSiblingIndex(rtTexto.GetSiblingIndex());
 
             var img = go.GetComponent<Image>();
             img.color = Color;

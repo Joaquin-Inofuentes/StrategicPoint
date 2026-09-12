@@ -38,6 +38,14 @@ namespace SP.UI
             label.text = message;
             label.gameObject.SetActive(true);
 
+            // BUG REAL ("hay textos que no se ven"): a diferencia de
+            // InstructionBannerView/AimUI, este cartel nunca paso por
+            // FondoOpaco -- el objetivo de la mision ("Elimina a todos
+            // los enemigos...") se dibujaba en texto claro suelto,
+            // directo sobre el cielo/terreno del fondo, sin ningun panel
+            // detras. Mismo arreglo que el resto: fondo opaco + contorno.
+            FondoOpaco.Poner(label);
+
             if (Application.isPlaying)
             {
                 StopAllCoroutines();

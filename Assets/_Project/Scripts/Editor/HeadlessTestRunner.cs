@@ -860,13 +860,30 @@ namespace SP.EditorTools
             }
             else
             {
-                // Deja a los 3 soldados sanos, parados junto al vehiculo,
-                // sin nadie montado, listo para probar a mano.
-                vehicle.transform.position = new Vector3(6f, 0.6f, 4f);
+                // Deja a los 3 soldados sanos, en formacion, con el
+                // vehiculo estacionado cerca pero SIN nadie montado.
+                //
+                // BUG REAL ("distribui mejor los elementos, que se vea
+                // mas como nivel de videojuego"): esto ponia al vehiculo
+                // pegado a 3,5m de Vega -- literalmente compitiendo por
+                // el mismo espacio que el spawn de la escuadra, tapando
+                // la vista en cualquier captura desde ahi (confirmado en
+                // capturas reales de esta sesion). El vehiculo era
+                // conveniente para probar "subir al vehiculo" a mano sin
+                // caminar, pero esta posicion terminaba HORNEADA en la
+                // escena real (WorldArtPipeline.ReemplazarEnEscena no
+                // toca vehiculo ni soldados), asi que la comodidad de
+                // testeo se colaba en el nivel que de verdad juega el
+                // usuario. Ahora el vehiculo queda estacionado detras del
+                // checkpoint de entrada (ver WorldArtPipeline.
+                // AmbienteNuevo), a la vista y alcanzable a pie en pocos
+                // segundos, y la escuadra arranca en una formacion en
+                // triangulo en vez de un cluster casi superpuesto.
+                vehicle.transform.position = new Vector3(12f, 0.6f, -7f);
                 vehicle.transform.rotation = Quaternion.identity;
-                vega.transform.position = vehicle.transform.position + new Vector3(-3.5f, 0f, 0f);
-                kes.transform.position = vehicle.transform.position + new Vector3(-3.5f, 0f, 1.5f);
-                doc.transform.position = vehicle.transform.position + new Vector3(-3.5f, 0f, -1.5f);
+                vega.transform.position = new Vector3(2.5f, 0.8f, 2f);
+                kes.transform.position = new Vector3(0.5f, 0.8f, 0f);
+                doc.transform.position = new Vector3(4.5f, 0.8f, 0f);
                 rig.FollowFps(vega);
 
                 // Enemigo pre-armado pero apagado: el AutoDemoRunner lo

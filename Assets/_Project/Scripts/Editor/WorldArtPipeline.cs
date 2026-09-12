@@ -383,6 +383,23 @@ namespace SP.EditorTools
             if (box != null)
                 visual.transform.localPosition = new Vector3(box.center.x, box.center.y - box.size.y * 0.5f, box.center.z);
 
+            // BUG REAL (el Muro se renderizaba NEGRO por completo, aunque
+            // su material y la luz de la escena estaban bien): el prefab
+            // trae el Renderer en modo receiveGI = Lightmaps (heredado de
+            // su flag "Contribute GI"), esperando un lightmap horneado
+            // para su luz indirecta/ambiente. Este proyecto nunca horneo
+            // iluminacion (lighting_bake_status idle, sin datos de
+            // lightmap), y un renderer en Lightmaps sin lightmap real NO
+            // cae de vuelta a las Light Probes -- recibe cero luz
+            // ambiente en vez de la ambient SH de RenderSettings que ya
+            // usan bien barriles/arboles/soldados, y cualquier cara que
+            // no mire de frente al sol queda pintada pura negra. Forzar
+            // LightProbes lo arregla. OJO: receiveGI vive en
+            // MeshRenderer, no en Renderer (la base) -- por Renderer el
+            // compilador no encuentra el miembro.
+            foreach (var r in visual.GetComponentsInChildren<MeshRenderer>(true))
+                r.receiveGI = ReceiveGI.LightProbes;
+
             EditorUtility.SetDirty(objetivo);
         }
 
@@ -620,41 +637,68 @@ namespace SP.EditorTools
         // ------------------------------------------------------------------
         struct Plantado { public string prefab; public Vector3 pos; public float giro; }
 
+        // Reorganizado (pedido explicito: "distribui mejor los elementos y
+        // q se vea mas como nivel de videojuego"). Antes eran 28 props
+        // tirados sin una idea detras -- la linea de barricadas era lo
+        // unico con intencion clara ("sobre la linea de avance"), pero el
+        // resto (Concreto pegado al spawn, Erizo/Neumaticos/Palet/Caja/
+        // Farol/Cartel/Escombro sueltos por el mapa sin relacion entre si,
+        // y dos pares de barriles a 1,2-1,4m uno del otro, mas cerca entre
+        // si que de cualquier barricada) leia como relleno al voleo, no
+        // como un lugar. Ahora cada grupo cuenta algo:
+        //
+        //   - Treeline oeste/este: sin cambios, ya enmarcaban bien los
+        //     flancos.
+        //   - Linea defensiva central: las mismas 4 barricadas de sacos
+        //     (es lo que ya funcionaba), cada una con SU PROPIO barril de
+        //     municion pegado atras -- no un pozo de barriles amontonados
+        //     aparte.
+        //   - Checkpoint de entrada: erizo antitanque + neumaticos +
+        //     barricada de concreto, juntos, custodiando el camino hacia
+        //     la linea -- antes el Concreto estaba solo, a 2m del spawn
+        //     de la escuadra (encima de donde aparecen, no defendiendo
+        //     nada).
+        //   - Puesto de suministro junto al spawn: palet + caja + farol,
+        //     como si la escuadra hubiera armado campamento ahi.
+        //   - Vestigio de batalla, lejos, cerca del treeline este: auto
+        //     quemado + escombro, contando que aca ya hubo combate antes.
+        //   - Cartel + tablones de refuerzo, sobre el camino de acceso.
         static readonly Plantado[] AmbienteNuevo =
         {
-            // Arboleda oeste/este: mismas posiciones que ArtBuilder.Ambiente
-            // (pack viejo), prefabs nuevos.
+            // Treeline oeste.
             new Plantado { prefab = "P_Env_ArbolA", pos = new Vector3(-14f, 0f,  6f),  giro = 15f },
             new Plantado { prefab = "P_Env_ArbolB", pos = new Vector3(-17f, 0f, 13f),  giro = 200f },
             new Plantado { prefab = "P_Env_ArbolA", pos = new Vector3(-12f, 0f, 19f),  giro = 90f },
             new Plantado { prefab = "P_Env_ArbolB", pos = new Vector3(-18f, 0f, 26f),  giro = 130f },
             new Plantado { prefab = "P_Env_ArbolA", pos = new Vector3(-11f, 0f, 33f),  giro = 40f },
+            // Treeline este.
             new Plantado { prefab = "P_Env_ArbolA", pos = new Vector3( 30f, 0f, 12f),  giro = 60f },
             new Plantado { prefab = "P_Env_ArbolB", pos = new Vector3( 28f, 0f, 30f),  giro = 210f },
             new Plantado { prefab = "P_Env_ArbolA", pos = new Vector3( 31f, 0f, 22f),  giro = 300f },
-            // Barricadas sobre la linea de avance.
-            new Plantado { prefab = "P_Env_Barricada_Sacos", pos = new Vector3(  8f, 0f, 14f), giro = 0f },
-            new Plantado { prefab = "P_Env_Barricada_Sacos", pos = new Vector3( 13f, 0f, 18f), giro = 35f },
-            new Plantado { prefab = "P_Env_Barricada_Sacos", pos = new Vector3( 19f, 0f, 11f), giro = 290f },
-            new Plantado { prefab = "P_Env_Barricada_Sacos", pos = new Vector3( -3f, 0f, 22f), giro = 75f },
-            // Barriles sueltos.
-            new Plantado { prefab = "P_Env_Barril", pos = new Vector3(  6.2f, 0f, 15.1f), giro = 0f },
-            new Plantado { prefab = "P_Env_Barril", pos = new Vector3( 14.4f, 0f, 19.6f), giro = 0f },
-            new Plantado { prefab = "P_Env_Barril", pos = new Vector3( 20.6f, 0f, 12.3f), giro = 0f },
-            new Plantado { prefab = "P_Env_Barril", pos = new Vector3( 21.4f, 0f, 13.4f), giro = 0f },
-            new Plantado { prefab = "P_Env_Barril", pos = new Vector3( -1.8f, 0f,  8.4f), giro = 0f },
-            new Plantado { prefab = "P_Env_Barril", pos = new Vector3( 24.8f, 0f, 24.2f), giro = 0f },
-            // Roster nuevo que el pack viejo no tenia.
-            new Plantado { prefab = "P_Env_Barricada_Concreto", pos = new Vector3(  2f, 0f,  2f), giro = 0f },
-            new Plantado { prefab = "P_Env_Barricada_Erizo",    pos = new Vector3( 26f, 0f,  6f), giro = 0f },
-            new Plantado { prefab = "P_Env_Barricada_Tablones", pos = new Vector3(  0f, 0f, 27f), giro = 20f },
-            new Plantado { prefab = "P_Env_Neumaticos",         pos = new Vector3( 10f, 0f,  4f), giro = 0f },
-            new Plantado { prefab = "P_Env_Palet",              pos = new Vector3( -8f, 0f,  4f), giro = 0f },
-            new Plantado { prefab = "P_Env_Caja_Madera",        pos = new Vector3( 16f, 0f,  5f), giro = 0f },
-            new Plantado { prefab = "P_Env_Auto_Quemado",       pos = new Vector3( 23f, 0f, 20f), giro = 40f },
-            new Plantado { prefab = "P_Env_Farol",              pos = new Vector3( -2f, 0f, 12f), giro = 0f },
-            new Plantado { prefab = "P_Env_Cartel",             pos = new Vector3(  5f, 0f, -3f), giro = 0f },
-            new Plantado { prefab = "P_Env_Escombro_Pila_A",    pos = new Vector3( -6f, 0f, 24f), giro = 0f },
+            // Linea defensiva central: barricada + su propio barril.
+            new Plantado { prefab = "P_Env_Barricada_Sacos", pos = new Vector3(  8f,   0f, 14f),   giro = 0f },
+            new Plantado { prefab = "P_Env_Barril",          pos = new Vector3(  6.6f, 0f, 12.8f), giro = 0f },
+            new Plantado { prefab = "P_Env_Barricada_Sacos", pos = new Vector3( 13f,   0f, 18f),   giro = 35f },
+            new Plantado { prefab = "P_Env_Barril",          pos = new Vector3( 14.6f, 0f, 19.6f), giro = 0f },
+            new Plantado { prefab = "P_Env_Barricada_Sacos", pos = new Vector3( 19f,   0f, 11f),   giro = 290f },
+            new Plantado { prefab = "P_Env_Barril",          pos = new Vector3( 20.7f, 0f,  9.9f), giro = 0f },
+            new Plantado { prefab = "P_Env_Barricada_Sacos", pos = new Vector3( -3f,   0f, 22f),   giro = 75f },
+            new Plantado { prefab = "P_Env_Barril",          pos = new Vector3( -4.7f, 0f, 23.1f), giro = 0f },
+            // Barricada de tablones, como refuerzo sobre el mismo frente.
+            new Plantado { prefab = "P_Env_Barricada_Tablones", pos = new Vector3( 16f, 0f, 9f), giro = 340f },
+            // Checkpoint de entrada: custodia el camino hacia la linea,
+            // lejos del punto donde aparece la escuadra.
+            new Plantado { prefab = "P_Env_Barricada_Erizo",    pos = new Vector3( 12.5f, 0f, -1f), giro = 15f },
+            new Plantado { prefab = "P_Env_Neumaticos",         pos = new Vector3(  9.5f, 0f, -2.3f), giro = 0f },
+            new Plantado { prefab = "P_Env_Barricada_Concreto", pos = new Vector3( 11.5f, 0f,  1.5f), giro = 20f },
+            new Plantado { prefab = "P_Env_Cartel",             pos = new Vector3(  6f,   0f, -4f),  giro = 0f },
+            // Puesto de suministro junto al spawn de la escuadra.
+            new Plantado { prefab = "P_Env_Palet",       pos = new Vector3(-6.5f, 0f,  2.5f), giro = 0f },
+            new Plantado { prefab = "P_Env_Caja_Madera", pos = new Vector3(-8.5f, 0f,  4.5f), giro = 15f },
+            new Plantado { prefab = "P_Env_Farol",       pos = new Vector3(-5f,   0f,  0f),   giro = 0f },
+            // Vestigio de batalla, lejos, cerca del treeline este.
+            new Plantado { prefab = "P_Env_Auto_Quemado",    pos = new Vector3(24f, 0f, 25f), giro = 40f },
+            new Plantado { prefab = "P_Env_Escombro_Pila_A", pos = new Vector3(26f, 0f, 27.5f), giro = 0f },
         };
 
         static void PoblarAmbienteNuevo()
