@@ -331,6 +331,13 @@ namespace SP.Player
             {
                 Brain.Possess(Squad[0]);
                 Rig.FollowOverShoulder(Squad[0].transform);
+
+                // La posesion inicial no publica PossessionChangedEvent (ver
+                // el comentario en RosterView.Rebuild): sin este empujon, la
+                // fila del roster que arranca poseida podia quedar sin
+                // resaltar si su OnEnable corrio antes que este Start().
+                var roster = FindAnyObjectByType<SP.UI.RosterView>();
+                if (roster != null) roster.Rebuild();
             }
 
             // Bug 14: PathPreview.Attach solo lo llamaba HeadlessTestRunner

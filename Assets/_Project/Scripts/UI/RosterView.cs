@@ -19,7 +19,17 @@ namespace SP.UI
 
         void OnEnable() => Rebuild();
 
-        void Rebuild()
+        // Publico ademas de disparado por OnEnable: la posesion inicial de
+        // partida (PlayerInputDriver.Start -> Brain.Possess(Squad[0])) NO
+        // publica PossessionChangedEvent (mismo caso ya documentado en
+        // PossessedMarkerView.SetInitial), y el orden real de OnEnable de
+        // "Roster" contra el Start() del driver no esta garantizado. En vez
+        // de que cada fila adivine la posesion inicial leyendo el brain en
+        // su propio Bind (fragil si corre antes de tiempo), quien SI sabe
+        // con certeza que la posesion inicial ya paso (PlayerInputDriver)
+        // vuelve a llamar esto para asegurar el estado correcto sin
+        // importar el orden real de ejecucion.
+        public void Rebuild()
         {
             for (int i = transform.childCount - 1; i >= 0; i--)
                 Destroy(transform.GetChild(i).gameObject);
