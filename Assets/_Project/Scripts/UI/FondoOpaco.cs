@@ -88,7 +88,11 @@ namespace SP.UI
             var rtTexto = texto.rectTransform;
             var padre = rtTexto.parent;
             var previo = padre != null ? padre.Find(NombreDelFondo) : texto.transform.Find(NombreDelFondo);
-            if (previo != null) return previo.GetComponent<Image>();
+            if (previo != null)
+            {
+                AsegurarLink(texto, previo.gameObject);
+                return previo.GetComponent<Image>();
+            }
 
             // BUG REAL (el cartel de instrucciones se leia con el texto
             // "lavado", casi invisible, y DESPUES de subir el fondo a
@@ -124,7 +128,30 @@ namespace SP.UI
             // Un fondo que se come los clicks taparia los botones que
             // tenga debajo. No decide nada, solo se ve.
             img.raycastTarget = false;
+
+            // Arranca en el mismo estado que el texto: si Poner() se
+            // llama sobre un texto que ya esta desactivado (poco comun,
+            // pero mas seguro que asumir), el fondo no debe nacer
+            // encendido y quedarse asi para siempre.
+            go.SetActive(texto.gameObject.activeSelf);
+            AsegurarLink(texto, go);
             return img;
+        }
+
+        // BUG REAL ("cajas negras vacias que se quedaban pegadas en
+        // pantalla"): el fondo es HERMANO del texto (ver comentario mas
+        // arriba sobre por que ya no puede ser hijo), asi que apagar el
+        // texto con SetActive(false) -- lo que hacen PhaseBannerView,
+        // InstructionBannerView y el prompt de AimUI al terminar de
+        // mostrarse -- ya NO apaga al fondo con el, como si pasaba
+        // cuando era hijo. FondoOpacoLink vive en el TEXTO y usa
+        // OnEnable/OnDisable (se disparan sin importar quien haya
+        // llamado a SetActive) para mantener al fondo sincronizado.
+        static void AsegurarLink(Text texto, GameObject fondo)
+        {
+            var link = texto.GetComponent<FondoOpacoLink>();
+            if (link == null) link = texto.gameObject.AddComponent<FondoOpacoLink>();
+            link.Fondo = fondo;
         }
 
         // Donde entra el cartel de instrucciones arriba. No son numeros de

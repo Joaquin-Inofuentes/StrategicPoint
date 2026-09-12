@@ -499,7 +499,7 @@ namespace SP.EditorTools
         // cada clip por una constante, para conservar el bamboleo natural
         // del paso -- solo se corrige el nivel base para que coincida con
         // "walking", que es el que ya se mide correcto en juego.
-        static void CorregirAlturaDeCadera()
+        internal static void CorregirAlturaDeCadera()
         {
             CorregirGrupoDeAltura("walking", ClipsDeMarchaACorregir);
             CorregirGrupoDeAltura("idle crouching aiming", ClipsAgachadoACorregir);
@@ -610,6 +610,58 @@ namespace SP.EditorTools
                 sb.AppendLine("anim " + nombre + ": clips=" + n + " dur=" + dur.ToString("F2") + "s loop=" + loop);
             }
             return sb.ToString();
+        }
+
+        // BUG REAL, encontrado de nuevo por el usuario en una sesion
+        // posterior a la que "arreglo" esto: CorregirAlturaDeCadera edita
+        // la curva RootT.y YA IMPORTADA de cada clip (AnimationUtility.
+        // SetEditorCurve) -- eso vive en la cache de Library, NO en el
+        // .fbx ni en su .meta. Confirmado con git status: correr la
+        // correccion no deja NINGUN archivo modificado bajo Assets/ARTS.
+        // Cualquier cosa que dispare un reimport real del pack (clonar el
+        // repo de nuevo, borrar Library, a veces incluso solo reabrir el
+        // proyecto) hace que Unity reconstruya esas curvas desde el FBX
+        // crudo sin calibrar, y el "arreglado" vuelve a hundirse en
+        // silencio -- sin que ningun diff de git lo delate. Antes esto
+        // dependia de que alguien se acordara de correr ConfigurarTodo()
+        // a mano despues. Ahora se reaplica sola: en cuanto Unity termina
+        // de reimportar un FBX del pack, este postprocessor la corre de
+        // nuevo. delayCall (no directo) porque OnPostprocessAllAssets no
+        // es un lugar seguro para tocar AssetDatabase todavia -- el
+        // import en curso no termino de asentarse.
+        class RecalibrarAlturaAlReimportar : AssetPostprocessor
+        {
+            static bool encolado;
+
+            static void OnPostprocessAllAssets(string[] importados, string[] borrados, string[] movidos, string[] movidosDesde)
+            {
+                // MEDIDO: EditorApplication.delayCall no llega a dispararse
+                // de forma confiable bajo la automatizacion que reimporta
+                // estos FBX en esta maquina (probado explicitamente: el
+                // callback nunca corrio, ni esperando varios segundos ni
+                // encadenando otra llamada). Un editor interactivo normal
+                // si lo procesaria, pero no hay que depender de eso.
+                // Llamar directo funciona: la correccion solo edita curvas
+                // ya importadas (AnimationUtility.SetEditorCurve) y guarda
+                // con AssetDatabase.SaveAssets -- no dispara otro reimport
+                // de modelos, asi que no hay riesgo real de reentrancia
+                // contra OnPostprocessAllAssets.
+                if (encolado) return;
+                bool tocoElPack = false;
+                foreach (var p in importados)
+                {
+                    if (p.StartsWith(Pack, System.StringComparison.Ordinal) && p.EndsWith(".fbx", System.StringComparison.OrdinalIgnoreCase))
+                    {
+                        tocoElPack = true;
+                        break;
+                    }
+                }
+                if (!tocoElPack) return;
+
+                encolado = true;
+                try { CorregirAlturaDeCadera(); }
+                finally { encolado = false; }
+            }
         }
     }
 }
