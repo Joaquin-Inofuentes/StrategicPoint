@@ -11,6 +11,13 @@ namespace SP.UI
 {
     // Roster de la escuadra: resalta al soldado poseído y a los seleccionados
     // en vista RTS. Solo escucha el bus, nunca decide nada de gameplay.
+    //
+    // SC_Gameplay ya NO usa esta clase: el roster real pasó a RosterView +
+    // RosterRowView (un prefab por soldado, sync por evento en vez de
+    // LateUpdate por nombre). Esta sigue viva porque HeadlessTestRunner
+    // arma su propio roster de prueba con AddRow() y su test de resaltado
+    // (IsHighlighted) depende de ella -- tocarla de mas rompe la suite sin
+    // necesidad, ya que es una escena de test totalmente aparte.
     public class SelectedSoldierUI : MonoBehaviour
     {
         class Row

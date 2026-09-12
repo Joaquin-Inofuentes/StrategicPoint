@@ -5,6 +5,23 @@ using SP.Actors;
 
 namespace SP.Combat
 {
+    // Un solo evento para "este soldado tiene otra arma puesta", sin
+    // importar el camino (recogida del piso, ciclado 1/2/3, IA). Antes solo
+    // existia WeaponPickedUpEvent (especifico de WeaponPickup), asi que
+    // cualquier UI que quisiera enterarse de un cambio de arma via evento
+    // se perdia los cambios que no vinieran de recoger algo del piso -- ver
+    // RosterRowView, que necesita el arma actual de CUALQUIER soldado.
+    public readonly struct WeaponChangedEvent
+    {
+        public readonly int SoldierId;
+        public readonly WeaponKind Kind;
+        public WeaponChangedEvent(int soldierId, WeaponKind kind)
+        {
+            SoldierId = soldierId;
+            Kind = kind;
+        }
+    }
+
     // Arma en mano de un soldado: pide proyectiles al pool, nunca instancia.
     // Lee dueño y equipo de su propio Soldier — nunca los cachea por su cuenta,
     // así sobrevive a un domain reload sin que nadie tenga que recablearlo.
@@ -169,6 +186,13 @@ namespace SP.Combat
             }
 
             ApplyWeaponVisualModel(kind);
+
+            // Bootstrap defensivo (mismo patron que TryMelee/TryFire): un
+            // enemigo de IA puede llamar EquipWeapon antes de que Awake
+            // termine de correr Bootstrap en algun orden de inicializacion
+            // raro, y sin owner no hay a quien avisarle este evento.
+            if (owner == null) Bootstrap();
+            if (owner != null) EventBus.Instance.Publish(new WeaponChangedEvent(owner.Id, kind));
         }
 
         // Cuelga la malla REAL (multi-parte: cañon, cuerpo, culata, etc.)
