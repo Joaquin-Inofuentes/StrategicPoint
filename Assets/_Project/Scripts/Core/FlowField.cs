@@ -42,8 +42,24 @@ namespace SP.Core
 
         // Cola de prioridad minima sobre un binary heap. Se reusa entre
         // llamadas: asignar una por orden seria basura por orden.
+        //
+        // BUG REAL: la key se guardaba en un array indexado POR NODO
+        // (heapKey[node]), no por POSICION del heap (el patron correcto,
+        // que ya usa NodeMinHeap en WaypointGraph.cs, es un array paralelo
+        // a las entradas). Cuando un nodo se relaja dos veces queda
+        // pusheado dos veces -- la entrada vieja (obsoleta) y la nueva
+        // comparten la MISMA celda heapKey[node], asi que la segunda
+        // pisaba a la primera. Al popear la entrada vieja, "key" volvia a
+        // leer el costo ACTUAL (el mejor), no el costo con el que esa
+        // entrada se pusheo -- el chequeo "if (k > cost[node]) continue"
+        // de mas abajo, pensado para descartarla, nunca podia disparar
+        // porque k terminaba siendo siempre igual a cost[node]. Resultado:
+        // todo nodo relajado mas de una vez se procesaba de nuevo (vecinos
+        // re-relajados de mas), inflando ReachableCount y desperdiciando
+        // el barrido que este campo de flujo existe justamente para pagar
+        // UNA sola vez.
         readonly List<int> heap = new List<int>();
-        float[] heapKey;
+        readonly List<float> heapSlotKey = new List<float>();
 
         public void Attach(WaypointGraph waypointGraph)
         {
@@ -82,6 +98,7 @@ namespace SP.Core
             cost[start] = 0f;
 
             heap.Clear();
+            heapSlotKey.Clear();
             HeapPush(start, 0f);
 
             while (heap.Count > 0)
@@ -147,21 +164,24 @@ namespace SP.Core
             {
                 cost = new float[n];
                 flow = new byte[n];
-                heapKey = new float[n];
             }
         }
 
         // --- binary heap minimo, sin asignar por operacion ---
+        // heapSlotKey es paralelo a heap (por POSICION en la cola, no por
+        // nodo): mismo patron que NodeMinHeap en WaypointGraph.cs. Asi una
+        // entrada obsoleta conserva la key con la que fue pusheada aunque
+        // el mismo nodo se vuelva a pushear despues con un costo mejor.
 
         void HeapPush(int node, float key)
         {
-            heapKey[node] = key;
             heap.Add(node);
+            heapSlotKey.Add(key);
             int i = heap.Count - 1;
             while (i > 0)
             {
                 int parent = (i - 1) / 2;
-                if (heapKey[heap[parent]] <= heapKey[heap[i]]) break;
+                if (heapSlotKey[parent] <= heapSlotKey[i]) break;
                 Swap(parent, i);
                 i = parent;
             }
@@ -170,9 +190,12 @@ namespace SP.Core
         int HeapPop(out float key)
         {
             int top = heap[0];
-            key = heapKey[top];
-            heap[0] = heap[heap.Count - 1];
-            heap.RemoveAt(heap.Count - 1);
+            key = heapSlotKey[0];
+            int last = heap.Count - 1;
+            heap[0] = heap[last];
+            heapSlotKey[0] = heapSlotKey[last];
+            heap.RemoveAt(last);
+            heapSlotKey.RemoveAt(last);
 
             int i = 0;
             while (true)
@@ -180,8 +203,8 @@ namespace SP.Core
                 int left = i * 2 + 1;
                 int right = left + 1;
                 int smallest = i;
-                if (left < heap.Count && heapKey[heap[left]] < heapKey[heap[smallest]]) smallest = left;
-                if (right < heap.Count && heapKey[heap[right]] < heapKey[heap[smallest]]) smallest = right;
+                if (left < heap.Count && heapSlotKey[left] < heapSlotKey[smallest]) smallest = left;
+                if (right < heap.Count && heapSlotKey[right] < heapSlotKey[smallest]) smallest = right;
                 if (smallest == i) break;
                 Swap(smallest, i);
                 i = smallest;
@@ -191,9 +214,8 @@ namespace SP.Core
 
         void Swap(int a, int b)
         {
-            int t = heap[a];
-            heap[a] = heap[b];
-            heap[b] = t;
+            int tn = heap[a]; heap[a] = heap[b]; heap[b] = tn;
+            float tk = heapSlotKey[a]; heapSlotKey[a] = heapSlotKey[b]; heapSlotKey[b] = tk;
         }
     }
 }

@@ -90,7 +90,21 @@ namespace SP.Core
             if (prestadas > 0)
                 Debug.LogWarning($"[ObjectPool<{typeof(T).Name}>] Clear() destruyo las libres, pero quedan {prestadas} " +
                                  "instancias prestadas que nadie devolvio: esas siguen vivas en la escena.");
-            prestadasCount = 0;
+
+            // BUG REAL: esta linea ponia prestadasCount en 0 sin importar
+            // el warning de arriba -- o sea que justo despues de avisar
+            // "quedan N prestadas vivas" el contador mentia "0 afuera".
+            // Cualquiera que consultara PrestadasCount despues de un
+            // Clear() (para decidir si es seguro desmontar un sistema, o
+            // una aserción de test que espera el pool vacio) se enteraba
+            // que no quedaba nada afuera cuando en los hechos N instancias
+            // seguian vivas sin volver. Ademas, cuando esas instancias
+            // finalmente llamaran Release(), la guarda "if (prestadasCount
+            // > 0)" de mas arriba ya estaria en 0 y no restaria, dejando
+            // el contador en un estado inconsistente de ahi en mas. Se
+            // conserva el conteo real: solo se "limpian" las que de verdad
+            // se sabe que volvieron.
+            prestadasCount = prestadas;
         }
 
         // Cuantas salieron por Get() y todavia no volvieron por Release().
