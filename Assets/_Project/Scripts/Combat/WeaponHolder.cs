@@ -85,7 +85,15 @@ namespace SP.Combat
         // del azar de ApplySpread (Random.Range).
         const float FactorAgachado = 0.4f;
         float MultiplicadorPostura => (owner != null && owner.Motor != null && owner.Motor.IsCrouching) ? FactorAgachado : 1f;
-        public float SpreadDegEfectivo => spreadDeg * MultiplicadorPostura;
+
+        // RoleType.Sniper estaba declarado (Soldado_2_Kes nace con este rol
+        // en SC_Gameplay) sin ningun efecto de juego -- disparaba identico
+        // a Assault. El alcance extendido vive en AiBrain.EffectiveAttackRange;
+        // esto es la otra mitad, la precision: un francotirador ensancha su
+        // cono de dispersion mucho mas lento que el resto.
+        const float FactorSniper = 0.35f;
+        float MultiplicadorRol => (owner != null && owner.Role == RoleType.Sniper) ? FactorSniper : 1f;
+        public float SpreadDegEfectivo => spreadDeg * MultiplicadorPostura * MultiplicadorRol;
         public float SpreadFraction01 => Mathf.Clamp01(SpreadDegEfectivo / MaxSpreadDeg);
 
         public float CooldownRemaining => Mathf.Max(0f, cooldownTimer);

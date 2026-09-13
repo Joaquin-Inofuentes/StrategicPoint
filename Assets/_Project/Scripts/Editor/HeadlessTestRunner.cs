@@ -4083,7 +4083,7 @@ namespace SP.EditorTools
                 var pickupMat = CreateFlatMaterial(spec.Color); transientRuntimeAssets.Add(pickupMat); go.GetComponent<MeshRenderer>().sharedMaterial = pickupMat;
 
                 var pickup = go.AddComponent<WeaponPickup>();
-                pickup.Configure(d.kind, spec.Damage, spec.Cooldown, spec.Color);
+                pickup.Configure(d.kind, spec.Color);
                 list.Add(pickup);
             }
             return list;

@@ -19,8 +19,6 @@ namespace SP.Combat
     public class WeaponPickup : MonoBehaviour
     {
         [SerializeField] WeaponKind kind = WeaponKind.Rifle;
-        [SerializeField] int damage = 34;
-        [SerializeField] float cooldown = 0.35f;
         [SerializeField] Color color = Color.white;
 
         // Guarda de reentrancia: EquipOn() hoy tiene un unico llamador
@@ -35,11 +33,16 @@ namespace SP.Combat
         public WeaponKind Kind => kind;
         public Color Color => color;
 
-        public void Configure(WeaponKind weaponKind, int weaponDamage, float weaponCooldown, Color weaponColor)
+        // Antes tomaba tambien damage/cooldown y los guardaba en campos
+        // propios -- muertos desde que EquipOn() (mas abajo) empezo a leer
+        // SIEMPRE del catalogo fresco (ver su comentario "BUG REAL"). Un
+        // llamador podia pasar cualquier numero aca y no cambiaba nada en
+        // el juego, una trampa para el proximo rebalanceo. Kind y Color
+        // son los dos unicos datos que este pickup necesita: cual arma da
+        // y de que color se pinta el cubo en el piso.
+        public void Configure(WeaponKind weaponKind, Color weaponColor)
         {
             kind = weaponKind;
-            damage = weaponDamage;
-            cooldown = weaponCooldown;
             color = weaponColor;
         }
 

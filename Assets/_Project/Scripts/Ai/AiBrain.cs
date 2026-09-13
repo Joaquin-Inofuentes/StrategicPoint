@@ -230,6 +230,21 @@ namespace SP.Ai
         float StanceVisionMultiplier =>
             stance == CombatStance.Defensiva ? defensiveVisionMultiplier : 1f;
 
+        // RoleType.Sniper estaba declarado (Soldado_2_Kes nace con este rol
+        // en SC_Gameplay) y no tenia NINGUN efecto de juego -- se comportaba
+        // identico a Assault salvo por la etiqueta en el HUD. Mismo patron
+        // que las posturas de arriba: un multiplicador que en el caso
+        // neutro (cualquier otro rol) es la constante 1f. Un francotirador
+        // ahora entra en combate y se sostiene en posicion desde mas lejos;
+        // la precision extra (menos dispersion del arma) vive en
+        // WeaponHolder.MultiplicadorRol, que lee el mismo Role.
+        [SerializeField] float sniperAttackRangeMultiplier = 1.6f;
+
+        public float EffectiveAttackRange => attackRange * RoleAttackRangeMultiplier;
+
+        float RoleAttackRangeMultiplier =>
+            self != null && self.Role == SP.Combat.RoleType.Sniper ? sniperAttackRangeMultiplier : 1f;
+
         // ------------------------------------------------------------------
         // Item 224: sensado repartido en el tiempo (verificable desde afuera)
         // ------------------------------------------------------------------
@@ -569,7 +584,7 @@ namespace SP.Ai
                 // no una que queda a un paso de quedarse corta.
                 tieneCobertura = SP.Core.Coberturas.TryMejorCobertura(
                     self.transform.position, objetivo, self, RadioDeBusquedaDeCobertura,
-                    attackRange * 0.85f, out elegida);
+                    EffectiveAttackRange * 0.85f, out elegida);
                 if (!tieneCobertura) return false;
                 // Solo se replanifica cuando la eleccion CAMBIA: repetir
                 // PlanPathTo al mismo punto cada medio segundo tira el
@@ -922,7 +937,7 @@ namespace SP.Ai
                     // sigue en Chase (acercandose o buscando el angulo), y
                     // recien se entra en Attack cuando de verdad se puede
                     // disparar.
-                    if (d <= attackRange && TieneLineaDeTiro(target)) SetState(AiState.Attack);
+                    if (d <= EffectiveAttackRange && TieneLineaDeTiro(target)) SetState(AiState.Attack);
                     // Attack-move con el objetivo todavia fuera de rango:
                     // camina hacia el punto pedido (no hacia el enemigo) --
                     // en cuanto entra en rango, el caso de arriba lo manda
@@ -969,7 +984,7 @@ namespace SP.Ai
                             // Con linea de tiro, el acercamiento de siempre:
                             // frenar al 85% del alcance esta bien, porque
                             // desde ahi ya se puede disparar.
-                            self.Motor.MoveTowards(target.transform.position, attackRange * 0.85f, dt);
+                            self.Motor.MoveTowards(target.transform.position, EffectiveAttackRange * 0.85f, dt);
                         }
                         else
                         {
@@ -995,7 +1010,7 @@ namespace SP.Ai
                 case AiState.Attack:
                     if (target == null || !target.Health.IsAlive) { SetState(AiState.Patrol); break; }
                     float dd = Vector3.Distance(self.transform.position, target.transform.position);
-                    if (dd > attackRange) { SetState(hasOrder ? AiState.MovingToAttackOrder : AiState.Chase); break; }
+                    if (dd > EffectiveAttackRange) { SetState(hasOrder ? AiState.MovingToAttackOrder : AiState.Chase); break; }
 
                     // Pedido explicito ("se agachan y disparan?"): mismo
                     // SetCrouching de G2 que ya usa el jugador con Ctrl --
@@ -1261,7 +1276,7 @@ namespace SP.Ai
             DibujarCirculo(pos, EffectiveVisionRange, colorDeteccion);
 
             Gizmos.color = colorAtaque;
-            DibujarCirculo(pos, attackRange, colorAtaque);
+            DibujarCirculo(pos, EffectiveAttackRange, colorAtaque);
 
             // Linea hacia el objetivo trabado (a donde "apunta"/pelea).
             if (target != null)
