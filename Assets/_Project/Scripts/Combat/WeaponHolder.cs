@@ -123,9 +123,18 @@ namespace SP.Combat
 
         public void Bootstrap()
         {
+            // BUG REAL: owner se resolvia UNA sola vez, adentro de la
+            // guarda de bootstrapped. Si ese primer llamado ocurria antes
+            // de que GetComponent<Soldier>() pudiera devolver algo (orden
+            // de inicializacion raro), owner quedaba en null PARA SIEMPRE:
+            // el "bootstrap defensivo" que EquipWeapon/TryFire/TryMelee
+            // llaman con "if (owner == null) Bootstrap()" no hacia nada,
+            // porque Bootstrap salia en la primera linea sin reintentar
+            // GetComponent. Ahora se reintenta resolver owner en cada
+            // llamada mientras siga null, bootstrapped o no.
+            if (owner == null) owner = GetComponent<Soldier>();
             if (bootstrapped) return;
             bootstrapped = true;
-            owner = GetComponent<Soldier>();
             CurrentAmmo = magazineSize;
 
             // BUG REAL: el cubo del arma nace con un Material creado en
@@ -194,6 +203,18 @@ namespace SP.Combat
             }
 
             ApplyWeaponVisualModel(kind);
+
+            // BUG REAL: EquipFromLoadout actualiza CurrentLoadoutIndex,
+            // pero EquipWeapon (el camino que usan WeaponPickup.EquipOn y
+            // la IA/tests) nunca lo tocaba. Resultado: agarrar un arma del
+            // piso cambiaba CurrentWeaponKind sin mover el indice, asi que
+            // el proximo CycleNext/CyclePrevious (rueda del mouse) calculaba
+            // el "siguiente" arma relativo a un indice viejo que ya no
+            // coincidia con lo que el jugador tenia en la mano -- podia
+            // re-equipar el arma que ya estaba usando o saltearse la que de
+            // verdad seguia en el loadout.
+            int loadoutIdx = Loadout.IndexOf(kind);
+            if (loadoutIdx >= 0) CurrentLoadoutIndex = loadoutIdx;
 
             // Bootstrap defensivo (mismo patron que TryMelee/TryFire): un
             // enemigo de IA puede llamar EquipWeapon antes de que Awake
@@ -352,7 +373,14 @@ namespace SP.Combat
             float bestDist = KnifeRange;
             foreach (var s in ActorRegistry.All)
             {
-                if (s == null || s == owner || s.Team == owner.Team || !s.Health.IsAlive) continue;
+                // BUG REAL: faltaba el mismo chequeo que ya tienen
+                // Projectile.BuscarBlancoEnElTramo y Projectile.ExplodeAt --
+                // un soldado montado en un vehiculo queda inactivo (oculto)
+                // y no deberia poder recibir impactos desde afuera. Sin
+                // esto, el cuchillo SI podia "apuñalar" a traves del casco
+                // a alguien escondido adentro, inconsistente con las balas
+                // y las explosiones.
+                if (s == null || s == owner || s.Team == owner.Team || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
                 var to = s.transform.position - owner.transform.position;
                 to.y = 0f;
                 float dist = to.magnitude;

@@ -27,7 +27,16 @@ namespace SP.Actors
 
         bool bootstrapped;
 
-        public int Id { get; private set; }
+        int id;
+        // BUG REAL: a diferencia de Health/Motor/Weapon/Brain (todas se
+        // auto-bootstrapean en el getter), Id era un auto-property que
+        // devolvia 0 si se leia antes de que Awake/Bootstrap corriera --
+        // exactamente el mismo riesgo que ya documenta el comentario de
+        // arriba ("se leen desde muchos lugares... sin pasar por Awake
+        // primero"). WeaponHolder.EquipWeapon/TryFire/TryMelee leen
+        // owner.Id para publicar eventos o atribuir daño: sin este mismo
+        // patron podian mandar id=0 en silencio en vez del id real.
+        public int Id { get { if (!bootstrapped) Bootstrap(); return id; } }
         public string DisplayName => displayName;
         public TeamId Team => team;
         public RoleType Role => role;
@@ -95,7 +104,7 @@ namespace SP.Actors
             if (bootstrapped) return;
             bootstrapped = true;
 
-            Id = nextId++;
+            id = nextId++;
             health = GetComponent<Health>();
             motor = GetComponent<SoldierMotor>();
             weapon = GetComponent<WeaponHolder>();
