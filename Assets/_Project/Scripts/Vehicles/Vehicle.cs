@@ -344,6 +344,15 @@ namespace SP.Vehicles
             // cada vez que alguien apunta.
             if (role == VehicleSeatRole.Passenger1)
             {
+                // BUG REAL: SwitchSeat (PlayerInputDriver) desactiva el
+                // GameObject del soldado ANTES de llamar a Mount, asumiendo
+                // que esta rama lo va a reactivar como cualquier otro
+                // asiento -- pero esta rama nunca toca SetActive porque
+                // asume que el soldado YA esta visible (el caso normal:
+                // caminar hasta el vehiculo estando activo). Sin esto, subir
+                // a la metralleta desde OTRO asiento del mismo vehiculo
+                // dejaba al artillero invisible para siempre.
+                soldier.gameObject.SetActive(true);
                 var standPoint = transform.Find("MetralletaStandPoint");
                 var startRot = soldier.transform.rotation;
                 float tMg = 0f;
