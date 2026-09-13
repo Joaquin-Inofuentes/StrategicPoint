@@ -62,7 +62,16 @@ namespace SP.Player
         {
             { Recargar, Key.R },
             { Interactuar, Key.E },
-            { SubirBajarVehiculo, Key.X },
+            // BUG REAL: SubirBajarVehiculo y CancelarOrden (mas abajo)
+            // compartian Key.X de fabrica -- dos acciones remapeables
+            // distintas atadas a la misma tecla fisica, exactamente lo que
+            // los comentarios de mas abajo (N/L, T) dicen evitar a
+            // proposito. No se notaba porque hoy se leen en ramas de
+            // Update() mutuamente excluyentes (FPS/vehiculo vs RTS), pero
+            // KeyBindings.Set/DisplayName siguen mostrando "X" como si
+            // estuviera libre para remapear cualquiera de las dos sin
+            // pisar a la otra. O esta libre (no tiene default asignado).
+            { SubirBajarVehiculo, Key.O },
             { Poseer, Key.F },
             { CiclarPosesion, Key.Q },
             { CiclarPosesionAtras, Key.Z },

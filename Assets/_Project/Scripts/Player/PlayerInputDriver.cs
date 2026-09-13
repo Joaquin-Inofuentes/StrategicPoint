@@ -455,6 +455,22 @@ namespace SP.Player
             var kb = Keyboard.current;
             if (kb == null) return;
 
+            // Quien esta manejando el jugador CON LAS MANOS. BUG REAL: el
+            // comentario original de esta linea decia que corria "en el
+            // unico punto por donde pasa todo frame", pero en los hechos
+            // vivia mas abajo, despues de CUATRO returns tempranos (pausa,
+            // overlay de controles, handlingDeath, currentSeat.HasValue).
+            // Durante la secuencia de muerte (hasta 5s) y mientras el
+            // jugador esta sentado en un vehiculo, este valor quedaba
+            // pisado con lo que fuera que tenia ANTES de entrar a esa
+            // ventana -- si en el medio se reposeia a otro soldado (ej.
+            // [Espacio] durante la muerte), OrderService.LoManejaElJugador
+            // seguia devolviendo false para el soldado nuevo (o true para
+            // el viejo) hasta el primer frame que lograra llegar hasta
+            // aca sin cortarse antes. Ahora se recalcula ANTES de
+            // cualquier return, asi que ninguna transicion se lo pierde.
+            OrderService.ManejadoAMano = Rig.Mode == ControlMode.Fps ? Brain.Current : null;
+
             // Pausa/menú de victoria-derrota tienen Time.timeScale=0, pero
             // Update() no se frena solo por eso: sin este corte, mientras
             // el panel de pausa está en pantalla el jugador podía seguir
@@ -571,12 +587,6 @@ namespace SP.Player
             // tres eso ya obliga a dar la vuelta entera para volver uno.
             if (KeyBindings.WasPressed(KeyBindings.CiclarPosesionAtras)) CycleLivingAlly(-1);
             if (KeyBindings.WasPressed(KeyBindings.PoseerMasCercano)) PossessNearestAlly();
-
-            // Quien esta manejando el jugador CON LAS MANOS. Se calcula
-            // aca, en el unico punto por donde pasa todo frame, y no en
-            // cada cambio de modo o de posesion: asi no hay transicion
-            // (morirse, ciclar con [Q], volver de RTS) que se lo pierda.
-            OrderService.ManejadoAMano = Rig.Mode == ControlMode.Fps ? Brain.Current : null;
 
             if (Rig.Mode == ControlMode.Fps) UpdateFps(kb, Mouse.current);
             else UpdateRts(kb, Mouse.current);
@@ -968,9 +978,19 @@ namespace SP.Player
             }
             emptyClickCooldown = Mathf.Max(0f, emptyClickCooldown - Time.deltaTime);
 
-            if (kb.digit1Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Rifle);
-            if (kb.digit2Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Pistol);
-            if (kb.digit3Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Heavy);
+            // BUG REAL: wasPressedThisFrame no "consume" la tecla -- el
+            // mismo apretar de [1]/[2]/[3] para elegir una orden del menu
+            // ([Q] sostenido, ver ResolverGestoDeQ) tambien llegaba ACA en
+            // el mismo frame y re-equipaba el arma correspondiente sin que
+            // el jugador lo pidiera. Mientras el menu esta abierto, estas
+            // teclas son suyas.
+            bool menuDeOrdenesAbierto = OrdenesMenu != null && OrdenesMenu.Abierto;
+            if (!menuDeOrdenesAbierto)
+            {
+                if (kb.digit1Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Rifle);
+                if (kb.digit2Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Pistol);
+                if (kb.digit3Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Heavy);
+            }
 
             // 206: cambiar de arma con la rueda, la convencion del genero.
             // No colisiona con el zoom RTS por construccion: esta rama solo
@@ -1133,6 +1153,7 @@ namespace SP.Player
         {
             if (caido == null || caido.Health == null || caido.Health.IsAlive || !sostenidoLoSuficiente) return false;
             caido.Health.Initialize(caido.Id, caido.Health.MaxHealth);
+            caido.Motor.ResetMotionState();
             GameLog.Line($"{caido.DisplayName} fue revivido");
             return true;
         }
@@ -2731,6 +2752,15 @@ namespace SP.Player
 
         void UpdateControlGroups(Keyboard kb)
         {
+            // BUG REAL: wasPressedThisFrame no "consume" la tecla -- el
+            // mismo [1]-[5] usado para elegir una orden del menu ([Q]
+            // sostenido) tambien llegaba aca en el mismo frame y
+            // guardaba/recuperaba un grupo de control sin que el jugador
+            // lo pidiera (y con [Ctrl] sostenido, hasta PISABA un grupo
+            // guardado). Mientras el menu esta abierto, estas teclas son
+            // suyas.
+            if (OrdenesMenu != null && OrdenesMenu.Abierto) return;
+
             var digitKeys = new[] { kb.digit1Key, kb.digit2Key, kb.digit3Key, kb.digit4Key, kb.digit5Key,
                                     kb.digit6Key, kb.digit7Key, kb.digit8Key, kb.digit9Key };
             bool ctrl = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
