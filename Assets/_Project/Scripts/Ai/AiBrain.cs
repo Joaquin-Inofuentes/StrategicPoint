@@ -516,6 +516,38 @@ namespace SP.Ai
             AdvanceTo(objetivo, DistanciaDeContacto, dt);
         }
 
+        // BUG REAL reportado por el usuario: "aprieto [Y] (Siganme) dos
+        // veces y el primero rehace bien el camino pero el segundo queda
+        // trabado". Causa: Follow llamaba a self.Motor.MoveTowards
+        // DIRECTO contra la ranura de formacion, sin pasar por AdvanceTo
+        // ni PlanPathTo -- la UNICA orden de movimiento de todo AiBrain
+        // que no usa el rodeo de NavService ni TickStuckWatch. Si la
+        // ranura de un aliado quedaba del otro lado de un obstaculo
+        // respecto de su posicion actual, empujaba contra el para
+        // siempre: sin A* no rodeaba, y sin TickStuckWatch (solo se llama
+        // desde AdvanceTo) tampoco habia deteccion de atasco que lo
+        // sacara de ahi. Mismo patron que RodearHasta (arriba): rehace la
+        // ruta cada RefrescoDeRodeo segundos o si el objetivo se corrio
+        // mucho (el lider camina, asi que el punto de seguimiento se
+        // mueve todo el tiempo) y deja que AdvanceTo haga el resto.
+        Vector3 destinoSeguimiento;
+        bool tieneSeguimiento;
+        float relojDeSeguimiento;
+
+        void SeguirHasta(Vector3 objetivo, float umbral, float dt)
+        {
+            relojDeSeguimiento += dt;
+            bool seMovioMucho = tieneSeguimiento && Vector3.Distance(destinoSeguimiento, objetivo) > RehacerRutaSiSeMovio;
+            if (!tieneSeguimiento || seMovioMucho || relojDeSeguimiento >= RefrescoDeRodeo)
+            {
+                destinoSeguimiento = objetivo;
+                tieneSeguimiento = true;
+                relojDeSeguimiento = 0f;
+                PlanPathTo(objetivo);
+            }
+            AdvanceTo(objetivo, umbral, dt);
+        }
+
         // F3: en vez de rodear al enemigo al descubierto, ir a la cobertura
         // mas cercana DESDE LA QUE SE LE PUEDE DISPARAR. La segunda mitad
         // es la que importa: esconderse donde no se puede tirar es peor que
@@ -865,11 +897,11 @@ namespace SP.Ai
                     // punto DISTINTO relativo al lider, expresado en su
                     // espacio local para que rote con el.
                     bool tieneRanura = followOffsetLocal.sqrMagnitude > 0.0001f;
-                    Vector3 destinoSeguimiento = tieneRanura
+                    Vector3 puntoASeguir = tieneRanura
                         ? followTarget.transform.position + followTarget.transform.TransformDirection(followOffsetLocal)
                         : followTarget.transform.position;
                     float umbralSeguimiento = tieneRanura ? Mathf.Max(arriveThreshold, 0.5f) : followStopDistance;
-                    self.Motor.MoveTowards(destinoSeguimiento, umbralSeguimiento, dt);
+                    SeguirHasta(puntoASeguir, umbralSeguimiento, dt);
                     break;
 
                 case AiState.Chase:

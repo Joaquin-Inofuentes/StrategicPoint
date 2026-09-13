@@ -41,7 +41,7 @@ namespace SP.CameraSystem
         // hay profundidad que mostrar. 55° es un picado real (estilo
         // Age of Empires/Company of Heroes): se sigue leyendo el mapa desde
         // arriba pero los soldados y el terreno muestran volumen de verdad.
-        [SerializeField] Vector3 rtsLookEuler = new Vector3(55f, 0f, 0f);
+        [SerializeField] Vector3 rtsLookEuler = new Vector3(90f, 0f, 0f);
 
         // Punto del SUELO que la camara de RTS esta mirando. En ortografico
         // alcanzaba con la posicion XZ de la camara (miraba derecho hacia
