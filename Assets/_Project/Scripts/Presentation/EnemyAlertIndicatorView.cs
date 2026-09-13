@@ -105,6 +105,22 @@ namespace SP.Presentation
         void OnStateChanged(AiStateChangedEvent evt)
         {
             if (soldier == null || evt.ActorId != soldier.Id || markerRenderer == null) return;
+
+            // BUG REAL: a diferencia de su hermano SquadStateIndicatorView
+            // (que si distingue "Dead" con su propio color), este marcador
+            // no tenia caso para el estado Muerto y caia al default
+            // (UnawareColor) -- un enemigo recien eliminado mostraba la
+            // esfera de "todavia no te vio" flotando sobre el cadaver
+            // durante los ~2s hasta que CubeFxReactor apaga los renderers,
+            // exactamente lo opuesto de lo que en verdad paso. El marcador
+            // deja de tener sentido al morir: se apaga directo.
+            if (evt.NewState == "Dead")
+            {
+                markerRenderer.enabled = false;
+                return;
+            }
+            markerRenderer.enabled = true;
+
             alerted = evt.NewState == "Chase" || evt.NewState == "Attack" || evt.NewState == "MovingToAttackOrder";
             markerRenderer.sharedMaterial.color = alerted ? AlertColor : UnawareColor;
         }

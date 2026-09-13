@@ -95,6 +95,7 @@ namespace SP.Player
             if (canalizado < TiempoDeCanal) return;
 
             Caido.Health.Initialize(Caido.Id, Caido.Health.MaxHealth);
+            Caido.Motor.ResetMotionState();
             GameLog.Line($"{Rescatista.DisplayName} revivio a {Caido.DisplayName}");
             Cancelar();
         }

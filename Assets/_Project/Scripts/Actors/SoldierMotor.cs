@@ -67,6 +67,22 @@ namespace SP.Actors
             verticalVelocity = jumpSpeed;
         }
 
+        // BUG REAL: a diferencia de IsCrouching (que todo llamador pone en
+        // false explicitamente al morir/cambiar de estado/perder la
+        // posesion), nada reseteaba IsJumping/verticalVelocity al revivir
+        // a un soldado caido. Update() sigue integrando la parabola de
+        // salto aunque Health.Current este en 0 (este motor no mira
+        // Health), asi que si alguien moria EN el aire y lo revivian en el
+        // mismo lugar (RescateAutomatico, el rescate manual), el salto
+        // seguia su curso usando groundY de la vida ANTERIOR -- el
+        // soldado podia aparecer cayendo o flotando en vez de parado.
+        public void ResetMotionState()
+        {
+            IsJumping = false;
+            verticalVelocity = 0f;
+            IsCrouching = false;
+        }
+
         void Update()
         {
             if (!IsJumping) return;

@@ -1,9 +1,7 @@
-using System;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
-using SP.Actors;
 using SP.Combat;
 using SP.Core;
 
@@ -21,24 +19,14 @@ namespace SP.Presentation
         Text defeatStats;
         bool shown;
 
-        // Bajas propias y del enemigo durante la partida, mas cuanto duro.
-        // Antes la pantalla de fin solo decia gano/perdio, sin dato alguno
-        // de como fue, lo que no invita a mejorar ni a intentar de nuevo
-        // con otra estrategia.
-        int enemyKills;
-        int squadLosses;
+        // Cuanto duro la partida. Las bajas (propias y del enemigo) se
+        // muestran en BuildStatsText via ActorRegistry.CountDead, que lee
+        // el estado actual en vez de ir contando EntityDiedEvent por su
+        // cuenta -- asi no depende de que este componente ya estuviera
+        // suscripto ANTES de que ocurriera cada muerte de la partida.
         float startTime;
-        IDisposable deathSub;
 
         void Awake() => startTime = Time.time;
-
-        void TrackDeaths(EntityDiedEvent evt)
-        {
-            var soldier = ActorRegistry.FindById(evt.ActorId);
-            if (soldier == null) return;
-            if (soldier.Team == TeamId.Enemy) enemyKills++;
-            else if (soldier.Team == TeamId.Player) squadLosses++;
-        }
 
         // Para que PauseController sepa que no debe abrirse encima --
         // antes [ESC] con la pantalla de Victoria/Derrota puesta abría
@@ -84,12 +72,6 @@ namespace SP.Presentation
                 if (t != null) defeatStats = t.GetComponent<Text>();
             }
 
-            // Igual que en AimUI/DamageVignetteView: la suscripcion hecha
-            // en Editor al armar la escena no sobrevive al domain reload
-            // de Play mode.
-            deathSub?.Dispose();
-            deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(TrackDeaths);
-
             // Mismo motivo que en MainMenuController/PauseController: los
             // onClick.AddListener() de un script de Editor no sobreviven
             // a Play mode.
@@ -101,8 +83,6 @@ namespace SP.Presentation
             WireButton(defeatPanel, "RetryButton", OnRetryClicked);
             WireButton(defeatPanel, "ExitButton", OnExitClicked);
         }
-
-        void OnDisable() => deathSub?.Dispose();
 
         static void WireButton(GameObject panel, string childName, UnityEngine.Events.UnityAction action)
         {
