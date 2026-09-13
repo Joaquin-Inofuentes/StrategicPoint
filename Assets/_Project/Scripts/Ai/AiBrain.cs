@@ -1037,16 +1037,28 @@ namespace SP.Ai
                     // En Libre StanceAllowsFire es true y el TryFire es el
                     // mismo de siempre. AltoElFuego encara y sigue al
                     // enemigo con la mira, pero no aprieta el gatillo.
-                    if (StanceAllowsFire && !aimedAtTarget)
-                        Debug.Log($"[FireGate] BLOQUEADO: {self.name} encara a {target.name} pero angulo={aimAngleDeg:F1} > tolerancia {aimToleranceDeg} -- sin el gate esto disparaba a la nada", target.gameObject);
                     if (StanceAllowsFire && aimedAtTarget)
                     {
-                        bool fired = self.Weapon.TryFire(self.transform.position, (target.transform.position - self.transform.position).normalized);
-                        if (fired)
-                        {
-                            string moving = attackMoveDestination.HasValue ? " (en movimiento)" : "";
-                            Debug.Log($"[FireGate] DISPARA{moving}: {self.name} -> {target.name} | angulo={aimAngleDeg:F1} (tolerancia {aimToleranceDeg}) | dist={dd:F1}", target.gameObject);
-                        }
+                        // BUG REAL, mismo que ya se encontro y arreglo del
+                        // lado del jugador (ver PlayerBrain.Fire): el
+                        // proyectil nace en la boca del arma (WeaponHolder.
+                        // TryFire usa Muzzle.position para el spawn), pero
+                        // ANTES la direccion se calculaba desde el CENTRO
+                        // DEL CUERPO -- dos origenes distintos para el mismo
+                        // disparo. Con el canio a varias decenas de cm de
+                        // altura/costado respecto del pivote del soldado, la
+                        // trazadora salia de la boca del arma pero volaba en
+                        // paralelo a esa direccion, no realmente hacia
+                        // adelante del cañon: se veia "torcida" cada vez que
+                        // disparaba un aliado o un enemigo, que es la
+                        // inmensa mayoria de los tiros que el jugador ve en
+                        // pantalla. Ahora la direccion sale de la MISMA boca
+                        // del arma que usa el spawn.
+                        var muzzle = self.Weapon.Muzzle;
+                        Vector3 origenDisparo = muzzle != null ? muzzle.position : self.transform.position;
+                        Vector3 direccionDisparo = target.transform.position - origenDisparo;
+                        if (direccionDisparo.sqrMagnitude < 0.0001f) direccionDisparo = self.transform.forward;
+                        self.Weapon.TryFire(self.transform.position, direccionDisparo.normalized);
                     }
 
                     // Attack-move: se traslada hacia el destino pedido SIN
