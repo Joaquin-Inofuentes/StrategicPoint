@@ -140,8 +140,16 @@ namespace SP.Ai
             ? patrolWaypoints.Length
             : (patrolRoute != null ? patrolRoute.Length : 0);
 
-        Vector3 PatrolPointAt(int i) => patrolWaypoints != null && patrolWaypoints.Length > 0 && patrolWaypoints[i] != null
-            ? patrolWaypoints[i].position
+        // BUG REAL: si patrolWaypoints esta seteado (modo Transform) pero
+        // el marcador de ESTE indice fue destruido en runtime, el operador
+        // ?: caia a patrolRoute[i] -- y en este modo patrolRoute es SIEMPRE
+        // null (ver SetPatrolWaypoints), asi que tiraba
+        // NullReferenceException y abortaba el tick de IA de TODOS los
+        // soldados de ese frame (WorldSimulationDriver.Step los recorre sin
+        // try/catch). Si el marcador murio, quedarse en el lugar es mejor
+        // que crashear la simulacion entera.
+        Vector3 PatrolPointAt(int i) => patrolWaypoints != null && patrolWaypoints.Length > 0
+            ? (patrolWaypoints[i] != null ? patrolWaypoints[i].position : transform.position)
             : patrolRoute[i];
 
         // Antes IssueMoveOrder reemplazaba el destino anterior, asi que no
@@ -514,54 +522,54 @@ namespace SP.Ai
         public bool VaHaciaUnaCobertura => tieneCobertura;
         public Vector3 CoberturaElegida => coberturaElegida;
 
-        void RodearHasta(Vector3 objetivo, float dt)
+        // BUG REAL reportado por el usuario: "aprieto [Y] (Siganme) dos
+        // veces y el primero rehace bien el camino pero el segundo queda
+        // trabado". Causa: Follow llamaba a self.Motor.MoveTowards DIRECTO
+        // contra la ranura de formacion, sin pasar por AdvanceTo ni
+        // PlanPathTo -- no usaba el rodeo de NavService ni TickStuckWatch.
+        // Si la ranura de un aliado quedaba del otro lado de un obstaculo
+        // respecto de su posicion actual, empujaba contra el para siempre.
+        // Generalizado a un solo helper: Patrol y el regreso al puesto en
+        // Defensiva (HoldStancePosition) tenian el MISMO problema --
+        // MoveTowards directo, sin A* ni deteccion de atasco -- asi que
+        // quedarse trabado contra un obstaculo en plena ronda de patrulla
+        // era igual de posible que en Follow. Cada llamador pasa su propio
+        // trio destino/tiene/reloj por ref para no mezclar el estado de
+        // una orden de seguimiento con el de una ronda de patrulla.
+        bool AvanzarConRodeo(Vector3 objetivo, float umbral, float dt, ref Vector3 destino, ref bool tieneDestino, ref float reloj)
         {
-            relojDeRodeo += dt;
-            bool seMovioMucho = tieneRodeo && Vector3.Distance(destinoRodeo, objetivo) > RehacerRutaSiSeMovio;
-            if (!tieneRodeo || seMovioMucho || relojDeRodeo >= RefrescoDeRodeo)
+            reloj += dt;
+            bool seMovioMucho = tieneDestino && Vector3.Distance(destino, objetivo) > RehacerRutaSiSeMovio;
+            if (!tieneDestino || seMovioMucho || reloj >= RefrescoDeRodeo)
             {
-                destinoRodeo = objetivo;
-                tieneRodeo = true;
-                relojDeRodeo = 0f;
+                destino = objetivo;
+                tieneDestino = true;
+                reloj = 0f;
                 // Se replanifica DESDE LA POSICION ACTUAL, asi que empezar
                 // de nuevo por el punto 0 no pierde el avance: cada ruta
                 // nueva arranca donde el soldado esta parado ahora.
                 PlanPathTo(objetivo);
             }
-            AdvanceTo(objetivo, DistanciaDeContacto, dt);
+            return AdvanceTo(objetivo, umbral, dt);
         }
 
-        // BUG REAL reportado por el usuario: "aprieto [Y] (Siganme) dos
-        // veces y el primero rehace bien el camino pero el segundo queda
-        // trabado". Causa: Follow llamaba a self.Motor.MoveTowards
-        // DIRECTO contra la ranura de formacion, sin pasar por AdvanceTo
-        // ni PlanPathTo -- la UNICA orden de movimiento de todo AiBrain
-        // que no usa el rodeo de NavService ni TickStuckWatch. Si la
-        // ranura de un aliado quedaba del otro lado de un obstaculo
-        // respecto de su posicion actual, empujaba contra el para
-        // siempre: sin A* no rodeaba, y sin TickStuckWatch (solo se llama
-        // desde AdvanceTo) tampoco habia deteccion de atasco que lo
-        // sacara de ahi. Mismo patron que RodearHasta (arriba): rehace la
-        // ruta cada RefrescoDeRodeo segundos o si el objetivo se corrio
-        // mucho (el lider camina, asi que el punto de seguimiento se
-        // mueve todo el tiempo) y deja que AdvanceTo haga el resto.
+        void RodearHasta(Vector3 objetivo, float dt) =>
+            AvanzarConRodeo(objetivo, DistanciaDeContacto, dt, ref destinoRodeo, ref tieneRodeo, ref relojDeRodeo);
+
         Vector3 destinoSeguimiento;
         bool tieneSeguimiento;
         float relojDeSeguimiento;
 
-        void SeguirHasta(Vector3 objetivo, float umbral, float dt)
-        {
-            relojDeSeguimiento += dt;
-            bool seMovioMucho = tieneSeguimiento && Vector3.Distance(destinoSeguimiento, objetivo) > RehacerRutaSiSeMovio;
-            if (!tieneSeguimiento || seMovioMucho || relojDeSeguimiento >= RefrescoDeRodeo)
-            {
-                destinoSeguimiento = objetivo;
-                tieneSeguimiento = true;
-                relojDeSeguimiento = 0f;
-                PlanPathTo(objetivo);
-            }
-            AdvanceTo(objetivo, umbral, dt);
-        }
+        void SeguirHasta(Vector3 objetivo, float umbral, float dt) =>
+            AvanzarConRodeo(objetivo, umbral, dt, ref destinoSeguimiento, ref tieneSeguimiento, ref relojDeSeguimiento);
+
+        Vector3 destinoPatrulla;
+        bool tienePatrulla;
+        float relojDePatrulla;
+
+        Vector3 destinoRegresoAPuesto;
+        bool tieneRegresoAPuesto;
+        float relojDeRegresoAPuesto;
 
         // F3: en vez de rodear al enemigo al descubierto, ir a la cobertura
         // mas cercana DESDE LA QUE SE LE PUEDE DISPARAR. La segunda mitad
@@ -784,7 +792,13 @@ namespace SP.Ai
             // ticks de IA reales y no en frames de reloj de pared.
             tickCount++;
 
-            if (target != null && !target.Health.IsAlive)
+            // BUG REAL: solo se chequeaba IsAlive. Un soldado que sube a un
+            // vehiculo sigue vivo pero Vehicle.Mount lo desactiva
+            // (gameObject.SetActive(false)) -- sin este chequeo, quien lo
+            // tenia de target quedaba trabado persiguiendo/atacando a un
+            // objetivo invisible e inalcanzable para siempre, porque el
+            // re-sensado esta apagado mientras State es Chase o Attack.
+            if (target != null && (!target.Health.IsAlive || !target.gameObject.activeInHierarchy))
                 target = null;
 
             if (target == null && (State == AiState.Chase || State == AiState.Attack))
@@ -833,7 +847,7 @@ namespace SP.Ai
                     int patrolCount = PatrolCount;
                     if (patrolCount > 0)
                     {
-                        if (self.Motor.MoveTowards(PatrolPointAt(patrolIndex), 1f, dt))
+                        if (AvanzarConRodeo(PatrolPointAt(patrolIndex), 1f, dt, ref destinoPatrulla, ref tienePatrulla, ref relojDePatrulla))
                             patrolIndex = (patrolIndex + 1) % patrolCount;
                     }
                     break;
@@ -1084,6 +1098,16 @@ namespace SP.Ai
                     // arriba acaba de validar.
                     if (attackMoveDestination.HasValue)
                     {
+                        // BUG REAL: a diferencia de todo otro consumidor de
+                        // path/pathIndex (AdvanceTo, que usan RodearHasta,
+                        // CubrirseDe y MovingToOrder), este attack-move
+                        // nunca llamaba a TickStuckWatch. Si algo bloqueaba
+                        // el tramo (un vehiculo que se cruzo, un obstaculo
+                        // nuevo) el soldado empujaba contra el con el
+                        // gatillo apretado, sin deteccion de atasco ni
+                        // replanificacion, por el resto del combate.
+                        TickStuckWatch(attackMoveDestination.Value, dt);
+
                         // Si hay una ruta calculada (habia algo en el
                         // medio), el que manda es el waypoint en curso y
                         // no el destino final: caminar en linea recta
@@ -1174,7 +1198,7 @@ namespace SP.Ai
             if (stance == CombatStance.Defensiva &&
                 Vector3.Distance(self.transform.position, homePosition) > arriveThreshold)
             {
-                self.Motor.MoveTowards(homePosition, arriveThreshold, dt);
+                AvanzarConRodeo(homePosition, arriveThreshold, dt, ref destinoRegresoAPuesto, ref tieneRegresoAPuesto, ref relojDeRegresoAPuesto);
                 return;
             }
 
