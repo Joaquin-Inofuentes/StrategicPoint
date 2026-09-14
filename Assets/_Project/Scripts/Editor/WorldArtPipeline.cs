@@ -526,7 +526,31 @@ namespace SP.EditorTools
             var veh = GameObject.Find("Vehiculo_Blindado");
             if (veh == null) { Debug.LogWarning("[WorldArtPipeline] No se encontro Vehiculo_Blindado en la escena."); return; }
 
-            ReemplazarVisualEnCollider(veh, CargarPrefab("P_Veh_Tanque_Cuerpo"));
+            var cuerpoPrefab = CargarPrefab("P_Veh_Tanque_Cuerpo");
+            ReemplazarVisualEnCollider(veh, cuerpoPrefab);
+
+            // BUG REAL (el cañon quedaba mas largo que el tanque entero):
+            // el Cuerpo se ESTIRA para llenar el BoxCollider del vehiculo
+            // (comentario de mas abajo, decision de gameplay ya tomada),
+            // pero ese collider (3.60 m de largo) es mas chico que el
+            // Cuerpo real (5.26 m, medido en la Muestra de exhibicion) --
+            // asi que el cuerpo terminaba encogido mientras la
+            // torreta/cañon, a su "escala real" sin encoger (ver
+            // EscalaInversa), quedaban de un porte que no correspondia con
+            // el resto del tanque. Se mide cuanto se encogio el Cuerpo en
+            // su eje largo (Z, el que importa en un vehiculo) y se aplica
+            // ESE mismo factor -- parejo en los 3 ejes, para no deformar
+            // la forma de la torreta/cañon -- ademas de EscalaInversa.
+            float factorTorreta = 1f;
+            if (cuerpoPrefab != null)
+            {
+                var boxVeh = veh.GetComponent<BoxCollider>();
+                float largoObjetivo = boxVeh != null ? boxVeh.size.z * veh.transform.lossyScale.z : veh.transform.lossyScale.z;
+                var muestraCuerpo = (GameObject)PrefabUtility.InstantiatePrefab(cuerpoPrefab);
+                float largoReal = BoundsDe(muestraCuerpo).size.z;
+                Object.DestroyImmediate(muestraCuerpo);
+                if (largoReal > 0.0001f) factorTorreta = largoObjetivo / largoReal;
+            }
 
             var pivot = veh.transform.Find("TurretMount/TurretPivot");
             if (pivot == null) { Debug.LogWarning("[WorldArtPipeline] Vehiculo_Blindado no tiene TurretPivot."); return; }
@@ -546,7 +570,7 @@ namespace SP.EditorTools
                 v.name = "VisualMundo";
                 v.transform.localPosition = Vector3.zero;
                 v.transform.localRotation = Quaternion.identity;
-                v.transform.localScale = EscalaInversa(pivot);
+                v.transform.localScale = EscalaInversa(pivot) * factorTorreta;
             }
 
             // BUG REAL (falta el cañon): este mount ("TurretBarrel", el
@@ -568,7 +592,7 @@ namespace SP.EditorTools
                 v.name = "VisualMundo";
                 v.transform.localPosition = Vector3.zero;
                 v.transform.localRotation = Quaternion.identity;
-                v.transform.localScale = EscalaInversa(barrel);
+                v.transform.localScale = EscalaInversa(barrel) * factorTorreta;
             }
 
             Debug.Log("[WorldArtPipeline] Vehiculo_Blindado reskineado (cuerpo/torreta/cañon).");
