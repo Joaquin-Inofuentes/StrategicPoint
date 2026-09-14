@@ -230,6 +230,15 @@ namespace SP.CameraSystem
         // Balanceo al caminar (183). Solo en primera persona: en RTS la
         // camara mira el mapa desde arriba con picado fijo, balancearla
         // ahi solo marea.
+        // BUG REAL (pedido: "no quiero q vibre la pantalla al caminar"):
+        // amp=0.035 con bobFrequency=9 rad/s hacia un rebote vertical en
+        // Abs(sin) -- a esa frecuencia el "paso" se sentia como un
+        // temblor constante, no una caminata. Se expone como campos
+        // serializados (antes eran literales fijos en el codigo) y el
+        // default baja a 0: sigue disponible para quien quiera un bob
+        // sutil, pero no vibra por default.
+        [SerializeField] float bobAmplitude = 0f;
+        [SerializeField] float bobFrequency = 9f;
         bool walking;
         float bobPhase;
         public Vector3 BobOffset { get; private set; }
@@ -238,9 +247,9 @@ namespace SP.CameraSystem
 
         void UpdateBob(bool firstPerson)
         {
-            bool active = firstPerson && walking && CameraFxSettings.Enabled;
-            if (active) bobPhase += Time.deltaTime * 9f;
-            float amp = active ? 0.035f : 0f;
+            bool active = firstPerson && walking && CameraFxSettings.Enabled && bobAmplitude > 0f;
+            if (active) bobPhase += Time.deltaTime * bobFrequency;
+            float amp = active ? bobAmplitude : 0f;
             // El eje Y usa Abs(sin) para que el paso sea un rebote hacia
             // arriba y nunca hunda la camara por debajo de su altura.
             BobOffset = new Vector3(Mathf.Cos(bobPhase) * amp * 0.6f,
@@ -485,7 +494,13 @@ namespace SP.CameraSystem
         // siempre) -- eso es justo lo que hace que el soldado se vea
         // correrse al lado izquierdo de la pantalla, como en cualquier
         // shooter en tercera persona por encima del hombro.
-        [SerializeField] float shoulderSideOffset = 0.55f;
+        // Pedido de seguimiento: "mas a la derecha, como un Resident
+        // Evil" -- 0.55 dejaba el cuerpo mas cerca del centro que el
+        // encuadre clasico RE4/RE6 (personaje pegado al borde izquierdo).
+        // Subido a 1.0 sobre la misma distancia (4 m) para un angulo
+        // notoriamente mayor sin exagerar tanto que el punto de mira
+        // quede desalineado del centro de pantalla.
+        [SerializeField] float shoulderSideOffset = 1.0f;
 
         public void FollowOverShoulder(Transform target, float distance = 4f, float height = 1.53f, float heightOffset = 0f)
         {

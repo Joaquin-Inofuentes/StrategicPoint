@@ -253,6 +253,7 @@ namespace SP.Combat
                 {
                     hit.Health.TakeDamage(damage, ownerId);
                     ImpactFx.SpawnScaledByDamage(puntoDeImpacto, ImpactFx.EnemyColor, damage);
+                    SpawnSangre(puntoDeImpacto);
                 }
                 Expire();
                 return;
@@ -539,6 +540,32 @@ namespace SP.Combat
                 return false;
             }
             return true;
+        }
+
+        // Salpicadura de sangre al impactar un soldado: cubitos chicos que
+        // se dispersan y caen con gravedad, igual que el resto de los
+        // escombros del juego (chispas de blindaje, restos de explosion).
+        // Reusa DebrisPool en vez de armar un pool nuevo -- ya hace
+        // exactamente esto (spawn con presupuesto fijo, gravedad, un
+        // rebote y encogido al expirar), solo que hasta ahora nadie lo
+        // llamaba con un color de sangre.
+        static readonly Color ColorSangre = new Color(0.5f, 0.02f, 0.02f);
+
+        static void SpawnSangre(Vector3 punto)
+        {
+            int cantidad = Random.Range(4, 7);
+            for (int i = 0; i < cantidad; i++)
+            {
+                // Mismo criterio que el empuje de granada de mas abajo:
+                // se fuerza una componente vertical positiva para que la
+                // salpicadura salte y caiga, en vez de arrastrarse por el
+                // piso si Random.insideUnitSphere sale con Y negativo.
+                var dir = Random.insideUnitSphere;
+                dir.y = Mathf.Abs(dir.y) * 0.7f + 0.3f;
+                var velocidad = dir.normalized * Random.Range(1.2f, 3f);
+                float size = Random.Range(0.035f, 0.06f);
+                DebrisPool.Spawn(punto, velocidad, ColorSangre, size, Random.Range(1f, 1.6f));
+            }
         }
 
         void Explode(Vector3 point) => ExplodeAt(point, explosionRadius, damage, ownerId, ownerTeam, ignoreVehicle);
