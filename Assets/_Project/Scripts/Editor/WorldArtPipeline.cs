@@ -374,6 +374,20 @@ namespace SP.EditorTools
             visual.transform.localRotation = Quaternion.identity;
             visual.transform.localScale = Vector3.one;
 
+            // BUG REAL (colliders duplicados): los prefabs de 01_Modulares/
+            // 02_Ambiente/05_Armas traen su propio BoxCollider (o Capsula),
+            // pensado para cuando ese prefab se usa suelto (ver Paso 5). Acá
+            // se cuelgan DENTRO de un objeto que YA tiene su propio collider
+            // -- el "hitbox de gameplay ya decidido" que el comentario de
+            // esta funcion promete no tocar. Con los dos vivos (tamaños
+            // distintos, uno sin relacion con el otro) cualquier cosa que
+            // dependa del collider del visual en vez del de objetivo detecta
+            // una caja equivocada. Mismo espiritu que ReemplazarGround ya
+            // aplica a los tiles de piso: el collider que importa es el que
+            // ya estaba puesto por diseño, el que trae el visual sobra.
+            foreach (var c in visual.GetComponentsInChildren<Collider>(true))
+                Object.DestroyImmediate(c);
+
             var tamModelo = BoundsDe(visual).size; // bounds mundiales con localScale=1: ya arrastra la escala del padre
             visual.transform.localScale = new Vector3(
                 tamModelo.x > 0.0001f ? tamMundo.x / tamModelo.x : 1f,
@@ -488,6 +502,25 @@ namespace SP.EditorTools
         // paso 4): son piezas articuladas -- TurretAI las rota sobre
         // TurretPivot -- y estirarlas para llenar una caja arbitraria las
         // desalinearia del punto de disparo (Muzzle).
+        // BUG REAL (cabezal desalineado): TurretMount trae un localScale NO
+        // UNIFORME (0.45, 0.71, 0.28 -- lo que en su momento estiraba el
+        // graybox de la torreta a mano). Torreta/Metralleta/Cañon cuelgan
+        // varios niveles abajo de TurretMount, asi que heredan ese achique
+        // aunque el comentario de arriba prometa que se cuelgan "a su
+        // escala real" -- nada en el codigo lo compensaba. Mismo problema,
+        // mismo remedio que ReemplazarBidonesMundo ya usa para el bidon
+        // (escala inversa por eje sobre el propio visual, cancelando lo que
+        // el padre re-escala) para que la pieza articulada quede a su
+        // tamaño real sin importar en que caja grayboxeada este colgada.
+        static Vector3 EscalaInversa(Transform padre)
+        {
+            var e = padre.lossyScale;
+            return new Vector3(
+                Mathf.Approximately(e.x, 0f) ? 1f : 1f / e.x,
+                Mathf.Approximately(e.y, 0f) ? 1f : 1f / e.y,
+                Mathf.Approximately(e.z, 0f) ? 1f : 1f / e.z);
+        }
+
         static void ReemplazarVehiculo()
         {
             var veh = GameObject.Find("Vehiculo_Blindado");
@@ -513,9 +546,17 @@ namespace SP.EditorTools
                 v.name = "VisualMundo";
                 v.transform.localPosition = Vector3.zero;
                 v.transform.localRotation = Quaternion.identity;
+                v.transform.localScale = EscalaInversa(pivot);
             }
 
-            var canon = CargarPrefab("P_Veh_Tanque_Metralleta");
+            // BUG REAL (falta el cañon): este mount ("TurretBarrel", el
+            // punto donde se cuelga EL caño del tanque) colgaba
+            // P_Veh_Tanque_Metralleta -- la ametralladora coaxial, no
+            // existia otra malla hasta este reexport -- como relleno visual
+            // a falta de un cañon real. Ahora que SM_Veh_Tanque_Canon existe
+            // (ver commit "reexport de vehiculos + nuevo helicoptero"), el
+            // barril del tanque cuelga la pieza correcta.
+            var canon = CargarPrefab("P_Veh_Tanque_Canon");
             var barrel = pivot.Find("TurretBarrel");
             if (canon != null && barrel != null)
             {
@@ -527,6 +568,7 @@ namespace SP.EditorTools
                 v.name = "VisualMundo";
                 v.transform.localPosition = Vector3.zero;
                 v.transform.localRotation = Quaternion.identity;
+                v.transform.localScale = EscalaInversa(barrel);
             }
 
             Debug.Log("[WorldArtPipeline] Vehiculo_Blindado reskineado (cuerpo/torreta/cañon).");
