@@ -137,6 +137,16 @@ namespace SP.Presentation
                     });
                 }
 
+                // Pedido explicito: sliders de volumen por canal ademas del
+                // master de arriba -- General (Ambiente/musica), VFX
+                // (efectos de disparo/impacto/pisadas) y Voces (acuses de
+                // orden). Usan AudioDirector.GainFor/SetGain, que ya
+                // persiste en PlayerPrefs con su propia clave por canal, asi
+                // que aca no hace falta una constante Pref* nueva.
+                WireChannelSlider(settingsPanel, "General", SfxChannel.Ambient);
+                WireChannelSlider(settingsPanel, "VFX", SfxChannel.Sfx);
+                WireChannelSlider(settingsPanel, "Voces", SfxChannel.Voice);
+
                 var sensValueTxt = settingsPanel.transform.Find("Sensibilidad de mouse_Value")?.GetComponent<Text>();
                 var sensSlider = settingsPanel.transform.Find("Sensibilidad de mouse_Slider")?.GetComponent<Slider>();
                 float savedSensitivity = PlayerPrefs.GetFloat(PrefSensitivity, 0.15f);
@@ -235,12 +245,37 @@ namespace SP.Presentation
             }
         }
 
+        // Mismo patron que el slider de Volumen de arriba (Find por nombre
+        // + SetValueWithoutNotify + onValueChanged), pero generico por
+        // canal de AudioDirector en vez de tocar AudioListener.volume.
+        static void WireChannelSlider(GameObject panel, string label, SfxChannel channel)
+        {
+            if (panel == null) return;
+            var valueTxt = panel.transform.Find(label + "_Value")?.GetComponent<Text>();
+            var slider = panel.transform.Find(label + "_Slider")?.GetComponent<Slider>();
+            if (slider == null) return;
+
+            float saved = AudioDirector.GainFor(channel);
+            slider.SetValueWithoutNotify(saved);
+            if (valueTxt != null) valueTxt.text = saved.ToString("0.00");
+            slider.onValueChanged.AddListener(v =>
+            {
+                AudioDirector.SetGain(channel, v);
+                if (valueTxt != null) valueTxt.text = v.ToString("0.00");
+            });
+        }
+
         static void WireButton(GameObject panel, string childName, UnityEngine.Events.UnityAction action)
         {
             if (panel == null) return;
             var t = panel.transform.Find(childName);
             var btn = t != null ? t.GetComponent<Button>() : null;
-            if (btn != null) btn.onClick.AddListener(action);
+            if (btn == null) return;
+            btn.onClick.AddListener(action);
+            // Pedido explicito: sonido al pasar el mouse y al hacer click
+            // en todos los botones -- un solo punto de union para los once
+            // botones de este controlador.
+            SP.UI.ButtonSfx.Attach(btn);
         }
 
         void Update()

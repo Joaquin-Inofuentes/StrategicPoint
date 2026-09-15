@@ -9,7 +9,12 @@ namespace SP.Presentation
     //
     // Los miembros nuevos van SIEMPRE al final: el valor entero de cada uno
     // indexa el cache de ganancias y quedaria guardado si se serializara.
-    public enum SfxChannel { Sfx, Ui, Ambient }
+    // Voice (pedido explicito, slider "Voces" en Opciones): las voces de
+    // orden (SfxKind.OrderBark) necesitan su PROPIO volumen -- si
+    // compartieran canal con Ui, bajar el volumen de clics de botones
+    // bajaria tambien las voces, que el jugador quiere poder mezclar
+    // aparte.
+    public enum SfxChannel { Sfx, Ui, Ambient, Voice }
 
     // Estado de una voz del pool, separado del AudioSource A PROPOSITO: asi
     // la decision de a quien robarle la voz (AudioDirector.SelectVictim) es
@@ -58,6 +63,7 @@ namespace SP.Presentation
         // convencion para que el dia que haya un slider no haya que migrar
         // ninguna clave ya persistida.
         const string PrefAmbient = "sp_volume_ambient";
+        const string PrefVoice = "sp_volume_voice";
 
         // Cache perezoso: PlayerPrefs.GetFloat es una lectura nativa y esto
         // se consulta en CADA sonido reproducido. Es float? y no float para
@@ -65,7 +71,7 @@ namespace SP.Presentation
         // Un estatico con respaldo en PlayerPrefs, ademas, es el unico
         // patron de este proyecto que sobrevive al domain reload sin que
         // nadie tenga que recablear una referencia (ver CameraFxSettings).
-        static readonly float?[] gainCache = new float?[3];
+        static readonly float?[] gainCache = new float?[4];
 
         static string PrefKeyFor(SfxChannel c)
         {
@@ -73,6 +79,7 @@ namespace SP.Presentation
             {
                 case SfxChannel.Ui: return PrefUi;
                 case SfxChannel.Ambient: return PrefAmbient;
+                case SfxChannel.Voice: return PrefVoice;
                 default: return PrefSfx;
             }
         }
@@ -464,6 +471,12 @@ namespace SP.Presentation
         public bool PlayUi(SfxKind kind, float volume, float priority)
             => PlayFlat(GenericSfx.Get(kind), SfxChannel.Ui, volume, priority);
 
+        // Voz de orden (item Voces del slider de Opciones): canal propio,
+        // separado de Ui, para que bajar el volumen de clics no se lleve
+        // puesta la voz del acuse militar.
+        public bool PlayVoice(SfxKind kind, float volume, float priority)
+            => PlayFlat(GenericSfx.Get(kind), SfxChannel.Voice, volume, priority);
+
         // Atajos estaticos para los puntos de llamada, que hoy resuelven el
         // audio con AudioSource.PlayClipAtPoint o con un AudioSource por
         // entidad. Devuelven false si no hay director en la escena, para que
@@ -476,6 +489,9 @@ namespace SP.Presentation
 
         public static bool PlayUi2D(SfxKind kind, float volume, float priority = 1f)
             => Instance != null && Instance.PlayUi(kind, volume, priority);
+
+        public static bool PlayVoice2D(SfxKind kind, float volume, float priority = 1f)
+            => Instance != null && Instance.PlayVoice(kind, volume, priority);
 
         public static float DistanceOrUnknown(Transform listener, Vector3 position) =>
             listener != null ? Vector3.Distance(listener.position, position) : float.MaxValue;

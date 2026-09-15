@@ -59,6 +59,7 @@ namespace SP.UI
                 int captured = i; // captura por valor: sin esto todas las filas remapearian la ultima
                 Rows[i].onClick.RemoveAllListeners();
                 Rows[i].onClick.AddListener(() => BeginListening(captured));
+                ButtonSfx.Attach(Rows[i]);
             }
         }
 

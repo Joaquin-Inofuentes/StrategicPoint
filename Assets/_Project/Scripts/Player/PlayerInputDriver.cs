@@ -530,6 +530,11 @@ namespace SP.Player
                 }
 
                 Rig.ToggleMode();
+                // Pedido explicito: sonido de transicion ("fiush") al
+                // cambiar entre FPS y RTS. 2D y canal Sfx: no es un sonido
+                // que ocurra en ningun punto del mundo, es feedback de UI
+                // de camara.
+                AudioDirector.PlayUi2D(SfxKind.CameraSwoosh, 0.6f, 0.7f);
                 // Marca que el jugador ya descubrio el cambio de modo, para
                 // que el recordatorio de GameplaySceneBootstrap no vuelva a
                 // aparecer nunca mas en ninguna partida futura.

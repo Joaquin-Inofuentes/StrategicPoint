@@ -376,6 +376,12 @@ namespace SP.Player
             // IssueAttackOrder / IssueMountOrder, que corren una vez por
             // soldado.
             PlayOrderSound();
+            // Pedido explicito: una voz de acuse militar ("Accepted" /
+            // "Positive" / "Yes" / "Ready", elegida al azar por GenericSfx)
+            // ademas del tono de confirmacion -- mismo canal 2D y misma
+            // granularidad por LOTE que el tono, pero por su propio canal
+            // de mezcla (Voice) para que se pueda subir/bajar aparte.
+            AudioDirector.PlayVoice2D(SfxKind.OrderBark, 0.8f, 0.85f);
             // 221: el lote es exactamente la granularidad correcta para el
             // historial -- una entrada por orden dada, no una por soldado.
             OrderHistory.Record(logLine, list != null ? list.Count : 0);

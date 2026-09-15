@@ -89,7 +89,11 @@ namespace SP.Presentation
             if (panel == null) return;
             var t = panel.transform.Find(childName);
             var btn = t != null ? t.GetComponent<Button>() : null;
-            if (btn != null) btn.onClick.AddListener(action);
+            if (btn == null) return;
+            btn.onClick.AddListener(action);
+            // Pedido explicito: sonido al pasar el mouse y al hacer click
+            // en todos los botones.
+            SP.UI.ButtonSfx.Attach(btn);
         }
 
         string BuildStatsText()

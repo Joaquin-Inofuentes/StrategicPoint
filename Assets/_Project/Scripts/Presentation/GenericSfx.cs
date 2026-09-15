@@ -15,7 +15,11 @@ namespace SP.Presentation
     // 194) es el silbido de la bala que pasa cerca.
     // FootstepGrass / FootstepConcrete: pedido explicito de pisadas reales
     // segun superficie -- van al final por la misma regla que el resto.
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete }
+    // UiHover / UiClick: pedido explicito de sonido al pasar el mouse y al
+    // hacer click en CUALQUIER boton (ver SP.UI.ButtonSfx). OrderBark: voz
+    // de acuse militar ("Accepted"/"Positive"/etc) al dar una orden.
+    // CameraSwoosh: transicion FPS<->RTS.
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh }
 
     // Sonidos genéricos: primero busca grabaciones reales importadas bajo
     // Resources/Audio/Sfx/<Kind>/ (pedido explicito: "quita todos los
@@ -133,6 +137,14 @@ namespace SP.Presentation
             // cola larga de un impacto real.
             if (kind == SfxKind.FootstepGrass) return GenerateNoiseBurst(0.965f, 0.999f, 0.09f, 42f, 0.004f, 71, "FootstepGrass");
             if (kind == SfxKind.FootstepConcrete) return GenerateNoiseBurst(0.72f, 0.985f, 0.06f, 48f, 0.002f, 73, "FootstepConcrete");
+
+            // Transicion FPS<->RTS: a esto no le hace falta un clip real
+            // (no busca "sonar autentico" a nada del mundo real), asi que
+            // es procedural A PROPOSITO y no solo un respaldo -- mismo
+            // barrido de frecuencia que GenerateWhizz pero mas largo y con
+            // una envolvente de campana mas suave, que es justo lo que
+            // pide un "fiush" de cambio de vista.
+            if (kind == SfxKind.CameraSwoosh) return GenerateSwoosh();
 
             float freq, duration, decay;
             switch (kind)
@@ -319,6 +331,43 @@ namespace SP.Presentation
             NormalizePeak(samples, 0.7f);
 
             var clip = AudioClip.Create("BulletWhizz", sampleCount, 1, sampleRate, false);
+            clip.SetData(samples, 0);
+            return clip;
+        }
+
+        // Pedido explicito: "un sonido de transicion como fiush al cambiar
+        // de FPS a RTS y viceversa". Mismo enfoque de GenerateWhizz (ruido
+        // filtrado con barrido de frecuencia + fase acumulada para evitar
+        // clicks), pero mas largo, sin la componente tonal del silbido de
+        // bala, y con una banda que sube (no baja) -- un "fiush" de cambio
+        // de vista se lee como algo que se ABRE, no como algo que pasa de
+        // largo.
+        static AudioClip GenerateSwoosh()
+        {
+            const int sampleRate = 44100;
+            const float duration = 0.32f;
+            int sampleCount = (int)(duration * sampleRate);
+            var samples = new float[sampleCount];
+            var rng = new System.Random(97);
+
+            float low = 0f, sub = 0f;
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float k = (float)i / sampleCount;
+                // lowAmount baja con k: el filtro se abre a medida que
+                // avanza el sonido, dejando pasar cada vez mas agudos.
+                float lowAmount = Mathf.Lerp(0.93f, 0.55f, k);
+                float white = (float)rng.NextDouble() * 2f - 1f;
+                low = Mathf.Lerp(white, low, lowAmount);
+                sub = Mathf.Lerp(low, sub, 0.985f);
+
+                float envelope = Mathf.Sin(Mathf.PI * k);
+                samples[i] = (low - sub) * envelope;
+            }
+
+            NormalizePeak(samples, 0.75f);
+
+            var clip = AudioClip.Create("CameraSwoosh", sampleCount, 1, sampleRate, false);
             clip.SetData(samples, 0);
             return clip;
         }

@@ -21,8 +21,8 @@ namespace SP.Presentation
             if (canvasRoot == null) return;
             var playBtn = canvasRoot.Find("PlayButton")?.GetComponent<Button>();
             var exitBtn = canvasRoot.Find("ExitButton")?.GetComponent<Button>();
-            if (playBtn != null) playBtn.onClick.AddListener(OnPlayClicked);
-            if (exitBtn != null) exitBtn.onClick.AddListener(OnExitClicked);
+            if (playBtn != null) { playBtn.onClick.AddListener(OnPlayClicked); SP.UI.ButtonSfx.Attach(playBtn); }
+            if (exitBtn != null) { exitBtn.onClick.AddListener(OnExitClicked); SP.UI.ButtonSfx.Attach(exitBtn); }
         }
 
         void Start() => GameLog.Line("Pantalla de menu cargada");
