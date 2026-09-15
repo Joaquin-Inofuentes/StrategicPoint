@@ -13,17 +13,43 @@ namespace SP.Presentation
     // particulas, asi que pegarle a un tanque, a una pared o al piso
     // sonaba exactamente igual -- es decir, no sonaba. BulletWhizz (item
     // 194) es el silbido de la bala que pasa cerca.
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz }
+    // FootstepGrass / FootstepConcrete: pedido explicito de pisadas reales
+    // segun superficie -- van al final por la misma regla que el resto.
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete }
 
-    // Sonidos genéricos generados por código (tonos con envolvente),
-    // para no depender de clips de audio importados en el prototipo.
+    // Sonidos genéricos: primero busca grabaciones reales importadas bajo
+    // Resources/Audio/Sfx/<Kind>/ (pedido explicito: "quita todos los
+    // sonidos actuales y remplazalos por los verdaderos"), y si no hay
+    // ninguna cae al tono generado por código de siempre. Asi cada SfxKind
+    // sin clip real todavia suena (nunca silencio) y la suite headless
+    // (que no puede reproducir audio real) sigue viendo un AudioClip
+    // valido sin tener que saber cual de los dos caminos se tomo.
     public static class GenericSfx
     {
         static readonly Dictionary<SfxKind, AudioClip> cache = new Dictionary<SfxKind, AudioClip>();
         static readonly Dictionary<WeaponKind, AudioClip> weaponShotCache = new Dictionary<WeaponKind, AudioClip>();
+        static readonly Dictionary<string, AudioClip[]> realClipsCache = new Dictionary<string, AudioClip[]>();
+
+        // Carpeta con variantes reales para una clave dada (nombre de
+        // SfxKind o "Shot_<WeaponKind>"). Resources.LoadAll no tira si la
+        // carpeta no existe: devuelve un array vacio, que es justo el "no
+        // hay real, segui con lo procedural" que necesita el llamador.
+        static AudioClip PickReal(string folderKey)
+        {
+            if (!realClipsCache.TryGetValue(folderKey, out var arr))
+            {
+                arr = Resources.LoadAll<AudioClip>("Audio/Sfx/" + folderKey);
+                realClipsCache[folderKey] = arr;
+            }
+            if (arr == null || arr.Length == 0) return null;
+            return arr[Random.Range(0, arr.Length)];
+        }
 
         public static AudioClip Get(SfxKind kind)
         {
+            var real = PickReal(kind.ToString());
+            if (real != null) return real;
+
             if (cache.TryGetValue(kind, out var clip) && clip != null) return clip;
             clip = Generate(kind);
             cache[kind] = clip;
@@ -35,6 +61,9 @@ namespace SP.Presentation
         // ahora tiene su propio timbre, en vez de compartir SfxKind.Shoot.
         public static AudioClip GetWeaponShot(WeaponKind kind)
         {
+            var real = PickReal("Shot_" + kind);
+            if (real != null) return real;
+
             if (weaponShotCache.TryGetValue(kind, out var clip) && clip != null) return clip;
             float freq, duration, decay;
             switch (kind)
@@ -97,6 +126,13 @@ namespace SP.Presentation
             if (kind == SfxKind.ImpactStone) return GenerateStoneCrack();
             // Item 194: idem, pero ademas necesita barrido de frecuencia.
             if (kind == SfxKind.BulletWhizz) return GenerateWhizz();
+
+            // Pisadas: fallback por si Resources/Audio/Sfx/Footstep* no
+            // tiene clips todavia -- un golpe corto de ruido filtrado,
+            // igual que ImpactDirt/ImpactStone, pero mas corto y sin la
+            // cola larga de un impacto real.
+            if (kind == SfxKind.FootstepGrass) return GenerateNoiseBurst(0.965f, 0.999f, 0.09f, 42f, 0.004f, 71, "FootstepGrass");
+            if (kind == SfxKind.FootstepConcrete) return GenerateNoiseBurst(0.72f, 0.985f, 0.06f, 48f, 0.002f, 73, "FootstepConcrete");
 
             float freq, duration, decay;
             switch (kind)

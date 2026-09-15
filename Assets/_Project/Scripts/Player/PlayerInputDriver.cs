@@ -914,6 +914,10 @@ namespace SP.Player
             // Balanceo al caminar: caminar y estar quieto se veian
             // exactamente igual, sin ninguna sensacion de pisada.
             Rig.SetWalking(moving);
+            // Pedido explicito: pisadas reales segun superficie. Cadencia
+            // fija: no hay Animator de piernas expuesto aca para engancharse
+            // a un evento de clip, pero alcanza para que se sienta ritmico.
+            UpdateFootsteps(moving);
 
             // G2: mismo Ctrl que en RTS usan Ctrl+A y Ctrl+Click (trazar
             // recorrido) -- no colisiona porque son ramas mutuamente
@@ -1017,8 +1021,15 @@ namespace SP.Player
             // seleccionado -- misma tecla que "poseer" sobre un aliado,
             // pero AimTargetType ya distingue cual es cual, asi que no hay
             // ambiguedad en que rama entra.
+            // BUG REAL: si nunca se entro a vista RTS a seleccionar (caso
+            // normal del jugador que arranca poseyendo en FPS), Selection
+            // esta vacia y la orden se perdia en silencio. Sin seleccion
+            // manual, [F] ataca con el soldado que estas manejando.
             if (KeyBindings.WasPressed(KeyBindings.Poseer) && result.Type == AimTargetType.Enemy)
-                OrderService.IssueAttackOrderForSelection(Selection.Selected, result.Soldier);
+            {
+                var attackers = Selection.Selected.Count > 0 ? Selection.Selected : SoloBrainCurrente();
+                OrderService.IssueAttackOrderForSelection(attackers, result.Soldier);
+            }
 
             if (kb.tKey.wasPressedThisFrame && result.Type == AimTargetType.Ground)
             {
@@ -1436,6 +1447,43 @@ namespace SP.Player
         {
             if (Squad == null || index < 0 || index >= Squad.Count) return;
             TryPossess(Squad[index]);
+        }
+
+        // Buffer reutilizable para la orden de ataque con [F] cuando no
+        // hay seleccion RTS activa: el jugador posee un solo cuerpo a la
+        // vez, asi que un array de un elemento alcanza y evita generar
+        // basura por frame.
+        readonly Soldier[] soloBrainCurrenteBuffer = new Soldier[1];
+        IEnumerable<Soldier> SoloBrainCurrente()
+        {
+            soloBrainCurrenteBuffer[0] = Brain.Current;
+            return soloBrainCurrenteBuffer;
+        }
+
+        // Pisadas del jugador: cadencia fija mientras camina, con la
+        // superficie detectada por raycast hacia abajo. El piso de todo el
+        // nivel hoy es concreto (WorldArtPipeline.ReemplazarGround), asi que
+        // "concreto" es el default real y "pasto" queda listo para
+        // cualquier terreno futuro que no matchee ese nombre.
+        const float FootstepInterval = 0.42f;
+        float footstepTimer;
+        void UpdateFootsteps(bool moving)
+        {
+            if (!moving) { footstepTimer = 0f; return; }
+            footstepTimer -= Time.deltaTime;
+            if (footstepTimer > 0f) return;
+            footstepTimer = FootstepInterval;
+
+            var pos = Brain.Current.transform.position;
+            var kind = SfxKind.FootstepConcrete;
+            if (Physics.Raycast(pos + Vector3.up * 0.4f, Vector3.down, out var hit, 1.5f))
+            {
+                var n = hit.collider.name;
+                bool esConcreto = n.IndexOf("Concreto", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || n.IndexOf("Piso", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!esConcreto) kind = SfxKind.FootstepGrass;
+            }
+            AudioDirector.PlayAt(kind, pos, 0.55f);
         }
 
         // Unico camino de posesion del jugador. Antes cada sitio hacia lo

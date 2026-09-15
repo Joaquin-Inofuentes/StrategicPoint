@@ -41,6 +41,7 @@ namespace SP.Presentation
 
         void OnEnable()
         {
+            dead = false;
             if (soldier == null) soldier = GetComponent<Soldier>();
             if (soldier == null || soldier.Team != TeamId.Enemy) { enabled = false; return; }
 
@@ -101,6 +102,7 @@ namespace SP.Presentation
         }
 
         bool alerted;
+        bool dead;
 
         void OnStateChanged(AiStateChangedEvent evt)
         {
@@ -116,6 +118,7 @@ namespace SP.Presentation
             // deja de tener sentido al morir: se apaga directo.
             if (evt.NewState == "Dead")
             {
+                dead = true;
                 markerRenderer.enabled = false;
                 return;
             }
@@ -135,7 +138,7 @@ namespace SP.Presentation
 
         void Update()
         {
-            if (markerRenderer == null || soldier == null || soldier.Health == null) return;
+            if (dead || markerRenderer == null || soldier == null || soldier.Health == null) return;
 
             // Parte cara (distancia a camara + lectura de vida): a intervalo
             // fijo, no por frame. Con cincuenta enemigos esto era el grueso

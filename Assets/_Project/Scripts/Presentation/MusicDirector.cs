@@ -94,9 +94,18 @@ namespace SP.Presentation
             fuentesListas = true;
 
             var root = new GameObject("MusicDirector");
-            estrategiaSource = CrearFuenteLoop(root.transform, "Estrategia", GenerarLoopEstrategia());
-            luchaSource = CrearFuenteLoop(root.transform, "Lucha", GenerarLoopLucha());
+            estrategiaSource = CrearFuenteLoop(root.transform, "Estrategia", CargarORespaldo("Calm", GenerarLoopEstrategia));
+            luchaSource = CrearFuenteLoop(root.transform, "Lucha", CargarORespaldo("Action", GenerarLoopLucha));
         }
+
+        // Pedido explicito: musica real de fondo en vez de los lechos
+        // procedurales. Resources.Load devuelve null si el .mp3 todavia no
+        // esta importado (o en el editor de tests headless, que no lo
+        // necesita), asi que el generador de siempre queda como red de
+        // seguridad -- la suite headless sigue viendo el cruce de ganancia
+        // funcionar igual, tenga o no clip real cargado.
+        static AudioClip CargarORespaldo(string nombreArchivo, System.Func<AudioClip> respaldo)
+            => Resources.Load<AudioClip>("Audio/Music/" + nombreArchivo) ?? respaldo();
 
         static AudioSource CrearFuenteLoop(Transform padre, string nombre, AudioClip clip)
         {

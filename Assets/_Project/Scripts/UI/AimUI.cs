@@ -17,8 +17,8 @@ namespace SP.UI
         Text promptText;
         Image crosshair;
         Color crosshairBaseColor = Color.white;
-        Vector2 crosshairBaseSize = new Vector2(6f, 6f);
-        Vector2 crosshairSpriteSize = new Vector2(6f, 6f); // sizeDelta real de la Image, sin escala de usuario ni spread
+        Vector2 crosshairBaseSize = new Vector2(28f, 28f);
+        Vector2 crosshairSpriteSize = new Vector2(28f, 28f); // sizeDelta real de la Image, sin escala de usuario ni spread
         float crosshairUserScale = 1f;
         float crosshairSpreadFraction;
 
