@@ -70,6 +70,52 @@ namespace SP.Vehicles
             BuildRoute(point);
         }
 
+        // --- Patrulla (tanques enemigos) ---
+        // Con tripulacion y sin orden del jugador, da vueltas por estos puntos
+        // (con una pausa en cada uno) y frena cuando su torreta tiene blanco.
+        [SerializeField] Vector3[] patrullaPuntos;
+        [SerializeField] bool frenarAlCombatir;
+        [SerializeField] float gasMaximo = 1f;
+        [SerializeField] float pausaEnPunto = 2.5f;
+        int patrullaIdx;
+        float pausaRestante;
+        public bool TienePatrulla => patrullaPuntos != null && patrullaPuntos.Length > 0;
+        public int IndiceDePatrulla => patrullaIdx;
+
+        public void ConfigurarPatrulla(Vector3[] puntos, bool frenarSiCombate, float gasTope)
+        {
+            patrullaPuntos = puntos;
+            frenarAlCombatir = frenarSiCombate;
+            gasMaximo = Mathf.Clamp(gasTope, 0.1f, 1f);
+            patrullaIdx = 0;
+        }
+
+        // Aviso al jugador: un tanque enemigo entra en su radio de vision.
+        float proximoAvisoTanque;
+        void AvisarTanqueEnemigo()
+        {
+            if (vehicle == null || vehicle.Bando != SP.Combat.TeamId.Enemy || vehicle.IsDestroyed) return;
+            var lider = SP.Ai.AjustesDeEscuadra.Lider;
+            if (lider == null || Time.time < proximoAvisoTanque) return;
+            if ((lider.transform.position - transform.position).sqrMagnitude > 70f * 70f) return;
+            proximoAvisoTanque = Time.time + 25f;
+            SP.Presentation.Feedback.Accion(SP.Presentation.SfxKind.EnemySpotted, "¡TANQUE ENEMIGO A LA VISTA!",
+                transform.position, SP.Presentation.Feedback.Bad, aviso: true, pulso: true, volumen: 0.7f);
+        }
+
+        void TickPatrulla(float dt)
+        {
+            AvisarTanqueEnemigo();
+            if (!TienePatrulla || destination.HasValue || IsPlayerDriving) return;
+            if (vehicle == null || vehicle.Driver == null || vehicle.IsDestroyed) return;
+            if (turretAi != null && turretAi.IsEngaging) { motor.Brake(dt); return; }
+            pausaRestante -= dt;
+            if (pausaRestante > 0f) { motor.Brake(dt); return; }
+            pausaRestante = pausaEnPunto;
+            IssueMoveOrder(patrullaPuntos[patrullaIdx]);
+            patrullaIdx = (patrullaIdx + 1) % patrullaPuntos.Length;
+        }
+
         public void Stop()
         {
             destination = null;
@@ -155,7 +201,12 @@ namespace SP.Vehicles
             // WorldSimulationDriver, "enabled=false" no alcanza para
             // frenar un vehículo destruido -- una carcasa quemada no
             // debería poder seguir manejando sola hacia un destino viejo.
-            if ((vehicle != null && vehicle.IsDestroyed) || IsPlayerDriving || !destination.HasValue) return;
+            if (vehicle != null && vehicle.IsDestroyed) return;
+            TickPatrulla(dt);
+            if (IsPlayerDriving || !destination.HasValue) return;
+
+            // Tanque enemigo con blanco a la vista: para y dispara.
+            if (frenarAlCombatir && turretAi != null && turretAi.IsEngaging) { motor.Brake(dt); return; }
 
             // Misma regla que TurretAI.IsEngaging, del otro lado: con un
             // solo tripulante trabado disparandole a algo, esa persona no
@@ -249,7 +300,7 @@ namespace SP.Vehicles
                 }
             }
 
-            float gas = Mathf.Clamp01(Mathf.Cos(anguloAlDestino * Mathf.Deg2Rad));
+            float gas = Mathf.Clamp01(Mathf.Cos(anguloAlDestino * Mathf.Deg2Rad)) * gasMaximo;
             motor.Drive(gas, 0f, dt);
         }
     }

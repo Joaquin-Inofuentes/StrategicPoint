@@ -31,7 +31,7 @@ namespace SP.Combat
         // numero para predecir donde va a caer su tiro. Antes lo tenia
         // copiado a mano con un comentario pidiendo que se actualizaran
         // los dos a la vez: eso es justo lo que no pasa.
-        public const float VelocidadBase = 160f;
+        public const float VelocidadBase = 260f;
 
         [SerializeField] float speed = VelocidadBase;
         [SerializeField] float lifetime = 3f;
@@ -90,7 +90,7 @@ namespace SP.Combat
         public int PoolGeneration { get => poolGeneration; set => poolGeneration = value; }
 
         const float RestScale = 0.2f; // debe coincidir con la escala del prefab (BuildAndSaveProjectilePrefab)
-        const float TraceStretch = 2.75f;
+        const float TraceStretch = 4.5f;
 
         // Instancias actualmente en vuelo. Permite avanzar la simulación
         // manualmente (tests) sin depender del bucle de Update de Unity.
@@ -125,7 +125,7 @@ namespace SP.Combat
             ownerTeam = shooterTeam;
             damage = dmg;
             explosionRadius = explosionRadiusValue;
-            effectiveSpeed = speed * speedMultiplier;
+            effectiveSpeed = VelocidadBase * speedMultiplier;
             velocity = (direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward) * effectiveSpeed;
 
             // BUG REAL: este bloque vivia entero adentro de "if (color.HasValue)".
@@ -252,8 +252,7 @@ namespace SP.Combat
                 else
                 {
                     hit.Health.TakeDamage(damage, ownerId);
-                    ImpactFx.SpawnScaledByDamage(puntoDeImpacto, ImpactFx.EnemyColor, damage);
-                    SpawnSangre(puntoDeImpacto);
+                    ImpactCubes.Spawn(puntoDeImpacto, -transform.forward, ImpactSurface.Soldier, damage);
                 }
                 Expire();
                 return;
@@ -294,7 +293,7 @@ namespace SP.Combat
                 {
                     EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, transform.position));
                     PlayImpactSfx(EnvironmentHitKind.Ground, transform.position, 0.45f);
-                    ImpactFx.SpawnScaledByDamage(transform.position, ImpactFx.GroundColor, damage);
+                    ImpactCubes.Spawn(transform.position, Vector3.up, ImpactSurface.Ground, damage);
                     DecalPool.Spawn(DecalKind.BulletHole, new Vector3(transform.position.x, 0.02f, transform.position.z), Vector3.up, 0.25f);
                 }
                 Expire();
@@ -392,8 +391,8 @@ namespace SP.Combat
 
             EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, clase, impacto.point));
             PlayImpactSfx(clase, impacto.point, 0.5f);
-            ImpactFx.SpawnScaledByDamage(impacto.point,
-                marca != null ? ImpactFx.ObstacleColor : ImpactFx.GroundColor, damage);
+            ImpactCubes.Spawn(impacto.point, impacto.normal,
+                marca != null ? ImpactSurface.Obstacle : ImpactSurface.Ground, damage);
             DecalPool.Spawn(DecalKind.BulletHole, impacto.point, impacto.normal, 0.22f);
 
             Expire();
@@ -577,8 +576,33 @@ namespace SP.Combat
         // con spareTeam NULLABLE porque el barril no tiene equipo propio
         // que perdonar -- a diferencia de un disparo, tiene que dañar a
         // los dos bandos por igual.
+        // Las explosiones tambien rompen obstaculos destructibles (antes solo
+        // las balas). Es lo que le da utilidad al cañon del tanque: derriba las
+        // coberturas y las brechas del enemigo. Multiplicador sobre el daño de
+        // una bala normal, con caida hacia el borde.
+        public const float FactorDanoDeExplosionAObstaculos = 3f;
+        static readonly Collider[] bufferExplosion = new Collider[48];
+        static readonly HashSet<SP.Presentation.ObstacleMarker> marcasGolpeadas = new HashSet<SP.Presentation.ObstacleMarker>();
+
+        static void DanarObstaculos(Vector3 point, float radius, int damage)
+        {
+            int n = Physics.OverlapSphereNonAlloc(point, radius, bufferExplosion, ~0, QueryTriggerInteraction.Ignore);
+            marcasGolpeadas.Clear();
+            for (int i = 0; i < n; i++)
+            {
+                var c = bufferExplosion[i];
+                if (c == null) continue;
+                var marca = c.GetComponentInParent<SP.Presentation.ObstacleMarker>();
+                if (marca == null || marca.IsCollapsed || !marcasGolpeadas.Add(marca)) continue;
+                float d = Vector3.Distance(c.ClosestPoint(point), point);
+                float k = 1f - Mathf.Clamp01(d / Mathf.Max(0.1f, radius));
+                marca.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * FactorDanoDeExplosionAObstaculos * Mathf.Lerp(0.35f, 1f, k))));
+            }
+        }
+
         public static void ExplodeAt(Vector3 point, float radius, int damage, int ownerId, TeamId? spareTeam, SP.Vehicles.Vehicle ignoreVehicle = null)
         {
+            DanarObstaculos(point, radius, damage);
             foreach (var s in ActorRegistry.All)
             {
                 if (s == null || !s.Health.IsAlive || (spareTeam.HasValue && s.Team == spareTeam.Value) || !s.gameObject.activeInHierarchy) continue;

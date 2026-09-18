@@ -183,7 +183,9 @@ namespace SP.Presentation
             if (IsCollapsed) return;
             var punto = transform.position + Vector3.up * baseScale.y * 0.5f;
             SP.Combat.Projectile.ExplodeAt(punto, radioExplosion, danoExplosion, ownerId: -1, spareTeam: null);
-            Collapse();
+            // La onda ya pudo derrumbar este mismo barril (las explosiones
+            // ahora rompen obstaculos): no se derrumba dos veces.
+            if (!IsCollapsed) Collapse();
         }
 
         void SpawnDebris(int count, float speed)

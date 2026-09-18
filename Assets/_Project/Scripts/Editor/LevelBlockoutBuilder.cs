@@ -5,40 +5,47 @@ using UnityEngine;
 using SP.Actors;
 using SP.Ai;
 using SP.Presentation;
+using SP.Vehicles;
 
 namespace SP.EditorTools
 {
     // "Blockout" del nivel de SC_Gameplay: SOLO pintura de terreno + cubos.
     //
-    // Pedido: colocar el blocking usando lo pintado del terreno, y pintar un
-    // nivel interesante donde se use. Todo el bloqueo es un cubo (BoxCollider
-    // + ObstacleMarker, asi entra al minimapa, a las coberturas y a la
-    // navegacion sin tocar nada mas); todo el "suelo" es pintura de las dos
-    // capas del terreno (pasto / tierra).
+    // Todo el bloqueo es un cubo (BoxCollider + ObstacleMarker, asi entra al
+    // minimapa, a las coberturas y a la navegacion sin tocar nada mas); todo
+    // el "suelo" es pintura de las dos capas del terreno (pasto / tierra).
     //
-    // Es IDEMPOTENTE: cada corrida borra "Nivel_Blockout" y lo rearma, asi
-    // que se puede retocar la tabla de abajo y volver a correr desde
+    // NIVEL 4 VECES MAS GRANDE que la primera version (116,8 x 320 m contra
+    // 58,4 x 160 m: el doble por lado = 4x el area), en ocho bloques que se
+    // recorren de sur a norte. Los tanques enemigos estan en los bloques 5, 7
+    // y 8; el cañon del propio tanque derriba coberturas y las "brechas" de la
+    // muralla (las explosiones dañan obstaculos).
+    //
+    // Es IDEMPOTENTE: cada corrida borra "Nivel_Blockout" y lo rearma, asi que
+    // se puede retocar la tabla de abajo y volver a correr desde
     //   Strategic Point > Nivel > Construir blockout
     //
-    // Mapa (x de -24,8 a 33,6, z de -22,3 a 137,7; la escuadra sale al sur):
-    //   1. Patio de partida ....... z -22 ..   8   tierra, obstaculos ya existentes
-    //   2. Campo de tiro .......... z  12 ..  40   pasto + coberturas bajas
-    //   3. Paso del canion ........ z  46 ..  54   dos muros y un hueco de 12 m
-    //   4. Aldea .................. z  60 ..  78   casas a los costados de la calle
-    //   5. Fortin enemigo ......... z  80 .. 112   muralla con porton, torre y cajas
-    //   6. Deposito ............... z 116 .. 136   galpones al fondo
-    // Los huecos miden 12 m o mas: pasa el blindado.
+    //   1. Base ................ z -22 ..  14   patio de partida (escuadra + tanque propio)
+    //   2. Campo de tiro ....... z  16 ..  64   coberturas bajas destructibles
+    //   3. Paso del cañon ...... z  68 ..  88   dos muros largos y un hueco de 18 m
+    //   4. Aldea ............... z  90 .. 142   casas, calle central y plaza
+    //   5. Puesto avanzado ..... z 148 .. 190   TANQUE ENEMIGO 1 + 4 soldados
+    //   6. Chicane ............. z 194 .. 220   muros en S (el tanque gira, la infanteria rodea)
+    //   7. Fortin .............. z 224 .. 270   TANQUE ENEMIGO 2 + 6 soldados, porton y brechas
+    //   8. Deposito final ...... z 274 .. 298   TANQUE ENEMIGO 3 + 3 soldados
     public static class LevelBlockoutBuilder
     {
         const string RootName = "Nivel_Blockout";
 
-        // Limites del mundo jugable: los del cubo "Ground" (Environment/Ground).
-        static readonly Vector3 TerrainOrigin = new Vector3(-24.8f, 0f, -22.3f);
-        static readonly Vector3 TerrainSize = new Vector3(58.4f, 30f, 160f);
+        // Limites del mundo jugable (los del cubo "Ground").
+        public static readonly Vector3 TerrainOrigin = new Vector3(-54.2f, 0f, -22.3f);
+        public static readonly Vector3 TerrainSize = new Vector3(116.8f, 30f, 320f);
 
         const string TerrainDataPath = "Assets/_Project/Terrains/TerrainData_Main.asset";
         const string TerrainBackupPath = "Assets/_Project/Terrains/TerrainData_Main_ANTES_del_blockout.asset";
         const string MaterialFolder = "Assets/_Project/Materials/Blocking";
+        const string PrefabEnemigo = "Assets/_Project/Prefabs/P_Soldier_Enemy.prefab";
+        const string PrefabTanque = "Assets/_Project/Prefabs/P_Vehicle_Blindado.prefab";
 
         const int HpIndestructible = 999999;
 
@@ -54,59 +61,146 @@ namespace SP.EditorTools
         static void B(string grupo, string nombre, string mat, float x, float z, float ancho, float alto, float fondo, int vida = HpIndestructible)
             => Bloques.Add(new Bloque { Grupo = grupo, Nombre = nombre, Material = mat, X = x, Z = z, Ancho = ancho, Alto = alto, Fondo = fondo, Vida = vida });
 
+        // Cobertura baja destructible (300 de vida): 3x1 o 1x3.
+        static void C(string grupo, string nombre, float x, float z, bool horizontal = true, int vida = 300)
+            => B(grupo, nombre, "Cobertura", x, z, horizontal ? 3f : 1f, 1.2f, horizontal ? 1f : 3f, vida);
+
         static void DefinirBloques()
         {
             Bloques.Clear();
 
-            // --- 2. Campo de tiro: coberturas bajas, destructibles ---
+            // ---------------- 1. BASE ----------------
+            const string base1 = "1_Base";
+            B(base1, "Base_Muro_Oeste", "Muro", -52f, -4f, 1.5f, 3f, 36f);
+            B(base1, "Base_Muro_Este", "Muro", 60f, -4f, 1.5f, 3f, 36f);
+            B(base1, "Base_Muro_Sur", "Muro", 4f, -21.5f, 111f, 3f, 1.5f);
+            B(base1, "Casilla_Base", "Casa", -40f, 4f, 8f, 4f, 6f);
+            C(base1, "Cobertura_Base_1", -24f, 9f);
+            C(base1, "Cobertura_Base_2", -8f, 11f);
+            C(base1, "Cobertura_Base_3", 20f, 10f);
+            C(base1, "Cobertura_Base_4", 38f, 8f, false);
+
+            // ---------------- 2. CAMPO DE TIRO ----------------
             const string campo = "2_CampoDeTiro";
-            B(campo, "Cobertura_1", "Cobertura", -12f, 16f, 3f, 1.2f, 1f, 300);
-            B(campo, "Cobertura_2", "Cobertura", 10f, 20f, 3f, 1.2f, 1f, 300);
-            B(campo, "Cobertura_3", "Cobertura", -4f, 26f, 1f, 1.2f, 3f, 300);
-            B(campo, "Cobertura_4", "Cobertura", 14f, 30f, 3f, 1.2f, 1f, 300);
-            B(campo, "Cobertura_5", "Cobertura", -16f, 34f, 3f, 1.2f, 1f, 300);
-            B(campo, "Cobertura_6", "Cobertura", 4f, 36f, 4f, 1.2f, 1f, 300);
+            C(campo, "Cob_A1", -44f, 22f); C(campo, "Cob_A2", -24f, 24f, false); C(campo, "Cob_A3", 18f, 22f); C(campo, "Cob_A4", 34f, 24f); C(campo, "Cob_A5", 52f, 22f, false);
+            C(campo, "Cob_B1", -34f, 32f); C(campo, "Cob_B2", -12f, 34f, false); C(campo, "Cob_B3", 24f, 33f, false); C(campo, "Cob_B4", 42f, 32f); C(campo, "Cob_B5", 56f, 34f);
+            C(campo, "Cob_C1", -46f, 42f, false); C(campo, "Cob_C2", -20f, 43f); C(campo, "Cob_C3", 30f, 44f); C(campo, "Cob_C4", 52f, 42f, false);
+            C(campo, "Cob_D1", -30f, 54f, false); C(campo, "Cob_D2", -8f, 55f); C(campo, "Cob_D3", 18f, 54f); C(campo, "Cob_D4", 44f, 56f, false);
+            B(campo, "Ruina_Campo_1", "Casa", -38f, 38f, 4f, 3f, 4f);
+            B(campo, "Ruina_Campo_2", "Casa", 46f, 48f, 4f, 3f, 4f);
 
-            // --- 3. Paso del canion: hueco central x -3..9 ---
+            // ---------------- 3. PASO DEL CAÑON: hueco central x -6..12 ----------------
             const string canon = "3_PasoDelCanon";
-            B(canon, "Muro_Canon_Oeste", "Muro", -13.9f, 50f, 21.8f, 4f, 2.5f);
-            B(canon, "Muro_Canon_Este", "Muro", 21.3f, 50f, 24.6f, 4f, 2.5f);
-            B(canon, "Bunker_Canon_Oeste", "Cobertura", -6f, 58f, 4f, 2f, 2f, 600);
-            B(canon, "Bunker_Canon_Este", "Cobertura", 12f, 58f, 4f, 2f, 2f, 600);
+            B(canon, "Muro_Canon_Oeste", "Muro", -30.1f, 72f, 48.2f, 4f, 3f);
+            B(canon, "Muro_Canon_Este", "Muro", 37.3f, 72f, 50.6f, 4f, 3f);
+            B(canon, "Bunker_Canon_Oeste", "Cobertura", -9f, 79f, 5f, 2f, 3f, 700);
+            B(canon, "Bunker_Canon_Este", "Cobertura", 15f, 79f, 5f, 2f, 3f, 700);
+            B(canon, "Torre_Vigia_Oeste", "Torre", -22f, 79f, 3f, 5f, 3f);
+            B(canon, "Torre_Vigia_Este", "Torre", 30f, 79f, 3f, 5f, 3f);
+            C(canon, "Sacos_Canon_1", -36f, 82f); C(canon, "Sacos_Canon_2", 46f, 82f);
 
-            // --- 4. Aldea: calle libre entre x -8 y x 14 ---
+            // ---------------- 4. ALDEA: calle libre x -14..20 ----------------
             const string aldea = "4_Aldea";
-            B(aldea, "Casa_Oeste_1", "Casa", -14f, 66f, 8f, 5f, 7f);
-            B(aldea, "Casa_Oeste_2", "Casa", -14f, 75f, 8f, 5f, 6f);
-            B(aldea, "Casa_Este_1", "Casa", 22f, 67f, 9f, 5f, 7f);
-            B(aldea, "Casa_Este_2", "Casa", 21f, 75f, 7f, 5f, 5f);
-            B(aldea, "Pozo", "Cobertura", 4f, 70f, 2f, 1f, 2f, 400);
-            B(aldea, "Sacos_Oeste", "Cobertura", -4f, 64f, 1f, 1.1f, 3f, 400);
-            B(aldea, "Sacos_Este", "Cobertura", 12f, 74f, 1f, 1.1f, 3f, 400);
+            B(aldea, "Casa_O1", "Casa", -42f, 98f, 9f, 5f, 7f);
+            B(aldea, "Casa_O2", "Casa", -28f, 96f, 8f, 5f, 7f);
+            B(aldea, "Casa_O3", "Casa", -40f, 114f, 8f, 5f, 8f);
+            B(aldea, "Casa_O4", "Casa", -24f, 116f, 9f, 5f, 7f);
+            B(aldea, "Casa_O5", "Casa", -38f, 132f, 8f, 5f, 7f);
+            B(aldea, "Casa_O6", "Casa", -22f, 134f, 8f, 5f, 6f);
+            B(aldea, "Casa_E1", "Casa", 28f, 98f, 9f, 5f, 7f);
+            B(aldea, "Casa_E2", "Casa", 44f, 96f, 8f, 5f, 7f);
+            B(aldea, "Casa_E3", "Casa", 30f, 116f, 9f, 5f, 7f);
+            B(aldea, "Casa_E4", "Casa", 46f, 114f, 8f, 5f, 8f);
+            B(aldea, "Casa_E5", "Casa", 28f, 134f, 8f, 5f, 7f);
+            B(aldea, "Casa_E6", "Casa", 46f, 132f, 8f, 5f, 7f);
+            B(aldea, "Pozo", "Cobertura", 4f, 115f, 2f, 1f, 2f, 400);
+            C(aldea, "Sacos_Aldea_1", -8f, 104f, false, 400);
+            C(aldea, "Sacos_Aldea_2", 16f, 126f, true, 400);
+            C(aldea, "Barricada_Aldea", -6f, 124f, false);
+            B(aldea, "Carro_Aldea", "Cobertura", 10f, 106f, 3f, 1.4f, 1.6f, 300);
+            C(aldea, "Cob_Callejon_1", -10f, 130f); C(aldea, "Cob_Callejon_2", 14f, 100f);
 
-            // --- 5. Fortin enemigo: x -14..22, z 80..112, porton x -4..8 ---
-            const string fortin = "5_FortinEnemigo";
-            B(fortin, "Muralla_Sur_Oeste", "Muro", -9f, 80f, 10f, 3f, 1.5f);
-            B(fortin, "Muralla_Sur_Este", "Muro", 15f, 80f, 14f, 3f, 1.5f);
-            B(fortin, "Muralla_Norte_Oeste", "Muro", -5f, 112f, 18f, 3f, 1.5f);
-            B(fortin, "Muralla_Norte_Este", "Muro", 13f, 112f, 18f, 3f, 1.5f);
-            B(fortin, "Muralla_Oeste_Sur", "Muro", -14f, 88f, 1.5f, 3f, 16f);
-            B(fortin, "Muralla_Oeste_Norte", "Muro", -14f, 104f, 1.5f, 3f, 16f);
-            B(fortin, "Muralla_Este_Sur", "Muro", 22f, 88f, 1.5f, 3f, 16f);
-            B(fortin, "Muralla_Este_Norte", "Muro", 22f, 104f, 1.5f, 3f, 16f);
-            B(fortin, "Torre_Central", "Torre", 4f, 97.5f, 3f, 6f, 3f);
-            B(fortin, "Caja_1", "Cobertura", 14f, 92f, 2f, 1.2f, 2f, 300);
-            B(fortin, "Caja_2", "Cobertura", -9f, 100f, 2f, 1.2f, 2f, 300);
-            B(fortin, "Caja_3", "Cobertura", 15f, 104f, 2f, 1.2f, 2f, 300);
-            B(fortin, "Caja_4", "Cobertura", -2f, 108f, 2f, 1.2f, 2f, 300);
-            B(fortin, "Caja_5", "Cobertura", 9f, 108f, 2f, 1.2f, 2f, 300);
+            // ---------------- 5. PUESTO AVANZADO ENEMIGO ----------------
+            const string puesto = "5_PuestoAvanzado";
+            C(puesto, "Sacos_Puesto_1", -16f, 156f, true, 400); C(puesto, "Sacos_Puesto_2", 24f, 156f, true, 400);
+            B(puesto, "Torre_Puesto", "Torre", -30f, 168f, 4f, 6f, 4f);
+            B(puesto, "Muro_Puesto_Oeste", "Muro", -40f, 172f, 1.5f, 3f, 20f);
+            B(puesto, "Muro_Puesto_Este", "Muro", 50f, 172f, 1.5f, 3f, 20f);
+            B(puesto, "Bunker_Puesto", "Cobertura", 4f, 178f, 6f, 2f, 2.5f, 600);
+            C(puesto, "Caja_P1", -8f, 170f); C(puesto, "Caja_P2", 18f, 166f); C(puesto, "Caja_P3", 32f, 182f, false); C(puesto, "Caja_P4", -22f, 184f); C(puesto, "Caja_P5", 8f, 186f);
 
-            // --- 6. Deposito ---
-            const string deposito = "6_Deposito";
-            B(deposito, "Galpon_Oeste", "Casa", -10f, 125f, 8f, 4f, 7f);
-            B(deposito, "Galpon_Este", "Casa", 18f, 127f, 8f, 4f, 7f);
-            B(deposito, "Muro_Fondo", "Muro", 4f, 134f, 20f, 3f, 1.5f);
+            // ---------------- 6. CHICANE ----------------
+            const string chicane = "6_Chicane";
+            B(chicane, "Muro_Chicane_1", "Muro", -20f, 198f, 68.4f, 4f, 2.5f);   // x -54,2 .. 14,2  (hueco al este)
+            B(chicane, "Muro_Chicane_2", "Muro", 26.3f, 210f, 72.6f, 4f, 2.5f);  // x -10 .. 62,6   (hueco al oeste)
+            C(chicane, "Cob_Chi_1", 30f, 203f); C(chicane, "Cob_Chi_2", -30f, 204f); C(chicane, "Cob_Chi_3", 0f, 216f, false); C(chicane, "Cob_Chi_4", 48f, 216f);
+
+            // ---------------- 7. FORTIN: x -30..46, z 224..270, porton x -2..14 ----------------
+            const string fortin = "7_Fortin";
+            B(fortin, "Muralla_Sur_Oeste", "Muro", -16f, 224f, 28f, 3.5f, 1.5f);
+            B(fortin, "Muralla_Sur_Este", "Muro", 30f, 224f, 32f, 3.5f, 1.5f);
+            B(fortin, "Muralla_Oeste_A", "Muro", -30f, 232f, 1.5f, 3.5f, 16f);
+            B(fortin, "Brecha_Oeste", "Brecha", -30f, 244f, 1.5f, 3.5f, 8f, 700);
+            B(fortin, "Muralla_Oeste_B", "Muro", -30f, 259f, 1.5f, 3.5f, 22f);
+            B(fortin, "Muralla_Este_A", "Muro", 46f, 232f, 1.5f, 3.5f, 16f);
+            B(fortin, "Brecha_Este", "Brecha", 46f, 244f, 1.5f, 3.5f, 8f, 700);
+            B(fortin, "Muralla_Este_B", "Muro", 46f, 259f, 1.5f, 3.5f, 22f);
+            B(fortin, "Muralla_Norte_A", "Muro", -18f, 270f, 24f, 3.5f, 1.5f);
+            B(fortin, "Brecha_Norte", "Brecha", -2f, 270f, 8f, 3.5f, 1.5f, 700);
+            B(fortin, "Muralla_Norte_B", "Muro", 24f, 270f, 44f, 3.5f, 1.5f);
+            B(fortin, "Torre_Fortin", "Torre", 8f, 249f, 4f, 7f, 4f);
+            B(fortin, "Cuartel_O", "Casa", -18f, 258f, 10f, 4f, 8f);
+            B(fortin, "Cuartel_E", "Casa", 32f, 258f, 10f, 4f, 8f);
+            C(fortin, "Caja_F1", -20f, 236f); C(fortin, "Caja_F2", 28f, 236f); C(fortin, "Caja_F3", -4f, 240f, false); C(fortin, "Caja_F4", 16f, 262f);
+            C(fortin, "Caja_F5", -10f, 250f); C(fortin, "Caja_F6", 22f, 248f, false); C(fortin, "Caja_F7", 4f, 264f); C(fortin, "Caja_F8", 38f, 240f);
+
+            // ---------------- 8. DEPOSITO FINAL ----------------
+            const string deposito = "8_Deposito";
+            B(deposito, "Galpon_Oeste", "Casa", -34f, 284f, 12f, 4f, 8f);
+            B(deposito, "Galpon_Este", "Casa", 42f, 286f, 12f, 4f, 8f);
+            B(deposito, "Contenedor_1", "Torre", -12f, 291f, 6f, 3f, 2.5f);
+            B(deposito, "Contenedor_2", "Torre", 24f, 291f, 6f, 3f, 2.5f);
+            B(deposito, "Muro_Fondo", "Muro", 4f, 296.5f, 100f, 3f, 1.5f);
+            C(deposito, "Cob_Dep_1", -6f, 280f); C(deposito, "Cob_Dep_2", 16f, 281f); C(deposito, "Cob_Dep_3", -22f, 290f, false); C(deposito, "Cob_Dep_4", 34f, 278f, false);
         }
+
+        // ---------------------------------------------------------------
+        // Enemigos y tanques
+        // ---------------------------------------------------------------
+        struct Ronda { public string Nombre; public float X, Z; public float MediaX, MediaZ; }
+
+        // Infantes: los cinco primeros son los que YA estaban en la escena
+        // (se reubican); el resto se crea desde el prefab de enemigo.
+        static readonly Ronda[] Infantes =
+        {
+            new Ronda { Nombre = "Enemigo_Patrulla_1", X = -6f,  Z = 172f, MediaX = 6f, MediaZ = 4f },
+            new Ronda { Nombre = "Enemigo_Patrulla_2", X = 20f,  Z = 172f, MediaX = 6f, MediaZ = 4f },
+            new Ronda { Nombre = "Enemigo_Patrulla_3", X = -24f, Z = 178f, MediaX = 5f, MediaZ = 4f },
+            new Ronda { Nombre = "Enemigo_Patrulla_4", X = -10f, Z = 244f, MediaX = 6f, MediaZ = 4f },
+            new Ronda { Nombre = "Enemigo_Patrulla_5", X = 22f,  Z = 252f, MediaX = 6f, MediaZ = 4f },
+            new Ronda { Nombre = "Enemigo_Puesto_4",   X = 36f,  Z = 176f, MediaX = 5f, MediaZ = 5f },
+            new Ronda { Nombre = "Enemigo_Chicane_1",  X = -22f, Z = 203f, MediaX = 8f, MediaZ = 3f },
+            new Ronda { Nombre = "Enemigo_Chicane_2",  X = 40f,  Z = 214f, MediaX = 8f, MediaZ = 3f },
+            new Ronda { Nombre = "Enemigo_Fortin_1",   X = -20f, Z = 262f, MediaX = 5f, MediaZ = 4f },
+            new Ronda { Nombre = "Enemigo_Fortin_2",   X = 34f,  Z = 264f, MediaX = 5f, MediaZ = 4f },
+            new Ronda { Nombre = "Enemigo_Fortin_3",   X = 4f,   Z = 232f, MediaX = 6f, MediaZ = 3f },
+            new Ronda { Nombre = "Enemigo_Fortin_4",   X = 34f,  Z = 240f, MediaX = 5f, MediaZ = 4f },
+            new Ronda { Nombre = "Enemigo_Deposito_1", X = -22f, Z = 284f, MediaX = 6f, MediaZ = 3f },
+            new Ronda { Nombre = "Enemigo_Deposito_2", X = 32f,  Z = 283f, MediaX = 6f, MediaZ = 3f },
+            new Ronda { Nombre = "Enemigo_Deposito_3", X = 4f,   Z = 279f, MediaX = 6f, MediaZ = 2f },
+        };
+
+        struct DatosTanque { public string Nombre; public float X, Z, Rot; public Vector2[] Ruta; }
+
+        static readonly DatosTanque[] Tanques =
+        {
+            new DatosTanque { Nombre = "Tanque_Enemigo_1", X = 30f, Z = 162f, Rot = 180f,
+                Ruta = new[] { new Vector2(30f, 162f), new Vector2(-2f, 162f), new Vector2(-2f, 186f), new Vector2(40f, 188f) } },
+            new DatosTanque { Nombre = "Tanque_Enemigo_2", X = 10f, Z = 240f, Rot = 180f,
+                Ruta = new[] { new Vector2(14f, 238f), new Vector2(-14f, 240f), new Vector2(-14f, 256f), new Vector2(30f, 246f) } },
+            new DatosTanque { Nombre = "Tanque_Enemigo_3", X = 4f, Z = 288f, Rot = 180f,
+                Ruta = new[] { new Vector2(-20f, 284f), new Vector2(28f, 284f) } },
+        };
 
         // ---------------------------------------------------------------
         [MenuItem("Strategic Point/Nivel/Construir blockout (terreno + cubos + rutas + NavMesh)")]
@@ -120,18 +214,30 @@ namespace SP.EditorTools
             }
 
             DefinirBloques();
+            AlinearSuelo();
             AlinearYPintarTerreno();
             int cubos = ConstruirCubos();
-            int rutas = ConstruirRutasDeEnemigos();
+            int enemigos = ColocarEnemigos();
+            int tanques = ColocarTanques();
+            AjustarAlcancesDeCombate();
+            AsegurarAjustesDeEscuadra();
             BakeNavMesh();
 
             EditorSceneManager.MarkSceneDirty(scene);
-            Debug.Log($"[Blockout] Nivel listo: {cubos} cubos, {rutas} rutas de patrulla, terreno pintado y NavMesh horneado.");
+            Debug.Log($"[Blockout] Nivel 4x listo: {cubos} cubos, {enemigos} soldados enemigos, {tanques} tanques enemigos, terreno pintado y NavMesh horneado.");
         }
 
         // ---------------------------------------------------------------
-        // Terreno
+        // Suelo
         // ---------------------------------------------------------------
+        static void AlinearSuelo()
+        {
+            var ground = GameObject.Find("Ground");
+            if (ground == null) { Debug.LogWarning("[Blockout] No hay 'Ground'."); return; }
+            ground.transform.position = new Vector3(TerrainOrigin.x + TerrainSize.x * 0.5f, -0.5f, TerrainOrigin.z + TerrainSize.z * 0.5f);
+            ground.transform.localScale = new Vector3(TerrainSize.x, 1f, TerrainSize.z);
+        }
+
         static void AlinearYPintarTerreno()
         {
             var terrain = Object.FindFirstObjectByType<Terrain>();
@@ -142,10 +248,12 @@ namespace SP.EditorTools
             if (AssetDatabase.LoadAssetAtPath<TerrainData>(TerrainBackupPath) == null)
                 AssetDatabase.CopyAsset(TerrainDataPath, TerrainBackupPath);
 
-            // El terreno era de 200x100 y arrancaba en (0,0): solo tapaba una
-            // esquina del mapa jugable. Se lo ajusta a la caja "Ground".
             td.size = TerrainSize;
             terrain.transform.position = TerrainOrigin;
+
+            // El terreno ya no es cuadrado (117 x 320): con 512 muestras la
+            // pintura quedaba a 0,6 m por pixel en Z. 1024 la deja a 0,3 m.
+            td.alphamapResolution = 1024;
 
             int res = td.alphamapResolution;
             int capas = td.alphamapLayers;
@@ -163,7 +271,6 @@ namespace SP.EditorTools
             }
             td.SetAlphamaps(0, 0, mapa);
 
-            // Alturas: planas (solo se pinta).
             int hres = td.heightmapResolution;
             td.SetHeights(0, 0, new float[hres, hres]);
 
@@ -174,33 +281,42 @@ namespace SP.EditorTools
             AssetDatabase.SaveAssets();
         }
 
-        // 0 = pasto, 1 = tierra. Suma de formas suaves + ruido para que los
-        // bordes no sean rectas de regla.
+        // 0 = pasto, 1 = tierra. Formas suaves + ruido para que los bordes no
+        // sean rectas de regla.
+        static readonly Vector2[] CaminoPrincipal =
+        {
+            new Vector2(4f, -10f), new Vector2(4f, 20f), new Vector2(-8f, 48f), new Vector2(4f, 74f), new Vector2(4f, 100f),
+            new Vector2(2f, 140f), new Vector2(10f, 166f), new Vector2(4f, 200f), new Vector2(4f, 226f), new Vector2(6f, 262f),
+            new Vector2(4f, 284f),
+        };
+
         static float PesoDeTierra(float x, float z)
         {
-            float ruido = (Mathf.PerlinNoise(x * 0.11f + 40f, z * 0.11f + 90f) - 0.5f) * 3.2f;
+            float ruido = (Mathf.PerlinNoise(x * 0.09f + 40f, z * 0.09f + 90f) - 0.5f) * 3.4f;
             float d = float.MaxValue;
+            var p = new Vector2(x, z);
 
-            // Patio de partida
-            d = Mathf.Min(d, DistRect(x, z, -24.8f, -22.3f, 33.6f, 6f));
-            // Camino principal (tierra) de sur a norte, 8 m de ancho
-            var camino = new[]
-            {
-                new Vector2(2f, 0f), new Vector2(2f, 18f), new Vector2(-5f, 32f), new Vector2(1f, 46f),
-                new Vector2(4f, 62f), new Vector2(4f, 80f), new Vector2(4f, 100f),
-            };
-            for (int k = 0; k < camino.Length - 1; k++)
-                d = Mathf.Min(d, DistSegmento(new Vector2(x, z), camino[k], camino[k + 1]) - 4f);
-            // Paso del canion y plaza de la aldea
-            d = Mathf.Min(d, DistRect(x, z, -3f, 44f, 9f, 56f));
-            d = Mathf.Min(d, Vector2.Distance(new Vector2(x, z), new Vector2(4f, 70f)) - 12f);
-            // Piso del fortin y del deposito
-            d = Mathf.Min(d, DistRect(x, z, -14f, 80f, 22f, 112f));
-            d = Mathf.Min(d, Vector2.Distance(new Vector2(x, z), new Vector2(-10f, 125f)) - 7f);
-            d = Mathf.Min(d, Vector2.Distance(new Vector2(x, z), new Vector2(18f, 127f)) - 7f);
-            // Manchones sueltos en el campo
-            d = Mathf.Min(d, Vector2.Distance(new Vector2(x, z), new Vector2(-14f, 24f)) - 5f);
-            d = Mathf.Min(d, Vector2.Distance(new Vector2(x, z), new Vector2(18f, 38f)) - 4f);
+            // Base
+            d = Mathf.Min(d, DistRect(x, z, -54.2f, -22.3f, 62.6f, 8f));
+            // Camino principal, 10 m de ancho
+            for (int k = 0; k < CaminoPrincipal.Length - 1; k++)
+                d = Mathf.Min(d, DistSegmento(p, CaminoPrincipal[k], CaminoPrincipal[k + 1]) - 5f);
+            // Calle transversal de la aldea y sendas del campo de tiro
+            d = Mathf.Min(d, DistSegmento(p, new Vector2(-46f, 115f), new Vector2(52f, 115f)) - 3f);
+            d = Mathf.Min(d, DistSegmento(p, new Vector2(-40f, 40f), new Vector2(50f, 30f)) - 2f);
+            d = Mathf.Min(d, DistSegmento(p, new Vector2(-30f, 22f), new Vector2(0f, 60f)) - 1.5f);
+            // Plazas y patios
+            d = Mathf.Min(d, DistRect(x, z, -6f, 66f, 14f, 90f));
+            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(4f, 115f)) - 14f);
+            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(10f, 167f)) - 22f);
+            d = Mathf.Min(d, DistRect(x, z, -30f, 224f, 46f, 270f));
+            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(10f, 285f)) - 17f);
+            d = Mathf.Min(d, DistRect(x, z, -50f, 194f, 60f, 222f) + 10f);   // mancha en la chicane
+            // Manchones sueltos
+            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(-34f, 30f)) - 6f);
+            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(40f, 46f)) - 5f);
+            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(-36f, 150f)) - 7f);
+            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(48f, 150f)) - 6f);
 
             float borde = 2.6f;
             return Mathf.Clamp01(1f - Mathf.SmoothStep(0f, 1f, (d + ruido) / borde + 0.5f));
@@ -242,6 +358,7 @@ namespace SP.EditorTools
                 case "Muro": color = new Color(0.52f, 0.53f, 0.56f); break;
                 case "Casa": color = new Color(0.74f, 0.63f, 0.48f); break;
                 case "Torre": color = new Color(0.42f, 0.38f, 0.38f); break;
+                case "Brecha": color = new Color(0.62f, 0.45f, 0.40f); break;   // muro debil: el tanque lo rompe
                 default: color = new Color(0.36f, 0.45f, 0.30f); break; // Cobertura
             }
             var shader = Shader.Find("Universal Render Pipeline/Lit");
@@ -287,46 +404,137 @@ namespace SP.EditorTools
         }
 
         // ---------------------------------------------------------------
-        // Rutas de patrulla: cada enemigo ronda CERCA de donde nace
+        // Enemigos: cada uno ronda CERCA de donde nace
         // ---------------------------------------------------------------
-        // Antes 4 de los 5 enemigos heredaban la ronda por defecto del
-        // prefab, (20..30, 20..30): un cuadrado a ~60 m de donde nacen, del
-        // lado de la escuadra. Se leia como "el enemigo va directo a mi".
-        // Ahora cada uno da vueltas por un rectangulo de ~8 x 6 m dentro
-        // del fortin, alrededor de su punto de partida.
-        static readonly Dictionary<string, Vector2[]> Rondas = new Dictionary<string, Vector2[]>
+        static Transform Raiz(string nombre)
         {
-            { "Enemigo_Patrulla_2", new[] { new Vector2(9f, 87f), new Vector2(17f, 87f), new Vector2(17f, 96f), new Vector2(9f, 96f) } },
-            { "Enemigo_Patrulla_3", new[] { new Vector2(-11f, 90f), new Vector2(-6f, 90f), new Vector2(-6f, 98f), new Vector2(-11f, 98f) } },
-            { "Enemigo_Patrulla_4", new[] { new Vector2(-2f, 85f), new Vector2(8f, 85f), new Vector2(8f, 89f), new Vector2(-2f, 89f) } },
-            { "Enemigo_Patrulla_5", new[] { new Vector2(-11f, 84f), new Vector2(-6f, 84f), new Vector2(-6f, 88f), new Vector2(-11f, 88f) } },
-        };
+            var g = GameObject.Find(nombre);
+            if (g == null) g = new GameObject(nombre);
+            return g.transform;
+        }
 
-        static int ConstruirRutasDeEnemigos()
+        static Vector3[] RectanguloDeRonda(Ronda r)
         {
-            var rootRutas = GameObject.Find("Waypoints");
-            int n = 0;
-            foreach (var kv in Rondas)
+            return new[]
             {
-                var go = GameObject.Find(kv.Key);
-                var brain = go != null ? go.GetComponent<AiBrain>() : null;
+                new Vector3(r.X - r.MediaX, 0f, r.Z - r.MediaZ), new Vector3(r.X + r.MediaX, 0f, r.Z - r.MediaZ),
+                new Vector3(r.X + r.MediaX, 0f, r.Z + r.MediaZ), new Vector3(r.X - r.MediaX, 0f, r.Z + r.MediaZ),
+            };
+        }
+
+        static GameObject EnemigoNuevo(string nombre, Transform padre)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabEnemigo);
+            var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, padre);
+            go.name = nombre;
+            return go;
+        }
+
+        static int ColocarEnemigos()
+        {
+            var enemigos = Raiz("Enemies");
+            var rootRutas = Raiz("Waypoints");
+            int n = 0;
+            foreach (var r in Infantes)
+            {
+                var go = GameObject.Find(r.Nombre);
+                if (go == null) go = EnemigoNuevo(r.Nombre, enemigos);
+                go.transform.position = new Vector3(r.X, 0.8f, r.Z);
+                go.transform.rotation = Quaternion.Euler(0f, 180f, 0f);
+
+                var brain = go.GetComponent<AiBrain>();
                 if (brain == null) continue;
 
-                string nombre = "PatrolRoute_" + kv.Key.Replace("Enemigo_", "");
+                string nombre = "PatrolRoute_" + r.Nombre.Replace("Enemigo_", "");
                 var previa = GameObject.Find(nombre);
                 if (previa != null) Object.DestroyImmediate(previa);
-
-                var puntos = new Vector3[kv.Value.Length];
-                for (int i = 0; i < puntos.Length; i++) puntos[i] = new Vector3(kv.Value[i].x, 0f, kv.Value[i].y);
-
-                var linea = PatrolRouteLine.Spawn(puntos, new Color(0.95f, 0.6f, 0.2f));
+                var linea = PatrolRouteLine.Spawn(RectanguloDeRonda(r), new Color(0.95f, 0.6f, 0.2f));
                 linea.gameObject.name = nombre;
-                if (rootRutas != null) linea.transform.SetParent(rootRutas.transform, true);
+                linea.transform.SetParent(rootRutas, true);
                 brain.SetPatrolWaypoints(linea.Markers);
                 EditorUtility.SetDirty(brain);
                 n++;
             }
+
+            // La ronda vieja (esferas sueltas del nivel chico) ya no la usa
+            // nadie: se borra para no dejar esferas flotando en la aldea.
+            var vieja = GameObject.Find("PatrolRoute");
+            if (vieja != null && vieja.transform.parent == rootRutas) Object.DestroyImmediate(vieja);
             return n;
+        }
+
+        static int ColocarTanques()
+        {
+            var prefabTanque = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabTanque);
+            var padreVehiculos = Raiz("Vehicles");
+            var padreEnemigos = Raiz("Enemies");
+            int n = 0;
+            foreach (var t in Tanques)
+            {
+                var previo = GameObject.Find(t.Nombre);
+                if (previo != null) Object.DestroyImmediate(previo);
+                foreach (var suf in new[] { "_Conductor", "_Artillero" })
+                {
+                    var c = GameObject.Find(t.Nombre + suf);
+                    if (c != null) Object.DestroyImmediate(c);
+                }
+
+                var tanque = (GameObject)PrefabUtility.InstantiatePrefab(prefabTanque, padreVehiculos);
+                tanque.name = t.Nombre;
+                tanque.transform.SetPositionAndRotation(new Vector3(t.X, 0.6f, t.Z), Quaternion.Euler(0f, t.Rot, 0f));
+
+                var conductor = EnemigoNuevo(t.Nombre + "_Conductor", padreEnemigos);
+                var artillero = EnemigoNuevo(t.Nombre + "_Artillero", padreEnemigos);
+                conductor.transform.position = tanque.transform.position;
+                artillero.transform.position = tanque.transform.position;
+                // Sin ronda propia: viven adentro del tanque y salen si lo destruyen.
+                conductor.GetComponent<AiBrain>().SetPatrolWaypoints(null);
+                artillero.GetComponent<AiBrain>().SetPatrolWaypoints(null);
+
+                var v = tanque.GetComponent<Vehicle>();
+                v.ConfigurarTripulacion(
+                    new[] { conductor.GetComponent<Soldier>(), artillero.GetComponent<Soldier>() },
+                    new[] { VehicleSeatRole.Driver, VehicleSeatRole.Passenger2 }, true);   // sin "Gunner": si no, TurretAI cree que hay un artillero humano y no dispara
+                var so = new SerializedObject(v);
+                so.FindProperty("maxHealth").intValue = 360;
+                so.ApplyModifiedPropertiesWithoutUndo();
+
+                var ruta = new Vector3[t.Ruta.Length];
+                for (int i = 0; i < ruta.Length; i++) ruta[i] = new Vector3(t.Ruta[i].x, 0.6f, t.Ruta[i].y);
+                tanque.GetComponent<VehicleBrain>().ConfigurarPatrulla(ruta, true, 0.5f);
+
+                PrefabUtility.RecordPrefabInstancePropertyModifications(v);
+                PrefabUtility.RecordPrefabInstancePropertyModifications(tanque.GetComponent<VehicleBrain>());
+                EditorUtility.SetDirty(v);
+                n++;
+            }
+            return n;
+        }
+
+        // El mapa es 4 veces mas grande: con los alcances originales (vision
+        // 10, tiro 6) el combate era "cara a cara". Enemigos: ven a 22 y
+        // disparan a 13; aliados: 20 y 12.
+        static void AjustarAlcancesDeCombate()
+        {
+            foreach (var s in Object.FindObjectsByType<Soldier>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                var ai = s.GetComponent<AiBrain>();
+                if (ai == null) continue;
+                var so = new SerializedObject(ai);
+                bool enemigo = s.Team == SP.Combat.TeamId.Enemy;
+                so.FindProperty("visionRange").floatValue = enemigo ? 22f : 20f;
+                so.FindProperty("attackRange").floatValue = enemigo ? 13f : 12f;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(ai);
+            }
+        }
+
+        static void AsegurarAjustesDeEscuadra()
+        {
+            var a = AjustesDeEscuadra.AsegurarEnEscena();
+            var sistemas = GameObject.Find("Systems");
+            if (sistemas != null && a.transform.parent != sistemas.transform) a.transform.SetParent(sistemas.transform, false);
+            EditorUtility.SetDirty(a);
         }
 
         // ---------------------------------------------------------------
@@ -334,11 +542,8 @@ namespace SP.EditorTools
         // ---------------------------------------------------------------
         // Recast solo rasteriza las CARAS de una malla, no su volumen: bajo un
         // cubo alto (un muro, una casa) el piso queda "caminable" en el
-        // centro, porque la erosion por radio solo come el borde. Medido: un
-        // punto en el medio de la muralla estaba sobre el NavMesh y una ruta
-        // la atravesaba. Un NavMeshModifierVolume "No caminable" del tamaño
-        // del cubo lo vuelve solido de verdad (y de paso borra la isla
-        // inalcanzable que quedaba sobre el techo).
+        // centro. Un NavMeshModifierVolume "No caminable" del tamaño del cubo
+        // lo vuelve solido de verdad.
         const int AreaNoCaminable = 1;
 
         static void AgregarVolumenNoCaminable(GameObject cubo)
@@ -355,25 +560,19 @@ namespace SP.EditorTools
             var surface = Object.FindFirstObjectByType<Unity.AI.Navigation.NavMeshSurface>(FindObjectsInactive.Include);
             if (surface == null) { Debug.LogWarning("[Blockout] No hay NavMeshSurface."); return; }
 
-            // Todo cubo solido de la escena (los del nivel y los que ya
-            // estaban: Muro, Obstaculo_*). Se excluyen el piso, los
-            // soldados, los proyectiles y los vehiculos.
             int volumenes = 0;
             foreach (var c in Object.FindObjectsByType<BoxCollider>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
                 if (c.isTrigger || c.name == "Ground") continue;
                 if (c.GetComponentInParent<Soldier>() != null) continue;
-                if (c.GetComponentInParent<SP.Vehicles.Vehicle>() != null) continue;
+                if (c.GetComponentInParent<Vehicle>() != null) continue;
                 if (c.GetComponentInParent<SP.Combat.Projectile>() != null) continue;
                 if (c.bounds.size.y < 0.8f) continue;
                 if (c.GetComponent<Unity.AI.Navigation.NavMeshModifierVolume>() == null) volumenes++;
                 AgregarVolumenNoCaminable(c.gameObject);
             }
 
-            // El vehiculo se mueve: hornearlo dejaria un agujero fijo en el
-            // lugar donde estaba parado. Ya frena a los soldados por fisica
-            // (Deslizador), no hace falta que ademas recorte el NavMesh.
-            foreach (var v in Object.FindObjectsByType<SP.Vehicles.Vehicle>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var v in Object.FindObjectsByType<Vehicle>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
                 var mod = v.GetComponent<Unity.AI.Navigation.NavMeshModifier>();
                 if (mod == null) mod = v.gameObject.AddComponent<Unity.AI.Navigation.NavMeshModifier>();

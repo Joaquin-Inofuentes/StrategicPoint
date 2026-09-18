@@ -122,6 +122,27 @@ namespace SP.Player
             OrderMarkerFx.Spawn(point, OrderMarkerFx.MoveColor, index);
         }
 
+        // El jugador manda a un aliado a TOMAR COBERTURA en un punto de
+        // cobertura: camina, se agacha y se queda (ver AiBrain.IssueCoverOrder).
+        // Feedback: marcador celeste en el piso, tono + voz de acuse y linea de
+        // log; al llegar, AiBrain avisa de nuevo ("EN COBERTURA").
+        public static bool IssueCoverOrder(Soldier soldier, Vector3 point, Collider owner)
+        {
+            if (soldier == null || soldier.Health == null || !soldier.Health.IsAlive) return false;
+            if (LoManejaElJugador(soldier)) return false;
+            BajarSiVaMontado(soldier);
+            var brain = soldier.GetComponent<AiBrain>();
+            if (brain == null) return false;
+            brain.IsPossessedByPlayer = false;
+            brain.IssueCoverOrder(point, owner);
+            EventBus.Instance.Publish(new MoveOrderIssuedEvent(soldier.Id, point));
+            OrderMarkerFx.Spawn(point, Feedback.Cover, 0);
+            AnnounceBatch(new List<Soldier> { soldier }, $"{soldier.DisplayName} va a cubrirse en {point}");
+            SP.Presentation.Feedback.Accion(SfxKind.CoverTake, $"{soldier.DisplayName.ToUpperInvariant()} → COBERTURA",
+                point, SP.Presentation.Feedback.Cover, aviso: true, pulso: false, volumen: 0.4f);
+            return true;
+        }
+
         // Separacion minima entre destinos de un mismo lote: por debajo de
         // esto los cubos se solapan visiblemente.
         const float FormationSpacing = 1.8f;
@@ -441,6 +462,10 @@ namespace SP.Player
             var brain = soldier.GetComponent<AiBrain>();
             if (brain != null) brain.IsPossessedByPlayer = false;
             brain?.IssueFollowOrder(leader, formationOffsetLocal);
+            // Marca sobre el aliado que recibe la orden (el destino se mueve
+            // con el lider, asi que no hay marcador fijo en el piso).
+            SP.Presentation.Feedback.Accion(SfxKind.FollowCall, $"{soldier.DisplayName.ToUpperInvariant()} TE SIGUE",
+                soldier.transform.position, SP.Presentation.Feedback.Ok, aviso: false, pulso: true, volumen: 0.35f);
         }
 
         // BUG REAL ("los aliados se solapan al seguirme"): esto llamaba a

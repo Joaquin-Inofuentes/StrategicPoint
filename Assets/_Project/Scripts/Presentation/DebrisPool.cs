@@ -10,7 +10,7 @@ namespace SP.Presentation
     // vieja en vez de crear una nueva: el tope es duro, nunca se supera.
     public static class DebrisPool
     {
-        public const int Budget = 64;
+        public const int Budget = 160;
 
         static readonly List<Debris> all = new List<Debris>();
         static readonly Queue<Debris> free = new Queue<Debris>();
@@ -212,7 +212,11 @@ namespace SP.Presentation
                 // asumir que sigue ahi.
                 if (rend.sharedMaterial == null)
                     rend.sharedMaterial = SafeMaterial.CreateShared();
-                rend.sharedMaterial.color = color;
+                // Color por PIEZA (bloque de propiedades). Con el material
+                // compartido, cada Launch le cambiaba el color a TODAS las
+                // piezas: los cubitos rojos, verdes y amarillos de los
+                // impactos habrian salido todos del ultimo color pedido.
+                CubeFxReactor.WriteTint(rend, color);
             }
             gameObject.SetActive(true);
         }

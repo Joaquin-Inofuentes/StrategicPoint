@@ -25,7 +25,7 @@ namespace SP.Ai
     // reacciona a que le disparen y a que le disparen a un aliado cercano,
     // y ejecuta órdenes explícitas del jugador (T). Cuando el soldado pasa
     // a ser poseído por el jugador, se suspende (IsPossessedByPlayer).
-    public class AiBrain : MonoBehaviour
+    public partial class AiBrain : MonoBehaviour
     {
         [SerializeField] float visionRange = 10f;
         [SerializeField] float attackRange = 6f;
@@ -443,7 +443,18 @@ namespace SP.Ai
             // -- el objetivo murio, se perdio la linea de tiro, una orden
             // lo saco -- hay que pararse de nuevo, no dejarlo agachado
             // caminando o persiguiendo.
-            if (State == AiState.Attack && self != null && self.Motor != null) self.Motor.SetCrouching(false);
+            if (State == AiState.Attack && next != AiState.Attack && self != null && self.Motor != null)
+            {
+                // La cobertura ORDENADA por el jugador mantiene al soldado
+                // agachado aunque el combate termine; la que eligio el enemigo
+                // por su cuenta vale solo mientras dura el ataque.
+                if (!coberturaPorOrden)
+                {
+                    enCobertura = false;
+                    yendoACobertura = false;
+                    self.Motor.SetCrouching(false);
+                }
+            }
             State = next;
             EventBus.Instance.Publish(new AiStateChangedEvent(self.Id, next.ToString()));
         }
@@ -458,6 +469,8 @@ namespace SP.Ai
             // Me dispararon a mí: reacciono aunque esté fuera de mi rango de visión normal.
             if (evt.TargetId == self.Id)
             {
+                ultimoAtacanteId = attacker.Id;
+                tiempoUltimoAtaque = Time.time;
                 if (State == AiState.Idle || State == AiState.Patrol || State == AiState.MovingToOrder || State == AiState.Follow)
                 {
                     target = attacker;
@@ -524,6 +537,7 @@ namespace SP.Ai
         public void IssueMoveOrder(Vector3 point, bool queued = false)
         {
             if (!bootstrapped) Bootstrap();
+            NuevaOrden();
 
             if (queued && hasOrder && State == AiState.MovingToOrder && mountTarget == null)
             {
@@ -957,6 +971,7 @@ namespace SP.Ai
         {
             if (vehicle == null) return;
             if (!bootstrapped) Bootstrap();
+            NuevaOrden();
             target = null;
             hasOrder = true;
             orderIsAttack = false;
@@ -976,6 +991,7 @@ namespace SP.Ai
         {
             if (leader == null || leader == self) return;
             if (!bootstrapped) Bootstrap();
+            NuevaOrden();
             target = null;
             hasOrder = true;
             orderIsAttack = false;
@@ -991,6 +1007,7 @@ namespace SP.Ai
         public void IssueAttackOrder(Soldier enemy)
         {
             if (!bootstrapped) Bootstrap();
+            NuevaOrden();
             target = enemy;
             hasOrder = true;
             orderIsAttack = true;
@@ -1010,6 +1027,7 @@ namespace SP.Ai
         public void CancelOrder()
         {
             if (!bootstrapped) Bootstrap();
+            NuevaOrden();
             hasOrder = false;
             orderIsAttack = false;
             mountTarget = null;
@@ -1071,6 +1089,13 @@ namespace SP.Ai
             // antes y no avanza, asi que el intervalo de sensado se mide en
             // ticks de IA reales y no en frames de reloj de pared.
             tickCount++;
+
+            // Tactica: vigilar la cobertura, seguir al jugador si se aleja,
+            // revisar si hay un blanco mejor.
+            TickCobertura(dt);
+            TickSeguirAlJugador();
+            TickRetarget(dt);
+            if (enCobertura) self.Motor.SetCrouching(true);
 
             // BUG REAL: solo se chequeaba IsAlive. Un soldado que sube a un
             // vehiculo sigue vivo pero Vehicle.Mount lo desactiva
@@ -1151,6 +1176,7 @@ namespace SP.Ai
                 var sensed = SenseNearestEnemy();
                 if (sensed != null)
                 {
+                    AvisarDeteccion(sensed);
                     target = sensed;
                     if (State != AiState.MovingToOrder) hasOrder = false;
                     SetState(AiState.Chase);
@@ -1161,7 +1187,7 @@ namespace SP.Ai
             {
                 case AiState.Patrol:
                     int patrolCount = PatrolCount;
-                    if (patrolCount > 0)
+                    if (patrolCount > 0 && !enCobertura)
                     {
                         if (AvanzarConRodeo(PatrolPointAt(patrolIndex), 1f, dt, ref destinoPatrulla, ref tienePatrulla, ref relojDePatrulla))
                             patrolIndex = (patrolIndex + 1) % patrolCount;
@@ -1210,6 +1236,13 @@ namespace SP.Ai
                             ClearPath();
                             SetState(AiState.Patrol);
                             forceSense = true;
+                            break;
+                        }
+
+                        // Orden de cobertura cumplida: se agacha y se queda.
+                        if (coberturaPorOrden && yendoACobertura && orderQueue.Count == 0)
+                        {
+                            EntrarEnCobertura();
                             break;
                         }
 
@@ -1352,6 +1385,11 @@ namespace SP.Ai
                     if (target == null || !target.Health.IsAlive) { SetState(AiState.Patrol); break; }
                     float dd = Vector3.Distance(self.transform.position, target.transform.position);
                     if (dd > EffectiveAttackRange) { SetState(hasOrder ? AiState.MovingToAttackOrder : AiState.Chase); break; }
+
+                    // Enemigo: busca una cobertura desde la que seguir
+                    // disparando (ver AiBrain.Tactica). Corriendo hacia ella no
+                    // dispara este tick.
+                    if (TickCoberturaTactica(dt)) break;
 
                     // Pedido explicito ("se agachan y disparan?"): mismo
                     // SetCrouching de G2 que ya usa el jugador con Ctrl --
@@ -1504,6 +1542,8 @@ namespace SP.Ai
         // postura por defecto recorra el mismo camino de antes.
         bool StanceAllowsPursuit(Vector3 targetPosition)
         {
+            // En cobertura por orden del jugador: se queda ahi.
+            if (enCobertura && coberturaPorOrden) return false;
             if (stance == CombatStance.Libre) return true;
             if (stance == CombatStance.AltoElFuego) return false;
             // Defensiva: persigo mientras el objetivo siga dentro de la
@@ -1519,6 +1559,14 @@ namespace SP.Ai
         // target != null (lo garantiza el case de Chase).
         void HoldStancePosition(float dt)
         {
+            if (enCobertura && coberturaPorOrden)
+            {
+                if (Vector3.Distance(self.transform.position, coberturaPunto) > 1.2f)
+                    AvanzarConRodeo(coberturaPunto, 0.6f, dt, ref destinoRegresoAPuesto, ref tieneRegresoAPuesto, ref relojDeRegresoAPuesto);
+                else if (target != null) self.Motor.LookTowards(target.transform.position, dt);
+                return;
+            }
+
             // Defensiva: si venia persiguiendo cuando le cambiaron la
             // postura, o lo arrastro una orden previa, vuelve caminando a su
             // puesto en vez de quedarse clavado lejos de casa.
@@ -1584,8 +1632,7 @@ namespace SP.Ai
             {
                 forceSense = false;
                 lastSenseTick = tickCount;
-                sensedTarget = ActorRegistry.FindNearestEnemyInRange(
-                    self.transform.position, self.Team, EffectiveVisionRange);
+                sensedTarget = MejorObjetivoVisible();
             }
 
             return sensedTarget;

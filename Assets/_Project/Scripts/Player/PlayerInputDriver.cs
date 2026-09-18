@@ -470,6 +470,10 @@ namespace SP.Player
             // aca sin cortarse antes. Ahora se recalcula ANTES de
             // cualquier return, asi que ninguna transicion se lo pierde.
             OrderService.ManejadoAMano = Rig.Mode == ControlMode.Fps ? Brain.Current : null;
+            // Los aliados libres te siguen si te alejas mas de X (ver
+            // AjustesDeEscuadra): solo hay lider a pie y en primera persona.
+            AjustesDeEscuadra.Lider = Rig.Mode == ControlMode.Fps && !currentSeat.HasValue ? Brain.Current : null;
+            if (!currentSeat.HasValue && panelDeTeclas != null && panelDeTeclas.Visible) panelDeTeclas.SetVisible(false);
 
             // Pausa/menú de victoria-derrota tienen Time.timeScale=0, pero
             // Update() no se frena solo por eso: sin este corte, mientras
@@ -941,12 +945,22 @@ namespace SP.Player
             // excluyentes (UpdateFps vs UpdateRts).
             bool agacharHeld = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
             Brain.Current.Motor.SetCrouching(agacharHeld);
+            if (agacharHeld != agachadoAntes)
+            {
+                agachadoAntes = agacharHeld;
+                Feedback.Accion(SfxKind.Crouch, agacharHeld ? "AGACHADO" : "DE PIE", Brain.Current.transform.position,
+                    Feedback.Info, aviso: false, pulso: false, volumen: 0.3f);
+            }
 
             // G3: [Espacio] salta. No choca con el mismo [Espacio] de RTS
             // (recentrar camara) ni con el de la camara de muerte (pedir
             // cambio de cuerpo): son ramas mutuamente excluyentes, esta
             // vive solo adentro de UpdateFps.
-            if (kb.spaceKey.wasPressedThisFrame) Brain.Current.Motor.Jump();
+            if (kb.spaceKey.wasPressedThisFrame)
+            {
+                Brain.Current.Motor.Jump();
+                Feedback.Accion(SfxKind.Crouch, null, Brain.Current.transform.position, Feedback.Info, aviso: false, pulso: false, volumen: 0.25f);
+            }
 
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked)
             {
@@ -962,12 +976,19 @@ namespace SP.Player
             var result = Aim.Evaluate(ray, Brain.Current);
             UpdateAimHighlight(result);
             UpdateAimRing(result);
+            UpdateCoverPreview(kb, result);
             UpdateVehicleMountIndicator(result);
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateAmmoWarning(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateReloadCircle(Brain.Current.Weapon);
-            if (KeyBindings.WasPressed(KeyBindings.Recargar)) Brain.Current.Weapon.Reload();
+            if (KeyBindings.WasPressed(KeyBindings.Recargar))
+            {
+                bool yaRecargaba = Brain.Current.Weapon.IsReloading;
+                Brain.Current.Weapon.Reload();
+                if (!yaRecargaba && Brain.Current.Weapon.IsReloading)
+                    Feedback.Accion(SfxKind.Reload, "RECARGANDO", Brain.Current.transform.position, Feedback.Warn, aviso: false, pulso: false, volumen: 0.45f);
+            }
             if (PlayerHealth != null)
             {
                 PlayerHealth.gameObject.SetActive(true);
@@ -1048,10 +1069,15 @@ namespace SP.Player
                 OrderService.IssueAttackOrderForSelection(attackers, result.Soldier);
             }
 
-            if (kb.tKey.wasPressedThisFrame && result.Type == AimTargetType.Ground)
+            if (kb.tKey.wasPressedThisFrame)
             {
                 bool shiftHeld = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
-                IssueGroundOrderT(result.Point, shiftHeld);
+                // [T] sobre una COBERTURA (el obstaculo o el disco celeste del
+                // piso): el aliado mas cercano va, se agacha y se queda.
+                if (TryResolverCobertura(result, out var puntoCobertura, out var duenoCobertura))
+                    IssueCoverOrderT(puntoCobertura, duenoCobertura);
+                else if (result.Type == AimTargetType.Ground)
+                    IssueGroundOrderT(result.Point, shiftHeld);
             }
 
             if (kb.gKey.wasPressedThisFrame && result.Type == AimTargetType.Vehicle)
@@ -1276,6 +1302,7 @@ namespace SP.Player
 
         void HideFpsOnlyIndicators()
         {
+            CoverHologram.Ocultar();
             ClearNearestAllyHighlight();
             if (mountIndicator != null) mountIndicator.Hide();
             if (highlightedRenderer != null)
@@ -1283,6 +1310,173 @@ namespace SP.Player
                 SP.Presentation.CubeFxReactor.WriteTint(highlightedRenderer, highlightedOriginalColor);
                 highlightedRenderer = null;
             }
+        }
+
+        // -----------------------------------------------------------
+        // Coberturas: [Shift] muestra el holograma, [T] manda a cubrirse
+        // -----------------------------------------------------------
+        const float RadioCoberturaPiso = 1.6f;
+        bool agachadoAntes;
+        float ultimoTCoberturaTiempo = -999f;
+        Soldier ultimoAliadoCobertura;
+        Vector3 ultimoPuntoCobertura;
+        VehicleKeysPanel panelDeTeclas;
+        int ultimaSeleccion;
+
+        public bool TryResolverCobertura(AimResult r, out Vector3 punto, out Collider dueno)
+        {
+            punto = default;
+            dueno = null;
+            if (r.Type == AimTargetType.Obstacle)
+                return Coberturas.TryPuntoApuntado(r.Point, r.HitTransform, 0f, out punto, out dueno);
+            if (r.Type == AimTargetType.Ground)
+                return Coberturas.TryPuntoApuntado(r.Point, null, RadioCoberturaPiso, out punto, out dueno);
+            return false;
+        }
+
+        Soldier AliadoLibreMasCercano(Vector3 punto, Soldier excluir)
+        {
+            return ActorRegistry.FindNearest(punto, s =>
+                s != Brain.Current && s != excluir && s.Team == TeamId.Player
+                && s.Health != null && s.Health.IsAlive && s.gameObject.activeInHierarchy
+                && !OrderService.LoManejaElJugador(s));
+        }
+
+        // Vista previa: con [Shift] apretado y apuntando a una cobertura,
+        // holograma (90 % transparente) del aliado que la tomaria.
+        void UpdateCoverPreview(Keyboard kb, AimResult result)
+        {
+            bool shift = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+            if (!shift || !TryResolverCobertura(result, out var punto, out var dueno))
+            {
+                CoverHologram.Ocultar();
+                return;
+            }
+            var aliado = AliadoLibreMasCercano(punto, null) ?? Brain.Current;
+            var transformObstaculo = result.Type == AimTargetType.Obstacle ? result.HitTransform : (dueno != null ? dueno.transform : null);
+            CoverHologram.Mostrar(aliado, punto, Coberturas.FrenteDe(punto, dueno), transformObstaculo);
+        }
+
+        // [T] sobre una cobertura: el aliado libre mas cercano va, se agacha
+        // y se queda. Dos [T] seguidos reparten al SIGUIENTE aliado a la
+        // SIGUIENTE cobertura. Publico para poder probarlo sin teclado.
+        public bool IssueCoverOrderT(Vector3 punto, Collider dueno)
+        {
+            bool repique = Time.unscaledTime - ultimoTCoberturaTiempo < VentanaDobleT;
+            ultimoTCoberturaTiempo = Time.unscaledTime;
+
+            var elegido = AliadoLibreMasCercano(punto, repique ? ultimoAliadoCobertura : null);
+            if (elegido == null) { RejectOrder("NO HAY ALIADOS LIBRES PARA CUBRIRSE"); return false; }
+
+            if (repique)
+            {
+                var indices = Coberturas.IndicesCercanos(ultimoPuntoCobertura, 2, 8f);
+                if (indices.Count > 1)
+                {
+                    punto = Coberturas.Puntos[indices[1]];
+                    dueno = Coberturas.Duenos[indices[1]];
+                }
+            }
+
+            bool ok = OrderService.IssueCoverOrder(elegido, punto, dueno);
+            if (ok) { ultimoAliadoCobertura = elegido; ultimoPuntoCobertura = punto; }
+            return ok;
+        }
+
+        // RTS: toda la seleccion a cubrirse, un punto distinto para cada uno.
+        public int IssueCoverOrderForSelection(IReadOnlyList<Soldier> seleccion, Vector3 puntoApuntado, Transform obstaculo)
+        {
+            if (seleccion == null || seleccion.Count == 0) return 0;
+            if (!Coberturas.TryPuntoApuntado(puntoApuntado, obstaculo, obstaculo != null ? 0f : RadioCoberturaPiso, out var basePunto, out _)) return 0;
+            var indices = Coberturas.IndicesCercanos(basePunto, seleccion.Count, 9f);
+            int n = 0;
+            for (int i = 0; i < seleccion.Count; i++)
+            {
+                int idx = indices.Count == 0 ? -1 : indices[Mathf.Min(i, indices.Count - 1)];
+                if (idx < 0) break;
+                if (OrderService.IssueCoverOrder(seleccion[i], Coberturas.Puntos[idx], Coberturas.Duenos[idx])) n++;
+            }
+            return n;
+        }
+
+        // RTS + [Shift] apuntando a una cobertura: holograma del primer
+        // seleccionado.
+        void UpdateCoverPreviewRts(Keyboard kb, Ray screenRay)
+        {
+            bool shift = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+            if (!shift || Selection.Selected.Count == 0) { CoverHologram.Ocultar(); return; }
+            var r = Aim.Evaluate(screenRay, null);
+            if (!TryResolverCobertura(r, out var punto, out var dueno)) { CoverHologram.Ocultar(); return; }
+            Soldier primero = null;
+            foreach (var s in Selection.Selected) if (s != null && s.Health.IsAlive && s.gameObject.activeInHierarchy) { primero = s; break; }
+            if (primero == null) { CoverHologram.Ocultar(); return; }
+            var to = r.Type == AimTargetType.Obstacle ? r.HitTransform : (dueno != null ? dueno.transform : null);
+            CoverHologram.Mostrar(primero, punto, Coberturas.FrenteDe(punto, dueno), to);
+        }
+
+        // -----------------------------------------------------------
+        // Tanque: todos suben / todos bajan
+        // -----------------------------------------------------------
+        int AliadosEnCaminoAlVehiculo(Vehicle v)
+        {
+            int n = 0;
+            if (Squad == null) return 0;
+            foreach (var s in Squad)
+                if (s != null && s.Brain != null && s.Brain.MountTargetVehicle == v && s.Health.IsAlive) n++;
+            return n;
+        }
+
+        // [G] dentro del tanque: manda a TODOS los aliados libres a subir,
+        // hasta llenar los asientos.
+        public int SubirATodos(Vehicle v)
+        {
+            if (v == null || v.IsDestroyed) return 0;
+            int libres = v.Capacity - v.OccupantCount - AliadosEnCaminoAlVehiculo(v);
+            int n = 0;
+            while (libres > 0)
+            {
+                var next = FindNextSquadmateToBoard(v);
+                if (next == null) break;
+                OrderService.IssueMountOrder(next, v);
+                n++; libres--;
+            }
+            if (panelDeTeclas != null) panelDeTeclas.Destellar("G");
+            if (n > 0)
+                Feedback.Accion(SfxKind.BoardAll, $"TODOS SUBEN ({n})", v.transform.position, Feedback.Ok, aviso: true, pulso: true, volumen: 0.6f);
+            else
+                RejectOrder(v.HasAnyRoom ? "NO HAY MAS ALIADOS PARA SUBIR" : "VEHICULO LLENO");
+            return n;
+        }
+
+        // [I] dentro del tanque: bajan todos MENOS el jugador.
+        public int BajarATodos(Vehicle v)
+        {
+            if (v == null) return 0;
+            int n = 0;
+            foreach (var o in new List<Soldier>(v.Occupants))
+            {
+                if (o == Brain.Current) continue;
+                if (v.Dismount(o)) n++;
+            }
+            if (panelDeTeclas != null) panelDeTeclas.Destellar("I");
+            if (n > 0)
+                Feedback.Accion(SfxKind.ExitAll, $"TODOS BAJAN ({n})", v.transform.position, Feedback.Warn, aviso: true, pulso: true, volumen: 0.6f);
+            else
+                RejectOrder("NO HAY NADIE MAS ADENTRO");
+            return n;
+        }
+
+        void ActualizarPanelDeTeclas()
+        {
+            if (Vehicle == null) return;
+            if (panelDeTeclas == null)
+            {
+                var canvas = ModeToast != null ? ModeToast.GetComponentInParent<Canvas>() : null;
+                if (canvas != null) panelDeTeclas = VehicleKeysPanel.Asegurar(canvas.rootCanvas.transform);
+            }
+            if (panelDeTeclas == null) return;
+            panelDeTeclas.SetVisible(true);
+            panelDeTeclas.Actualizar(Vehicle, currentSeat, AliadosEnCaminoAlVehiculo(Vehicle));
         }
 
         // -----------------------------------------------------------
@@ -1838,7 +2032,13 @@ namespace SP.Player
         {
             if (Brain.Current == null || Brain.Current.Weapon == null) return;
             int idx = Brain.Current.Weapon.Loadout.IndexOf(kind);
-            if (idx >= 0) { Brain.Current.Weapon.EquipFromLoadout(idx); return; }
+            if (idx >= 0)
+            {
+                bool cambio = Brain.Current.Weapon.CurrentWeaponKind != kind;
+                Brain.Current.Weapon.EquipFromLoadout(idx);
+                if (cambio) Feedback.Accion(SfxKind.WeaponSwitch, $"[{idx + 1}] {kind.ToString().ToUpperInvariant()}", null, Feedback.Info, aviso: true, pulso: false, volumen: 0.4f);
+                return;
+            }
 
             var spec = WeaponCatalog.Get(kind);
             Brain.Current.Weapon.EquipWeapon(kind, spec.Damage, spec.Cooldown, spec.Color);
@@ -1933,6 +2133,7 @@ namespace SP.Player
             if (!vehicle.Mount(driverSoldier, role)) return;
 
             EnterPossessedVehicleSeat(role.Value);
+            Feedback.Accion(SfxKind.SeatChange, "SUBISTE AL TANQUE", vehicle.transform.position, Feedback.Ok, aviso: false, pulso: true, volumen: 0.5f);
 
             // Antes los aliados cercanos subian SOLOS con vos. Pedido
             // explicito: "al subirme al auto los aliados se suben, deberian
@@ -1958,7 +2159,7 @@ namespace SP.Player
             // El cambio se avisa: sin esto, el que ya tenia la costumbre
             // arranca creyendo que los lleva atras y los deja tirados.
             if (esperando > 0 && ModeToast != null)
-                ModeToast.Show(esperando == 1 ? "1 ALIADO ESPERA LA ORDEN - [U] PARA SUBIRLO" : $"{esperando} ALIADOS ESPERAN LA ORDEN - [U] SUBE DE A UNO", 2f);
+                ModeToast.Show(esperando == 1 ? "1 ALIADO ESPERA - [G] TODOS SUBEN · [U] DE A UNO" : $"{esperando} ALIADOS ESPERAN - [G] TODOS SUBEN · [U] DE A UNO", 2.5f);
         }
 
         // Toma control de un asiento en el que el soldado poseído YA está
@@ -2019,6 +2220,7 @@ namespace SP.Player
         public void ExitVehicle()
         {
             if (Brain.Current == null) return;
+            Feedback.Accion(SfxKind.SeatChange, "BAJASTE DEL TANQUE", Vehicle.transform.position, Feedback.Info, aviso: true, pulso: false, volumen: 0.5f);
             Vehicle.Dismount(Brain.Current);
             var vb = Vehicle.GetComponent<VehicleBrain>();
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
@@ -2094,6 +2296,23 @@ namespace SP.Player
                     if (next != null) OrderService.IssueMountOrder(next, vehicleToFill);
                     else RejectOrder("NO HAY MAS ALIADOS PARA SUBIR");
                 }
+            }
+
+            // [G] todos suben, [I] todos bajan (menos vos): funcionan desde
+            // cualquier asiento y desde la vista RTS del tanque. El panel de
+            // teclas los muestra junto a los asientos.
+            ActualizarPanelDeTeclas();
+            if (kb.gKey.wasPressedThisFrame) SubirATodos(Vehicle);
+            if (kb.iKey.wasPressedThisFrame) BajarATodos(Vehicle);
+            if (panelDeTeclas != null)
+            {
+                if (kb.uKey.wasPressedThisFrame) panelDeTeclas.Destellar("U");
+                if (kb.tKey.wasPressedThisFrame) panelDeTeclas.Destellar("T");
+                if (kb.digit1Key.wasPressedThisFrame) panelDeTeclas.Destellar("1");
+                if (kb.digit2Key.wasPressedThisFrame) panelDeTeclas.Destellar("2");
+                if (kb.digit3Key.wasPressedThisFrame) panelDeTeclas.Destellar("3");
+                if (kb.digit4Key.wasPressedThisFrame) panelDeTeclas.Destellar("4");
+                if (kb.spaceKey.wasPressedThisFrame) panelDeTeclas.Destellar("Espacio");
             }
 
             // En RTS, adentro del vehículo: solo cámara top-down + la UI
@@ -2308,6 +2527,9 @@ namespace SP.Player
             // Ahora cada asiento nombra la suya.
             if (newRole == VehicleSeatRole.Gunner) GameLog.Line("Se montó en el cañón");
             if (newRole == VehicleSeatRole.Passenger1) GameLog.Line("Se montó en la metralleta");
+
+            Feedback.Accion(SfxKind.SeatChange, ocupante != null ? "INTERCAMBIO DE ASIENTO" : "CAMBIO DE ASIENTO", Vehicle.transform.position,
+                Feedback.Info, aviso: false, pulso: false, volumen: 0.5f);
 
             // La vista de vehiculo es siempre en 3ra persona orbitando el
             // chasis (Vehicle.transform): cambiar de asiento no mueve el
@@ -2555,6 +2777,16 @@ namespace SP.Player
 
             bool rightClickOrder = mouse.rightButton.wasReleasedThisFrame && !rightPressStartedOverUi;
 
+            // Feedback de seleccion (sonido + aviso) cuando cambia la cantidad.
+            int cantSel = Selection.Selected.Count;
+            if (cantSel != ultimaSeleccion)
+            {
+                if (cantSel > 0)
+                    Feedback.Accion(SfxKind.Select, cantSel == 1 ? "1 SELECCIONADO" : $"{cantSel} SELECCIONADOS", null, Feedback.Info, aviso: true, pulso: false, volumen: 0.35f);
+                ultimaSeleccion = cantSel;
+            }
+            UpdateCoverPreviewRts(kb, screenRay);
+
             // [T] o click derecho: mover a todos los seleccionados ahí --
             // o al vehículo, si es él quien está seleccionado (requiere
             // conductor propio adentro, como en FPS). "!dragging" es el
@@ -2586,7 +2818,18 @@ namespace SP.Player
                 // de varios tramos.
                 bool queued = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
 
-                if (result.Type == AimTargetType.Ground)
+                // Sobre una COBERTURA (el obstaculo o su disco celeste): la
+                // seleccion va a cubrirse, un punto para cada uno.
+                bool esCobertura = Selection.SelectedVehicle == null && Selection.Selected.Count > 0
+                    && TryResolverCobertura(result, out _, out _);
+
+                if (esCobertura)
+                {
+                    int cubiertos = IssueCoverOrderForSelection(Selection.Selected, result.Point,
+                        result.Type == AimTargetType.Obstacle ? result.HitTransform : null);
+                    if (cubiertos == 0) RejectOrder("NO HAY COBERTURA LIBRE AHI");
+                }
+                else if (result.Type == AimTargetType.Ground)
                 {
                     if (Selection.SelectedVehicle != null)
                     {
@@ -2747,6 +2990,7 @@ namespace SP.Player
                 // si no queda un plan dibujado que ya nadie va a cumplir.
                 OrderMarkerFx.ClearQueuedMarkers();
                 GameLog.Line("Se cancelo la orden de la seleccion");
+                Feedback.Accion(SfxKind.EmptyClick, "ORDEN CANCELADA", null, Feedback.Warn, aviso: true, pulso: false, volumen: 0.5f);
             }
 
             UpdateControlGroups(kb);

@@ -64,6 +64,11 @@ namespace SP.Presentation
             var minimapFollow = FindAnyObjectByType<SP.UI.MinimapFollow>();
             if (minimapFollow != null) minimapFollow.AplicarTamanoInicial();
 
+            // Aviso de bloque del nivel (el mapa mide 320 m de largo) y ajustes
+            // de la escuadra (distancia a la que los aliados te siguen).
+            AnuncioDeZonas.Asegurar();
+            SP.Ai.AjustesDeEscuadra.AsegurarEnEscena();
+
             // C1: etiqueta al pie de cada unidad (vida, tipo, ocupantes),
             // solo visible en RTS. Ninguna escena la trae puesta a mano.
             int etiquetas = UnitLabelView.RegistrarTodas();

@@ -19,7 +19,7 @@ namespace SP.Presentation
     // hacer click en CUALQUIER boton (ver SP.UI.ButtonSfx). OrderBark: voz
     // de acuse militar ("Accepted"/"Positive"/etc) al dar una orden.
     // CameraSwoosh: transicion FPS<->RTS.
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh }
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire }
 
     // Sonidos genéricos: primero busca grabaciones reales importadas bajo
     // Resources/Audio/Sfx/<Kind>/ (pedido explicito: "quita todos los
@@ -145,6 +145,31 @@ namespace SP.Presentation
             // una envolvente de campana mas suave, que es justo lo que
             // pide un "fiush" de cambio de vista.
             if (kind == SfxKind.CameraSwoosh) return GenerateSwoosh();
+
+            // Paleta de feedback de las acciones tacticas (todas procedurales
+            // a proposito: son "avisos de interfaz", no sonidos del mundo).
+            switch (kind)
+            {
+                // Tomar cobertura: dos notas ascendentes, "recibido".
+                case SfxKind.CoverTake: return GenerateSweep(520f, 780f, 0.16f, 9f, "CoverTake");
+                // Cobertura destruida: golpe grave que cae.
+                case SfxKind.CoverLost: return GenerateSweep(240f, 70f, 0.32f, 6f, "CoverLost");
+                // Holograma: chirrido agudo corto de "escaneo".
+                case SfxKind.HoloOn: return GenerateSweep(900f, 1500f, 0.11f, 14f, "HoloOn");
+                // Cambio de asiento: dos toques mecanicos.
+                case SfxKind.SeatChange: return GenerateSweep(700f, 420f, 0.13f, 10f, "SeatChange");
+                // Todos suben / todos bajan: barrido largo hacia arriba / abajo.
+                case SfxKind.BoardAll: return GenerateSweep(300f, 900f, 0.28f, 5f, "BoardAll");
+                case SfxKind.ExitAll: return GenerateSweep(900f, 300f, 0.28f, 5f, "ExitAll");
+                case SfxKind.FollowCall: return GenerateSweep(440f, 660f, 0.2f, 7f, "FollowCall");
+                case SfxKind.Crouch: return GenerateSweep(360f, 240f, 0.09f, 16f, "Crouch");
+                case SfxKind.WeaponSwitch: return GenerateSweep(1100f, 760f, 0.08f, 20f, "WeaponSwitch");
+                case SfxKind.Reload: return GenerateSweep(500f, 1000f, 0.12f, 12f, "Reload");
+                case SfxKind.Select: return GenerateSweep(820f, 1080f, 0.07f, 22f, "Select");
+                case SfxKind.EnemySpotted: return GenerateSweep(1250f, 950f, 0.22f, 6f, "EnemySpotted");
+                // Cañon de un tanque enemigo: cuerpo grave con caida.
+                case SfxKind.TankFire: return GenerateSweep(140f, 45f, 0.5f, 4f, "TankFire");
+            }
 
             float freq, duration, decay;
             switch (kind)
@@ -386,6 +411,27 @@ namespace SP.Presentation
             if (peak <= 0.0001f) return;
             float gain = target / peak;
             for (int i = 0; i < samples.Length; i++) samples[i] = Mathf.Clamp(samples[i] * gain, -1f, 1f);
+        }
+
+        // Barrido de frecuencia con caida exponencial: la base de todos los
+        // avisos de accion (sube = confirma, baja = retira/pierde).
+        static AudioClip GenerateSweep(float f0, float f1, float duration, float decay, string name)
+        {
+            const int sampleRate = 44100;
+            int n = Mathf.Max(1, (int)(duration * sampleRate));
+            var samples = new float[n];
+            float phase = 0f;
+            for (int i = 0; i < n; i++)
+            {
+                float k = (float)i / n;
+                float f = Mathf.Lerp(f0, f1, k);
+                phase += 2f * Mathf.PI * f / sampleRate;
+                float env = Mathf.Exp(-decay * k * duration) * Mathf.Min(1f, i / 90f);
+                samples[i] = (Mathf.Sin(phase) * 0.8f + Mathf.Sin(phase * 2f) * 0.15f) * env * 0.6f;
+            }
+            var clip = AudioClip.Create(name, n, 1, sampleRate, false);
+            clip.SetData(samples, 0);
+            return clip;
         }
 
         static AudioClip GenerateTone(float freq, float duration, float decay, string name)

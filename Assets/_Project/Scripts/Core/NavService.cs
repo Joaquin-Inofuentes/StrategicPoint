@@ -45,7 +45,7 @@ namespace SP.Core
 
         // Valvula de seguridad: un collider perdido a 10.000 metros no
         // puede hacer que la grilla explote a millones de nodos.
-        const float MaxHalfExtent = 250f;
+        const float MaxHalfExtent = 400f;
 
         static readonly WaypointGraph graph = new WaypointGraph();
         static readonly Collider[] overlapBuffer = new Collider[16];

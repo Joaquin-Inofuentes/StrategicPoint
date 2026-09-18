@@ -37,7 +37,14 @@ namespace SP.Vehicles
         // blanco no hay que arrancar a manejar sola hacia una orden vieja
         // -- esa unica persona no puede estar disparando Y conduciendo a
         // la vez.
-        public bool IsEngaging => target != null && target.Health.IsAlive;
+        public bool IsEngaging => (target != null && target.Health.IsAlive)
+            || (targetVehicle != null && !targetVehicle.IsDestroyed);
+
+        // Un tanque hostil tambien es blanco (el enemigo tiene los suyos): la
+        // torreta le da prioridad sobre la infanteria porque es la amenaza
+        // que puede destruir el vehiculo propio.
+        Vehicle targetVehicle;
+        public Vehicle TargetVehicle => targetVehicle;
 
         void Awake() => Bootstrap();
 
@@ -132,6 +139,8 @@ namespace SP.Vehicles
             var crewTeam = vehicle.Occupants[0].Team;
             var enemyTeam = crewTeam == TeamId.Player ? TeamId.Enemy : TeamId.Player;
 
+            // Tanque hostil a la vista: se lo ataca primero.
+            if (targetVehicle != null && (targetVehicle.IsDestroyed || targetVehicle.OccupantCount == 0)) targetVehicle = null;
             var previousTarget = target;
             retargetTimer -= dt;
             if (retargetTimer <= 0f || target == null || !target.Health.IsAlive || target.Team != enemyTeam)
@@ -144,6 +153,17 @@ namespace SP.Vehicles
             // enemigo VIEJO contra la del nuevo -- un salto enorme y sin
             // sentido que mandaria el primer tiro a cualquier lado.
             if (target != previousTarget) hasLastTargetPos = false;
+
+            if (retargetTimer >= retargetInterval - 0.0001f)
+                targetVehicle = BuscarTanqueHostil(crewTeam);
+
+            if (targetVehicle != null)
+            {
+                var puntoTanque = targetVehicle.transform.position + Vector3.up * 0.9f;
+                turret.AimAt(puntoTanque, dt);
+                if (turret.IsAimedAt(puntoTanque) && HayLineaDeTiro(puntoTanque, targetVehicle.transform)) turret.TryFire();
+                return;
+            }
 
             if (target == null || !target.Health.IsAlive) return;
 
@@ -182,7 +202,21 @@ namespace SP.Vehicles
         // Rayo desde la boca del cañon (o desde la torreta si no hay boca)
         // hasta el punto al que se apunta, con la MISMA definicion de pared
         // que usan SoldierMotor, Projectile y AiBrain.
-        bool HayLineaDeTiro(Vector3 punto)
+        Vehicle BuscarTanqueHostil(TeamId crewTeam)
+        {
+            Vehicle mejor = null;
+            float mejorD = range * range;
+            for (int i = 0; i < Vehicle.Todos.Count; i++)
+            {
+                var v = Vehicle.Todos[i];
+                if (v == null || v == vehicle || v.IsDestroyed || v.OccupantCount == 0 || v.Bando == crewTeam) continue;
+                float d = (v.transform.position - transform.position).sqrMagnitude;
+                if (d <= mejorD) { mejorD = d; mejor = v; }
+            }
+            return mejor;
+        }
+
+        bool HayLineaDeTiro(Vector3 punto, Transform ignorar = null)
         {
             var desde = turret != null && turret.Muzzle != null
                 ? turret.Muzzle.position
@@ -199,6 +233,7 @@ namespace SP.Vehicles
                 if (c == null) continue;
                 // El propio vehiculo no se tapa a si mismo.
                 if (c.transform.IsChildOf(transform.root)) continue;
+                if (ignorar != null && c.transform.IsChildOf(ignorar)) continue;
                 if (!SP.Core.NavService.BlocksMovement(c)) continue;
                 return false;
             }

@@ -27,7 +27,12 @@ namespace SP.Core
         public const float AlturaMinima = 0.5f;
 
         static readonly List<Vector3> puntos = new List<Vector3>();
+        // El obstaculo que da cada punto (misma posicion que en 'puntos'):
+        // sirve para saber CUANDO SE DESTRUYE la cobertura y para elegir el
+        // punto del lado que se esta apuntando.
+        static readonly List<Collider> duenos = new List<Collider>();
         public static IReadOnlyList<Vector3> Puntos => puntos;
+        public static IReadOnlyList<Collider> Duenos => duenos;
         public static int Cantidad => puntos.Count;
 
         public const string NombreDelRoot = "CoberturasRoot";
@@ -67,6 +72,7 @@ namespace SP.Core
             // sincroniza, y ahi el filtro de tamaño lo descarta en silencio.
             Physics.SyncTransforms();
             puntos.Clear();
+            duenos.Clear();
             var solidos = Solidos();
             for (int i = 0; i < solidos.Count; i++)
             {
@@ -75,16 +81,22 @@ namespace SP.Core
                 float dz = b.extents.z + DistanciaDeLaCara;
                 var centro = new Vector3(b.center.x, b.min.y, b.center.z);
 
-                Candidato(centro + new Vector3(dx, 0f, 0f));
-                Candidato(centro + new Vector3(-dx, 0f, 0f));
-                Candidato(centro + new Vector3(0f, 0f, dz));
-                Candidato(centro + new Vector3(0f, 0f, -dz));
+                Candidato(centro + new Vector3(dx, 0f, 0f), solidos[i]);
+                Candidato(centro + new Vector3(-dx, 0f, 0f), solidos[i]);
+                Candidato(centro + new Vector3(0f, 0f, dz), solidos[i]);
+                Candidato(centro + new Vector3(0f, 0f, -dz), solidos[i]);
             }
             Redibujar();
+            Version++;
             return puntos.Count;
         }
 
-        static void Candidato(Vector3 p)
+        // Sube cada vez que se rehacen los puntos (un obstaculo se derrumbo):
+        // quien tenga una cobertura elegida compara contra esto para darse
+        // cuenta de que el mapa cambio.
+        public static int Version { get; private set; }
+
+        static void Candidato(Vector3 p, Collider dueno)
         {
             // Sin este corte, dos obstaculos pegados generan puntos
             // adentro del vecino: el soldado camina hasta una pared y se
@@ -93,11 +105,96 @@ namespace SP.Core
             for (int i = 0; i < alrededor.Length; i++)
                 if (NavService.BlocksMovement(alrededor[i])) return;
             puntos.Add(p);
+            duenos.Add(dueno);
         }
+
+        // La cobertura sigue en pie: su obstaculo existe, esta activo y no se
+        // derrumbo. Es lo que mira la IA para "darse cuenta" de que la
+        // cobertura donde estaba se destruyo.
+        public static bool Vigente(Collider dueno)
+        {
+            if (dueno == null || !dueno.enabled || !dueno.gameObject.activeInHierarchy) return false;
+            var marca = dueno.GetComponentInParent<SP.Presentation.ObstacleMarker>();
+            return marca == null || !marca.IsCollapsed;
+        }
+
+        // Punto de cobertura que corresponde a lo apuntado. Si se apunta a un
+        // OBSTACULO, el de sus costados mas cercano al punto de impacto; si se
+        // apunta al PISO, el punto mas cercano dentro de 'radioPiso'.
+        public static bool TryPuntoApuntado(Vector3 puntoApuntado, Transform obstaculo, float radioPiso,
+                                            out Vector3 punto, out Collider dueno)
+        {
+            punto = Vector3.zero;
+            dueno = null;
+            float mejor = float.MaxValue;
+            for (int i = 0; i < puntos.Count; i++)
+            {
+                if (obstaculo != null)
+                {
+                    if (duenos[i] == null || !duenos[i].transform.IsChildOf(obstaculo)) continue;
+                }
+                float d = new Vector2(puntos[i].x - puntoApuntado.x, puntos[i].z - puntoApuntado.z).sqrMagnitude;
+                if (obstaculo == null && d > radioPiso * radioPiso) continue;
+                if (d >= mejor) continue;
+                mejor = d;
+                punto = puntos[i];
+                dueno = duenos[i];
+            }
+            return dueno != null;
+        }
+
+        // Los 'cantidad' puntos mas cercanos a 'centro' (para repartir a
+        // varios soldados sin que se pisen en el mismo).
+        public static List<int> IndicesCercanos(Vector3 centro, int cantidad, float radio)
+        {
+            var res = new List<int>();
+            var usados = new HashSet<int>();
+            for (int k = 0; k < cantidad; k++)
+            {
+                int mejor = -1;
+                float dm = radio * radio;
+                for (int i = 0; i < puntos.Count; i++)
+                {
+                    if (usados.Contains(i)) continue;
+                    float d = (puntos[i] - centro).sqrMagnitude;
+                    if (d < dm) { dm = d; mejor = i; }
+                }
+                if (mejor < 0) break;
+                usados.Add(mejor);
+                res.Add(mejor);
+            }
+            return res;
+        }
+
+        // Direccion horizontal en la que "mira" un punto: de la cara del
+        // obstaculo hacia afuera (la cara que da ese punto).
+        public static Vector3 FrenteDe(int indice)
+        {
+            if (indice < 0 || indice >= puntos.Count || duenos[indice] == null) return Vector3.forward;
+            var c = duenos[indice].bounds.center;
+            var f = puntos[indice] - new Vector3(c.x, puntos[indice].y, c.z);
+            f.y = 0f;
+            return f.sqrMagnitude < 0.0001f ? Vector3.forward : f.normalized;
+        }
+
+        // Idem, a partir del punto y del obstaculo que lo da.
+        public static Vector3 FrenteDe(Vector3 punto, Collider dueno)
+        {
+            if (dueno == null) return Vector3.forward;
+            var c = dueno.bounds.center;
+            var f = punto - new Vector3(c.x, punto.y, c.z);
+            f.y = 0f;
+            return f.sqrMagnitude < 0.0001f ? Vector3.forward : f.normalized;
+        }
+
+        // Punto libre de cobertura para tomar cerca de 'p' (mismo dueño o no).
+        public static bool TryCercano(Vector3 p, float radio, out Vector3 punto, out Collider dueno)
+            => TryPuntoApuntado(p, null, radio, out punto, out dueno);
 
         public static void Limpiar()
         {
             puntos.Clear();
+            duenos.Clear();
             BorrarRoot();
         }
 
@@ -107,6 +204,17 @@ namespace SP.Core
         // tiro al objetivo. Sin esa segunda condicion el soldado se
         // esconde donde no puede disparar, que es peor que quedarse al
         // descubierto: deja de hacer daño y encima no vuelve a salir.
+        public static bool TryMejorCobertura(Vector3 desde, Soldier objetivo, Soldier quien,
+                                            float radioMaximo, float distanciaDeTiro, out Vector3 elegida, out Collider dueno)
+        {
+            bool ok = TryMejorCobertura(desde, objetivo, quien, radioMaximo, distanciaDeTiro, out elegida);
+            dueno = null;
+            if (!ok) return false;
+            for (int i = 0; i < puntos.Count; i++)
+                if ((puntos[i] - elegida).sqrMagnitude < 0.0001f) { dueno = duenos[i]; break; }
+            return true;
+        }
+
         public static bool TryMejorCobertura(Vector3 desde, Soldier objetivo, Soldier quien,
                                             float radioMaximo, float distanciaDeTiro, out Vector3 elegida)
         {
@@ -144,6 +252,32 @@ namespace SP.Core
                 hay = true;
             }
             return hay;
+        }
+
+        // Posicion de tiro para el ENEMIGO en combate: cobertura cerca de 'desde'
+        // (radio), con linea de tiro y a una distancia del objetivo entre
+        // 'minimo' y 'maximo'. El minimo evita que corra a esconderse pegado al
+        // blanco: se cubre a distancia de tiro, no de contacto.
+        public static bool TryCoberturaDeTiro(Vector3 desde, Soldier objetivo, Soldier quien, float radio,
+                                              float minimo, float maximo, out Vector3 punto, out Collider dueno)
+        {
+            punto = Vector3.zero;
+            dueno = null;
+            if (objetivo == null) return false;
+            float mejor = radio * radio;
+            var alturaDeTiro = Vector3.up * 1f;
+            for (int i = 0; i < puntos.Count; i++)
+            {
+                float d = (puntos[i] - desde).sqrMagnitude;
+                if (d > mejor) continue;
+                float dObj = Vector3.Distance(puntos[i], objetivo.transform.position);
+                if (dObj < minimo || dObj > maximo) continue;
+                if (!HayLineaDeTiroDesde(puntos[i] + alturaDeTiro, objetivo, quien)) continue;
+                mejor = d;
+                punto = puntos[i];
+                dueno = duenos[i];
+            }
+            return dueno != null;
         }
 
         // F2: se puede disparar al objetivo parado en ese punto. 'quien'

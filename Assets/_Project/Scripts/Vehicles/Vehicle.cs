@@ -77,8 +77,29 @@ namespace SP.Vehicles
         public bool IsInAgony { get; private set; }
         public bool FinalExplosionDone { get; private set; }
 
-        void OnEnable() => SP.Core.WorldSystemsRegistry.Register(this);
-        void OnDisable() => SP.Core.WorldSystemsRegistry.Unregister(this);
+        // Todos los vehiculos activos (para que la IA de las torretas pueda
+        // elegir un tanque enemigo como blanco).
+        public static readonly List<Vehicle> Todos = new List<Vehicle>();
+
+        void OnEnable() { SP.Core.WorldSystemsRegistry.Register(this); if (!Todos.Contains(this)) Todos.Add(this); }
+        void OnDisable() { SP.Core.WorldSystemsRegistry.Unregister(this); Todos.Remove(this); }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetTodos() => Todos.Clear();
+
+        // Equipo "dueño" del vehiculo (el de su tripulacion original): sirve
+        // para pintarlo y para que las torretas sepan si es hostil.
+        public SP.Combat.TeamId Bando { get; private set; } = SP.Combat.TeamId.Player;
+
+        // Tiñe el casco con el color del equipo (los tanques enemigos rojos).
+        public void AsignarBando(SP.Combat.TeamId bando, Color tinte)
+        {
+            Bando = bando;
+            CacheColorIfNeeded();
+            baseColor = tinte;
+            if (chassisRenderers != null)
+                foreach (var r in chassisRenderers) if (r != null && r.sharedMaterial != null) r.sharedMaterial.color = tinte;
+        }
 
         void OnDestroyed()
         {
@@ -259,7 +280,37 @@ namespace SP.Vehicles
             return null;
         }
 
-        public bool Mount(Soldier soldier, VehicleSeatRole? preferredRole = null)
+        // Tripulacion de arranque (tanques enemigos): los soldados y su rol se
+        // guardan en la escena y se suben al empezar Play, sin animacion. Los
+        // asientos NO se serializan (viven en un diccionario), asi que subirlos
+        // en el editor se perderia al entrar en Play.
+        [SerializeField] Soldier[] tripulacionInicial;
+        [SerializeField] VehicleSeatRole[] rolesIniciales;
+        [SerializeField] bool esTanqueEnemigo;
+        public bool EsTanqueEnemigo => esTanqueEnemigo;
+
+        public void ConfigurarTripulacion(Soldier[] tripulantes, VehicleSeatRole[] roles, bool enemigo)
+        {
+            tripulacionInicial = tripulantes;
+            rolesIniciales = roles;
+            esTanqueEnemigo = enemigo;
+        }
+
+        void Start()
+        {
+            if (!Application.isPlaying) return;
+            if (esTanqueEnemigo) AsignarBando(TeamId.Enemy, new Color(0.55f, 0.13f, 0.11f));
+            if (tripulacionInicial == null) return;
+            for (int i = 0; i < tripulacionInicial.Length; i++)
+            {
+                var s = tripulacionInicial[i];
+                if (s == null) continue;
+                var rol = rolesIniciales != null && i < rolesIniciales.Length ? rolesIniciales[i] : VehicleSeatRole.Driver;
+                Mount(s, rol, instantaneo: true);
+            }
+        }
+
+        public bool Mount(Soldier soldier, VehicleSeatRole? preferredRole = null, bool instantaneo = false)
         {
             // BUG REAL: esto no chequeaba vida. Un muerto se montaba
             // igual (devolvia true, sumaba al conteo de ocupantes) porque
@@ -306,7 +357,7 @@ namespace SP.Vehicles
             // ahi se desactiva. En Edit mode (la suite headless corre
             // Mount() sin Play) StartCoroutine no funciona -- se mantiene
             // el camino sincronico de siempre para no romper esos tests.
-            if (Application.isPlaying)
+            if (Application.isPlaying && !instantaneo)
             {
                 if (!mountTrueScale.ContainsKey(soldier)) mountTrueScale[soldier] = soldier.transform.localScale;
 

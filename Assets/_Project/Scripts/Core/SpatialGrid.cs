@@ -122,6 +122,29 @@ namespace SP.Core
         // Mismo contrato que ActorRegistry.FindNearest, pero acotado a un
         // radio: solo recorre las celdas que podrian contener algo dentro
         // de range, no la lista completa.
+        // Todos los que cumplen el predicado dentro del radio, sin asignar
+        // memoria (el llamador reusa la lista). Para elegir el MEJOR blanco y
+        // no solo el mas cercano.
+        public static void QueryInRange(Vector3 point, float range, List<Soldier> resultado, Func<Soldier, bool> predicate)
+        {
+            resultado.Clear();
+            EnsureBuilt();
+            CellCoordsOf(point, out int centerX, out int centerZ);
+            int radius = Mathf.Max(1, Mathf.CeilToInt(range / CellSize) + 1);
+            float rangeSqr = range * range;
+            for (int dx = -radius; dx <= radius; dx++)
+                for (int dz = -radius; dz <= radius; dz++)
+                {
+                    if (!cells.TryGetValue(Key(centerX + dx, centerZ + dz), out var list)) continue;
+                    for (int i = 0; i < list.Count; i++)
+                    {
+                        var s = list[i];
+                        if (s == null || !predicate(s)) continue;
+                        if ((s.transform.position - point).sqrMagnitude <= rangeSqr) resultado.Add(s);
+                    }
+                }
+        }
+
         public static Soldier FindNearestInRange(Vector3 point, float range, Func<Soldier, bool> predicate)
         {
             EnsureBuilt();

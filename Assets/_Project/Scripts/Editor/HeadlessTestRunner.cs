@@ -836,6 +836,7 @@ namespace SP.EditorTools
                 RunPhase8(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase9(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase13(inputDriver, vehicle, vega, kes, doc);
+                RunPhase14(inputDriver, vehicle, vega, kes, doc, pool, soldierPrefab, colorEnemy);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia
@@ -975,8 +976,12 @@ namespace SP.EditorTools
 
             var kesBrain = kes.GetComponent<AiBrain>();
             var docBrain = doc.GetComponent<AiBrain>();
-            bool allyAlerted = SimulateUntil(() => kesBrain.State == AiState.Chase || docBrain.State == AiState.Chase, 2f);
-            string alertedName = kesBrain.State == AiState.Chase ? kes.DisplayName : (docBrain.State == AiState.Chase ? doc.DisplayName : "ninguno");
+            // Con el objetivo dinamico (vision extendida por cono + linea de tiro)
+            // un aliado puede llegar directo a Attack sin quedarse en Chase:
+            // "enterado" es estar en cualquiera de los dos estados de combate.
+            bool EnCombate(AiBrain b) => b.State == AiState.Chase || b.State == AiState.Attack;
+            bool allyAlerted = SimulateUntil(() => EnCombate(kesBrain) || EnCombate(docBrain), 2f);
+            string alertedName = EnCombate(kesBrain) ? kes.DisplayName : (EnCombate(docBrain) ? doc.DisplayName : "ninguno");
             Check($"{alertedName} se entero de que {vega.DisplayName} esta siendo atacado: atacara a {enemy1.DisplayName}", allyAlerted);
 
             bool enemyDied = SimulateUntil(() => !enemy1.Health.IsAlive, 8f);
@@ -1655,8 +1660,11 @@ namespace SP.EditorTools
             {
                 Check($"El proyectil real del cañon usa el multiplicador del cañon (velocidad={shellFired.Velocity.magnitude:0.0} = base {speedNormal:0.0} x {TurretWeapon.SpeedMultiplier})",
                     Mathf.Approximately(shellFired.Velocity.magnitude, speedNormal * TurretWeapon.SpeedMultiplier));
-                Check($"El obus conserva su velocidad historica de 80 m/s pese a que la bala de mano se cuadruplico (velocidad={shellFired.Velocity.magnitude:0.0})",
-                    Mathf.Abs(shellFired.Velocity.magnitude - 80f) < 0.5f);
+                // Todos los proyectiles se aceleraron (pedido: "mas rapidos"): la
+                // bala de mano sale a VelocidadBase (260 m/s) y el obus, a la
+                // mitad (130 m/s) para que siga siendo un arco legible.
+                Check($"El obus sale a la mitad de la bala de mano (velocidad={shellFired.Velocity.magnitude:0.0} = {Projectile.VelocidadBase:0} x {TurretWeapon.SpeedMultiplier})",
+                    Mathf.Abs(shellFired.Velocity.magnitude - Projectile.VelocidadBase * TurretWeapon.SpeedMultiplier) < 0.5f);
             }
 
             // --- Sin vibracion de camara al disparar (pedido explicito) ---
@@ -3534,6 +3542,231 @@ namespace SP.EditorTools
             Check("Detener limpia destino y ruta", !vb.HasOrder && vb.Route.Count == 0);
 
             TestLog.Phase("FASE 13 FINALIZADA");
+        }
+
+
+        // ---------------------------------------------------------------
+        // FASE 14 · coberturas ordenadas, seguir al jugador, objetivo
+        // dinamico, impactos en cubitos, tanque (teclas, patrulla) y feedback
+        // ---------------------------------------------------------------
+        static GameObject CrearCoberturaDePrueba(string nombre, Vector3 pos, int vida)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = nombre;
+            go.transform.position = pos + Vector3.up * 0.6f;
+            go.transform.localScale = new Vector3(3f, 1.2f, 1f);
+            var m = go.AddComponent<ObstacleMarker>();
+            var so = new SerializedObject(m);
+            so.FindProperty("maxHealth").intValue = vida;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            Physics.SyncTransforms();
+            return go;
+        }
+
+        static void RunPhase14(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc,
+                               ProjectilePool pool, GameObject soldierPrefab, Color colorEnemy)
+        {
+            TestLog.Phase("FASE 14 - Coberturas, seguir al jugador, objetivo dinamico, cubitos de impacto, tanque y feedback");
+
+            foreach (var o in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(o);
+            vega.Brain.CancelOrder(); kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
+            FullHeal(vega, kes, doc);
+
+            // --- Cubitos de impacto: rojo soldado, verde piso, amarillo obstaculo ---
+            var rojo = ImpactCubes.ColorOf(ImpactSurface.Soldier);
+            var verde = ImpactCubes.ColorOf(ImpactSurface.Ground);
+            var amarillo = ImpactCubes.ColorOf(ImpactSurface.Obstacle);
+            Check("Impacto en soldado = cubitos ROJOS", rojo.r > 0.9f && rojo.g < 0.2f && rojo.b < 0.2f);
+            Check("Impacto en piso = cubitos VERDES", verde.g > 0.9f && verde.r < 0.3f);
+            Check("Impacto en obstaculo = cubitos AMARILLOS", amarillo.r > 0.9f && amarillo.g > 0.8f && amarillo.b < 0.2f);
+            Check($"Un balazo suelta varios cubitos ({ImpactCubes.CountFor(ImpactSurface.Soldier, 26)} en soldado, {ImpactCubes.CountFor(ImpactSurface.Ground, 26)} en piso) y un disparo mas fuerte, mas",
+                ImpactCubes.CountFor(ImpactSurface.Soldier, 26) >= 6 && ImpactCubes.CountFor(ImpactSurface.Ground, 100) > ImpactCubes.CountFor(ImpactSurface.Ground, 10));
+
+            // --- Proyectiles mas rapidos ---
+            var antes = new HashSet<Projectile>(Projectile.ActiveInstances);
+            vega.Weapon.TryFire(vega.transform.position, vega.transform.forward);
+            Projectile nuevo = null;
+            foreach (var p in Projectile.ActiveInstances) if (!antes.Contains(p)) { nuevo = p; break; }
+            Check($"La bala de mano sale a la velocidad base ({(nuevo != null ? nuevo.Velocity.magnitude : 0f):0} m/s, minimo 240)",
+                nuevo != null && nuevo.Velocity.magnitude >= 240f && Mathf.Abs(nuevo.Velocity.magnitude - Projectile.VelocidadBase) < 1f);
+            SimulateSeconds(3.2f);
+
+            // --- Coberturas: el punto de lo apuntado, la destruccion y la explosion ---
+            var cubo = CrearCoberturaDePrueba("T14_Cobertura", new Vector3(-60f, 0f, 60f), 300);
+            SP.Core.Coberturas.Registrar();
+            var marca = cubo.GetComponent<ObstacleMarker>();
+            Check("El obstaculo nuevo da puntos de cobertura", SP.Core.Coberturas.Cantidad >= 4);
+            Vector3 puntoCob; Collider duenoCob;
+            bool hay = SP.Core.Coberturas.TryPuntoApuntado(cubo.transform.position + new Vector3(0f, 0f, -0.5f), cubo.transform, 0f, out puntoCob, out duenoCob);
+            Check($"Apuntar al obstaculo da el punto del costado apuntado ({puntoCob})", hay && duenoCob != null && puntoCob.z < cubo.transform.position.z);
+            Check("La cobertura sigue vigente mientras el cubo esta en pie", SP.Core.Coberturas.Vigente(duenoCob));
+
+            // --- Orden de cobertura: camina, se agacha y se queda ---
+            kes.transform.position = new Vector3(-60f, 0.8f, 52f);
+            kes.Brain.CancelOrder();
+            SP.Presentation.Feedback.Reset();
+            bool ordenada = OrderService.IssueCoverOrder(kes, puntoCob, duenoCob);
+            Check("La orden de cobertura se acepta", ordenada);
+            bool llego = SimulateUntil(() => kes.Brain.EnCobertura, 12f);
+            Check($"El aliado llega, entra en cobertura ({kes.Brain.State}) y queda AGACHADO", llego && kes.Motor.IsCrouching);
+            var posLlegada = kes.transform.position;
+            SimulateSeconds(2.5f);
+            Check($"Y SE QUEDA ahi (se movio {(kes.transform.position - posLlegada).magnitude:0.00} m en 2,5 s)",
+                kes.Brain.EnCobertura && kes.Motor.IsCrouching && (kes.transform.position - posLlegada).magnitude < 0.5f);
+            Check($"Dio feedback al tomar la cobertura ({SP.Presentation.Feedback.UltimoTexto} / {SP.Presentation.Feedback.UltimoSonido})",
+                SP.Presentation.Feedback.Contador >= 1 && SP.Presentation.Feedback.UltimoSonido == SfxKind.CoverTake);
+
+            // --- Se destruye: "se da cuenta" ---
+            int versionAntes = SP.Core.Coberturas.Version;
+            int contadorAntes = SP.Presentation.Feedback.Contador;
+            marca.TakeDamage(99999);
+            Check("Al destruirse el obstaculo, las coberturas se rehacen", SP.Core.Coberturas.Version > versionAntes);
+            SimulateSeconds(0.6f);
+            Check($"El aliado se dio cuenta de que la cobertura cayo (EnCobertura={kes.Brain.EnCobertura})", !kes.Brain.EnCobertura);
+            Check($"Y lo aviso ({SP.Presentation.Feedback.UltimoTexto})",
+                SP.Presentation.Feedback.Contador > contadorAntes && SP.Presentation.Feedback.UltimoSonido == SfxKind.CoverLost);
+
+            // --- Una orden nueva suelta la cobertura y lo para de pie ---
+            var cubo2 = CrearCoberturaDePrueba("T14_Cobertura2", new Vector3(-60f, 0f, 60f), 300);
+            SP.Core.Coberturas.Registrar();
+            SP.Core.Coberturas.TryPuntoApuntado(cubo2.transform.position + new Vector3(0f, 0f, -0.5f), cubo2.transform, 0f, out puntoCob, out duenoCob);
+            kes.transform.position = puntoCob + Vector3.back * 3f + Vector3.up * 0.8f;
+            OrderService.IssueCoverOrder(kes, puntoCob, duenoCob);
+            SimulateUntil(() => kes.Brain.EnCobertura, 8f);
+            OrderService.IssueMoveOrder(kes, kes.transform.position + new Vector3(10f, 0f, 0f));
+            SimulateSeconds(0.2f);
+            Check("Una orden nueva lo saca de cobertura y lo para de pie", !kes.Brain.EnCobertura && !kes.Motor.IsCrouching);
+            kes.Brain.CancelOrder();
+
+            // --- Explosion: rompe obstaculos (el cañon del tanque) ---
+            int hpAntes = cubo2.GetComponent<ObstacleMarker>().CurrentHealth;
+            Projectile.ExplodeAt(cubo2.transform.position + Vector3.up * 0.6f, 3f, 45, -1, null);
+            int hpDespues = cubo2.GetComponent<ObstacleMarker>().CurrentHealth;
+            Check($"Una explosion daña el obstaculo ({hpAntes} -> {hpDespues})", hpDespues < hpAntes);
+
+            // --- Holograma: mismo modelo del aliado, 90 % transparente, estatico ---
+            SP.Core.Coberturas.TryPuntoApuntado(cubo2.transform.position + new Vector3(0f, 0f, -0.5f), cubo2.transform, 0f, out puntoCob, out duenoCob);
+            CoverHologram.Mostrar(kes, puntoCob, SP.Core.Coberturas.FrenteDe(puntoCob, duenoCob), cubo2.transform);
+            Check($"Con [Shift] apuntando a una cobertura aparece el holograma del aliado ({(CoverHologram.ModeloActual != null ? CoverHologram.ModeloActual.name : "-")})",
+                CoverHologram.Visible && CoverHologram.ModeloActual == kes && (CoverHologram.PuntoActual - puntoCob).sqrMagnitude < 0.01f);
+            var holoVisual = CoverHologram.Instance != null ? CoverHologram.Instance.transform.Find("HoloRoot/HoloVisual") : null;
+            if (holoVisual != null)
+            {
+                var rend = holoVisual.GetComponentInChildren<Renderer>();
+                float alfa = rend != null ? rend.sharedMaterial.color.a : -1f;
+                Check($"El holograma es 90 % transparente (alfa {alfa:0.00}) y no lleva scripts ni animador",
+                    Mathf.Abs(alfa - 0.10f) < 0.01f && holoVisual.GetComponentInChildren<MonoBehaviour>(true) == null && holoVisual.GetComponent<Animator>() == null);
+            }
+            else TestLog.Step("Holograma: el soldado de esta escena no tiene 'Visual' (arte no importado); se verifica solo que aparece");
+            CoverHologram.Ocultar();
+            Check("Al soltar [Shift] el holograma se oculta", !CoverHologram.Visible);
+            if (CoverHologram.Instance != null) UnityEngine.Object.DestroyImmediate(CoverHologram.Instance.gameObject);
+
+            UnityEngine.Object.DestroyImmediate(cubo);
+            UnityEngine.Object.DestroyImmediate(cubo2);
+            SP.Core.Coberturas.Limpiar();
+
+            // --- Seguir al jugador cuando se aleja ---
+            AjustesDeEscuadra.AsegurarEnEscena();
+            var ajustes = UnityEngine.Object.FindFirstObjectByType<AjustesDeEscuadra>(FindObjectsInactive.Include);
+            ajustes.distanciaParaSeguir = 25f; ajustes.distanciaParaDetenerse = 8f;
+            ajustes.Aplicar();
+            vega.transform.position = new Vector3(-60f, 0.8f, -60f);
+            doc.transform.position = vega.transform.position + new Vector3(3f, 0f, 3f);
+            doc.Brain.CancelOrder();
+            AjustesDeEscuadra.Lider = vega;
+            SimulateSeconds(0.5f);
+            Check("Cerca del jugador el aliado libre NO lo sigue", !doc.Brain.SiguiendoAlJugador);
+            doc.transform.position = vega.transform.position + new Vector3(0f, 0f, 40f);
+            SimulateSeconds(0.3f);
+            Check($"Si el jugador se aleja mas de {AjustesDeEscuadra.DistanciaParaSeguir:0} m, el aliado empieza a seguirlo ({doc.Brain.State})",
+                doc.Brain.SiguiendoAlJugador && doc.Brain.State == AiState.Follow);
+            bool llegoDoc = SimulateUntil(() => !doc.Brain.SiguiendoAlJugador, 14f);
+            Check($"Y deja de seguirlo al llegar a {AjustesDeEscuadra.DistanciaParaDetenerse:0} m ({Vector3.Distance(doc.transform.position, vega.transform.position):0.0} m)",
+                llegoDoc && Vector3.Distance(doc.transform.position, vega.transform.position) <= AjustesDeEscuadra.DistanciaParaDetenerse + 2f);
+            AjustesDeEscuadra.Lider = null;
+            doc.Brain.CancelOrder();
+
+            // --- Objetivo dinamico: distancia + vision (cono y linea de tiro) ---
+            kes.transform.position = new Vector3(-60f, 0.8f, 40f);
+            kes.transform.rotation = Quaternion.LookRotation(Vector3.forward);
+            kes.Brain.CancelOrder();
+            var cerca = SpawnSoldier(soldierPrefab, "E14_cerca", TeamId.Enemy, RoleType.Enemy, kes.transform.position + new Vector3(0f, 0f, 8f), colorEnemy, pool, 180);
+            var lejos = SpawnSoldier(soldierPrefab, "E14_lejos", TeamId.Enemy, RoleType.Enemy, kes.transform.position + new Vector3(4f, 0f, 14f), colorEnemy, pool, 180);
+            cerca.Brain.Stance = CombatStance.AltoElFuego; lejos.Brain.Stance = CombatStance.AltoElFuego;
+            SP.Core.ActorRegistry.Invalidate();
+            Check($"Un blanco cercano puntua mejor que uno lejano ({kes.Brain.PuntajeDeObjetivo(cerca):0.0} < {kes.Brain.PuntajeDeObjetivo(lejos):0.0})",
+                kes.Brain.PuntajeDeObjetivo(cerca) < kes.Brain.PuntajeDeObjetivo(lejos));
+            SimulateSeconds(0.4f);
+            Check($"Elige el mas cercano ({(kes.Brain.CurrentTarget != null ? kes.Brain.CurrentTarget.DisplayName : "ninguno")})", kes.Brain.CurrentTarget == cerca);
+            UnityEngine.Object.DestroyImmediate(cerca.gameObject);
+            SP.Core.ActorRegistry.Invalidate();
+            kes.Brain.CancelOrder();
+            SimulateSeconds(0.4f);
+            Check($"Uno a 14 m (fuera del radio de 10 m) pero DENTRO DEL CONO y con linea de tiro tambien se ve ({(kes.Brain.CurrentTarget != null ? kes.Brain.CurrentTarget.DisplayName : "ninguno")})",
+                kes.Brain.CurrentTarget == lejos);
+            kes.transform.rotation = Quaternion.LookRotation(Vector3.back);
+            kes.Brain.CancelOrder();
+            SimulateSeconds(0.4f);
+            Check($"Ese mismo, a la ESPALDA (fuera del cono), NO se ve ({(kes.Brain.CurrentTarget != null ? kes.Brain.CurrentTarget.DisplayName : "ninguno")})",
+                kes.Brain.CurrentTarget == null);
+            UnityEngine.Object.DestroyImmediate(lejos.gameObject);
+            SP.Core.ActorRegistry.Invalidate();
+            kes.Brain.CancelOrder();
+
+            // --- Tanque: teclas [G] todos suben / [I] todos bajan y panel de teclas ---
+            kes.transform.position = vehicle.transform.position + new Vector3(3f, 0f, 0f);
+            doc.transform.position = vehicle.transform.position + new Vector3(-3f, 0f, 0f);
+            vega.transform.position = vehicle.transform.position + new Vector3(0f, 0f, -6f);
+            SP.Core.ActorRegistry.Invalidate();
+            SP.Presentation.Feedback.Reset();
+            int suben = inputDriver.SubirATodos(vehicle);
+            Check($"[G] manda a TODOS los aliados libres a subir ({suben})", suben == 2);
+            Check("...y hubo feedback (sonido de 'todos suben')", SP.Presentation.Feedback.UltimoSonido == SfxKind.BoardAll);
+            bool subieron = SimulateUntil(() => vehicle.OccupantCount == 2, 14f);
+            Check($"Los dos llegan y suben ({vehicle.OccupantCount} a bordo)", subieron);
+
+            var canvasGo = new GameObject("T14_Canvas", typeof(Canvas));
+            var panel = VehicleKeysPanel.Asegurar(canvasGo.transform);
+            panel.Actualizar(vehicle, null, 0);
+            string txt = panel.UltimoTexto;
+            Check("El panel de teclas del tanque muestra [G] TODOS SUBEN y [I] TODOS BAJAN", txt.Contains("[G]") && txt.Contains("TODOS SUBEN") && txt.Contains("[I]") && txt.Contains("TODOS BAJAN"));
+            Check("...y los 4 asientos con quien los ocupa y 'intercambiar' si esta ocupado",
+                txt.Contains("[1]") && txt.Contains("[2]") && txt.Contains("[3]") && txt.Contains("[4]") && txt.Contains("intercambiar") && txt.Contains(kes.DisplayName));
+            UnityEngine.Object.DestroyImmediate(canvasGo);
+
+            SP.Presentation.Feedback.Reset();
+            int bajan = inputDriver.BajarATodos(vehicle);
+            Check($"[I] baja a TODOS ({bajan}) y el vehiculo queda vacio ({vehicle.OccupantCount})", bajan == 2 && vehicle.OccupantCount == 0);
+            Check("...con su feedback", SP.Presentation.Feedback.UltimoSonido == SfxKind.ExitAll);
+            kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
+
+            // --- Tanque enemigo: bando, tripulacion sin artillero humano y patrulla ---
+            // (Vehicle.Todos se llena en OnEnable, que en Edit mode no corre: en Play se verifico que la torreta ve al tanque hostil.)
+            var vb = vehicle.GetComponent<VehicleBrain>();
+            vehicle.Mount(kes, VehicleSeatRole.Driver);
+            vehicle.Mount(doc, VehicleSeatRole.Passenger2);
+            vehicle.AsignarBando(TeamId.Enemy, new Color(0.55f, 0.13f, 0.11f));
+            Check("Un tanque enemigo tiene bando Enemigo", vehicle.Bando == TeamId.Enemy);
+            Check("Su tripulacion (conductor + pasajero) NO ocupa el asiento de artillero: la torreta queda en automatico", vehicle.Gunner == null && vehicle.OccupantCount == 2);
+            vb.IsPlayerDriving = false;
+            vb.ConfigurarPatrulla(new[] { new Vector3(-50f, 0f, -50f), new Vector3(-50f, 0f, -20f) }, true, 0.5f);
+            vb.Tick(0.05f);
+            Check($"Con tripulacion y sin orden, el tanque enemigo sale a patrullar (destino {vb.CurrentDestination})", vb.TienePatrulla && vb.HasOrder);
+            vb.Stop();
+            foreach (var o in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(o);
+            vehicle.AsignarBando(TeamId.Player, new Color(0.98f, 0.65f, 0.15f));
+            vb.ConfigurarPatrulla(null, false, 1f);
+            kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
+
+            // --- Feedback central ---
+            SP.Presentation.Feedback.Reset();
+            SP.Presentation.Feedback.Accion(SfxKind.Select, "PRUEBA", null, SP.Presentation.Feedback.Ok);
+            Check("Feedback.Accion registra la accion con su sonido", SP.Presentation.Feedback.Contador == 1 && SP.Presentation.Feedback.UltimoSonido == SfxKind.Select);
+            foreach (SfxKind k in Enum.GetValues(typeof(SfxKind)))
+                if (GenericSfx.Get(k) == null) { Check($"Todos los sonidos tienen clip ({k})", false); break; }
+
+            TestLog.Phase("FASE 14 FINALIZADA");
         }
 
         static void Check(string message, bool condition)
