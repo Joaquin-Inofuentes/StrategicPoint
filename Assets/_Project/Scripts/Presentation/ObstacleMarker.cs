@@ -108,10 +108,15 @@ namespace SP.Presentation
 
         void Awake() => CacheIfNeeded();
 
+        // Avisos para sistemas externos (el tutorial cuenta impactos y derrumbes).
+        public static event System.Action<ObstacleMarker, int> Golpeado;
+        public static event System.Action<ObstacleMarker> Derrumbado;
+
         public void TakeDamage(int amount)
         {
             CacheIfNeeded();
             if (IsCollapsed) return;
+            Golpeado?.Invoke(this, amount);
 
             // G1: "primer impacto: se prende fuego" -- va antes que
             // cualquier otra cosa, para que encienda aunque ese mismo tiro
@@ -150,6 +155,7 @@ namespace SP.Presentation
         void Collapse()
         {
             IsCollapsed = true;
+            Derrumbado?.Invoke(this);
             SpawnDebris(14, 7f);
             gameObject.SetActive(false);
             // El obstaculo que se cayo abrio un paso que la grilla de

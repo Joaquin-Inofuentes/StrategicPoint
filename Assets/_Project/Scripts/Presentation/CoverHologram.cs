@@ -34,7 +34,7 @@ namespace SP.Presentation
         Material ringMat;
         float t;
 
-        static Material NuevoTransparente(Color c)
+        internal static Material NuevoTransparente(Color c)
         {
             var m = SafeMaterial.Create(c);
             m.SetFloat("_Surface", 1f);

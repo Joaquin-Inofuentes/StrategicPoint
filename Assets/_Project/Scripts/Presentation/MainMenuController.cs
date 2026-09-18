@@ -20,7 +20,9 @@ namespace SP.Presentation
             var canvasRoot = transform.parent;
             if (canvasRoot == null) return;
             var playBtn = canvasRoot.Find("PlayButton")?.GetComponent<Button>();
+            var tutorialBtn = canvasRoot.Find("TutorialButton")?.GetComponent<Button>();
             var exitBtn = canvasRoot.Find("ExitButton")?.GetComponent<Button>();
+            if (tutorialBtn != null) { tutorialBtn.onClick.AddListener(OnTutorialClicked); SP.UI.ButtonSfx.Attach(tutorialBtn); }
             if (playBtn != null) { playBtn.onClick.AddListener(OnPlayClicked); SP.UI.ButtonSfx.Attach(playBtn); }
             if (exitBtn != null) { exitBtn.onClick.AddListener(OnExitClicked); SP.UI.ButtonSfx.Attach(exitBtn); }
         }
@@ -39,6 +41,14 @@ namespace SP.Presentation
             actionTaken = true;
             GameLog.Line("Se selecciono iniciar partida");
             SceneManager.LoadScene("SC_Gameplay");
+        }
+
+        public void OnTutorialClicked()
+        {
+            if (actionTaken) return;
+            actionTaken = true;
+            GameLog.Line("Se selecciono el tutorial");
+            SceneManager.LoadScene("SC_Tutorial");
         }
 
         public void OnExitClicked()

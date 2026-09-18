@@ -63,10 +63,13 @@ namespace SP.EditorTools
             menuGO.transform.SetParent(canvasGO.transform, false);
             var menuController = menuGO.GetComponent<MainMenuController>();
 
-            var playBtn = BuildButton(canvasGO.transform, "PlayButton", "JUGAR", new Vector2(0f, 20f), new Color(0.25f, 0.6f, 0.35f));
+            var playBtn = BuildButton(canvasGO.transform, "PlayButton", "JUGAR", new Vector2(0f, 50f), new Color(0.25f, 0.6f, 0.35f));
             playBtn.onClick.AddListener(menuController.OnPlayClicked);
 
-            var exitBtn = BuildButton(canvasGO.transform, "ExitButton", "SALIR", new Vector2(0f, -60f), new Color(0.6f, 0.25f, 0.25f));
+            var tutorialBtn = BuildButton(canvasGO.transform, "TutorialButton", "TUTORIAL", new Vector2(0f, -20f), new Color(0.2f, 0.5f, 0.8f));
+            tutorialBtn.onClick.AddListener(menuController.OnTutorialClicked);
+
+            var exitBtn = BuildButton(canvasGO.transform, "ExitButton", "SALIR", new Vector2(0f, -90f), new Color(0.6f, 0.25f, 0.25f));
             exitBtn.onClick.AddListener(menuController.OnExitClicked);
 
             Directory.CreateDirectory("Assets/_Project/Scenes");
@@ -112,7 +115,8 @@ namespace SP.EditorTools
             var menu = new EditorBuildSettingsScene(ScenePath, true);
             var gameplay = new EditorBuildSettingsScene("Assets/_Project/Scenes/SC_Gameplay.unity", true);
             var testLevel = new EditorBuildSettingsScene("Assets/_Project/Scenes/SC_TestLevel.unity", true);
-            EditorBuildSettings.scenes = new[] { menu, gameplay, testLevel };
+            var tutorial = new EditorBuildSettingsScene("Assets/_Project/Scenes/SC_Tutorial.unity", true);
+            EditorBuildSettings.scenes = new[] { menu, gameplay, testLevel, tutorial };
         }
     }
 }

@@ -343,7 +343,7 @@ namespace SP.EditorTools
         // ---------------------------------------------------------------
         // Cubos
         // ---------------------------------------------------------------
-        static Material MaterialDe(string clave)
+        internal static Material MaterialDe(string clave)
         {
             if (!AssetDatabase.IsValidFolder(MaterialFolder))
                 AssetDatabase.CreateFolder("Assets/_Project/Materials", "Blocking");
@@ -514,7 +514,7 @@ namespace SP.EditorTools
         // El mapa es 4 veces mas grande: con los alcances originales (vision
         // 10, tiro 6) el combate era "cara a cara". Enemigos: ven a 22 y
         // disparan a 13; aliados: 20 y 12.
-        static void AjustarAlcancesDeCombate()
+        internal static void AjustarAlcancesDeCombate()
         {
             foreach (var s in Object.FindObjectsByType<Soldier>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
@@ -546,7 +546,7 @@ namespace SP.EditorTools
         // lo vuelve solido de verdad.
         const int AreaNoCaminable = 1;
 
-        static void AgregarVolumenNoCaminable(GameObject cubo)
+        internal static void AgregarVolumenNoCaminable(GameObject cubo)
         {
             if (cubo.GetComponent<Unity.AI.Navigation.NavMeshModifierVolume>() != null) return;
             var vol = cubo.AddComponent<Unity.AI.Navigation.NavMeshModifierVolume>();
@@ -555,7 +555,7 @@ namespace SP.EditorTools
             vol.area = AreaNoCaminable;
         }
 
-        static void BakeNavMesh()
+        internal static void BakeNavMesh()
         {
             var surface = Object.FindFirstObjectByType<Unity.AI.Navigation.NavMeshSurface>(FindObjectsInactive.Include);
             if (surface == null) { Debug.LogWarning("[Blockout] No hay NavMeshSurface."); return; }

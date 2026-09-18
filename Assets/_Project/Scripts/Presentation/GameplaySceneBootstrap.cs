@@ -15,6 +15,11 @@ namespace SP.Presentation
         public PhaseBannerView ObjectiveBanner;
         public ModeToastView ModeToast;
 
+        // Escena de tutorial: el modulo de tutorial da sus propios carteles, asi
+        // que se omiten el objetivo de mision, el aviso de TAB, el consejo de la
+        // primera accion y el aviso de bloques.
+        public bool esTutorial;
+
         const string PrefUsedTab = "sp_used_tab";
 
         void Start()
@@ -66,7 +71,7 @@ namespace SP.Presentation
 
             // Aviso de bloque del nivel (el mapa mide 320 m de largo) y ajustes
             // de la escuadra (distancia a la que los aliados te siguen).
-            AnuncioDeZonas.Asegurar();
+            if (!esTutorial) AnuncioDeZonas.Asegurar();
             SP.Ai.AjustesDeEscuadra.AsegurarEnEscena();
 
             // C1: etiqueta al pie de cada unidad (vida, tipo, ocupantes),
@@ -76,7 +81,7 @@ namespace SP.Presentation
 
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
-            if (ObjectiveBanner != null)
+            if (ObjectiveBanner != null && !esTutorial)
                 ObjectiveBanner.Show("Elimina a todos los enemigos\nmanteniendo viva a tu escuadra", 3f);
 
             // El cambio de vista FPS/RTS es la mecanica central del juego
@@ -84,6 +89,7 @@ namespace SP.Presentation
             // descubrirla. Se avisa una vez, despues del cartel de
             // objetivo, y nunca mas una vez que el jugador la usa (el
             // propio TAB marca el PlayerPref, ver PlayerInputDriver).
+            if (esTutorial) return;
             if (ModeToast != null && PlayerPrefs.GetInt(PrefUsedTab, 0) == 0)
                 StartCoroutine(ShowTabHintDelayed());
 

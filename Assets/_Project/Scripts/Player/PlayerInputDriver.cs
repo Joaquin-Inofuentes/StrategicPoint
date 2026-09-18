@@ -300,6 +300,41 @@ namespace SP.Player
         // Vestigial: la vista de vehiculo es siempre 3ra persona ahora (ver
         // UpdateVehicleCamera). Se deja el metodo -- sin efecto -- para que
         // AutoDemoRunner, que lo llama, siga compilando sin tocarlo.
+        // ---------------------------------------------------------------
+        // SetDestination: mueve al jugador a un punto del mundo SIN cursor ni
+        // camara. A pie, el soldado camina solo hasta ahi (WASD lo corta); en un
+        // vehiculo, se manda el vehiculo (con un aliado al volante si hace falta).
+        // Es publico y tambien sirve por mensaje:
+        //   driver.SendMessage("SetDestination", new Vector3(x, 0, z));
+        // ---------------------------------------------------------------
+        Vector3? destinoAuto;
+        public bool TieneDestino => destinoAuto.HasValue;
+        public Vector3? DestinoActual => destinoAuto;
+
+        public void SetDestination(Vector3 punto)
+        {
+            if (currentSeat.HasValue && Vehicle != null)
+            {
+                if (Vehicle.Driver == null)
+                {
+                    foreach (var ocupante in Vehicle.Occupants)
+                    {
+                        if (ocupante == null || ocupante == Brain.Current) continue;
+                        if (ocupante.Health == null || !ocupante.Health.IsAlive || Vehicle.IsMountAnimating(ocupante)) continue;
+                        Vehicle.MoveToSeat(ocupante, VehicleSeatRole.Driver);
+                        break;
+                    }
+                }
+                if (TryIssueVehicleMoveOrder(punto) && currentSeat == VehicleSeatRole.Driver) autoConduccion = true;
+                GameLog.Line($"SetDestination (vehiculo) -> {punto}");
+                return;
+            }
+            destinoAuto = punto;
+            GameLog.Line($"SetDestination (a pie) -> {punto}");
+        }
+
+        public void CancelDestination() => destinoAuto = null;
+
         public void ToggleVehicleCameraView() { }
 
         // Mensaje de tutorial que pisa temporalmente el texto contextual
@@ -931,6 +966,20 @@ namespace SP.Player
             if (kb.dKey.isPressed) move += r;
             if (kb.aKey.isPressed) move -= r;
             bool moving = move.sqrMagnitude > 0.0001f;
+            // Destino automatico (SetDestination): camina solo hasta el punto,
+            // sin cursor ni camara. Las teclas WASD siguen mandando.
+            if (!moving && destinoAuto.HasValue)
+            {
+                var haciaDestino = destinoAuto.Value - Brain.Current.transform.position;
+                haciaDestino.y = 0f;
+                if (haciaDestino.magnitude < 0.8f) destinoAuto = null;
+                else
+                {
+                    Brain.RotateYaw(Mathf.DeltaAngle(Brain.Current.transform.eulerAngles.y, Mathf.Atan2(haciaDestino.x, haciaDestino.z) * Mathf.Rad2Deg));
+                    move = haciaDestino.normalized;
+                    moving = true;
+                }
+            }
             if (moving) Brain.Move(move.normalized, Time.deltaTime);
             // Balanceo al caminar: caminar y estar quieto se veian
             // exactamente igual, sin ninguna sensacion de pisada.

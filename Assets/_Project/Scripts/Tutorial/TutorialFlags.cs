@@ -1,0 +1,50 @@
+using System;
+using UnityEngine;
+
+namespace SP.Tutorial
+{
+    // Todos los booleanos del tutorial, a la vista en el Inspector (componente
+    // TutorialManager > Banderas). El cuadro de dialogo elige el mensaje
+    // mirando estas banderas: el primer sub-paso cuya bandera sigue en false
+    // es el que se le pide al jugador ahora.
+    [Serializable]
+    public class TutorialFlags
+    {
+        // 1 Camara
+        public bool camaraHorizontal, camaraVertical;
+        // 2 WASD
+        public bool teclaW, teclaA, teclaS, teclaD;
+        // 3 Disparar
+        public bool disparoEnemigo, disparoPared, disparoDestruible;
+        // 4 Cambiar de soldado
+        public bool apuntoAlAliado, cambioDeSoldado;
+        // 5 Agacharse
+        public bool agachado, levantado;
+        // 6 Mira
+        public bool apuntaConZoom, disparaConZoom;
+        // 7 RTS
+        public bool rtsActivo, aliadosSeleccionados, ordenDeMoverARts;
+        // 8 Volver a FPS
+        public bool vueltaAFps, mouseCapturado;
+        // 9 Seguir
+        public bool ordenDeSeguir, aliadosSiguen;
+        // 10 Seleccionar en FPS
+        public bool aliadoSeleccionadoEnFps;
+        // 11 Mover en FPS
+        public bool ordenDeMoverEnFps;
+        // 12 Entrar al tanque
+        public bool cercaDelTanque, dentroDelTanque;
+        // 13 Aliados al tanque
+        public bool ordenDeSubir, aliadosABordo;
+        // 14 Torreta
+        public bool enLaTorreta;
+        // 15 Avanzar y disparar
+        public bool ordenDeAvanzar, disparoCanon, enemigosEliminados;
+        // 16 Final
+        public bool llegoAlFinal;
+        // 17 Victoria
+        public bool victoria;
+
+        public void Reiniciar() => JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(new TutorialFlags()), this);
+    }
+}

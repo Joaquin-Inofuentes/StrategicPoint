@@ -19,7 +19,7 @@ namespace SP.Presentation
     // hacer click en CUALQUIER boton (ver SP.UI.ButtonSfx). OrderBark: voz
     // de acuse militar ("Accepted"/"Positive"/etc) al dar una orden.
     // CameraSwoosh: transicion FPS<->RTS.
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire }
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire, TutKey, TutSub, TutStep, TutVictory }
 
     // Sonidos genéricos: primero busca grabaciones reales importadas bajo
     // Resources/Audio/Sfx/<Kind>/ (pedido explicito: "quita todos los
@@ -169,6 +169,11 @@ namespace SP.Presentation
                 case SfxKind.EnemySpotted: return GenerateSweep(1250f, 950f, 0.22f, 6f, "EnemySpotted");
                 // Cañon de un tanque enemigo: cuerpo grave con caida.
                 case SfxKind.TankFire: return GenerateSweep(140f, 45f, 0.5f, 4f, "TankFire");
+                // Tutorial: tecla que se ilumina, sub-paso, paso completo y victoria.
+                case SfxKind.TutKey: return GenerateSweep(1300f, 1700f, 0.05f, 24f, "TutKey");
+                case SfxKind.TutSub: return GenerateArpegio(new[] { 660f, 990f }, 0.09f, "TutSub");
+                case SfxKind.TutStep: return GenerateArpegio(new[] { 523f, 659f, 784f }, 0.11f, "TutStep");
+                case SfxKind.TutVictory: return GenerateArpegio(new[] { 523f, 659f, 784f, 1047f, 784f, 1047f, 1319f }, 0.16f, "TutVictory");
             }
 
             float freq, duration, decay;
@@ -415,6 +420,28 @@ namespace SP.Presentation
 
         // Barrido de frecuencia con caida exponencial: la base de todos los
         // avisos de accion (sube = confirma, baja = retira/pierde).
+        // Notas seguidas (una detras de otra), para avisos y fanfarrias.
+        static AudioClip GenerateArpegio(float[] notas, float duracionNota, string name)
+        {
+            const int sampleRate = 44100;
+            int por = (int)(duracionNota * sampleRate);
+            int n = por * notas.Length + por;
+            var samples = new float[n];
+            for (int k = 0; k < notas.Length; k++)
+            {
+                float phase = 0f;
+                for (int i = 0; i < por * 2 && k * por + i < n; i++)
+                {
+                    phase += 2f * Mathf.PI * notas[k] / sampleRate;
+                    float env = Mathf.Exp(-5f * i / (por * 2f)) * Mathf.Min(1f, i / 80f);
+                    samples[k * por + i] += (Mathf.Sin(phase) * 0.7f + Mathf.Sin(phase * 2f) * 0.2f) * env * 0.5f;
+                }
+            }
+            var clip = AudioClip.Create(name, n, 1, sampleRate, false);
+            clip.SetData(samples, 0);
+            return clip;
+        }
+
         static AudioClip GenerateSweep(float f0, float f1, float duration, float decay, string name)
         {
             const int sampleRate = 44100;
