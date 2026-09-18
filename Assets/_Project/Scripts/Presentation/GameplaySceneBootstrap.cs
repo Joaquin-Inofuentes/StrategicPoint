@@ -59,10 +59,10 @@ namespace SP.Presentation
             int obstaculosEnMinimapa = MinimapIcon.RegistrarObstaculos(MinimapIcon.ObstacleMinimapColor);
             if (obstaculosEnMinimapa > 0) GameLog.Line($"Se agregaron {obstaculosEnMinimapa} obstaculos al minimapa");
 
-            // D3: el tamaño de minimapa elegido en la partida anterior se
-            // ve desde el primer frame, no recien tras el primer [L].
+            // El minimapa siempre arranca en MINI (MinimapFollow.tamanoMini),
+            // desde el primer frame.
             var minimapFollow = FindAnyObjectByType<SP.UI.MinimapFollow>();
-            if (minimapFollow != null) minimapFollow.AplicarTamanoGuardado();
+            if (minimapFollow != null) minimapFollow.AplicarTamanoInicial();
 
             // C1: etiqueta al pie de cada unidad (vida, tipo, ocupantes),
             // solo visible en RTS. Ninguna escena la trae puesta a mano.

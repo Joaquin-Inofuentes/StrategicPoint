@@ -11,6 +11,63 @@ namespace SP.UI
         Text label;
         Image fill;
 
+        // Icono del arma en mano (cambia con [1] [2] [3] y la rueda). Los
+        // PNG viven en Resources/UI/WeaponIcons (game-icons.net, CC BY 3.0,
+        // ver CREDITOS.txt). Se cargan como Texture2D y se convierten a
+        // Sprite a mano: asi no depende de que el importador los haya
+        // marcado como Sprite.
+        [SerializeField] Image icon;
+        public const string IconName = "Icono";
+        const string IconFolder = "UI/WeaponIcons/Icono_";
+        static readonly Sprite[] iconCache = new Sprite[3];
+        WeaponKind? lastKind;
+        float punch;
+
+        public Image Icon => icon;
+
+        public static Sprite IconFor(WeaponKind kind)
+        {
+            int i = (int)kind;
+            if (i < 0 || i >= iconCache.Length) return null;
+            if (iconCache[i] != null) return iconCache[i];
+            var tex = Resources.Load<Texture2D>(IconFolder + kind);
+            if (tex == null) return null;
+            iconCache[i] = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
+            iconCache[i].name = "WeaponIcon_" + kind;
+            return iconCache[i];
+        }
+
+        // Arma el hijo "Icono" a la izquierda del panel y le hace lugar al
+        // texto. Idempotente: si ya existe solo lo devuelve.
+        public Image EnsureIcon()
+        {
+            if (icon != null) return icon;
+            var existing = transform.Find(IconName);
+            if (existing != null) { icon = existing.GetComponent<Image>(); if (icon != null) return icon; }
+
+            var go = new GameObject(IconName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            go.transform.SetParent(transform, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
+            rt.pivot = new Vector2(0f, 0.5f);
+            rt.sizeDelta = new Vector2(52f, 36f);
+            rt.anchoredPosition = new Vector2(6f, 4f);
+            icon = go.GetComponent<Image>();
+            icon.raycastTarget = false;
+            icon.preserveAspect = true;
+            icon.sprite = IconFor(WeaponKind.Rifle);
+
+            var panel = (RectTransform)transform;
+            panel.sizeDelta = new Vector2(Mathf.Max(panel.sizeDelta.x, 270f), panel.sizeDelta.y);
+            var t = label != null ? label : GetComponentInChildren<Text>(true);
+            if (t != null)
+            {
+                var trt = t.rectTransform;
+                trt.offsetMin = new Vector2(trt.offsetMin.x + 60f, trt.offsetMin.y);
+            }
+            return icon;
+        }
+
         public void Bind(Text text, Image fillImage)
         {
             label = text;
@@ -36,10 +93,30 @@ namespace SP.UI
             }
             gameObject.SetActive(true);
 
+            if (icon == null) icon = transform.Find(IconName) != null ? transform.Find(IconName).GetComponent<Image>() : null;
+            if (icon != null)
+            {
+                var kind = weapon.CurrentWeaponKind;
+                if (lastKind != kind)
+                {
+                    // Primer frame: se asigna sin "golpe"; los cambios
+                    // siguientes agrandan el icono un instante para que se
+                    // note el cambio de arma.
+                    if (lastKind.HasValue) punch = 1f;
+                    lastKind = kind;
+                    icon.sprite = IconFor(kind);
+                }
+                punch = Mathf.MoveTowards(punch, 0f, 5f * Time.unscaledDeltaTime);
+                icon.rectTransform.localScale = Vector3.one * (1f + 0.3f * punch);
+                icon.color = weapon.IsReloading ? new Color(1f, 0.75f, 0.35f) : Color.white;
+            }
+
             if (label != null)
             {
                 string status = weapon.IsReloading ? "  ·  RECARGANDO" : "";
-                label.text = $"{weapon.CurrentWeaponKind}   {weapon.CurrentAmmo}/{weapon.MagazineSize}{status}";
+                int slot = weapon.Loadout.IndexOf(weapon.CurrentWeaponKind) + 1;
+                string tecla = slot > 0 ? $"[{slot}] " : "";
+                label.text = $"{tecla}{weapon.CurrentWeaponKind}   {weapon.CurrentAmmo}/{weapon.MagazineSize}{status}";
 
                 // El contador quedaba blanco fijo hasta llegar a cero, sin
                 // ningun aviso previo de que se estaba por acabar. Rojo

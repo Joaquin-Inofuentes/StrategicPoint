@@ -318,11 +318,22 @@ namespace SP.Vehicles
 
                 mountAnimations[soldier] = StartCoroutine(PlayMountAnimation(soldier, role));
             }
-            else soldier.gameObject.SetActive(false);
+            else
+            {
+                var agent = soldier.GetComponent<UnityEngine.AI.NavMeshAgent>();
+                if (agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh)
+                {
+                    agent.ResetPath();
+                    agent.enabled = false;
+                }
+                soldier.gameObject.SetActive(false);
+            }
 
             RefreshOccupancyColor();
             return true;
         }
+
+        readonly Dictionary<Soldier, Transform> padreAnterior = new Dictionary<Soldier, Transform>();
 
         const float MountAnimationSeconds = 0.35f;
 
@@ -393,6 +404,9 @@ namespace SP.Vehicles
                 if (standPoint != null)
                 {
                     var chassisScale = transform.localScale;
+                    // Se recuerda de quien colgaba para devolverlo ahi al bajar
+                    // (antes quedaba suelto en la raiz de la escena).
+                    if (soldier.transform.parent != transform) padreAnterior[soldier] = soldier.transform.parent;
                     soldier.transform.SetParent(transform, false);
                     soldier.transform.localPosition = standPoint.localPosition;
                     soldier.transform.localRotation = standPoint.localRotation;
@@ -442,6 +456,12 @@ namespace SP.Vehicles
             // toca, asi que si quedara en cero el soldado reapareceria
             // invisible la proxima vez que se baje.
             soldier.transform.localScale = startScale;
+            var agentMount = soldier.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            if (agentMount != null && agentMount.isActiveAndEnabled && agentMount.isOnNavMesh)
+            {
+                agentMount.ResetPath();
+                agentMount.enabled = false;
+            }
             soldier.gameObject.SetActive(false);
             
             mountAnimations.Remove(soldier);
@@ -465,7 +485,12 @@ namespace SP.Vehicles
             // worldPositionStays=true porque la posicion de mundo actual
             // no importa: dos lineas mas abajo se pisa con el offset de
             // desmontaje de todas formas.
-            if (soldier.transform.parent == transform) soldier.transform.SetParent(null, true);
+            if (soldier.transform.parent == transform)
+            {
+                padreAnterior.TryGetValue(soldier, out var padre);
+                soldier.transform.SetParent(padre, true);
+                padreAnterior.Remove(soldier);
+            }
             soldier.transform.localScale = Vector3.one;
             // Antes todos bajaban exactamente al mismo punto (derecha del
             // chasis), sin importar el asiento -- con varios ocupantes
@@ -474,10 +499,54 @@ namespace SP.Vehicles
             soldier.transform.position = transform.position + DismountOffsetFor(foundRole.Value);
             soldier.transform.rotation = transform.rotation;
 
+            if (soldier.Brain != null) soldier.Brain.ReactivarNavegacion();
+
             var brain = soldier.Brain;
             if (brain != null) brain.enabled = true;
             RefreshOccupancyColor();
             return true;
+        }
+
+        // Intercambia los asientos de DOS ocupantes (el jugador que pide un
+        // asiento ocupado por un aliado, y el aliado que pasa al asiento que
+        // el jugador libero). Los baja a los dos y los vuelve a montar cada
+        // uno en el asiento del otro, por el mismo camino de siempre, asi que
+        // el que queda de pie en la metralleta se cuelga del chasis, el que
+        // va adentro se esconde, y los Brain quedan apagados como corresponde.
+        // Devuelve false sin tocar nada si alguno no esta a bordo o esta a
+        // mitad de la animacion de subir.
+        public bool SwapSeats(Soldier a, Soldier b)
+        {
+            if (a == null || b == null || a == b) return false;
+            var roleA = RoleOf(a);
+            var roleB = RoleOf(b);
+            if (roleA == null || roleB == null) return false;
+            if (IsMountAnimating(a) || IsMountAnimating(b)) return false;
+
+            Dismount(a);
+            Dismount(b);
+            a.gameObject.SetActive(false);
+            b.gameObject.SetActive(false);
+            Mount(a, roleB.Value);
+            Mount(b, roleA.Value);
+
+            SP.Core.GameLog.Line($"{a.DisplayName} y {b.DisplayName} intercambian asiento en {gameObject.name}: {RoleLabelEs(roleB.Value)} <-> {RoleLabelEs(roleA.Value)}");
+            return true;
+        }
+
+        // Pasa a un ocupante a OTRO asiento, que tiene que estar libre. Es el
+        // mismo camino que SwapSeats (bajar y volver a montar), asi que el que
+        // queda de pie en la metralleta se cuelga del chasis y los demas se
+        // esconden, sin dejar un Brain encendido ni el soldado a mitad de
+        // camino. Devuelve false sin tocar nada si no esta a bordo o el
+        // asiento esta ocupado.
+        public bool MoveToSeat(Soldier soldier, VehicleSeatRole role)
+        {
+            if (soldier == null || RoleOf(soldier) == null || !IsSeatFree(role)) return false;
+            if (IsMountAnimating(soldier)) return false;
+            Dismount(soldier);
+            soldier.gameObject.SetActive(false);
+            return Mount(soldier, role);
         }
 
         // Un costado y una distancia distinta por asiento: conductor a la

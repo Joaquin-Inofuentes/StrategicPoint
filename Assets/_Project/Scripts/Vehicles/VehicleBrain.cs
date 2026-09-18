@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 using SP.Core;
 
 namespace SP.Vehicles
@@ -45,14 +47,104 @@ namespace SP.Vehicles
 
         void OnDestroy() => WorldSystemsRegistry.Unregister(this);
 
+        // Ruta por el NavMesh hacia el destino. VACIA = linea recta (Edit
+        // mode, sin NavMesh horneado, o destino en el mismo tramo libre).
+        // Antes el vehiculo apuntaba directo al punto: una orden [T] al otro
+        // lado de una muralla lo dejaba empujando el cubo para siempre.
+        readonly List<Vector3> route = new List<Vector3>();
+        int routeIndex;
+        public IReadOnlyList<Vector3> Route => route;
+        public int RouteIndex => routeIndex;
+
+        // El NavMesh se horneo para un soldado (radio 0,5); el blindado mide
+        // 2,2 de ancho. Cada esquina de la ruta se corre esta distancia
+        // hacia el interior de la zona caminable, lejos del borde mas
+        // cercano, para que el casco no raspe las paredes.
+        const float HolguraDelBlindado = 1.4f;
+        const float LlegadaIntermedia = 3f;
+
         public void IssueMoveOrder(Vector3 point)
         {
             destination = point;
+            ReiniciarAtasco();
+            BuildRoute(point);
         }
 
         public void Stop()
         {
             destination = null;
+            route.Clear();
+            routeIndex = 0;
+        }
+
+        // Anti-atasco: un vehiculo que empuja un cubo (por ejemplo, un destino
+        // que cae ADENTRO de un obstaculo) se quedaba con la orden viva para
+        // siempre. Si en SegundosDeAtasco no avanza ni MetrosDeAtasco: cerca
+        // del destino se da por cumplida; lejos, se recalcula la ruta una
+        // vez y, si sigue igual, se cancela.
+        const float SegundosDeAtasco = 2f;
+        const float MetrosDeAtasco = 0.5f;
+        const float CercaDelDestino = 8f;
+        float relojDeAtasco;
+        Vector3 anclaDeAtasco;
+        bool replanificado;
+
+        void ReiniciarAtasco()
+        {
+            relojDeAtasco = 0f;
+            anclaDeAtasco = transform.position;
+            replanificado = false;
+        }
+
+        // true si la orden se termino por atasco.
+        bool VigilarAtasco(float dt, float distanciaAlDestino)
+        {
+            relojDeAtasco += dt;
+            if (relojDeAtasco < SegundosDeAtasco) return false;
+
+            var avance = transform.position - anclaDeAtasco;
+            avance.y = 0f;
+            relojDeAtasco = 0f;
+            anclaDeAtasco = transform.position;
+            if (avance.magnitude >= MetrosDeAtasco) return false;
+
+            if (distanciaAlDestino <= CercaDelDestino || replanificado)
+            {
+                Stop();
+                return true;
+            }
+            replanificado = true;
+            BuildRoute(destination.Value);
+            return false;
+        }
+
+        void BuildRoute(Vector3 goal)
+        {
+            route.Clear();
+            routeIndex = 0;
+            if (!Application.isPlaying) return;
+
+            if (!NavMesh.SamplePosition(transform.position, out var desde, 6f, NavMesh.AllAreas)) return;
+            if (!NavMesh.SamplePosition(goal, out var hasta, 6f, NavMesh.AllAreas)) return;
+
+            var path = new NavMeshPath();
+            if (!NavMesh.CalculatePath(desde.position, hasta.position, NavMesh.AllAreas, path)) return;
+            if (path.status != NavMeshPathStatus.PathComplete || path.corners.Length <= 2) return;
+
+            // corners[0] es donde esta parado, y el ultimo es el destino
+            // (que se sigue usando tal cual, sin correrlo).
+            for (int i = 1; i < path.corners.Length - 1; i++)
+                route.Add(Inflar(path.corners[i]));
+        }
+
+        static Vector3 Inflar(Vector3 esquina)
+        {
+            if (NavMesh.FindClosestEdge(esquina, out var borde, NavMesh.AllAreas) && borde.distance < HolguraDelBlindado)
+            {
+                var corrida = esquina + borde.normal * (HolguraDelBlindado - borde.distance);
+                if (NavMesh.SamplePosition(corrida, out var valida, 1f, NavMesh.AllAreas)) return valida.position;
+            }
+            return esquina;
         }
 
         public void Tick(float dt)
@@ -72,14 +164,38 @@ namespace SP.Vehicles
             // suelte el blanco o suba alguien mas.
             if (vehicle != null && vehicle.OccupantCount == 1 && turretAi != null && turretAi.IsEngaging) return;
 
-            Vector3 delta = destination.Value - transform.position;
+            if (VigilarAtasco(dt, (destination.Value - transform.position).magnitude)) return;
+
+            // Tramo actual: la siguiente esquina de la ruta, o el destino
+            // final cuando ya no quedan.
+            Vector3 objetivo = destination.Value;
+            bool esIntermedio = routeIndex < route.Count;
+            if (esIntermedio) objetivo = route[routeIndex];
+
+            Vector3 delta = objetivo - transform.position;
             delta.y = 0f;
             float dist = delta.magnitude;
 
-            if (dist <= arriveThreshold)
+            if (esIntermedio)
             {
-                destination = null;
+                if (dist <= LlegadaIntermedia)
+                {
+                    routeIndex++;
+                    return; // el proximo tick apunta a la esquina siguiente
+                }
+            }
+            else if (dist <= arriveThreshold)
+            {
+                // La orden termina cuando el vehiculo YA paro, no al llegar:
+                // antes se frenaba un solo tick y la velocidad quedaba
+                // guardada en el motor (3 u/s de un vehiculo detenido).
                 motor.Brake(dt);
+                if (motor.IsStopped)
+                {
+                    destination = null;
+                    route.Clear();
+                    routeIndex = 0;
+                }
                 return;
             }
 
@@ -117,6 +233,21 @@ namespace SP.Vehicles
             //    costado es exactamente lo que convertia el giro en arco.
             var targetRot = Quaternion.LookRotation(delta.normalized, Vector3.up);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, turnDegPerSec * dt);
+
+            // Llegada: se empieza a frenar con la distancia que hace falta para
+            // parar (v^2 / 2a, con margen sobre la deceleracion real del
+            // motor). Antes solo se frenaba AL llegar: con una orden a 6 m y
+            // el vehiculo a 12 m/s se pasaba de largo unos 8 m.
+            if (!esIntermedio)
+            {
+                float v = Mathf.Abs(motor.CurrentSpeed);
+                float distanciaDeFrenado = v * v / (2f * 11f);
+                if (dist - arriveThreshold <= distanciaDeFrenado)
+                {
+                    motor.Brake(dt);
+                    return;
+                }
+            }
 
             float gas = Mathf.Clamp01(Mathf.Cos(anguloAlDestino * Mathf.Deg2Rad));
             motor.Drive(gas, 0f, dt);

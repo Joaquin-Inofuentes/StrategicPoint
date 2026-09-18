@@ -216,6 +216,7 @@ GameObject:
   - component: {fileID: 963880348016209545}
   - component: {fileID: 2367930366003446138}
   - component: {fileID: 7468735124044937065}
+  - component: {fileID: 5379097505233615097}
   m_Layer: 0
   m_Name: P_Soldier_Enemy
   m_TagString: Untagged
@@ -348,6 +349,7 @@ MonoBehaviour:
   defensiveVisionMultiplier: 0.6
   defensiveLeashRadius: 8
   senseIntervalTicks: 3
+  tiempoMaximoSinVisibilidad: 5
   followStopDistance: 2.5
   patrolRoute:
   - {x: 20, y: 0.8, z: 20}
@@ -355,6 +357,7 @@ MonoBehaviour:
   - {x: 30, y: 0.8, z: 30}
   - {x: 20, y: 0.8, z: 30}
   patrolWaypoints: []
+  sniperAttackRangeMultiplier: 1.6
 --- !u!82 &24397220861063659
 AudioSource:
   m_ObjectHideFlags: 0
@@ -508,6 +511,28 @@ MonoBehaviour:
   velocidadDeCarrera: 5
   sostenidoDeDisparo: 0.45
   velocidadDeMezcla: 8
+--- !u!195 &5379097505233615097
+NavMeshAgent:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4908259142123204747}
+  m_Enabled: 0
+  m_AgentTypeID: 0
+  m_Radius: 0.45
+  m_Speed: 5
+  m_Acceleration: 12
+  avoidancePriority: 50
+  m_AngularSpeed: 360
+  m_StoppingDistance: 0.1
+  m_AutoTraverseOffMeshLink: 1
+  m_AutoBraking: 1
+  m_AutoRepath: 1
+  m_Height: 1.8
+  m_BaseOffset: 0
+  m_WalkableMask: 4294967295
+  m_ObstacleAvoidanceType: 4
 --- !u!1 &5062353477395285120
 GameObject:
   m_ObjectHideFlags: 0

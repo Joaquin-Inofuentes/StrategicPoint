@@ -37,8 +37,25 @@ namespace SP.Presentation
         // cincuenta soldados en pantalla, cincuenta esferas lejanas son
         // ruido visual y coste de dibujado sin informacion legible.
         const float VisibleDistance = 55f;
-        const float LodCheckInterval = 0.25f;
-        float lodTimer;
+
+        // El cubito de estado NO se muestra por defecto (pedido explicito:
+        // con toda la escuadra a la vista eran tres cubos flotando siempre).
+        // Solo se enciende para el aliado al que el jugador esta apuntando
+        // -- con la mira en FPS o con el mouse en RTS. Quien apunta avisa
+        // con Apuntar() cada frame que ve a un aliado; si deja de avisar
+        // (cambio de vista, entro a un vehiculo) el cubito se apaga solo
+        // tras VigenciaDeApuntado.
+        const float VigenciaDeApuntado = 0.15f;
+        static Soldier apuntado;
+        static float apuntadoHasta;
+
+        public static void Apuntar(Soldier aliado)
+        {
+            apuntado = aliado;
+            apuntadoHasta = aliado != null ? Time.unscaledTime + VigenciaDeApuntado : 0f;
+        }
+
+        bool DebeVerse() => apuntado != null && apuntado == soldier && Time.unscaledTime <= apuntadoHasta;
 
         void OnEnable()
         {
@@ -61,6 +78,7 @@ namespace SP.Presentation
                 }
             }
             if (markerRenderer == null) BuildMarker();
+            else markerRenderer.enabled = false;
 
             sub?.Dispose();
             sub = EventBus.Instance.Subscribe<AiStateChangedEvent>(OnStateChanged);
@@ -101,18 +119,20 @@ namespace SP.Presentation
             ownedMaterial = SafeMaterial.Create(IdleColor);
             markerRenderer.sharedMaterial = ownedMaterial;
             markerRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            markerRenderer.enabled = false;
         }
 
         void Update()
         {
             if (markerRenderer == null) return;
-            lodTimer -= Time.deltaTime;
-            if (lodTimer > 0f) return;
-            lodTimer = LodCheckInterval;
 
-            var cam = Camera.main;
-            if (cam == null) return;
-            bool visible = Vector3.Distance(cam.transform.position, transform.position) <= VisibleDistance;
+            bool visible = DebeVerse();
+            if (visible)
+            {
+                var cam = Camera.main;
+                visible = cam == null
+                    || Vector3.Distance(cam.transform.position, transform.position) <= VisibleDistance;
+            }
             if (markerRenderer.enabled != visible) markerRenderer.enabled = visible;
         }
 

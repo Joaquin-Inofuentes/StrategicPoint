@@ -541,6 +541,18 @@ namespace SP.Player
                 PlayerPrefs.SetInt("sp_used_tab", 1);
                 PlayerPrefs.Save();
 
+                // RTS -> FPS con UNA sola unidad seleccionada: el jugador
+                // pasa a manejar a ESA, no vuelve al soldado que tenia antes.
+                // Con cero o varias seleccionadas no hay a quien elegir y se
+                // conserva el poseido de siempre. Va ANTES del chequeo de
+                // asiento de abajo: si la elegida va montada, TryPossess ya
+                // toma su asiento.
+                if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue)
+                {
+                    var elegido = SoldadoUnicoSeleccionado();
+                    if (elegido != null && elegido != Brain.Current) TryPossess(elegido);
+                }
+
                 if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue && Brain.Current != null && Vehicle != null)
                 {
                     var role = Vehicle.RoleOf(Brain.Current);
@@ -1090,13 +1102,20 @@ namespace SP.Player
             {
                 if (result.Type == AimTargetType.Ally)
                 {
-                    Selection.SelectSingle(result.Soldier);
-                    if (ModeToast != null) ModeToast.Show($"{result.Soldier.DisplayName.ToUpperInvariant()} SELECCIONADO", 1f);
+                    bool shiftPressed = kb != null && (kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed);
+                    if (shiftPressed)
+                    {
+                        Selection.SelectSingle(result.Soldier);
+                        if (ModeToast != null) ModeToast.Show($"{result.Soldier.DisplayName.ToUpperInvariant()} SELECCIONADO", 1f);
+                    }
                 }
                 else if (result.Type == AimTargetType.Ground)
                 {
                     if (Selection.Selected.Count > 0)
+                    {
                         OrderService.IssueMoveOrderForSelection(Selection.Selected, result.Point);
+                        Selection.Clear();
+                    }
                     else
                         TryIssueVehicleMoveOrder(result.Point);
                 }
@@ -1349,6 +1368,10 @@ namespace SP.Player
         // mismo AimResult, la misma logica, sin duplicar nada por modo.
         void UpdateAimRing(AimResult result)
         {
+            // El cubito de estado de un aliado solo se ve mientras se le apunta.
+            SP.Presentation.SquadStateIndicatorView.Apuntar(
+                result.Type == AimTargetType.Ally ? result.Soldier : null);
+
             bool show = result.HitTransform != null && (
                 result.Type == AimTargetType.Ally || result.Type == AimTargetType.Enemy ||
                 result.Type == AimTargetType.Vehicle || result.Type == AimTargetType.Obstacle);
@@ -1491,6 +1514,16 @@ namespace SP.Player
             AudioDirector.PlayAt(kind, pos, 0.55f);
         }
 
+        // El soldado propio y vivo que esta seleccionado SI Y SOLO SI es
+        // el unico. Null en cualquier otro caso.
+        public Soldier SoldadoUnicoSeleccionado()
+        {
+            if (Selection == null || Selection.Selected.Count != 1) return null;
+            var s = Selection.Selected[0];
+            if (s == null || s.Health == null || !s.Health.IsAlive || s.Team != TeamId.Player) return null;
+            return s;
+        }
+
         // Unico camino de posesion del jugador. Antes cada sitio hacia lo
         // suyo: el [F] desde RTS cambiaba de camara de golpe (sin la
         // transicion que si tenian los atajos F1/F2/F3 y la secuencia de
@@ -1601,6 +1634,12 @@ namespace SP.Player
             {
                 if (s == null || s == Brain.Current) continue;
                 if (!s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                // BUG REAL: el de la metralleta queda de pie sobre el chasis,
+                // o sea ACTIVO en la escena, asi que el filtro de arriba no
+                // lo descartaba: con uno ya montado ahi, cada [U]/[G] siguiente
+                // le repetia la orden a ESE MISMO en vez de sumar al proximo
+                // aliado, y el resto de la escuadra nunca subia.
+                if (vehicle.RoleOf(s) != null) continue;
 
                 var brain = s.GetComponent<AiBrain>();
                 if (brain != null && brain.CurrentOrderDestination.HasValue &&
@@ -2096,46 +2135,61 @@ namespace SP.Player
             // montada: conduciendo no aporta nada y taparia la vista.
             if (TurretAim != null && currentSeat != VehicleSeatRole.Gunner && currentSeat != VehicleSeatRole.Passenger1) TurretAim.SetVisible(false);
 
+            // Cambio de asiento con [1] conducir, [2] cañon, [3] metralleta,
+            // [4] pasajero -- desde CUALQUIER asiento y hacia cualquiera:
+            // libre (te mueves) u ocupado por un aliado (intercambian).
+            // Antes solo funcionaba hacia un asiento LIBRE y con uno
+            // ocupado la tecla no hacia nada, ni un aviso.
+            VehicleSeatRole? asientoPedido = null;
+            if (kb.digit1Key.wasPressedThisFrame) asientoPedido = VehicleSeatRole.Driver;
+            else if (kb.digit2Key.wasPressedThisFrame) asientoPedido = VehicleSeatRole.Gunner;
+            else if (kb.digit3Key.wasPressedThisFrame && mgTurret != null) asientoPedido = VehicleSeatRole.Passenger1;
+            else if (kb.digit4Key.wasPressedThisFrame) asientoPedido = VehicleSeatRole.Passenger2;
+            if (asientoPedido.HasValue && asientoPedido != currentSeat)
+            {
+                SwitchSeat(asientoPedido.Value);
+                return;
+            }
+
+            // [T] manda el vehiculo adonde apunta la camara, sea cual sea
+            // el asiento (conductor, cañon, metralleta o pasajero).
+            OrdenDeVehiculoConT(kb);
+
             if (currentSeat == VehicleSeatRole.Driver)
             {
-                if (kb.digit2Key.wasPressedThisFrame && Vehicle.IsSeatFree(VehicleSeatRole.Gunner))
+                float throttle = (kb.wKey.isPressed ? 1f : 0f) + (kb.sKey.isPressed ? -1f : 0f);
+                float steer = (kb.dKey.isPressed ? 1f : 0f) + (kb.aKey.isPressed ? -1f : 0f);
+                bool frenando = KeyBindings.IsPressed(KeyBindings.Frenar);
+
+                // Conduccion automatica: se activa con [T] (ver
+                // OrdenDeVehiculoConT). Mientras la orden siga viva el
+                // VehicleBrain maneja solo, y el jugador recupera el volante
+                // apenas toca WASD o el freno -- ahi se cancela la orden.
+                if (autoConduccion)
                 {
-                    SwitchSeat(VehicleSeatRole.Gunner);
-                    return;
-                }
-                if (kb.digit3Key.wasPressedThisFrame && mgTurret != null && Vehicle.IsSeatFree(VehicleSeatRole.Passenger1))
-                {
-                    SwitchSeat(VehicleSeatRole.Passenger1);
-                    return;
+                    if (!vb.HasOrder) autoConduccion = false;
+                    else if (Mathf.Abs(throttle) > 0.01f || Mathf.Abs(steer) > 0.01f || frenando)
+                    {
+                        vb.Stop();
+                        autoConduccion = false;
+                    }
                 }
 
-                vb.IsPlayerDriving = true;
-                if (KeyBindings.IsPressed(KeyBindings.Frenar))
+                if (autoConduccion)
                 {
-                    motor.Brake(Time.deltaTime);
+                    vb.IsPlayerDriving = false;
                 }
                 else
                 {
-                    float throttle = (kb.wKey.isPressed ? 1f : 0f) + (kb.sKey.isPressed ? -1f : 0f);
-                    float steer = (kb.dKey.isPressed ? 1f : 0f) + (kb.aKey.isPressed ? -1f : 0f);
-                    motor.Drive(throttle, steer, Time.deltaTime);
+                    vb.IsPlayerDriving = true;
+                    if (frenando) motor.Brake(Time.deltaTime);
+                    else motor.Drive(throttle, steer, Time.deltaTime);
                 }
 
                 UpdateVehicleCamera();
             }
             else if (currentSeat == VehicleSeatRole.Gunner)
             {
-                if (kb.digit1Key.wasPressedThisFrame && Vehicle.IsSeatFree(VehicleSeatRole.Driver))
-                {
-                    SwitchSeat(VehicleSeatRole.Driver);
-                    return;
-                }
-                if (kb.digit3Key.wasPressedThisFrame && mgTurret != null && Vehicle.IsSeatFree(VehicleSeatRole.Passenger1))
-                {
-                    SwitchSeat(VehicleSeatRole.Passenger1);
-                    return;
-                }
-
                 if (mouse != null && turret != null)
                 {
                     // El mouse ya no gira el cañon directo: mueve el
@@ -2173,21 +2227,6 @@ namespace SP.Player
                 }
                 if (TurretAim != null) TurretAim.UpdateFrom(turret);
 
-                // Antes esto era clic derecho, pero ese boton pasa a ser
-                // el zoom de mira del artillero (que es lo que mas se usa
-                // desde ese asiento). [T] es ademas la misma tecla que da
-                // la orden de movimiento en RTS.
-                if (kb.tKey.wasPressedThisFrame && mouse != null && Rig.Cam != null)
-                {
-                    var groundRay = Rig.Cam.ScreenPointToRay(mouse.position.ReadValue());
-                    var res = Aim.Evaluate(groundRay, null);
-                    if (res.Type == AimTargetType.Ground)
-                    {
-                        if (Vehicle != null && Vehicle.Driver == null) RejectOrder("EL VEHICULO NECESITA UN CONDUCTOR");
-                        else TryIssueVehicleMoveOrder(res.Point);
-                    }
-                }
-
                 UpdateVehicleCameraAimed(turret != null ? turret.transform : null);
             }
             // Pedido explicito: "ahora es cañon y metralleta y conductor" --
@@ -2197,17 +2236,6 @@ namespace SP.Player
             // independiente del cañon (ver MetralletaPivot).
             else if (currentSeat == VehicleSeatRole.Passenger1)
             {
-                if (kb.digit1Key.wasPressedThisFrame && Vehicle.IsSeatFree(VehicleSeatRole.Driver))
-                {
-                    SwitchSeat(VehicleSeatRole.Driver);
-                    return;
-                }
-                if (kb.digit2Key.wasPressedThisFrame && Vehicle.IsSeatFree(VehicleSeatRole.Gunner))
-                {
-                    SwitchSeat(VehicleSeatRole.Gunner);
-                    return;
-                }
-
                 if (mouse != null && mgTurret != null)
                 {
                     var delta = mouse.delta.ReadValue();
@@ -2226,44 +2254,47 @@ namespace SP.Player
                 UpdateVehicleCamera();
             }
 
+            const string asientos = "[1] conducir · [2] cañón · [3] metralleta · [4] pasajero (si esta ocupado, intercambian)";
             string role = currentSeat == VehicleSeatRole.Driver
-                ? "[WASD] conducir · [T] frenar · [2] ir al cañón · [3] ir a la metralleta · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
+                ? "[WASD] conducir · [Espacio] frenar · [T] mandar el vehiculo ahi (WASD retoma el volante) · " + asientos + " · [U] llamar a un aliado · [TAB] vista RTS · [E] bajar"
                 : currentSeat == VehicleSeatRole.Gunner
-                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom de mira · [R] munición · [T] mandar la camioneta ahí · [1] conducir · [3] ir a la metralleta · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
+                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom · [R] munición · [T] mandar el vehiculo ahi · " + asientos + " · [U] llamar a un aliado · [E] bajar"
                     : currentSeat == VehicleSeatRole.Passenger1
-                        ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom de mira · [1] conducir · [2] ir al cañón · [U] llamar a un aliado cercano · [TAB] vista RTS · [E] bajar"
-                        : "[U] llamar a un aliado cercano · [E] bajar · [TAB] vista RTS";
+                        ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom · [T] mandar el vehiculo ahi · " + asientos + " · [U] llamar a un aliado · [E] bajar"
+                        : "[T] mandar el vehiculo ahi · " + asientos + " · [U] llamar a un aliado · [E] bajar · [TAB] vista RTS";
             SetInstructionText(role);
         }
 
         public void SwitchSeat(VehicleSeatRole newRole)
         {
             var soldier = Brain.Current;
-            if (soldier != null && Vehicle.IsMountAnimating(soldier)) return;
-
-            // BUG REAL que esto corrige: si newRole ya estaba ocupado,
-            // Vehicle.Mount caia a FirstFreeSeat() y sentaba al jugador en
-            // un asiento DISTINTO al pedido -- pero currentSeat se ponia
-            // en newRole de todas formas, sin chequear donde termino
-            // sentado en los hechos. El jugador podia terminar en un
-            // asiento con los controles de otro (ver mgTurret/turret mas
-            // arriba, que leen currentSeat para decidir que arma manejar).
-            // Los llamadores de [1]/[2]/[3] ya chequean IsSeatFree antes de
-            // llamar, asi que esto no se pisa en el uso normal -- es la
-            // guarda que le faltaba al metodo en si.
-            if (!Vehicle.IsSeatFree(newRole))
-            {
-                RejectOrder("ASIENTO OCUPADO");
-                return;
-            }
+            if (soldier == null || Vehicle == null) return;
+            if (Vehicle.IsMountAnimating(soldier)) return;
+            if (Vehicle.RoleOf(soldier) == newRole) return;
 
             var vb = Vehicle.GetComponent<VehicleBrain>();
 
-            // Libera el asiento actual sin reaparecer al soldado afuera.
-            Vehicle.Dismount(soldier);
-            soldier.gameObject.SetActive(false);
-            Vehicle.Mount(soldier, newRole);
+            var ocupante = Vehicle.SoldierInSeat(newRole);
+            if (ocupante != null)
+            {
+                // Asiento ocupado por un aliado: intercambian. Antes esto se
+                // rechazaba ("ASIENTO OCUPADO") o, mas abajo, Mount caia a
+                // OTRO asiento distinto al pedido.
+                if (ocupante.Health == null || !ocupante.Health.IsAlive || Vehicle.IsMountAnimating(ocupante)
+                    || !Vehicle.SwapSeats(soldier, ocupante))
+                {
+                    RejectOrder("ASIENTO OCUPADO");
+                    return;
+                }
+                if (ModeToast != null) ModeToast.Show($"CAMBIAS DE ASIENTO CON {ocupante.DisplayName.ToUpperInvariant()}", 1.2f);
+            }
+            else
+            {
+                // Libera el asiento actual sin reaparecer al soldado afuera.
+                Vehicle.MoveToSeat(soldier, newRole);
+            }
 
+            autoConduccion = false;
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
             // Se lee el asiento REAL tras montar, no se asume newRole: si
             // alguna vez Mount vuelve a caer a un asiento distinto (otra
@@ -2283,6 +2314,74 @@ namespace SP.Player
             // punto de origen de la camara, pero igual se pide 1s de lerp
             // -- es el mismo gesto que entrar por primera vez.
             Rig.BeginFollowBlend(VehicleBlendSeconds);
+        }
+
+        // Conduccion automatica pedida por el CONDUCTOR con [T]: la orden
+        // vive en el VehicleBrain y esto solo recuerda que el jugador la
+        // pidio para no pisarla con Drive(0,0) cada frame.
+        bool autoConduccion;
+
+        // Primer punto de SUELO que toca el rayo de la camara, atravesando el
+        // propio vehiculo y a los soldados. La camara de 3ra persona mira por
+        // encima del chasis, asi que un raycast comun (AimTargeting) devuelve
+        // "Vehiculo" y nunca "Suelo": el conductor no podia dar la orden.
+        // Suelo = superficie casi horizontal; una pared o un edificio no vale.
+        bool TryGroundPointBehindVehicle(Ray ray, out Vector3 punto)
+        {
+            punto = default;
+            var hits = Physics.RaycastAll(ray, Aim != null ? Aim.MaxDistance : 200f, ~0, QueryTriggerInteraction.Ignore);
+            System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+            foreach (var h in hits)
+            {
+                if (h.collider == null) continue;
+                if (h.collider.GetComponentInParent<Vehicle>() != null) continue;
+                if (h.collider.GetComponentInParent<Soldier>() != null) continue;
+                if (h.normal.y < 0.7f) return false; // pared / lateral de un cubo
+                punto = h.point;
+                return true;
+            }
+            return false;
+        }
+
+        // [T] dentro del vehiculo: manda el vehiculo al punto de suelo al
+        // que apunta la camara (la de 3ra persona, o la del cañon/metralleta
+        // cuando se esta apuntando). Vale desde cualquier asiento.
+        void OrdenDeVehiculoConT(Keyboard kb)
+        {
+            if (!kb.tKey.wasPressedThisFrame || Vehicle == null || Rig.Cam == null) return;
+
+            // Sin conductor, un aliado que vaya a bordo toma el volante (el
+            // jugador en el cañon o la metralleta no puede manejar a la vez).
+            if (Vehicle.Driver == null)
+            {
+                Soldier relevo = null;
+                foreach (var ocupante in Vehicle.Occupants)
+                {
+                    if (ocupante == null || ocupante == Brain.Current) continue;
+                    if (ocupante.Health == null || !ocupante.Health.IsAlive || Vehicle.IsMountAnimating(ocupante)) continue;
+                    relevo = ocupante;
+                    break;
+                }
+                if (relevo == null || !Vehicle.MoveToSeat(relevo, VehicleSeatRole.Driver))
+                {
+                    RejectOrder("EL VEHICULO NECESITA UN CONDUCTOR");
+                    return;
+                }
+                if (ModeToast != null) ModeToast.Show($"{relevo.DisplayName.ToUpperInvariant()} TOMA EL VOLANTE", 1.2f);
+            }
+
+            if (!TryGroundPointBehindVehicle(Rig.GetForwardRay(), out var destino))
+            {
+                RejectOrder("APUNTA AL SUELO PARA MANDAR EL VEHICULO");
+                return;
+            }
+
+            if (!TryIssueVehicleMoveOrder(destino)) return;
+
+            // Si el conductor es el propio jugador, el volante pasa al
+            // VehicleBrain hasta que toque WASD.
+            if (currentSeat == VehicleSeatRole.Driver) autoConduccion = true;
+            if (ModeToast != null) ModeToast.Show("VEHICULO EN CAMINO", 1.0f);
         }
 
         // La vista de vehiculo -- manejando o de artillero -- es siempre en

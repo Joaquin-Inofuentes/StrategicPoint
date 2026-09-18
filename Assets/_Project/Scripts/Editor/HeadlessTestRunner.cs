@@ -835,6 +835,7 @@ namespace SP.EditorTools
                 RunPhase7(inputDriver, vehicle, vega, kes, doc);
                 RunPhase8(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase9(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
+                RunPhase13(inputDriver, vehicle, vega, kes, doc);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia
@@ -2413,28 +2414,24 @@ namespace SP.EditorTools
             // --- #2 / D2: [M] agranda y minimiza el minimapa ---
             TestLog.Phase("FASE 9 - Tarea #2: [M] agranda y minimiza el minimapa");
             var borderRect = GameObject.Find("MinimapBorder").GetComponent<RectTransform>();
+            minimapFollowRef.AplicarTamanoInicial();
             Vector2 tamanoDePartida = borderRect.sizeDelta;
+            Check($"El minimapa arranca en MINI (tamanoMini={minimapFollowRef.tamanoMini}, marco={tamanoDePartida})",
+                tamanoDePartida == minimapFollowRef.tamanoMini && !minimapFollowRef.Agrandado);
 
             bool agrandadoTrasM = minimapFollowRef.AlternarTamano();
-            Check($"[M] agranda el minimapa ({tamanoDePartida} -> {borderRect.sizeDelta})",
-                agrandadoTrasM && borderRect.sizeDelta.x > tamanoDePartida.x);
+            Check($"[M] lo expande a tamanoExpandido ({tamanoDePartida} -> {borderRect.sizeDelta})",
+                agrandadoTrasM && borderRect.sizeDelta == minimapFollowRef.tamanoExpandido);
 
             bool agrandadoTrasSegundoM = minimapFollowRef.AlternarTamano();
-            Check($"Y el segundo [M] lo devuelve EXACTO al tamaño de partida ({borderRect.sizeDelta})",
+            Check($"Y el segundo [M] lo devuelve EXACTO al mini ({borderRect.sizeDelta})",
                 !agrandadoTrasSegundoM && borderRect.sizeDelta == tamanoDePartida);
 
             for (int i = 0; i < 10; i++) minimapFollowRef.AlternarTamano();
             Check($"Ni tras 5 ciclos completos hay deriva ({borderRect.sizeDelta})",
                 borderRect.sizeDelta == tamanoDePartida);
 
-            // --- #3 / D3: [L] cicla el tamaño del minimapa ---
-            // El indice de PlayerPrefs es del jugador (persiste entre
-            // sesiones de Editor de verdad, igual que sp_crosshair_scale):
-            // la primera llamada fija un punto de referencia CONOCIDO en
-            // vez de asumir que el tamaño de partida de la escena (228)
-            // coincide con lo que haya quedado guardado de una corrida
-            // anterior -- si no, este Check() sale flaky segun el ultimo
-            // indice que alguien haya dejado guardado.
+            // --- #3 / D3: [L] cicla mini -> medio -> expandido ---
             TestLog.Phase("FASE 9 - Tarea #3: [L] cicla el tamaño del minimapa");
             int indiceDeReferencia = minimapFollowRef.CiclarTamanoFijo();
             Vector2 tamanoDeReferencia = borderRect.sizeDelta;
@@ -2445,11 +2442,10 @@ namespace SP.EditorTools
                 indiceTrasTres == indiceDeReferencia && borderRect.sizeDelta == tamanoDeReferencia);
 
             minimapFollowRef.CiclarTamanoFijo();
-            Vector2 tamanoElegido = borderRect.sizeDelta;
             borderRect.sizeDelta = new Vector2(999f, 999f); // valor cualquiera, simulando la escena a medio cargar
             minimapFollowRef.AplicarTamanoGuardado();
-            Check($"Y el tamaño elegido se recuerda: 'recargar la escena' lo vuelve a aplicar ({tamanoElegido})",
-                borderRect.sizeDelta == tamanoElegido);
+            Check($"Y al 'recargar la escena' siempre vuelve a MINI, no a lo ultimo que se eligio ({borderRect.sizeDelta})",
+                borderRect.sizeDelta == minimapFollowRef.tamanoMini);
 
             // --- #4 / B1: un circulo radial reutilizable ---
             TestLog.Phase("FASE 9 - Tarea #4: un circulo radial reutilizable");
@@ -3460,6 +3456,86 @@ namespace SP.EditorTools
             return pi;
         }
 
+        // FASE 13 - segunda tanda de pedidos: asientos, marcadores de
+        // recorrido, icono por arma, seleccion unica y ruta de vehiculo.
+        static void RunPhase13(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc)
+        {
+            TestLog.Phase("FASE 13 - Asientos, marcadores de recorrido, iconos de arma y seleccion unica");
+
+            // --- Iconos: uno por arma, y distintos entre si ---
+            var iconoRifle = WeaponStatusView.IconFor(WeaponKind.Rifle);
+            var iconoPistola = WeaponStatusView.IconFor(WeaponKind.Pistol);
+            var iconoPesada = WeaponStatusView.IconFor(WeaponKind.Heavy);
+            Check("Cada arma (1/2/3) tiene su icono y son tres distintos",
+                iconoRifle != null && iconoPistola != null && iconoPesada != null
+                && iconoRifle.texture != iconoPistola.texture && iconoPistola.texture != iconoPesada.texture
+                && iconoRifle.texture != iconoPesada.texture);
+
+            // --- Asientos: intercambio con un aliado y pase a uno libre ---
+            foreach (var o in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(o);
+            vega.Brain.CancelOrder(); kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
+            vehicle.Mount(vega, VehicleSeatRole.Driver);
+            vehicle.Mount(kes, VehicleSeatRole.Passenger1);
+            bool cambio = vehicle.SwapSeats(vega, kes);
+            Check($"Dos ocupantes intercambian asiento (Vega {vehicle.RoleOf(vega)}, Kes {vehicle.RoleOf(kes)})",
+                cambio && vehicle.RoleOf(vega) == VehicleSeatRole.Passenger1 && vehicle.RoleOf(kes) == VehicleSeatRole.Driver);
+            Check("Tras intercambiar siguen 2 a bordo, con el Brain apagado",
+                vehicle.OccupantCount == 2 && !vega.Brain.enabled && !kes.Brain.enabled);
+
+            bool paso = vehicle.MoveToSeat(vega, VehicleSeatRole.Gunner);
+            Check($"Pasar a un asiento LIBRE lo mueve (Vega {vehicle.RoleOf(vega)}) y libera el anterior",
+                paso && vehicle.RoleOf(vega) == VehicleSeatRole.Gunner && vehicle.IsSeatFree(VehicleSeatRole.Passenger1));
+            Check("Pasar a un asiento OCUPADO no hace nada (Kes sigue de conductor)",
+                !vehicle.MoveToSeat(kes, VehicleSeatRole.Gunner) && vehicle.RoleOf(kes) == VehicleSeatRole.Driver);
+            foreach (var o in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(o);
+
+            // --- Marcadores de cola: viven mientras algun soldado los tenga ---
+            OrderMarkerFx.ClearQueuedMarkers();
+            var p1 = new Vector3(40f, 0f, 40f);
+            var p2 = new Vector3(46f, 0f, 40f);
+            OrderService.IssueMoveOrder(kes, p1);
+            OrderService.IssueMoveOrder(kes, p2, queued: true);
+            int marcadoresConCola = OrderMarkerFx.QueuedMarkers.Count;
+            int soltadosConOrden = OrderMarkerFx.PurgarCompletados();
+            Check($"Con la orden en cola vigente el marcador NO se limpia ({marcadoresConCola} marcador, {soltadosConOrden} soltados)",
+                marcadoresConCola == 1 && soltadosConOrden == 0);
+            OrderService.IssueMoveOrder(kes, new Vector3(-40f, 0f, 40f));
+            int soltadosTrasNuevaOrden = OrderMarkerFx.PurgarCompletados();
+            Check($"Una orden nueva a otro lado borra la cola vieja y su marcador se limpia ({soltadosTrasNuevaOrden} soltado, quedan {OrderMarkerFx.QueuedMarkers.Count})",
+                soltadosTrasNuevaOrden == 1 && OrderMarkerFx.QueuedMarkers.Count == 0);
+            kes.Brain.CancelOrder();
+
+            // El trazado sin ejecutar NO lo toca la limpieza automatica.
+            TrazadoDeCamino.Limpiar();
+            TrazadoDeCamino.Marcar(new Vector3(30f, 0f, 30f));
+            TrazadoDeCamino.Marcar(new Vector3(36f, 0f, 30f));
+            int soltadosDelPlan = OrderMarkerFx.PurgarCompletados();
+            Check($"Los marcadores de un recorrido todavia sin ejecutar se respetan ({soltadosDelPlan} soltados, {OrderMarkerFx.QueuedMarkers.Count} vivos)",
+                soltadosDelPlan == 0 && OrderMarkerFx.QueuedMarkers.Count == 2);
+            TrazadoDeCamino.Limpiar();
+            Check($"Descartar el trazado los limpia todos ({OrderMarkerFx.QueuedMarkers.Count} vivos)",
+                OrderMarkerFx.QueuedMarkers.Count == 0);
+
+            // --- RTS -> FPS con UNA sola unidad seleccionada ---
+            var seleccion = inputDriver.Selection;
+            seleccion.Clear();
+            Check("Sin seleccion no hay soldado unico", inputDriver.SoldadoUnicoSeleccionado() == null);
+            seleccion.SelectSingle(kes);
+            Check("Con UNO seleccionado, Tab lo posee (soldado unico = Kes)", inputDriver.SoldadoUnicoSeleccionado() == kes);
+            seleccion.AddToSelection(doc);
+            Check("Con dos seleccionados no se cambia de poseido", inputDriver.SoldadoUnicoSeleccionado() == null);
+            seleccion.Clear();
+
+            // --- El vehiculo sin NavMesh (Edit mode) sigue en linea recta ---
+            var vb = vehicle.GetComponent<VehicleBrain>();
+            vb.IssueMoveOrder(new Vector3(60f, 0f, 60f));
+            Check($"Sin NavMesh horneado la orden del vehiculo no arma ruta ({vb.Route.Count} esquinas)", vb.Route.Count == 0 && vb.HasOrder);
+            vb.Stop();
+            Check("Detener limpia destino y ruta", !vb.HasOrder && vb.Route.Count == 0);
+
+            TestLog.Phase("FASE 13 FINALIZADA");
+        }
+
         static void Check(string message, bool condition)
         {
             if (condition) { TestLog.Step(message); return; }
@@ -3811,6 +3887,16 @@ namespace SP.EditorTools
             mgStand.SetParent(root.transform, false);
             mgStand.localPosition = new Vector3(0.30f, 0.55f, 0.05f);
 
+            // Mismo cuerpo/torreta/cañon del pack de arte nuevo que
+            // WorldArtPipeline.ReemplazarVehiculo cuelga en SC_Gameplay --
+            // pero eso es solo un override de esa UNA instancia de escena,
+            // nunca tocaba este prefab. Sin esto, cualquier tanque armado
+            // por este metodo (build de demo, tests) salia con el graybox
+            // de siempre y sin cañon. Si el pack de arte nuevo todavia no
+            // corrio (Paso 4/5), los prefabs no existen y esto es un no-op
+            // silencioso (mismo fallback que ya usa ReemplazarVehiculo).
+            WorldArtPipeline.AplicarVisualesVehiculo(root);
+
             Directory.CreateDirectory("Assets/_Project/Prefabs");
             string path = "Assets/_Project/Prefabs/P_Vehicle_Blindado.prefab";
             var prefab = PrefabUtility.SaveAsPrefabAsset(root, path);
@@ -3829,21 +3915,29 @@ namespace SP.EditorTools
 
             var mat = CreateFlatMaterial(color);
             transientRuntimeAssets.Add(mat);
-            // El cañón queda afuera del repintado: necesita mantener SU
-            // propio color oscuro (fijo) para leerse como "el arma" en vez
-            // de camuflarse con el chasis, sea cual sea el color que le
+            var barrelMat = CreateFlatMaterial(new Color(0.12f, 0.12f, 0.13f));
+            transientRuntimeAssets.Add(barrelMat);
+            // El cañón (TurretBarrel y todo lo que cuelgue de él) queda
+            // afuera del repintado: necesita mantener SU propio color
+            // oscuro (fijo) para leerse como "el arma" en vez de
+            // camuflarse con el chasis, sea cual sea el color que le
             // toque a este vehículo en particular. Se pinta acá (objeto de
             // escena ya instanciado, no el prefab) para que el Material
             // nuevo sobreviva -- ver el comentario en
             // BuildAndSaveVehiclePrefab sobre por qué no se puede pintar
             // en el momento de armar el prefab.
-            Renderer barrelRend = null;
+            // BUG REAL que esto corrige: comparar por nombre exacto
+            // ("TurretBarrel") alcanzaba mientras el unico renderer del
+            // cañon vivia ahi mismo. Desde que WorldArtPipeline.
+            // AplicarVisualesVehiculo cuelga la malla real del pack de
+            // arte como un hijo "VisualMundo" de TurretBarrel (y apaga el
+            // MeshRenderer de TurretBarrel), ese renderer real caia en la
+            // rama "else" por nombre distinto y quedaba pintado del color
+            // de equipo, tapando el cañon con el mismo color del chasis.
+            // Se compara por jerarquia (IsChildOf) en vez de nombre exacto.
+            var barrelXform = instance.transform.Find("TurretMount/TurretPivot/TurretBarrel");
             foreach (var rend in instance.GetComponentsInChildren<MeshRenderer>())
-            {
-                if (rend.gameObject.name == "TurretBarrel") barrelRend = rend;
-                else rend.sharedMaterial = mat;
-            }
-            if (barrelRend != null) { var barrelMat = CreateFlatMaterial(new Color(0.12f, 0.12f, 0.13f)); transientRuntimeAssets.Add(barrelMat); barrelRend.sharedMaterial = barrelMat; }
+                rend.sharedMaterial = (barrelXform != null && rend.transform.IsChildOf(barrelXform)) ? barrelMat : mat;
 
             // Va despues de repintar el chasis por prolijidad, pero el orden
             // en realidad da igual: Awake NO corre al hacer AddComponent en

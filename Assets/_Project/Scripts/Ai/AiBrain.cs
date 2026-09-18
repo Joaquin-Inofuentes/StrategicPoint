@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.AI;
 using SP.Core;
 using SP.Actors;
 using SP.Vehicles;
@@ -48,6 +49,24 @@ namespace SP.Ai
         // Con 1 el codigo queda literalmente en el comportamiento previo
         // (una consulta por tick); con 2 o 3 se reparte la carga.
         [SerializeField] int senseIntervalTicks = 3;
+
+        // Tarea 2: tiempo maximo que persigue/ataca sin linea de tiro antes de
+        // abandonar el target y volver a su patrulla u orden previa.
+        [SerializeField] float tiempoMaximoSinVisibilidad = 5f;
+        float segundosSinLineaDeTiro;
+
+        // El NavMeshAgent es SOLO el planificador de ruta: updatePosition y
+        // updateRotation quedan apagados y quien mueve el transform sigue
+        // siendo SoldierMotor (colision con Deslizador, altura del pivote,
+        // y el SoldierAnimatorDriver mide su desplazamiento). BUG REAL de
+        // la primera version: con el agent moviendo el transform, apoyaba
+        // el PIVOTE del soldado (0.8 m sobre los pies) en el suelo del
+        // NavMesh -- todos quedaban enterrados -- y ademas peleaba con
+        // Motor.Move/LookTowards de Attack/Follow/cobertura, que movian el
+        // mismo transform por otro lado (tirones, animacion rota).
+        NavMeshAgent agent;
+        Vector3 agentDestino;
+        bool agentTieneDestino;
 
         Soldier self;
         Soldier target;
@@ -204,7 +223,102 @@ namespace SP.Ai
         }
 
         public AiState State { get; private set; } = AiState.Patrol;
-        public bool IsPossessedByPlayer { get; set; }
+
+        bool isPossessedByPlayer;
+        public bool IsPossessedByPlayer
+        {
+            get => isPossessedByPlayer;
+            set
+            {
+                if (isPossessedByPlayer == value) return;
+                isPossessedByPlayer = value;
+                OnPossessionChanged(value);
+            }
+        }
+
+        void EnsureAgent()
+        {
+            if (agent == null) agent = GetComponent<NavMeshAgent>();
+        }
+
+        void SyncAgentSettings()
+        {
+            if (agent == null) return;
+            agent.speed = 5f;
+            agent.angularSpeed = 360f;
+            agent.acceleration = 12f;
+            agent.stoppingDistance = 0.1f;
+            agent.autoBraking = true;
+            // El agent solo planifica: no toca el transform (ver el comentario
+            // de la declaracion del campo).
+            agent.updatePosition = false;
+            agent.updateRotation = false;
+            // Los soldados siempre se atravesaron entre si; la evitacion del
+            // agent los frenaria contra companeros que el motor no frena.
+            agent.obstacleAvoidanceType = ObstacleAvoidanceType.NoObstacleAvoidance;
+            // Distancia del pivote a los pies: con el pivote en el centro del
+            // cuerpo (BoxCollider centrado) el agent tiene que saber que su
+            // "suelo" queda por debajo del transform.
+            var col = GetComponent<Collider>();
+            if (col != null) agent.baseOffset = Mathf.Max(0f, transform.position.y - col.bounds.min.y);
+        }
+
+        bool AgentActivo => agent != null && agent.isActiveAndEnabled && agent.isOnNavMesh;
+
+        // Los ajustes van ANTES y DESPUES de habilitar: si updatePosition
+        // quedara en true aunque sea un frame, el agent apoya el pivote en
+        // el suelo del NavMesh y el soldado se hunde.
+        void HabilitarAgente()
+        {
+            SyncAgentSettings();
+            agent.enabled = true;
+            SyncAgentSettings();
+            SincronizarAgente();
+        }
+
+        // El motor es quien mueve el cuerpo; el agent tiene que saber donde
+        // quedo para que su ruta y su remainingDistance partan de ahi. Se
+        // llama todos los ticks, asi tambien cubre los movimientos que hace
+        // AiBrain directo por el motor (Chase, strafing, Follow).
+        void SincronizarAgente()
+        {
+            if (!AgentActivo) return;
+            agent.nextPosition = transform.position - Vector3.up * agent.baseOffset;
+        }
+
+        // Lo llama Vehicle.Dismount: el agent se apago al subir (Mount) y
+        // tiene que volver a encenderse con los mismos ajustes (updatePosition
+        // apagado) que el resto de los casos.
+        public void ReactivarNavegacion()
+        {
+            EnsureAgent();
+            if (agent == null || IsPossessedByPlayer || !gameObject.activeInHierarchy) return;
+            agentTieneDestino = false;
+            HabilitarAgente();
+        }
+
+        void OnPossessionChanged(bool possessed)
+        {
+            EnsureAgent();
+            if (agent == null) return;
+            agentTieneDestino = false;
+            if (possessed)
+            {
+                if (agent.isActiveAndEnabled && agent.isOnNavMesh)
+                {
+                    agent.ResetPath();
+                }
+                agent.enabled = false;
+            }
+            else
+            {
+                if (gameObject.activeInHierarchy)
+                {
+                    HabilitarAgente();
+                }
+            }
+        }
+
         public Soldier CurrentTarget => target;
 
         // ------------------------------------------------------------------
@@ -278,6 +392,14 @@ namespace SP.Ai
         // en curso, no durante una persecucion de combate.
         public Vector3? CurrentOrderDestination => hasOrder && State == AiState.MovingToOrder ? orderDestination : (Vector3?)null;
 
+        // A donde va la orden de movimiento vigente aunque en este instante
+        // el estado sea otro (Chase/Attack: el combate NO borra la orden, el
+        // soldado la retoma al terminar). Lo usa la limpieza de marcadores
+        // del recorrido: con CurrentOrderDestination un tiroteo a mitad de
+        // camino hacia parecer "cumplido" el tramo y se borraba su marca.
+        public Vector3? PendingMoveDestination =>
+            hasOrder && !orderIsAttack && mountTarget == null ? orderDestination : (Vector3?)null;
+
         // Verificable desde afuera (tests, UI): a quien sigo mientras
         // realmente estoy en Follow. Null en cualquier otro estado, igual
         // que CurrentOrderDestination con MovingToOrder.
@@ -293,6 +415,13 @@ namespace SP.Ai
             homePosition = transform.position;
             damageSub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnAnyDamage);
             shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFiredNearby);
+
+            EnsureAgent();
+            if (agent != null)
+            {
+                if (IsPossessedByPlayer) agent.enabled = false;
+                else HabilitarAgente();
+            }
         }
 
         void OnDestroy()
@@ -332,7 +461,7 @@ namespace SP.Ai
                 if (State == AiState.Idle || State == AiState.Patrol || State == AiState.MovingToOrder || State == AiState.Follow)
                 {
                     target = attacker;
-                    hasOrder = false;
+                    if (State != AiState.MovingToOrder) hasOrder = false;
                     followTarget = null;
                     SetState(AiState.Chase);
                 }
@@ -451,6 +580,19 @@ namespace SP.Ai
             repathed = false;
             ResetStuckWatch();
 
+            EnsureAgent();
+            if (AgentActivo)
+            {
+                SincronizarAgente();
+                if (agent.SetDestination(destination))
+                {
+                    agentDestino = destination;
+                    agentTieneDestino = true;
+                    return;
+                }
+                agentTieneDestino = false;
+            }
+
             if (!SP.Core.NavService.TryFindDetour(self.transform.position, destination, path))
             {
                 path.Clear();
@@ -468,6 +610,8 @@ namespace SP.Ai
             path.Clear();
             pathIndex = 0;
             repathed = false;
+            agentTieneDestino = false;
+            if (AgentActivo) agent.ResetPath();
         }
 
         void ResetStuckWatch()
@@ -620,6 +764,10 @@ namespace SP.Ai
 
         bool AdvanceTo(Vector3 destination, float threshold, float dt)
         {
+            EnsureAgent();
+            if (TryAdvanceWithAgent(destination, threshold, dt, out bool llegoConAgent))
+                return llegoConAgent;
+
             TickStuckWatch(destination, dt);
 
             if (pathIndex >= path.Count)
@@ -639,6 +787,111 @@ namespace SP.Ai
 
             ClearPath();
             return true;
+        }
+
+        // Devuelve false si el agent no puede conducir este tramo (no hay
+        // NavMesh bajo el soldado, o no hay ruta valida): el llamador sigue
+        // con el A* casero de siempre, asi la suite headless (sin NavMesh
+        // bakeado) y cualquier escena sin bakear se comportan como antes.
+        // Devuelve true si el agent se hizo cargo; "llego" dice si ya llego.
+        bool TryAdvanceWithAgent(Vector3 destination, float threshold, float dt, out bool llego)
+        {
+            llego = false;
+            if (!AgentActivo) return false;
+
+            SincronizarAgente();
+
+            if (!agentTieneDestino || (agentDestino - destination).sqrMagnitude > 0.25f)
+            {
+                if (!agent.SetDestination(destination))
+                {
+                    agentTieneDestino = false;
+                    return false;
+                }
+                agentDestino = destination;
+                agentTieneDestino = true;
+            }
+
+            TickStuckWatchAgent(destination, dt);
+            // El vigilante pudo dar la orden por cumplida (ClearPath).
+            if (!agentTieneDestino || !AgentActivo) return true;
+
+            // Sin primera ruta todavia: quieto este frame. Con una ruta
+            // vieja (replanificacion periodica) se sigue caminando por ella
+            // para no frenar cada medio segundo.
+            if (agent.pathPending && !agent.hasPath) return true;
+            if (!agent.pathPending && agent.pathStatus == NavMeshPathStatus.PathInvalid)
+            {
+                agentTieneDestino = false;
+                return false;
+            }
+
+            Vector3 alDestino = destination - self.transform.position;
+            alDestino.y = 0f;
+            if (alDestino.magnitude <= threshold ||
+                (!agent.pathPending && agent.remainingDistance <= threshold))
+            {
+                ClearPath();
+                llego = true;
+                return true;
+            }
+
+            // El agent decide POR DONDE (la esquina siguiente de su ruta);
+            // el motor decide COMO (colision, giro, animacion). El paso se
+            // acota a la distancia que falta para no pasarse de la esquina y
+            // oscilar alrededor de ella.
+            Vector3 esquina = agent.steeringTarget;
+            Vector3 delta = esquina - self.transform.position;
+            delta.y = 0f;
+            float dist = delta.magnitude;
+            if (dist > 0.001f)
+            {
+                self.Motor.LookTowards(esquina, dt);
+                float paso = Mathf.Max(self.Motor.MoveSpeed * dt, 0.0001f);
+                self.Motor.Move(delta / dist * Mathf.Min(1f, dist / paso), dt);
+            }
+            return true;
+        }
+
+        // Mismo contrato que TickStuckWatch (1 s sin avanzar 30 cm ->
+        // replanifica una vez; segundo atasco en MovingToOrder -> orden
+        // cumplida donde llego, drena la cola, OrderCompletedEvent), pero
+        // la replanificacion es agent.SetDestination. Solo mide progreso
+        // real: un PathPartial (destino fuera del NavMesh) NO cuenta como
+        // atasco mientras el soldado siga avanzando hacia el borde.
+        void TickStuckWatchAgent(Vector3 destination, float dt)
+        {
+            stuckTimer += dt;
+            if (stuckTimer < StuckSeconds) return;
+
+            Vector3 progress = self.transform.position - stuckAnchor;
+            progress.y = 0f;
+            bool stuck = progress.sqrMagnitude < StuckProgressSqr;
+            ResetStuckWatch();
+
+            if (!stuck) return;
+
+            if (repathed && State == AiState.MovingToOrder)
+            {
+                GameLog.Line($"{self.DisplayName} no puede acercarse mas: el destino esta bloqueado");
+                if (orderQueue.Count > 0)
+                {
+                    orderDestination = orderQueue.Dequeue();
+                    PlanPathTo(orderDestination);
+                    return;
+                }
+                EventBus.Instance.Publish(new OrderCompletedEvent(self.Id));
+                hasOrder = false;
+                ClearPath();
+                SetState(AiState.Patrol);
+                forceSense = true;
+                return;
+            }
+
+            if (repathed) return;
+            repathed = true;
+            agent.SetDestination(destination);
+            GameLog.Line($"{self.DisplayName} estaba trabado: recalcula la ruta por NavMesh");
         }
 
         void TickStuckWatch(Vector3 destination, float dt)
@@ -766,12 +1019,9 @@ namespace SP.Ai
             orderQueue.Clear();
             ClearPath();
             SoltarCobertura();
-            if (State == AiState.MovingToOrder || State == AiState.MovingToAttackOrder || State == AiState.Follow)
-            {
-                target = null;
-                SetState(AiState.Patrol);
-                forceSense = true;
-            }
+            target = null;
+            SetState(AiState.Patrol);
+            forceSense = true;
         }
 
         public void Tick(float dt)
@@ -779,6 +1029,36 @@ namespace SP.Ai
             if (!bootstrapped) Bootstrap();
             if (IsPossessedByPlayer || self == null) return;
             if (!self.gameObject.activeInHierarchy) return;
+
+            SincronizarAgente();
+
+            // BUG REAL: Tick() no tenia ningun case Dead ni ninguna
+            // transicion de SALIDA de Dead -- una vez que IsAlive pasaba a
+            // false, State quedaba en Dead para siempre y el switch de mas
+            // abajo hacia no-op cada tick. RescateAutomatico y
+            // PlayerInputDriver.TryRevivir revivien con Health.Initialize
+            // (full HP, IsAlive=true) pero jamas tocan AiState: sin esto un
+            // aliado revivido quedaba vivo pero catatonico -- no patrullaba,
+            // no volvia a su puesto, no reaccionaba a nada -- hasta que el
+            // sensado encontraba un enemigo de pura casualidad. Mismo
+            // reseteo de estado por-vida que CancelOrder: lo que estuviera
+            // persiguiendo/siguiendo/cubriendose ANTES de morir no tiene
+            // sentido despues de revivir.
+            if (State == AiState.Dead && self.Health.IsAlive)
+            {
+                target = null;
+                hasOrder = false;
+                orderIsAttack = false;
+                mountTarget = null;
+                followTarget = null;
+                followOffsetLocal = Vector3.zero;
+                attackMoveDestination = null;
+                orderQueue.Clear();
+                ClearPath();
+                SoltarCobertura();
+                SetState(AiState.Patrol);
+                forceSense = true;
+            }
 
             if (!self.Health.IsAlive)
             {
@@ -801,7 +1081,31 @@ namespace SP.Ai
             if (target != null && (!target.Health.IsAlive || !target.gameObject.activeInHierarchy))
                 target = null;
 
-            if (target == null && (State == AiState.Chase || State == AiState.Attack))
+            // Tarea 2: Si pierde la línea de tiro durante combate/persecución,
+            // cuenta el tiempo continuo sin visión. Al superar el umbral, suelta el objetivo.
+            bool enCombateConTarget = State == AiState.Chase || State == AiState.Attack || State == AiState.MovingToAttackOrder;
+            if (target != null && enCombateConTarget)
+            {
+                if (TieneLineaDeTiro(target))
+                {
+                    segundosSinLineaDeTiro = 0f;
+                }
+                else
+                {
+                    segundosSinLineaDeTiro += dt;
+                    if (segundosSinLineaDeTiro >= tiempoMaximoSinVisibilidad)
+                    {
+                        target = null;
+                        segundosSinLineaDeTiro = 0f;
+                    }
+                }
+            }
+            else
+            {
+                segundosSinLineaDeTiro = 0f;
+            }
+
+            if (target == null && (State == AiState.Chase || State == AiState.Attack || State == AiState.MovingToAttackOrder))
             {
                 if (orderIsAttack) { hasOrder = false; orderIsAttack = false; }
                 // El objetivo murio/desaparecio a mitad de un attack-move:
@@ -815,9 +1119,21 @@ namespace SP.Ai
                     hasOrder = true;
                     SetState(AiState.MovingToOrder);
                 }
+                else if (hasOrder)
+                {
+                    PlanPathTo(orderDestination);
+                    SetState(followTarget != null ? AiState.Follow : AiState.MovingToOrder);
+                }
+                else if (orderQueue.Count > 0)
+                {
+                    orderDestination = orderQueue.Dequeue();
+                    hasOrder = true;
+                    PlanPathTo(orderDestination);
+                    SetState(AiState.MovingToOrder);
+                }
                 else
                 {
-                    SetState(!hasOrder ? AiState.Patrol : followTarget != null ? AiState.Follow : AiState.MovingToOrder);
+                    SetState(AiState.Patrol);
                 }
             }
 
@@ -836,7 +1152,7 @@ namespace SP.Ai
                 if (sensed != null)
                 {
                     target = sensed;
-                    hasOrder = false;
+                    if (State != AiState.MovingToOrder) hasOrder = false;
                     SetState(AiState.Chase);
                 }
             }
@@ -881,9 +1197,20 @@ namespace SP.Ai
                         if (mountTarget != null)
                         {
                             hasOrder = false;
-                            mountTarget.Mount(self);
+                            bool subio = mountTarget.Mount(self);
                             mountTarget = null;
-                            return; // el GameObject quedó inactivo: no tocar más estado.
+                            if (subio) return; // el GameObject quedó inactivo: no tocar más estado.
+
+                            // BUG REAL: Mount() devuelve false si el vehiculo se
+                            // lleno mientras caminaba (o se destruyo), y aca se
+                            // hacia "return" igual: el soldado quedaba en
+                            // MovingToOrder sin orden, empujando el casco. Ahora
+                            // suelta la orden y vuelve a lo suyo.
+                            GameLog.Line($"{self.DisplayName} no pudo subir: el vehiculo esta lleno");
+                            ClearPath();
+                            SetState(AiState.Patrol);
+                            forceSense = true;
+                            break;
                         }
 
                         if (orderQueue.Count > 0)

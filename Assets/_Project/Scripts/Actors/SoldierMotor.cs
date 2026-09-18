@@ -54,6 +54,10 @@ namespace SP.Actors
         float groundY;
         public bool IsJumping { get; private set; }
 
+        // Lo lee AiBrain para acotar el paso cuando sigue la ruta del
+        // NavMeshAgent (que solo planifica; este motor es quien camina).
+        public float MoveSpeed => moveSpeed;
+
         // Se guarda la altura de PISO al saltar (no 0 fijo): el terreno de
         // la escena no es perfectamente plano en todos lados (ver
         // ApoyoEnElPiso), asi que aterrizar tiene que volver a donde el

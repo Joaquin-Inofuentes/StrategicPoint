@@ -78,11 +78,13 @@ namespace SP.Player
             { PoseerMasCercano, Key.C },
             { AlternarVista, Key.Tab },
             { Controles, Key.H },
-            // Pedido explicito: G -> T. No pisa el [T] de "mandar la
-            // camioneta ahi" del artillero (PlayerInputDriver, tecla
-            // hardcodeada aparte, kb.tKey) porque son asientos excluyentes
-            // -- Frenar solo se lee en Driver, ese T solo en Gunner.
-            { Frenar, Key.T },
+            // Pedido explicito: G -> T. Despues se pidio que [T] mande el
+            // vehiculo al punto apuntado DESDE CUALQUIER ASIENTO (tambien el
+            // de conductor), y ahi chocaba con el freno: apretar T daba la
+            // orden y en el mismo frame la cancelaba por "frenando". El freno
+            // pasa a [Espacio] (freno de mano; Espacio solo salta a pie y
+            // recentra en RTS, nunca dentro del vehiculo).
+            { Frenar, Key.Space },
             { AtaqueCuchillo, Key.V },
             { Recentrar, Key.Space },
             { CancelarOrden, Key.X },

@@ -228,23 +228,35 @@ namespace SP.UI
         }
 
         // ------------------------------------------------------------
-        // D2: [M] agranda y minimiza el minimapa
+        // TAMAÑO DEL MINIMAPA: mini (por defecto) y expandido
         // ------------------------------------------------------------
-        // Nombre del RectTransform que se agranda: el marco entero, no la
-        // RawImage sola -- MinimapBorder es el padre de MinimapImage y del
-        // resto de la decoracion (MinimapFrame, MinimapLegend), anclado
-        // por su esquina (pivot 1,1) para no desplazarse al crecer.
+        // GameObject : Cameras/MinimapCamera  (este componente)
+        // Script     : MinimapFollow
+        // Variables  : tamanoMini      -> tamaño por defecto (arranca asi)
+        //              tamanoExpandido -> tamaño al apretar [M]
+        // Se editan en el Inspector y el marco (UI_Canvas/Canvas/MinimapBorder)
+        // se redimensiona al instante, sin dar Play.
+        //
+        // Antes habia dos mecanismos (x1.8 sobre el tamaño de la escena y un
+        // ciclo de tres tamaños guardado en PlayerPrefs) y ganaba el segundo:
+        // la escena decia 40 pero en juego salia 320 porque un indice viejo
+        // en PlayerPrefs lo pisaba al arrancar. Ahora hay UNA fuente de
+        // verdad -- estas dos variables -- y nada se recuerda entre partidas:
+        // siempre se arranca en mini.
+        [Header("Tamaño del minimapa (px de referencia del Canvas)")]
+        [Tooltip("Tamaño por defecto (mini). El juego siempre arranca con este.")]
+        public Vector2 tamanoMini = new Vector2(107f, 107f);
+        [Tooltip("Tamaño al expandir con [M].")]
+        public Vector2 tamanoExpandido = new Vector2(320f, 320f);
+
+        // Nombre del RectTransform que se redimensiona: el marco entero, no
+        // la RawImage sola -- MinimapBorder es el padre de MinimapImage y
+        // del resto de la decoracion (MinimapFrame, N), anclado por su
+        // esquina (pivot 1,1) para no desplazarse al crecer.
         const string BorderName = "MinimapBorder";
 
         [SerializeField] RectTransform borderRect;
 
-        // El doble de tamaño, sea cual sea el tamaño de partida (228 en
-        // SC_Gameplay hoy, pero no se hardcodea: D3 puede haber cambiado
-        // el tamaño de partida antes de que se toque [M] por primera vez).
-        public const float FactorAgrandado = 1.8f;
-
-        Vector2 tamanoOriginalM;
-        bool tamanoOriginalMCapturado;
         public bool Agrandado { get; private set; }
 
         RectTransform ResolveBorder()
@@ -255,66 +267,67 @@ namespace SP.UI
             return borderRect;
         }
 
-        // Devuelve el nuevo estado (true = agrandado). El tamaño "original"
-        // se captura UNA sola vez, la primera vez que se llama -- nunca se
-        // recalcula despues, para que un segundo [M] siempre vuelva
-        // exactamente a donde estaba antes del primero, sin deriva.
+        // Deja el minimapa en mini. Lo llama el arranque de la escena (y el
+        // Editor al tocar las variables), para que el primer frame ya sea
+        // el definitivo.
+        public void AplicarTamanoInicial()
+        {
+            Agrandado = false;
+            indiceTamanoFijo = 0;
+            var b = ResolveBorder();
+            if (b != null) b.sizeDelta = tamanoMini;
+        }
+
+        // Compatibilidad: antes recuperaba el tamaño guardado. Ya no se
+        // guarda nada; el tamaño "guardado" es siempre el mini.
+        public void AplicarTamanoGuardado() => AplicarTamanoInicial();
+
+        // [M]: mini <-> expandido. Devuelve el nuevo estado (true =
+        // expandido). Como los dos tamaños son variables fijas no hay
+        // deriva posible por mas veces que se apriete.
         public bool AlternarTamano()
         {
             var b = ResolveBorder();
             if (b == null) return Agrandado;
-            if (!tamanoOriginalMCapturado)
-            {
-                tamanoOriginalMCapturado = true;
-                tamanoOriginalM = b.sizeDelta;
-            }
             Agrandado = !Agrandado;
-            b.sizeDelta = Agrandado ? tamanoOriginalM * FactorAgrandado : tamanoOriginalM;
+            indiceTamanoFijo = Agrandado ? 2 : 0;
+            b.sizeDelta = Agrandado ? tamanoExpandido : tamanoMini;
             return Agrandado;
         }
 
-        // ------------------------------------------------------------
-        // D3: [L] cicla el tamaño del minimapa entre 3 valores fijos
-        // ------------------------------------------------------------
-        // Mismo patron que PauseController con "sp_crosshair_scale": un
-        // entero en PlayerPrefs, sin serializar nada en la escena.
-        const string PrefTamanoFijo = "sp_minimap_size_index";
+        // [L]: mini -> medio -> expandido -> mini. No se guarda.
+        int indiceTamanoFijo;
+        public int IndiceTamanoFijo => indiceTamanoFijo;
 
-        public static readonly Vector2[] TamanosFijos =
+        public Vector2 TamanoFijo(int indice)
         {
-            new Vector2(160f, 160f),
-            new Vector2(228f, 228f),
-            new Vector2(320f, 320f),
-        };
+            indice = Mathf.Clamp(indice, 0, 2);
+            return indice == 0 ? tamanoMini : indice == 2 ? tamanoExpandido : (tamanoMini + tamanoExpandido) * 0.5f;
+        }
 
-        int indiceTamanoFijo = -1;
-
-        static int IndiceGuardado() => Mathf.Clamp(PlayerPrefs.GetInt(PrefTamanoFijo, 1), 0, TamanosFijos.Length - 1);
-
-        public int IndiceTamanoFijo => indiceTamanoFijo < 0 ? IndiceGuardado() : indiceTamanoFijo;
-
-        // Avanza al siguiente de los 3 tamaños fijos y lo deja guardado
-        // para la proxima partida. Tres llamadas seguidas vuelven al
-        // mismo indice de arranque (ciclo de largo 3).
         public int CiclarTamanoFijo()
         {
             var b = ResolveBorder();
-            if (indiceTamanoFijo < 0) indiceTamanoFijo = IndiceGuardado();
-            indiceTamanoFijo = (indiceTamanoFijo + 1) % TamanosFijos.Length;
-            if (b != null) b.sizeDelta = TamanosFijos[indiceTamanoFijo];
-            PlayerPrefs.SetInt(PrefTamanoFijo, indiceTamanoFijo);
-            PlayerPrefs.Save();
+            indiceTamanoFijo = (indiceTamanoFijo + 1) % 3;
+            Agrandado = indiceTamanoFijo == 2;
+            if (b != null) b.sizeDelta = TamanoFijo(indiceTamanoFijo);
             return indiceTamanoFijo;
         }
 
-        // Se llama al arrancar la escena para que el tamaño elegido en la
-        // partida anterior se vea desde el primer frame, no recien tras
-        // el primer [L].
-        public void AplicarTamanoGuardado()
+#if UNITY_EDITOR
+        // Al cambiar tamanoMini en el Inspector (sin Play) el marco se
+        // actualiza solo. delayCall: no se puede tocar otro objeto de la
+        // escena desde dentro de OnValidate.
+        void OnValidate()
         {
-            indiceTamanoFijo = IndiceGuardado();
-            var b = ResolveBorder();
-            if (b != null) b.sizeDelta = TamanosFijos[indiceTamanoFijo];
+            if (Application.isPlaying) return;
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                if (this == null || Application.isPlaying) return;
+                var b = ResolveBorder();
+                if (b != null && !Agrandado) b.sizeDelta = tamanoMini;
+            };
         }
+#endif
     }
 }

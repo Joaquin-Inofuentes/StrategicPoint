@@ -130,19 +130,18 @@ namespace SP.UI
 
             new ControlEntry("T", "ordenarle al aliado libre más cercano que vaya al punto apuntado", ControlContext.FpsAPie),
             new ControlEntry("T/Clic der.", "mover la selección al punto, o atacar al enemigo señalado", ControlContext.Rts),
-            new ControlEntry("T", "mandar el vehículo al punto del suelo que señalás", ControlContext.VehiculoArtillero),
+            new ControlEntry("T", "mandar el vehículo al punto del suelo que señalás (desde cualquier asiento; WASD retoma el volante)", AdentroDelVehiculo),
 
             // Con ActionId: el label se resuelve solo desde KeyBindings
             // (ver linea 223 mas abajo), asi que sigue el remapeo real en
             // vez de quedar una tecla vieja hardcodeada (paso de G a T).
-            new ControlEntry("T", "frenar (mantener)", ControlContext.VehiculoConductor, SP.Player.KeyBindings.Frenar),
+            new ControlEntry("Espacio", "frenar (mantener)", ControlContext.VehiculoConductor, SP.Player.KeyBindings.Frenar),
             new ControlEntry("G", "ordenarle al aliado más cercano que suba al vehículo apuntado", ControlContext.FpsAPie),
             new ControlEntry("G", "subir la selección al vehículo señalado, o bajar a todos si ya está ocupado", ControlContext.Rts),
 
             new ControlEntry("Clic der.", "zoom de mira (mantener)", ControlContext.FpsAPie | ControlContext.VehiculoArtillero),
 
-            new ControlEntry("2", "pasar al asiento de artillero (si está libre)", ControlContext.VehiculoConductor),
-            new ControlEntry("1", "pasar al asiento de conductor (si está libre)", ControlContext.VehiculoArtillero),
+            new ControlEntry("1/2/3/4", "cambiar de asiento: conductor, cañón, metralleta, pasajero (si está ocupado por un aliado, intercambian)", AdentroDelVehiculo),
 
             new ControlEntry("Arrastrar", "seleccionar a todos los aliados del recuadro", ControlContext.Rts),
             new ControlEntry("Shift+Clic", "sumar a la selección sin perder lo ya elegido", ControlContext.Rts),

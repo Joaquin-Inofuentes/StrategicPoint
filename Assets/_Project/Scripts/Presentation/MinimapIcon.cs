@@ -271,6 +271,17 @@ namespace SP.Presentation
                 // C2: cuadrado, no circulo -- lo interactuable se
                 // distingue de una unidad por la FORMA, no solo el color.
                 icon.ConvertirEnCuadrado();
+
+                // Un muro de 20 m o una casa no pueden verse como el mismo
+                // cuadradito que un barril: el icono toma la huella real
+                // (en el plano XZ) del obstaculo, con el tamaño de siempre
+                // como piso.
+                var col = marca.GetComponent<Collider>();
+                if (col != null)
+                {
+                    var tam = col.bounds.size;
+                    icon.transform.localScale = new Vector3(Mathf.Max(radius, tam.x), 0.2f, Mathf.Max(radius, tam.z));
+                }
             }
             return marcas.Length;
         }

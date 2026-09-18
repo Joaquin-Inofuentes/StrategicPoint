@@ -355,7 +355,7 @@ namespace SP.EditorTools
         // volumen que el collider. Mismo espiritu que
         // ArtBuilder.ReemplazarBidones: cambiar el CUERPO, no el
         // GameObject, para no perder referencias ni posicion.
-        static void ReemplazarVisualEnCollider(GameObject objetivo, GameObject prefabNuevo)
+        static void ReemplazarVisualEnCollider(GameObject objetivo, GameObject prefabNuevo, bool estirar = true)
         {
             if (objetivo == null || prefabNuevo == null) return;
 
@@ -388,11 +388,21 @@ namespace SP.EditorTools
             foreach (var c in visual.GetComponentsInChildren<Collider>(true))
                 Object.DestroyImmediate(c);
 
-            var tamModelo = BoundsDe(visual).size; // bounds mundiales con localScale=1: ya arrastra la escala del padre
-            visual.transform.localScale = new Vector3(
-                tamModelo.x > 0.0001f ? tamMundo.x / tamModelo.x : 1f,
-                tamModelo.y > 0.0001f ? tamMundo.y / tamModelo.y : 1f,
-                tamModelo.z > 0.0001f ? tamMundo.z / tamModelo.z : 1f);
+            if (estirar)
+            {
+                var tamModelo = BoundsDe(visual).size; // bounds mundiales con localScale=1: ya arrastra la escala del padre
+                visual.transform.localScale = new Vector3(
+                    tamModelo.x > 0.0001f ? tamMundo.x / tamModelo.x : 1f,
+                    tamModelo.y > 0.0001f ? tamMundo.y / tamModelo.y : 1f,
+                    tamModelo.z > 0.0001f ? tamMundo.z / tamModelo.z : 1f);
+            }
+            // estirar=false: el prefab ya viene a su escala real (factor
+            // global del Paso 4, ver ImportarTodo) -- pensado para las
+            // armas del mundo, que comparten un unico BoxCollider generico
+            // (0.5x0.5x0.5, un trigger de pickup, no un hitbox a medida) y
+            // se deformaban en blobs irreconocibles si se estiraban para
+            // llenarlo. Queda a localScale (1,1,1), solo reposicionado a la
+            // base del mismo collider.
 
             if (box != null)
                 visual.transform.localPosition = new Vector3(box.center.x, box.center.y - box.size.y * 0.5f, box.center.z);
@@ -489,9 +499,9 @@ namespace SP.EditorTools
 
         static void ReemplazarArmas()
         {
-            ReemplazarVisualEnCollider(GameObject.Find("Arma_Rifle"), CargarPrefab("P_Wpn_Fusil"));
-            ReemplazarVisualEnCollider(GameObject.Find("Arma_Pistola"), CargarPrefab("P_Wpn_Pistola"));
-            ReemplazarVisualEnCollider(GameObject.Find("Arma_Pesada"), CargarPrefab("P_Wpn_LMG"));
+            ReemplazarVisualEnCollider(GameObject.Find("Arma_Rifle"), CargarPrefab("P_Wpn_Fusil"), estirar: false);
+            ReemplazarVisualEnCollider(GameObject.Find("Arma_Pistola"), CargarPrefab("P_Wpn_Pistola"), estirar: false);
+            ReemplazarVisualEnCollider(GameObject.Find("Arma_Pesada"), CargarPrefab("P_Wpn_LMG"), estirar: false);
             Debug.Log("[WorldArtPipeline] Armas del mundo reskineadas.");
         }
 
@@ -526,6 +536,24 @@ namespace SP.EditorTools
             var veh = GameObject.Find("Vehiculo_Blindado");
             if (veh == null) { Debug.LogWarning("[WorldArtPipeline] No se encontro Vehiculo_Blindado en la escena."); return; }
 
+            AplicarVisualesVehiculo(veh);
+            Debug.Log("[WorldArtPipeline] Vehiculo_Blindado reskineado (cuerpo/torreta/cañon).");
+        }
+
+        // Cuerpo/torreta/cañon del pack nuevo, colgados sobre CUALQUIER
+        // instancia del vehiculo blindado (raiz con BoxCollider +
+        // TurretMount/TurretPivot/TurretBarrel), no solo la ya plantada a
+        // mano en SC_Gameplay. Extraido de ReemplazarVehiculo para que
+        // HeadlessTestRunner.BuildAndSaveVehiclePrefab tambien pueda
+        // llamarlo sobre el prefab base P_Vehicle_Blindado -- si no, ese
+        // prefab se regenera desde cero sin cañon/torreta (el reskineo de
+        // aca solo tocaba el override de la UNA instancia de escena, nunca
+        // el asset del prefab) y cualquier instancia fresca via
+        // SpawnVehicle salia con las mismas cajas grises de siempre.
+        public static void AplicarVisualesVehiculo(GameObject veh)
+        {
+            if (veh == null) return;
+
             var cuerpoPrefab = CargarPrefab("P_Veh_Tanque_Cuerpo");
             ReemplazarVisualEnCollider(veh, cuerpoPrefab);
 
@@ -553,7 +581,7 @@ namespace SP.EditorTools
             }
 
             var pivot = veh.transform.Find("TurretMount/TurretPivot");
-            if (pivot == null) { Debug.LogWarning("[WorldArtPipeline] Vehiculo_Blindado no tiene TurretPivot."); return; }
+            if (pivot == null) { Debug.LogWarning("[WorldArtPipeline] " + veh.name + " no tiene TurretPivot."); return; }
 
             var torreta = CargarPrefab("P_Veh_Tanque_Torreta");
             var turretVisual = pivot.Find("TurretVisual");
@@ -594,8 +622,6 @@ namespace SP.EditorTools
                 v.transform.localRotation = Quaternion.identity;
                 v.transform.localScale = EscalaInversa(barrel) * factorTorreta;
             }
-
-            Debug.Log("[WorldArtPipeline] Vehiculo_Blindado reskineado (cuerpo/torreta/cañon).");
         }
 
         // Piso modular en vez del plano gris: se mide UN tile y se llena

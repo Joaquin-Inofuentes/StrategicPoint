@@ -28,6 +28,10 @@ namespace SP.Player
         public const float SeparacionMinima = 1.5f;
 
         static readonly List<Vector3> puntos = new List<Vector3>();
+        // Un marcador por punto trazado. Son del PLAN (todavia sin
+        // ejecutar): los suelta Ejecutar o Limpiar, no la limpieza
+        // automatica de OrderMarkerFx.
+        static readonly List<OrderMarkerFx> marcadoresDePlan = new List<OrderMarkerFx>();
 
         public static IReadOnlyList<Vector3> Puntos => puntos;
         public static int Cantidad => puntos.Count;
@@ -46,15 +50,22 @@ namespace SP.Player
             // Se dibuja con el marcador de cola (numerado y fijo, no se
             // desvanece) porque eso es exactamente lo que es: un tramo
             // planificado todavia sin cumplir.
-            OrderMarkerFx.Spawn(punto, OrderMarkerFx.MoveColor, puntos.Count);
+            var marcador = OrderMarkerFx.SpawnPlan(punto, OrderMarkerFx.MoveColor, puntos.Count);
+            if (marcador != null) marcadoresDePlan.Add(marcador);
             return true;
         }
 
         public static void Limpiar()
         {
-            if (puntos.Count == 0) return;
+            if (puntos.Count == 0 && marcadoresDePlan.Count == 0) return;
             puntos.Clear();
-            OrderMarkerFx.ClearQueuedMarkers();
+            SoltarMarcadoresDePlan();
+        }
+
+        static void SoltarMarcadoresDePlan()
+        {
+            for (int i = 0; i < marcadoresDePlan.Count; i++) OrderMarkerFx.ReleasePlan(marcadoresDePlan[i]);
+            marcadoresDePlan.Clear();
         }
 
         // Manda el recorrido entero a la seleccion. El primer tramo
@@ -69,6 +80,11 @@ namespace SP.Player
             foreach (var s in seleccion)
                 if (s != null && s.Health != null && s.Health.IsAlive) vivos.Add(s);
             if (vivos.Count == 0) return 0;
+
+            // Los marcadores del plan ya cumplieron: desde aca cada soldado
+            // dibuja los de SU cola (OrderService), y esos si se apagan
+            // solos a medida que cada tramo se cumple.
+            SoltarMarcadoresDePlan();
 
             for (int i = 0; i < puntos.Count; i++)
             {
@@ -85,9 +101,6 @@ namespace SP.Player
 
             int tramos = puntos.Count;
             GameLog.Line($"Se ejecuto un recorrido de {tramos} tramos con {vivos.Count} soldados");
-            // Los puntos se sueltan, pero los marcadores NO: a partir de
-            // aca representan la cola real del AiBrain y se van apagando a
-            // medida que cada tramo se cumple.
             puntos.Clear();
             return tramos;
         }

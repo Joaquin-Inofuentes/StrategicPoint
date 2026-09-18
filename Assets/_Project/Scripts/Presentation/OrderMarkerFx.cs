@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using SP.Core;
 
 namespace SP.Presentation
 {
@@ -318,6 +319,83 @@ namespace SP.Presentation
             QueuedMarkers.Clear();
         }
 
+        // Marcador de un recorrido TRAZADO pero todavia no ejecutado
+        // (TrazadoDeCamino). Es un plan del jugador, no de ningun soldado,
+        // asi que la limpieza automatica de abajo NO lo toca: lo suelta
+        // TrazadoDeCamino (al ejecutar o al descartar).
+        public static OrderMarkerFx SpawnPlan(Vector3 position, Color color, int orderIndex)
+        {
+            var m = Take();
+            if (m == null) return null;
+            m.LaunchQueued(position, color, Mathf.Max(1, orderIndex));
+            m.esPlan = true;
+            QueuedMarkers.Add(m.gameObject);
+            return m;
+        }
+
+        public static void ReleasePlan(OrderMarkerFx m)
+        {
+            // esPlan: si el marcador ya se solto por otro camino ([X]) y el
+            // pool lo reutilizo para otra cosa, no se le toca.
+            if (m == null || !m.esPlan) return;
+            m.Recycle();
+            Release(m);
+        }
+
+        // Tolerancia para decir "este soldado todavia va a ese punto".
+        // Los puntos se comparan tal cual se encolaron (mismo Vector3), asi
+        // que alcanza con perdonar el redondeo de coma flotante.
+        const float ToleranciaDePunto = 0.05f;
+
+        // Un marcador de cola sobrevive SOLO mientras algun soldado vivo lo
+        // tenga como orden en curso o en su cola. Asi se limpia solo cuando
+        // el tramo se cumple, cuando el recorrido termina y cuando llega una
+        // orden nueva a otro lado (esa borra la cola vieja del soldado).
+        // Antes los marcadores numerados solo se borraban con [X]: se
+        // acumulaban en pantalla recorrido tras recorrido.
+        public static bool HayOrdenPendienteEn(Vector3 punto)
+        {
+            var todos = ActorRegistry.All;
+            foreach (var soldado in todos)
+            {
+                if (soldado == null || soldado.Health == null || !soldado.Health.IsAlive) continue;
+                var cerebro = soldado.Brain;
+                if (cerebro == null) continue;
+
+                var actual = cerebro.PendingMoveDestination;
+                if (actual.HasValue && MismoPunto(actual.Value, punto)) return true;
+                foreach (var enCola in cerebro.QueuedDestinations)
+                    if (MismoPunto(enCola, punto)) return true;
+            }
+            return false;
+        }
+
+        static bool MismoPunto(Vector3 a, Vector3 b)
+        {
+            float dx = a.x - b.x, dz = a.z - b.z;
+            return dx * dx + dz * dz <= ToleranciaDePunto * ToleranciaDePunto;
+        }
+
+        // Barrido explicito (lo usa Update por marcador; existe aparte para
+        // el Edit mode de la suite, donde Update no corre). Devuelve
+        // cuantos marcadores solto.
+        public static int PurgarCompletados()
+        {
+            Purge();
+            int soltados = 0;
+            for (int i = QueuedMarkers.Count - 1; i >= 0; i--)
+            {
+                var go = QueuedMarkers[i];
+                if (go == null) continue;
+                var fx = go.GetComponent<OrderMarkerFx>();
+                if (fx == null || fx.esPlan || HayOrdenPendienteEn(fx.puntoDeCola)) continue;
+                fx.Recycle();
+                Release(fx);
+                soltados++;
+            }
+            return soltados;
+        }
+
         static bool shaderWarmed;
 
         // La primera vez que se pinta un cilindro con este shader, Unity
@@ -345,6 +423,10 @@ namespace SP.Presentation
         // --- Instancia ------------------------------------------------
 
         bool fading;
+        bool esPlan;
+        bool esDeCola;
+        Vector3 puntoDeCola;
+        float proximoChequeo;
         float age;
         float duration;
         Vector3 startScale;
@@ -386,6 +468,10 @@ namespace SP.Presentation
         {
             gameObject.name = "OrderMarker_Queued_" + orderIndex;
             gameObject.SetActive(true);
+            puntoDeCola = position;
+            esDeCola = true;
+            esPlan = false;
+            proximoChequeo = Time.time + 0.3f;
             transform.position = new Vector3(position.x, 0.05f, position.z);
             transform.localScale = new Vector3(1.1f, 0.05f, 1.1f);
 
@@ -439,6 +525,17 @@ namespace SP.Presentation
 
         void Update()
         {
+            if (esDeCola && !esPlan)
+            {
+                if (Time.time < proximoChequeo) return;
+                proximoChequeo = Time.time + 0.15f;
+                if (!HayOrdenPendienteEn(puntoDeCola))
+                {
+                    Recycle();
+                    Release(this);
+                }
+                return;
+            }
             if (!fading) return;
             age += Time.deltaTime;
             float k = Mathf.Clamp01(age / duration);
@@ -459,6 +556,8 @@ namespace SP.Presentation
         public void Recycle()
         {
             fading = false;
+            esPlan = false;
+            esDeCola = false;
             age = 0f;
             // Si estaba haciendo de marcador de cola, deja de representar un
             // plan pendiente: sale de la lista publica antes de apagarse.
