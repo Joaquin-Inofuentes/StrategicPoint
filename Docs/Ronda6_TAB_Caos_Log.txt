@@ -1,0 +1,69 @@
+RONDA 6 - PRUEBA DE ESTRES DE [TAB], TANQUE Y TORRETA FIJA (Play Mode, Editor enfocado, teclas reales)
+Invariantes que se comprueban despues de CADA accion (inv2.cs):
+  1. el soldado que maneja el jugador sigue "poseido" (Brain.IsPossessedByPlayer)
+  2. "estoy sentado" (driver.CurrentSeat) coincide con "el vehiculo me tiene de ocupante" (Vehicle.RoleOf)
+  3. si estoy en la ametralladora fija, ella me tiene de ocupante y no estoy tambien en el tanque
+  4. ninguna torreta esta ocupada por otro soldado
+  5. la camara no tiene NaN
+  6. el soldado no queda desactivado fuera del tanque
+
+=== CAOS 1: TAB + apuntar + entrar/salir del tanque ===
+[estado inicial] OK | mode=Fps seat=Passenger1
+[TAB->RTS] OK | mode=Rts seat=Passenger1
+[TAB->FPS] OK | mode=Fps seat=Passenger1
+[bajar del tanque] OK | mode=Fps seat= pos=(9.50, 0.70, -9.00)
+[TAB->RTS] OK | mode=Rts seat=
+[TAB->FPS] OK | mode=Fps seat=
+[RMB apuntar] OK | ads=1
+[TAB->RTS apuntando] OK | mode=Rts ads=1
+[TAB->FPS] OK | mode=Fps ads=1
+[soltar RMB] OK | ads=0
+[subir al tanque] OK | seat=Driver
+[asiento canon] OK | seat=Gunner
+[RMB en canon] OK | ads=1
+[TAB->RTS apuntando canon] OK | mode=Rts seat=Gunner ads=1
+[TAB->FPS] OK | mode=Fps seat=Gunner ads=1
+[soltar RMB] OK | ads=0
+[bajar] OK | seat=
+[subir otra vez] OK | seat=Driver
+[bajar rapido] OK | seat=
+[subir+bajar+subir en un frame] OK | seat=Driver
+[bajar] OK | seat=
+Resultado: 20/20 OK.  Hallazgo: con RMB apretado, TAB a RTS dejaba el "apuntado" (ads=1) colgado al volver ->
+CameraRig.SetMode ahora lo pone en 0 (corregido).
+
+=== CAOS 2: torreta fija, TAB, posesiones, muerte ===
+[tp a torre] OK
+[usar torreta] OK | turret=True pos=(30.00, 5.80, 78.30)
+[TAB->RTS en torreta] OK | mode=Rts turret=True
+[TAB->FPS] OK | mode=Fps turret=True
+[RMB en torreta] OK | ads=1
+[soltar] OK | ads=0
+[subir tanque estando en torreta] OK | seat=Driver turret=False   (la torreta se libera sola)
+[bajar] OK
+[tp a torre 2] OK
+[usar torreta] OK | turret=True
+[poseer otro estando en torreta] OK | turret=False                  (se libera al cambiar de soldado)
+[volver a poseer 1] OK
+[usar torreta] OK | turret=True
+[salir] OK | turret=False pos=(30.00, 0.80, 75.50)                  (baja de la torre donde estaba)
+[salir de nuevo (ya fuera)] OK
+[usar+salir+usar mismo frame] OK | turret=True
+[matar estando en torreta] FAIL torreta sin ocupante                 -> HALLAZGO
+Resultado: 15/16 OK. El FAIL era real: al morir en la torreta el driver seguia creyendo que estaba en ella
+(el estado se limpiaba solo en UpdateFps, que no corre durante la camara de muerte). Corregido en OnEntityDied.
+
+=== RTS: ordenar a toda la escuadra estando el jugador SENTADO en el tanque, y volver con TAB ===
+RTS:            mode=Rts seat=Passenger1 poss=True
+tras la orden:  mode=Rts seat=Passenger1 poss=True   (el soldado del tanque no se baja ni se "maneja solo")
+FPS otra vez:   mode=Fps seat=Passenger1 poss=True
+3 s despues:    mode=Fps seat=Passenger1 pos sin cambios
+
+=== RE-PRUEBA TRAS LOS ARREGLOS (mismo entorno) ===
+[usar torreta] OK | turret=True
+[RMB apuntando] OK | ads=1
+[TAB->RTS apuntando] OK | mode=Rts ads=0        <- antes quedaba en 1
+[TAB->FPS] OK | mode=Fps turret=True
+[soltar] OK | ads=0
+[matar estando en torreta] OK | turret=False     <- antes: FAIL "torreta sin ocupante"
+tras muerte: OK | mode=Rts (la camara de muerte pasa sola a RTS, como siempre)

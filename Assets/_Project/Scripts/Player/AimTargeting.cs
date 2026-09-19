@@ -7,13 +7,14 @@ using SP.Presentation;
 
 namespace SP.Player
 {
-    public enum AimTargetType { None, Ally, Enemy, Vehicle, Ground, Obstacle }
+    public enum AimTargetType { None, Ally, Enemy, Vehicle, Ground, Obstacle, Torreta, Caido }
 
     public struct AimResult
     {
         public AimTargetType Type;
         public Soldier Soldier;
         public Vehicle Vehicle;
+        public TorretaFija Torreta;
         public Vector3 Point;
         // B4: raiz del objeto golpeado, para el anillo generico de apuntado
         // (SelectionRingFx necesita un Transform a quien seguir, y Point es
@@ -38,7 +39,14 @@ namespace SP.Player
         {
             Physics.SyncTransforms();
 
-            if (Physics.Raycast(ray, out var hit, maxDistance))
+            bool golpeo = Physics.Raycast(ray, out var hit, maxDistance);
+
+            // Los aliados CAIDOS no tienen collider (se apaga al morir): se los apunta por cercania al rayo.
+            var caido = CaidoBajoRayo(ray, excludeSelf, golpeo ? hit.distance : maxDistance, out var puntoCaido);
+            if (caido != null)
+                return new AimResult { Type = AimTargetType.Caido, Soldier = caido, Point = puntoCaido, HitTransform = caido.transform };
+
+            if (golpeo)
             {
                 var soldier = hit.collider.GetComponentInParent<Soldier>();
                 if (soldier != null && soldier != excludeSelf && soldier.Health.IsAlive)
@@ -53,7 +61,15 @@ namespace SP.Player
                     return new AimResult { Type = AimTargetType.Enemy, Soldier = soldier, Point = hit.point, HitTransform = soldier.transform };
                 }
 
+                // Un aliado CAIDO (muerto) se apunta aparte: se lo puede reanimar.
+                if (soldier != null && soldier != excludeSelf && !soldier.Health.IsAlive && soldier.Team == TeamId.Player)
+                    return new AimResult { Type = AimTargetType.Caido, Soldier = soldier, Point = hit.point, HitTransform = soldier.transform };
+
                 ClearHighlight();
+
+                var torreta = hit.collider.GetComponentInParent<TorretaFija>();
+                if (torreta != null)
+                    return new AimResult { Type = AimTargetType.Torreta, Torreta = torreta, Point = hit.point, HitTransform = torreta.transform };
 
                 var vehicle = hit.collider.GetComponentInParent<Vehicle>();
                 if (vehicle != null)
@@ -88,6 +104,27 @@ namespace SP.Player
             return new AimResult { Type = AimTargetType.None };
         }
 
+        const float RadioDeCaido = 0.9f;
+
+        // Aliado muerto mas cercano a la linea de mira (dentro de 'limite' metros).
+        static Soldier CaidoBajoRayo(Ray ray, Soldier excluir, float limite, out Vector3 punto)
+        {
+            punto = default;
+            Soldier mejor = null; float mejorT = float.MaxValue;
+            foreach (var s in ActorRegistry.All)
+            {
+                if (s == null || s == excluir || s.Team != TeamId.Player || s.Health == null || s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                if (s.Role == RoleType.Civilian) continue;
+                var centro = s.transform.position + Vector3.up * 0.2f;
+                var v = centro - ray.origin;
+                float t = Vector3.Dot(v, ray.direction);
+                if (t < 0.5f || t > limite) continue;
+                if (Vector3.Cross(ray.direction, v).magnitude > RadioDeCaido) continue;
+                if (t < mejorT) { mejorT = t; mejor = s; punto = centro; }
+            }
+            return mejor;
+        }
+
         void Highlight(int soldierId)
         {
             if (lastHighlightedId == soldierId) return;
@@ -105,6 +142,9 @@ namespace SP.Player
         // Altura del piso jugable. El suelo de la escena tiene su cara
         // superior en y=0; se cruza el rayo contra ese plano.
         const float AlturaDelPiso = 0f;
+
+        // Punto del piso bajo un rayo (para ordenar "ir alli" aunque el cursor caiga sobre algo).
+        public static bool PisoBajoRayo(Ray ray, out Vector3 punto) => TryPuntoEnElPiso(ray, out punto);
 
         static bool TryPuntoEnElPiso(Ray ray, out Vector3 punto)
         {

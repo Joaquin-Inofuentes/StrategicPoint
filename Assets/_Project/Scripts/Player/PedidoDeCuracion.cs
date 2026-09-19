@@ -34,6 +34,50 @@ namespace SP.Player
         public static Soldier Enfermero { get; private set; }
         public static bool Activo => Herido != null && Enfermero != null;
 
+        // REANIMAR: el medico revive a un aliado caido (muerto) parado junto a el unos segundos.
+        public const float SegundosDeReanimar = 4f;
+        public static bool Reanimando { get; private set; }
+        static Soldier medicoPasivo;
+        public static float ProgresoDeReanimar => Reanimando ? Mathf.Clamp01(acumulado / SegundosDeReanimar) : 0f;
+
+        public static Soldier MedicoDisponible(Soldier excluir = null)
+        {
+            Soldier mejor = null;
+            foreach (var a in ActorRegistry.All)
+            {
+                if (a == null || a == excluir || a.Team != TeamId.Player || a.Role != RoleType.Medic) continue;
+                if (a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy) continue;
+                mejor = a; break;
+            }
+            return mejor;
+        }
+
+        // medicoManual: el medico es el propio jugador (tiene que acercarse el mismo).
+        public static bool SolicitarReanimar(Soldier caido, Soldier medicoManual = null)
+        {
+            Cancelar();
+            if (caido == null || caido.Health == null || caido.Health.IsAlive || caido.Team != TeamId.Player) return false;
+            var medico = medicoManual != null && medicoManual.Health != null && medicoManual.Health.IsAlive
+                ? medicoManual : MedicoDisponible(caido);
+            if (medico == null || medico == caido) return false;
+            if (medico != medicoManual && OrderService.LoManejaElJugador(medico)) return false;
+
+            Herido = caido;
+            Enfermero = medico;
+            Reanimando = true;
+            restante = EsperaMaxima;
+            acumulado = 0f;
+            // Un caido no se "sigue" (el seguimiento se cae al morir el objetivo): se va al lugar donde yace.
+            if (medico != medicoManual)
+            {
+                OrderService.IssueMoveOrder(medico, caido.transform.position + (medico.transform.position - caido.transform.position).normalized * 1.2f);
+                // Mientras reanima no se distrae peleando: si no, se va y el caido queda sin levantar.
+                if (medico.Brain != null) { medico.Brain.Pasivo = true; medicoPasivo = medico; }
+            }
+            GameLog.Line($"{medico.DisplayName} va a reanimar a {caido.DisplayName}");
+            return true;
+        }
+
         static float restante;
         static float acumulado;
 
@@ -114,8 +158,12 @@ namespace SP.Player
 
         public static void Cancelar()
         {
+            // El medico que iba a reanimar vuelve a pelear normal.
+            if (medicoPasivo != null && medicoPasivo.Brain != null) medicoPasivo.Brain.Pasivo = false;
+            medicoPasivo = null;
             Herido = null;
             Enfermero = null;
+            Reanimando = false;
             restante = 0f;
             acumulado = 0f;
         }
@@ -167,6 +215,22 @@ namespace SP.Player
         {
             TickBotiquin(dt);
             if (!Activo) { AtenderSolo(dt); return; }
+
+            if (Reanimando)
+            {
+                if (Herido.Health.IsAlive || !Enfermero.Health.IsAlive) { Cancelar(); return; }
+                restante -= dt;
+                if (restante <= 0f) { Cancelar(); return; }
+                if (Vector3.Distance(Herido.transform.position, Enfermero.transform.position) > AlcanceDeCuracion) return;
+                acumulado += dt;
+                if (acumulado < SegundosDeReanimar) return;
+                var revivido = Herido;
+                revivido.Health.Initialize(revivido.Id, revivido.Health.MaxHealth);
+                revivido.Motor.ResetMotionState();
+                GameLog.Line($"{Enfermero.DisplayName} reanimo a {revivido.DisplayName}");
+                Cancelar();
+                return;
+            }
 
             if (!Herido.Health.IsAlive || !Enfermero.Health.IsAlive
                 || Herido.Health.Current >= Herido.Health.MaxHealth)

@@ -52,6 +52,13 @@ namespace SP.Presentation
             if (SP.UI.MenuDeOrdenes.AsegurarEnEscena() != null)
                 GameLog.Line("Menu de ordenes listo ([Q] sostenido)");
 
+            // Los emplazamientos de ametralladora de las torres y bunkers pasan a ser torretas fijas
+            // utilizables, y el cartel de modo dios ([F4]) queda listo.
+            int torretas = SP.Vehicles.TorretaFija.InstalarEnEscena();
+            if (torretas > 0) GameLog.Line($"{torretas} ametralladoras fijas listas ([E] para usarlas)");
+            var driverBoot = FindAnyObjectByType<SP.Player.PlayerInputDriver>();
+            if (driverBoot != null && driverBoot.AimUiRef != null) SP.UI.ModoDiosView.Asegurar(driverBoot.AimUiRef.transform.parent);
+
             // Dificultad elegida en el menu: potenciadores de vida/dano (solo partida principal).
             SP.Core.Dificultad.Activa = !esTutorial;
             if (!esTutorial)

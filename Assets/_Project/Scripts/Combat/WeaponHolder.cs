@@ -340,6 +340,16 @@ namespace SP.Combat
             EquipWeapon(kind, spec.Damage, spec.Cooldown, spec.Color);
         }
 
+        // Cinta de balas de una ametralladora fija: cargador y recarga propios, sin tocar el catalogo.
+        public void ConfigurarCargador(int tamano, float segundosDeRecarga)
+        {
+            magazineSize = Mathf.Max(1, tamano);
+            reloadDuration = segundosDeRecarga;
+            CurrentAmmo = magazineSize;
+            IsReloading = false;
+            reloadTimer = 0f;
+        }
+
         public void CycleNext() => EquipFromLoadout(CurrentLoadoutIndex + 1);
         public void CyclePrevious() => EquipFromLoadout(CurrentLoadoutIndex - 1);
 

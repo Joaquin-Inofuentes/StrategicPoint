@@ -837,6 +837,7 @@ namespace SP.EditorTools
                 RunPhase9(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase13(inputDriver, vehicle, vega, kes, doc);
                 RunPhase14(inputDriver, vehicle, vega, kes, doc, pool, soldierPrefab, colorEnemy);
+                RunPhase15(inputDriver, aimTargeting, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia
@@ -2151,9 +2152,14 @@ namespace SP.EditorTools
             Check($"Y todas quedan pegadas a su obstaculo (la mas cercana a {masCercaDeUnMuro:0.00} m de la cara)",
                 masCercaDeUnMuro < SP.Core.Coberturas.DistanciaDeLaCara + 0.1f);
 
+            // Ronda 6: las marcas del piso estan OCULTAS por defecto y solo se ven al pedirlas ([C] / radial en CUBRIRSE).
+            SP.Core.Coberturas.MostrarMarcas(false);
+            Check("Las marcas de cobertura estan ocultas por defecto", GameObject.Find(SP.Core.Coberturas.NombreDelRoot) == null);
+            SP.Core.Coberturas.MostrarMarcas(true);
             var marcasEnEscena = GameObject.Find(SP.Core.Coberturas.NombreDelRoot);
-            Check($"Las coberturas quedan marcadas en el mapa ({(marcasEnEscena != null ? marcasEnEscena.transform.childCount : 0)} marcas)",
+            Check($"Las coberturas quedan marcadas en el mapa al pedir verlas ({(marcasEnEscena != null ? marcasEnEscena.transform.childCount : 0)} marcas)",
                 marcasEnEscena != null && marcasEnEscena.transform.childCount == coberturas);
+            SP.Core.Coberturas.MostrarMarcas(false);
 
             // --- F2: linea de tiro desde una cobertura ---
             // Obstaculo_1 esta en (6, 3) y mide 2x2. El enemigo se pone
@@ -2705,7 +2711,7 @@ namespace SP.EditorTools
             aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Enemy, Soldier = enemigoParaE1,
                 Point = enemigoParaE1.transform.position, HitTransform = enemigoParaE1.transform });
             Check($"Apuntando a un enemigo, el cartel invita a atacar (\"{aimUiRef.CurrentPrompt}\")",
-                aimUiRef.CurrentPrompt.Contains("F") && aimUiRef.CurrentPrompt.Contains(enemigoParaE1.DisplayName));
+                aimUiRef.CurrentPrompt.Contains("tacar") && aimUiRef.CurrentPrompt.Contains(enemigoParaE1.DisplayName));
 
             OrderService.IssueAttackOrderForSelection(inputDriver.Selection.Selected, enemigoParaE1);
             SimulateSeconds(1f); // deja que Chase/Attack se resuelva tras la orden
@@ -3575,6 +3581,151 @@ namespace SP.EditorTools
             return go;
         }
 
+
+        // ------------------------------------------------------------------
+        // FASE 15 (ronda 6): radial contextual, modo dios, correr, ametralladora fija, reanimar, mira
+        // ------------------------------------------------------------------
+        static void RunPhase15(PlayerInputDriver inputDriver, AimTargeting aim, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc,
+                               GameObject soldierPrefab, Color colorEnemy, ProjectilePool pool)
+        {
+            TestLog.Phase("FASE 15 - Radial contextual, modo dios, correr, ametralladora fija, reanimar, coberturas ocultas");
+
+            foreach (var o in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(o);
+            vega.Brain.CancelOrder(); kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
+            FullHeal(vega, kes, doc);
+            SP.Core.ModoDios.Poner(false);
+
+            // --- Teclas nuevas ---
+            Check("[C] es la tecla de vista tactica (coberturas y rutas)", KeyBindings.Get(KeyBindings.VerTactico) == UnityEngine.InputSystem.Key.C);
+            Check("La tabla de controles menciona F4 y la vista tactica", SP.UI.ControlsTable.FullText().Contains("F4") && SP.UI.ControlsTable.FullText().Contains("modo dios"));
+
+            // --- Modo dios ---
+            int antes = kes.Health.Current;
+            SP.Core.ModoDios.Poner(true);
+            kes.Health.TakeDamage(60, -1);
+            Check("Modo dios: un aliado no recibe dano", kes.Health.Current == antes);
+            var enemigo = SpawnSoldier(soldierPrefab, "T15_Enemigo", TeamId.Enemy, RoleType.Enemy, new Vector3(-70f, 0.8f, 70f), colorEnemy, pool, 100);
+            enemigo.Health.TakeDamage(30, kes.Id);
+            Check("Modo dios: el enemigo SI recibe dano", enemigo.Health.Current == 70);
+            int vidaTanque = vehicle.Health.Current;
+            vehicle.TakeDamage(80, -1);
+            Check("Modo dios: el tanque propio no recibe dano", vehicle.Health.Current == vidaTanque);
+            SP.Core.ModoDios.Poner(false);
+            kes.Health.TakeDamage(60, -1);
+            Check("Sin modo dios el dano vuelve", kes.Health.Current == antes - 60);
+            FullHeal(vega, kes, doc);
+
+            // --- Correr ---
+            float caminar = vega.Motor.MoveSpeed;
+            vega.Motor.SetRunning(true);
+            Check($"Correr acelera al {SoldierMotor.FactorDeCarrera:0.0}x ({vega.Motor.MoveSpeed:0.0} contra {caminar:0.0} m/s)", Mathf.Abs(vega.Motor.MoveSpeed - caminar * SoldierMotor.FactorDeCarrera) < 0.01f && vega.Motor.Corriendo);
+            vega.Motor.SetCrouching(true);
+            Check("Agachado no se corre", !vega.Motor.Corriendo);
+            vega.Motor.SetCrouching(false);
+            vega.Motor.SetRunning(false);
+            Check("Sin Shift vuelve a caminar", Mathf.Abs(vega.Motor.MoveSpeed - caminar) < 0.01f);
+
+            // --- Radial contextual: solo lo que se puede hacer con lo apuntado ---
+            var suelo = inputDriver.ConstruirContextoRadial(new AimResult { Type = AimTargetType.Ground, Point = Vector3.zero });
+            bool soloBase = suelo.Visible[SP.UI.MenuDeOrdenes.IrAlli] && suelo.Visible[SP.UI.MenuDeOrdenes.Cubrirse] && suelo.Visible[SP.UI.MenuDeOrdenes.Posicion];
+            int visibles = 0; foreach (bool v in suelo.Visible) if (v) visibles++;
+            Check($"Apuntando al suelo el radial ofrece solo IR ALLI, CUBRIRSE y POSICION ({visibles})", soloBase && visibles == 3);
+
+            kes.Configure(kes.DisplayName, TeamId.Player, RoleType.Flanker, kes.Health.MaxHealth);
+            doc.Configure(doc.DisplayName, TeamId.Player, RoleType.Medic, doc.Health.MaxHealth);
+            kes.Health.TakeDamage(90, -1);
+            var aHerido = inputDriver.ConstruirContextoRadial(new AimResult { Type = AimTargetType.Ally, Soldier = kes, Point = kes.transform.position, HitTransform = kes.transform });
+            Check("Apuntando a un aliado HERIDO con medico vivo aparece CURAR (contextual)", aHerido.Visible[SP.UI.MenuDeOrdenes.Curar] && aHerido.Contextual[SP.UI.MenuDeOrdenes.Curar]);
+            Check("...y tambien POSEER", aHerido.Visible[SP.UI.MenuDeOrdenes.Poseer] && aHerido.Contextual[SP.UI.MenuDeOrdenes.Poseer]);
+            Check("...pero no DEMOLER ni TANQUE ni TORRETA", !aHerido.Visible[SP.UI.MenuDeOrdenes.Demoler] && !aHerido.Visible[SP.UI.MenuDeOrdenes.Tanque] && !aHerido.Visible[SP.UI.MenuDeOrdenes.Torreta]);
+            FullHeal(vega, kes, doc);
+            var aSano = inputDriver.ConstruirContextoRadial(new AimResult { Type = AimTargetType.Ally, Soldier = kes, Point = kes.transform.position, HitTransform = kes.transform });
+            Check("Apuntando a un aliado SANO no aparece CURAR", !aSano.Visible[SP.UI.MenuDeOrdenes.Curar]);
+
+            var aEnemigo = inputDriver.ConstruirContextoRadial(new AimResult { Type = AimTargetType.Enemy, Soldier = enemigo, Point = enemigo.transform.position, HitTransform = enemigo.transform });
+            Check("Apuntando a un enemigo aparece ATACAR", aEnemigo.Visible[SP.UI.MenuDeOrdenes.Atacar] && aEnemigo.Contextual[SP.UI.MenuDeOrdenes.Atacar]);
+
+            var aTanque = inputDriver.ConstruirContextoRadial(new AimResult { Type = AimTargetType.Vehicle, Vehicle = vehicle, Point = vehicle.transform.position, HitTransform = vehicle.transform });
+            Check("Apuntando al tanque aliado aparece TANQUE (con SUBIRME YO)", aTanque.Visible[SP.UI.MenuDeOrdenes.Tanque] && aTanque.OpcionVisible[SP.UI.MenuDeOrdenes.Tanque][3]);
+
+            // Las categorias contextuales van primero y el menu las marca
+            var menu = inputDriver.OrdenesMenu;
+            if (menu != null && menu.EsRadial)
+            {
+                menu.Abrir(aHerido);
+                Check($"El radial pone lo contextual primero ({menu.CategoriasVisibles[0]}) y lo marca dorado", menu.EsContextual(menu.CategoriasVisibles[0]));
+                Check($"...con {menu.CategoriasVisibles.Count} categorias (2 contextuales + IR ALLI, CUBRIRSE, POSICION)", menu.CategoriasVisibles.Count == 5);
+                menu.ElegirDirecto(SP.UI.MenuDeOrdenes.Curar, 2);
+                Check("Elegir CURAR A ESTE devuelve la opcion real 2", menu.Seleccion == SP.UI.MenuDeOrdenes.Curar && menu.Sub == 2);
+                Check("Las opciones de CURAR con un herido apuntado se filtran (sin REVIVIR)", !System.Linq.Enumerable.Contains(menu.OpcionesVisibles, 3));
+                menu.Cerrar();
+                menu.Abrir(suelo);
+                Check("Sin contexto solo hay 3 categorias", menu.CategoriasVisibles.Count == 3);
+                menu.Cerrar();
+            }
+
+            // --- Reanimar a un caido ---
+            kes.Health.TakeDamage(9999, -1);
+            Check("Un aliado muerto queda caido", !kes.Health.IsAlive);
+            var caido = inputDriver.ConstruirContextoRadial(new AimResult { Type = AimTargetType.Caido, Soldier = kes, Point = kes.transform.position, HitTransform = kes.transform });
+            Check("Apuntando a un aliado caido con medico vivo aparece CURAR > REVIVIR", caido.Visible[SP.UI.MenuDeOrdenes.Curar] && caido.OpcionVisible[SP.UI.MenuDeOrdenes.Curar][3]);
+            kes.transform.position = new Vector3(-40f, 0.8f, -40f);
+            doc.transform.position = new Vector3(-34f, 0.8f, -40f);
+            Physics.SyncTransforms();
+            bool pidio = PedidoDeCuracion.SolicitarReanimar(kes);
+            Check("El medico acepta reanimar al caido", pidio && PedidoDeCuracion.Reanimando);
+            bool revivio = SimulateUntil(() => kes.Health.IsAlive, 20f);
+            Check($"El medico llega, se queda junto a el y lo levanta ({(revivio ? kes.Health.Current : 0)} de vida)", revivio);
+            Check("...y el medico vuelve a pelear normal", doc.Brain != null && !doc.Brain.Pasivo);
+            PedidoDeCuracion.Cancelar();
+            FullHeal(vega, kes, doc);
+
+            // --- Ametralladora fija ---
+            var go = new GameObject("T15_Torreta");
+            go.transform.position = new Vector3(-90f, 0.5f, 90f);
+            var torreta = TorretaFija.Instalar(go);
+            Check("Una torreta fija instalada esta libre y con zona de apuntado", torreta.Libre && go.GetComponent<BoxCollider>() != null);
+            vega.transform.position = new Vector3(-90f, 0.8f, 86f);
+            vega.transform.rotation = Quaternion.identity;
+            int loadoutPrevio = vega.Weapon.CurrentLoadoutIndex;
+            var armaPrevia = vega.Weapon.CurrentWeaponKind;
+            string motivo;
+            bool ocupada = torreta.Ocupar(vega, out motivo);
+            Check("El soldado ocupa la torreta", ocupada && torreta.Ocupante == vega);
+            Check($"...se queda plantado detras del arma y con cinta de {TorretaFija.Cinta} balas", vega.Weapon.CurrentAmmo == TorretaFija.Cinta && vega.Weapon.MagazineSize == TorretaFija.Cinta);
+            Check("Otro soldado no puede ocuparla", !torreta.Ocupar(kes, out motivo));
+            vega.transform.rotation = Quaternion.Euler(0f, torreta.YawCentro + 170f, 0f);
+            torreta.AcotarGiro(vega);
+            Check($"El giro esta limitado al arco de +-{TorretaFija.ArcoDeGiro:0}", Mathf.Abs(Mathf.DeltaAngle(torreta.YawCentro, vega.transform.eulerAngles.y)) <= TorretaFija.ArcoDeGiro + 0.1f);
+            var apuntaTorreta = inputDriver.ConstruirContextoRadial(new AimResult { Type = AimTargetType.Ally, Soldier = kes });
+            torreta.Liberar();
+            Check("Al salir la torreta queda libre", torreta.Libre);
+            Check("...y el soldado recupera su arma de siempre", vega.Weapon.CurrentWeaponKind == armaPrevia && vega.Weapon.CurrentLoadoutIndex == loadoutPrevio);
+            var aTorreta = inputDriver.ConstruirContextoRadial(new AimResult { Type = AimTargetType.Torreta, Torreta = torreta, Point = go.transform.position, HitTransform = go.transform });
+            Check("Apuntando a la torreta libre aparece TORRETA (contextual, opcion USAR)", aTorreta.Visible[SP.UI.MenuDeOrdenes.Torreta] && aTorreta.Contextual[SP.UI.MenuDeOrdenes.Torreta] && aTorreta.OpcionVisible[SP.UI.MenuDeOrdenes.Torreta][0]);
+            Check("TorretaFija.MasCercana la encuentra a distancia horizontal", TorretaFija.MasCercana(new Vector3(-90f, 5f, 87f), TorretaFija.AlcanceDeUso) == torreta);
+            UnityEngine.Object.DestroyImmediate(go);
+
+            // --- Aliados caidos: se los apunta aunque no tengan collider ---
+            kes.Health.TakeDamage(9999, -1);
+            var col = kes.GetComponent<Collider>(); bool colHabia = col != null && col.enabled; if (col != null) col.enabled = false;
+            kes.transform.position = new Vector3(-40f, 0.8f, -40f);
+            Physics.SyncTransforms();
+            var rayo = new Ray(kes.transform.position + new Vector3(0f, 1.5f, -6f), (new Vector3(0f, 0.2f, 0f) - new Vector3(0f, 1.5f, -6f)).normalized);
+            var mira = aim.Evaluate(rayo, vega);
+            Check($"Un aliado caido sin collider igual se apunta ({mira.Type})", mira.Type == AimTargetType.Caido && mira.Soldier == kes);
+            if (col != null) col.enabled = colHabia;
+            FullHeal(vega, kes, doc);
+            kes.Health.Initialize(kes.Id, kes.Health.MaxHealth);
+
+            // --- Coberturas ocultas ---
+            SP.Core.Coberturas.MostrarMarcas(false);
+            Check("Las coberturas y rutas no estan siempre a la vista", !SP.Core.Coberturas.MarcasVisibles);
+            SP.Core.ModoDios.Poner(false);
+            SP.UI.MenuDeOrdenes.PonerPista(-1);
+            TestLog.Phase("FASE 15 FINALIZADA");
+        }
+
         static void RunPhase14(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc,
                                ProjectilePool pool, GameObject soldierPrefab, Color colorEnemy)
         {
@@ -3742,7 +3893,7 @@ namespace SP.EditorTools
             var panel = VehicleKeysPanel.Asegurar(canvasGo.transform);
             panel.Actualizar(vehicle, null, 0);
             string txt = panel.UltimoTexto;
-            Check("El panel de teclas del tanque muestra [G] TODOS SUBEN y [I] TODOS BAJAN", txt.Contains("[G]") && txt.Contains("TODOS SUBEN") && txt.Contains("[I]") && txt.Contains("TODOS BAJAN"));
+            Check("El panel de teclas del tanque explica el radial: TANQUE > subir todos / bajar todos", txt.Contains("TANQUE") && txt.Contains("subir todos") && txt.Contains("bajar todos"));
             Check("...y los 4 asientos con quien los ocupa y 'intercambiar' si esta ocupado",
                 txt.Contains("[1]") && txt.Contains("[2]") && txt.Contains("[3]") && txt.Contains("[4]") && txt.Contains("intercambiar") && txt.Contains(kes.DisplayName));
             UnityEngine.Object.DestroyImmediate(canvasGo);

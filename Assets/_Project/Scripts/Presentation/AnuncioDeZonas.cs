@@ -21,7 +21,7 @@ namespace SP.Presentation
         static readonly Zona[] Zonas =
         {
             new Zona { Nombre = "1 · BASE", ZMin = -30f, ZMax = 15f, Consejo = "Tanque propio: [E] para subir" },
-            new Zona { Nombre = "2 · CAMPO DE TIRO", ZMin = 15f, ZMax = 66f, Consejo = "[Shift]+[T] sobre una cobertura la toma un aliado" },
+            new Zona { Nombre = "2 · CAMPO DE TIRO", ZMin = 15f, ZMax = 66f, Consejo = "Mantene [C] para ver las coberturas · [Q] radial > CUBRIRSE" },
             new Zona { Nombre = "3 · PASO DEL CAÑON", ZMin = 66f, ZMax = 90f, Consejo = "Hueco de 18 m: pasa el tanque" },
             new Zona { Nombre = "4 · ALDEA", ZMin = 90f, ZMax = 145f, Consejo = "Casas y calle central" },
             new Zona { Nombre = "5 · PUESTO AVANZADO", ZMin = 145f, ZMax = 192f, TanqueEnemigo = true, Consejo = "Usa tu tanque: el cañon derriba coberturas" },

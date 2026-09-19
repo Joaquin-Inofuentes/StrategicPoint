@@ -16,7 +16,7 @@ namespace SP.CameraSystem
         // barrido de escena en el peor momento posible.
         public static CameraRig Instance { get; private set; }
 
-        void OnEnable() { Instance = this; ShowWaypointsOnMainCamera(); }
+        void OnEnable() { Instance = this; AplicarRutasEnCamara(); }
         void OnDisable() { if (Instance == this) Instance = null; }
 
         // Solo para HeadlessTestRunner: ese harness corre en Edit Mode, y
@@ -77,7 +77,7 @@ namespace SP.CameraSystem
             // La camara es SIEMPRE en perspectiva ahora (RTS incluido):
             // pedido explicito de que no sea ortogonal.
             if (cam != null) { cam.orthographic = false; normalFov = cam.fieldOfView; }
-            ShowWaypointsOnMainCamera();
+            AplicarRutasEnCamara();
         }
 
         // Pedido explicito: "el enemigo esta muy lejos y no veo las
@@ -89,15 +89,51 @@ namespace SP.CameraSystem
         // ronda), asi que en vez de excluir la capa, se fuerza a que este
         // incluida. FPS y RTS comparten la unica Camera del juego, asi
         // que esto alcanza para los dos modos.
-        void ShowWaypointsOnMainCamera()
+        // Las rutas y esferas de patrulla ya NO estan siempre a la vista: aparecen solo mientras se
+        // sostiene la tecla de vista tactica ([C]). Antes ensuciaban toda la pantalla.
+        bool rutasVisibles;
+        public bool RutasVisibles => rutasVisibles;
+        public void MostrarRutas(bool visibles)
+        {
+            if (rutasVisibles == visibles) return;
+            rutasVisibles = visibles;
+            AplicarRutasEnCamara();
+        }
+
+        void AplicarRutasEnCamara()
         {
             if (cam == null) return;
             int layer = LayerMask.NameToLayer(PatrolRouteLine.LayerName);
             if (layer < 0) return;
-            cam.cullingMask |= (1 << layer);
+            if (rutasVisibles) cam.cullingMask |= (1 << layer);
+            else cam.cullingMask &= ~(1 << layer);
         }
 
         public void SetZoomed(bool value) => zoomed = value;
+
+        // APUNTAR (mantener click derecho) pasa la camara a PRIMERA PERSONA de verdad: del
+        // encuadre por encima del hombro se desliza al ojo del soldado (o a la mira del
+        // canon en el tanque). 0 = encuadre normal, 1 = camara en el ojo / mira.
+        public const float VelocidadDeApuntado = 5f;
+        float adsBlend;
+        public float AdsBlend => adsBlend;
+        public float AdsBlendSuave => SmoothStep01(adsBlend);
+
+        // Al apuntar la mira NO esta quieta: respira. Un balanceo lento (ruido suave) que crece con el
+        // aumento; agachado se reduce y quieto baja. Mueve la camara de verdad, o sea tambien el tiro.
+        public float EscalaDeRespiracion = 1f;
+        public Vector2 Respiracion { get; private set; }
+
+        void AplicarRespiracion()
+        {
+            float e = SmoothStep01(adsBlend);
+            if (!zoomed || e < 0.6f) { Respiracion = Vector2.zero; return; }
+            float amp = 0.11f * Mathf.Sqrt(Mathf.Max(1f, ZoomFactor)) * EscalaDeRespiracion * (e - 0.6f) / 0.4f;
+            float t = Time.time;
+            var r = new Vector2((Mathf.PerlinNoise(t * 0.85f, 0.13f) - 0.5f) * 2f * amp, (Mathf.PerlinNoise(0.71f, t * 0.7f) - 0.5f) * 2f * amp);
+            Respiracion = r;
+            transform.rotation = transform.rotation * Quaternion.Euler(r.y, r.x, 0f);
+        }
 
         // Zoom REAL: el aumento (x2, x6...) se traduce a FOV con la tangente,
         // para que "x6" sea de verdad seis veces mas cerca y no una resta de grados.
@@ -135,9 +171,11 @@ namespace SP.CameraSystem
 
             if (Mode == ControlMode.Fps)
             {
+                adsBlend = Mathf.MoveTowards(adsBlend, zoomed ? 1f : 0f, Time.unscaledDeltaTime * VelocidadDeApuntado);
                 float goal = zoomed ? zoomFov : normalFov;
                 cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, goal, Time.deltaTime * zoomLerpSpeed);
                 ApplyCameraOffsets(frame);
+                AplicarRespiracion();
                 return;
             }
 
@@ -290,6 +328,7 @@ namespace SP.CameraSystem
 
         public void SetMode(ControlMode mode, Vector3? rtsFallbackCenter = null)
         {
+            adsBlend = 0f;   // al cambiar de vista se pierde el encuadre de mira: no se arrastra un apuntado colgado
             bool wasRts = Mode == ControlMode.Rts;
             bool goingToRts = mode == ControlMode.Rts;
 
@@ -517,12 +556,25 @@ namespace SP.CameraSystem
         // quede desalineado del centro de pantalla.
         [SerializeField] float shoulderSideOffset = 1.0f;
 
-        public void FollowOverShoulder(Transform target, float distance = 4f, float height = 1.53f, float heightOffset = 0f)
+        public void FollowOverShoulder(Transform target, float distance = 4f, float height = 1.53f, float heightOffset = 0f, Vector3? ojo = null)
         {
             if (target == null || IsTransitioning) return;
             Vector3 pivot = target.position + Vector3.up * (height - heightOffset);
             Quaternion look = target.rotation * Quaternion.Euler(-(pitch + recoilPitch), 0f, 0f);
             Vector3 desired = pivot - (look * Vector3.forward) * distance + (look * Vector3.right) * shoulderSideOffset;
+
+            // Apuntando: la camara viaja al ojo (misma rotacion, sin lag) y desde ahi se ve
+            // por la mira del arma, no por encima del hombro.
+            if (ojo.HasValue && adsBlend > 0.001f && !blendActive)
+            {
+                float e = SmoothStep01(adsBlend);
+                Vector3 ojoPos = ojo.Value + (look * Vector3.forward) * 0.12f;
+                float kf = Mathf.Clamp01(Time.deltaTime * normalFollowSpeed);
+                Vector3 basePos = Vector3.Lerp(transform.position, desired, kf);
+                transform.position = Vector3.Lerp(basePos, ojoPos, e);
+                transform.rotation = Quaternion.Slerp(Quaternion.Slerp(transform.rotation, look, kf), look, e);
+                return;
+            }
 
             if (blendActive)
             {
@@ -593,7 +645,8 @@ namespace SP.CameraSystem
         // quedaria visiblemente atras de hacia donde ya esta apuntando.
         const float AimFollowSpeed = 6f;
 
-        public void FollowThirdPersonAimed(Vector3 pivotPos, Vector3 aimForward, float distance = 7f, float height = 3f)
+        public void FollowThirdPersonAimed(Vector3 pivotPos, Vector3 aimForward, float distance = 7f, float height = 3f,
+            Vector3? miraPos = null, Quaternion? miraRot = null)
         {
             if (IsTransitioning) return;
             var flat = new Vector3(aimForward.x, 0f, aimForward.z);
@@ -602,8 +655,19 @@ namespace SP.CameraSystem
             Vector3 desired = pivotPos - flat * distance + Vector3.up * height;
             Quaternion desiredRot = Quaternion.LookRotation((pivotPos + Vector3.up * 1.2f - desired).normalized);
             float k = Mathf.Clamp01(Time.deltaTime * AimFollowSpeed);
-            transform.position = Vector3.Lerp(transform.position, desired, k);
-            transform.rotation = Quaternion.Slerp(transform.rotation, desiredRot, k);
+            Vector3 basePos = Vector3.Lerp(transform.position, desired, k);
+            Quaternion baseRot = Quaternion.Slerp(transform.rotation, desiredRot, k);
+
+            // Mirando por la mira del canon / la metralleta: primera persona sobre el arma.
+            if (miraPos.HasValue && miraRot.HasValue && adsBlend > 0.001f)
+            {
+                float e = SmoothStep01(adsBlend);
+                transform.position = Vector3.Lerp(basePos, miraPos.Value, e);
+                transform.rotation = Quaternion.Slerp(baseRot, miraRot.Value, e);
+                return;
+            }
+            transform.position = basePos;
+            transform.rotation = baseRot;
         }
 
         public void SetRtsView(Vector3 center)

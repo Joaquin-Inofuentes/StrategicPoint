@@ -47,6 +47,7 @@ namespace SP.Vehicles
 
         public void TakeDamage(int amount, int attackerId)
         {
+            if (SP.Core.ModoDios.Protege(Health)) return;   // [F4]
             bool wasAlive = Health.IsAlive;
             Health.TakeDamage(amount, attackerId);
 

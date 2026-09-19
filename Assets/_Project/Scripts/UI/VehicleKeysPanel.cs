@@ -44,7 +44,7 @@ namespace SP.UI
             // velocidad y tripulacion, y arriba a la derecha el minimapa.
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
-            rt.anchoredPosition = new Vector2(16f, -16f);
+            rt.anchoredPosition = new Vector2(16f, -140f);   // debajo del panel de mision
             rt.sizeDelta = new Vector2(330f, 232f);
             var bg = go.GetComponent<Image>();
             bg.color = new Color(0.04f, 0.05f, 0.07f, 0.72f);

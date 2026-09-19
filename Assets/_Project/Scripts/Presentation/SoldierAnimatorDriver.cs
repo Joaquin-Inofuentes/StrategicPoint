@@ -174,6 +174,11 @@ namespace SP.Presentation
                 : 0f;
             animator.SetFloat(ParamVelocidad, normalizada);
 
+            // Correr: el ciclo de piernas llega a su tope a velocidad de caminata, asi que se
+            // ACELERA la animacion (hasta x1.7) en proporcion a lo que se corre de mas.
+            float ritmo = velocidadDeCarrera > 0.01f ? Mathf.Clamp(velocidadSuavizada / velocidadDeCarrera, 1f, SP.Actors.SoldierMotor.FactorDeCarrera) : 1f;
+            animator.speed = Mathf.MoveTowards(animator.speed, normalizada > 0.15f ? ritmo : 1f, 6f * dt);
+
             // Se proyecta la velocidad SUAVIZADA (no la cruda de este
             // frame) sobre los ejes propios del soldado: asi el blend 2D
             // recibe la misma curva de arranque/frenado que ya tenia el

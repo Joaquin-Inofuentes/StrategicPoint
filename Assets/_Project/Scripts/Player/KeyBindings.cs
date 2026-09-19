@@ -36,6 +36,8 @@ namespace SP.Player
         public const string AlternarVista = "alternar_vista";
         public const string Controles = "controles";
         public const string Frenar = "frenar";
+        // Mantener: muestra las coberturas del piso y las rutas de patrulla enemigas.
+        public const string VerTactico = "ver_tactico";
         // Era "camara_vehiculo" (V alternaba primera/tercera persona en el
         // vehiculo) -- ese toggle ya no existe, la vista de vehiculo es
         // siempre 3ra persona. V queda libre y pasa a ser el golpe de
@@ -75,7 +77,8 @@ namespace SP.Player
             { Poseer, Key.F },
             { CiclarPosesion, Key.Q },
             { CiclarPosesionAtras, Key.Z },
-            { PoseerMasCercano, Key.C },
+            { PoseerMasCercano, Key.None },   // heredada: [C] pasa a ser la vista tactica
+            { VerTactico, Key.C },
             { AlternarVista, Key.Tab },
             { Controles, Key.H },
             // Pedido explicito: G -> T. Despues se pidio que [T] mande el

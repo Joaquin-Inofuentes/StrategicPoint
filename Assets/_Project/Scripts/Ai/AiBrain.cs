@@ -1065,6 +1065,15 @@ namespace SP.Ai
             forceSense = true;
         }
 
+        // Los aliados libres corren cuando el jugador corre ([Shift]) y ellos van hacia una
+        // orden, siguen al lider o se retiran. En combate o quietos caminan normal.
+        void ActualizarCarrera()
+        {
+            bool correr = self.Team == SP.Combat.TeamId.Player && AjustesDeEscuadra.Correr && !IsPossessedByPlayer
+                && (State == AiState.MovingToOrder || State == AiState.Follow);
+            self.Motor.SetRunning(correr);
+        }
+
         public void Tick(float dt)
         {
             if (!bootstrapped) Bootstrap();
@@ -1072,6 +1081,7 @@ namespace SP.Ai
             if (!self.gameObject.activeInHierarchy) return;
 
             SincronizarAgente();
+            ActualizarCarrera();
 
             // BUG REAL: Tick() no tenia ningun case Dead ni ninguna
             // transicion de SALIDA de Dead -- una vez que IsAlive pasaba a

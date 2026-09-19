@@ -100,6 +100,11 @@ namespace SP.Player
             return n;
         }
 
+        public static bool HayEnCurso
+        {
+            get { foreach (var d in todos) if (d != null && (d.cargando || d.modoAliado || d.Progreso > 0f)) return true; return false; }
+        }
+
         public static bool CancelarTodos()
         {
             bool hubo = false;

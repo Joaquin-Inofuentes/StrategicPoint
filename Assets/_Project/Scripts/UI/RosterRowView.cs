@@ -107,6 +107,18 @@ namespace SP.UI
             selectionSub?.Dispose();
         }
 
+        // Revivir (reanimar / Health.Initialize) no publica ningun evento: sin esto la fila quedaba en
+        // "CAIDO" para siempre aunque el soldado ya estuviera de pie.
+        void Update()
+        {
+            if (alive || Soldier == null || Soldier.Health == null || !Soldier.Health.IsAlive) return;
+            alive = true;
+            if (healthFill != null) healthFill.gameObject.SetActive(true);
+            RefreshHealthBar(Soldier.Health.Current, Soldier.Health.MaxHealth);
+            RefreshLabel();
+            RefreshBackground();
+        }
+
         void OnDamage(DamageTakenEvent evt)
         {
             if (evt.TargetId != SoldierId || !alive) return;

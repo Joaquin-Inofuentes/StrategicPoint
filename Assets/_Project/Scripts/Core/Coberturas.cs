@@ -305,12 +305,30 @@ namespace SP.Core
             root = null;
         }
 
+        // Las marcas celestes del piso NO se ven siempre: solo mientras se sostiene la tecla de
+        // "vista tactica" ([C]) o el radial esta sobre CUBRIRSE.
+        static bool marcasVisibles;
+        public static bool MarcasVisibles => marcasVisibles;
+
+        public static void MostrarMarcas(bool visibles)
+        {
+            if (marcasVisibles == visibles) return;
+            marcasVisibles = visibles;
+            if (root == null)
+            {
+                var buscado = GameObject.Find(NombreDelRoot);
+                if (buscado != null) root = buscado.transform;
+            }
+            if (root != null) root.gameObject.SetActive(visibles);
+        }
+
         static void Redibujar()
         {
             BorrarRoot();
             if (puntos.Count == 0) return;
 
             root = new GameObject(NombreDelRoot).transform;
+            root.gameObject.SetActive(marcasVisibles);
             var material = SP.Presentation.SafeMaterial.Create(new Color(0.25f, 0.75f, 1f, 1f));
             for (int i = 0; i < puntos.Count; i++)
             {

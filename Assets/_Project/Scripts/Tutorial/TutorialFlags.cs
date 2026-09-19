@@ -16,6 +16,20 @@ namespace SP.Tutorial
         public bool teclaW, teclaA, teclaS, teclaD;
         // 3 Disparar
         public bool disparoEnemigo, disparoPared, disparoDestruible;
+        // 2b Correr
+        public bool corre, caminaDeNuevo;
+        // 6b Mira en primera persona
+        public bool apuntaEnPrimeraPersona, sueltaLaMira;
+        // 6c Vista tactica (coberturas y rutas)
+        public bool verCoberturas, ocultaCoberturas;
+        // 13b Reanimar a un caido
+        public bool ordenDeReanimar, aliadoReanimado;
+        // 14b Ametralladora fija
+        public bool cercaDeLaTorreta, enTorretaFija, disparoTorretaFija, salioDeLaTorreta;
+        // 14c Modo dios
+        public bool modoDiosOn, modoDiosOff;
+        // 14d Mira del tanque
+        public bool miraDelCanon, miraDeMetralleta, sueltaMiraTanque;
         // 4 Cambiar de soldado (radial)
         public bool apuntoAlAliado, cambioDeSoldado, radialAbierto;
         // 5 Agacharse

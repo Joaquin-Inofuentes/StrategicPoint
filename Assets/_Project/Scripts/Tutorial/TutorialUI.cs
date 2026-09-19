@@ -103,6 +103,10 @@ namespace SP.Tutorial
             Anclar(cabecera.rectTransform, 14, 8, 328, 16);
             titulo = NuevoTexto("Titulo", panel, 19, FontStyle.Bold, Color.white, TextAnchor.UpperLeft);
             Anclar(titulo.rectTransform, 14, 22, 328, 28);
+            // Los titulos largos ("CUBRIRSE HACIA DONDE MIRO (RADIAL)") se achican en vez de pasar a dos renglones.
+            titulo.horizontalOverflow = HorizontalWrapMode.Wrap;
+            titulo.verticalOverflow = VerticalWrapMode.Truncate;
+            titulo.resizeTextForBestFit = true; titulo.resizeTextMinSize = 12; titulo.resizeTextMaxSize = 19;
 
             // Barra de avance de todo el tutorial.
             var fondoBarra = new GameObject("Barra", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
@@ -184,16 +188,27 @@ namespace SP.Tutorial
             pista.text = "";
             pop = 1f;
 
-            // Alto del cuadro segun el contenido (asi no tapa los paneles del HUD).
-            float y = 112f;
+            layoutActual = layoutTeclas;
+            Reflow();
+        }
+
+        string layoutActual = "";
+
+        // Acomoda todo segun el ALTO REAL del mensaje: antes la instruccion tenia 3 renglones fijos y un
+        // mensaje mas largo se montaba sobre las casillas de los sub-pasos.
+        void Reflow()
+        {
+            float alto = Mathf.Max(52f, instruccion.preferredHeight + 2f);
+            Anclar(instruccion.rectTransform, 14, 58, 328, alto);
+            float y = 58f + alto + 6f;
             for (int i = 0; i < SubsVisibles; i++)
             {
                 Anclar((RectTransform)subCasillas[i].transform, 16, y + 1 + i * 20, 16, 16);
                 Anclar(subTextos[i].rectTransform, 38, y + i * 20, 304, 18);
             }
             y += SubsVisibles * 20 + (SubsVisibles > 0 ? 6 : 0);
-            bool cluster = layoutTeclas == "W A S D";
-            float altoTeclas = string.IsNullOrEmpty(layoutTeclas) ? 0f : (cluster ? 90f : 50f);
+            bool cluster = layoutActual == "W A S D";
+            float altoTeclas = string.IsNullOrEmpty(layoutActual) ? 0f : (cluster ? 90f : 50f);
             Anclar(teclasRaiz, 14, y, 328, altoTeclas);
             y += altoTeclas + 2f;
             Anclar(pista.rectTransform, 14, y, 328, 26);
@@ -202,7 +217,7 @@ namespace SP.Tutorial
 
         public void Refrescar(string textoInstruccion, bool[] hechas, string[] textosSub, string textoPista, float progresoTotal)
         {
-            if (instruccion.text != textoInstruccion) { instruccion.text = textoInstruccion; pop = Mathf.Max(pop, 0.5f); }
+            if (instruccion.text != textoInstruccion) { instruccion.text = textoInstruccion; pop = Mathf.Max(pop, 0.5f); Reflow(); }
             for (int i = 0; i < SubsVisibles; i++)
             {
                 bool h = hechas != null && i < hechas.Length && hechas[i];

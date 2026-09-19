@@ -108,65 +108,51 @@ namespace SP.UI
 
             new ControlEntry("WASD", "moverse", ControlContext.FpsAPie),
             new ControlEntry("WASD", "conducir: acelerar, retroceder y girar", ControlContext.VehiculoConductor),
-            new ControlEntry("WASD", "panear la cámara", VistasRts),
+            new ControlEntry("WASD", "panear la cámara (el doble de rápido)", VistasRts),
 
+            new ControlEntry("Shift", "correr (vos y los aliados que te siguen)", ControlContext.FpsAPie),
             new ControlEntry("Clic", "disparar (mantener para fuego sostenido)", ControlContext.FpsAPie),
             new ControlEntry("Clic", "disparar el cañón de la torreta", ControlContext.VehiculoArtillero),
+            new ControlEntry("Clic", "disparar la metralleta del tanque", ControlContext.VehiculoPasajero),
             new ControlEntry("Clic", "seleccionar al aliado o al vehículo bajo el cursor", ControlContext.Rts),
 
+            new ControlEntry("Q", "mantener: radial de órdenes (solo ofrece lo que podés hacer con lo que apuntás); tocar: cambiar de soldado", APieOTactico | AdentroDelVehiculo, SP.Player.KeyBindings.CiclarPosesion),
+
+            new ControlEntry("Clic der.", "mantener: mirar por la mira del arma (primera persona con zoom)", ControlContext.FpsAPie),
+            new ControlEntry("Clic der.", "mantener: mirar por la mira del cañón o de la metralleta", ControlContext.VehiculoArtillero | ControlContext.VehiculoPasajero),
             new ControlEntry("Mouse", "mirar alrededor", ControlContext.FpsAPie),
             new ControlEntry("Mouse", "girar la torreta hacia donde apuntás", ControlContext.VehiculoArtillero),
 
             new ControlEntry("R", "recargar el arma", ControlContext.FpsAPie, SP.Player.KeyBindings.Recargar),
             new ControlEntry("R", "alternar munición explosiva / perforante", ControlContext.VehiculoArtillero),
 
-            new ControlEntry("1/2/3", "cambiar de arma: fusil, pistola, pesada", ControlContext.FpsAPie),
+            new ControlEntry("Ctrl", "agacharse (mantener)", ControlContext.FpsAPie),
+            new ControlEntry("Espacio", "saltar", ControlContext.FpsAPie),
+            new ControlEntry("1/2/3", "cambiar de arma según tu clase", ControlContext.FpsAPie),
 
-            new ControlEntry("E", "subir al vehículo cercano, o equipar el arma del piso", ControlContext.FpsAPie),
-            new ControlEntry("E", "bajarse del vehículo", AdentroDelVehiculo),
+            new ControlEntry("E", "subir al tanque, usar la ametralladora fija o equipar el arma del piso; mantener 5 s junto a un caído: reanimarlo", ControlContext.FpsAPie, SP.Player.KeyBindings.Interactuar),
+            new ControlEntry("E", "bajarse del vehículo", AdentroDelVehiculo, SP.Player.KeyBindings.Interactuar),
 
-            new ControlEntry("F", "poseer al aliado al que estás apuntando", ControlContext.FpsAPie, SP.Player.KeyBindings.Poseer),
-            new ControlEntry("F", "poseer al aliado bajo el cursor, o tomar el mando del vehículo ocupado", ControlContext.Rts, SP.Player.KeyBindings.Poseer),
+            new ControlEntry("C", "mantener: ver las coberturas del piso y las rutas de patrulla enemigas", Todos, SP.Player.KeyBindings.VerTactico),
+            new ControlEntry("F4", "modo dios: nadie de tu bando recibe daño (otra vez para apagar)", Todos),
 
-            new ControlEntry("T", "ordenarle al aliado libre más cercano que vaya al punto apuntado", ControlContext.FpsAPie),
-            new ControlEntry("T/Clic der.", "mover la selección al punto, o atacar al enemigo señalado", ControlContext.Rts),
-            new ControlEntry("T", "mandar el vehículo al punto del suelo que señalás (desde cualquier asiento; WASD retoma el volante)", AdentroDelVehiculo),
-
-            // Con ActionId: el label se resuelve solo desde KeyBindings
-            // (ver linea 223 mas abajo), asi que sigue el remapeo real en
-            // vez de quedar una tecla vieja hardcodeada (paso de G a T).
             new ControlEntry("Espacio", "frenar (mantener)", ControlContext.VehiculoConductor, SP.Player.KeyBindings.Frenar),
-            new ControlEntry("G", "ordenarle al aliado más cercano que suba al vehículo apuntado", ControlContext.FpsAPie),
-            new ControlEntry("G", "subir la selección al vehículo señalado, o bajar a todos si ya está ocupado", ControlContext.Rts),
-
-            new ControlEntry("Clic der.", "zoom de mira (mantener)", ControlContext.FpsAPie | ControlContext.VehiculoArtillero),
-
-            new ControlEntry("1/2/3/4", "cambiar de asiento: conductor, cañón, metralleta, pasajero (si está ocupado por un aliado, intercambian)", AdentroDelVehiculo),
+            new ControlEntry("1/2/3/4", "cambiar de asiento: conductor, cañón, metralleta, pasajero (si está ocupado por un aliado, intercambian)", AsientosFps),
 
             new ControlEntry("Arrastrar", "seleccionar a todos los aliados del recuadro", ControlContext.Rts),
+            new ControlEntry("Clic der.", "mover a la selección al punto bajo el cursor (o atacar al enemigo señalado)", ControlContext.Rts),
             new ControlEntry("Shift+Clic", "sumar a la selección sin perder lo ya elegido", ControlContext.Rts),
             new ControlEntry("Ctrl+A", "seleccionar a toda la escuadra viva", ControlContext.Rts),
             new ControlEntry("X", "cancelar la orden de la selección y volver a patrullar", ControlContext.Rts),
             new ControlEntry("Espacio", "recentrar la cámara en la escuadra", ControlContext.Rts, SP.Player.KeyBindings.Recentrar),
-            new ControlEntry("Rueda", "acercar y alejar la cámara", VistasRts),
+            new ControlEntry("Rueda", "acercar y alejar la cámara hacia donde está el cursor", VistasRts),
 
             new ControlEntry("Ctrl+1..9", "guardar la selección como grupo de control", ControlContext.Rts),
             new ControlEntry("1..9", "recuperar el grupo de control (doble toque: además lleva la cámara ahí)", ControlContext.Rts),
             new ControlEntry("Shift+Clic der.", "encolar el destino detrás de las órdenes ya dadas", ControlContext.Rts),
             new ControlEntry("Clic der.", "mantener: vista previa de la formación antes de soltar la orden", ControlContext.Rts),
-            new ControlEntry("Clic der.", "mandar la camioneta al punto del suelo apuntado", ControlContext.FpsAPie),
 
-            new ControlEntry("Q", "ciclar la posesión al siguiente aliado vivo", APieOTactico, SP.Player.KeyBindings.CiclarPosesion),
-            new ControlEntry("Z", "ciclar la posesión al aliado vivo anterior", APieOTactico, SP.Player.KeyBindings.CiclarPosesionAtras),
-            new ControlEntry("C", "poseer al aliado vivo más cercano", APieOTactico, SP.Player.KeyBindings.PoseerMasCercano),
-            new ControlEntry("F1/F2/F3", "poseer directamente al soldado 1, 2 o 3 de la escuadra", APieOTactico),
-
-            new ControlEntry("U", "ordenarle a un aliado que suba al vehiculo, de a uno", ControlContext.FpsAPie | AdentroDelVehiculo),
-            new ControlEntry("I", "bajar a todos los aliados del vehiculo", ControlContext.FpsAPie),
-
-            new ControlEntry("Y", "reagrupar a la seleccion dispersa", ControlContext.Rts, SP.Player.KeyBindings.Reagrupar),
-            new ControlEntry("B", "retirada: alejar a la seleccion del enemigo mas cercano", ControlContext.Rts, SP.Player.KeyBindings.Retirada),
-            new ControlEntry("K", "ciclar la formacion con la que se emiten las ordenes", ControlContext.Rts, SP.Player.KeyBindings.CiclarFormacion),
+            new ControlEntry("Y", "reagrupar a la selección dispersa", ControlContext.Rts, SP.Player.KeyBindings.Reagrupar),
             new ControlEntry("J", "seleccionar solo a los heridos", ControlContext.Rts, SP.Player.KeyBindings.SeleccionarHeridos),
             new ControlEntry("N", "seleccionar a todos los del mismo tipo en pantalla", ControlContext.Rts, SP.Player.KeyBindings.SeleccionarMismoTipo),
 

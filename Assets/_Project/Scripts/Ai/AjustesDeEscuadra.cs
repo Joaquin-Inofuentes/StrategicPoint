@@ -28,6 +28,10 @@ namespace SP.Ai
         // sin nadie): PlayerInputDriver lo actualiza cada frame.
         public static Soldier Lider;
 
+        // [Shift] apretado a pie: los aliados libres que van con el jugador (siguen, cumplen
+        // una orden de mover o se retiran) tambien corren.
+        public static bool Correr;
+
         void OnEnable() => Aplicar();
         void OnValidate() => Aplicar();
 
@@ -39,7 +43,7 @@ namespace SP.Ai
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetearLider() => Lider = null;
+        static void ResetearLider() { Lider = null; Correr = false; }
 
         // Garantiza que exista en la escena (SC_Gameplay lo trae puesto; las
         // escenas de prueba no).

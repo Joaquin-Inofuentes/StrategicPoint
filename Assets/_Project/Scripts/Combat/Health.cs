@@ -118,6 +118,9 @@ namespace SP.Combat
             // punto de vida.
             if (amount <= 0) return;
 
+            // [F4] modo dios: el bando del jugador no recibe dano.
+            if (ModoDios.Protege(this)) return;
+
             // Dificultad: potenciadores de dano segun quien pega y a quien (solo partida principal).
             if (Dificultad.Activa) amount = Mathf.Max(1, Mathf.RoundToInt(amount * Dificultad.MultiplicadorDeDano(attackerId, this)));
 

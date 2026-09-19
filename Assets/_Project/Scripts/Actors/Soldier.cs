@@ -80,6 +80,23 @@ namespace SP.Actors
             foreach (var r in bodyRenderers) if (r != null) r.enabled = visible;
         }
 
+        // Primera persona apuntando: se oculta el cuerpo (la camara esta en la cabeza) pero
+        // el arma de la mano ("WeaponVisual") sigue a la vista, como el arma del jugador.
+        public void SetBodyVisible(bool visible, bool conservarArma)
+        {
+            if (!conservarArma) { SetBodyVisible(visible); return; }
+            if (bodyRenderers == null) bodyRenderers = GetComponentsInChildren<Renderer>(true);
+            var wh = GetComponent<SP.Combat.WeaponHolder>();
+            Transform arma = wh != null && wh.WeaponVisualRenderer != null ? wh.WeaponVisualRenderer.transform : null;
+            if (arma == null) arma = transform.Find("WeaponVisual");
+            foreach (var r in bodyRenderers)
+            {
+                if (r == null) continue;
+                bool esArma = arma != null && (r.transform == arma || r.transform.IsChildOf(arma));
+                r.enabled = esArma || visible;
+            }
+        }
+
         // Fija identidad y equipo. Se llama una vez al construir la escena.
         //
         // BUG CRITICO CORREGIDO: Awake() ya corre Bootstrap() (que a su vez

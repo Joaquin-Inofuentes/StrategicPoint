@@ -310,7 +310,7 @@ namespace SP.Player
             var tinte = result.Type == AimTargetType.Enemy ? new Color(1f, 0.32f, 0.26f)
                       : result.Type == AimTargetType.Ally ? new Color(0.45f, 1f, 0.55f)
                       : new Color(1f, 1f, 1f, 0.95f);
-            mirilla.Actualizar(Rig.EstaConZoom, spec.Reticle, tinte);
+            mirilla.Actualizar(Rig.EstaConZoom && Rig.AdsBlend > 0.55f, spec.Reticle, tinte);
             if (AimUiRef != null) AimUiRef.SetBaseCrosshairHidden(mirilla.Alfa > 0.5f);
         }
 
@@ -578,6 +578,10 @@ namespace SP.Player
 
             UpdateCursorLock(kb, Mouse.current);
 
+            // [F4] modo dios y [C] (mantener) vista tactica: se atienden en cualquier modo de camara.
+            if (kb.f4Key.wasPressedThisFrame) AlternarModoDios();
+            ActualizarVistaTactica();
+
             if (MinimapRef != null)
                 MinimapRef.Target = currentSeat.HasValue ? Vehicle.transform : (Brain.Current != null ? Brain.Current.transform : null);
 
@@ -744,6 +748,8 @@ namespace SP.Player
             if (evt.ActorId == Brain.Current.Id)
             {
                 if (handlingDeath) return;
+                // Murio en la ametralladora fija: la torreta se libera sola (TorretaFija.LateUpdate).
+                torretaActual = null; torretaPendiente = null;
                 // A5: se pide ANTES de arrancar la corrutina -- si hay un
                 // aliado libre, ya viene en camino desde el primer frame de
                 // la camara de muerte, no recien despues de la espera.
@@ -994,10 +1000,14 @@ namespace SP.Player
         // su propia malla tapa la pantalla). Se restaura apenas deja de
         // ser el poseído o se sale de FPS.
         Soldier bodyHiddenFor;
+        // Ametralladora fija: en cuanto se implementa se conecta (ver TorretaFija).
+        bool TorretaFijaActiva => torretaActual != null;
+        SP.Vehicles.TorretaFija torretaActual;
 
         void UpdateFps(Keyboard kb, Mouse mouse)
         {
             if (Brain.Current == null) return;
+            ActualizarTorretaFija();
             if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
             if (TurretAim != null) TurretAim.SetVisible(false);
             if (AimUiRef != null)
@@ -1020,7 +1030,18 @@ namespace SP.Player
             // una camara en el ojo, pero la vista a pie ahora es por
             // encima del hombro (Rig.FollowOverShoulder mas abajo), asi
             // que el cuerpo se deja visible a proposito.
-            if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
+            // Apuntando (click derecho) la camara esta en el ojo: se oculta el cuerpo pero no el arma.
+            bool enOjo = Rig.AdsBlendSuave > 0.85f;
+            if (enOjo)
+            {
+                if (bodyHiddenFor != Brain.Current)
+                {
+                    if (bodyHiddenFor != null) bodyHiddenFor.SetBodyVisible(true);
+                    Brain.Current.SetBodyVisible(false, true);
+                    bodyHiddenFor = Brain.Current;
+                }
+            }
+            else if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor = null; }
 
             Vector3 f = Brain.Current.transform.forward;
             Vector3 r = Brain.Current.transform.right;
@@ -1029,6 +1050,7 @@ namespace SP.Player
             if (kb.sKey.isPressed) move -= f;
             if (kb.dKey.isPressed) move += r;
             if (kb.aKey.isPressed) move -= r;
+            if (TorretaFijaActiva) { move = Vector3.zero; destinoAuto = null; }
             bool moving = move.sqrMagnitude > 0.0001f;
             // Destino automatico (SetDestination): camina solo hasta el punto,
             // sin cursor ni camara. Las teclas WASD siguen mandando.
@@ -1044,7 +1066,15 @@ namespace SP.Player
                     moving = true;
                 }
             }
-            if (moving) Brain.Move(move.normalized, Time.deltaTime);
+            // [Shift]: correr (solo hacia adelante, de pie y sin apuntar). Los aliados libres que van
+            // con vos tambien corren (AjustesDeEscuadra.Correr) y las piernas aceleran.
+            bool shiftCorrer = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+            bool correr = shiftCorrer && moving && !Brain.Current.Motor.IsCrouching && Vector3.Dot(move.normalized, f) > 0.2f
+                && !Rig.EstaConZoom && !TorretaFijaActiva;
+            Brain.Current.Motor.SetRunning(correr);
+            Rig.EscalaDeRespiracion = Brain.Current.Motor.IsCrouching || TorretaFijaActiva ? 0.3f : moving ? 1.6f : 1f;
+            AjustesDeEscuadra.Correr = correr;
+            if (moving && !TorretaFijaActiva) Brain.Move(move.normalized, Time.deltaTime);
             // Balanceo al caminar: caminar y estar quieto se veian
             // exactamente igual, sin ninguna sensacion de pisada.
             Rig.SetWalking(moving);
@@ -1069,7 +1099,7 @@ namespace SP.Player
             // (recentrar camara) ni con el de la camara de muerte (pedir
             // cambio de cuerpo): son ramas mutuamente excluyentes, esta
             // vive solo adentro de UpdateFps.
-            if (kb.spaceKey.wasPressedThisFrame)
+            if (kb.spaceKey.wasPressedThisFrame && !TorretaFijaActiva)
             {
                 Brain.Current.Motor.Jump();
                 Feedback.Accion(SfxKind.Crouch, null, Brain.Current.transform.position, Feedback.Info, aviso: false, pulso: false, volumen: 0.25f);
@@ -1085,11 +1115,14 @@ namespace SP.Player
                     // La sensibilidad baja con el zoom para que apuntar con x6 no sea nervioso.
                     float k = Rig.EstaConZoom ? 1f / Mathf.Pow(Mathf.Max(1f, Rig.ZoomFactor), 0.75f) : 1f;
                     Brain.RotateYaw(delta.x * lookSensitivity * k);
+                    if (TorretaFijaActiva) torretaActual.AcotarGiro(Brain.Current);
                     Rig.AddPitch(delta.y * lookSensitivity * k * (InvertLookY ? -1f : 1f));
                 }
             }
 
-            Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDrop);
+            // En la torreta la camara va casi al ojo (los techos de las torres no dejan lugar a 4 m detras).
+            Rig.FollowOverShoulder(Brain.Current.transform, distance: TorretaFijaActiva ? 1.4f : 4f, heightOffset: Brain.Current.Motor.EyeHeightDrop,
+                ojo: Brain.Current.EyeAnchor != null ? Brain.Current.EyeAnchor.position : (Vector3?)null);
             UpdateNearestAllyHighlight();
 
             var ray = Rig.GetForwardRay();
@@ -1100,6 +1133,7 @@ namespace SP.Player
             UpdateVehicleMountIndicator(result);
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
             ultimoResultadoDeMira = result;
+            ActualizarPromptContextual(result);
             ActualizarMirilla(result);
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateAmmoWarning(Brain.Current.Weapon);
@@ -1269,6 +1303,20 @@ namespace SP.Player
                 }
             }
 
+            // Ametralladora fija: [E] la ocupa (apuntandole o parado junto a ella) y [E] la deja.
+            if (TorretaFijaActiva)
+            {
+                if (KeyBindings.WasPressed(KeyBindings.Interactuar) || KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo)) SalirDeTorreta();
+                else SetInstructionText("[Mouse] apuntar (arco limitado) · [Click] disparar · [Click der.] mirar por la mira · [R] recargar · [E] salir de la torreta · [TAB] vista RTS");
+                if (TorretaFijaActiva) return;
+            }
+            else if (KeyBindings.WasPressed(KeyBindings.Interactuar))
+            {
+                var t = result.Type == AimTargetType.Torreta ? result.Torreta : TorretaFija.MasCercana(Brain.Current.transform.position, TorretaFija.AlcanceDeUso);
+                if (t != null && FindNearestPickup(Brain.Current.transform.position) == null && !(Vehicle != null && Vector3.Distance(Brain.Current.transform.position, Vehicle.transform.position) <= interactRadius))
+                { UsarTorreta(t); return; }
+            }
+
             // A4: revivir a un caido tiene prioridad sobre subir al vehiculo
             // o equipar un arma -- si hay un compañero caido al alcance,
             // sostener [E] es lo unico que [E] hace ese frame.
@@ -1302,8 +1350,10 @@ namespace SP.Player
                 else if (nearVehicle != null) EnterVehicle(nearVehicle);
             }
 
+            var torretaCerca = TorretaFija.MasCercana(Brain.Current.transform.position, TorretaFija.AlcanceDeUso);
             SetInstructionText(nearVehicle != null ? "[E] Subir al vehiculo  ·  [Q] mantener: radial de ordenes"
                 : nearPickup != null ? $"[E] Equipar {nearPickup.Kind}"
+                : torretaCerca != null && torretaCerca.Libre ? "[E] Usar la ametralladora fija  ·  [Q] mantener: radial de ordenes"
                 : BuildFpsInstruction(result));
         }
 
@@ -1468,8 +1518,8 @@ namespace SP.Player
         // holograma (90 % transparente) del aliado que la tomaria.
         void UpdateCoverPreview(Keyboard kb, AimResult result)
         {
-            bool shift = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
-            if (!shift || !TryResolverCobertura(result, out var punto, out var dueno))
+            bool ver = KeyBindings.IsPressed(KeyBindings.VerTactico) || (OrdenesMenu != null && OrdenesMenu.Abierto && OrdenesMenu.Seleccion == MenuDeOrdenes.Cubrirse);
+            if (!ver || !TryResolverCobertura(result, out var punto, out var dueno))
             {
                 CoverHologram.Ocultar();
                 return;
@@ -1525,8 +1575,8 @@ namespace SP.Player
         // seleccionado.
         void UpdateCoverPreviewRts(Keyboard kb, Ray screenRay)
         {
-            bool shift = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
-            if (!shift || Selection.Selected.Count == 0) { CoverHologram.Ocultar(); return; }
+            bool ver = KeyBindings.IsPressed(KeyBindings.VerTactico) || (OrdenesMenu != null && OrdenesMenu.Abierto && OrdenesMenu.Seleccion == MenuDeOrdenes.Cubrirse);
+            if (!ver || Selection.Selected.Count == 0) { CoverHologram.Ocultar(); return; }
             var r = Aim.Evaluate(screenRay, null);
             if (!TryResolverCobertura(r, out var punto, out var dueno)) { CoverHologram.Ocultar(); return; }
             Soldier primero = null;
@@ -1597,7 +1647,8 @@ namespace SP.Player
                 if (canvas != null) panelDeTeclas = VehicleKeysPanel.Asegurar(canvas.rootCanvas.transform);
             }
             if (panelDeTeclas == null) return;
-            panelDeTeclas.SetVisible(true);
+            // Mirando por la mira del canon / la metralleta el panel tapa la optica: se esconde.
+            panelDeTeclas.SetVisible(!(Rig != null && Rig.AdsBlend > 0.3f));
             panelDeTeclas.Actualizar(Vehicle, currentSeat, AliadosEnCaminoAlVehiculo(Vehicle));
         }
 
@@ -1857,6 +1908,7 @@ namespace SP.Player
                 return false;
             }
             if (Brain.Current == target) return false;
+            if (torretaActual != null) SalirDeTorreta();
 
             // Pedido explicito: antes esto se rechazaba de plano ("esta
             // dentro de un vehiculo"). Ahora, si esta montado, se toma
@@ -2031,8 +2083,9 @@ namespace SP.Player
                 int elegida = MenuDeOrdenes.LeerTecla();
                 if (elegida > 0)
                 {
+                    int cat = OrdenesMenu.CategoriaDeTecla(elegida);
                     OrdenesMenu.Cerrar();
-                    if (OrdenesMenu.EsRadial) EjecutarOrdenRadial(elegida - 1, 0);
+                    if (OrdenesMenu.EsRadial) { if (cat >= 0) EjecutarOrdenRadial(cat, PrimeraOpcionVisible(cat)); }
                     else EjecutarOrdenDelMenu(elegida);
                     aimCongelado = null;
                     return;
@@ -2050,7 +2103,7 @@ namespace SP.Player
                     if (OrdenesMenu.EsRadial && cat >= 0)
                     {
                         if (sub >= 0) EjecutarOrdenRadial(cat, sub);
-                        else if (!afuera) EjecutarOrdenRadial(cat, 0);
+                        else if (!afuera) EjecutarOrdenRadial(cat, PrimeraOpcionVisible(cat));
                     }
                     aimCongelado = null;
                 }
@@ -2071,7 +2124,7 @@ namespace SP.Player
             string Clase(int i) => Squad != null && i < Squad.Count && Squad[i] != null ? Squad[i].ClassNameTitulo : null;
             OrdenesMenu.PonerSoldados(Clase(0), Clase(1), Clase(2));
             aimCongelado = ultimoResultadoDeMira;
-            OrdenesMenu.Abrir();
+            OrdenesMenu.Abrir(ConstruirContextoRadial(aimCongelado.Value));
         }
 
         // A quien le hablan las ordenes del menu: a la seleccion de RTS si
@@ -2243,8 +2296,15 @@ namespace SP.Player
                     return OrdenDeCuracion(sub, aim);
                 case 5: // TANQUE
                     return OrdenDeTanque(sub, aim);
+                case 8: // TORRETA FIJA
+                    return OrdenDeTorreta(sub, aim);
                 case 6: // POSEER
                 {
+                    if (sub == 4)
+                    {
+                        if (aim.Type != AimTargetType.Ally || aim.Soldier == null) { RejectOrder("APUNTA A UN ALIADO"); return false; }
+                        return TryPossess(aim.Soldier);
+                    }
                     if (sub >= 3) { CycleLivingAlly(+1); return true; }
                     var s = SoldadoDeEscuadra(sub);
                     if (s == null || s == yo) { RejectOrder(s == yo ? "YA SOS ESE SOLDADO" : "NO HAY SOLDADO " + (sub + 1)); return false; }
@@ -2304,6 +2364,16 @@ namespace SP.Player
                     if (PedidoDeCuracion.Solicitar(yo)) { Avisar("MEDICO EN CAMINO"); return true; }
                     RejectOrder(yo.Health.Current >= yo.Health.MaxHealth ? "NO HACE FALTA" : "NO HAY QUIEN ATIENDA");
                     return false;
+                case 3: // REVIVIR al aliado caido que apunto
+                {
+                    if (aim.Type != AimTargetType.Caido || aim.Soldier == null) { RejectOrder("APUNTA A UN ALIADO CAIDO"); return false; }
+                    bool okR = yo.Role == RoleType.Medic
+                        ? PedidoDeCuracion.SolicitarReanimar(aim.Soldier, yo)
+                        : PedidoDeCuracion.SolicitarReanimar(aim.Soldier);
+                    if (!okR) { RejectOrder("NO HAY MEDICO VIVO PARA REANIMAR"); return false; }
+                    Avisar(yo.Role == RoleType.Medic ? $"QUEDATE JUNTO A {aim.Soldier.DisplayName.ToUpperInvariant()} 4 s" : $"MEDICO VA A REANIMAR A {aim.Soldier.DisplayName.ToUpperInvariant()}");
+                    return true;
+                }
                 case 1: // CURAR ALIADO (el mas herido)
                 case 2: // CURAR AL APUNTADO
                 {
@@ -2544,8 +2614,12 @@ namespace SP.Player
                     return "Obstáculo   ·   [Q] mantener: radial → CUBRIRSE / DEMOLER   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Ground:
                     return "[Q] mantener: radial → IR ALLI   ·   [Click der.] mandar el tanque aquí (si hay conductor)   ·   [Click] disparar   ·   [TAB] vista RTS";
+                case AimTargetType.Torreta:
+                    return "[E] usar la ametralladora fija   ·   [Q] mantener: radial   ·   [TAB] vista RTS";
+                case AimTargetType.Caido:
+                    return "Aliado caido   ·   [Q] mantener: radial → REANIMAR (si queda un medico)   ·   [E] mantener 5 s: reanimarlo vos   ·   [TAB] vista RTS";
                 default:
-                    return "[WASD] moverse   ·   [Click] disparar   ·   [1][2][3] arma   ·   [Ctrl] agacharse   ·   [Q] mantener: radial de ordenes   ·   [TAB] vista RTS";
+                    return "[WASD] moverse   ·   [Shift] correr   ·   [Ctrl] agacharse   ·   [Click] disparar   ·   [Click der.] mantener: mirar por la mira   ·   [Q] mantener: radial   ·   [C] mantener: coberturas   ·   [TAB] vista RTS   ·   [F4] modo dios";
             }
         }
 
@@ -2558,6 +2632,7 @@ namespace SP.Player
 
         public void EnterVehicle(Vehicle vehicle)
         {
+            if (torretaActual != null) SalirDeTorreta();
             var role = vehicle.IsSeatFree(VehicleSeatRole.Driver) ? VehicleSeatRole.Driver : vehicle.FirstFreeSeat();
             if (role == null)
             {
@@ -2598,7 +2673,7 @@ namespace SP.Player
             // El cambio se avisa: sin esto, el que ya tenia la costumbre
             // arranca creyendo que los lleva atras y los deja tirados.
             if (esperando > 0 && ModeToast != null)
-                ModeToast.Show(esperando == 1 ? "1 ALIADO ESPERA - [G] TODOS SUBEN · [U] DE A UNO" : $"{esperando} ALIADOS ESPERAN - [G] TODOS SUBEN · [U] DE A UNO", 2.5f);
+                ModeToast.Show(esperando == 1 ? "1 ALIADO ESPERA - [Q] RADIAL > TANQUE > SUBIR TODOS" : $"{esperando} ALIADOS ESPERAN - [Q] RADIAL > TANQUE > SUBIR TODOS", 2.5f);
         }
 
         // Toma control de un asiento en el que el soldado poseído YA está
@@ -2687,7 +2762,9 @@ namespace SP.Player
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
             if (AimUiRef != null) AimUiRef.SetVisible(false);
-            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false); MirillaView.Instancia?.Ocultar();
+            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
+            bool puestoDeTiro = currentSeat == VehicleSeatRole.Gunner || currentSeat == VehicleSeatRole.Passenger1;
+            if (!puestoDeTiro || Rig.Mode != ControlMode.Fps) MirillaView.Instancia?.Ocultar();
             if (SelectionCount != null) SelectionCount.SetModeVisible(false);
             HideFpsOnlyIndicators();
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor.Motor.SetCrouching(false); bodyHiddenFor = null; }
@@ -2882,6 +2959,7 @@ namespace SP.Player
                     // que apuntar a distancia era adivinar. El zoom de
                     // mirilla existia a pie pero se desactivaba adrede en
                     // vehiculo; con el arco balistico hace mas falta aca.
+                    Rig.SetZoomFactor(3.5f);
                     Rig.SetZoomed(mouse.rightButton.isPressed);
 
                     // [R] alterna municion: explosiva de area o
@@ -2895,7 +2973,7 @@ namespace SP.Player
                 }
                 if (TurretAim != null) TurretAim.UpdateFrom(turret);
 
-                UpdateVehicleCameraAimed(turret != null ? turret.transform : null);
+                UpdateVehicleCameraAimed(turret != null ? turret.transform : null, turret, ReticleStyle.Telescopica);
             }
             // Pedido explicito: "ahora es cañon y metralleta y conductor" --
             // un tercer puesto operable de verdad, no un pasajero mudo.
@@ -2911,11 +2989,12 @@ namespace SP.Player
                     mgTurret.AddDesiredPitch(-delta.y * turretSensitivity);
                     mgTurret.TickPlayerAim(Time.deltaTime);
                     if (mouse.leftButton.isPressed) mgTurret.TryFire();
+                    Rig.SetZoomFactor(2.2f);
                     Rig.SetZoomed(mouse.rightButton.isPressed);
                 }
                 if (TurretAim != null) TurretAim.UpdateFrom(mgTurret);
 
-                UpdateVehicleCameraAimed(mgTurret != null ? mgTurret.transform : null);
+                UpdateVehicleCameraAimed(mgTurret != null ? mgTurret.transform : null, mgTurret, ReticleStyle.Anillo);
             }
             else
             {
@@ -3082,12 +3161,28 @@ namespace SP.Player
         // camara rote mirando hacia donde apunto". Cañon y metralleta
         // llaman a esta en vez de UpdateVehicleCamera: la camara orbita
         // el forward del ARMA (gira con el mouse), no el del casco.
-        void UpdateVehicleCameraAimed(Transform aimSource)
+        // Mantener click derecho: la camara pasa a la MIRA del arma (primera persona sobre el canon
+        // o la metralleta), con zoom y una reticula de optica. Sin apuntar, sigue en tercera persona.
+        void UpdateVehicleCameraAimed(Transform aimSource, TurretWeapon arma = null, ReticleStyle reticula = ReticleStyle.Telescopica)
         {
             if (aimSource != null)
-                Rig.FollowThirdPersonAimed(Vehicle.transform.position + Vector3.up * 1f, aimSource.forward, 8f, 3.5f);
+            {
+                // El canon mira por un periscopio sobre el techo de la torreta (0,7 m sobre el pivote, un poco
+                // adelantado: se ve el tubo abajo); la metralleta, desde detras y arriba del arma.
+                bool esCanon = reticula == ReticleStyle.Telescopica;
+                Vector3 miraPos = aimSource.position + aimSource.up * (esCanon ? 0.72f : 0.28f) + aimSource.forward * (esCanon ? 0.3f : -0.4f);
+                Rig.FollowThirdPersonAimed(Vehicle.transform.position + Vector3.up * 1f, aimSource.forward, 8f, 3.5f,
+                    miraPos, Quaternion.LookRotation(aimSource.forward, Vector3.up));
+            }
             else
                 Rig.FollowThirdPerson(Vehicle.transform, 8f, 3.5f);
+
+            var canvasRoot = AimUiRef != null ? AimUiRef.transform.parent : null;
+            var mirilla = MirillaView.Asegurar(canvasRoot);
+            if (mirilla != null)
+                mirilla.Actualizar(Rig.EstaConZoom && Rig.AdsBlend > 0.55f, reticula,
+                    arma != null && arma.IsOnTarget() ? new Color(0.45f, 1f, 0.55f) : new Color(1f, 0.9f, 0.5f));
+            if (TurretAim != null && Rig.AdsBlend > 0.55f) TurretAim.SetVisible(false);
             ApplyVehicleCameraFeel();
             ApplyVehicleSpeedFx();
         }
@@ -3148,6 +3243,293 @@ namespace SP.Player
             Rig.AddFrameOffset(inertiaOffset + shakeOffset);
         }
 
+
+        // ------------------------------------------------------------------
+        // UI: solo bloquea lo que se puede clickear
+        // ------------------------------------------------------------------
+        static readonly List<RaycastResult> resultadosUi = new List<RaycastResult>();
+
+        bool PunteroSobreUiInteractiva(Vector2 pantalla)
+        {
+            var es = EventSystem.current;
+            if (es == null) return false;
+            var datos = new PointerEventData(es) { position = pantalla };
+            resultadosUi.Clear();
+            es.RaycastAll(datos, resultadosUi);
+            foreach (var r in resultadosUi)
+            {
+                if (r.gameObject == null) continue;
+                if (r.gameObject.GetComponentInParent<Selectable>() != null) return true;
+                if (r.gameObject.GetComponentInParent<SP.UI.MinimapFollow>() != null) return true;
+            }
+            return false;
+        }
+
+        // ------------------------------------------------------------------
+        // [F4] MODO DIOS y [C] VISTA TACTICA
+        // ------------------------------------------------------------------
+        void AlternarModoDios()
+        {
+            bool on = ModoDios.Alternar();
+            Feedback.Accion(on ? SfxKind.Swap : SfxKind.EmptyClick, null, null, on ? Feedback.Ok : Feedback.Warn, aviso: false, pulso: false, volumen: 0.5f);
+            if (ModeToast != null)
+                ModeToast.Show(on ? "MODO DIOS: NADIE DE TU BANDO RECIBE DAÑO  ·  [F4] PARA APAGAR" : "MODO DIOS APAGADO", 2.2f);
+        }
+
+        // Coberturas del piso y rutas de patrulla enemigas: NO estan siempre a la vista. Se ven mientras
+        // se mantiene [C], y las coberturas ademas cuando el radial esta parado sobre CUBRIRSE.
+        void ActualizarVistaTactica()
+        {
+            bool tecla = KeyBindings.IsPressed(KeyBindings.VerTactico);
+            bool radialCubrirse = OrdenesMenu != null && OrdenesMenu.Abierto && OrdenesMenu.Seleccion == MenuDeOrdenes.Cubrirse;
+            Coberturas.MostrarMarcas(tecla || radialCubrirse);
+            if (Rig != null) Rig.MostrarRutas(tecla);
+        }
+
+        // ------------------------------------------------------------------
+        // AMETRALLADORA FIJA
+        // ------------------------------------------------------------------
+        public bool EnTorretaFija => torretaActual != null;
+        public TorretaFija TorretaActual => torretaActual;
+        TorretaFija torretaPendiente;
+
+        public bool UsarTorreta(TorretaFija t)
+        {
+            if (t == null || Brain == null || Brain.Current == null) return false;
+            if (currentSeat.HasValue) { RejectOrder("BAJATE DEL TANQUE PRIMERO"); return false; }
+            if (torretaActual == t) return true;
+            if (!t.Libre) { RejectOrder("LA TORRETA YA ESTA OCUPADA"); return false; }
+            var yo = Brain.Current;
+            var horizontal = t.transform.position - yo.transform.position; horizontal.y = 0f;
+            float d = horizontal.magnitude;
+            if (d > TorretaFija.AlcanceDeUso)
+            {
+                // Lejos: camina solo hasta ella y la ocupa al llegar.
+                torretaPendiente = t;
+                destinoAuto = t.transform.position;
+                Avisar("VOY A LA TORRETA...");
+                return true;
+            }
+            string motivo;
+            if (!t.Ocupar(yo, out motivo)) { RejectOrder(motivo ?? "NO SE PUEDE"); return false; }
+            torretaActual = t;
+            torretaPendiente = null;
+            Rig.ResetPitch();
+            Feedback.Accion(SfxKind.SeatChange, "EN LA AMETRALLADORA FIJA", t.transform.position, Feedback.Ok, aviso: false, pulso: true, volumen: 0.5f);
+            if (ModeToast != null) ModeToast.Show("AMETRALLADORA FIJA: apunta, dispara · [E] salir", 2.5f);
+            return true;
+        }
+
+        public void SalirDeTorreta()
+        {
+            torretaPendiente = null;
+            var t = torretaActual;
+            torretaActual = null;
+            if (t == null) return;
+            t.Liberar();
+            Avisar("SALISTE DE LA TORRETA");
+        }
+
+        static float HorizontalA(Vector3 a, Vector3 b) { var v = b - a; v.y = 0f; return v.magnitude; }
+
+        bool OrdenDeTorreta(int sub, AimResult aim)
+        {
+            if (sub == 1)
+            {
+                if (torretaActual == null) { RejectOrder("NO ESTAS EN UNA TORRETA"); return false; }
+                SalirDeTorreta();
+                return true;
+            }
+            var t = aim.Type == AimTargetType.Torreta ? aim.Torreta : TorretaFija.MasCercana(Brain.Current.transform.position, TorretaFija.AlcanceDeUso * 3f);
+            if (t == null) { RejectOrder("APUNTA A UNA TORRETA FIJA"); return false; }
+            return UsarTorreta(t);
+        }
+
+        // Cada frame en FPS: sincroniza el estado con la torreta (murio, la sacaron, llego a ella).
+        void ActualizarTorretaFija()
+        {
+            if (torretaActual != null && (Brain.Current == null || torretaActual.Ocupante != Brain.Current)) { torretaActual = null; }
+            if (torretaPendiente != null)
+            {
+                if (!destinoAuto.HasValue) torretaPendiente = null;   // WASD lo cancelo
+                else if (Brain.Current != null && HorizontalA(Brain.Current.transform.position, torretaPendiente.transform.position) <= TorretaFija.AlcanceDeUso * 0.6f)
+                {
+                    var t = torretaPendiente;
+                    destinoAuto = null;
+                    torretaPendiente = null;
+                    UsarTorreta(t);
+                }
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Contexto del radial: solo lo que se puede hacer con lo que se apunta
+        // ------------------------------------------------------------------
+        int PrimeraOpcionVisible(int categoria)
+        {
+            if (OrdenesMenu != null && OrdenesMenu.Abierto && OrdenesMenu.Seleccion == categoria && OrdenesMenu.OpcionesVisibles.Count > 0)
+                return OrdenesMenu.OpcionesVisibles[0];
+            return 0;
+        }
+
+        static bool Herido(Soldier s) => s != null && s.Health != null && s.Health.IsAlive && s.Health.Current < s.Health.MaxHealth;
+
+        public ContextoRadial ConstruirContextoRadial(AimResult aim)
+        {
+            var c = new ContextoRadial();
+            c.Mostrar(MenuDeOrdenes.IrAlli, false);
+            c.Mostrar(MenuDeOrdenes.Cubrirse, false);
+            c.Mostrar(MenuDeOrdenes.Posicion, false);
+
+            var yo = Brain != null ? Brain.Current : null;
+            var curar = new List<int>();
+            var tanque = new List<int>();
+            string apunta = "";
+
+            switch (aim.Type)
+            {
+                case AimTargetType.Enemy:
+                    if (aim.Soldier != null)
+                    {
+                        c.Mostrar(MenuDeOrdenes.Atacar, true);
+                        apunta = $"Enemigo: {aim.Soldier.DisplayName}";
+                    }
+                    break;
+
+                case AimTargetType.Ally:
+                    if (aim.Soldier != null && aim.Soldier != yo)
+                    {
+                        var a = aim.Soldier;
+                        apunta = $"Aliado: {a.DisplayName} ({a.Health.Current}/{a.Health.MaxHealth})";
+                        if (a.Role != RoleType.Civilian)
+                        {
+                            if (Herido(a) && PedidoDeCuracion.MedicoDisponible(a) != null) curar.Add(2);
+                            c.Mostrar(MenuDeOrdenes.Poseer, true, 4);
+                        }
+                        else if (Herido(a) && PedidoDeCuracion.MedicoDisponible(a) != null) curar.Add(2);
+                    }
+                    break;
+
+                case AimTargetType.Caido:
+                    if (aim.Soldier != null)
+                    {
+                        apunta = $"Caido: {aim.Soldier.DisplayName}";
+                        if (PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null) curar.Add(3);
+                    }
+                    break;
+
+                case AimTargetType.Obstacle:
+                {
+                    var m = Demolicion.MarcadorApuntado(aim.HitTransform, aim.Point);
+                    string motivo;
+                    if (m != null && Demolicion.EsDemolible(m, out motivo))
+                    {
+                        var opciones = new List<int>();
+                        bool yoAsalto = yo != null && yo.Role == RoleType.Assault && yo.Health.IsAlive;
+                        bool aliadoAsalto = false;
+                        foreach (var d in DestinatariosDeOrden()) if (d.Role == RoleType.Assault) { aliadoAsalto = true; break; }
+                        if (aliadoAsalto) opciones.Add(0);
+                        if (yoAsalto) opciones.Add(1);
+                        if (DemoledorAsalto.HayEnCurso) opciones.Add(2);
+                        apunta = "Muro destructible" + (opciones.Count == 0 ? " (necesitas un soldado de ASALTO)" : "");
+                        if (opciones.Count > 0) c.Mostrar(MenuDeOrdenes.Demoler, true, opciones.ToArray());
+                    }
+                    break;
+                }
+
+                case AimTargetType.Vehicle:
+                    if (aim.Vehicle != null && !aim.Vehicle.IsDestroyed && aim.Vehicle.Bando == TeamId.Player)
+                    {
+                        apunta = "Tanque aliado";
+                        if (!currentSeat.HasValue) tanque.Add(3);
+                        if (aim.Vehicle.HasAnyRoom) tanque.Add(0);
+                        if (aim.Vehicle.OccupantCount > 0) tanque.Add(1);
+                        if (aim.Vehicle.Driver != null) tanque.Add(2);
+                    }
+                    break;
+
+                case AimTargetType.Torreta:
+                    if (aim.Torreta != null)
+                    {
+                        apunta = aim.Torreta.Libre ? "Ametralladora fija" : "Ametralladora fija (ocupada)";
+                        if (aim.Torreta.Libre) c.Mostrar(MenuDeOrdenes.Torreta, true, 0);
+                    }
+                    break;
+            }
+
+            // Estados propios: no dependen de la mira.
+            if (yo != null && yo.Health != null && yo.Health.Current < yo.Health.MaxHealth * 0.7f)
+            {
+                bool hayQuien = yo.Role == RoleType.Medic ? PedidoDeCuracion.BotiquinListoEn <= 0f : PedidoDeCuracion.MedicoDisponible(yo) != null;
+                if (hayQuien && !curar.Contains(0)) curar.Insert(0, 0);
+            }
+            if (currentSeat.HasValue && Vehicle != null && !Vehicle.IsDestroyed)
+            {
+                tanque.Clear();
+                tanque.Add(4);
+                if (Vehicle.OccupantCount > 1) tanque.Add(1);
+                if (Vehicle.Driver != null) tanque.Add(2);
+                if (Vehicle.HasAnyRoom) tanque.Add(0);
+                if (apunta.Length == 0) apunta = "Vas en el tanque";
+            }
+            if (torretaActual != null)
+            {
+                c.Mostrar(MenuDeOrdenes.Torreta, true, 1);
+                if (apunta.Length == 0) apunta = "En la ametralladora fija";
+            }
+
+            if (curar.Count > 0) c.Mostrar(MenuDeOrdenes.Curar, true, curar.ToArray());
+            if (tanque.Count > 0) c.Mostrar(MenuDeOrdenes.Tanque, true, tanque.ToArray());
+            c.Apuntando = apunta;
+            return c;
+        }
+
+        // Texto sobre la mira: dice QUE ofrece el radial para lo apuntado (dorado = accion contextual).
+        void ActualizarPromptContextual(AimResult aim)
+        {
+            if (AimUiRef == null) return;
+            if (OrdenesMenu != null && OrdenesMenu.Abierto) return;
+            var yo = Brain != null ? Brain.Current : null;
+            string texto = null;
+            bool destacado = true;
+            switch (aim.Type)
+            {
+                case AimTargetType.Enemy:
+                    texto = aim.Soldier != null ? $"[Q] ATACAR a {aim.Soldier.DisplayName}" : null; break;
+                case AimTargetType.Ally:
+                    if (aim.Soldier == null) break;
+                    if (aim.Soldier.Role == RoleType.Civilian) { texto = Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null ? $"[Q] CURAR a {aim.Soldier.DisplayName} ({aim.Soldier.Health.Current}/{aim.Soldier.Health.MaxHealth})" : $"Civil: {aim.Soldier.DisplayName}"; destacado = Herido(aim.Soldier); }
+                    else if (Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null) texto = $"[Q] CURAR a {aim.Soldier.DisplayName} ({aim.Soldier.Health.Current}/{aim.Soldier.Health.MaxHealth})  ·  POSEER";
+                    else { texto = $"[Q] POSEER a {aim.Soldier.DisplayName}"; destacado = false; }
+                    break;
+                case AimTargetType.Caido:
+                    texto = aim.Soldier != null && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null ? $"[Q] REANIMAR a {aim.Soldier.DisplayName}" : aim.Soldier != null ? $"{aim.Soldier.DisplayName} esta caido (no queda medico)" : null;
+                    destacado = aim.Soldier != null && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null;
+                    break;
+                case AimTargetType.Obstacle:
+                {
+                    var m = Demolicion.MarcadorApuntado(aim.HitTransform, aim.Point);
+                    string motivo;
+                    if (m != null && Demolicion.EsDemolible(m, out motivo))
+                    {
+                        bool asalto = (yo != null && yo.Role == RoleType.Assault) || DestinatariosDeOrden().Exists(x => x.Role == RoleType.Assault);
+                        texto = asalto ? "[Q] DEMOLER este muro (carga de 4 s)" : "Muro destructible: hace falta un soldado de ASALTO";
+                        destacado = asalto;
+                    }
+                    break;
+                }
+                case AimTargetType.Vehicle:
+                    if (aim.Vehicle != null && !aim.Vehicle.IsDestroyed && aim.Vehicle.Bando == TeamId.Player) texto = "[E] SUBIR AL TANQUE  ·  [Q] radial: subir a todos";
+                    else if (aim.Vehicle != null && aim.Vehicle.IsDestroyed) { texto = "Vehiculo destruido"; destacado = false; }
+                    break;
+                case AimTargetType.Torreta:
+                    if (aim.Torreta != null) texto = aim.Torreta.Libre ? "[E] USAR LA AMETRALLADORA FIJA" : "Ametralladora fija (ocupada)";
+                    destacado = aim.Torreta != null && aim.Torreta.Libre;
+                    break;
+            }
+            if (texto != null) AimUiRef.PonerPromptContextual(texto, destacado);
+        }
+
         // -----------------------------------------------------------
         // RTS
         // -----------------------------------------------------------
@@ -3197,7 +3579,7 @@ namespace SP.Player
             }
 
             string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
-            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [Click der.] mover selección · [Ctrl+Click der.] trazar recorrido · [Q] mantener: radial de órdenes · [WASD] panear · [Rueda] zoom hacia el cursor · [TAB] vista FPS · {selectionLabel}");
+            SetInstructionText($"[Arrastrar] seleccionar · [Shift+Click] sumar · [Click der.] mover la selección · [Ctrl+Click der.] trazar recorrido · [Q] mantener: radial · [C] mantener: coberturas y rutas · [WASD] panear · [Rueda] zoom al cursor · [TAB] vista FPS · {selectionLabel}");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -3224,7 +3606,7 @@ namespace SP.Player
             // (WASD, mas abajo), simplemente click derecho ya no es una
             // de sus formas de dispararlo.
             if (mouse.rightButton.wasPressedThisFrame)
-                rightPressStartedOverUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+                rightPressStartedOverUi = PunteroSobreUiInteractiva(mouse.position.ReadValue());
 
             bool rightClickOrder = mouse.rightButton.wasReleasedThisFrame && !rightPressStartedOverUi;
 
@@ -3273,6 +3655,20 @@ namespace SP.Player
                 // seleccion va a cubrirse, un punto para cada uno.
                 bool esCobertura = Selection.SelectedVehicle == null && Selection.Selected.Count > 0
                     && TryResolverCobertura(result, out _, out _);
+
+                // BUG REAL ("en RTS a veces no toma la orden de moverse"): la orden de mover exigia que el
+                // cursor cayera justo sobre el PISO. Con el cursor sobre un aliado, un cuerpo caido, una torreta,
+                // un techo o un muro (o sobre nada), no pasaba absolutamente nada y no se avisaba. Ahora el
+                // destino es el piso que queda bajo el cursor, salvo enemigos y vehiculos (que tienen su propia orden).
+                if (!esCobertura && result.Type != AimTargetType.Ground && result.Type != AimTargetType.Enemy && result.Type != AimTargetType.Vehicle
+                    && AimTargeting.PisoBajoRayo(screenRay, out var pisoBajoCursor))
+                    result = new AimResult { Type = AimTargetType.Ground, Point = pisoBajoCursor };
+
+                if (Selection.SelectedVehicle == null && Selection.Selected.Count == 0)
+                {
+                    RejectOrder("NADIE SELECCIONADO: ARRASTRA UN CUADRO O CLICK SOBRE UN ALIADO");
+                    pidioOrden = false;
+                }
 
                 if (esCobertura)
                 {
@@ -3708,7 +4104,9 @@ namespace SP.Player
                 if (SelectionBox != null) SelectionBox.gameObject.SetActive(false);
             }
 
-            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            // Solo cuenta la UI con la que se puede INTERACTUAR (botones, minimapa). Antes cualquier grafico con
+            // raycast (un aviso, un panel decorativo) bloqueaba la seleccion y las ordenes en toda la pantalla.
+            if (PunteroSobreUiInteractiva(mouse.position.ReadValue()))
             {
                 if (!dragging) return;
             }

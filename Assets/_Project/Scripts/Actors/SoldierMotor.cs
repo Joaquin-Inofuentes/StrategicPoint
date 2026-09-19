@@ -56,7 +56,14 @@ namespace SP.Actors
 
         // Lo lee AiBrain para acotar el paso cuando sigue la ruta del
         // NavMeshAgent (que solo planifica; este motor es quien camina).
-        public float MoveSpeed => moveSpeed;
+        public float MoveSpeed => moveSpeed * (Corriendo ? FactorDeCarrera : 1f);
+
+        // [Shift]: correr. El jugador lo pide a pie y los aliados libres corren con el
+        // (AjustesDeEscuadra.Correr). No se corre agachado ni en el aire.
+        public const float FactorDeCarrera = 1.7f;
+        bool pideCorrer;
+        public bool Corriendo => pideCorrer && !IsCrouching && !IsJumping;
+        public void SetRunning(bool correr) => pideCorrer = correr;
 
         // Se guarda la altura de PISO al saltar (no 0 fijo): el terreno de
         // la escena no es perfectamente plano en todos lados (ver
@@ -85,6 +92,7 @@ namespace SP.Actors
             IsJumping = false;
             verticalVelocity = 0f;
             IsCrouching = false;
+            pideCorrer = false;
         }
 
         void Update()
@@ -165,7 +173,7 @@ namespace SP.Actors
         public void Move(Vector3 worldDirection, float dt)
         {
             if (worldDirection.sqrMagnitude > 1f) worldDirection.Normalize();
-            transform.position += Resolve(worldDirection * moveSpeed * dt);
+            transform.position += Resolve(worldDirection * MoveSpeed * dt);
         }
 
         public void RotateYaw(float yawDeltaDegrees)

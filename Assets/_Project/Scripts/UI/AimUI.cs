@@ -539,13 +539,13 @@ namespace SP.UI
             switch (result.Type)
             {
                 case AimTargetType.Ally:
-                    CurrentPrompt = $"[F] Poseer a {result.Soldier.DisplayName}";
+                    CurrentPrompt = $"[Q] radial: poseer a {result.Soldier.DisplayName}";
                     currentAimTint = AllyTint;
                     break;
                 case AimTargetType.Enemy:
                     // E1: antes solo decia el nombre -- no invitaba a
                     // ninguna accion, aunque [F] ya la ejecutara.
-                    CurrentPrompt = $"[F] Atacar a {result.Soldier.DisplayName}";
+                    CurrentPrompt = $"[Q] radial: atacar a {result.Soldier.DisplayName}";
                     currentAimTint = EnemyTint;
                     break;
                 case AimTargetType.Vehicle:
@@ -553,7 +553,7 @@ namespace SP.UI
                     // destruida -- Vehicle.Mount() ya lo rechaza en
                     // silencio, pero el cartel no avisaba nada, como si
                     // sí fuera a funcionar.
-                    CurrentPrompt = result.Vehicle.IsDestroyed ? "Vehículo destruido" : "[G] Ordenar subir al vehiculo";
+                    CurrentPrompt = result.Vehicle.IsDestroyed ? "Vehículo destruido" : "[E] subir · [Q] radial: subir a todos";
                     currentAimTint = result.Vehicle.IsDestroyed ? ObstacleTint : VehicleTint;
                     break;
                 case AimTargetType.Obstacle:
@@ -602,6 +602,17 @@ namespace SP.UI
             UpdateSoldierInfo(result);
             UpdateVehicleInfo(result);
             UpdateEnemyHealthCircle(result);
+        }
+
+        // El driver conoce lo que el radial ofrece para lo apuntado: lo escribe aca (dorado = accion contextual).
+        public void PonerPromptContextual(string texto, bool destacado)
+        {
+            if (promptText == null) return;
+            promptText.text = texto;
+            promptText.color = destacado ? new Color(1f, 0.85f, 0.25f) : Color.white;
+            promptText.gameObject.SetActive(!string.IsNullOrEmpty(texto));
+            if (destacado && crosshair != null && !flashing) crosshair.color = new Color(1f, 0.85f, 0.25f);
+            CurrentPrompt = texto;
         }
 
         void UpdateSoldierInfo(AimResult result)
