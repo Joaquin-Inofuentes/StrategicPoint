@@ -343,6 +343,15 @@ namespace SP.Ai
 
         public Vector3 HomePosition => homePosition;
 
+        // Alcances de vision y de ataque (los del nivel: aliados 20/12, enemigos 22/13). Los soldados
+        // que aparecen en juego (oleadas, refuerzos) los reciben de aca, no del prefab (10/6).
+        public void ConfigurarAlcances(float vision, float ataque)
+        {
+            visionRange = vision;
+            attackRange = ataque;
+            forceSense = true;
+        }
+
         // Rango de vision que usa el sensado. En Libre y en AltoElFuego el
         // multiplicador es la constante 1f, y x * 1f es bit a bit el mismo
         // float que x: la consulta recibe exactamente visionRange, el mismo
@@ -364,8 +373,22 @@ namespace SP.Ai
 
         public float EffectiveAttackRange => attackRange * RoleAttackRangeMultiplier;
 
-        float RoleAttackRangeMultiplier =>
-            self != null && self.Role == SP.Combat.RoleType.Sniper ? sniperAttackRangeMultiplier : 1f;
+        // Armas de corto alcance (metralleta, escopeta): el soldado se acerca a 70% del alcance normal,
+        // que es donde su dispersion rinde. Sin esto se quedaban a 12 m disparando al aire y perdian
+        // contra un fusil (medido en el banco de balance: flanqueador 0% vs fusilero a 12 m).
+        public const float FactorDeAlcanceCorto = 0.7f;
+
+        float RoleAttackRangeMultiplier
+        {
+            get
+            {
+                if (self == null) return 1f;
+                if (self.Role == SP.Combat.RoleType.Sniper) return sniperAttackRangeMultiplier;
+                var w = self.Weapon;
+                if (w != null && (w.CurrentWeaponKind == SP.Combat.WeaponKind.Smg || w.CurrentWeaponKind == SP.Combat.WeaponKind.Shotgun)) return FactorDeAlcanceCorto;
+                return 1f;
+            }
+        }
 
         // ------------------------------------------------------------------
         // Item 224: sensado repartido en el tiempo (verificable desde afuera)
@@ -461,7 +484,7 @@ namespace SP.Ai
 
         void OnAnyDamage(DamageTakenEvent evt)
         {
-            if (self == null || !self.Health.IsAlive) return;
+            if (self == null || Pasivo || !self.Health.IsAlive) return;
 
             var attacker = ActorRegistry.FindById(evt.AttackerId);
             if (attacker == null || !attacker.Health.IsAlive) return;
@@ -516,7 +539,7 @@ namespace SP.Ai
         // definido en un solo numero para las dos señales.
         void OnShotFiredNearby(ShotFiredEvent evt)
         {
-            if (self == null || !self.Health.IsAlive) return;
+            if (self == null || Pasivo || !self.Health.IsAlive) return;
             // Mismo criterio que OnAnyDamage: si ya esta ocupado (Chase,
             // Attack, siguiendo una orden) el tiro no lo interrumpe.
             if (State != AiState.Idle && State != AiState.Patrol) return;
@@ -1607,6 +1630,7 @@ namespace SP.Ai
         // el mismo resultado y las pruebas headless siguen siendo repetibles.
         Soldier SenseNearestEnemy()
         {
+            if (Pasivo) return null;
             // CRITICO: si el objetivo cacheado murio o se desactivo (se subio
             // a un vehiculo) se descarta AHORA y se re-sensa sin esperar el
             // intervalo. Un soldado apuntandole 3 frames a un cadaver es un

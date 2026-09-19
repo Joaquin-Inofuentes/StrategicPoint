@@ -133,6 +133,17 @@ namespace SP.Presentation
             if (currentHealth <= 0) Collapse();
         }
 
+        // Demolicion por carga (el soldado de asalto): tira el obstaculo entero de una vez,
+        // con una nube grande de escombros. Sirve tambien para muros "indestructibles".
+        public void Demoler()
+        {
+            CacheIfNeeded();
+            if (IsCollapsed) return;
+            currentHealth = 0;
+            SpawnDebris(30, 9f);
+            Collapse();
+        }
+
         void ApplyStageLook(int stage)
         {
             if (rend == null) return;

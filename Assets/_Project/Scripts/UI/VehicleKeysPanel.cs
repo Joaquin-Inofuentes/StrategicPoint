@@ -91,11 +91,9 @@ namespace SP.UI
         {
             if (texto == null || v == null) return;
             var sb = new StringBuilder(512);
-            sb.AppendLine("<size=13><color=#8ea0b8><b>TANQUE · TECLAS</b></color></size>");
-            sb.AppendLine($"{Chip("G")} TODOS SUBEN" + (aliadosEnCamino > 0 ? $"  <color=#ffe14d>({aliadosEnCamino} en camino)</color>" : ""));
-            sb.AppendLine($"{Chip("I")} TODOS BAJAN (menos vos)");
-            sb.AppendLine($"{Chip("U")} llamar a UN aliado");
-            sb.AppendLine($"{Chip("T")} mandar el tanque adonde apuntas");
+            sb.AppendLine("<size=13><color=#8ea0b8><b>TANQUE · ORDENES POR RADIAL</b></color></size>");
+            sb.AppendLine($"{Chip("Q")} mantener → <b>TANQUE</b>: subir todos · bajar todos · tanque allí · bajarme" + (aliadosEnCamino > 0 ? $"  <color=#ffe14d>({aliadosEnCamino} en camino)</color>" : ""));
+            sb.AppendLine($"{Chip("Q")} mantener → <b>POSEER</b>: pasar a otro soldado");
             sb.AppendLine($"{Chip("E")} bajar del tanque");
             sb.AppendLine($"{Chip("Espacio")} freno (conductor)");
             sb.AppendLine("<size=13><color=#8ea0b8><b>ASIENTOS · si esta ocupado, INTERCAMBIAN</b></color></size>");

@@ -39,22 +39,61 @@ namespace SP.Player
 
         // Devuelve false (y no deja pedido abierto) si no hay a quien
         // mandar. El llamador usa eso para avisar por pantalla.
-        public static bool Solicitar(Soldier herido)
+        // medicoManual: el medico es el propio jugador (no se le ordena caminar: tiene que
+        // acercarse el mismo a AlcanceDeCuracion del herido).
+        public static bool Solicitar(Soldier herido, Soldier medicoManual = null)
         {
             Cancelar();
             if (herido == null || herido.Health == null || !herido.Health.IsAlive) return false;
             if (herido.Health.Current >= herido.Health.MaxHealth) return false;
 
-            var medico = BuscarEnfermero(herido);
-            if (medico == null) return false;
+            var medico = medicoManual != null && medicoManual.Health != null && medicoManual.Health.IsAlive
+                ? medicoManual : BuscarEnfermero(herido);
+            if (medico == null || medico == herido) return false;
 
             Herido = herido;
             Enfermero = medico;
             restante = EsperaMaxima;
             acumulado = 0f;
-            OrderService.IssueFollowOrder(medico, herido);
+            if (medico != medicoManual) OrderService.IssueFollowOrder(medico, herido);
             GameLog.Line($"{medico.DisplayName} va a atender a {herido.DisplayName}");
             return true;
+        }
+
+        // BOTIQUIN del medico que maneja el jugador: se cura solo BotiquinVida puntos en
+        // BotiquinSegundos, y tarda BotiquinEspera s en volver a estar listo.
+        public const int BotiquinVida = 60;
+        public const float BotiquinSegundos = 4f;
+        public const float BotiquinEspera = 25f;
+        public static Soldier BotiquinDe { get; private set; }
+        public static float BotiquinListoEn { get; private set; }
+        static float botiquinRestante, botiquinAcum;
+
+        public static bool Botiquin(Soldier medico)
+        {
+            if (medico == null || medico.Health == null || !medico.Health.IsAlive) return false;
+            if (medico.Health.Current >= medico.Health.MaxHealth || BotiquinListoEn > 0f || botiquinRestante > 0f) return false;
+            BotiquinDe = medico;
+            botiquinRestante = BotiquinSegundos;
+            botiquinAcum = 0f;
+            BotiquinListoEn = BotiquinEspera;
+            GameLog.Line($"{medico.DisplayName} usa el botiquin");
+            return true;
+        }
+
+        public static bool BotiquinActivo => botiquinRestante > 0f;
+
+        static void TickBotiquin(float dt)
+        {
+            if (BotiquinListoEn > 0f) BotiquinListoEn = Mathf.Max(0f, BotiquinListoEn - dt);
+            if (botiquinRestante <= 0f) return;
+            if (BotiquinDe == null || BotiquinDe.Health == null || !BotiquinDe.Health.IsAlive) { botiquinRestante = 0f; return; }
+            botiquinRestante -= dt;
+            botiquinAcum += BotiquinVida / BotiquinSegundos * dt;
+            int puntos = Mathf.FloorToInt(botiquinAcum);
+            if (puntos <= 0) return;
+            botiquinAcum -= puntos;
+            BotiquinDe.Health.Heal(puntos);
         }
 
         // El enfermero del equipo del herido mas cercano a el. Si no hay
@@ -69,7 +108,7 @@ namespace SP.Player
             if (conRol != null) return conRol;
 
             return ActorRegistry.FindNearest(herido.transform.position,
-                s => s != herido && s.Team == herido.Team && s.Health != null && s.Health.IsAlive
+                s => s != herido && s.Team == herido.Team && s.Health != null && s.Health.IsAlive && s.Role != RoleType.Civilian
                      && !OrderService.LoManejaElJugador(s));
         }
 
@@ -89,8 +128,12 @@ namespace SP.Player
         public const float RadioDeAtencionAutomatica = 16f;
         static float proximoEscaneo;
 
+        // El tutorial la apaga para que el jugador mande a curar el mismo.
+        public static bool AtencionAutomatica = true;
+
         static void AtenderSolo(float dt)
         {
+            if (!AtencionAutomatica) return;
             proximoEscaneo -= dt;
             if (proximoEscaneo > 0f) return;
             proximoEscaneo = 1.5f;
@@ -122,6 +165,7 @@ namespace SP.Player
 
         public static void Tick(float dt)
         {
+            TickBotiquin(dt);
             if (!Activo) { AtenderSolo(dt); return; }
 
             if (!Herido.Health.IsAlive || !Enfermero.Health.IsAlive

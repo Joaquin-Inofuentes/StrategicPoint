@@ -51,10 +51,35 @@ namespace SP.Ai
         }
 
         // Toda orden nueva del jugador suelta la cobertura y el "seguir solo".
+        // "Todos quietos": no sigue al jugador ni se mueve hasta recibir otra orden.
+        bool quieto;
+        CombatStance posturaAntesDeQuieto = CombatStance.Libre;
+        public bool Quieto
+        {
+            get => quieto;
+            set
+            {
+                if (value == quieto) return;
+                quieto = value;
+                if (value)
+                {
+                    // Plantado: en Libre pasa a Defensiva (no persigue); en otra postura (p. ej. el
+                    // alto el fuego del tutorial) se respeta.
+                    posturaAntesDeQuieto = Stance;
+                    if (Stance == CombatStance.Libre) Stance = CombatStance.Defensiva;
+                }
+                else Stance = posturaAntesDeQuieto;
+            }
+        }
+
+        // Civil: no reacciona al combate (ni ve enemigos ni devuelve fuego), solo sigue ordenes.
+        public bool Pasivo { get; set; }
+
         void NuevaOrden()
         {
             LiberarCobertura();
             seguirAuto = false;
+            if (Quieto) Quieto = false;
         }
 
         // Feedback de deteccion: el enemigo que ve a la escuadra marca un "!"
@@ -196,7 +221,7 @@ namespace SP.Ai
 
         void TickSeguirAlJugador()
         {
-            if (self.Team != TeamId.Player) return;
+            if (self.Team != TeamId.Player || Quieto) return;
             var lider = AjustesDeEscuadra.Lider;
             if (lider == null || lider == self || lider.Health == null || !lider.Health.IsAlive || !lider.gameObject.activeInHierarchy)
             {
