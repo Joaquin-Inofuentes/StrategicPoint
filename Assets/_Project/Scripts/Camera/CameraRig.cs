@@ -51,6 +51,10 @@ namespace SP.CameraSystem
         // RtsCameraPositionFor.
         Vector3 rtsFocusPoint;
         float rtsCurrentHeight;
+        // El zoom con la rueda anima hacia esta altura (y ancla el punto bajo el cursor mientras dura).
+        float rtsTargetHeight = -1f;
+        Vector2 zoomPixel;
+        bool zoomAnclado;
 
         // Pitch (mirar arriba/abajo) es propio de la cámara, no del cuerpo
         // del soldado: el cuerpo solo gira en yaw (RotateYaw), y acá se le
@@ -156,6 +160,7 @@ namespace SP.CameraSystem
                 }
                 transform.rotation = Quaternion.Euler(rtsLookEuler);
                 transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
+                AnimarZoom(Time.unscaledDeltaTime);
             }
 
             ApplyCameraOffsets(frame);
@@ -320,6 +325,7 @@ namespace SP.CameraSystem
             {
                 rtsFocusPoint = savedRtsFocus.Value;
                 rtsCurrentHeight = savedRtsHeight;
+                rtsTargetHeight = savedRtsHeight;
                 transform.rotation = Quaternion.Euler(rtsLookEuler);
                 transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
                 // El objetivo de paneo suavizado debe re-sincronizarse con
@@ -605,6 +611,7 @@ namespace SP.CameraSystem
             CancelTransition();
             rtsFocusPoint = new Vector3(center.x, 0f, center.z);
             rtsCurrentHeight = rtsHeight;
+            rtsTargetHeight = rtsHeight;
             transform.rotation = Quaternion.Euler(rtsLookEuler);
             transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
             panTargetInitialized = false;
@@ -683,6 +690,69 @@ namespace SP.CameraSystem
             float clamped = Mathf.Clamp(raw, rtsMinHeight, rtsMaxHeight);
             ZoomAtLimit = Mathf.Abs(raw - clamped) > 0.001f;
             rtsCurrentHeight = clamped;
+            rtsTargetHeight = clamped;
+            zoomAnclado = false;
         }
+
+        // Punto del suelo (y = 0) que cae bajo un pixel de la pantalla.
+        bool SueloBajoPixel(Vector2 pantalla, out Vector3 punto)
+        {
+            punto = default;
+            if (cam == null) return false;
+            var rayo = cam.ScreenPointToRay(pantalla);
+            if (Mathf.Abs(rayo.direction.y) < 0.0001f) return false;
+            float t = -rayo.origin.y / rayo.direction.y;
+            if (t <= 0f) return false;
+            punto = rayo.origin + rayo.direction * t;
+            return true;
+        }
+
+        // Zoom HACIA EL CURSOR: el punto del mapa que esta bajo el mouse se queda bajo el mouse
+        // mientras se acerca o se aleja (como Google Maps o cualquier RTS). La altura no salta:
+        // se anima hacia el objetivo y, en cada frame, se mide el suelo bajo el pixel antes y
+        // despues del cambio de altura y la diferencia se le suma al foco de la camara.
+        public void ZoomHaciaCursor(float delta, Vector2 pantalla)
+        {
+            if (cam == null || Mode != ControlMode.Rts || IsTransitioning) { Zoom(delta); return; }
+            if (rtsTargetHeight < 0f) rtsTargetHeight = rtsCurrentHeight;
+            float raw = rtsTargetHeight - delta;
+            float clamped = Mathf.Clamp(raw, rtsMinHeight, rtsMaxHeight);
+            ZoomAtLimit = Mathf.Abs(raw - clamped) > 0.001f;
+            rtsTargetHeight = clamped;
+            zoomPixel = pantalla;
+            zoomAnclado = true;
+        }
+
+        // Alturas a las que converge el zoom (para las pruebas).
+        public float RtsTargetHeight => rtsTargetHeight < 0f ? rtsCurrentHeight : rtsTargetHeight;
+        public const float VelocidadDeZoomAnimado = 14f;
+
+        void AnimarZoom(float dt)
+        {
+            if (rtsTargetHeight < 0f || Mathf.Abs(rtsCurrentHeight - rtsTargetHeight) < 0.002f)
+            {
+                if (rtsTargetHeight >= 0f) rtsCurrentHeight = rtsTargetHeight;
+                return;
+            }
+            Vector3 antes = default;
+            bool habia = zoomAnclado && SueloBajoPixel(zoomPixel, out antes);
+            rtsCurrentHeight = Mathf.Lerp(rtsCurrentHeight, rtsTargetHeight, 1f - Mathf.Exp(-VelocidadDeZoomAnimado * dt));
+            transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
+            if (!habia || !SueloBajoPixel(zoomPixel, out var despues)) return;
+
+            var corrimiento = new Vector3(antes.x - despues.x, 0f, antes.z - despues.z);
+            if (!panTargetInitialized) { panTarget = rtsFocusPoint; panTargetInitialized = true; }
+            var foco = rtsFocusPoint + corrimiento;
+            var objetivo = panTarget + corrimiento;
+            AcotarAlMapa(ref foco);
+            AcotarAlMapa(ref objetivo);
+            rtsFocusPoint = new Vector3(foco.x, rtsFocusPoint.y, foco.z);
+            panTarget = objetivo;
+            transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
+        }
+
+        // Alturas de la vista RTS (para las pruebas y para mostrar el zoom).
+        public float RtsHeight => rtsCurrentHeight;
+        public Vector3 RtsFocus => rtsFocusPoint;
     }
 }

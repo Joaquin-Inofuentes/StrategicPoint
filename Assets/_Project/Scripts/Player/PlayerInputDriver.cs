@@ -69,8 +69,13 @@ namespace SP.Player
         // Requisito de accesibilidad basico y preferencia muy comun en
         // shooters: sin esto no habia forma de invertir el eje vertical.
         public bool InvertLookY { get; set; }
-        [SerializeField] float rtsPanSpeed = 14f;
-        [SerializeField] float rtsZoomSpeed = 20f;
+        [SerializeField] float rtsPanSpeed = 28f;   // x2 (antes 14)
+        [SerializeField] float rtsZoomSpeed = 40f;   // x2 (antes 20)
+
+        // Las ordenes de escuadra viven en el radial de [Q]; las teclas sueltas
+        // heredadas (F1-F3, G, T, Y, U, I, Z, C, F, B, K) quedan apagadas. Solo
+        // TAB (cambio de vista) y el manejo directo siguen siendo teclas.
+        public bool AtajosDeTecladoHeredados = false;
         [SerializeField] float dragThresholdPixels = 6f;
         [SerializeField] float interactRadius = 3.5f;
         [SerializeField] float autoMountRadius = 6f;
@@ -286,6 +291,12 @@ namespace SP.Player
         }
 
         AimResult ultimoResultadoDeMira;
+        public AimResult UltimaMira => ultimoResultadoDeMira;
+
+        // La carga de demolicion del asalto usa el mismo anillo que el revivir.
+        public bool DemolicionEnCurso { get; set; }
+        public void MostrarProgresoDemolicion(float f01) => MostrarCirculoRevivir(Mathf.Clamp01(f01));
+        public void OcultarProgresoDemolicion() { if (circuloRevivir != null) circuloRevivir.SetVisible(false); }
 
         // Zoom real y reticula del arma equipada (ver UI/MirillaView).
         void ActualizarMirilla(AimResult result)
@@ -612,6 +623,13 @@ namespace SP.Player
                     if (elegido != null && elegido != Brain.Current) TryPossess(elegido);
                 }
 
+                // BUG REAL ("se maneja solo"): en RTS una orden a la escuadra
+                // incluye al soldado que venias manejando, y OrderService apaga su
+                // IsPossessedByPlayer y le deja un destino. Al volver a FPS nadie
+                // le devolvia el control: el cuerpo seguia caminando solo (o se
+                // bajaba del tanque). Ahora se reclama al cambiar a FPS.
+                if (Rig.Mode == ControlMode.Fps && Brain.Current != null) ReclamarControl(Brain.Current);
+
                 if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue && Brain.Current != null && Vehicle != null)
                 {
                     var role = Vehicle.RoleOf(Brain.Current);
@@ -643,15 +661,20 @@ namespace SP.Player
 
             if (currentSeat.HasValue)
             {
-                UpdateInVehicle(kb, Mouse.current);
+                // El radial tambien se abre desde el asiento (bajar, mandar el tanque, poseer...).
+                ActualizarMenuDeOrdenes();
+                if (currentSeat.HasValue) UpdateInVehicle(kb, Mouse.current);
                 return;
             }
 
             // [F1]/[F2]/[F3]: posee directamente al soldado 1/2/3 del
             // escuadrón, sin tener que apuntarle primero.
-            if (kb.f1Key.wasPressedThisFrame) PossessSquadIndex(0);
-            if (kb.f2Key.wasPressedThisFrame) PossessSquadIndex(1);
-            if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
+            if (AtajosDeTecladoHeredados)
+            {
+                if (kb.f1Key.wasPressedThisFrame) PossessSquadIndex(0);
+                if (kb.f2Key.wasPressedThisFrame) PossessSquadIndex(1);
+                if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
+            }
             // [Q] cicla entre vivos y [C] posee al mas cercano: ambas caen
             // bajo la mano izquierda sin soltar WASD, a diferencia de F1/F2/F3.
             // El ciclado ya NO se dispara al apretar sino al SOLTAR rapido:
@@ -661,11 +684,32 @@ namespace SP.Player
             ActualizarMenuDeOrdenes();
             // 199: solo se podia ciclar hacia ADELANTE. Con una escuadra de
             // tres eso ya obliga a dar la vuelta entera para volver uno.
-            if (KeyBindings.WasPressed(KeyBindings.CiclarPosesionAtras)) CycleLivingAlly(-1);
-            if (KeyBindings.WasPressed(KeyBindings.PoseerMasCercano)) PossessNearestAlly();
+            if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.CiclarPosesionAtras)) CycleLivingAlly(-1);
+            if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.PoseerMasCercano)) PossessNearestAlly();
 
             if (Rig.Mode == ControlMode.Fps) UpdateFps(kb, Mouse.current);
             else UpdateRts(kb, Mouse.current);
+        }
+
+        // Devuelve el cuerpo al jugador: sin orden pendiente, sin IA y con el estado
+        // de asiento coherente con lo que de verdad paso mientras miraba desde RTS.
+        public void ReclamarControl(Soldier s)
+        {
+            if (s == null) return;
+            var ai = s.Brain;
+            bool vaMontado = Vehicle != null && Vehicle.RoleOf(s) != null;
+            if (ai != null)
+            {
+                bool teniaOrden = ai.CurrentOrderDestination.HasValue || ai.State == SP.Ai.AiState.MovingToOrder || ai.State == SP.Ai.AiState.Follow;
+                if (!vaMontado && (teniaOrden || !ai.IsPossessedByPlayer)) ai.CancelOrder();
+                if (!ai.IsPossessedByPlayer)
+                {
+                    ai.IsPossessedByPlayer = true;
+                    GameLog.Line($"{s.DisplayName}: el jugador recupera el control al volver a FPS");
+                }
+            }
+            // Una orden de RTS pudo bajarlo del tanque: el asiento recordado ya no vale.
+            if (currentSeat.HasValue && !vaMontado) ClearVehicleSeatState();
         }
 
         // -----------------------------------------------------------
@@ -1130,7 +1174,7 @@ namespace SP.Player
             if (KeyBindings.WasPressed(KeyBindings.AtaqueCuchillo))
                 Brain.Current.Weapon.TryMelee();
 
-            if (KeyBindings.WasPressed(KeyBindings.Poseer) && result.Type == AimTargetType.Ally)
+            if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.Poseer) && result.Type == AimTargetType.Ally)
                 TryPossess(result.Soldier);
 
             // E1: [F] sobre un enemigo manda la orden de atacar a lo
@@ -1141,13 +1185,13 @@ namespace SP.Player
             // normal del jugador que arranca poseyendo en FPS), Selection
             // esta vacia y la orden se perdia en silencio. Sin seleccion
             // manual, [F] ataca con el soldado que estas manejando.
-            if (KeyBindings.WasPressed(KeyBindings.Poseer) && result.Type == AimTargetType.Enemy)
+            if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.Poseer) && result.Type == AimTargetType.Enemy)
             {
                 var attackers = Selection.Selected.Count > 0 ? Selection.Selected : SoloBrainCurrente();
                 OrderService.IssueAttackOrderForSelection(attackers, result.Soldier);
             }
 
-            if (kb.tKey.wasPressedThisFrame)
+            if (AtajosDeTecladoHeredados && kb.tKey.wasPressedThisFrame)
             {
                 bool shiftHeld = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
                 // [T] sobre una COBERTURA (el obstaculo o el disco celeste del
@@ -1158,14 +1202,14 @@ namespace SP.Player
                     IssueGroundOrderT(result.Point, shiftHeld);
             }
 
-            if (kb.gKey.wasPressedThisFrame && result.Type == AimTargetType.Vehicle)
+            if (AtajosDeTecladoHeredados && kb.gKey.wasPressedThisFrame && result.Type == AimTargetType.Vehicle)
                 GOrderOnVehicle(result.Vehicle);
 
             // Pedido explicito: "que le pueda decir a mis aliados que me
             // sigan" -- no necesita apuntar a nada, es sobre TODA la
             // escuadra viva y activa (no montada en un vehiculo), igual
             // que el resto de las ordenes de escuadra completa.
-            if (kb.yKey.wasPressedThisFrame && Squad != null)
+            if (AtajosDeTecladoHeredados && kb.yKey.wasPressedThisFrame && Squad != null)
                 OrderService.IssueFollowOrderForSelection(Squad, Brain.Current);
 
             // Pedido explicito: teclas dedicadas para subir/bajar del
@@ -1174,7 +1218,7 @@ namespace SP.Player
             // todavia no este ya en camino a montar -- para poder llenar
             // los asientos de a uno en vez de mandar a toda la escuadra
             // de un tiron. [I] baja a todos los que esten adentro.
-            if (kb.uKey.wasPressedThisFrame)
+            if (AtajosDeTecladoHeredados && kb.uKey.wasPressedThisFrame)
             {
                 var vehicle = FindTheVehicle();
                 if (vehicle != null && !vehicle.IsDestroyed && vehicle.HasAnyRoom)
@@ -1184,7 +1228,7 @@ namespace SP.Player
                     else RejectOrder("NO HAY MAS ALIADOS PARA SUBIR");
                 }
             }
-            if (kb.iKey.wasPressedThisFrame)
+            if (AtajosDeTecladoHeredados && kb.iKey.wasPressedThisFrame)
             {
                 var vehicle = FindTheVehicle();
                 if (vehicle != null && vehicle.OccupantCount > 0) DismountAll(vehicle);
@@ -1234,7 +1278,7 @@ namespace SP.Player
                 UpdateRevivalHold(caidoCercano);
                 return;
             }
-            if (circuloRevivir != null) circuloRevivir.SetVisible(false);
+            if (circuloRevivir != null && !DemolicionEnCurso) circuloRevivir.SetVisible(false);
 
             // Interacción por cercanía (no por puntería): subir al vehículo
             // o equipar un arma tirada en el piso.
@@ -1258,7 +1302,7 @@ namespace SP.Player
                 else if (nearVehicle != null) EnterVehicle(nearVehicle);
             }
 
-            SetInstructionText(nearVehicle != null ? "[E] Subir al vehiculo  ·  [U] sube a un aliado"
+            SetInstructionText(nearVehicle != null ? "[E] Subir al vehiculo  ·  [Q] mantener: radial de ordenes"
                 : nearPickup != null ? $"[E] Equipar {nearPickup.Kind}"
                 : BuildFpsInstruction(result));
         }
@@ -1935,7 +1979,7 @@ namespace SP.Player
         {
             if (Brain.Current == null) return;
             var nearest = ActorRegistry.FindNearest(Brain.Current.transform.position, s =>
-                s.Health.IsAlive && s.Team == Brain.Current.Team && s != Brain.Current && s.gameObject.activeInHierarchy);
+                s.Health.IsAlive && s.Team == Brain.Current.Team && s != Brain.Current && s.gameObject.activeInHierarchy && s.Role != RoleType.Civilian);
             if (nearest == null) { RejectOrder("NO HAY ALIADO CERCA"); return; }
             TryPossess(nearest);
         }
@@ -1980,32 +2024,54 @@ namespace SP.Player
                 return;
             }
 
-            if (sostenido && !OrdenesMenu.Abierto) OrdenesMenu.Abrir();
+            if (sostenido && !OrdenesMenu.Abierto) AbrirRadial();
 
             if (OrdenesMenu.Abierto)
             {
                 int elegida = MenuDeOrdenes.LeerTecla();
                 if (elegida > 0)
                 {
-                    if (OrdenesMenu.EsRadial) EjecutarOrdenRadial(elegida - 1);
-                    else EjecutarOrdenDelMenu(elegida);
                     OrdenesMenu.Cerrar();
+                    if (OrdenesMenu.EsRadial) EjecutarOrdenRadial(elegida - 1, 0);
+                    else EjecutarOrdenDelMenu(elegida);
+                    aimCongelado = null;
                     return;
                 }
-                // Se cierra al soltar. El toque corto no puede llegar aca
-                // (para abrirse ya hubo que pasar el umbral), asi que
-                // soltar despues de mantener nunca cicla de soldado.
-                // Al soltar se ejecuta la porcion resaltada del radial.
+                // Se cierra al soltar. El toque corto no puede llegar aca (para abrirse ya hubo
+                // que pasar el umbral), asi que soltar despues de mantener nunca cicla de soldado.
+                // Al soltar se ejecuta lo resaltado: la opcion del anillo exterior, o la primera
+                // opcion de la categoria si el cursor no salio del anillo interior. Cursor en el
+                // centro o en una zona vacia del anillo exterior = cancelar.
                 if (!sigueApretada)
                 {
-                    int sel = OrdenesMenu.Seleccion;
+                    int cat = OrdenesMenu.Seleccion, sub = OrdenesMenu.Sub;
+                    bool afuera = OrdenesMenu.EnAnilloExterior;
                     OrdenesMenu.Cerrar();
-                    if (OrdenesMenu.EsRadial && sel >= 0) EjecutarOrdenRadial(sel);
+                    if (OrdenesMenu.EsRadial && cat >= 0)
+                    {
+                        if (sub >= 0) EjecutarOrdenRadial(cat, sub);
+                        else if (!afuera) EjecutarOrdenRadial(cat, 0);
+                    }
+                    aimCongelado = null;
                 }
                 return;
             }
 
             if (toque) CycleLivingAlly(+1);
+        }
+
+        // Punto al que apuntaba el jugador cuando abrio el radial: el mouse se usa para
+        // elegir en el menu, asi que "alli" no puede ser donde termina el cursor.
+        AimResult? aimCongelado;
+
+        public bool RadialAbierto => OrdenesMenu != null && OrdenesMenu.Abierto;
+
+        void AbrirRadial()
+        {
+            string Clase(int i) => Squad != null && i < Squad.Count && Squad[i] != null ? Squad[i].ClassNameTitulo : null;
+            OrdenesMenu.PonerSoldados(Clase(0), Clase(1), Clase(2));
+            aimCongelado = ultimoResultadoDeMira;
+            OrdenesMenu.Abrir();
         }
 
         // A quien le hablan las ordenes del menu: a la seleccion de RTS si
@@ -2024,7 +2090,7 @@ namespace SP.Player
             if (Squad != null)
                 foreach (var s in Squad)
                     if (s != null && s.Health != null && s.Health.IsAlive
-                        && !OrderService.LoManejaElJugador(s)) lista.Add(s);
+                        && !OrderService.LoManejaElJugador(s) && s != Brain.Current) lista.Add(s);
             return lista;
         }
 
@@ -2088,20 +2154,196 @@ namespace SP.Player
             return yo + frente * 14f;
         }
 
-        // Las seis porciones del radial de [Q] (ver UI/MenuDeOrdenes). Publico para que
-        // la suite y las pruebas de juego puedan ejercerlo sin teclado.
-        public bool EjecutarOrdenRadial(int porcion)
+        // Radial de [Q] por capas: categoria (anillo interior) y opcion (anillo exterior).
+        // Publico para que la suite y las pruebas de juego puedan ejercerlo sin teclado.
+        //   0 IR ALLI          1 CUBRIRSE (segun donde miro)   2 ATACAR      3 POSICION
+        //   4 CURAR            5 TANQUE                         6 POSEER      7 DEMOLER
+        // Aviso de cada orden radial que salio bien (categoria, opcion): lo escucha el tutorial.
+        public event System.Action<int, int> OrdenRadialEjecutada;
+
+        public bool EjecutarOrdenRadial(int categoria, int sub = 0)
         {
-            var aim = ultimoResultadoDeMira;
-            var aliados = DestinatariosDeOrden();
+            bool ok = EjecutarOrdenRadialInterno(categoria, sub);
+            if (ok) OrdenRadialEjecutada?.Invoke(categoria, sub);
+            return ok;
+        }
+
+        bool EjecutarOrdenRadialInterno(int categoria, int sub)
+        {
+            var aim = aimCongelado ?? ultimoResultadoDeMira;
             var yo = Brain != null ? Brain.Current : null;
-            switch (porcion)
+            string quien;
+            switch (categoria)
             {
-                case 0: // SUBIR AL TANQUE
+                case 0: // IR ALLI
                 {
-                    var v = FindTheVehicle();
+                    var dest = DestinatariosPorSub(sub, out quien);
+                    if (dest.Count == 0) { RejectOrder(sub <= 0 ? "NADIE A QUIEN ORDENAR" : quien); return false; }
+                    var punto = PuntoApuntadoParaOrdenes(aim);
+                    var puntos = OrderService.FormationPoints(punto, dest.Count);
+                    for (int i = 0; i < dest.Count; i++) OrderService.IssueMoveOrder(dest[i], puntos[i]);
+                    Avisar(sub <= 0 ? "TODOS ALLI" : quien + " VA");
+                    GameLog.Line($"Radial: {dest.Count} aliados van a {punto}");
+                    return true;
+                }
+                case 1: // CUBRIRSE segun hacia donde miro
+                {
+                    var dest = DestinatariosPorSub(sub, out quien);
+                    if (dest.Count == 0) { RejectOrder(sub <= 0 ? "NADIE A QUIEN ORDENAR" : quien); return false; }
+                    var origen = yo != null ? yo.transform.position : transform.position;
+                    var dir = DireccionDeMirada(aim);
+                    int n = OrdenesDeEscuadra.CubrirSegunMirada(dest, origen, dir, out var primero);
+                    if (n == 0 && TryResolverCobertura(aim, out var cobertura, out var dueno))
+                    {
+                        var lateral = Vector3.Cross(Vector3.up, dir).normalized;
+                        for (int i = 0; i < dest.Count; i++)
+                            if (OrderService.IssueCoverOrder(dest[i], cobertura + lateral * ((i - (dest.Count - 1) * 0.5f) * 1.6f), dueno)) n++;
+                        primero = cobertura;
+                    }
+                    if (n == 0) { RejectOrder("NO HAY COBERTURA HACIA AHI"); return false; }
+                    Avisar(sub <= 0 ? "A CUBIERTO" : quien + " SE CUBRE");
+                    GameLog.Line($"Radial: {n} aliados se cubren mirando hacia {dir} (cobertura en {primero})");
+                    return true;
+                }
+                case 2: // ATACAR
+                {
+                    var dest = DestinatariosPorSub(sub, out quien);
+                    Soldier objetivo = aim.Type == AimTargetType.Enemy ? aim.Soldier : null;
+                    if (objetivo == null && yo != null)
+                        objetivo = ActorRegistry.FindNearest(yo.transform.position, s => s.Team == TeamId.Enemy && s.Health != null && s.Health.IsAlive && (s.transform.position - yo.transform.position).sqrMagnitude < 100f * 100f);
+                    if (objetivo == null || dest.Count == 0) { RejectOrder(dest.Count == 0 ? (sub <= 0 ? "NADIE A QUIEN ORDENAR" : quien) : "NO HAY A QUIEN ATACAR"); return false; }
+                    OrderService.IssueAttackOrderForSelection(dest, objetivo);
+                    Avisar((sub <= 0 ? "ATAQUEN A " : quien + " ATACA A ") + objetivo.DisplayName.ToUpperInvariant());
+                    return true;
+                }
+                case 3: // POSICION
+                {
+                    var dest = DestinatariosDeOrden();
+                    switch (sub)
+                    {
+                        case 0:
+                        {
+                            int n = OrdenesDeEscuadra.Quietos(dest);
+                            if (n == 0) { RejectOrder("NADIE A QUIEN ORDENAR"); return false; }
+                            Avisar("TODOS QUIETOS");
+                            GameLog.Line($"Radial: {n} aliados quietos");
+                            return true;
+                        }
+                        case 1: return EjecutarOrdenDelMenu(3);
+                        case 2: return EjecutarOrdenDelMenu(1);
+                        case 3: return EjecutarOrdenDelMenu(2);
+                        default:
+                            if (dest.Count == 0) { RejectOrder("NADIE A QUIEN ORDENAR"); return false; }
+                            OrderService.IssueRetreatOrderForSelection(dest);
+                            Avisar("RETIRADA");
+                            return true;
+                    }
+                }
+                case 4: // CURAR
+                    return OrdenDeCuracion(sub, aim);
+                case 5: // TANQUE
+                    return OrdenDeTanque(sub, aim);
+                case 6: // POSEER
+                {
+                    if (sub >= 3) { CycleLivingAlly(+1); return true; }
+                    var s = SoldadoDeEscuadra(sub);
+                    if (s == null || s == yo) { RejectOrder(s == yo ? "YA SOS ESE SOLDADO" : "NO HAY SOLDADO " + (sub + 1)); return false; }
+                    return TryPossess(s);
+                }
+                case 7: // DEMOLER
+                    return OrdenDeDemolicion(sub, aim);
+            }
+            return false;
+        }
+
+        Soldier SoldadoDeEscuadra(int n) => Squad != null && n >= 0 && n < Squad.Count ? Squad[n] : null;
+
+        // sub 0 = todos los aliados libres; 1..3 = solo ese soldado de la escuadra.
+        List<Soldier> DestinatariosPorSub(int sub, out string aviso)
+        {
+            aviso = "TODOS";
+            if (sub <= 0) return DestinatariosDeOrden();
+            var lista = new List<Soldier>();
+            var s = SoldadoDeEscuadra(sub - 1);
+            var yo = Brain != null ? Brain.Current : null;
+            if (s == null || s.Health == null || !s.Health.IsAlive) { aviso = "EL " + sub + " NO ESTA DISPONIBLE"; return lista; }
+            if (s == yo) { aviso = "VOS SOS EL " + sub; return lista; }
+            lista.Add(s);
+            aviso = "SOLO " + s.DisplayName.ToUpperInvariant();
+            return lista;
+        }
+
+        // Hacia donde "mira" el jugador: la camara en FPS; en RTS, del soldado hacia el punto
+        // apuntado con el cursor.
+        Vector3 DireccionDeMirada(AimResult aim)
+        {
+            var yo = Brain != null ? Brain.Current : null;
+            Vector3 d = Vector3.zero;
+            if (Rig != null && Rig.Mode == ControlMode.Fps && Rig.Cam != null)
+                d = Vector3.ProjectOnPlane(Rig.Cam.transform.forward, Vector3.up);
+            else if (yo != null && aim.Type != AimTargetType.None)
+                d = Vector3.ProjectOnPlane(aim.Point - yo.transform.position, Vector3.up);
+            if (d.sqrMagnitude < 0.01f && yo != null) d = yo.transform.forward;
+            if (d.sqrMagnitude < 0.01f) d = Vector3.forward;
+            return d.normalized;
+        }
+
+        bool OrdenDeCuracion(int sub, AimResult aim)
+        {
+            var yo = Brain != null ? Brain.Current : null;
+            if (yo == null) return false;
+            switch (sub)
+            {
+                case 0: // CURARME
+                    if (yo.Role == RoleType.Medic)
+                    {
+                        if (PedidoDeCuracion.Botiquin(yo)) { Avisar("BOTIQUIN: TE CURAS"); return true; }
+                        RejectOrder(yo.Health.Current >= yo.Health.MaxHealth ? "NO HACE FALTA" : "BOTIQUIN EN ESPERA");
+                        return false;
+                    }
+                    if (PedidoDeCuracion.Solicitar(yo)) { Avisar("MEDICO EN CAMINO"); return true; }
+                    RejectOrder(yo.Health.Current >= yo.Health.MaxHealth ? "NO HACE FALTA" : "NO HAY QUIEN ATIENDA");
+                    return false;
+                case 1: // CURAR ALIADO (el mas herido)
+                case 2: // CURAR AL APUNTADO
+                {
+                    Soldier herido = null;
+                    if (sub == 2 && aim.Type == AimTargetType.Ally) herido = aim.Soldier;
+                    if (herido == null)
+                    {
+                        float peor = 0.999f;
+                        foreach (var a in ActorRegistry.All)
+                        {
+                            if (a == null || a == yo || a.Team != TeamId.Player || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy) continue;
+                            if (a.Role == RoleType.Civilian) continue;
+                            float f = (float)a.Health.Current / Mathf.Max(1, a.Health.MaxHealth);
+                            if (f < peor) { peor = f; herido = a; }
+                        }
+                    }
+                    if (herido == null) { RejectOrder("NADIE HERIDO"); return false; }
+                    bool ok = yo.Role == RoleType.Medic
+                        ? PedidoDeCuracion.Solicitar(herido, yo)
+                        : PedidoDeCuracion.Solicitar(herido);
+                    if (!ok) { RejectOrder(herido.Health.Current >= herido.Health.MaxHealth ? "NO HACE FALTA" : "NO HAY QUIEN ATIENDA"); return false; }
+                    Avisar(yo.Role == RoleType.Medic ? $"ACERCATE A {herido.DisplayName.ToUpperInvariant()} PARA CURARLO" : $"MEDICO VA CON {herido.DisplayName.ToUpperInvariant()}");
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        bool OrdenDeTanque(int sub, AimResult aim)
+        {
+            var yo = Brain != null ? Brain.Current : null;
+            var v = FindTheVehicle();
+            switch (sub)
+            {
+                case 0: // SUBIR TODOS
+                {
                     if (v == null || v.IsDestroyed || !v.HasAnyRoom) { RejectOrder("NO HAY LUGAR EN EL TANQUE"); return false; }
-                    var suben = aliados.FindAll(s => v.RoleOf(s) == null);
+                    var suben = DestinatariosDeOrden().FindAll(s => v.RoleOf(s) == null);
+                    var civil = SP.Mision.MisionDirector.Activo ? SP.Mision.MisionDirector.Instancia.Civil : null;
+                    if (civil != null && SP.Mision.MisionDirector.Instancia.CivilRescatado && civil.Health.IsAlive && civil.gameObject.activeInHierarchy && v.RoleOf(civil) == null) suben.Add(civil);
                     if (suben.Count == 0) { RejectOrder("NADIE PARA SUBIR"); return false; }
                     OrderService.IssueMountOrderForSelection(suben, v);
                     Avisar("TODOS AL TANQUE");
@@ -2109,7 +2351,6 @@ namespace SP.Player
                 }
                 case 1: // BAJAR TODOS
                 {
-                    var v = FindTheVehicle();
                     if (v == null || v.OccupantCount == 0) { RejectOrder("NADIE EN EL TANQUE"); return false; }
                     foreach (var o in new List<Soldier>(v.Occupants))
                         if (o != yo) v.Dismount(o);
@@ -2117,51 +2358,64 @@ namespace SP.Player
                     GameLog.Line("Radial: bajar todos del tanque");
                     return true;
                 }
-                case 2: // ATACAR
+                case 2: // TANQUE ALLI
                 {
-                    Soldier objetivo = aim.Type == AimTargetType.Enemy ? aim.Soldier : null;
-                    if (objetivo == null && yo != null)
-                        objetivo = ActorRegistry.FindNearest(yo.transform.position, s => s.Team == TeamId.Enemy && s.Health != null && s.Health.IsAlive && (s.transform.position - yo.transform.position).sqrMagnitude < 100f * 100f);
-                    if (objetivo == null || aliados.Count == 0) { RejectOrder("NO HAY A QUIEN ATACAR"); return false; }
-                    OrderService.IssueAttackOrderForSelection(aliados, objetivo);
-                    Avisar("ATAQUEN A " + objetivo.DisplayName.ToUpperInvariant());
-                    return true;
-                }
-                case 3: // IR ALLI · TODOS
-                {
-                    if (aliados.Count == 0) { RejectOrder("NADIE A QUIEN ORDENAR"); return false; }
+                    if (v == null) { RejectOrder("NO HAY TANQUE"); return false; }
                     var punto = PuntoApuntadoParaOrdenes(aim);
-                    var puntos = OrderService.FormationPoints(punto, aliados.Count);
-                    for (int i = 0; i < aliados.Count; i++) OrderService.IssueMoveOrder(aliados[i], puntos[i]);
-                    Avisar("TODOS AHI");
-                    GameLog.Line($"Radial: {aliados.Count} aliados van a {punto}");
+                    if (v.Driver == null) { RejectOrder("EL TANQUE NECESITA UN CONDUCTOR"); return false; }
+                    if (!TryIssueVehicleMoveOrder(punto, v)) { RejectOrder("EL TANQUE YA VA / ESTA AHI"); return false; }
+                    if (currentSeat == VehicleSeatRole.Driver) autoConduccion = true;
+                    Avisar("TANQUE EN CAMINO");
                     return true;
                 }
-                case 4: // IR ALLI · SOLO EL 2
+                case 3: // SUBIRME YO
                 {
-                    var dos = Squad != null && Squad.Count >= 2 ? Squad[1] : null;
-                    if (dos == null || dos.Health == null || !dos.Health.IsAlive) { RejectOrder("EL 2 NO ESTA DISPONIBLE"); return false; }
-                    if (dos == yo) { RejectOrder("VOS SOS EL 2"); return false; }
-                    var punto = PuntoApuntadoParaOrdenes(aim);
-                    OrderService.IssueMoveOrder(dos, punto);
-                    Avisar($"SOLO {dos.DisplayName.ToUpperInvariant()} VA");
-                    GameLog.Line($"Radial: solo {dos.DisplayName} va a {punto}");
+                    if (currentSeat.HasValue) { RejectOrder("YA ESTAS EN EL TANQUE"); return false; }
+                    if (v == null || v.IsDestroyed || yo == null) { RejectOrder("NO HAY TANQUE"); return false; }
+                    if (Vector3.Distance(yo.transform.position, v.transform.position) > interactRadius * 2f) { RejectOrder("ACERCATE AL TANQUE"); return false; }
+                    EnterVehicle(v);
+                    return currentSeat.HasValue;
+                }
+                default: // BAJARME YO
+                    if (!currentSeat.HasValue) { RejectOrder("NO ESTAS EN EL TANQUE"); return false; }
+                    ExitVehicle();
                     return true;
-                }
-                case 5: // CUBRIRSE · TODOS ALLI
-                {
-                    if (aliados.Count == 0) { RejectOrder("NADIE A QUIEN ORDENAR"); return false; }
-                    if (!TryResolverCobertura(aim, out var cobertura, out var dueno)) { RejectOrder("NO HAY COBERTURA AHI"); return false; }
-                    var lateral = Rig != null && Rig.Cam != null ? Vector3.Cross(Vector3.up, Rig.Cam.transform.forward).normalized : Vector3.right;
-                    int n = 0;
-                    for (int i = 0; i < aliados.Count; i++)
-                        if (OrderService.IssueCoverOrder(aliados[i], cobertura + lateral * ((i - (aliados.Count - 1) * 0.5f) * 1.6f), dueno)) n++;
-                    Avisar("A CUBIERTO");
-                    GameLog.Line($"Radial: {n} aliados se cubren en {cobertura}");
-                    return n > 0;
-                }
             }
-            return false;
+        }
+
+        bool OrdenDeDemolicion(int sub, AimResult aim)
+        {
+            var yo = Brain != null ? Brain.Current : null;
+            if (sub == 2)
+            {
+                bool hubo = DemoledorAsalto.CancelarTodos();
+                Avisar(hubo ? "DEMOLICION CANCELADA" : "NADA QUE CANCELAR");
+                return hubo;
+            }
+
+            var marcador = Demolicion.MarcadorApuntado(aim.HitTransform, aim.Point);
+            if (marcador == null) { RejectOrder("APUNTA A UN MURO O COBERTURA"); return false; }
+            string motivo;
+            if (!Demolicion.EsDemolible(marcador, out motivo)) { RejectOrder(motivo); return false; }
+
+            if (sub == 1) // YO DEMUELO
+            {
+                if (yo == null || yo.Role != RoleType.Assault) { RejectOrder("SOLO EL ASALTO DEMUELE"); return false; }
+                var d = yo.GetComponent<DemoledorAsalto>() ?? yo.gameObject.AddComponent<DemoledorAsalto>();
+                if (!d.IniciarComoJugador(marcador, out motivo)) { RejectOrder(motivo); return false; }
+                Avisar("QUEDATE QUIETO Y AGACHADO: DEMOLIENDO");
+                return true;
+            }
+
+            // ASALTO DEMUELE: el soldado de asalto libre va, se agacha 4 s y lo vuela.
+            Soldier asalto = null;
+            foreach (var s in DestinatariosDeOrden())
+                if (s.Role == RoleType.Assault) { asalto = s; break; }
+            if (asalto == null) { RejectOrder(yo != null && yo.Role == RoleType.Assault ? "VOS SOS EL ASALTO: USA YO DEMUELO" : "NO HAY UN ASALTO LIBRE"); return false; }
+            var dem = asalto.GetComponent<DemoledorAsalto>() ?? asalto.gameObject.AddComponent<DemoledorAsalto>();
+            if (!dem.IniciarComoAliado(marcador, out motivo)) { RejectOrder(motivo); return false; }
+            Avisar(asalto.DisplayName.ToUpperInvariant() + " VA A DEMOLER");
+            return true;
         }
 
         void Avisar(string texto)
@@ -2281,17 +2535,17 @@ namespace SP.Player
             switch (result.Type)
             {
                 case AimTargetType.Ally:
-                    return $"[F] poseer a {result.Soldier.DisplayName}   ·   [Y] que me sigan   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return $"{result.Soldier.DisplayName}   ·   [Q] mantener: radial (poseer, ordenes)   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Enemy:
-                    return $"Enemigo: {result.Soldier.DisplayName}   ·   [Y] que me sigan   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return $"Enemigo: {result.Soldier.DisplayName}   ·   [Q] mantener: radial → ATACAR   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Vehicle:
-                    return "[G] ordenar al aliado mas cercano que suba   ·   [Y] que me sigan   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return "[Q] mantener: radial → TANQUE (subir / bajar / ir)   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Obstacle:
-                    return "Obstáculo   ·   [Y] que me sigan   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return "Obstáculo   ·   [Q] mantener: radial → CUBRIRSE / DEMOLER   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Ground:
-                    return "[T] ordenar ir aquí   ·   [Y] que me sigan   ·   [Click der.] mandar la camioneta aquí (si hay alguien manejando)   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return "[Q] mantener: radial → IR ALLI   ·   [Click der.] mandar el tanque aquí (si hay conductor)   ·   [Click] disparar   ·   [TAB] vista RTS";
                 default:
-                    return "[WASD] moverse   ·   [Y] que me sigan   ·   [U] subir al auto   ·   [I] bajar del auto   ·   [Click] disparar   ·   [1][2][3] cambiar de arma   ·   [V] cuchillo   ·   [TAB] vista RTS";
+                    return "[WASD] moverse   ·   [Click] disparar   ·   [1][2][3] arma   ·   [Ctrl] agacharse   ·   [Q] mantener: radial de ordenes   ·   [TAB] vista RTS";
             }
         }
 
@@ -2356,7 +2610,7 @@ namespace SP.Player
             currentSeat = role;
             Vehicle.PlayerAboard = true;
             var vb = Vehicle.GetComponent<VehicleBrain>();
-            if (role == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
+            if (role == VehicleSeatRole.Driver) { vb.Stop(); autoConduccion = false; vb.IsPlayerDriving = true; }
 
             // La vista de vehiculo es siempre en 3ra persona, y
             // CameraRig.FollowThirdPerson ya converge sola cada frame hacia
@@ -2438,6 +2692,13 @@ namespace SP.Player
             HideFpsOnlyIndicators();
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor.Motor.SetCrouching(false); bodyHiddenFor = null; }
             if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
+            if (Vehicle.RoleOf(Brain.Current) == null)
+            {
+                // Una orden lo bajo del tanque (RTS): el estado de asiento quedo colgado.
+                ClearVehicleSeatState();
+                if (Rig.Mode == ControlMode.Fps) Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDrop);
+                return;
+            }
 
             // El tanque se destruye y Vehicle.OnDestroyed() ya expulsa a
             // todo el mundo (Dismount reactiva el GameObject y lo
@@ -2453,6 +2714,9 @@ namespace SP.Player
                 Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDrop);
                 return;
             }
+
+            bool radialAbierto = OrdenesMenu != null && OrdenesMenu.Abierto;
+            if (radialAbierto && mouse != null) OrdenesMenu.MoverSeleccion(mouse.delta.ReadValue());
 
             var motor = Vehicle.GetComponent<VehicleMotor>();
             // El freno solo es una accion real cuando quien maneja es el
@@ -2472,7 +2736,7 @@ namespace SP.Player
             // los que esten cerca?" -- [U] no vivia aca, solo en
             // UpdateFps (a pie), asi que manejando o de artillero no
             // hacia nada. Mismo camino de a uno por apretada.
-            if (kb.uKey.wasPressedThisFrame)
+            if (AtajosDeTecladoHeredados && kb.uKey.wasPressedThisFrame)
             {
                 var vehicleToFill = FindTheVehicle();
                 if (vehicleToFill != null && !vehicleToFill.IsDestroyed && vehicleToFill.HasAnyRoom)
@@ -2487,8 +2751,8 @@ namespace SP.Player
             // cualquier asiento y desde la vista RTS del tanque. El panel de
             // teclas los muestra junto a los asientos.
             ActualizarPanelDeTeclas();
-            if (kb.gKey.wasPressedThisFrame) SubirATodos(Vehicle);
-            if (kb.iKey.wasPressedThisFrame) BajarATodos(Vehicle);
+            if (AtajosDeTecladoHeredados && kb.gKey.wasPressedThisFrame) SubirATodos(Vehicle);
+            if (AtajosDeTecladoHeredados && kb.iKey.wasPressedThisFrame) BajarATodos(Vehicle);
             if (panelDeTeclas != null)
             {
                 if (kb.uKey.wasPressedThisFrame) panelDeTeclas.Destellar("U");
@@ -2516,11 +2780,11 @@ namespace SP.Player
                 if (mouse != null)
                 {
                     float scroll = mouse.scroll.ReadValue().y;
-                    if (Mathf.Abs(scroll) > 0.01f) Rig.Zoom(scroll * rtsZoomSpeed * Time.deltaTime);
+                    if (Mathf.Abs(scroll) > 0.01f) Rig.ZoomHaciaCursor(scroll * rtsZoomSpeed * Time.deltaTime, mouse.position.ReadValue());
                 }
 
                 if (TurretAim != null) TurretAim.SetVisible(false);
-                SetInstructionText("[TAB] volver a manejar en primera persona   ·   [E] bajar");
+                SetInstructionText("[TAB] volver a manejar en primera persona   ·   [Rueda] zoom hacia el cursor   ·   [Q] radial   ·   [E] bajar");
                 return;
             }
 
@@ -2601,7 +2865,7 @@ namespace SP.Player
                     // limitada. Es lo que le da peso a la torreta -- y lo
                     // que hace que el reticulo de "ya llegue / todavia
                     // girando" tenga algo que informar.
-                    var delta = mouse.delta.ReadValue();
+                    var delta = radialAbierto ? Vector2.zero : mouse.delta.ReadValue();
                     turret.AddDesiredYaw(delta.x * turretSensitivity);
                     // BUG REAL: delta.y (arriba/abajo del mouse) se leia
                     // completo mas arriba pero nunca se usaba -- el cañon
@@ -2642,7 +2906,7 @@ namespace SP.Player
             {
                 if (mouse != null && mgTurret != null)
                 {
-                    var delta = mouse.delta.ReadValue();
+                    var delta = radialAbierto ? Vector2.zero : mouse.delta.ReadValue();
                     mgTurret.AddDesiredYaw(delta.x * turretSensitivity);
                     mgTurret.AddDesiredPitch(-delta.y * turretSensitivity);
                     mgTurret.TickPlayerAim(Time.deltaTime);
@@ -2660,12 +2924,12 @@ namespace SP.Player
 
             const string asientos = "[1] conducir · [2] cañón · [3] metralleta · [4] pasajero (si esta ocupado, intercambian)";
             string role = currentSeat == VehicleSeatRole.Driver
-                ? "[WASD] conducir · [Espacio] frenar · [T] mandar el vehiculo ahi (WASD retoma el volante) · " + asientos + " · [U] llamar a un aliado · [TAB] vista RTS · [E] bajar"
+                ? "[WASD] conducir · [Espacio] frenar · [Q] radial (tanque allí, subir/bajar) · " + asientos + " · [TAB] vista RTS · [E] bajar"
                 : currentSeat == VehicleSeatRole.Gunner
-                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom · [R] munición · [T] mandar el vehiculo ahi · " + asientos + " · [U] llamar a un aliado · [E] bajar"
+                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom · [R] munición · [Q] radial · " + asientos + " · [E] bajar"
                     : currentSeat == VehicleSeatRole.Passenger1
-                        ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom · [T] mandar el vehiculo ahi · " + asientos + " · [U] llamar a un aliado · [E] bajar"
-                        : "[T] mandar el vehiculo ahi · " + asientos + " · [U] llamar a un aliado · [E] bajar · [TAB] vista RTS";
+                        ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom · [Q] radial · " + asientos + " · [E] bajar"
+                        : "[Q] radial (tanque allí, subir/bajar) · " + asientos + " · [E] bajar · [TAB] vista RTS";
             SetInstructionText(role);
         }
 
@@ -2755,7 +3019,7 @@ namespace SP.Player
         // cuando se esta apuntando). Vale desde cualquier asiento.
         void OrdenDeVehiculoConT(Keyboard kb)
         {
-            if (!kb.tKey.wasPressedThisFrame || Vehicle == null || Rig.Cam == null) return;
+            if (!AtajosDeTecladoHeredados || !kb.tKey.wasPressedThisFrame || Vehicle == null || Rig.Cam == null) return;
 
             // Sin conductor, un aliado que vaya a bordo toma el volante (el
             // jugador en el cañon o la metralleta no puede manejar a la vez).
@@ -2929,11 +3193,11 @@ namespace SP.Player
             if (mouse != null)
             {
                 float scroll = mouse.scroll.ReadValue().y;
-                if (Mathf.Abs(scroll) > 0.01f) Rig.Zoom(scroll * rtsZoomSpeed * Time.deltaTime);
+                if (Mathf.Abs(scroll) > 0.01f) Rig.ZoomHaciaCursor(scroll * rtsZoomSpeed * Time.deltaTime, mouse.position.ReadValue());
             }
 
             string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
-            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [T]/[Click der.] mover selección · [Ctrl+Click der.] trazar recorrido · [Espacio] arrancarlo · [Click der. sostenido] panear · [X] cancelar orden · [G] subir al vehículo · [F] poseer · [Q] ciclar · [C] mas cercano · [TAB] vista FPS · {selectionLabel}");
+            SetInstructionText($"[Arrastrar] seleccionar varios · [Shift+Click] sumar · [Click der.] mover selección · [Ctrl+Click der.] trazar recorrido · [Q] mantener: radial de órdenes · [WASD] panear · [Rueda] zoom hacia el cursor · [TAB] vista FPS · {selectionLabel}");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -2946,6 +3210,8 @@ namespace SP.Player
             // la marca de montable sin pagar un segundo Physics.Raycast
             // por frame.
             var resultRts = Aim.Evaluate(screenRay, null);
+            if (OrdenesMenu != null && OrdenesMenu.Abierto) OrdenesMenu.MoverSeleccion(mouse.delta.ReadValue());
+            else ultimoResultadoDeMira = resultRts;
             UpdateAimRing(resultRts);
             UpdateVehicleMountIndicatorRts(resultRts);
 
@@ -2976,7 +3242,7 @@ namespace SP.Player
             // o al vehículo, si es él quien está seleccionado (requiere
             // conductor propio adentro, como en FPS). "!dragging" es el
             // recuadro de selección por click IZQUIERDO, no el derecho.
-            bool pidioOrden = kb.tKey.wasPressedThisFrame || (rightClickOrder && !dragging);
+            bool pidioOrden = (AtajosDeTecladoHeredados && kb.tKey.wasPressedThisFrame) || (rightClickOrder && !dragging);
 
             // Con Ctrl apretado el mismo gesto NO ordena: marca un punto
             // del recorrido, que no arranca hasta [Espacio]. Se resuelve
@@ -3058,7 +3324,7 @@ namespace SP.Player
             // Mismo criterio que la version FPS de [G] (ver GOrderOnVehicle):
             // suma a la seleccion que todavia no este adentro, no expulsa a
             // nadie -- [I] es la unica tecla que baja gente.
-            if (kb.gKey.wasPressedThisFrame)
+            if (AtajosDeTecladoHeredados && kb.gKey.wasPressedThisFrame)
             {
                 var result = Aim.Evaluate(screenRay, null);
                 if (result.Type == AimTargetType.Vehicle && !result.Vehicle.IsDestroyed)
@@ -3076,7 +3342,7 @@ namespace SP.Player
                 }
             }
 
-            if (KeyBindings.WasPressed(KeyBindings.Poseer))
+            if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.Poseer))
             {
                 var result = Aim.Evaluate(screenRay, null);
                 if (result.Type == AimTargetType.Ally) TryPossess(result.Soldier);
@@ -3129,14 +3395,14 @@ namespace SP.Player
             }
 
             // [B] retirada: alejarse del enemigo mas cercano (217)
-            if (KeyBindings.WasPressed(KeyBindings.Retirada) && Selection.Selected.Count > 0)
+            if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.Retirada) && Selection.Selected.Count > 0)
             {
                 OrderService.IssueRetreatOrderForSelection(Selection.Selected);
                 if (ModeToast != null) ModeToast.Show("RETIRADA");
             }
 
             // [K] cicla la formacion con la que se emiten las ordenes (210)
-            if (KeyBindings.WasPressed(KeyBindings.CiclarFormacion))
+            if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.CiclarFormacion))
             {
                 currentFormation = (FormationKind)(((int)currentFormation + 1) % 4);
                 if (ModeToast != null) ModeToast.Show("FORMACION: " + currentFormation.ToString().ToUpper());
