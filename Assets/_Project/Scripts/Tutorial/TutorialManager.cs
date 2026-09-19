@@ -146,6 +146,7 @@ namespace SP.Tutorial
             suscripciones.Add(EventBus.Instance.Subscribe<ShotFiredEvent>(AlDisparar));
             ObstacleMarker.Golpeado += AlGolpearObstaculo;
             ObstacleMarker.Derrumbado += AlDerrumbarObstaculo;
+            if (driver != null) driver.OrdenRadialEjecutada += AlOrdenRadial;
 
             DefinirPasos();
             TutorialLog.Escribir("[INICIO]", $"Tutorial listo: {pasos.Count} pasos. Escena {SceneManager.GetActiveScene().name}");
@@ -165,6 +166,25 @@ namespace SP.Tutorial
             suscripciones.Clear();
             ObstacleMarker.Golpeado -= AlGolpearObstaculo;
             ObstacleMarker.Derrumbado -= AlDerrumbarObstaculo;
+            if (driver != null) driver.OrdenRadialEjecutada -= AlOrdenRadial;
+        }
+
+        // Cada orden del radial que sale bien avisa (categoria, opcion): marca las banderas de los pasos.
+        void AlOrdenRadial(int cat, int sub)
+        {
+            var p = PasoActual; if (p == null) return;
+            TutorialLog.Escribir("[EVENTO]", $"   radial: categoria {cat + 1} ({SP.UI.MenuDeOrdenes.Porciones[cat].Replace("\n", " ")}) opcion {sub + 1} ({SP.UI.MenuDeOrdenes.NombreDeOpcion(cat, sub)})");
+            var f = Flags;
+            switch (p.Id)
+            {
+                case "seguir":
+                    if (cat == 3 && sub == 1) f.ordenDeSeguir = true;
+                    if (cat == 3 && sub == 0) f.ordenDeQuietos = true;
+                    break;
+                case "cubrirse": if (cat == 1) f.ordenDeCubrirse = true; break;
+                case "curar": if (cat == 4) f.ordenDeCurar = true; break;
+                case "aliados_tanque": if (cat == 5 && sub == 0) f.ordenDeSubir = true; break;
+            }
         }
 
         static Transform Buscar(string nombre)
@@ -174,7 +194,7 @@ namespace SP.Tutorial
         }
 
         // ===============================================================
-        // Definicion de los 17 pasos
+        // Definicion de los 20 pasos
         // ===============================================================
         Sub S(string texto, string mensaje, string pista, Func<bool> leer, Action<bool> poner, Func<string> vivo = null)
             => new Sub { Texto = texto, Mensaje = mensaje, Pista = pista, Leer = leer, Poner = poner, TextoVivo = vivo };
@@ -260,34 +280,30 @@ namespace SP.Tutorial
                 },
                 AlSalir = QuitarBalizasDeDisparo,
             });
-
             // 4 -------------------------------------------------------
             pasos.Add(new Paso
             {
-                Id = "cambiar", Titulo = "CAMBIAR DE SOLDADO", Teclas = "F", Acento = verde,
+                Id = "cambiar", Titulo = "CAMBIAR DE SOLDADO (RADIAL)", Teclas = "Q", Acento = verde,
                 Subs = new[]
                 {
-                    S("Apunta a un aliado lejano (columna celeste)", "Hay dos aliados lejos, marcados con una columna celeste. Apunta la mira a uno de ellos.", "Camina hacia ellos (W) hasta verlos bien en la mira.", () => f.apuntoAlAliado, v => f.apuntoAlAliado = v),
-                    S("Presiona F: tomas su control", "Presiona [F] para tomar el control del aliado que estás mirando. (También sirven [Q] y [C].)", "Mira al aliado y aprieta F. [Q] cambia al siguiente sin apuntar.", () => f.cambioDeSoldado, v => f.cambioDeSoldado = v),
+                    S("Mantén Q: se abre el radial de órdenes", "Mantén apretada la tecla [Q]: se abre el RADIAL de órdenes (8 categorías). Mueve el mouse para elegir.", "Mantén Q sin soltarla (un toque corto solo cicla de soldado).", () => f.radialAbierto, v => f.radialAbierto = v),
+                    S("POSEER · un soldado: suelta Q", "Con Q apretada, mueve el mouse a la IZQUIERDA (POSEER) y luego hacia AFUERA hasta un soldado. Suelta Q: tomas su control.", "Categoría 7 POSEER (izquierda) y una opción del anillo de afuera. Los aliados lejanos tienen columna celeste.", () => f.cambioDeSoldado, v => f.cambioDeSoldado = v),
                 },
                 AlEntrar = () =>
                 {
                     soldadoInicial = driver.Brain.Current;
                     foreach (var s in driver.Squad)
                         if (s != null && s != soldadoInicial)
-                            balizasAliados.Add(TutorialBeacon.Crear(s.DisplayName.ToUpperInvariant() + " · aliado lejano", cian, s.transform.position, s.transform, 1f, 12f));
+                            balizasAliados.Add(TutorialBeacon.Crear(s.DisplayName.ToUpperInvariant() + " · aliado", cian, s.transform.position, s.transform, 1f, 12f));
                 },
                 Evaluar = () =>
                 {
-                    if (driver.Rig.Mode == ControlMode.Fps && driver.Brain.Current != null)
-                    {
-                        var r = driver.Aim.Evaluate(driver.Rig.GetForwardRay(), driver.Brain.Current);
-                        if (r.Type == AimTargetType.Ally) f.apuntoAlAliado = true;
-                    }
-                    if (driver.Brain.Current != soldadoInicial) { f.cambioDeSoldado = true; f.apuntoAlAliado = true; }
+                    if (driver.RadialAbierto) f.radialAbierto = true;
+                    if (driver.Brain.Current != soldadoInicial) { f.cambioDeSoldado = true; f.radialAbierto = true; }
                 },
                 AlSalir = QuitarBalizasDeAliados,
             });
+
 
             // 5 -------------------------------------------------------
             pasos.Add(new Paso
@@ -331,7 +347,7 @@ namespace SP.Tutorial
                     S("TAB: pasa a la vista táctica (RTS)", "Presiona [TAB]: la cámara sube y ves el mapa desde arriba.", "TAB está encima de Bloq Mayús.", () => f.rtsActivo, v => f.rtsActivo = v),
                     S("Selecciona a los 2 aliados", "Arrastra un recuadro con el CLIC IZQUIERDO alrededor de tus 2 aliados (columnas celestes), o Ctrl+A. Rueda del mouse: zoom.", "Mantén el clic izquierdo y arrastra un recuadro que los incluya a los dos.", () => f.aliadosSeleccionados, v => f.aliadosSeleccionados = v,
                       () => $"Selecciona a los 2 aliados ({Seleccionados()}/{aliados.Count})"),
-                    S("CLIC DERECHO en el círculo verde: van ahí", "Clic DERECHO sobre el CÍRCULO VERDE (o [T]): los 2 aliados caminan hasta allí.", "Apunta al círculo verde y clic derecho. Cerca del círculo alcanza.", () => f.ordenDeMoverARts, v => f.ordenDeMoverARts = v,
+                    S("CLIC DERECHO en el círculo verde: van ahí", "Clic DERECHO sobre el CÍRCULO VERDE: los 2 aliados caminan hasta allí. (Rueda del mouse: zoom hacia el cursor.)", "Apunta al círculo verde y clic derecho. Cerca del círculo alcanza.", () => f.ordenDeMoverARts, v => f.ordenDeMoverARts = v,
                       () => $"Clic derecho en el círculo verde ({ordenadosARts.Count}/{aliados.Count})"),
                 },
                 AlEntrar = () =>
@@ -377,25 +393,26 @@ namespace SP.Tutorial
                     if (f.vueltaAFps && Cursor.lockState == CursorLockMode.Locked) f.mouseCapturado = true;
                 },
             });
-
             // 9 -------------------------------------------------------
             pasos.Add(new Paso
             {
-                Id = "seguir", Titulo = "PEDIR QUE TE SIGAN", Teclas = "Y", Acento = verde,
+                Id = "seguir", Titulo = "SÍGANME Y QUIETOS (RADIAL)", Teclas = "Q", Acento = verde,
                 Subs = new[]
                 {
-                    S("Presiona Y: ordenas seguirte", "Presiona [Y]: los 2 aliados vienen hacia ti y te siguen a donde vayas.", "Y = \"síganme\". Funciona sin apuntar a nada.", () => f.ordenDeSeguir, v => f.ordenDeSeguir = v),
+                    S("Q → POSICIÓN → SÍGANME", "Mantén [Q], elige POSICIÓN (abajo a la derecha) y sigue hacia AFUERA hasta SÍGANME. Suelta Q: los 2 aliados vienen hacia ti.", "Categoría 4 POSICIÓN; SÍGANME es la segunda opción del anillo de afuera.", () => f.ordenDeSeguir, v => f.ordenDeSeguir = v),
                     S("Los 2 aliados te siguen", "Mira cómo vienen: cada aliado que te sigue lo marca el ícono verde.", "Espera unos segundos: caminan hacia ti.", () => f.aliadosSiguen, v => f.aliadosSiguen = v,
                       () => $"Los 2 aliados te siguen ({Siguiendo()}/{aliados.Count})"),
+                    S("Q → POSICIÓN → TODOS QUIETOS", "Ahora que se queden: [Q], POSICIÓN y TODOS QUIETOS (la primera opción). Se plantan donde están y ya no te siguen.", "Es la primera opción de POSICIÓN.", () => f.ordenDeQuietos, v => f.ordenDeQuietos = v,
+                      () => $"Todos quietos ({QuietosContados()}/{aliados.Count})"),
                 },
                 Evaluar = () =>
                 {
-                    var kb = Keyboard.current;
-                    if (kb != null && kb.yKey.wasPressedThisFrame) f.ordenDeSeguir = true;
                     if (Siguiendo() > 0) f.ordenDeSeguir = true;
                     if (aliados.Count > 0 && Siguiendo() >= aliados.Count) f.aliadosSiguen = true;
+                    if (f.aliadosSiguen && aliados.Count > 0 && QuietosContados() >= aliados.Count) f.ordenDeQuietos = true;
                 },
             });
+
 
             // 10 ------------------------------------------------------
             pasos.Add(new Paso
@@ -436,7 +453,7 @@ namespace SP.Tutorial
                 Id = "mover_fps", Titulo = "ORDEN DE MOVER EN FPS", Teclas = "RMB", Acento = dorado,
                 Subs = new[]
                 {
-                    S("CLIC DERECHO en el suelo: el aliado va", "Con el aliado seleccionado, haz CLIC DERECHO en el SUELO: caminará hasta allí.", "Apunta al piso (no a una pared) y clic derecho. [T] también sirve.", () => f.ordenDeMoverEnFps, v => f.ordenDeMoverEnFps = v),
+                    S("CLIC DERECHO en el suelo: el aliado va", "Con el aliado seleccionado, haz CLIC DERECHO en el SUELO: caminará hasta allí.", "Apunta al piso (no a una pared) y clic derecho.", () => f.ordenDeMoverEnFps, v => f.ordenDeMoverEnFps = v),
                 },
                 AlEntrar = () =>
                 {
@@ -445,26 +462,104 @@ namespace SP.Tutorial
                 Evaluar = () => { },   // lo marca AlOrdenDeMover
                 AlSalir = () => { if (balizaZonaB != null) { balizaZonaB.Quitar(); balizaZonaB = null; } },
             });
+            // 12 (nuevo) -----------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "cubrirse", Titulo = "CUBRIRSE HACIA DONDE MIRO (RADIAL)", Teclas = "Q", Acento = naranja,
+                Subs = new[]
+                {
+                    S("Q → CUBRIRSE → TODOS", "Mira hacia las 2 coberturas de sacos (columnas naranjas). Mantén [Q], elige CUBRIRSE (arriba a la derecha) y sigue hasta TODOS: se ponen del lado protegido, lejos de donde miras.", "Categoría 2 CUBRIRSE; TODOS es la primera opción. Mira antes hacia los sacos.", () => f.ordenDeCubrirse, v => f.ordenDeCubrirse = v),
+                    S("Los 2 aliados quedan en cobertura", "Espera: caminan, se agachan detrás de los sacos y quedan a cubierto.", "Tardan unos segundos.", () => f.aliadosEnCobertura, v => f.aliadosEnCobertura = v,
+                      () => $"Los 2 aliados en cobertura ({EnCobertura()}/{aliados.Count})"),
+                },
+                AlEntrar = () =>
+                {
+                    ArmarAliados();
+                    CrearCoberturasDePractica();
+                },
+                Evaluar = () =>
+                {
+                    if (EnCobertura() > 0 || CubriendoseEnCamino() > 0) f.ordenDeCubrirse = true;
+                    if (aliados.Count > 0 && EnCobertura() >= aliados.Count) f.aliadosEnCobertura = true;
+                },
+                AlSalir = QuitarCoberturasDePractica,
+            });
+
+            // 13 (nuevo) -----------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "curar", Titulo = "CURAR A UN ALIADO (RADIAL)", Teclas = "Q", Acento = verde,
+                Subs = new[]
+                {
+                    S("Q → CURAR → CURAR ALIADO", "Un aliado está herido (mira su barra en el roster, abajo a la izquierda). Mantén [Q], elige CURAR (abajo) y sigue hasta CURAR ALIADO: el médico va y lo atiende.", "Categoría 5 CURAR (abajo); CURAR ALIADO es la segunda opción.", () => f.ordenDeCurar, v => f.ordenDeCurar = v),
+                    S("El médico cura al herido", "Espera: el médico llega junto al herido y le devuelve la vida.", "El médico tiene que llegar a menos de 2,5 m.", () => f.aliadoCurado, v => f.aliadoCurado = v,
+                      () => $"El herido recupera vida ({VidaDelHerido()}%)"),
+                },
+                AlEntrar = () =>
+                {
+                    AsegurarComoAsalto();
+                    ArmarAliados();
+                    PedidoDeCuracion.AtencionAutomatica = false;   // que lo pida el jugador
+                    herido = null;
+                    foreach (var a in aliados) if (a != null && a.Role != RoleType.Medic) { herido = a; break; }
+                    if (herido == null && aliados.Count > 0) herido = aliados[0];
+                    if (herido != null) herido.Health.TakeDamage(Mathf.RoundToInt(herido.Health.MaxHealth * 0.78f), -1);
+                    if (herido != null) balizasAliados.Add(TutorialBeacon.Crear(herido.DisplayName.ToUpperInvariant() + " · HERIDO", new Color(1f, 0.4f, 0.4f), herido.transform.position, herido.transform, 1f, 10f));
+                },
+                Evaluar = () =>
+                {
+                    if (PedidoDeCuracion.Activo) f.ordenDeCurar = true;
+                    if (herido != null && herido.Health.Current >= herido.Health.MaxHealth * 0.9f) { f.aliadoCurado = true; f.ordenDeCurar = true; }
+                },
+                AlSalir = () => { PedidoDeCuracion.AtencionAutomatica = true; QuitarBalizasDeAliados(); },
+            });
+
+            // 14 (nuevo) -----------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "demoler", Titulo = "DEMOLER UN MURO (ASALTO)", Teclas = "Ctrl", Acento = naranja,
+                Subs = new[]
+                {
+                    S("Apunta al muro de práctica (columna naranja)", "Ahora eres el soldado de ASALTO: apunta al muro de práctica (a unos 7 m). Solo el asalto puede demoler.", "Mira al bloque marcado con la columna naranja.", () => f.apuntaAlMuro, v => f.apuntaAlMuro = v),
+                    S("CTRL agachado y quieto: carga 4 s", "Mantén CTRL (agachado) y NO te muevas: aparece un anillo que se llena en 4 segundos.", "Si te levantas o te mueves, la carga se cancela.", () => f.cargandoDemolicion, v => f.cargandoDemolicion = v),
+                    S("El muro vuela en pedazos", "Sigue quieto hasta que el anillo se llene: la carga explota y el muro desaparece.", "Tarda 4 segundos seguidos, quieto y agachado.", () => f.muroDemolido, v => f.muroDemolido = v),
+                },
+                AlEntrar = () =>
+                {
+                    AsegurarComoAsalto();
+                    CrearMuroDePractica();
+                },
+                Evaluar = () =>
+                {
+                    var a = driver.UltimaMira;
+                    if (muroPractica != null && a.Type == AimTargetType.Obstacle && Demolicion.MarcadorApuntado(a.HitTransform, a.Point) == muroPractica) f.apuntaAlMuro = true;
+                    var dem = driver.Brain.Current != null ? driver.Brain.Current.GetComponent<DemoledorAsalto>() : null;
+                    if (dem != null && dem.Progreso > 0.05f) { f.cargandoDemolicion = true; f.apuntaAlMuro = true; }
+                    if (muroPractica == null || muroPractica.IsCollapsed) { f.muroDemolido = true; f.cargandoDemolicion = true; f.apuntaAlMuro = true; }
+                },
+                AlSalir = () => { if (balizaMuro != null) { balizaMuro.Quitar(); balizaMuro = null; } },
+            });
+
 
             // 12 ------------------------------------------------------
             pasos.Add(new Paso
             {
-                Id = "entrar_tanque", Titulo = "ENTRAR AL TANQUE", Teclas = "E", Acento = naranja,
+                Id = "entrar_tanque", Titulo = "ENTRAR AL TANQUE (RADIAL)", Teclas = "Q", Acento = naranja,
                 Subs = new[]
                 {
                     S("Camina hasta el tanque (columna naranja)", "Camina hasta el TANQUE marcado con la columna naranja (W A S D).", "Está al norte, al final del camino de tierra.", () => f.cercaDelTanque, v => f.cercaDelTanque = v,
                       () => $"Camina hasta el tanque ({DistanciaAlTanque():0} m)"),
-                    S("Presiona E: subes al tanque", "Estás cerca. Presiona [E] para subir al tanque.", "Acércate a menos de 3 metros y aprieta E.", () => f.dentroDelTanque, v => f.dentroDelTanque = v),
+                    S("Q → TANQUE → SUBIRME YO", "Estás cerca. Mantén [Q], elige TANQUE (abajo a la izquierda) y sigue hasta SUBIRME YO: subes al tanque.", "Categoría 6 TANQUE; SUBIRME YO es la cuarta opción. Hay que estar a menos de 7 m.", () => f.dentroDelTanque, v => f.dentroDelTanque = v),
                 },
                 AlEntrar = () =>
                 {
                     if (driver.Vehicle != null)
-                        balizaTanque = TutorialBeacon.Crear("TANQUE · [E]", naranja, driver.Vehicle.transform.position, driver.Vehicle.transform, 2.2f, 14f);
+                        balizaTanque = TutorialBeacon.Crear("TANQUE", naranja, driver.Vehicle.transform.position, driver.Vehicle.transform, 2.2f, 14f);
                 },
                 Evaluar = () =>
                 {
                     if (driver.Vehicle == null) return;
-                    if (DistanciaAlTanque() <= 3.3f) f.cercaDelTanque = true;
+                    if (DistanciaAlTanque() <= 6.5f) f.cercaDelTanque = true;
                     if (driver.Vehicle.PlayerAboard) { f.dentroDelTanque = true; f.cercaDelTanque = true; }
                 },
                 AlSalir = () => { if (balizaTanque != null) { balizaTanque.Quitar(); balizaTanque = null; } },
@@ -473,10 +568,10 @@ namespace SP.Tutorial
             // 13 ------------------------------------------------------
             pasos.Add(new Paso
             {
-                Id = "aliados_tanque", Titulo = "ALIADOS AL TANQUE", Teclas = "G U", Acento = naranja,
+                Id = "aliados_tanque", Titulo = "ALIADOS AL TANQUE (RADIAL)", Teclas = "Q", Acento = naranja,
                 Subs = new[]
                 {
-                    S("Presiona G: todos suben", "Presiona [G]: ordenas que TODOS tus aliados suban al tanque. ([U] llama a uno solo.)", "En el panel de arriba a la izquierda ves todas las teclas del tanque.", () => f.ordenDeSubir, v => f.ordenDeSubir = v),
+                    S("Q → TANQUE → SUBIR TODOS", "Mantén [Q], elige TANQUE (abajo a la izquierda) y sigue hasta SUBIR TODOS: tus aliados corren al tanque.", "Categoría 6 TANQUE; SUBIR TODOS es la primera opción. El panel de arriba a la izquierda lo recuerda.", () => f.ordenDeSubir, v => f.ordenDeSubir = v),
                     S("Espera a que suban los 2", "Tus aliados corren al tanque y se sientan. Espera a que estén adentro.", "Si uno está lejos tarda un poco: caminan hasta el tanque.", () => f.aliadosABordo, v => f.aliadosABordo = v,
                       () => $"Los 2 aliados a bordo ({ABordo()}/{aliados.Count})"),
                 },
@@ -505,10 +600,10 @@ namespace SP.Tutorial
             // 15 ------------------------------------------------------
             pasos.Add(new Paso
             {
-                Id = "avanzar_disparar", Titulo = "AVANZAR Y DISPARAR", Teclas = "T LMB", Acento = new Color(1f, 0.45f, 0.35f),
+                Id = "avanzar_disparar", Titulo = "AVANZAR Y DISPARAR", Teclas = "Q LMB", Acento = new Color(1f, 0.45f, 0.35f),
                 Subs = new[]
                 {
-                    S("T mirando al suelo: el tanque avanza", "Mira al SUELO, adelante en el camino, y presiona [T]: un aliado conduce hasta ahí.", "Baja la mira hasta ver el suelo delante del tanque y aprieta T.", () => f.ordenDeAvanzar, v => f.ordenDeAvanzar = v),
+                    S("Q → TANQUE → TANQUE ALLÍ: avanza", "Mira al SUELO, adelante en el camino. Mantén [Q], elige TANQUE y sigue hasta TANQUE ALLÍ: un aliado conduce hasta ahí.", "Baja la mira hasta ver el suelo delante del tanque. TANQUE ALLÍ es la tercera opción.", () => f.ordenDeAvanzar, v => f.ordenDeAvanzar = v),
                     S("Dispara el cañón (clic izquierdo)", "¡Vienen enemigos! Apunta el cañón con el mouse y dispara con el CLIC IZQUIERDO.", "Mueve el mouse para apuntar el cañón hacia los soldados rojos y haz clic izquierdo.", () => f.disparoCanon, v => f.disparoCanon = v),
                     S("Derriba a los enemigos que se acercan", "Sigue disparando: hay que derribar a 3 enemigos. (La metralleta de un aliado también ayuda.)", "Apunta el cañón a los soldados rojos que se acercan y dispara.", () => f.enemigosEliminados, v => f.enemigosEliminados = v,
                       () => $"Derriba 3 enemigos que se acercan ({Mathf.Min(bajasTotales, BajasNecesarias)}/{BajasNecesarias})"),
@@ -542,10 +637,10 @@ namespace SP.Tutorial
             // 16 ------------------------------------------------------
             pasos.Add(new Paso
             {
-                Id = "final", Titulo = "LLEGAR AL FINAL", Teclas = "T", Acento = dorado,
+                Id = "final", Titulo = "LLEGAR AL FINAL", Teclas = "Q", Acento = dorado,
                 Subs = new[]
                 {
-                    S("Llega a la meta dorada", "Sigue mandando el tanque con [T] hasta la META DORADA, al final del camino.", "Apunta al suelo, cerca de la baliza dorada, y presiona T.", () => f.llegoAlFinal, v => f.llegoAlFinal = v,
+                    S("Llega a la meta dorada", "Sigue mandando el tanque con [Q] → TANQUE → TANQUE ALLÍ hasta la META DORADA, al final del camino.", "Apunta al suelo, cerca de la baliza dorada, y usa el radial.", () => f.llegoAlFinal, v => f.llegoAlFinal = v,
                       () => $"Llega a la meta dorada ({DistanciaAMeta():0} m)"),
                 },
                 AlEntrar = () =>
@@ -566,7 +661,7 @@ namespace SP.Tutorial
             {
                 Id = "victoria", Titulo = "¡TUTORIAL COMPLETADO!", Teclas = "", Acento = dorado, OcultarSubs = true,
                 Subs = new Sub[0],
-                MensajeVivo = () => "Aprendiste a moverte, disparar, cambiar de soldado, dar órdenes y usar el tanque. ¡Buena suerte, comandante!",
+                MensajeVivo = () => "Aprendiste a moverte, disparar, dar órdenes con el radial, curar, demoler muros y usar el tanque. ¡Buena suerte, comandante!",
                 AlEntrar = () =>
                 {
                     f.victoria = true;
@@ -644,6 +739,93 @@ namespace SP.Tutorial
         {
             foreach (var b in balizasAliados) if (b != null) b.Quitar();
             balizasAliados.Clear();
+        }
+
+        int QuietosContados()
+        {
+            int n = 0;
+            foreach (var a in aliados) if (a != null && a.Health.IsAlive && a.Brain.Quieto) n++;
+            return n;
+        }
+
+        int EnCobertura()
+        {
+            int n = 0;
+            foreach (var a in aliados) if (a != null && a.Health.IsAlive && a.Brain.EnCobertura) n++;
+            return n;
+        }
+
+        int CubriendoseEnCamino()
+        {
+            int n = 0;
+            foreach (var a in aliados) if (a != null && a.Health.IsAlive && a.Brain.YendoACobertura) n++;
+            return n;
+        }
+
+        int VidaDelHerido() => herido != null ? Mathf.RoundToInt(100f * herido.Health.Current / Mathf.Max(1, herido.Health.MaxHealth)) : 0;
+
+        // El paso de curar y el de demoler los hace el soldado de ASALTO (el jugador vuelve a ser el).
+        void AsegurarComoAsalto()
+        {
+            if (driver.Brain.Current != null && driver.Brain.Current.Role == RoleType.Assault) return;
+            foreach (var s in driver.Squad)
+                if (s != null && s.Role == RoleType.Assault && s.Health.IsAlive) { driver.TryPossess(s); break; }
+        }
+
+        // Dos coberturas de sacos a 14 m adelante (para el paso de cubrirse).
+        readonly List<GameObject> coberturasPractica = new List<GameObject>();
+        readonly List<TutorialBeacon> balizasCobertura = new List<TutorialBeacon>();
+        void CrearCoberturasDePractica()
+        {
+            QuitarCoberturasDePractica();
+            var yo = driver.Brain.Current; if (yo == null || driver.Rig.Cam == null) return;
+            var frente = Vector3.ProjectOnPlane(driver.Rig.Cam.transform.forward, Vector3.up).normalized;
+            var lado = Vector3.Cross(Vector3.up, frente);
+            for (int i = 0; i < 2; i++)
+            {
+                var c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                c.name = "Tut_Cobertura_" + (i + 1);
+                c.transform.position = yo.transform.position + frente * 14f + lado * (i == 0 ? -4f : 4f);
+                c.transform.position = new Vector3(c.transform.position.x, 0.6f, c.transform.position.z);
+                c.transform.localScale = new Vector3(3f, 1.2f, 1f);
+                c.transform.rotation = Quaternion.LookRotation(frente);
+                c.GetComponent<MeshRenderer>().sharedMaterial = SP.Presentation.SafeMaterial.Create(new Color(0.78f, 0.66f, 0.42f));
+                c.AddComponent<ObstacleMarker>();
+                coberturasPractica.Add(c);
+                balizasCobertura.Add(TutorialBeacon.Crear("COBERTURA", naranja_, c.transform.position, null, 1.2f, 6f));
+            }
+            SP.Core.Coberturas.Registrar();
+        }
+
+        void QuitarCoberturasDePractica()
+        {
+            foreach (var c in coberturasPractica) if (c != null) Destroy(c);
+            coberturasPractica.Clear();
+            foreach (var b in balizasCobertura) if (b != null) b.Quitar();
+            balizasCobertura.Clear();
+            if (Application.isPlaying) SP.Core.Coberturas.Registrar();
+        }
+
+        static readonly Color naranja_ = new Color(1f, 0.66f, 0.25f);
+        Soldier herido;
+        ObstacleMarker muroPractica;
+        TutorialBeacon balizaMuro;
+
+        // Un bloque demolible a 7 m adelante (para el paso de demoler).
+        void CrearMuroDePractica()
+        {
+            if (muroPractica != null) return;
+            var yo = driver.Brain.Current; if (yo == null || driver.Rig.Cam == null) return;
+            var frente = Vector3.ProjectOnPlane(driver.Rig.Cam.transform.forward, Vector3.up).normalized;
+            var c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            c.name = "Tut_MuroDemolible";
+            c.transform.position = yo.transform.position + frente * 7f;
+            c.transform.position = new Vector3(c.transform.position.x, 1.25f, c.transform.position.z);
+            c.transform.localScale = new Vector3(5f, 2.5f, 1.2f);
+            c.transform.rotation = Quaternion.LookRotation(frente);
+            c.GetComponent<MeshRenderer>().sharedMaterial = SP.Presentation.SafeMaterial.Create(new Color(0.62f, 0.62f, 0.66f));
+            muroPractica = c.AddComponent<ObstacleMarker>();
+            balizaMuro = TutorialBeacon.Crear("MURO · DEMOLER", naranja_, c.transform.position, null, 1.4f, 8f);
         }
 
         static void AlertQueueSafe(string texto)
@@ -824,7 +1006,7 @@ namespace SP.Tutorial
             if (driver == null || ui == null || Indice < 0 || Terminado) return;
             var p = pasos[Indice];
 
-            if (Time.time >= proximaCura) { proximaCura = Time.time + 1f; Protecciones(); }
+            if (Time.time >= proximaCura) { proximaCura = Time.time + 1f; if (p.Id != "curar") Protecciones(); }
             if (Time.time >= proximoAcoso) { proximoAcoso = Time.time + 2.2f; AcosarAlTanque(); }
 
             if (pausaActiva)

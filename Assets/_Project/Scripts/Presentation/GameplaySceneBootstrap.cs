@@ -52,6 +52,18 @@ namespace SP.Presentation
             if (SP.UI.MenuDeOrdenes.AsegurarEnEscena() != null)
                 GameLog.Line("Menu de ordenes listo ([Q] sostenido)");
 
+            // Dificultad elegida en el menu: potenciadores de vida/dano (solo partida principal).
+            SP.Core.Dificultad.Activa = !esTutorial;
+            if (!esTutorial)
+            {
+                int ajustados = SP.Core.Dificultad.AplicarVida();
+                GameLog.Line($"Dificultad {SP.Core.Dificultad.PerfilActual.Nombre}: vida ajustada en {ajustados} soldados");
+            }
+
+            // El soldado de asalto puede demoler muros (agachado y quieto 4 s).
+            int asaltos = SP.Player.DemoledorAsalto.AsegurarEnAsaltos();
+            if (asaltos > 0) GameLog.Line($"Demolicion lista en {asaltos} soldado(s) de asalto");
+
             // Los puntos de cobertura del mapa (F1): los cuatro costados
             // de cada obstaculo solido. Se calculan una vez al arrancar y
             // se rehacen si un obstaculo se derrumba (ver ObstacleMarker).
@@ -82,7 +94,16 @@ namespace SP.Presentation
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null && !esTutorial)
-                ObjectiveBanner.Show("Elimina a todos los enemigos\nmanteniendo viva a tu escuadra", 3f);
+                {
+                if (FindAnyObjectByType<SP.Mision.MisionDirector>() != null)
+                    ObjectiveBanner.Show("MISION: RESCATE\n1 Infiltrate hasta el centro · 2 Resiste 60 s · 3 Rescata al civil · 4 Escapa en el helicoptero", 5f);
+                else
+                    ObjectiveBanner.Show("Elimina a todos los enemigos\nmanteniendo viva a tu escuadra", 3f);
+                // La dificultad se dice al arrancar y queda fija en el cartel de la mision.
+                var pf = SP.Core.Dificultad.PerfilActual;
+                SP.UI.AlertQueue.Push($"DIFICULTAD {pf.Nombre}: enemigos vida {Pct(pf.VidaEnemigos)} daño {Pct(pf.DanoEnemigos)} · aliados vida {Pct(pf.VidaAliados)} daño {Pct(pf.DanoAliados)} · vos vida {Pct(pf.VidaJugador)} daño {Pct(pf.DanoJugador)}",
+                                      SP.UI.AlertPriority.Alta, 6f);
+            }
 
             // El cambio de vista FPS/RTS es la mecanica central del juego
             // y nada la explicaba: se podia jugar la partida entera sin
@@ -105,6 +126,12 @@ namespace SP.Presentation
                 PlayerPrefs.SetInt(PrefFirstActionShown, 1);
                 PlayerPrefs.Save();
             }
+        }
+
+        static string Pct(float f)
+        {
+            int p = Mathf.RoundToInt((f - 1f) * 100f);
+            return p == 0 ? "x1" : (p > 0 ? "+" : "") + p + "%";
         }
 
         // Una sola vez en la vida del jugador, igual que el aviso de TAB:

@@ -16,8 +16,8 @@ namespace SP.Tutorial
         public bool teclaW, teclaA, teclaS, teclaD;
         // 3 Disparar
         public bool disparoEnemigo, disparoPared, disparoDestruible;
-        // 4 Cambiar de soldado
-        public bool apuntoAlAliado, cambioDeSoldado;
+        // 4 Cambiar de soldado (radial)
+        public bool apuntoAlAliado, cambioDeSoldado, radialAbierto;
         // 5 Agacharse
         public bool agachado, levantado;
         // 6 Mira
@@ -26,12 +26,16 @@ namespace SP.Tutorial
         public bool rtsActivo, aliadosSeleccionados, ordenDeMoverARts;
         // 8 Volver a FPS
         public bool vueltaAFps, mouseCapturado;
-        // 9 Seguir
-        public bool ordenDeSeguir, aliadosSiguen;
+        // 9 Siganme y quietos (radial)
+        public bool ordenDeSeguir, aliadosSiguen, ordenDeQuietos;
         // 10 Seleccionar en FPS
         public bool aliadoSeleccionadoEnFps;
         // 11 Mover en FPS
         public bool ordenDeMoverEnFps;
+        // 11b Cubrirse, curar y demoler (radial)
+        public bool ordenDeCubrirse, aliadosEnCobertura;
+        public bool ordenDeCurar, aliadoCurado;
+        public bool apuntaAlMuro, cargandoDemolicion, muroDemolido;
         // 12 Entrar al tanque
         public bool cercaDelTanque, dentroDelTanque;
         // 13 Aliados al tanque
