@@ -75,7 +75,31 @@ namespace SP.Actors
             if (IsJumping || IsCrouching) return;
             IsJumping = true;
             groundY = transform.position.y;
+            // Cuanto sobra el pivote sobre el piso (0,8 en los soldados), para volver a apoyar los pies
+            // en el terreno de DEBAJO, no en la altura a la que se despego.
+            alturaDePivote = BuscarPiso(transform.position, out float piso) ? transform.position.y - piso : -1f;
             verticalVelocity = jumpSpeed;
+        }
+
+        float alturaDePivote = -1f;
+        static readonly RaycastHit[] SondeoPiso = new RaycastHit[12];
+
+        // Piso justo debajo de p: el punto mas alto que no sea el propio cuerpo ni un trigger. Un cuerpo
+        // agachado o apilado sobre otro no cuenta como piso.
+        bool BuscarPiso(Vector3 p, out float piso)
+        {
+            piso = 0f;
+            int n = Physics.RaycastNonAlloc(p + Vector3.up * 0.3f, Vector3.down, SondeoPiso, 6f, ~0, QueryTriggerInteraction.Ignore);
+            bool hay = false;
+            float mejor = float.NegativeInfinity;
+            for (int i = 0; i < n; i++)
+            {
+                var c = SondeoPiso[i].collider;
+                if (c == null || c.transform.IsChildOf(transform) || c.GetComponentInParent<Soldier>() != null) continue;
+                if (SondeoPiso[i].point.y > mejor) { mejor = SondeoPiso[i].point.y; hay = true; }
+            }
+            piso = mejor;
+            return hay;
         }
 
         // BUG REAL: a diferencia de IsCrouching (que todo llamador pone en
@@ -101,9 +125,14 @@ namespace SP.Actors
             verticalVelocity -= gravity * Time.deltaTime;
             var pos = transform.position;
             pos.y += verticalVelocity * Time.deltaTime;
-            if (pos.y <= groundY && verticalVelocity <= 0f)
+            // El suelo puede subir o bajar mientras se esta en el aire (cuesta, escalon, cajon): se aterriza
+            // sobre el de ahora, no sobre el del despegue.
+            float suelo = groundY;
+            if (alturaDePivote >= 0f && verticalVelocity <= 0f && BuscarPiso(pos, out float pisoActual))
+                suelo = pisoActual + alturaDePivote;
+            if (pos.y <= suelo && verticalVelocity <= 0f)
             {
-                pos.y = groundY;
+                pos.y = suelo;
                 IsJumping = false;
                 verticalVelocity = 0f;
             }

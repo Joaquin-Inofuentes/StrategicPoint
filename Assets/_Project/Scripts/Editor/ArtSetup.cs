@@ -441,6 +441,72 @@ namespace SP.EditorTools
             CorregirAlturaDeCadera();
         }
 
+        // ------------------------------------------------------------------
+        // Clips de SALTO (ronda 7)
+        // ------------------------------------------------------------------
+        // BUG REAL: "la animacion de saltar se rompe por el eje Y de base". Los
+        // tres FBX del salto NUNCA estuvieron en la lista Animaciones: quedaron
+        // importados como Generic a escala 1 (el rig del soldado es Humanoid a
+        // 0,2948), o sea sin avatar compartido, sin las correcciones de
+        // altura de cadera y sin lockRoot*. Medido en Play con los huesos del
+        // Humanoid: en el aire la cadera quedaba ~1,1 m por DEBAJO de donde
+        // esta de pie y el soldado se hundia en el piso durante todo el salto.
+        //
+        // El nombre del clip NO se cambia a proposito: el controlador ya lo
+        // referencia por (guid, fileID) y el fileID sale del nombre.
+        static readonly string[] ClipsDeSalto = { "jump up", "jump loop", "jump down" };
+
+        // El vuelo lo pone SoldierMotor.Update (parabola a mano). El clip solo
+        // tiene que poner la POSE: la altura absoluta de la cadera se calibra
+        // aparte contra "walking" (ver CorregirAlturaDeSalto).
+        [MenuItem("Strategic Point/Arte/1b. Configurar clips de salto")]
+        public static void ConfigurarClipsDeSalto()
+        {
+            var rigImp = AssetImporter.GetAtPath(SoldadoRig) as ModelImporter;
+            Avatar srcAvatar = null;
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(SoldadoRig)) if (o is Avatar a) srcAvatar = a;
+            if (srcAvatar == null) { Debug.LogError("[ArtSetup] lego.fbx no genero Avatar; revisa el rig."); return; }
+            float escalaRig = rigImp != null ? rigImp.globalScale : 1f;
+
+            foreach (var nombre in ClipsDeSalto)
+            {
+                string ruta = Pack + "/" + nombre + ".fbx";
+                var imp = AssetImporter.GetAtPath(ruta) as ModelImporter;
+                if (imp == null) { Debug.LogWarning("[ArtSetup] Falta " + ruta); continue; }
+
+                imp.useFileScale = false;
+                imp.globalScale = escalaRig;
+                imp.animationType = ModelImporterAnimationType.Human;
+                imp.avatarSetup = ModelImporterAvatarSetup.CopyFromOther;
+                imp.sourceAvatar = srcAvatar;
+                imp.importAnimation = true;
+                imp.materialImportMode = ModelImporterMaterialImportMode.None;
+
+                var clips = imp.defaultClipAnimations;
+                for (int i = 0; i < clips.Length; i++)
+                {
+                    // Solo "jump loop" es un ciclo; despegue y aterrizaje son de una sola pasada.
+                    bool loopea = nombre == "jump loop";
+                    clips[i].loopTime = loopea;
+                    clips[i].loopPose = loopea;
+                    clips[i].lockRootRotation = true;
+                    clips[i].keepOriginalOrientation = true;
+                    clips[i].lockRootHeightY = true;
+                    clips[i].heightFromFeet = true;
+                    clips[i].keepOriginalPositionY = true;
+                    clips[i].lockRootPositionXZ = false;
+                    clips[i].keepOriginalPositionXZ = false;
+                }
+                imp.clipAnimations = clips;
+                imp.SaveAndReimport();
+
+                foreach (var o in AssetDatabase.LoadAllAssetsAtPath(ruta))
+                    if (o is AnimationClip clip && !clip.name.StartsWith("__preview__"))
+                        AnularDesplazamientoHorizontal(clip);
+            }
+            CorregirAlturaDeCadera();
+        }
+
         // Los 14 clips del blend 2D de pie (Caminar/Correr, ver
         // ArtBuilder.CrearBlendDePie) menos "walking" -- ese es el punto de
         // referencia, no algo a corregir.
@@ -530,6 +596,80 @@ namespace SP.EditorTools
         // un margen chico por encima del piso) el promedio objetivo es
         // 0.32742 + 0.10 = 0.4274.
         const float AlturaDePisoObjetivoAgachado = 0.4274f;
+
+        // La correccion NO se hace sobre el clip importado (eso vive en la cache de Library y un reimport la
+        // pierde: ese fue el bug de "se vuelve a hundir" de los clips de caminar). Se HORNEA a tres assets
+        // .anim propios (Assets/_Project/Animation/Salto) y el controlador apunta a ellos: sobreviven a
+        // reimportar, a borrar Library y a un build.
+        internal const string SaltoDir = "Assets/_Project/Animation/Salto";
+        internal static string RutaDeSaltoHorneado(string nombre) => SaltoDir + "/" + nombre.Replace(' ', '_') + ".anim";
+
+        [MenuItem("Strategic Point/Arte/1c. Hornear clips de salto")]
+        public static void HornearClipsDeSalto()
+        {
+            System.IO.Directory.CreateDirectory(SaltoDir);
+            foreach (var nombre in ClipsDeSalto)
+            {
+                var origen = CargarClip(nombre);
+                if (origen == null) { Debug.LogWarning("[ArtSetup] No hay clip importado de '" + nombre + "': corre Arte/1b."); continue; }
+
+                var copia = Object.Instantiate(origen);
+                copia.name = nombre;
+                if (TryPromedioRootTy(copia, out float promedio) && promedio < UmbralSaltoCrudo)
+                {
+                    foreach (var binding in AnimationUtility.GetCurveBindings(copia))
+                    {
+                        if (binding.propertyName != "RootT.y") continue;
+                        var curva = AnimationUtility.GetEditorCurve(copia, binding);
+                        var keys = curva.keys;
+                        for (int k = 0; k < keys.Length; k++) keys[k].value += DeltaAlturaSalto;
+                        curva.keys = keys;
+                        AnimationUtility.SetEditorCurve(copia, binding, curva);
+                    }
+                }
+                var ajustes = AnimationUtility.GetAnimationClipSettings(origen);
+                ajustes.loopTime = nombre == "jump loop";
+                ajustes.loopBlendOrientation = ajustes.loopBlendPositionY = ajustes.loopBlendPositionXZ = false;
+                AnimationUtility.SetAnimationClipSettings(copia, ajustes);
+
+                string ruta = RutaDeSaltoHorneado(nombre);
+                var existente = AssetDatabase.LoadAssetAtPath<AnimationClip>(ruta);
+                if (existente != null) { EditorUtility.CopySerialized(copia, existente); Object.DestroyImmediate(copia); EditorUtility.SetDirty(existente); }
+                else AssetDatabase.CreateAsset(copia, ruta);
+            }
+            AssetDatabase.SaveAssets();
+            ReapuntarControladorASaltoHorneado();
+        }
+
+        // Los tres estados de salto del controlador pasan a usar el clip horneado.
+        internal static void ReapuntarControladorASaltoHorneado()
+        {
+            var ctrl = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>("Assets/_Project/Animation/AC_Soldado.controller");
+            if (ctrl == null || ctrl.layers.Length == 0) return;
+            var estados = ctrl.layers[0].stateMachine.states;
+            var mapa = new System.Collections.Generic.Dictionary<string, string>
+            {
+                { "SaltoArriba", "jump up" }, { "SaltoAire", "jump loop" }, { "SaltoAbajo", "jump down" },
+            };
+            foreach (var e in estados)
+            {
+                if (!mapa.TryGetValue(e.state.name, out var clip)) continue;
+                var horneado = AssetDatabase.LoadAssetAtPath<AnimationClip>(RutaDeSaltoHorneado(clip));
+                if (horneado != null) e.state.motion = horneado;
+            }
+            EditorUtility.SetDirty(ctrl);
+            AssetDatabase.SaveAssets();
+        }
+
+        // Los tres clips de salto vienen del mismo export crudo: RootT.y ~0,41-0,48
+        // contra ~0,96 de "rifle aiming idle" (de pie). La cadera del soldado se
+        // hundia ~1 m durante todo el salto. Se DESPLAZAN las tres curvas por la
+        // misma constante (medida: 0,962 - 0,414 = 0,548, el primer cuadro de
+        // "jump up" es la pose de pie) para que el empalme despegue -> aire ->
+        // aterrizaje siga continuo. Idempotente: un clip ya subido (promedio
+        // por encima de 0,7) no se toca de nuevo.
+        const float DeltaAlturaSalto = 0.548f;
+        const float UmbralSaltoCrudo = 0.7f;
 
         static void CorregirPisoDeAgachado()
         {

@@ -311,6 +311,12 @@ namespace SP.EditorTools
 
         static AnimationClip Clip(string nombre)
         {
+            // Los clips de salto se usan ya HORNEADOS (calibrados a la altura de pie, ver ArtSetup.HornearClipsDeSalto).
+            if (nombre.StartsWith("jump "))
+            {
+                var horneado = AssetDatabase.LoadAssetAtPath<AnimationClip>(ArtSetup.RutaDeSaltoHorneado(nombre));
+                if (horneado != null) return horneado;
+            }
             foreach (var o in AssetDatabase.LoadAllAssetsAtPath(Pack + "/" + nombre + ".fbx"))
                 if (o is AnimationClip c && !c.name.StartsWith("__preview__")) return c;
             return null;
