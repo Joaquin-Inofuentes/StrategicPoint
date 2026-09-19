@@ -245,7 +245,7 @@ namespace SP.UI
         // siempre se arranca en mini.
         [Header("Tamaño del minimapa (px de referencia del Canvas)")]
         [Tooltip("Tamaño por defecto (mini). El juego siempre arranca con este.")]
-        public Vector2 tamanoMini = new Vector2(107f, 107f);
+        public Vector2 tamanoMini = new Vector2(150f, 150f);
         [Tooltip("Tamaño al expandir con [M].")]
         public Vector2 tamanoExpandido = new Vector2(320f, 320f);
 
@@ -272,6 +272,10 @@ namespace SP.UI
         // el definitivo.
         public void AplicarTamanoInicial()
         {
+            // Escenas ya horneadas guardaron 107 px (ilegible): se sube al nuevo minimo y el fondo deja de ser negro puro.
+            if (tamanoMini.x < 140f) tamanoMini = new Vector2(150f, 150f);
+            var camMini = GetComponent<Camera>();
+            if (camMini != null && camMini.backgroundColor == Color.black) camMini.backgroundColor = new Color(0.10f, 0.15f, 0.12f);
             Agrandado = false;
             indiceTamanoFijo = 0;
             var b = ResolveBorder();

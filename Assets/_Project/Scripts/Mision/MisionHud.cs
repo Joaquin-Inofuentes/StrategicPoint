@@ -34,12 +34,12 @@ namespace SP.Mision
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
             rt.anchoredPosition = new Vector2(20f, -20f);
-            rt.sizeDelta = new Vector2(340f, 112f);
+            rt.sizeDelta = new Vector2(320f, 112f);
 
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            h.titulo = Texto(go.transform, font, 14, new Vector2(0f, 40f), new Vector2(324f, 20f), new Color(1f, 0.82f, 0.3f));
-            h.detalle = Texto(go.transform, font, 16, new Vector2(0f, 10f), new Vector2(324f, 42f), Color.white);
-            h.dificultad = Texto(go.transform, font, 11, new Vector2(0f, -43f), new Vector2(324f, 16f), new Color(0.72f, 0.8f, 0.9f));
+            h.titulo = Texto(go.transform, font, 14, new Vector2(0f, 40f), new Vector2(304f, 20f), new Color(1f, 0.82f, 0.3f));
+            h.detalle = Texto(go.transform, font, 16, new Vector2(0f, 10f), new Vector2(304f, 42f), Color.white);
+            h.dificultad = Texto(go.transform, font, 11, new Vector2(0f, -43f), new Vector2(304f, 16f), new Color(0.72f, 0.8f, 0.9f));
             h.detalle.horizontalOverflow = HorizontalWrapMode.Wrap;
             h.dificultad.resizeTextForBestFit = true; h.dificultad.resizeTextMinSize = 8; h.dificultad.resizeTextMaxSize = 11;
 
@@ -49,7 +49,7 @@ namespace SP.Mision
             h.barra = fondoBarra.GetComponent<RectTransform>();
             h.barra.anchorMin = h.barra.anchorMax = new Vector2(0.5f, 0.5f);
             h.barra.anchoredPosition = new Vector2(0f, -25f);
-            h.barra.sizeDelta = new Vector2(300f, 6f);
+            h.barra.sizeDelta = new Vector2(284f, 6f);
             var fill = new GameObject("Relleno", typeof(RectTransform), typeof(Image));
             fill.transform.SetParent(fondoBarra.transform, false);
             fill.GetComponent<Image>().color = new Color(1f, 0.82f, 0.3f);
@@ -60,7 +60,7 @@ namespace SP.Mision
             h.relleno.sizeDelta = new Vector2(0f, 0f);
 
             var p = Dificultad.PerfilActual;
-            h.dificultad.text = $"{p.Nombre} · enem. {Pct(p.VidaEnemigos)}/{Pct(p.DanoEnemigos)} · alia. {Pct(p.VidaAliados)}/{Pct(p.DanoAliados)} · vos {Pct(p.VidaJugador)}/{Pct(p.DanoJugador)}";
+            h.dificultad.text = $"Dificultad: {p.Nombre}";   // el detalle (enemigos/aliados/vos) vive en Configuraciones, no en el HUD
             h.Refrescar();
             return h;
         }

@@ -207,7 +207,7 @@ namespace SP.UI
             var hp = Soldier.Health;
             string vida = hp != null ? $"{hp.Current}/{hp.MaxHealth}" : "";
 
-            label.text = $"{marker}<size=11><b>{Index} · {Soldier.ClassNameTitulo}</b></size>\n<size=10><color=#9aa0ac>{Soldier.DisplayName}   ·   {vida}   ·   {weapon}{estadoSuffix}</color></size>";
+            label.text = $"{marker}<size=11><b>{Index} · {Soldier.ClassNameTitulo}</b></size>\n<size=11><color=#d8dde6>{Soldier.DisplayName}   ·   {vida}   ·   {weapon}{estadoSuffix}</color></size>";
             label.color = Color.white;
         }
 

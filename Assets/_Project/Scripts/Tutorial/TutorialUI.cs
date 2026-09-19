@@ -83,7 +83,7 @@ namespace SP.Tutorial
             panel = (RectTransform)pgo.transform;
             panel.anchorMin = panel.anchorMax = new Vector2(1f, 1f);
             panel.pivot = new Vector2(1f, 1f);
-            posBase = new Vector2(-12f, -128f);
+            posBase = new Vector2(-12f, -176f);   // debajo del minimapa (150 px + margen)
             panel.anchoredPosition = posBase;
             panel.sizeDelta = new Vector2(356f, 260f);
             panelFondo = pgo.GetComponent<Image>();

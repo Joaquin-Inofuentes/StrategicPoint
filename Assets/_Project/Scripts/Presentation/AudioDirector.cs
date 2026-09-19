@@ -327,6 +327,7 @@ namespace SP.Presentation
 
                 src.playOnAwake = false;
                 src.loop = false;
+                src.ignoreListenerPause = true;   // los clics de menu suenan aunque el juego este en pausa
                 // Interfaz: 2D puro y SIN filtro. Un clic de menu que se
                 // escucha mas opaco porque el jugador camino diez metros
                 // seria un error, no un efecto.

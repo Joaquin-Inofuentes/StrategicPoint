@@ -316,6 +316,11 @@ namespace SP.Presentation
             escalaPrevia = Time.timeScale;
             Time.timeScale = 0f;
             pausePanel.SetActive(true);
+            // El panel tiene que dibujarse ENCIMA de todo el HUD (la mision, el roster, el radial...), que
+            // se crean despues y por eso quedaban tapando los menus. Y el audio se pausa de verdad: antes
+            // timeScale=0 congelaba el juego pero la musica y los ambientes seguian sonando.
+            transform.SetAsLastSibling();
+            AudioListener.pause = true;
             GameLog.Line("Se puso en pausa el juego");
         }
 
@@ -327,6 +332,7 @@ namespace SP.Presentation
             // restaura nunca: si se llego a pausar con el tiempo ya
             // congelado por otra cosa, despausar tiene que devolver el
             // control igual y no dejar el juego clavado.
+            AudioListener.pause = false;
             Time.timeScale = escalaPrevia > 0.0001f ? escalaPrevia : 1f;
             escalaPrevia = 1f;
             if (settingsPanel != null) settingsPanel.SetActive(false);
@@ -373,13 +379,14 @@ namespace SP.Presentation
             if (input != null && input.IsHandlingDeath) return;
             bool nextState = !controlsPanel.activeSelf;
             controlsPanel.SetActive(nextState);
-            if (nextState) RefreshControlsList();
+            if (nextState) { transform.SetAsLastSibling(); RefreshControlsList(); }
         }
 
         public void OnControlsClicked()
         {
             if (controlsPanel == null || controlsPanel.activeSelf) return;
             controlsPanel.SetActive(true);
+            transform.SetAsLastSibling();
             RefreshControlsList();
             GameLog.Line("Se entro a controles");
         }
@@ -442,6 +449,7 @@ namespace SP.Presentation
             exitConfirmed = true;
             GameLog.Line("Se selecciono volver al menu desde pausa");
             Time.timeScale = 1f;
+            AudioListener.pause = false;
             SceneManager.LoadScene("SC_MainMenu");
         }
     }

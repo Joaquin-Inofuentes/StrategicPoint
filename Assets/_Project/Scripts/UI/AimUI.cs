@@ -335,6 +335,7 @@ namespace SP.UI
             // claro sobre claro, justo donde aparece. Ver SP.UI.FondoOpaco,
             // que es el MISMO fondo que usan los demas carteles.
             FondoOpaco.Poner(promptText);
+            if (promptText != null && promptText.fontSize > 20) promptText.fontSize = 20;   // el cartel era enorme
             if (crosshair == null)
             {
                 var t = canvasRoot.Find("Crosshair");
@@ -551,6 +552,7 @@ namespace SP.UI
         }
 
         Color currentAimTint;
+        public const float DistanciaMaximaCartelObstaculo = 25f;
 
         public void UpdateFromAimResult(AimResult result)
         {
@@ -581,7 +583,11 @@ namespace SP.UI
                     // municion contra ella.
                     bool esDestructible = result.HitTransform != null
                         && result.HitTransform.GetComponent<SP.Presentation.ObstacleMarker>() != null;
-                    CurrentPrompt = esDestructible ? "Obstáculo destructible" : "Obstáculo";
+                    // Solo si esta cerca: apuntando a un muro a 100 m el cartel gigante tapaba el centro
+                    // de la pantalla sin que el jugador pudiera hacer nada con esa informacion.
+                    var camObs = Camera.main;
+                    bool cerca = camObs == null || (camObs.transform.position - result.Point).sqrMagnitude <= DistanciaMaximaCartelObstaculo * DistanciaMaximaCartelObstaculo;
+                    CurrentPrompt = !cerca ? "" : esDestructible ? "Obstáculo destructible" : "Obstáculo";
                     currentAimTint = esDestructible ? DestructibleTint : ObstacleTint;
                     break;
                 case AimTargetType.Ground:
