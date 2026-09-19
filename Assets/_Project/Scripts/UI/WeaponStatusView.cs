@@ -127,11 +127,46 @@ namespace SP.UI
                 float frac = weapon.MagazineSize > 0 ? (float)weapon.CurrentAmmo / weapon.MagazineSize : 1f;
                 label.color = (!weapon.IsReloading && frac < 0.3f) ? new Color(0.95f, 0.25f, 0.2f) : Color.white;
             }
+            ActualizarExtras(weapon);
             if (fill != null)
             {
                 fill.fillAmount = weapon.ReadinessFraction01;
                 fill.color = weapon.IsReloading ? new Color(0.95f, 0.6f, 0.2f) : new Color(0.4f, 0.85f, 0.45f);
             }
+        }
+
+        // Linea encima del panel con las dos acciones que no son el arma: cuchillo [F] y granadas [G].
+        Text extras;
+        void ActualizarExtras(WeaponHolder weapon)
+        {
+            if (extras == null)
+            {
+                var t = transform.Find("Extras");
+                if (t == null)
+                {
+                    var go = new GameObject("Extras", typeof(RectTransform), typeof(Text));
+                    go.transform.SetParent(transform, false);
+                    var rt = (RectTransform)go.transform;
+                    rt.anchorMin = new Vector2(0f, 1f); rt.anchorMax = new Vector2(1f, 1f);
+                    rt.pivot = new Vector2(0.5f, 0f);
+                    rt.anchoredPosition = new Vector2(0f, 2f);
+                    rt.sizeDelta = new Vector2(0f, 22f);
+                    var tx = go.GetComponent<Text>();
+                    tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    tx.fontSize = 14; tx.fontStyle = FontStyle.Bold;
+                    tx.alignment = TextAnchor.MiddleRight;
+                    tx.raycastTarget = false;
+                    var sombra = go.AddComponent<Shadow>();
+                    sombra.effectColor = new Color(0f, 0f, 0f, 0.8f);
+                    t = go.transform;
+                }
+                extras = t.GetComponent<Text>();
+            }
+            if (extras == null) return;
+            bool cuchilloListo = weapon.KnifeCooldownRemaining <= 0f;
+            string cuchillo = cuchilloListo ? "<color=#E6EEF5>[F] CUCHILLO</color>" : "<color=#7C8794>[F] CUCHILLO</color>";
+            string granada = weapon.Granadas > 0 ? $"<color=#FFC94A>[G] GRANADA x{weapon.Granadas}</color>" : "<color=#E0503C>[G] SIN GRANADAS</color>";
+            extras.text = cuchillo + "     " + granada;
         }
     }
 }

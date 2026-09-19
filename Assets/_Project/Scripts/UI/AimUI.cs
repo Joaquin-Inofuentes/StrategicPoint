@@ -56,6 +56,24 @@ namespace SP.UI
             RecomputeCrosshairSize();
         }
 
+        // Mira de cadera (sin apuntar) propia de cada arma: el mismo dibujo que la del zoom, en chico y con
+        // borde oscuro para que se lea sobre cielo y pasto. lado = tamano en px del sprite.
+        Sprite cruceteActual;
+        public void SetCrosshairStyle(Sprite sprite, float lado)
+        {
+            if (crosshair == null || sprite == null || cruceteActual == sprite) return;
+            cruceteActual = sprite;
+            crosshair.sprite = sprite;
+            crosshairSpriteSize = new Vector2(lado, lado);
+            if (crosshair.GetComponent<UnityEngine.UI.Outline>() == null)
+            {
+                var o = crosshair.gameObject.AddComponent<UnityEngine.UI.Outline>();
+                o.effectColor = new Color(0f, 0f, 0f, 0.7f);
+                o.effectDistance = new Vector2(1.2f, -1.2f);
+            }
+            RecomputeCrosshairSize();
+        }
+
         // Con el zoom activo manda la reticula de MirillaView: la base se apaga.
         public void SetBaseCrosshairHidden(bool hidden)
         {

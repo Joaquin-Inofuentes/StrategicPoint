@@ -27,6 +27,26 @@ namespace SP.Presentation
 
         public static void Reset() { Contador = 0; UltimoTexto = null; UltimoSonido = null; }
 
+        // Solo lo visual (etiqueta en el mundo, pulso y aviso): para acciones cuyo SONIDO ya lo pone otro
+        // (la recarga y el desenfunde de cada arma suenan desde WeaponHolder).
+        public static void Visual(string texto, Vector3? enMundo = null, Color? color = null, bool aviso = true, bool pulso = false)
+        {
+            Contador++;
+            UltimoTexto = texto;
+            var c = color ?? Info;
+            bool conTexto = !string.IsNullOrEmpty(texto);
+            if (Application.isPlaying && conTexto)
+            {
+                if (enMundo.HasValue)
+                {
+                    WorldTag.Spawn(enMundo.Value + Vector3.up * 2.3f, texto, c);
+                    if (pulso) OrderMarkerFx.Spawn(enMundo.Value, c, 0.9f);
+                }
+                if (aviso) AlertQueue.Push(texto, AlertPriority.Media, 1.3f);
+            }
+            if (conTexto) GameLog.Line("[FB] " + texto);
+        }
+
         public static void Accion(SfxKind sonido, string texto, Vector3? enMundo = null, Color? color = null,
                                   bool aviso = true, bool pulso = false, float volumen = 0.6f)
         {

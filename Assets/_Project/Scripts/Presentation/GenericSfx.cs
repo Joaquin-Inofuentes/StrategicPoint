@@ -19,7 +19,9 @@ namespace SP.Presentation
     // hacer click en CUALQUIER boton (ver SP.UI.ButtonSfx). OrderBark: voz
     // de acuse militar ("Accepted"/"Positive"/etc) al dar una orden.
     // CameraSwoosh: transicion FPS<->RTS.
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire, TutKey, TutSub, TutStep, TutVictory }
+    // Ronda 7: Explosion (boom con cola), GrenadePin/Throw/Bounce, KnifeSwing/Hit, Jump/Land,
+    // RadialOpen/Tick/Confirm/Cancel, HealStart/Done, Revive y BombPlant/Tick (ver SfxSintetico).
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire, TutKey, TutSub, TutStep, TutVictory, Explosion, GrenadePin, GrenadeThrow, GrenadeBounce, KnifeSwing, KnifeHit, Jump, Land, RadialOpen, RadialTick, RadialConfirm, RadialCancel, HealStart, HealDone, Revive, BombPlant, BombTick }
 
     // Sonidos genéricos: primero busca grabaciones reales importadas bajo
     // Resources/Audio/Sfx/<Kind>/ (pedido explicito: "quita todos los
@@ -69,6 +71,13 @@ namespace SP.Presentation
             if (real != null) return real;
 
             if (weaponShotCache.TryGetValue(kind, out var clip) && clip != null) return clip;
+            // El cohete no es un "pop": es golpe de carga + ignicion + el fiush de algo que se aleja.
+            if (kind == WeaponKind.Rocket)
+            {
+                clip = SfxSintetico.LanzamientoDeCohete();
+                weaponShotCache[kind] = clip;
+                return clip;
+            }
             float freq, duration, decay;
             switch (kind)
             {
@@ -86,6 +95,44 @@ namespace SP.Presentation
             }
             clip = GenerateTone(freq, duration, decay, "Shot_" + kind);
             weaponShotCache[kind] = clip;
+            return clip;
+        }
+
+        static readonly Dictionary<WeaponKind, AudioClip> recargaCache = new Dictionary<WeaponKind, AudioClip>();
+        static readonly Dictionary<WeaponKind, AudioClip> desenfundeCache = new Dictionary<WeaponKind, AudioClip>();
+        static readonly Dictionary<WeaponKind, AudioClip> vacioCache = new Dictionary<WeaponKind, AudioClip>();
+
+        // Recarga propia de cada arma (cargador que sale/entra, cerrojo, corredera, cartuchos uno a uno,
+        // tapa de la caja...). Un .wav bajo Resources/Audio/Sfx/Reload_<Arma>/ tiene prioridad.
+        public static AudioClip GetWeaponReload(WeaponKind kind)
+        {
+            var real = PickReal("Reload_" + kind);
+            if (real != null) return real;
+            if (recargaCache.TryGetValue(kind, out var clip) && clip != null) return clip;
+            clip = SfxSintetico.Recarga(kind);
+            recargaCache[kind] = clip;
+            return clip;
+        }
+
+        // Sonido de sacar el arma al cambiarla (1/2/3 o rueda).
+        public static AudioClip GetWeaponDraw(WeaponKind kind)
+        {
+            var real = PickReal("Draw_" + kind);
+            if (real != null) return real;
+            if (desenfundeCache.TryGetValue(kind, out var clip) && clip != null) return clip;
+            clip = SfxSintetico.Desenfundar(kind);
+            desenfundeCache[kind] = clip;
+            return clip;
+        }
+
+        // Gatillo en seco. El .wav real de EmptyClick (si existe) se usa para las armas sin tono propio.
+        public static AudioClip GetWeaponDry(WeaponKind kind)
+        {
+            var real = PickReal("Dry_" + kind);
+            if (real != null) return real;
+            if (vacioCache.TryGetValue(kind, out var clip) && clip != null) return clip;
+            clip = SfxSintetico.GatilloVacio(kind);
+            vacioCache[kind] = clip;
             return clip;
         }
 
@@ -178,6 +225,24 @@ namespace SP.Presentation
                 case SfxKind.TutSub: return GenerateArpegio(new[] { 660f, 990f }, 0.09f, "TutSub");
                 case SfxKind.TutStep: return GenerateArpegio(new[] { 523f, 659f, 784f }, 0.11f, "TutStep");
                 case SfxKind.TutVictory: return GenerateArpegio(new[] { 523f, 659f, 784f, 1047f, 784f, 1047f, 1319f }, 0.16f, "TutVictory");
+                // Ronda 7: sintesis dedicada (SfxSintetico).
+                case SfxKind.Explosion: return SfxSintetico.Explosion();
+                case SfxKind.GrenadePin: return SfxSintetico.GranadaSeguro();
+                case SfxKind.GrenadeThrow: return SfxSintetico.GranadaLanzada();
+                case SfxKind.GrenadeBounce: return SfxSintetico.GranadaRebote();
+                case SfxKind.KnifeSwing: return SfxSintetico.CuchilloTajo();
+                case SfxKind.KnifeHit: return SfxSintetico.CuchilloImpacto();
+                case SfxKind.Jump: return SfxSintetico.Salto();
+                case SfxKind.Land: return SfxSintetico.Aterrizaje();
+                case SfxKind.RadialOpen: return SfxSintetico.RadialAbrir();
+                case SfxKind.RadialTick: return SfxSintetico.RadialTick();
+                case SfxKind.RadialConfirm: return SfxSintetico.RadialConfirmar();
+                case SfxKind.RadialCancel: return SfxSintetico.RadialCancelar();
+                case SfxKind.HealStart: return SfxSintetico.CuracionInicio();
+                case SfxKind.HealDone: return SfxSintetico.CuracionFin();
+                case SfxKind.Revive: return SfxSintetico.Reanimar();
+                case SfxKind.BombPlant: return SfxSintetico.CargaPlantada();
+                case SfxKind.BombTick: return SfxSintetico.CargaTic();
             }
 
             float freq, duration, decay;

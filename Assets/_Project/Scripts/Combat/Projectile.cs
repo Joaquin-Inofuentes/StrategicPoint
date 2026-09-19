@@ -669,7 +669,8 @@ namespace SP.Combat
             // sonido de explosion propio -- el evento que publica la
             // explosion ES Ground, y inventarle un SfxKind aparte seria
             // diseño nuevo, no el item 192.
-            PlayImpactSfx(EnvironmentHitKind.Ground, point, 0.85f, 0.8f);
+            // Ronda 7: la explosion tiene estruendo propio (trueno grave + crack + escombros que caen).
+            SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.Explosion, point, 1f, 1f);
             ImpactFx.SpawnExplosion(point, radius);
 
             // Una explosion cerca se veia pero no se SENTIA: la camara

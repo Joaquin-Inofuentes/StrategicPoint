@@ -76,6 +76,10 @@ namespace SP.UI
             retGO.transform.SetParent(go.transform, false);
             m.reticula = retGO.GetComponent<Image>();
             m.reticula.raycastTarget = false;
+            // Borde oscuro: la reticula blanca se perdia contra el cielo y las paredes claras.
+            var borde = retGO.AddComponent<Outline>();
+            borde.effectColor = new Color(0f, 0f, 0f, 0.75f);
+            borde.effectDistance = new Vector2(1.5f, -1.5f);
             var rrt = (RectTransform)retGO.transform;
             rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, 0.5f);
             rrt.sizeDelta = new Vector2(260f, 260f);
@@ -103,7 +107,50 @@ namespace SP.UI
             reticula.color = tinte;
             alfa = Mathf.MoveTowards(alfa, zoom ? 1f : 0f, Time.unscaledDeltaTime * 10f);
             grupo.alpha = alfa;
+
+            // Con tubo (telescopica / visor del cohete) la mira tiene que quedar ENCIMA del resto del HUD (el
+            // panel de mision y la barra de arriba se veian a traves del visor), salvo lo que hace falta ver.
+            bool conTubo = estilo == ReticleStyle.Telescopica || estilo == ReticleStyle.Mildot;
+            if (zoom && conTubo && alfa > 0.5f && !elevada)
+            {
+                elevada = true;
+                transform.SetAsLastSibling();
+                if (Application.isPlaying)
+                {
+                    var dios = FindAnyObjectByType<ModoDiosView>();
+                    if (dios != null) dios.transform.SetAsLastSibling();
+                    var arma = FindAnyObjectByType<WeaponStatusView>();
+                    if (arma != null) arma.transform.SetAsLastSibling();
+                }
+            }
+            else if (!zoom || alfa < 0.05f) elevada = false;
+
+            AtenuarHudParaElVisor(conTubo ? alfa : 0f);
         }
+
+        // Con visor cerrado el panel de mision y la barra "ENEMIGOS / ESCUADRA" se veian a traves del agujero:
+        // se desvanecen mientras se mira por la optica y vuelven al soltar.
+        static readonly string[] HudDelCentro = { "MissionStatus", "SelectionCount", "MisionHud" };
+        readonly System.Collections.Generic.List<CanvasGroup> hudAtenuado = new System.Collections.Generic.List<CanvasGroup>();
+        bool hudBuscado;
+        void AtenuarHudParaElVisor(float k)
+        {
+            if (!hudBuscado)
+            {
+                hudBuscado = true;
+                foreach (var n in HudDelCentro)
+                {
+                    var t = transform.parent != null ? transform.parent.Find(n) : null;
+                    if (t == null) continue;
+                    var cg = t.GetComponent<CanvasGroup>();
+                    if (cg == null) cg = t.gameObject.AddComponent<CanvasGroup>();
+                    hudAtenuado.Add(cg);
+                }
+            }
+            foreach (var cg in hudAtenuado) if (cg != null) cg.alpha = 1f - Mathf.Clamp01(k);
+        }
+
+        bool elevada;
 
         public void Ocultar()
         {
@@ -114,7 +161,7 @@ namespace SP.UI
         // ------------------------------------------------------------------
         // Texturas
         // ------------------------------------------------------------------
-        static Sprite SpriteDe(ReticleStyle e)
+        public static Sprite SpriteDe(ReticleStyle e)
         {
             if (sprites == null) sprites = new Sprite[System.Enum.GetValues(typeof(ReticleStyle)).Length];
             int i = (int)e;

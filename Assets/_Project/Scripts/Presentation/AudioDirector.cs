@@ -230,6 +230,23 @@ namespace SP.Presentation
 
         public int DroppedCount { get; private set; }
 
+        // Ultimos sonidos que de verdad sonaron (nombre del clip), del mas viejo al mas nuevo. Sirve para
+        // comprobar sin oido que una accion emite SU sonido (tests y capturas): "reproducido" y no solo "pedido".
+        public static readonly System.Collections.Generic.List<string> Historial = new System.Collections.Generic.List<string>();
+        public static int TotalReproducidos { get; private set; }
+        static void Registrar(AudioClip clip)
+        {
+            TotalReproducidos++;
+            Historial.Add(clip.name);
+            if (Historial.Count > 60) Historial.RemoveAt(0);
+        }
+        public static bool SonoRecien(string nombreDeClip, int ultimos = 12)
+        {
+            for (int i = Historial.Count - 1; i >= 0 && i >= Historial.Count - ultimos; i--)
+                if (Historial[i] == nombreDeClip) return true;
+            return false;
+        }
+
         void OnEnable()
         {
             Instance = this;
@@ -419,6 +436,7 @@ namespace SP.Presentation
             float pitch = NextPitch();
             src.pitch = pitch;   // ANTES de Play(), y con Play(), no PlayOneShot
             src.Play();
+            Registrar(clip);
 
             // A pitch alto el clip dura MENOS: se divide. El Max evita
             // dividir por cero si alguna vez llega un pitch degenerado.
@@ -461,6 +479,7 @@ namespace SP.Presentation
             float pitch = NextPitch();
             src.pitch = pitch;
             src.Play();
+            Registrar(clip);
 
             voices2D[slot].Free = false;
             voices2D[slot].Audibility = audibility;
