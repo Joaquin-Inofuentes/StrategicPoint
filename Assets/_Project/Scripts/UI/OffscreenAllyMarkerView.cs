@@ -21,6 +21,7 @@ namespace SP.UI
     public class OffscreenAllyMarkerView : MonoBehaviour
     {
         const float EdgeMargin = 48f;
+        public const float MargenInferior = 104f, MargenSuperior = 64f;
         const int MaxMarkers = 8;
 
         // Publico para que Unity lo serialice: asignado al construir la
@@ -114,7 +115,10 @@ namespace SP.UI
             float w = parent.rect.width;
             float h = parent.rect.height;
             float halfW = Mathf.Max(0f, w * 0.5f - EdgeMargin);
-            float halfH = Mathf.Max(0f, h * 0.5f - EdgeMargin);
+            // Limites asimetricos: abajo quedan las tarjetas de la escuadra y la barra del arma, y arriba el contador
+            // de enemigos, asi que las flechas se frenan antes de tocarlos (en 4:3 se pisaban con el cuchillo/granada).
+            float yMax = Mathf.Max(0f, h * 0.5f - MargenSuperior);
+            float yMin = -Mathf.Max(0f, h * 0.5f - MargenInferior);
 
             // El poseido esta pegado a la camara (la FPS mira desde sus
             // ojos): WorldToViewportPoint(su propia posicion) da un z casi
@@ -150,7 +154,7 @@ namespace SP.UI
                 // Borde del RECTANGULO y no de una elipse inscrita: en las
                 // diagonales la flecha quedaba muy adentro de la esquina.
                 float sx = dir.x != 0f ? halfW / Mathf.Abs(dir.x) : float.MaxValue;
-                float sy = dir.y != 0f ? halfH / Mathf.Abs(dir.y) : float.MaxValue;
+                float sy = dir.y > 0f ? yMax / dir.y : dir.y < 0f ? yMin / dir.y : float.MaxValue;
 
                 arrow.gameObject.SetActive(true);
                 arrow.rectTransform.anchoredPosition = dir * Mathf.Min(sx, sy);

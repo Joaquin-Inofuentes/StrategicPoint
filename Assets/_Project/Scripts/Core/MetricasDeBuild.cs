@@ -20,12 +20,19 @@ namespace SP.Core
         {
             if (Application.isEditor) return;
             bool pedido = false;
-            foreach (var a in Environment.GetCommandLineArgs()) if (a == "-spmetrics") pedido = true;
+            var args = Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length; i++)
+            {
+                if (args[i] == "-spmetrics") pedido = true;
+                if (args[i] == "-spshot" && i + 1 < args.Length) { pedido = true; rutaCaptura = args[i + 1]; }
+            }
             if (!pedido) return;
             var go = new GameObject("MetricasDeBuild");
             UnityEngine.Object.DontDestroyOnLoad(go);
             go.AddComponent<Corredor>().StartCoroutine(go.GetComponent<Corredor>().Correr());
         }
+
+        static string rutaCaptura;
 
         class Corredor : MonoBehaviour
         {
@@ -40,6 +47,14 @@ namespace SP.Core
                     yield return null; yield return null;
                 }
                 yield return new WaitForSecondsRealtime(6f);
+                if (!string.IsNullOrEmpty(rutaCaptura))
+                {
+                    // Modo captura (`-spshot ruta.png`): una imagen del HUD a la resolucion pedida, para revisar otras proporciones.
+                    ScreenCapture.CaptureScreenshot(rutaCaptura);
+                    yield return new WaitForSecondsRealtime(1.5f);
+                    Application.Quit();
+                    yield break;
+                }
                 // Sin tope de cuadros ni vsync: si no, el promedio solo dice "144 fps" y esconde el costo real por frame.
                 QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1;
                 yield return new WaitForSecondsRealtime(1f);

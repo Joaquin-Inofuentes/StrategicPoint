@@ -18,6 +18,19 @@ Recorrido completo del tutorial (`SC_Tutorial`) tal como quedó en la Ronda 8 (3
 
 Los pasos 27, 29 y 35 desactivan el atajo [E] a propósito (avisa «USA EL RADIAL») para que el comando de [Q] se use de verdad y no se reemplace por la tecla vieja.
 
+## Ayudas para no trabarse (Ronda 9)
+
+Además de las **pistas** de cada paso (aparecen a los 16 s sin progreso), el tutorial ahora tiene:
+
+| Tecla | Qué hace |
+|---|---|
+| **F8** | Salta el paso actual (lo da por cumplido) y trae a los aliados que hayan quedado a más de 14 m. |
+| **F7** | Si cerraste el tutorial a medias, al volver aparece «PASO N GUARDADO»; con F7 (en el paso 1, durante 25 s) se avanza solo hasta ese paso. |
+| Flecha de texto | A los 16 s sin progreso, en los pasos con blanco concreto (disparar, mira, arsenal, cuchillo, granada, ir y atacar, suministros) la línea de ayuda dice hacia dónde girar: `OBJETIVO a tu DERECHA >> · 12 m`. |
+
+El progreso se guarda (`PlayerPrefs`, clave `sp_tutorial_paso`) al empezar cada paso y se borra al terminar el tutorial. Si un enemigo de práctica no tiene línea de vista libre a la distancia pedida, `PuntoConVista` lo acerca (70 %, 50 %, 35 %) en vez de dejarlo detrás de un muro.
+La etiqueta «CENTRO» de la baliza de misión se vuelve transparente cuando cae sobre la mira, para no tapar el blanco.
+
 ## Paso 1 · MOVER LA CÁMARA
 
 - **Tecla(s):** Mouse

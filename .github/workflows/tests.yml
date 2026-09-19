@@ -1,0 +1,32 @@
+# Corre la suite del juego en cada push y pull request.
+# NO SE PUDO PROBAR AQUI: necesita una licencia de Unity cargada como secretos del repositorio
+# (UNITY_LICENSE, UNITY_EMAIL, UNITY_PASSWORD) segun https://game-ci.com/docs/github/activation
+name: Pruebas
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-${{ hashFiles('Packages/manifest.json', 'ProjectSettings/ProjectVersion.txt') }}
+          restore-keys: Library-
+      # game-ci ejecuta el metodo y falla el trabajo si Unity sale con codigo distinto de 0
+      # (RunAll sale con 0 si toda la suite paso y con 1 si algo fallo).
+      - uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          unityVersion: 6000.5.6f1
+          targetPlatform: StandaloneWindows64
+          buildMethod: SP.EditorTools.HeadlessTestRunner.RunAll

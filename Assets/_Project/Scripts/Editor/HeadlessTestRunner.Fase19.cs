@@ -71,6 +71,16 @@ namespace SP.EditorTools
             // --- Ordenes de mover validadas (62) ---
             Check("El punto pedido bajo los pies siempre es alcanzable", OrderService.PuntoAlcanzable(vega.transform.position, vega.transform.position, out _));
             Check("El radio de ajuste de puntos es de 3 m", Mathf.Approximately(OrderService.RadioDeAjusteDePunto, 3f));
+
+            // --- Flechas de aliados fuera de pantalla: no pisan las tarjetas ni la barra del arma (19) ---
+            Check("Las flechas de aliados frenan antes del borde de abajo (HUD) y del de arriba", OffscreenAllyMarkerView.MargenInferior > 96f && OffscreenAllyMarkerView.MargenSuperior >= 56f);
+
+            // --- Repositorio: README, CI y particion de archivos gigantes (81, 82, 83, 92) ---
+            Check("Hay README en la raiz del repositorio", System.IO.File.Exists("README.md"));
+            Check("Hay flujo de CI para correr la suite", System.IO.File.Exists(".github/workflows/tests.yml"));
+            Check("PlayerInputDriver esta partido (radial y vehiculos en archivos aparte)", System.IO.File.Exists("Assets/_Project/Scripts/Player/PlayerInputDriver.Radial.cs") && System.IO.File.Exists("Assets/_Project/Scripts/Player/PlayerInputDriver.Vehiculo.cs"));
+            Check("PlayerInputDriver.cs ya no pasa de 3500 lineas", System.IO.File.ReadAllLines("Assets/_Project/Scripts/Player/PlayerInputDriver.cs").Length < 3500);
+            Check("AiBrain.cs y HeadlessTestRunner.cs tambien se partieron", System.IO.File.Exists("Assets/_Project/Scripts/Ai/AiBrain.Navegacion.cs") && System.IO.File.Exists("Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases8a12.cs"));
         }
     }
 }
