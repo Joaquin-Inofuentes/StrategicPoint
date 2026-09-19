@@ -1,6 +1,6 @@
 # Ronda 9: mejoras de la auditoria de 100 puntos
 
-Resumen honesto: de los 100 puntos, **65 hechos, 16 que ya estaban resueltos, 11 parciales y 8 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless termina en OK con la FASE 18 y la FASE 19.
+Resumen honesto: de los 100 puntos, **66 hechos, 16 que ya estaban resueltos, 12 parciales y 6 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless termina en OK con la FASE 18 y la FASE 19.
 
 ## Que se hizo
 
@@ -16,6 +16,9 @@ Resumen honesto: de los 100 puntos, **65 hechos, 16 que ya estaban resueltos, 11
 * **Reordenar la escuadra (64)**: **[** y **]** mueven al soldado que manejas en el orden (cambia su numero en el roster y su tecla F1-F9).
 * **Tamano de interfaz (28)**: Configuraciones > TAMANO DE INTERFAZ (100/125/150 %).
 * **Rendimiento (75, 76)**: `CamaraPrincipal` y `RecursosCache` reemplazan a `Camera.main` y `Resources.Load` en todo el runtime, con precarga y un test que impide volver atras. El punto 74 (materiales) era en su mayoria un falso positivo del conteo.
+
+* **Arsenal (43)**: junto a una caja de suministros, **[,]** y **[.]** cambian el arma principal (6 armas; salta las que ya llevas en otra ranura).
+* **Idioma ES/EN (27)**: **[F12]** o Configuraciones > IDIOMA. Traduce menu, dificultad, pausa, configuraciones, radial y avisos comunes; el tutorial y los textos de mision siguen en espanol (por eso queda PARCIAL).
 
 ## Capturas
 
@@ -33,5 +36,5 @@ Resumen honesto: de los 100 puntos, **65 hechos, 16 que ya estaban resueltos, 11
 * **Oido humano** (65): los sonidos se verificaron por metricas; solo una persona puede juzgarlos.
 * **4K** (19): no se probo (monitor 1080p).
 * **CI** (81): el flujo `.github/workflows/tests.yml` esta escrito pero **nunca se ejecuto en GitHub**.
-* **Sin hacer**: localizacion (27), arsenal por clase (43, decision de diseno), caida con dano (51, no aplica: no hay caidas), tutorial 100 % con gestos reales (95), canvases (77), subtitulos de sonido (parte de 28).
+* **Sin hacer**: localizacion completa del tutorial y las misiones (27, parcial), caida con dano (51, no aplica: no hay caidas), tutorial 100 % con gestos reales (95), canvases (77), subtitulos de sonido (parte de 28).
 * Los servidores MCP de GitHub, Sentry y Supabase piden autorizacion y no se usaron.

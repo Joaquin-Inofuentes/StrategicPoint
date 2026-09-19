@@ -2,7 +2,7 @@
 
 Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. **Estados**: HECHO (implementado y con prueba o captura), YA ESTABA (al verificarlo en el codigo ya estaba resuelto), PARCIAL (mejorado, con lo que falta dicho), NO (no hecho o no aplica, con el motivo).
 
-**Resumen**: HECHO: 65, YA ESTABA: 16, PARCIAL: 11, NO: 8 (de 100).
+**Resumen**: HECHO: 66, YA ESTABA: 16, PARCIAL: 12, NO: 6 (de 100).
 
 
 ## HUD y pantallas
@@ -40,7 +40,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 24 | Los botones del menú miden 168×38 y los de pausa unos 340×76, sin criterio común. | HECHO |  |
 | 25 | No hay opciones de resolución, pantalla completa ni calidad. | HECHO |  |
 | 26 | No hay soporte de gamepad. | HECHO |  |
-| 27 | No hay localización: todo el texto está fijo en español. | NO | NO hecho: la localizacion es un trabajo enorme (todos los textos fijos en espanol). |
+| 27 | No hay localización: todo el texto está fijo en español. | PARCIAL | Hay **idioma ES/EN** ([F12] o Configuraciones > IDIOMA, se guarda): traduce menu, dificultad, pausa, configuraciones, ordenes del radial y avisos comunes. **El tutorial, los textos de mision y las descripciones largas de controles siguen en espanol.** |
 | 28 | No hay accesibilidad (daltonismo, subtítulos, tamaño de letra). | PARCIAL | Daltonismo, HUD minimo (F10) y **tamano de interfaz 100/125/150 %** (Configuraciones). Faltan subtitulos de sonido. |
 
 ## Muerte y flujo
@@ -66,7 +66,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 40 | La munición es infinita: no hay reservas, cargadores ni recogida. | HECHO |  |
 | 41 | Las granadas (3) no se reponen nunca en partida. `ReponerGranadas` solo se usa en el tutorial y las pruebas. | HECHO |  |
 | 42 | No hay botiquines ni cajas de munición. | HECHO |  |
-| 43 | El armamento es fijo por clase, y elegir arma depende de recoger pickups. | NO | NO hecho: es una decision de diseno del juego (arsenal por clase). |
+| 43 | El armamento es fijo por clase, y elegir arma depende de recoger pickups. | HECHO | Junto a una caja de suministros, **[,]** y **[.]** cambian el arma principal (fusil, subfusil, escopeta, francotirador, ametralladora, cohete). Probado en la FASE 19. |
 | 44 | El cuchillo no tiene modelo ni animación propios en la mano. | NO | NO hecho: requiere modelo y animacion (arte). |
 | 45 | La granada nunca daña a tu propio bando, y no hay fuego amigo opcional por dificultad. | HECHO |  |
 | 46 | No hay retroceso ni balanceo visibles. | YA ESTABA | Verificado en el codigo/suite |

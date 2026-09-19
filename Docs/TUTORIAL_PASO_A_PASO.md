@@ -536,3 +536,5 @@ La etiqueta «CENTRO» de la baliza de misión se vuelve transparente cuando cae
 * **Trepar**: saltar contra un cajon o murete de 0,5 a 1,3 m de alto te sube.
 * **[** y **]**: cambian el orden de tu escuadra (el numero del roster y la tecla F1-F9 del soldado que manejas).
 * **Configuraciones > TAMANO DE INTERFAZ**: 100 / 125 / 150 %.
+* **Junto a una caja de suministros**: **[,]** y **[.]** cambian tu arma principal (arsenal de 6 armas).
+* **[F12]** (o Configuraciones > IDIOMA): alterna espanol/ingles. Solo traduce menu, pausa, configuraciones, radial y avisos; **los textos del tutorial siguen en espanol**.
