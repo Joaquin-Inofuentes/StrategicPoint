@@ -162,10 +162,10 @@ namespace SP.UI
             rt.anchorMin = rt.anchorMax = new Vector2(1f, 0.5f);
             rt.pivot = new Vector2(0f, 0.5f);
             rt.anchoredPosition = new Vector2(15f, 0f);
-            rt.sizeDelta = new Vector2(440f, 620f);
+            rt.sizeDelta = new Vector2(440f, 700f);
             go.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.09f, 0.97f);
 
-            Texto(go.transform, font, "PANTALLA Y ACCESIBILIDAD", new Vector2(0f, 270f), 22, TextAnchor.MiddleCenter, FontStyle.Bold);
+            Texto(go.transform, font, "PANTALLA Y ACCESIBILIDAD", new Vector2(0f, 305f), 22, TextAnchor.MiddleCenter, FontStyle.Bold);
             Boton(go.transform, font, "Pantalla", new Vector2(0f, 190f), () => { AjustesDeJuego.AlternarPantallaCompleta(); Refrescar(go.transform); });
             Boton(go.transform, font, "Resolucion", new Vector2(0f, 130f), () => { AjustesDeJuego.SiguienteResolucion(); Refrescar(go.transform); });
             Boton(go.transform, font, "Calidad", new Vector2(0f, 70f), () => { AjustesDeJuego.SiguienteCalidad(); Refrescar(go.transform); });
@@ -173,7 +173,8 @@ namespace SP.UI
             Boton(go.transform, font, "HudMinimo", new Vector2(0f, -70f), () => { AjustesDeJuego.PonerHudMinimo(!AjustesDeJuego.HudMinimo); Refrescar(go.transform); });
             Boton(go.transform, font, "Escala", new Vector2(0f, -130f), () => { AjustesDeJuego.SiguienteEscala(); Refrescar(go.transform); });
             Boton(go.transform, font, "Idioma", new Vector2(0f, -190f), () => { SP.Core.Loc.Alternar(); Refrescar(go.transform); });
-            Texto(go.transform, font, "Daltonismo cambia verde y rojo por azul y naranja.\nHUD minimo oculta mision, minimapa y escuadra (tecla F10).\nMando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.", new Vector2(0f, -262f), 14, TextAnchor.MiddleCenter, FontStyle.Normal, new Vector2(400f, 100f));
+            Boton(go.transform, font, "Subtitulos", new Vector2(0f, -250f), () => { SP.Presentation.Subtitulos.Poner(!SP.Presentation.Subtitulos.Activos); Refrescar(go.transform); });
+            Texto(go.transform, font, "Daltonismo cambia verde y rojo por azul y naranja.\nHUD minimo oculta mision, minimapa y escuadra (tecla F10).\nMando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.", new Vector2(0f, -320f), 14, TextAnchor.MiddleCenter, FontStyle.Normal, new Vector2(400f, 100f));
             return go.transform;
         }
 
@@ -186,6 +187,7 @@ namespace SP.UI
             Poner(extra, "Daltonismo", "DALTONISMO: " + (AjustesDeJuego.Daltonismo ? "SI" : "NO"));
             Poner(extra, "HudMinimo", "HUD MINIMO: " + (AjustesDeJuego.HudMinimo ? "SI" : "NO"));
             Poner(extra, "Escala", "TAMANO DE INTERFAZ: " + AjustesDeJuego.TextoEscala());
+            Poner(extra, "Subtitulos", "SUBTITULOS DE SONIDO: " + (SP.Presentation.Subtitulos.Activos ? "SI" : "NO"));
             Poner(extra, "Idioma", "IDIOMA / LANGUAGE: " + SP.Core.Loc.NombreDelIdioma + "  [F12]");
         }
         static void Poner(Transform extra, string boton, string texto)

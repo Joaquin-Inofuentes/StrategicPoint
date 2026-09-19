@@ -399,6 +399,7 @@ namespace SP.Presentation
             // audio puede ejecutarse ahi.
             if (!Application.isPlaying) return false;
             if (clip == null) return false;
+            if (channel == SfxChannel.Sfx) Subtitulos.Anunciar(clip, position);
 
             EnsureVoices();
 

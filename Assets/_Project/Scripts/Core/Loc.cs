@@ -38,7 +38,7 @@ namespace SP.Core
             { "Efectos de camara", "Camera effects" },
             { "PANTALLA Y ACCESIBILIDAD", "DISPLAY AND ACCESSIBILITY" }, { "PANTALLA", "SCREEN" }, { "COMPLETA", "FULLSCREEN" }, { "VENTANA", "WINDOWED" },
             { "RESOLUCION", "RESOLUTION" }, { "CALIDAD", "QUALITY" }, { "DALTONISMO", "COLORBLIND MODE" }, { "HUD MINIMO", "MINIMAL HUD" },
-            { "TAMANO DE INTERFAZ", "INTERFACE SIZE" }, { "SI", "YES" },
+            { "TAMANO DE INTERFAZ", "INTERFACE SIZE" }, { "SUBTITULOS DE SONIDO", "SOUND SUBTITLES" }, { "SI", "YES" },
             // avisos comunes
             { "ALTO", "HOLD" }, { "SIGANME", "FOLLOW ME" }, { "RETIRADA", "RETREAT" }, { "A CUBIERTO", "TAKE COVER" },
             { "FUEGO DE SUPRESION", "SUPPRESSING FIRE" }, { "PUNTO INACCESIBLE", "UNREACHABLE POINT" },

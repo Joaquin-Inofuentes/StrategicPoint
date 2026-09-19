@@ -233,6 +233,21 @@ namespace SP.EditorTools
                 Check($"Caminar contra un aliado pegado no frena ni rebota ({avanzo:0.00} m)", avanzo > 0.5f);
                 vega.transform.position = antes;
             }
+
+            // --- Subtitulos de sonido (28) ---
+            {
+                var o = Vector3.zero;
+                var t1 = SP.Presentation.Subtitulos.Describir("Explosion", o, 0f, new Vector3(12f, 0f, 0f));
+                Check($"Una explosion a la derecha se subtitula con lado y distancia ('{t1}')", t1 != null && t1.Contains("EXPLOSION") && t1.Contains("DERECHA") && t1.Contains("12 m"));
+                Check("Un disparo a la izquierda dice IZQUIERDA", (SP.Presentation.Subtitulos.Describir("Shot_Rifle", o, 0f, new Vector3(-9f, 0f, 1f)) ?? "").Contains("IZQUIERDA"));
+                Check("Un sonido detras dice ATRAS", (SP.Presentation.Subtitulos.Describir("BulletWhizz", o, 0f, new Vector3(0f, 0f, -6f)) ?? "").Contains("ATRAS"));
+                Check("Un sonido muy lejano no se subtitula", SP.Presentation.Subtitulos.Describir("Explosion", o, 0f, new Vector3(0f, 0f, 200f)) == null);
+                Check("Un sonido de interfaz no se subtitula", SP.Presentation.Subtitulos.Describir("UiClick", o, 0f, new Vector3(0f, 0f, 3f)) == null);
+                bool previa = SP.Presentation.Subtitulos.Activos;
+                SP.Presentation.Subtitulos.Poner(true);
+                Check("La opcion de subtitulos se activa y se guarda", SP.Presentation.Subtitulos.Activos && PlayerPrefs.GetInt("sp_subtitulos", 0) == 1);
+                SP.Presentation.Subtitulos.Poner(previa);
+            }
         }
     }
 }
