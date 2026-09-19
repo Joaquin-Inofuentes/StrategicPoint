@@ -2,7 +2,7 @@
 
 Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. **Estados**: HECHO (implementado y con prueba o captura), YA ESTABA (al verificarlo en el codigo ya estaba resuelto), PARCIAL (mejorado, con lo que falta dicho), NO (no hecho o no aplica, con el motivo).
 
-**Resumen**: HECHO: 66, YA ESTABA: 17, PARCIAL: 11, NO: 6 (de 100).
+**Resumen**: HECHO: 67, YA ESTABA: 18, PARCIAL: 9, NO: 6 (de 100).
 
 
 ## HUD y pantallas
@@ -41,7 +41,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 25 | No hay opciones de resolución, pantalla completa ni calidad. | HECHO |  |
 | 26 | No hay soporte de gamepad. | HECHO |  |
 | 27 | No hay localización: todo el texto está fijo en español. | PARCIAL | Hay **idioma ES/EN** ([F12] o Configuraciones > IDIOMA, se guarda): traduce menu, dificultad, pausa, configuraciones, ordenes del radial y avisos comunes. **El tutorial, los textos de mision y las descripciones largas de controles siguen en espanol.** |
-| 28 | No hay accesibilidad (daltonismo, subtítulos, tamaño de letra). | PARCIAL | Daltonismo, HUD minimo (F10) y **tamano de interfaz 100/125/150 %** (Configuraciones). Faltan subtitulos de sonido. |
+| 28 | No hay accesibilidad (daltonismo, subtítulos, tamaño de letra). | HECHO | Daltonismo, HUD minimo (F10), **tamano de interfaz 100/125/150 %** y **subtitulos de sonido** (Configuraciones): disparos, explosiones, granadas, canon, balas cercanas y bajas escriben "[EXPLOSION] DERECHA >> 12 m". Probado en la FASE 19. |
 
 ## Muerte y flujo
 
@@ -77,7 +77,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 
 | # | Punto | Estado | Detalle |
 |---|---|---|---|
-| 49 | El salto lo verifiqué por suite y capturas, pero no en pendientes, escalones ni agachado. | PARCIAL | Salto probado agachado. Pendientes y escalones no se probaron de forma sistematica. |
+| 49 | El salto lo verifiqué por suite y capturas, pero no en pendientes, escalones ni agachado. | PARCIAL | Salto probado agachado y trepando (cajones de 0,5 a 1,3 m). Pendientes y escalones no existen: el motor es de piso unico (`Deslizador`), asi que no hay nada que probar. |
 | 50 | Falta buffer de salto y "coyote time". | HECHO |  |
 | 51 | La caída no tiene efecto ni daño según la altura. | NO | NO aplica: el soldado solo salta (~1 m) y nunca cae desde alturas; no hay caida que penalizar. |
 | 52 | Saltar apuntando o agachado no está definido. | HECHO |  |
@@ -92,7 +92,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 |---|---|---|---|
 | 57 | Los aliados no usan granadas ni la ametralladora fija. | HECHO |  |
 | 58 | La IA no reacciona a granadas: no huye ni se cubre. | HECHO |  |
-| 59 | `WorldSimulationDriver` recorre a todos los soldados en cada frame, así que el costo crece linealmente con los enemigos. | PARCIAL | Medido en build: 327 fps, 0 B de GC. El costo sigue creciendo linealmente con los soldados; no se reescribio a un scheduler. |
+| 59 | `WorldSimulationDriver` recorre a todos los soldados en cada frame, así que el costo crece linealmente con los enemigos. | PARCIAL | Medido en build: 327 fps, 0 B de GC. El costo sigue creciendo linealmente con los soldados; no se reescribio a un scheduler porque saltear ticks tartamudea el movimiento (ver el comentario del item 224 en `WorldSimulationDriver`); el sensado (lo caro) ya se reparte entre frames. |
 | 60 | Los aliados no tienen voces contextuales ("¡Granada!", "¡Cúbranse!"). | HECHO |  |
 | 61 | El radial no tiene flanquear, suprimir ni lanzar granada. | HECHO |  |
 | 62 | IR ALLÍ no valida que el punto sea alcanzable. | HECHO |  |
@@ -116,11 +116,11 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 |---|---|---|---|
 | 71 | En idle asigna en promedio 20 KB de GC por frame, con un pico de 1,9 MB en un frame (medido en el Editor). | HECHO |  |
 | 72 | El heap administrado marca 1,1–1,3 GB en el Editor. Puede estar inflado por el Editor y hay que confirmarlo en build. | HECHO |  |
-| 73 | Hay 83 usos de `Find*` o `FindObjectsByType` en runtime, algunos repetidos (`MisionDirector`, `Demolicion`, `MisionHud`). | PARCIAL | Bajaron de 83 a 61 usos en runtime (conteo actual por grep, sin Editor). Siguen 61. |
+| 73 | Hay 83 usos de `Find*` o `FindObjectsByType` en runtime, algunos repetidos (`MisionDirector`, `Demolicion`, `MisionHud`). | YA ESTABA | Bajaron de 83 a 61 en el conteo por grep. Revise los archivos con mas usos (`MisionDirector`, `MisionHud`, `Demolicion`, `WorldUiDirector`, `UnitLabelView`, `MenuDeOrdenes`, `CajaDeSuministros`): son inicializacion unica (banderas `populated`, `sceneLoaded`, `Crear`) o cache con `if (x == null)`; ninguno corre por frame. Los que quedan por frame ya usan `ActorRegistry`/`WorldSystemsRegistry`. |
 | 74 | Hay 32 usos de `.material` o `new Material` en runtime, que crean instancias y rompen el batching. | YA ESTABA | Al revisar el codigo, los 32 resultados de la busqueda eran sobre todo `MaterialPropertyBlock` y creaciones unicas por instancia de objetos pooleados (proyectiles, lineas, rutas). No hay instanciacion de materiales por frame. |
 | 75 | Hay 20 usos de `Camera.main`. | HECHO | Todo el codigo de runtime usa `CamaraPrincipal.Actual` (cache con revalidacion). Un test recorre el codigo y falla si reaparece `Camera.main`. |
 | 76 | Hay 18 `Resources.Load` en runtime, sin precarga: causan tirones al primer uso. | HECHO | `RecursosCache.Cargar<T>` con precarga al arrancar (materiales de soldados, granada, cuchillo, metralleta). Un test falla si reaparece `Resources.Load<` directo. |
-| 77 | En pantalla hay 28 canvases y 65 gráficos UI. | NO | NO hecho: no se consolidaron canvases; el rendimiento en build es holgado (327 fps). |
+| 77 | En pantalla hay 28 canvases y 65 gráficos UI. | NO | NO hecho: la mayoria son canvases world-space por unidad (barras de vida, etiquetas) y consolidarlos es una reescritura del HUD de mundo con riesgo alto; el rendimiento en build es holgado (327 fps). |
 | 78 | No probé ningún build standalone; todo se validó en el Editor. | HECHO |  |
 | 79 | No se fija `targetFrameRate` ni vSync. | HECHO |  |
 | 80 | La suite deja advertencias en consola: material instanciado en modo Edit, `Destroy` en modo Edit y `NullReferenceException`. | HECHO |  |

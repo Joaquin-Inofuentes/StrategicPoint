@@ -1,6 +1,6 @@
 # Ronda 9: mejoras de la auditoria de 100 puntos
 
-Resumen honesto: de los 100 puntos, **66 hechos, 17 que ya estaban resueltos, 11 parciales y 6 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless termina en OK con la FASE 18 y la FASE 19.
+Resumen honesto: de los 100 puntos, **67 hechos, 18 que ya estaban resueltos, 9 parciales y 6 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless termina en OK con la FASE 18 y la FASE 19.
 
 ## Que se hizo
 
@@ -20,6 +20,8 @@ Resumen honesto: de los 100 puntos, **66 hechos, 17 que ya estaban resueltos, 11
 * **Arsenal (43)**: junto a una caja de suministros, **[,]** y **[.]** cambian el arma principal (6 armas; salta las que ya llevas en otra ranura).
 * **Idioma ES/EN (27)**: **[F12]** o Configuraciones > IDIOMA. Traduce menu, dificultad, pausa, configuraciones, radial y avisos comunes; el tutorial y los textos de mision siguen en espanol (por eso queda PARCIAL).
 
+* **Subtitulos de sonido (28)**: Configuraciones > SUBTITULOS DE SONIDO. Con la opcion en SI, los sonidos de combate escriben el lado y la distancia ("[DISPARO] << IZQUIERDA 9 m").
+
 ## Capturas
 
 | Menu principal | HUD 16:9 |
@@ -36,5 +38,5 @@ Resumen honesto: de los 100 puntos, **66 hechos, 17 que ya estaban resueltos, 11
 * **Oido humano** (65): los sonidos se verificaron por metricas; solo una persona puede juzgarlos.
 * **4K** (19): no se probo (monitor 1080p).
 * **CI** (81): el flujo `.github/workflows/tests.yml` esta escrito pero **nunca se ejecuto en GitHub**.
-* **Sin hacer**: localizacion completa del tutorial y las misiones (27, parcial), caida con dano (51, no aplica: no hay caidas), tutorial 100 % con gestos reales (95), canvases (77), subtitulos de sonido (parte de 28).
+* **Sin hacer**: localizacion completa del tutorial y las misiones (27, parcial), caida con dano (51, no aplica: no hay caidas), tutorial 100 % con gestos reales (95), canvases (77).
 * Los servidores MCP de GitHub, Sentry y Supabase piden autorizacion y no se usaron.
