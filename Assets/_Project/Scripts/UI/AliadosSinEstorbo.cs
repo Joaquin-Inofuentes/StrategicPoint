@@ -27,7 +27,7 @@ namespace SP.UI
             instancia = new GameObject("AliadosSinEstorbo").AddComponent<AliadosSinEstorbo>();
         }
 
-        void LateUpdate() => Actualizar(Camera.main);
+        void LateUpdate() => Actualizar(SP.Core.CamaraPrincipal.Actual);
 
         public void Actualizar(Camera cam)
         {

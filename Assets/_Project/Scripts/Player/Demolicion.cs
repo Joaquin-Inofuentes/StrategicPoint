@@ -288,7 +288,7 @@ namespace SP.Player
                 etiqueta.color = new Color(1f, 0.62f, 0.2f);
             }
             etiqueta.text = $"DEMOLIENDO {Mathf.RoundToInt(Progreso * 100f)}%";
-            if (Camera.main != null) etiqueta.transform.rotation = Quaternion.LookRotation(etiqueta.transform.position - Camera.main.transform.position);
+            if (SP.Core.CamaraPrincipal.Actual != null) etiqueta.transform.rotation = Quaternion.LookRotation(etiqueta.transform.position - SP.Core.CamaraPrincipal.Actual.transform.position);
 
             // La carga: un cubito rojo que parpadea pegado al muro.
             var col = objetivo.GetComponent<Collider>();

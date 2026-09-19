@@ -153,7 +153,7 @@ namespace SP.Presentation
         {
             if (clip == null || !Application.isPlaying) return;
             var go = new GameObject(name);
-            var cam = Camera.main;
+            var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam != null) go.transform.SetParent(cam.transform, false);   // no cuelga de la raiz
             var src = go.AddComponent<AudioSource>();
             src.clip = clip; src.volume = volume; src.pitch = pitch; src.spatialBlend = 0f;

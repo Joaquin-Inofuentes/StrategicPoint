@@ -93,6 +93,89 @@ namespace SP.EditorTools
             doc.Weapon.ReponerGranadas();
             Check("Sin granadas, la orden se rechaza", (doc.Weapon.ConsumirGranada() & doc.Weapon.ConsumirGranada() & doc.Weapon.ConsumirGranada()) && !tirador.OrdenLanzarGranada(doc.transform.position + doc.transform.forward * 12f));
             doc.Weapon.ReponerGranadas();
+
+            // --- Rendimiento: caches de camara y recursos (75, 76) ---
+            RecursosCache.Vaciar();
+            var g1 = RecursosCache.Cargar<GameObject>("Weapons/P_Wpn_Granada");
+            int cargasTras1 = RecursosCache.Cargas;
+            var g2 = RecursosCache.Cargar<GameObject>("Weapons/P_Wpn_Granada");
+            Check("Resources se carga una sola vez y despues sale del cache", g1 != null && g1 == g2 && RecursosCache.Cargas == cargasTras1 && RecursosCache.Aciertos >= 1 && RecursosCache.EstaEnCache<GameObject>("Weapons/P_Wpn_Granada"));
+            RecursosCache.Precargar();
+            Check("La precarga deja en cache los materiales de soldados", RecursosCache.EstaEnCache<Material>("Soldados/MAT_Trimsheet_Aliado"));
+            Check("CamaraPrincipal devuelve la misma camara que Camera.main", CamaraPrincipal.Actual == Camera.main);
+            var codigoRuntime = new System.Text.StringBuilder();
+            foreach (var f in System.IO.Directory.GetFiles("Assets/_Project/Scripts", "*.cs", System.IO.SearchOption.AllDirectories))
+            {
+                if (f.Replace("\\", "/").Contains("/Editor/") || f.EndsWith("CamaraPrincipal.cs") || f.EndsWith("RecursosCache.cs")) continue;
+                foreach (var linea in System.IO.File.ReadAllLines(f))
+                {
+                    var t = linea.TrimStart();
+                    if (t.StartsWith("//")) continue;
+                    var codigo = linea.Split(new[] { "//" }, System.StringSplitOptions.None)[0];
+                    if (codigo.Contains("Camera.main") || codigo.Contains("Resources.Load<")) codigoRuntime.AppendLine(f + ": " + t);
+                }
+            }
+            Check("Ningun codigo de runtime usa Camera.main ni Resources.Load directo (todo pasa por los caches)", codigoRuntime.Length == 0);
+
+            // --- Trepar obstaculos bajos (53) ---
+            {
+                var posOriginal = kes.transform.position;
+                var frente = kes.transform.forward; frente.y = 0f; frente.Normalize();
+                var pisoBajoKes = posOriginal - Vector3.up * 0.8f;
+                var cajon = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                cajon.transform.localScale = new Vector3(1.2f, 1.0f, 1.2f);
+                cajon.transform.position = new Vector3(posOriginal.x, pisoBajoKes.y + 0.5f, posOriginal.z) + frente * 1.4f;
+                Physics.SyncTransforms();
+                bool trepo = kes.Motor.TryVault();
+                Check("Contra un cajon de 1 m, saltar lo trepa (motivo " + kes.Motor.UltimoMotivoDeTrepa + ")", trepo && kes.Motor.Vaulting);
+                typeof(SoldierMotor).GetField("vaultT", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(kes.Motor, 1f);
+                typeof(SoldierMotor).GetMethod("TickTrepa", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).Invoke(kes.Motor, null);
+                Check("Al terminar la trepa el soldado queda arriba del cajon", !kes.Motor.Vaulting && kes.transform.position.y > pisoBajoKes.y + 1.0f + 0.5f);
+                kes.Motor.ResetMotionState();
+                cajon.transform.localScale = new Vector3(1.2f, 2.5f, 1.2f);
+                cajon.transform.position = new Vector3(posOriginal.x, pisoBajoKes.y + 1.25f, posOriginal.z) + frente * 1.4f;
+                kes.transform.position = posOriginal;
+                Physics.SyncTransforms();
+                Check("Un muro de 2,5 m no se trepa", !kes.Motor.TryVault());
+                Object.DestroyImmediate(cajon);
+                kes.transform.position = posOriginal;
+                Physics.SyncTransforms();
+                Check("En campo abierto no hay nada que trepar", !kes.Motor.TryVault());
+            }
+
+            // --- Reordenar la escuadra (64) ---
+            {
+                var sq = inputDriver.Squad;
+                var primero = sq[0]; var segundo = sq[1];
+                bool movio = inputDriver.MoverEnEscuadra(primero, +1);
+                Check("Mover a un soldado hacia abajo intercambia su lugar con el vecino", movio && sq[1] == primero && sq[0] == segundo);
+                Check("No se puede subir mas alla del primer lugar", !inputDriver.MoverEnEscuadra(sq[0], -1));
+                inputDriver.MoverEnEscuadra(primero, -1);
+                Check("Volver a subirlo restaura el orden original", sq[0] == primero && sq[1] == segundo);
+            }
+
+            // --- Tamano de interfaz (28) ---
+            {
+                var cv = new GameObject("CanvasEscalaTest", typeof(Canvas), typeof(UnityEngine.UI.CanvasScaler));
+                var cs = cv.GetComponent<UnityEngine.UI.CanvasScaler>();
+                cs.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                cs.referenceResolution = new Vector2(960f, 540f);
+                float escalaPrevia = AjustesDeJuego.Escala;
+                AjustesDeJuego.PonerEscala(1.5f);
+                Check("Interfaz al 150 % reduce la resolucion de referencia a 640x360", Mathf.Abs(cs.referenceResolution.y - 360f) < 0.5f && Mathf.Abs(cs.referenceResolution.x - 640f) < 0.5f);
+                AjustesDeJuego.SiguienteEscala();
+                Check("Despues del 150 % el ciclo vuelve al 100 %", Mathf.Approximately(AjustesDeJuego.Escala, 1f) && Mathf.Abs(cs.referenceResolution.y - 540f) < 0.5f);
+                AjustesDeJuego.PonerEscala(1.25f);
+                Check("El 125 % queda en 768x432 y se guarda", Mathf.Abs(cs.referenceResolution.y - 432f) < 0.5f && PlayerPrefs.GetInt("sp_escala_interfaz") == 125);
+                var otro = new GameObject("CanvasAjenoTest", typeof(Canvas), typeof(UnityEngine.UI.CanvasScaler));
+                var cs2 = otro.GetComponent<UnityEngine.UI.CanvasScaler>();
+                cs2.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                cs2.referenceResolution = new Vector2(1920f, 1080f);
+                AjustesDeJuego.PonerEscala(1.5f);
+                Check("Los canvas que no son de 960x540 no se tocan", Mathf.Abs(cs2.referenceResolution.y - 1080f) < 0.5f);
+                AjustesDeJuego.PonerEscala(escalaPrevia);
+                Object.DestroyImmediate(cv); Object.DestroyImmediate(otro);
+            }
         }
     }
 }

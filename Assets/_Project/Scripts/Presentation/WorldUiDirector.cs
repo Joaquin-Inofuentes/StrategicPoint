@@ -238,7 +238,7 @@ namespace SP.Presentation
         void EnsureCamera()
         {
             if (cam != null) return;
-            cam = Camera.main;
+            cam = SP.Core.CamaraPrincipal.Actual;
         }
 
         // Criterio de LOD: dentro del radio y dentro del encuadre.

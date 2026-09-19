@@ -513,7 +513,7 @@ namespace SP.Combat
                 // la camara esta encima del soldado poseido y sus propias
                 // balas nacen dentro de la esfera de 3 m, asi que sin el
                 // gate cada disparo tuyo se silbaria a si mismo.
-                var cam = Camera.main;
+                var cam = SP.Core.CamaraPrincipal.Actual;
                 if (cam == null) return;
                 if (age < WhizzFallbackMinAge) return;
                 earPos = cam.transform.position;

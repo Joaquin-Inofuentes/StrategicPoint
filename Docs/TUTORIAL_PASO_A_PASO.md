@@ -529,3 +529,10 @@ La etiqueta «CENTRO» de la baliza de misión se vuelve transparente cuando cae
 
 ![Pantalla de victoria.](../Assets/Validacion/Ronda7/tut_35_victoria.png)
 *Pantalla de victoria.*
+
+## Novedades de la Ronda 9 (tercera tanda) que el tutorial no exige pero conviene conocer
+
+* **Radial > ATACAR**: ademas de "a quien", ahora hay **TODOS SUPRIMEN** (fuego de supresion 6 s hacia donde apuntas) y **GRANADA ALLI** (la lanza el aliado mas cercano con granadas). No cuentan como el paso "ir a atacar" del tutorial.
+* **Trepar**: saltar contra un cajon o murete de 0,5 a 1,3 m de alto te sube.
+* **[** y **]**: cambian el orden de tu escuadra (el numero del roster y la tecla F1-F9 del soldado que manejas).
+* **Configuraciones > TAMANO DE INTERFAZ**: 100 / 125 / 150 %.

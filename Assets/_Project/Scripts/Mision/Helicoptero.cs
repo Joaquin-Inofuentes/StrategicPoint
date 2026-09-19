@@ -56,7 +56,7 @@ namespace SP.Mision
         // ---------------- sonido ----------------
         void ArmarSonido()
         {
-            var clip = Resources.Load<AudioClip>("Audio/Heli/Chinook_flying_over_Greenwich");
+            var clip = SP.Core.RecursosCache.Cargar<AudioClip>("Audio/Heli/Chinook_flying_over_Greenwich");
             if (clip == null) clip = GenerarRotor();
             sonido = gameObject.AddComponent<AudioSource>();
             sonido.clip = clip;

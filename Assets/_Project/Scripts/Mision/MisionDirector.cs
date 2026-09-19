@@ -386,7 +386,7 @@ namespace SP.Mision
         {
             if (tension == null)
             {
-                var clip = Resources.Load<AudioClip>("Audio/Music/Tension");
+                var clip = SP.Core.RecursosCache.Cargar<AudioClip>("Audio/Music/Tension");
                 if (clip == null) return;
                 var go = new GameObject("MusicaTension");
                 go.transform.SetParent(transform, false);

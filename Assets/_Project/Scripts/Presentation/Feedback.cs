@@ -133,7 +133,7 @@ namespace SP.Presentation
             if (age >= Life) { gameObject.SetActive(false); return; }
             float k = age / Life;
             transform.position = start + Vector3.up * (k * 1.1f);
-            var cam = Camera.main;
+            var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam != null)
             {
                 transform.rotation = Quaternion.LookRotation(transform.position - cam.transform.position, cam.transform.up);

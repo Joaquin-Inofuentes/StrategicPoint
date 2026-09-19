@@ -126,7 +126,7 @@ namespace SP.Combat
 
         void ConstruirVisual()
         {
-            var prefab = Resources.Load<GameObject>("Weapons/P_Wpn_Granada");
+            var prefab = SP.Core.RecursosCache.Cargar<GameObject>("Weapons/P_Wpn_Granada");
             GameObject modelo;
             if (prefab != null)
             {

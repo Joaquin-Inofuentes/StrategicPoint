@@ -32,7 +32,7 @@ namespace SP.Combat
             // reintente Resources.Load (relativamente caro) en cada arma
             // que se equipa el resto de la partida -- se queda con el
             // cubo de siempre como respaldo, silencioso.
-            var prefab = name != null ? Resources.Load<GameObject>("Weapons/" + name) : null;
+            var prefab = name != null ? SP.Core.RecursosCache.Cargar<GameObject>("Weapons/" + name) : null;
             cache[kind] = prefab;
             return prefab;
         }
@@ -131,7 +131,7 @@ namespace SP.Combat
             if (!metralletaVehiculoCargada)
             {
                 metralletaVehiculoCargada = true;
-                metralletaVehiculo = Resources.Load<GameObject>("Weapons/P_Wpn_Metralleta");
+                metralletaVehiculo = SP.Core.RecursosCache.Cargar<GameObject>("Weapons/P_Wpn_Metralleta");
             }
             return metralletaVehiculo;
         }

@@ -73,6 +73,8 @@ namespace SP.Actors
         // flotando segun el lugar.
         public void Jump()
         {
+            if (Vaulting) return;
+            if (!IsJumping && TryVault()) return;   // item 53: contra un obstaculo bajo, saltar lo trepa
             if (IsJumping) { saltoPedidoHasta = Time.time + 0.12f; return; }   // buffer de salto
             if (IsCrouching) SetCrouching(false);   // item 52: saltar agachado primero te levanta, en vez de ignorar la tecla
             IsJumping = true;
@@ -81,6 +83,63 @@ namespace SP.Actors
             // en el terreno de DEBAJO, no en la altura a la que se despego.
             alturaDePivote = BuscarPiso(transform.position, out float piso) ? transform.position.y - piso : -1f;
             verticalVelocity = jumpSpeed;
+        }
+
+        // ---- Trepar obstaculos bajos (item 53): cajones, muretes, cobertura baja de 0,5 a 1,3 m de alto.
+        public const float AlturaMinimaTrepable = 0.5f, AlturaMaximaTrepable = 1.3f, AlcanceDeTrepa = 1.1f, SegundosDeTrepa = 0.5f;
+        public bool Vaulting { get; private set; }
+        public string UltimoMotivoDeTrepa { get; private set; } = "";
+        Vector3 vaultDesde, vaultHasta;
+        float vaultT;
+
+        // Mide el obstaculo de enfrente (rodilla libre = nada que trepar, cabeza libre = hay espacio arriba) y, si su
+        // borde cae entre las alturas trepables, arranca el movimiento. Devuelve si trepo.
+        public bool TryVault()
+        {
+            var adelante = transform.forward; adelante.y = 0f;
+            if (adelante.sqrMagnitude < 0.01f) { UltimoMotivoDeTrepa = "1"; return false; }
+            adelante.Normalize();
+            // Sin piso detectable se asume el pivote a 0,8 m de los pies (como todos los soldados).
+            float pies = BuscarPiso(transform.position, out float piso) ? piso : transform.position.y - 0.8f;
+            var origenRodilla = new Vector3(transform.position.x, pies + 0.3f, transform.position.z);
+            if (!SondearObstaculo(origenRodilla, adelante, AlcanceDeTrepa, out var golpe)) { UltimoMotivoDeTrepa = "3"; return false; }
+            // Borde superior: rayo hacia abajo un poco mas alla de la pared, desde 1,6 m.
+            var sobre = golpe.point + adelante * 0.45f; sobre.y = pies + 1.6f;
+            if (!Physics.Raycast(sobre, Vector3.down, out var arriba, 1.7f, ~0, QueryTriggerInteraction.Ignore)) { UltimoMotivoDeTrepa = "4"; return false; }
+            if (arriba.collider.GetComponentInParent<Soldier>() != null) { UltimoMotivoDeTrepa = "5"; return false; }
+            float alto = arriba.point.y - pies;
+            if (alto < AlturaMinimaTrepable || alto > AlturaMaximaTrepable) { UltimoMotivoDeTrepa = "6"; return false; }
+            // Cabeza libre: nada a 1,5 m de altura entre el soldado y el borde.
+            var cabeza = new Vector3(transform.position.x, pies + 1.5f, transform.position.z);
+            if (SondearObstaculo(cabeza, adelante, AlcanceDeTrepa + 0.5f, out _)) { UltimoMotivoDeTrepa = "7"; return false; }
+            Vaulting = true; vaultT = 0f;
+            vaultDesde = transform.position;
+            vaultHasta = new Vector3(sobre.x, arriba.point.y + (transform.position.y - pies), sobre.z);
+            return true;
+        }
+
+        bool SondearObstaculo(Vector3 origen, Vector3 dir, float largo, out RaycastHit mejor)
+        {
+            mejor = default;
+            int n = Physics.RaycastNonAlloc(origen, dir, SondeoPiso, largo, ~0, QueryTriggerInteraction.Ignore);
+            float d = float.MaxValue; bool hay = false;
+            for (int i = 0; i < n; i++)
+            {
+                var c = SondeoPiso[i].collider;
+                if (c == null || c.transform.IsChildOf(transform) || c.GetComponentInParent<Soldier>() != null) continue;
+                if (SondeoPiso[i].distance < d) { d = SondeoPiso[i].distance; mejor = SondeoPiso[i]; hay = true; }
+            }
+            return hay;
+        }
+
+        void TickTrepa()
+        {
+            vaultT += Time.deltaTime / SegundosDeTrepa;
+            float t = Mathf.Clamp01(vaultT);
+            var p = Vector3.Lerp(vaultDesde, vaultHasta, t);
+            p.y += Mathf.Sin(t * Mathf.PI) * 0.35f;
+            transform.position = p;
+            if (t >= 1f) Vaulting = false;
         }
 
         float alturaDePivote = -1f;
@@ -116,6 +175,7 @@ namespace SP.Actors
         public void ResetMotionState()
         {
             IsJumping = false;
+            Vaulting = false;
             verticalVelocity = 0f;
             IsCrouching = false;
             pideCorrer = false;
@@ -123,6 +183,7 @@ namespace SP.Actors
 
         void Update()
         {
+            if (Vaulting) { TickTrepa(); return; }
             if (!IsJumping) return;
             verticalVelocity -= gravity * Time.deltaTime;
             var pos = transform.position;
@@ -206,6 +267,7 @@ namespace SP.Actors
 
         public void Move(Vector3 worldDirection, float dt)
         {
+            if (Vaulting) return;
             if (worldDirection.sqrMagnitude > 1f) worldDirection.Normalize();
             transform.position += Resolve(worldDirection * MoveSpeed * dt);
         }

@@ -129,7 +129,7 @@ namespace SP.Presentation
             bool visible = DebeVerse();
             if (visible)
             {
-                var cam = Camera.main;
+                var cam = SP.Core.CamaraPrincipal.Actual;
                 visible = cam == null
                     || Vector3.Distance(cam.transform.position, transform.position) <= VisibleDistance;
             }

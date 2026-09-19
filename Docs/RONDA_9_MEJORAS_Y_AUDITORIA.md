@@ -1,6 +1,6 @@
 # Ronda 9: mejoras de la auditoria de 100 puntos
 
-Resumen honesto: de los 100 puntos, **61 hechos, 15 que ya estaban resueltos, 10 parciales y 14 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless (`Strategic Point/Run All Tests Headless`) termina en OK con la FASE 18 y la FASE 19 nuevas.
+Resumen honesto: de los 100 puntos, **65 hechos, 16 que ya estaban resueltos, 10 parciales y 9 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless (`Strategic Point/Run All Tests Headless`) termina en OK con la FASE 18 y la FASE 19 nuevas.
 
 ## Que se hizo
 
@@ -11,6 +11,11 @@ Resumen honesto: de los 100 puntos, **61 hechos, 15 que ya estaban resueltos, 10
 * **Menu principal** rehecho a 960x540 con subtitulo y consejo; zoom del fusil x3; saltar agachado te levanta; IR ALLA ajusta puntos inaccesibles.
 * **Repositorio** (fase 4): README, `Tests/LEAME.md`, flujo de CI, archivos gigantes partidos (`PlayerInputDriver`, `AiBrain`, `HeadlessTestRunner`), flechas de aliados que no pisan el HUD.
 * **Radial ATACAR (item 61)**: dos opciones nuevas, **TODOS SUPRIMEN** (rafagas de 6 s hacia el punto apuntado) y **GRANADA ALLI** (la lanza el aliado mas cercano que tenga granadas y cuya parabola llegue; si nadie puede, avisa). Probado en la FASE 19.
+
+* **Trepar (53)**: saltar contra un cajon/murete de 0,5 a 1,3 m lo trepa en medio segundo.
+* **Reordenar la escuadra (64)**: **[** y **]** mueven al soldado que manejas en el orden (cambia su numero en el roster y su tecla F1-F9).
+* **Tamano de interfaz (28)**: Configuraciones > TAMANO DE INTERFAZ (100/125/150 %).
+* **Rendimiento (75, 76)**: `CamaraPrincipal` y `RecursosCache` reemplazan a `Camera.main` y `Resources.Load` en todo el runtime, con precarga y un test que impide volver atras. El punto 74 (materiales) era en su mayoria un falso positivo del conteo.
 
 ## Capturas
 
@@ -28,5 +33,5 @@ Resumen honesto: de los 100 puntos, **61 hechos, 15 que ya estaban resueltos, 10
 * **Oido humano** (65): los sonidos se verificaron por metricas; solo una persona puede juzgarlos.
 * **4K** (19): no se probo (monitor 1080p).
 * **CI** (81): el flujo `.github/workflows/tests.yml` esta escrito pero **nunca se ejecuto en GitHub**.
-* **Sin hacer**: localizacion (27), arsenal por clase (43), caida con dano (51, no aplica: no hay caidas), trepar (53), reordenar escuadra (64), tutorial 100 % con gestos reales (95), materiales/`Camera.main`/`Resources.Load`/canvases (74-77).
+* **Sin hacer**: localizacion (27), arsenal por clase (43, decision de diseno), caida con dano (51, no aplica: no hay caidas), tutorial 100 % con gestos reales (95), canvases (77), subtitulos de sonido (parte de 28).
 * Los servidores MCP de GitHub, Sentry y Supabase piden autorizacion y no se usaron.

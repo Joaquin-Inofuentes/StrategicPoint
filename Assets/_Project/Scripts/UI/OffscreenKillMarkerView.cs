@@ -38,7 +38,7 @@ namespace SP.UI
         public void Report(Vector3 worldPosition)
         {
             if (arrow == null) return;
-            var cam = Camera.main;
+            var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam == null) return;
 
             var vp = cam.WorldToViewportPoint(worldPosition);

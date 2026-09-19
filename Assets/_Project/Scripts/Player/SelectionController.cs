@@ -133,7 +133,7 @@ namespace SP.Player
             if (reference == null) return;
             // La camara la pasa el llamador; el fallback evita quedar sin
             // hacer nada si todavia no tiene la referencia del rig.
-            if (cam == null) cam = Camera.main;
+            if (cam == null) cam = SP.Core.CamaraPrincipal.Actual;
             if (cam == null) return;
 
             var role = reference.Role;

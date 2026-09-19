@@ -107,7 +107,7 @@ namespace SP.UI
         void LateUpdate()
         {
             if (!Application.isPlaying || Arrows == null || Arrows.Length == 0) { HideAll(); return; }
-            if (cam == null) cam = Camera.main;
+            if (cam == null) cam = SP.Core.CamaraPrincipal.Actual;
             if (cam == null) { HideAll(); return; }
 
             var parent = transform as RectTransform;

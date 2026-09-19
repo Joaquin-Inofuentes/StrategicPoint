@@ -585,7 +585,7 @@ namespace SP.UI
                         && result.HitTransform.GetComponent<SP.Presentation.ObstacleMarker>() != null;
                     // Solo si esta cerca: apuntando a un muro a 100 m el cartel gigante tapaba el centro
                     // de la pantalla sin que el jugador pudiera hacer nada con esa informacion.
-                    var camObs = Camera.main;
+                    var camObs = SP.Core.CamaraPrincipal.Actual;
                     bool cerca = camObs == null || (camObs.transform.position - result.Point).sqrMagnitude <= DistanciaMaximaCartelObstaculo * DistanciaMaximaCartelObstaculo;
                     CurrentPrompt = !cerca ? "" : esDestructible ? "Obstáculo destructible" : "Obstáculo";
                     currentAimTint = esDestructible ? DestructibleTint : ObstacleTint;

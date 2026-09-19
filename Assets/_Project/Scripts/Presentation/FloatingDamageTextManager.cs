@@ -153,7 +153,7 @@ namespace SP.Presentation
                 float k = t / lifeTime;
                 entry.Text.transform.position = start + Vector3.up * (riseDistance * k);
                 entry.Text.color = new Color(color.r, color.g, color.b, Mathf.Lerp(1f, 0f, k));
-                var cam = Camera.main;
+                var cam = SP.Core.CamaraPrincipal.Actual;
                 if (cam != null) entry.Text.transform.rotation = cam.transform.rotation;
                 yield return null;
             }

@@ -555,7 +555,7 @@ namespace SP.Presentation
             // FindAnyObjectByType y no FindFirstObjectByType: el segundo esta
             // marcado obsoleto en esta version de Unity, justamente porque
             // depende del orden de instance ID.
-            var cam = Camera.main;
+            var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam != null) { listenerTf = cam.transform; return listenerTf; }
             var listener = Object.FindAnyObjectByType<AudioListener>();
             if (listener != null) listenerTf = listener.transform;

@@ -67,7 +67,7 @@ namespace SP.Presentation
         // "donde esta el jugador" sin acoplarse a FPS/RTS/vehiculo).
         static bool HayCombateCerca()
         {
-            var cam = Camera.main;
+            var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam == null) return false;
             var pos = cam.transform.position;
 
@@ -109,7 +109,7 @@ namespace SP.Presentation
         // seguridad -- la suite headless sigue viendo el cruce de ganancia
         // funcionar igual, tenga o no clip real cargado.
         static AudioClip CargarORespaldo(string nombreArchivo, System.Func<AudioClip> respaldo)
-            => Resources.Load<AudioClip>("Audio/Music/" + nombreArchivo) ?? respaldo();
+            => SP.Core.RecursosCache.Cargar<AudioClip>("Audio/Music/" + nombreArchivo) ?? respaldo();
 
         static AudioSource CrearFuenteLoop(Transform padre, string nombre, AudioClip clip)
         {

@@ -9,23 +9,60 @@ namespace SP.UI
     public static class AjustesDeJuego
     {
         const string PrefCompleta = "sp_pantalla_completa", PrefRes = "sp_resolucion", PrefCalidad = "sp_calidad",
-                     PrefDalto = "sp_daltonismo", PrefHudMin = "sp_hud_minimo";
+                     PrefDalto = "sp_daltonismo", PrefHudMin = "sp_hud_minimo", PrefEscala = "sp_escala_interfaz";
 
         public static bool Daltonismo { get; private set; }
         public static bool HudMinimo { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { Daltonismo = false; HudMinimo = false; }
+        static void Reiniciar() { Daltonismo = false; HudMinimo = false; Escala = 1f; }
+
+        // Tamano de la interfaz (accesibilidad, item 28): 100 %, 125 % o 150 %. Se aplica achicando la resolucion de
+        // referencia de los CanvasScaler del HUD, la pausa y el menu (todos de 960x540).
+        public const float AlturaDeReferencia = 540f;
+        public static readonly float[] Escalas = { 1f, 1.25f, 1.5f };
+        public static float Escala { get; private set; } = 1f;
+        public static string TextoEscala() => Mathf.RoundToInt(Escala * 100f) + " %";
+        public static void SiguienteEscala()
+        {
+            int i = System.Array.FindIndex(Escalas, e => Mathf.Approximately(e, Escala));
+            PonerEscala(Escalas[(i + 1) % Escalas.Length]);
+        }
+        public static void PonerEscala(float e)
+        {
+            Escala = Mathf.Clamp(e, 1f, 1.5f);
+            PlayerPrefs.SetInt(PrefEscala, Mathf.RoundToInt(Escala * 100f)); PlayerPrefs.Save();
+            AplicarEscala();
+        }
+        public static void AplicarEscala()
+        {
+            foreach (var cs in Object.FindObjectsByType<CanvasScaler>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (cs.uiScaleMode != CanvasScaler.ScaleMode.ScaleWithScreenSize) continue;
+                float h = cs.referenceResolution.y;
+                bool nuestro = false;
+                foreach (var e in Escalas) if (Mathf.Abs(h - AlturaDeReferencia / e) < 0.6f) nuestro = true;
+                if (!nuestro) continue;   // solo los canvas de 960x540 (y sus versiones escaladas)
+                float ancho = 960f / Escala, alto = AlturaDeReferencia / Escala;
+                cs.referenceResolution = new Vector2(ancho, alto);
+            }
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Iniciar()
         {
             Daltonismo = PlayerPrefs.GetInt(PrefDalto, 0) == 1;
             HudMinimo = PlayerPrefs.GetInt(PrefHudMin, 0) == 1;
+            Escala = Mathf.Clamp(PlayerPrefs.GetInt(PrefEscala, 100) / 100f, 1f, 1.5f);
+            if (!Mathf.Approximately(Escala, 1f)) AplicarEscala();
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= AlCargarEscena;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += AlCargarEscena;
             if (Application.isEditor) return;   // en el Editor no se toca la ventana del juego ni la calidad
             if (PlayerPrefs.HasKey(PrefCalidad)) QualitySettings.SetQualityLevel(Mathf.Clamp(PlayerPrefs.GetInt(PrefCalidad), 0, QualitySettings.names.Length - 1), true);
             if (PlayerPrefs.HasKey(PrefRes) || PlayerPrefs.HasKey(PrefCompleta)) AplicarPantalla();
         }
+
+        static void AlCargarEscena(UnityEngine.SceneManagement.Scene e, UnityEngine.SceneManagement.LoadSceneMode m) { if (!Mathf.Approximately(Escala, 1f)) AplicarEscala(); }
 
         // ---- Pantalla
         public static bool PantallaCompleta => PlayerPrefs.HasKey(PrefCompleta) ? PlayerPrefs.GetInt(PrefCompleta) == 1 : Screen.fullScreen;
@@ -134,7 +171,8 @@ namespace SP.UI
             Boton(go.transform, font, "Calidad", new Vector2(0f, 70f), () => { AjustesDeJuego.SiguienteCalidad(); Refrescar(go.transform); });
             Boton(go.transform, font, "Daltonismo", new Vector2(0f, -10f), () => { AjustesDeJuego.PonerDaltonismo(!AjustesDeJuego.Daltonismo); Refrescar(go.transform); });
             Boton(go.transform, font, "HudMinimo", new Vector2(0f, -70f), () => { AjustesDeJuego.PonerHudMinimo(!AjustesDeJuego.HudMinimo); Refrescar(go.transform); });
-            Texto(go.transform, font, "Daltonismo cambia verde y rojo por azul y naranja.\nHUD minimo oculta mision, minimapa y escuadra (tecla F10).\nMando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.", new Vector2(0f, -190f), 14, TextAnchor.MiddleCenter, FontStyle.Normal, new Vector2(400f, 130f));
+            Boton(go.transform, font, "Escala", new Vector2(0f, -130f), () => { AjustesDeJuego.SiguienteEscala(); Refrescar(go.transform); });
+            Texto(go.transform, font, "Daltonismo cambia verde y rojo por azul y naranja.\nHUD minimo oculta mision, minimapa y escuadra (tecla F10).\nMando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.", new Vector2(0f, -225f), 14, TextAnchor.MiddleCenter, FontStyle.Normal, new Vector2(400f, 130f));
             return go.transform;
         }
 
@@ -146,6 +184,7 @@ namespace SP.UI
             Poner(extra, "Calidad", "CALIDAD: " + AjustesDeJuego.TextoCalidad());
             Poner(extra, "Daltonismo", "DALTONISMO: " + (AjustesDeJuego.Daltonismo ? "SI" : "NO"));
             Poner(extra, "HudMinimo", "HUD MINIMO: " + (AjustesDeJuego.HudMinimo ? "SI" : "NO"));
+            Poner(extra, "Escala", "TAMANO DE INTERFAZ: " + AjustesDeJuego.TextoEscala());
         }
         static void Poner(Transform extra, string boton, string texto)
         {

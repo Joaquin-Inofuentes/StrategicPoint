@@ -54,7 +54,7 @@ namespace SP.Presentation
                 transform.localRotation = Quaternion.identity;
                 pivote = transform;
 
-                var prefab = Resources.Load<GameObject>("Weapons/P_Wpn_Cuchillo");
+                var prefab = SP.Core.RecursosCache.Cargar<GameObject>("Weapons/P_Wpn_Cuchillo");
                 GameObject cuchillo;
                 if (prefab != null)
                 {

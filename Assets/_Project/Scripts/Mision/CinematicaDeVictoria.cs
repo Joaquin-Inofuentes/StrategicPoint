@@ -93,7 +93,7 @@ namespace SP.Mision
                 if (cv != null && cv.gameObject != lienzo && cv.renderMode != RenderMode.WorldSpace) cv.enabled = false;
             AlertQueue.Clear();
 
-            var cam = Camera.main != null ? Camera.main : (driver != null && driver.Rig != null ? driver.Rig.Cam : null);
+            var cam = SP.Core.CamaraPrincipal.Actual != null ? SP.Core.CamaraPrincipal.Actual : (driver != null && driver.Rig != null ? driver.Rig.Cam : null);
             if (driver != null && driver.Rig != null) driver.Rig.enabled = false;
             if (cam != null) cam.fieldOfView = 46f;
 

@@ -149,7 +149,7 @@ namespace SP.Presentation
             {
                 lodTimer = LodCheckInterval;
 
-                var cam = Camera.main;
+                var cam = SP.Core.CamaraPrincipal.Actual;
                 if (cam != null)
                 {
                     bool visible = Vector3.Distance(cam.transform.position, transform.position) <= VisibleDistance;

@@ -28,11 +28,11 @@ namespace SP.Actors
             Clase = def.Nombre;
 
             var smr = GetComponentInChildren<SkinnedMeshRenderer>(true);
-            var malla = Resources.Load<Mesh>("Soldados/Mesh_" + def.Malla);
+            var malla = SP.Core.RecursosCache.Cargar<Mesh>("Soldados/Mesh_" + def.Malla);
             if (smr != null && malla != null)
             {
-                if (matAliado == null) matAliado = Resources.Load<Material>("Soldados/MAT_Trimsheet_Aliado");
-                if (matEnemigo == null) matEnemigo = Resources.Load<Material>("Soldados/MAT_Trimsheet_Enemigo");
+                if (matAliado == null) matAliado = SP.Core.RecursosCache.Cargar<Material>("Soldados/MAT_Trimsheet_Aliado");
+                if (matEnemigo == null) matEnemigo = SP.Core.RecursosCache.Cargar<Material>("Soldados/MAT_Trimsheet_Enemigo");
                 var mat = def.Enemigo ? matEnemigo : matAliado;
                 if (s.Role == RoleType.Civilian) mat = MaterialCivil();
                 smr.sharedMesh = malla;

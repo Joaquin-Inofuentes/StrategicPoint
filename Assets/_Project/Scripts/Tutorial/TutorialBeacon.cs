@@ -126,7 +126,7 @@ namespace SP.Tutorial
                 float k = Radio * 2f * (1f + Mathf.Sin(t * 4f) * 0.08f);
                 anillo.transform.localScale = new Vector3(k, 0.02f, k);
             }
-            var cam = Camera.main;
+            var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam != null && etiqueta != null)
             {
                 float d = Vector3.Distance(cam.transform.position, etiqueta.transform.position);
