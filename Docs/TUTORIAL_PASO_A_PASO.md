@@ -539,3 +539,4 @@ La etiqueta «CENTRO» de la baliza de misión se vuelve transparente cuando cae
 * **Junto a una caja de suministros**: **[,]** y **[.]** cambian tu arma principal (arsenal de 6 armas).
 * **[F12]** (o Configuraciones > IDIOMA): alterna espanol/ingles. Solo traduce menu, pausa, configuraciones, radial y avisos; **los textos del tutorial siguen en espanol**.
 * **Configuraciones > SUBTITULOS DE SONIDO**: avisos de texto con lado y distancia para disparos, explosiones, granadas y canon.
+* **Explosiones**: quien muere por una explosion (granada, barril, canon) cae como ragdoll fisico.

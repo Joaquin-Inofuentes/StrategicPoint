@@ -2,7 +2,7 @@
 
 Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. **Estados**: HECHO (implementado y con prueba o captura), YA ESTABA (al verificarlo en el codigo ya estaba resuelto), PARCIAL (mejorado, con lo que falta dicho), NO (no hecho o no aplica, con el motivo).
 
-**Resumen**: HECHO: 68, YA ESTABA: 18, PARCIAL: 8, NO: 6 (de 100).
+**Resumen**: HECHO: 69, YA ESTABA: 18, PARCIAL: 7, NO: 6 (de 100).
 
 
 ## HUD y pantallas
@@ -83,7 +83,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 52 | Saltar apuntando o agachado no está definido. | HECHO |  |
 | 53 | No se puede trepar obstáculos bajos. | HECHO | Saltar contra un obstaculo de 0,5 a 1,3 m de alto lo trepa (`SoldierMotor.TryVault`); muros mas altos no. Probado en FASE 19. |
 | 54 | Los aliados empujan al jugador al caminar pegados. | YA ESTABA | Verificado: el collider de un soldado no bloquea el movimiento de otro (`NavService.BlocksMovement`), asi que un aliado pegado no empuja ni frena. Prueba en la FASE 19. |
-| 55 | La muerte tiene una sola animación, sin ragdoll. | PARCIAL | La afirmacion era en parte erronea: hay **6 variantes de animacion de muerte** sorteadas (`SoldierAnimatorDriver.CantidadDeMuertes`). Sigue sin ragdoll fisico (requiere arte y ajuste fino). |
+| 55 | La muerte tiene una sola animación, sin ragdoll. | HECHO | Hay **6 variantes de animacion de muerte** sorteadas y, ademas, quien muere por una **explosion** se convierte en un **ragdoll fisico** (11 huesos con capsulas y articulaciones, sale despedido y se desarma a los 2,5 s). Verificado en Play real con captura (`Validacion/Ronda9/ragdoll.png`). Las muertes por bala siguen con animacion. |
 | 56 | Espacio hace de salto, freno y recentrar. Funciona porque son contextos separados, pero es frágil al remapear. | YA ESTABA | Verificado en el codigo/suite |
 
 ## IA y órdenes

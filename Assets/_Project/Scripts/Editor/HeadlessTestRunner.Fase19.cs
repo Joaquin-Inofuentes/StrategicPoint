@@ -248,6 +248,11 @@ namespace SP.EditorTools
                 Check("La opcion de subtitulos se activa y se guarda", SP.Presentation.Subtitulos.Activos && PlayerPrefs.GetInt("sp_subtitulos", 0) == 1);
                 SP.Presentation.Subtitulos.Poner(previa);
             }
+
+            // --- Ragdoll de explosion (55): se arma solo en Play (la prueba fisica se hizo en Play, ver Ronda 9) ---
+            Check("El ragdoll no se arma fuera de Play (la suite no crea cuerpos rigidos)", !SP.Presentation.RagdollDeExplosion.Lanzar(kes, Vector3.zero) && kes.GetComponent<Rigidbody>() == null);
+            var codigoProj = System.IO.File.ReadAllText("Assets/_Project/Scripts/Combat/Projectile.cs");
+            Check("Las muertes por explosion llaman al ragdoll", codigoProj.Contains("RagdollDeExplosion.Lanzar"));
         }
     }
 }

@@ -649,6 +649,8 @@ namespace SP.Combat
                 int danoReal = Mathf.Max(1, Mathf.RoundToInt(damage * Mathf.Lerp(DanoMinimoEnElBorde, 1f, cercania)));
                 if (amigo) danoReal = Mathf.Max(1, danoReal / 2);   // fuego amigo: la mitad
                 s.Health.TakeDamage(danoReal, ownerId);
+                // Item 55: quien muere por la explosion sale despedido como muneco articulado.
+                if (!s.Health.IsAlive) SP.Presentation.RagdollDeExplosion.Lanzar(s, point, SP.Presentation.RagdollDeExplosion.FuerzaBase * Mathf.Lerp(0.6f, 1.3f, cercania));
 
                 // Antes el daño en area no movia a nadie: una granada se
                 // veia igual que un disparo puntual. El empuje es

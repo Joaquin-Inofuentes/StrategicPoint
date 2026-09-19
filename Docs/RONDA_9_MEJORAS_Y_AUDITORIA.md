@@ -1,6 +1,6 @@
 # Ronda 9: mejoras de la auditoria de 100 puntos
 
-Resumen honesto: de los 100 puntos, **68 hechos, 18 que ya estaban resueltos, 8 parciales y 6 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless termina en OK con la FASE 18 y la FASE 19.
+Resumen honesto: de los 100 puntos, **69 hechos, 18 que ya estaban resueltos, 7 parciales y 6 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless termina en OK con la FASE 18 y la FASE 19.
 
 ## Que se hizo
 
@@ -20,6 +20,7 @@ Resumen honesto: de los 100 puntos, **68 hechos, 18 que ya estaban resueltos, 8 
 * **Arsenal (43)**: junto a una caja de suministros, **[,]** y **[.]** cambian el arma principal (6 armas; salta las que ya llevas en otra ranura).
 * **Idioma ES/EN (27)**: **[F12]** o Configuraciones > IDIOMA. Traduce menu, dificultad, pausa, configuraciones, radial y avisos comunes; el tutorial y los textos de mision siguen en espanol (por eso queda PARCIAL).
 
+* **Ragdoll (55)**: los soldados que mueren por una explosion salen despedidos como muneco articulado (probado en Play). ![ragdoll](../Assets/Validacion/Ronda9/ragdoll.png)
 * **Subtitulos de sonido (28)**: Configuraciones > SUBTITULOS DE SONIDO. Con la opcion en SI, los sonidos de combate escriben el lado y la distancia ("[DISPARO] << IZQUIERDA 9 m").
 
 ## Capturas
@@ -36,7 +37,7 @@ Resumen honesto: de los 100 puntos, **68 hechos, 18 que ya estaban resueltos, 8 
 
 ## Lo que NO esta hecho ni verificado
 
-* **Arte** (36, 44, 55, 21): modelos, animaciones, ragdoll, arte y musica de menu. No se pueden resolver desde codigo.
+* **Arte** (36, 44, 21): modelos, animaciones y arte y musica de menu. No se pueden resolver desde codigo.
 * **Oido humano** (65): los sonidos se verificaron por metricas; solo una persona puede juzgarlos.
 * **4K** (19): renderizado a 3840x2160 por supersampling desde el build; no se vio en un monitor 4K fisico.
 * **CI** (81): el flujo SI corre en GitHub, pero falla por falta del secreto `UNITY_LICENSE` (corregido: ahora avisa y se salta la suite). Cargar la licencia es del dueno del repo.
