@@ -118,6 +118,9 @@ namespace SP.Combat
             // punto de vida.
             if (amount <= 0) return;
 
+            // Dificultad: potenciadores de dano segun quien pega y a quien (solo partida principal).
+            if (Dificultad.Activa) amount = Mathf.Max(1, Mathf.RoundToInt(amount * Dificultad.MultiplicadorDeDano(attackerId, this)));
+
             // Cualquier golpe de verdad reinicia la cuenta de "sin accion":
             // la regeneracion se corta del todo, no sigue de donde iba.
             segundosSinDano = 0f;
