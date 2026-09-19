@@ -64,7 +64,7 @@ namespace SP.Player
         public static Soldier FindNearestFreeAlly(Vector3 point, TeamId team, Soldier exclude)
         {
             return ActorRegistry.FindNearest(point, s =>
-                s.Health.IsAlive && s.Team == team && s != exclude);
+                s.Health.IsAlive && s.Team == team && s != exclude && s.Role != RoleType.Civilian);
         }
 
         // Del plan del usuario: "Si los aliados los 2 estan en un tanque no

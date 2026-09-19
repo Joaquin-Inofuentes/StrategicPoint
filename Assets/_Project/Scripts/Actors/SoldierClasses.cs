@@ -30,6 +30,8 @@ namespace SP.Actors
         static readonly Def Medico = new Def { Nombre = "MEDICO", Malla = "Medico", Loadout = new[] { WeaponKind.Rifle, WeaponKind.Pistol }, Color = new Color(0.45f, 1f, 0.5f) };
         static readonly Def Francotirador = new Def { Nombre = "FRANCOTIRADOR", Malla = "Francotirador", Loadout = new[] { WeaponKind.Sniper, WeaponKind.Pistol }, Color = new Color(0.7f, 0.8f, 1f) };
 
+        static readonly Def Civil = new Def { Nombre = "CIVIL", Malla = "Medico", Loadout = new WeaponKind[0], Color = new Color(1f, 0.9f, 0.4f) };
+
         static readonly Def[] Enemigos =
         {
             new Def { Nombre = "FUSILERO", Malla = "Fusilero", Loadout = new[] { WeaponKind.Rifle, WeaponKind.Pistol }, Color = new Color(1f, 0.35f, 0.3f), Enemigo = true },
@@ -53,6 +55,7 @@ namespace SP.Actors
                 case RoleType.Assault: return Asalto;
                 case RoleType.Flanker: return Flanqueador;
                 case RoleType.Sniper: return Francotirador;
+                case RoleType.Civilian: return Civil;
                 default: return Medico;
             }
         }

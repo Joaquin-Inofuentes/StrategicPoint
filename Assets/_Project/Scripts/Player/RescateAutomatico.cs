@@ -59,7 +59,7 @@ namespace SP.Player
         static Soldier BuscarRescatistaLibre(Soldier caido)
         {
             return ActorRegistry.FindNearest(caido.transform.position, s =>
-                s != caido && s.Team == caido.Team && s.Health != null && s.Health.IsAlive
+                s != caido && s.Team == caido.Team && s.Health != null && s.Health.IsAlive && s.Role != RoleType.Civilian
                 && !OrderService.LoManejaElJugador(s)
                 && ActorRegistry.FindNearestEnemyInRange(s.transform.position, s.Team, RadioDeSeguridad) == null);
         }

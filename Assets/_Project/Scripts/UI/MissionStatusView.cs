@@ -41,7 +41,9 @@ namespace SP.UI
             if (label == null) return;
 
             int enemiesAlive = ActorRegistry.CountAlive(TeamId.Enemy);
-            int squadAlive = ActorRegistry.CountAlive(TeamId.Player);
+            int squadAlive = 0;
+            foreach (var s in ActorRegistry.All)
+                if (s != null && s.Team == TeamId.Player && s.Role != SP.Combat.RoleType.Civilian && s.Health != null && s.Health.IsAlive) squadAlive++;
 
             // Formato compacto (antes 10 espacios sueltos entre los dos
             // valores): con las letras dobladas de tamaño, ese relleno

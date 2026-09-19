@@ -30,6 +30,9 @@ namespace SP.Presentation
 
         public static float GananciaLucha { get; private set; }
 
+        // 1 = normal; la mision la baja para dejar sola a la musica tensa del final.
+        public static float Atenuacion { get; set; } = 1f;
+
         static AudioSource estrategiaSource;
         static AudioSource luchaSource;
         static bool fuentesListas;
@@ -41,6 +44,7 @@ namespace SP.Presentation
         static void ResetOnLoad()
         {
             GananciaLucha = 0f;
+            Atenuacion = 1f;
             fuentesListas = false;
             estrategiaSource = null;
             luchaSource = null;
@@ -83,7 +87,7 @@ namespace SP.Presentation
             // de la musica: si el dia de mañana hay un slider de ambiente,
             // la musica lo respeta gratis, sin que este director tenga que
             // saber nada de PlayerPrefs.
-            float maestro = AudioDirector.GainFor(SfxChannel.Ambient) * VolumenBase;
+            float maestro = AudioDirector.GainFor(SfxChannel.Ambient) * VolumenBase * Atenuacion;
             if (estrategiaSource != null) estrategiaSource.volume = (1f - GananciaLucha) * maestro;
             if (luchaSource != null) luchaSource.volume = GananciaLucha * maestro;
         }

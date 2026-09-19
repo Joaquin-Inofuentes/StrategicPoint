@@ -34,6 +34,7 @@ namespace SP.Actors
                 if (matAliado == null) matAliado = Resources.Load<Material>("Soldados/MAT_Trimsheet_Aliado");
                 if (matEnemigo == null) matEnemigo = Resources.Load<Material>("Soldados/MAT_Trimsheet_Enemigo");
                 var mat = def.Enemigo ? matEnemigo : matAliado;
+                if (s.Role == RoleType.Civilian) mat = MaterialCivil();
                 smr.sharedMesh = malla;
                 if (mat != null) smr.sharedMaterial = mat;
                 smr.localBounds = malla.bounds;
@@ -46,7 +47,30 @@ namespace SP.Actors
                 w.Loadout.AddRange(def.Loadout);
                 w.EquipFromLoadout(0);
             }
+            if (s.Role == RoleType.Civilian) OcultarArma();
             Aplicado = true;
+        }
+
+        static Material matCivil;
+        static Material MaterialCivil()
+        {
+            if (matCivil != null) return matCivil;
+            if (matAliado == null) return null;
+            matCivil = new Material(matAliado) { name = "MAT_Civil" };
+            var tinte = new Color(1f, 0.86f, 0.45f);
+            if (matCivil.HasProperty("_BaseColor")) matCivil.SetColor("_BaseColor", tinte);
+            if (matCivil.HasProperty("_Color")) matCivil.SetColor("_Color", tinte);
+            return matCivil;
+        }
+
+        // El civil no lleva arma: se apagan todos los modelos de arma del cuerpo.
+        void OcultarArma()
+        {
+            foreach (var r in GetComponentsInChildren<Renderer>(true))
+            {
+                if (r is SkinnedMeshRenderer) continue;
+                r.enabled = false;
+            }
         }
     }
 }
