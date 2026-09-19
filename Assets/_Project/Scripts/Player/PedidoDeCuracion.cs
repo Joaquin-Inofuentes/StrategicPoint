@@ -2,6 +2,7 @@ using UnityEngine;
 using SP.Actors;
 using SP.Combat;
 using SP.Core;
+using SP.Presentation;
 
 namespace SP.Player
 {
@@ -80,6 +81,18 @@ namespace SP.Player
 
         static float restante;
         static float acumulado;
+        // Feedback: el medico ya llego y esta atendiendo (para sonar UNA vez al empezar) y cuando se
+        // mostro el ultimo "+N" flotante.
+        static bool atendiendo;
+        static float proximoNumero;
+
+        static void EmpezarAtencion(Vector3 donde, string texto)
+        {
+            if (atendiendo) return;
+            atendiendo = true;
+            proximoNumero = 0f;
+            Feedback.Accion(SfxKind.HealStart, texto, donde, Feedback.Ok, aviso: false, pulso: true, volumen: 0.7f);
+        }
 
         // Devuelve false (y no deja pedido abierto) si no hay a quien
         // mandar. El llamador usa eso para avisar por pantalla.
@@ -122,6 +135,7 @@ namespace SP.Player
             botiquinAcum = 0f;
             BotiquinListoEn = BotiquinEspera;
             GameLog.Line($"{medico.DisplayName} usa el botiquin");
+            Feedback.Accion(SfxKind.HealStart, "BOTIQUIN", medico.transform.position, Feedback.Ok, aviso: false, pulso: true, volumen: 0.7f);
             return true;
         }
 
@@ -133,6 +147,8 @@ namespace SP.Player
             if (botiquinRestante <= 0f) return;
             if (BotiquinDe == null || BotiquinDe.Health == null || !BotiquinDe.Health.IsAlive) { botiquinRestante = 0f; return; }
             botiquinRestante -= dt;
+            if (botiquinRestante <= 0f)
+                Feedback.Accion(SfxKind.HealDone, "¡BOTIQUIN LISTO!", BotiquinDe.transform.position, Feedback.Ok, aviso: false, pulso: true, volumen: 0.7f);
             botiquinAcum += BotiquinVida / BotiquinSegundos * dt;
             int puntos = Mathf.FloorToInt(botiquinAcum);
             if (puntos <= 0) return;
@@ -166,6 +182,7 @@ namespace SP.Player
             Reanimando = false;
             restante = 0f;
             acumulado = 0f;
+            atendiendo = false;
         }
 
         // El medico atiende SOLO a un aliado herido cercano (sin que el jugador lo
@@ -222,12 +239,14 @@ namespace SP.Player
                 restante -= dt;
                 if (restante <= 0f) { Cancelar(); return; }
                 if (Vector3.Distance(Herido.transform.position, Enfermero.transform.position) > AlcanceDeCuracion) return;
+                EmpezarAtencion(Herido.transform.position, "REANIMANDO…");
                 acumulado += dt;
                 if (acumulado < SegundosDeReanimar) return;
                 var revivido = Herido;
                 revivido.Health.Initialize(revivido.Id, revivido.Health.MaxHealth);
                 revivido.Motor.ResetMotionState();
                 GameLog.Line($"{Enfermero.DisplayName} reanimo a {revivido.DisplayName}");
+                Feedback.Accion(SfxKind.Revive, "¡" + revivido.DisplayName.ToUpperInvariant() + " DE VUELTA!", revivido.transform.position, Feedback.Ok, aviso: true, pulso: true, volumen: 0.9f);
                 Cancelar();
                 return;
             }
@@ -244,6 +263,7 @@ namespace SP.Player
 
             float d = Vector3.Distance(Herido.transform.position, Enfermero.transform.position);
             if (d > AlcanceDeCuracion) return;
+            EmpezarAtencion(Herido.transform.position, "CURANDO…");
 
             // Se acumula en float y se gasta en enteros: con dt de 1/60 y
             // 12 de vida por segundo, redondear cada frame daria 0 siempre
@@ -253,6 +273,16 @@ namespace SP.Player
             if (puntos <= 0) return;
             acumulado -= puntos;
             Herido.Health.Heal(puntos);
+
+            // Numero verde flotante cada segundo mientras cura, y campanita al quedar sano.
+            proximoNumero -= dt;
+            if (proximoNumero <= 0f)
+            {
+                proximoNumero = 1f;
+                Feedback.Visual("+" + CuracionPorSegundo, Herido.transform.position, Feedback.Ok, aviso: false, pulso: false);
+            }
+            if (Herido.Health.Current >= Herido.Health.MaxHealth)
+                Feedback.Accion(SfxKind.HealDone, "¡" + Herido.DisplayName.ToUpperInvariant() + " CURADO!", Herido.transform.position, Feedback.Ok, aviso: true, pulso: true, volumen: 0.8f);
         }
     }
 }

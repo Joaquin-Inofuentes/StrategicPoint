@@ -12,7 +12,9 @@ namespace SP.Player
     // cero el obstaculo estalla y desaparece (con nube de escombros, onda y sonido).
     public static class Demolicion
     {
-        public const float Segundos = 4f;
+        public const float SegundosNormales = 4f;
+        // Tiempo de carga vigente. Es 4 s salvo en el paso del tutorial que practica CANCELAR.
+        public static float Segundos = SegundosNormales;
         public const float AlcanceMaximo = 9f;    // distancia maxima al obstaculo para cargar
         public const float LadoMaximo = 45f;      // muros mas largos que esto no se pueden volar
         public const int DanoDeLaCarga = 35;      // a los enemigos pegados al muro (nunca a los propios)
@@ -80,8 +82,16 @@ namespace SP.Player
         ObstacleMarker objetivo;
         bool modoAliado, cargando;
         Vector3 puntoDeCarga, ultimaPos;
-        float tiempoDeOrden, proximoAviso;
+        float tiempoDeOrden, proximoAviso, proximoTic;
         public float Progreso { get; private set; }
+
+        // Tic de la carga que se arma: mas rapido a medida que se acerca la detonacion.
+        void TicDeCarga()
+        {
+            if (Time.time < proximoTic) return;
+            proximoTic = Time.time + Mathf.Lerp(0.6f, 0.14f, Progreso);
+            AudioDirector.PlayAt(SfxKind.BombTick, yo.transform.position, Mathf.Lerp(0.35f, 0.9f, Progreso), 0.6f);
+        }
         public ObstacleMarker Objetivo => objetivo;
         public bool EstaCargando => cargando;
         TextMesh etiqueta;
@@ -191,8 +201,9 @@ namespace SP.Player
 
             if (valido && agachado && quieto && Time.timeScale > 0f)
             {
-                if (!cargando) { cargando = true; Feedback.Accion(SfxKind.Crouch, "PLANTANDO CARGA…", yo.transform.position, Feedback.Warn, aviso: true, pulso: false, volumen: 0.5f); }
+                if (!cargando) { cargando = true; Feedback.Accion(SfxKind.BombPlant, "PLANTANDO CARGA…", yo.transform.position, Feedback.Warn, aviso: true, pulso: true, volumen: 0.7f); }
                 Progreso = Mathf.Min(1f, Progreso + dt / Demolicion.Segundos);
+                TicDeCarga();
                 driver.DemolicionEnCurso = true;
                 driver.MostrarProgresoDemolicion(Progreso);
                 if (Progreso >= 1f) Terminar();
@@ -231,7 +242,7 @@ namespace SP.Player
                 cargando = true;
                 yo.Brain.CancelOrder();
                 yo.Brain.Quieto = true;
-                Feedback.Accion(SfxKind.Crouch, yo.DisplayName.ToUpperInvariant() + " PLANTA LA CARGA", yo.transform.position, Feedback.Warn, aviso: true, pulso: false, volumen: 0.5f);
+                Feedback.Accion(SfxKind.BombPlant, yo.DisplayName.ToUpperInvariant() + " PLANTA LA CARGA", yo.transform.position, Feedback.Warn, aviso: true, pulso: true, volumen: 0.7f);
             }
 
             yo.Motor.SetCrouching(true);
@@ -242,7 +253,7 @@ namespace SP.Player
                 if (mira.sqrMagnitude > 0.01f) yo.transform.rotation = Quaternion.Slerp(yo.transform.rotation, Quaternion.LookRotation(mira.normalized), dt * 8f);
             }
             bool enCombate = yo.Brain.State == SP.Ai.AiState.Chase || yo.Brain.State == SP.Ai.AiState.Attack;
-            if (!enCombate) Progreso = Mathf.Min(1f, Progreso + dt / Demolicion.Segundos);
+            if (!enCombate) { Progreso = Mathf.Min(1f, Progreso + dt / Demolicion.Segundos); TicDeCarga(); }
             if (Progreso >= 1f) Terminar();
         }
 

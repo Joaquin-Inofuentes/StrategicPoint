@@ -234,6 +234,9 @@ namespace SP.UI
 
         public void Abrir() => Abrir(null);
 
+        // Ultima categoria/opcion sobre la que sono el "tic" de hover (para sonar solo al CAMBIAR).
+        int hoverCat = -1, hoverSub = -1;
+
         public void Abrir(ContextoRadial ctx)
         {
             AjustarEscala();
@@ -242,9 +245,21 @@ namespace SP.UI
             virtualPos = Vector2.zero;
             Seleccion = -1;
             Sub = -1;
+            hoverCat = -1; hoverSub = -1;
             opcionesActuales.Clear();
             Refrescar();
             if (group != null) group.alpha = 1f;
+            SP.Presentation.AudioDirector.PlayUi2D(SP.Presentation.SfxKind.RadialOpen, 0.6f, 0.9f);
+        }
+
+        // Un "tic" cada vez que el cursor pasa a otra categoria u otra opcion: se OYE que el menu responde.
+        void SonarHover()
+        {
+            if (!Abierto) return;
+            if (Seleccion == hoverCat && Sub == hoverSub) return;
+            bool hayAlgo = Seleccion >= 0;
+            hoverCat = Seleccion; hoverSub = Sub;
+            if (hayAlgo) SP.Presentation.AudioDirector.PlayUi2D(SP.Presentation.SfxKind.RadialTick, Sub >= 0 ? 0.55f : 0.4f, 0.5f);
         }
 
         // Cursor al centro sin cerrar: soltar Q ahora cancela (no ejecuta nada).
@@ -314,6 +329,7 @@ namespace SP.UI
                 Sub = idx >= 0 && idx < n && Mathf.Abs(pos - idx) * PasoDeAbanico <= AnchoDeOpcion * 0.5f + 2f ? opcionesActuales[idx] : -1;
             }
             Refrescar();
+            SonarHover();
         }
 
         // Para probarlo y para elegir con los numeros: categoria (id) y, si se pide, su opcion (real).
@@ -338,6 +354,7 @@ namespace SP.UI
                 virtualPos = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * 245f;
             }
             Refrescar();
+            SonarHover();
         }
 
         // Categoria (id) de la tecla numerica 1..N que se apreto, o -1.

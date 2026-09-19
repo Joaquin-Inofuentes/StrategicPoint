@@ -29,6 +29,8 @@ namespace SP.Combat
         // poder simularse a mano en la suite headless (SimStep/SimulateSeconds),
         // que corre en Edit mode con Time.time congelado.
         const float SegundosSinDanoParaRegenerar = 3f;
+        // El tutorial de CURAR la apaga: si el herido se regenera solo, el medico no tiene nada que hacer.
+        public static bool RegeneracionPermitida = true;
         const float VidaPorSegundoRegenerando = 12f;
 
         // Arranca ya "afuera de combate": un soldado recien creado o recien
@@ -72,7 +74,7 @@ namespace SP.Combat
 
             segundosSinDano += dt;
 
-            if (Current >= maxHealth || segundosSinDano < SegundosSinDanoParaRegenerar)
+            if (Current >= maxHealth || segundosSinDano < SegundosSinDanoParaRegenerar || !RegeneracionPermitida)
             {
                 IsRegenerating = false;
                 regenAcumulada = 0f;
