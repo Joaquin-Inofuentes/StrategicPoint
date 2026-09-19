@@ -221,6 +221,18 @@ namespace SP.EditorTools
                 Loc.Poner(idiomaPrevio);
                 Object.DestroyImmediate(cvLoc);
             }
+
+            // --- Los aliados no empujan al jugador (54): el cuerpo de un soldado no bloquea el movimiento de otro ---
+            {
+                var colV = kes.GetComponentInChildren<Collider>();
+                Check("El collider de un aliado NO bloquea el movimiento (no empuja al jugador)", colV != null && !NavService.BlocksMovement(colV));
+                var antes = vega.transform.position;
+                kes.transform.position = antes + vega.transform.forward * 0.6f;
+                vega.Motor.Move(vega.transform.forward, 0.2f);
+                float avanzo = Vector3.Dot(vega.transform.position - antes, vega.transform.forward);
+                Check($"Caminar contra un aliado pegado no frena ni rebota ({avanzo:0.00} m)", avanzo > 0.5f);
+                vega.transform.position = antes;
+            }
         }
     }
 }
