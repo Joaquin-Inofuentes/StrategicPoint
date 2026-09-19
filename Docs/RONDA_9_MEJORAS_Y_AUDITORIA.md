@@ -43,3 +43,9 @@ Resumen honesto: de los 100 puntos, **69 hechos, 18 que ya estaban resueltos, 7 
 * **CI** (81): el flujo SI corre en GitHub, pero falla por falta del secreto `UNITY_LICENSE` (corregido: ahora avisa y se salta la suite). Cargar la licencia es del dueno del repo.
 * **Sin hacer**: localizacion completa del tutorial y las misiones (27, parcial), caida con dano (51, no aplica: no hay caidas), tutorial 100 % con gestos reales (95), canvases (77).
 * Los servidores MCP de GitHub, Sentry y Supabase piden autorizacion y no se usaron.
+
+## Ambiente del menu principal (item 21)
+
+El menu ya no es un color liso: `MenuAmbiente` arma solo, al cargar SC_MainMenu, una cuadricula de mapa tactico que se desliza, siete contactos (3 azules, 4 rojos) que orbitan y pulsan, y la musica calma en bucle. Es procedural: sigue faltando el arte dibujado. La suite lo comprueba (no se crea fuera de Play; tiene fondo animado y musica en bucle).
+
+![Menu con ambiente](../Assets/Validacion/Ronda9/menu_ambiente.png)

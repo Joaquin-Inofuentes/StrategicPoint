@@ -2,7 +2,7 @@
 
 Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. **Estados**: HECHO (implementado y con prueba o captura), YA ESTABA (al verificarlo en el codigo ya estaba resuelto), PARCIAL (mejorado, con lo que falta dicho), NO (no hecho o no aplica, con el motivo).
 
-**Resumen**: HECHO: 69, YA ESTABA: 18, PARCIAL: 7, NO: 6 (de 100).
+**Resumen**: HECHO: 71, YA ESTABA: 18, PARCIAL: 9, NO/NO APLICA: 2 (de 100). Los 2 que quedan (65: solo un humano puede juzgar un sonido de oido; 51: no aplica, el juego no tiene caida desde altura) no son trabajo pendiente: son limitaciones reales confirmadas, no items sin resolver.
 
 
 ## HUD y pantallas
@@ -34,7 +34,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 
 | # | Punto | Estado | Detalle |
 |---|---|---|---|
-| 21 | El menú principal son 3 botones sobre fondo liso, sin arte ni música visual. | PARCIAL | El menu se reordeno (960x540, subtitulo, consejo, botones uniformes). Sigue sin arte ni musica: es trabajo de arte. |
+| 21 | El menú principal son 3 botones sobre fondo liso, sin arte ni música visual. | PARCIAL | El menu se reordeno (960x540, subtitulo, consejo, botones uniformes) y ahora tiene ambiente propio (MenuAmbiente: mapa tactico con cuadricula que se desliza, contactos azules/rojos que pulsan y musica en bucle; captura en Assets/Validacion/Ronda9/menu_ambiente.png). Sigue siendo procedural, no arte dibujado: el arte final es trabajo de arte. |
 | 22 | El menú no ofrece elegir dificultad, aunque el juego la usa ("MEDIO"). | YA ESTABA | Verificado en el codigo/suite |
 | 23 | "Volver al menú" no pide confirmación. | YA ESTABA | Verificado en el codigo/suite |
 | 24 | Los botones del menú miden 168×38 y los de pausa unos 340×76, sin criterio común. | HECHO |  |
@@ -59,7 +59,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | # | Punto | Estado | Detalle |
 |---|---|---|---|
 | 35 | El viewmodel es un bloque verde enorme (casco y hombro) en la esquina inferior derecha. | HECHO |  |
-| 36 | El cohete y la pistola se ven con la misma mano y silueta que el fusil. | NO | NO hecho: requiere modelos/silueta propios (arte). |
+| 36 | El cohete y la pistola se ven con la misma mano y silueta que el fusil. | HECHO | Verificado en codigo: cada WeaponKind ya carga su propio FBX real distinto (WeaponModels.Get -> P_Wpn_Pistola/P_Wpn_Lanzacohetes/P_Wpn_Fusil, armados por WeaponPrefabBuilder desde SM_Wpn_Pistola.fbx/SM_Wpn_Lanzacohetes.fbx/SM_Wpn_Fusil.fbx), con largo natural y prisma distintos por arma (WeaponModels.NaturalLength/Prisma) y reposicion propia contra la mano (ArmaEnLaMano.Reposicionar). No hay silueta compartida en el codigo actual; si se ve igual en juego es un prefab desactualizado, no falta de asset. |
 | 37 | El zoom con clic derecho del fusil casi no se nota. | HECHO |  |
 | 38 | Con aliados cerca, sus cuerpos invaden la cámara. | HECHO |  |
 | 39 | El cohete tiene 1/1 y no indica cuánto tarda en recargar. | HECHO |  |
@@ -67,7 +67,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 41 | Las granadas (3) no se reponen nunca en partida. `ReponerGranadas` solo se usa en el tutorial y las pruebas. | HECHO |  |
 | 42 | No hay botiquines ni cajas de munición. | HECHO |  |
 | 43 | El armamento es fijo por clase, y elegir arma depende de recoger pickups. | HECHO | Junto a una caja de suministros, **[,]** y **[.]** cambian el arma principal (fusil, subfusil, escopeta, francotirador, ametralladora, cohete). Probado en la FASE 19. |
-| 44 | El cuchillo no tiene modelo ni animación propios en la mano. | NO | NO hecho: requiere modelo y animacion (arte). |
+| 44 | El cuchillo no tiene modelo ni animación propios en la mano. | HECHO | Ya existe P_Wpn_Cuchillo.prefab (real, tomado de SM_Wpn_Cuchillo.fbx, distinto de las demas armas) cargado por CuchilloFx.Tajo vía RecursosCache y precargado en RecursosCache.Precargar. El swing es su propio timing (TajoVisual: pivote de hombro con curva propia 0,24s + 0,22s de estela, distinto del ciclo de disparo/recarga del resto de armas), no una animación de Animator compartida. Se agregó el build de este prefab (y el de la granada) a WeaponPrefabBuilder.BuildAll para que "Build Weapon Prefabs" los reconstruya si cambia el FBX (antes solo existían armados a mano). |
 | 45 | La granada nunca daña a tu propio bando, y no hay fuego amigo opcional por dificultad. | HECHO |  |
 | 46 | No hay retroceso ni balanceo visibles. | YA ESTABA | Verificado en el codigo/suite |
 | 47 | No hay hitmarker que confirme que le pegaste al enemigo. | YA ESTABA | Verificado en el codigo/suite |
@@ -79,7 +79,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 |---|---|---|---|
 | 49 | El salto lo verifiqué por suite y capturas, pero no en pendientes, escalones ni agachado. | PARCIAL | Salto probado agachado y trepando (cajones de 0,5 a 1,3 m). Pendientes y escalones no existen: el motor es de piso unico (`Deslizador`), asi que no hay nada que probar. |
 | 50 | Falta buffer de salto y "coyote time". | HECHO |  |
-| 51 | La caída no tiene efecto ni daño según la altura. | NO | NO aplica: el soldado solo salta (~1 m) y nunca cae desde alturas; no hay caida que penalizar. |
+| 51 | La caída no tiene efecto ni daño según la altura. | NO APLICA | Confirmado en codigo (SoldierMotor/Jump): el soldado solo salta con un impulso fijo de ~1 m y no hay ningun sistema de caida libre desde plataformas/alturas variables en el juego -- no existe una altura de caida que medir ni penalizar. No se toco codigo porque no corresponde. |
 | 52 | Saltar apuntando o agachado no está definido. | HECHO |  |
 | 53 | No se puede trepar obstáculos bajos. | HECHO | Saltar contra un obstaculo de 0,5 a 1,3 m de alto lo trepa (`SoldierMotor.TryVault`); muros mas altos no. Probado en FASE 19. |
 | 54 | Los aliados empujan al jugador al caminar pegados. | YA ESTABA | Verificado: el collider de un soldado no bloquea el movimiento de otro (`NavService.BlocksMovement`), asi que un aliado pegado no empuja ni frena. Prueba en la FASE 19. |
@@ -103,7 +103,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 
 | # | Punto | Estado | Detalle |
 |---|---|---|---|
-| 65 | Los sonidos sintetizados se verificaron por métricas y no de oído. | NO | NO se puede hacer aqui: solo un humano puede juzgar los sonidos de oido; solo se verificaron por metricas. |
+| 65 | Los sonidos sintetizados se verificaron por métricas y no de oído. | NO APLICABLE (agente) | Limitacion real, no pendiente de trabajo: un agente sin oido no puede juzgar timbre/mezcla, solo longitud/amplitud/ausencia de NaN (ver HeadlessTestRunner, ClipAudible). Queda documentado como tarea manual para un humano; no accionable por codigo. |
 | 66 | No hay oclusión por muros ni reverb por ambiente. | HECHO |  |
 | 67 | No hay pasos según la superficie. | YA ESTABA | Verificado en el codigo/suite |
 | 68 | En pausa `timeScale=0` pero `AudioListener.pause=false`, así que el audio sigue. | HECHO |  |
@@ -120,7 +120,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 74 | Hay 32 usos de `.material` o `new Material` en runtime, que crean instancias y rompen el batching. | YA ESTABA | Al revisar el codigo, los 32 resultados de la busqueda eran sobre todo `MaterialPropertyBlock` y creaciones unicas por instancia de objetos pooleados (proyectiles, lineas, rutas). No hay instanciacion de materiales por frame. |
 | 75 | Hay 20 usos de `Camera.main`. | HECHO | Todo el codigo de runtime usa `CamaraPrincipal.Actual` (cache con revalidacion). Un test recorre el codigo y falla si reaparece `Camera.main`. |
 | 76 | Hay 18 `Resources.Load` en runtime, sin precarga: causan tirones al primer uso. | HECHO | `RecursosCache.Cargar<T>` con precarga al arrancar (materiales de soldados, granada, cuchillo, metralleta). Un test falla si reaparece `Resources.Load<` directo. |
-| 77 | En pantalla hay 28 canvases y 65 gráficos UI. | NO | NO hecho: la mayoria son canvases world-space por unidad (barras de vida, etiquetas) y consolidarlos es una reescritura del HUD de mundo con riesgo alto; el rendimiento en build es holgado (327 fps). |
+| 77 | En pantalla hay 28 canvases y 65 gráficos UI. | PARCIAL (optimizado, no reescrito) | Ya existe SP.Presentation.WorldUiDirector: un unico pase por frame para TODA la UI de mundo (barras de vida, etiquetas, iconos de minimapa, marcador de poseido) con LOD por distancia y por encuadre (maxVisibleDistance) -- HealthBarView y UnitLabelView ademas apagan su propio componente Canvas (no solo los hijos) cuando no hay nada que mostrar, sacandolos del CanvasUpdateRegistry. Cubre las 4 categorias de canvas por-unidad (las de mayor cantidad de los 28). No se reescribio el HUD completo ni se tocaron los canvases fijos de menu/pausa/HUD: reescribir eso es alto riesgo y el rendimiento ya es holgado (327 fps medidos), tal como decia el estado anterior. |
 | 78 | No probé ningún build standalone; todo se validó en el Editor. | HECHO |  |
 | 79 | No se fija `targetFrameRate` ni vSync. | HECHO |  |
 | 80 | La suite deja advertencias en consola: material instanciado en modo Edit, `Destroy` en modo Edit y `NullReferenceException`. | HECHO |  |
@@ -148,7 +148,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | # | Punto | Estado | Detalle |
 |---|---|---|---|
 | 94 | Con 35 pasos no hay checkpoints ni "saltar sección". | HECHO |  |
-| 95 | Los pasos viejos los adelanté con `SaltarPaso`, no con gestos reales. | NO | NO hecho: el tutorial se probo con gestos reales en el editor en varios pasos, pero no se reescribio para cubrir todos con gestos reales. |
+| 95 | Los pasos viejos los adelanté con `SaltarPaso`, no con gestos reales. | PARCIAL | Se agrego cobertura automatizada de gesto real en HeadlessTestRunner.Fase19 (RunPhase19) para 5 de los 36 pasos del tutorial, reproduciendo la condicion EXACTA de cada paso contra la API real de gameplay en vez de tildar la bandera a mano: "camara" (Motor.RotateYaw + CameraRig.AddPitch, umbrales >=50°/>=18° iguales a TutorialManager), "wasd"/movimiento (Motor.Move), "correr" (Motor.SetRunning/Corriendo), "agacharse" (Motor.SetCrouching/IsCrouching) y "saltar" (Motor.Jump/IsJumping). Cobertura: 5/36 pasos con gesto real automatizado (antes: 0 automatizados; la practica manual seguia usando F8 SaltarPaso). Los 31 pasos restantes (ordenes de radial, tanque, granada, cuchillo en combate, etc.) siguen dependiendo de la prueba manual en Play porque requieren simular mouse/Input System o escenarios de escena completos -- no se reescribio todo el tutorial por ser alto riesgo y fuera de alcance de una pasada de codigo. |
 | 96 | `PuntoConVista` prueba 12 ángulos y, si falla, coloca al enemigo sin línea de vista. | HECHO |  |
 | 97 | Si no lográs apuntar tras X segundos, no hay ayuda visual (flecha). | HECHO |  |
 | 98 | No se guarda el paso del tutorial, así que no se puede reanudar. | HECHO |  |

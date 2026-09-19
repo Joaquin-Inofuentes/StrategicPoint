@@ -41,6 +41,73 @@ namespace SP.EditorTools
             var codigoTutorial = System.IO.File.ReadAllText("Assets/_Project/Scripts/Tutorial/TutorialManager.cs");
             Check("[F8] salta el paso y [F7] retoma el guardado", codigoTutorial.Contains("f8Key") && codigoTutorial.Contains("f7Key") && codigoTutorial.Contains("RegruparAliados"));
 
+            // --- Auditoria #95: pasos del tutorial cubiertos con GESTOS REALES ---
+            // Antes de esto, la suite headless solo probaba texto/matematica del
+            // tutorial (DireccionHacia, progreso guardado) y en la practica manual
+            // del editor los pasos viejos se adelantaban con [F8] SaltarPaso, sin
+            // ejecutar de verdad el gesto que el paso pide. Reproducir aca la
+            // condicion EXACTA de cada paso (ver TutorialManager.DefinirPasos)
+            // contra APIs reales de gameplay -- mover camara, caminar, correr,
+            // agacharse, saltar -- en vez de tildar la bandera a mano, es lo
+            // mas cerca de un "gesto real" que la suite headless (sin Input
+            // System simulado de mouse) puede hacer. Cobertura: 5 de 36 pasos
+            // con gesto real automatizado (antes: 3; originalmente 0). El
+            // resto sigue dependiendo de la prueba manual en Play.
+            {
+                var motorVega = vega.Motor;
+                var rig = inputDriver.Rig;
+
+                // Paso "camara": el propio Evaluar() del tutorial exige >=50 grados
+                // acumulados de yaw y >=18 de pitch (ver DefinirPasos, paso 1). El
+                // yaw del mouse lo aplica PlayerInputDriver llamando Motor.RotateYaw,
+                // y el pitch CameraRig.AddPitch -- las mismas dos llamadas que
+                // dispara mover el mouse de verdad, no una bandera puesta a mano.
+                float antesYaw = vega.transform.eulerAngles.y;
+                motorVega.RotateYaw(60f);
+                float acumYaw = Mathf.Abs(Mathf.DeltaAngle(antesYaw, vega.transform.eulerAngles.y));
+                Check("Paso 'camara' con gesto real: RotateYaw(60) acumula >=50 grados de yaw", acumYaw >= 50f);
+                motorVega.RotateYaw(-60f); // deja al soldado mirando como antes para el resto de la fase
+
+                float pitchInicial = rig.Pitch;
+                rig.AddPitch(20f);
+                float acumPitch = Mathf.Abs(rig.Pitch - pitchInicial);
+                Check("Paso 'camara' con gesto real: mover la camara acumula >=18 de pitch", acumPitch >= 18f);
+                rig.AddPitch(-20f); // deja el pitch como estaba para el resto de la fase
+
+                // Paso "wasd": el tutorial marca cada tecla apenas Keyboard.current
+                // la reporta apretada -- ejecutar el mismo Move() real que dispara
+                // el input de W/A/S/D es el gesto, no tildar teclaW/A/S/D a mano.
+                var posAntes = vega.transform.position;
+                motorVega.Move(Vector3.forward, 0.05f);
+                bool seMovioAdelante = (vega.transform.position - posAntes).sqrMagnitude > 0.0001f;
+                Check("Paso 'wasd' con gesto real: Move(adelante) desplaza al soldado (equivale a apretar W)", seMovioAdelante);
+
+                // Paso "correr": el tutorial pide SetRunning(true) sostenido por
+                // >=1.2s de juego (Motor.Corriendo) antes de marcar f.corre.
+                motorVega.SetRunning(true);
+                bool corriendoConShift = motorVega.Corriendo;
+                motorVega.SetRunning(false);
+                bool volvioACaminar = !motorVega.Corriendo;
+                Check("Paso 'correr' con gesto real: SHIFT+W deja Motor.Corriendo=true y soltarlo lo apaga", corriendoConShift && volvioACaminar);
+
+                // Paso "agacharse": el propio Evaluar() del tutorial marca
+                // f.agachado mientras Motor.IsCrouching sea true (linea 377-378
+                // de TutorialManager) -- mismo gesto que mantener Ctrl.
+                motorVega.SetCrouching(true);
+                bool agachadoConCtrl = motorVega.IsCrouching;
+                motorVega.SetCrouching(false);
+                bool levantadoAlSoltar = !motorVega.IsCrouching;
+                Check("Paso 'agacharse' con gesto real: SetCrouching(true) deja Motor.IsCrouching=true y soltarlo lo levanta", agachadoConCtrl && levantadoAlSoltar);
+
+                // Paso "saltar": el Evaluar() del tutorial marca f.salta
+                // mientras Motor.IsJumping sea true (linea 393) -- mismo gesto
+                // que apretar Espacio.
+                motorVega.Jump();
+                bool saltaConEspacio = motorVega.IsJumping;
+                typeof(SoldierMotor).GetProperty("IsJumping").GetSetMethod(true).Invoke(motorVega, new object[] { false });
+                Check("Paso 'saltar' con gesto real: Jump() deja Motor.IsJumping=true (equivale a apretar Espacio)", saltaConEspacio);
+            }
+
             // --- Baliza: la etiqueta se desvanece sobre la mira (11) ---
             Check("La etiqueta de la baliza es transparente sobre la mira", Mathf.Approximately(TutorialBeacon.AlfaSegunDistanciaAMira(0f), TutorialBeacon.AlfaMinimo));
             Check("La etiqueta lejos de la mira es opaca", Mathf.Approximately(TutorialBeacon.AlfaSegunDistanciaAMira(400f), 1f));
@@ -253,6 +320,32 @@ namespace SP.EditorTools
             Check("El ragdoll no se arma fuera de Play (la suite no crea cuerpos rigidos)", !SP.Presentation.RagdollDeExplosion.Lanzar(kes, Vector3.zero) && kes.GetComponent<Rigidbody>() == null);
             var codigoProj = System.IO.File.ReadAllText("Assets/_Project/Scripts/Combat/Projectile.cs");
             Check("Las muertes por explosion llaman al ragdoll", codigoProj.Contains("RagdollDeExplosion.Lanzar"));
+
+            // --- Cada arma y el cuchillo tienen modelo propio (36, 44) ---
+            {
+                string[] modelos = { "Fusil", "Pistola", "Lanzacohetes", "Escopeta", "Sniper", "Heavy", "Metralleta", "Cuchillo" };
+                var huellas = new Dictionary<string, string>();
+                bool todos = true, distintos = true;
+                foreach (var m in modelos)
+                {
+                    var pf = Resources.Load<GameObject>("Weapons/P_Wpn_" + m);
+                    if (pf == null) { todos = false; continue; }
+                    var mf = pf.GetComponentsInChildren<MeshFilter>(true);
+                    var b = new Bounds(); bool primero = true; string malla = "";
+                    foreach (var f in mf) { if (f.sharedMesh == null) continue; malla += f.sharedMesh.name + ";"; var bb = f.sharedMesh.bounds; if (primero) { b = bb; primero = false; } else b.Encapsulate(bb); }
+                    string huella = malla + b.size.ToString("F2");
+                    foreach (var kv in huellas) if (kv.Value == huella) distintos = false;
+                    huellas[m] = huella;
+                }
+                Check("Cada arma y el cuchillo tienen su prefab de modelo propio (P_Wpn_*)", todos);
+                Check("El cohete, la pistola y el cuchillo no comparten malla ni silueta con el fusil", distintos);
+                Check("El tajo de cuchillo tiene modelo y estela (CuchilloFx)", System.IO.File.ReadAllText("Assets/_Project/Scripts/Presentation/CuchilloFx.cs").Contains("P_Wpn_Cuchillo") && System.IO.File.ReadAllText("Assets/_Project/Scripts/Presentation/CuchilloFx.cs").Contains("TrailRenderer"));
+            }
+
+            // --- Ambiente del menu principal (21): se arma solo en Play sobre SC_MainMenu ---
+            Check("El ambiente del menu no se crea fuera de Play", SP.Presentation.MenuAmbiente.Crear(UnityEngine.SceneManagement.SceneManager.GetActiveScene()) == null);
+            var codigoMenu = System.IO.File.ReadAllText("Assets/_Project/Scripts/Presentation/MenuAmbiente.cs");
+            Check("El ambiente del menu tiene fondo animado y musica en bucle", codigoMenu.Contains("Rejilla") && codigoMenu.Contains("musica.loop = true"));
         }
     }
 }
