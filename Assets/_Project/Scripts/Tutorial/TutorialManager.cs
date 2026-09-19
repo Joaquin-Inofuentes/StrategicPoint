@@ -479,6 +479,33 @@ namespace SP.Tutorial
                 AlSalir = () => QuitarEnemigoDePractica(ref enemigoGranada, ref balizaGranada),
             });
 
+            // 6b4 (ronda 8) -------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "suministros", Titulo = "CAJA DE SUMINISTROS", Teclas = "WASD", Acento = new Color(0.55f, 0.85f, 0.4f),
+                Subs = new[]
+                {
+                    S("Camina hasta la caja verde", "Ya gastaste granadas y perdiste vida. En la misión hay CAJAS DE SUMINISTROS (verdes, con cruz blanca, flotan y giran). Camina hasta la que tienes delante: te repone las 3 granadas y cura el 60 % de la vida. Se vuelve a llenar a los 45 segundos.", "Camina hacia la caja hasta tocarla.", () => f.suministrosRecogidos, v => f.suministrosRecogidos = v),
+                },
+                AlEntrar = () =>
+                {
+                    var yo = driver.Brain.Current; if (yo == null) return;
+                    yo.Weapon.ConsumirGranada(); yo.Weapon.ConsumirGranada();
+                    Health.RegeneracionPermitida = false;
+                    yo.Health.TakeDamage(Mathf.RoundToInt(yo.Health.MaxHealth * 0.4f), -1);
+                    suministrosBase = CajaDeSuministros.Recogidas;
+                    cajaTutorial = CajaDeSuministros.Crear(PuntoConVista(yo.transform.position, FrenteDelJugador(), 7f));
+                    if (cajaTutorial != null) balizaCaja = TutorialBeacon.Crear("SUMINISTROS", new Color(0.55f, 0.85f, 0.4f), cajaTutorial.transform.position, cajaTutorial.transform, 1.2f, 20f);
+                },
+                Evaluar = () => { if (CajaDeSuministros.Recogidas > suministrosBase) f.suministrosRecogidos = true; },
+                AlSalir = () =>
+                {
+                    Health.RegeneracionPermitida = true;
+                    if (balizaCaja != null) { balizaCaja.Quitar(); balizaCaja = null; }
+                    if (cajaTutorial != null) { Destroy(cajaTutorial.gameObject); cajaTutorial = null; }
+                },
+            });
+
             // 6c ------------------------------------------------------
             pasos.Add(new Paso
             {
@@ -1061,7 +1088,7 @@ namespace SP.Tutorial
             {
                 Id = "victoria", Titulo = "¡TUTORIAL COMPLETADO!", Teclas = "", Acento = dorado, OcultarSubs = true,
                 Subs = new Sub[0],
-                MensajeVivo = () => "Aprendiste a moverte, correr y saltar, las armas con su mira y su sonido, el cuchillo y las granadas, y TODOS los comandos del radial: ir allí, atacar, cubrirse, formaciones, curar, reanimar, poner bombas, la ametralladora fija, poseer y el tanque. ¡Buena suerte, comandante!",
+                MensajeVivo = () => "Aprendiste a moverte, correr y saltar, las armas con su mira y su sonido, el cuchillo, las granadas y las cajas de suministros, y TODOS los comandos del radial: ir allí, atacar, cubrirse, formaciones, curar, reanimar, poner bombas, la ametralladora fija, poseer y el tanque. ¡Buena suerte, comandante!",
                 AlEntrar = () =>
                 {
                     f.victoria = true;
@@ -1220,6 +1247,7 @@ namespace SP.Tutorial
         WeaponKind armaInicial;
         readonly HashSet<WeaponKind> armasVistas = new HashSet<WeaponKind>();
         Soldier enemigoCuchillo, enemigoGranada, enemigoAtaque;
+        CajaDeSuministros cajaTutorial; TutorialBeacon balizaCaja; int suministrosBase;
         TutorialBeacon balizaCuchillo, balizaGranada, balizaAtaque, balizaPunto;
         int ordenesDeAsalto;
         ObstacleMarker muroAliado;

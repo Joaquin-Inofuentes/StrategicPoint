@@ -53,6 +53,7 @@ namespace SP.Actors
         float verticalVelocity;
         float groundY;
         public bool IsJumping { get; private set; }
+        float saltoPedidoHasta;
 
         // Lo lee AiBrain para acotar el paso cuando sigue la ruta del
         // NavMeshAgent (que solo planifica; este motor es quien camina).
@@ -72,7 +73,8 @@ namespace SP.Actors
         // flotando segun el lugar.
         public void Jump()
         {
-            if (IsJumping || IsCrouching) return;
+            if (IsJumping) { saltoPedidoHasta = Time.time + 0.12f; return; }   // buffer de salto
+            if (IsCrouching) return;
             IsJumping = true;
             groundY = transform.position.y;
             // Cuanto sobra el pivote sobre el piso (0,8 en los soldados), para volver a apoyar los pies
@@ -135,6 +137,9 @@ namespace SP.Actors
                 pos.y = suelo;
                 IsJumping = false;
                 verticalVelocity = 0f;
+                transform.position = pos;
+                if (Time.time <= saltoPedidoHasta) { saltoPedidoHasta = 0f; Jump(); }
+                return;
             }
             transform.position = pos;
         }

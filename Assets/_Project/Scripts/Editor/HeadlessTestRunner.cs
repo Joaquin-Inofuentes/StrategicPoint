@@ -182,11 +182,15 @@ namespace SP.EditorTools
         public static void RunAll()
         {
             RestablecerEstaticosDeJuego();
+            // La suite arma y abre SC_TestLevel: al terminar se vuelve a la escena que el usuario tenia abierta.
+            string escenaPrevia = UnityEngine.SceneManagement.SceneManager.GetActiveScene().path;
             bool ok;
             try
             {
                 ok = RunOnceCore(logSuccessPhase: true);
                 EscribirResultado(ok, null);
+                if (!Application.isBatchMode && !string.IsNullOrEmpty(escenaPrevia) && !escenaPrevia.EndsWith("SC_TestLevel.unity"))
+                    UnityEditor.SceneManagement.EditorSceneManager.OpenScene(escenaPrevia);
             }
             catch (Exception ex)
             {
@@ -867,6 +871,7 @@ namespace SP.EditorTools
                 RunPhase14(inputDriver, vehicle, vega, kes, doc, pool, soldierPrefab, colorEnemy);
                 RunPhase15(inputDriver, aimTargeting, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase16(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
+                RunPhase17(inputDriver, vehicle, vega, kes, doc);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia
@@ -3759,6 +3764,56 @@ namespace SP.EditorTools
         // FASE 16 (ronda 7): salto sin hundirse, sonidos por arma, cuchillo [F], granada [G], mirillas propias,
         // regeneracion apagable y carga de demolicion ajustable.
         // ------------------------------------------------------------------
+        // Ronda 8: cajas de suministros, buffer de salto, HUD sin superposiciones, pausa con audio, cartel de obstaculos.
+        static void RunPhase17(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc)
+        {
+            TestLog.Phase("FASE 17 - Suministros, buffer de salto, HUD pulido, pausa con audio");
+            foreach (var o in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(o);
+            FullHeal(vega, kes, doc);
+            SP.Core.ModoDios.Poner(false);
+            Health.RegeneracionPermitida = false;
+            inputDriver.Brain.Possess(vega);
+
+            // --- Caja de suministros ---
+            var caja = CajaDeSuministros.Crear(vega.transform.position + new Vector3(30f, 0f, 30f));
+            Check("La caja de suministros se crea y esta disponible", caja != null && caja.Disponible);
+            vega.Weapon.ConsumirGranada(); vega.Weapon.ConsumirGranada();
+            vega.Health.TakeDamage(Mathf.RoundToInt(vega.Health.MaxHealth * 0.5f), -1);
+            int granadasAntes = vega.Weapon.Granadas, vidaAntes = vega.Health.Current, recogidasAntes = CajaDeSuministros.Recogidas;
+            var upd = typeof(CajaDeSuministros).GetMethod("Update", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            vega.transform.position = caja.transform.position + new Vector3(8f, 0f, 0f);
+            upd.Invoke(caja, null);
+            Check("Lejos de la caja no pasa nada", vega.Weapon.Granadas == granadasAntes && caja.Disponible);
+            vega.transform.position = new Vector3(caja.transform.position.x + 0.5f, vega.transform.position.y, caja.transform.position.z);
+            upd.Invoke(caja, null);
+            Check($"Junto a la caja las granadas vuelven al maximo ({granadasAntes} -> {vega.Weapon.Granadas})", vega.Weapon.Granadas == WeaponHolder.GranadasMaximas);
+            Check($"Junto a la caja se cura ({vidaAntes} -> {vega.Health.Current})", vega.Health.Current > vidaAntes);
+            Check("La caja se vacia y cuenta la recogida", !caja.Disponible && CajaDeSuministros.Recogidas == recogidasAntes + 1);
+            UnityEngine.Object.DestroyImmediate(caja.gameObject);
+            Health.RegeneracionPermitida = true;
+
+            // --- Buffer de salto: un segundo salto pedido en el aire se guarda ---
+            var motor = vega.Motor;
+            motor.Jump();
+            bool saltando = motor.IsJumping;
+            motor.Jump();
+            var campo = typeof(SoldierMotor).GetField("saltoPedidoHasta", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Check("Pedir otro salto en el aire lo deja en el buffer", saltando && campo != null && (float)campo.GetValue(motor) > Time.time);
+
+            // --- Minimapa legible ---
+            var goMm = new GameObject("t_mm", typeof(Camera));
+            var mm = goMm.AddComponent<SP.UI.MinimapFollow>();
+            Check($"El minimapa arranca en {mm.tamanoMini.x} px (>= 140)", mm.tamanoMini.x >= 140f);
+            UnityEngine.Object.DestroyImmediate(goMm);
+
+            // --- El cartel de obstaculos lejanos esta acotado ---
+            Check("El cartel de obstaculos solo aparece a menos de 30 m", SP.UI.AimUI.DistanciaMaximaCartelObstaculo <= 30f);
+
+            // --- Tutorial: paso nuevo de suministros ---
+            var tm = UnityEngine.Object.FindAnyObjectByType<SP.Tutorial.TutorialManager>();
+            Check("El tutorial tiene el paso de suministros (36 pasos)", tm == null || tm.Total >= 36);
+        }
+
         static void RunPhase16(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc,
                                GameObject soldierPrefab, Color colorEnemy, ProjectilePool pool)
         {

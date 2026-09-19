@@ -67,6 +67,8 @@ namespace SP.Tutorial
         public bool armaCambiada, armaRecargada, armaNuevaApuntada;
         public bool tajoAlAire, cuchilladaAcertada, enemigoApunalado;
         public bool granadaMantenida, granadaLanzada, granadaExplota;
+        // Ronda 8: cajas de suministros
+        public bool suministrosRecogidos;
         // Ronda 7: el resto de los comandos del radial [Q]
         public bool ordenIrAlli, ordenAtacar, enemigoAtacadoCae;
         public bool ordenLinea, ordenCuna, ordenRetirada;

@@ -164,9 +164,13 @@ namespace SP.UI
             }
             if (extras == null) return;
             bool cuchilloListo = weapon.KnifeCooldownRemaining <= 0f;
+            int claveExtras = (cuchilloListo ? 1 : 0) | (weapon.Granadas << 1);
+            if (claveExtras == ultimaClaveExtras && extras.text.Length > 0) return;   // nada cambio: no se rearma el texto cada frame
+            ultimaClaveExtras = claveExtras;
             string cuchillo = cuchilloListo ? "<color=#E6EEF5>[F] CUCHILLO</color>" : "<color=#7C8794>[F] CUCHILLO</color>";
             string granada = weapon.Granadas > 0 ? $"<color=#FFC94A>[G] GRANADA x{weapon.Granadas}</color>" : "<color=#E0503C>[G] SIN GRANADAS</color>";
             extras.text = cuchillo + "     " + granada;
         }
+        int ultimaClaveExtras = -1;
     }
 }

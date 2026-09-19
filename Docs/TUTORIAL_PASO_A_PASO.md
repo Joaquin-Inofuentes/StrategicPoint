@@ -1,22 +1,22 @@
-# Tutorial paso a paso (35 pasos, con capturas)
+# Tutorial paso a paso (36 pasos, con capturas)
 
-Recorrido completo del tutorial (`SC_Tutorial`) tal como quedó en la Ronda 7. Cada fase tiene: qué hay que hacer, qué se aprende, cómo está implementado y capturas reales del juego en Play (teclas y mouse reales inyectados; los pasos que no cambiaron se adelantaron con `SaltarPaso` solo para llegar a los nuevos).
+Recorrido completo del tutorial (`SC_Tutorial`) tal como quedó en la Ronda 8 (36 pasos; el 12 es nuevo). Cada fase tiene: qué hay que hacer, qué se aprende, cómo está implementado y capturas reales del juego en Play (teclas y mouse reales inyectados; los pasos que no cambiaron se adelantaron con `SaltarPaso` solo para llegar a los nuevos).
 
 ## Comandos del radial [Q] y dónde se practica cada uno
 
 | Categoría | Opciones | Paso donde se usan |
 |---|---|---|
-| IR ALLÍ | todos / solo uno | 18 |
-| CUBRIRSE | todos / solo uno | 20 |
-| ATACAR (dorado) | todos / solo uno | 18 |
-| POSICIÓN | quietos, sígueme, línea, cuña, retirada | 15 y 19 |
-| CURAR (dorado) | curarme, al más herido, curar a este, revivir | 21, 22 y 23 |
-| TANQUE | subir todos, bajar todos, tanque allí, subirme yo, bajarme yo | 28, 29, 32/33 y 34 |
+| IR ALLÍ | todos / solo uno | 19 |
+| CUBRIRSE | todos / solo uno | 21 |
+| ATACAR (dorado) | todos / solo uno | 19 |
+| POSICIÓN | quietos, sígueme, línea, cuña, retirada | 15 y 20 |
+| CURAR (dorado) | curarme, al más herido, curar a este, revivir | 22, 23 y 24 |
+| TANQUE | subir todos, bajar todos, tanque allí, subirme yo, bajarme yo | 29, 30, 33/34 y 35 |
 | POSEER (dorado) | soldado 1/2/3, siguiente, este | 5 |
-| DEMOLER (dorado) | asalto demuele, yo demuelo, cancelar | 24 y 25 |
-| TORRETA FIJA (dorado) | usar, salir | 26 |
+| DEMOLER (dorado) | asalto demuele, yo demuelo, cancelar | 25 y 26 |
+| TORRETA FIJA (dorado) | usar, salir | 27 |
 
-Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIAL») para que el comando de [Q] se use de verdad y no se reemplace por la tecla vieja.
+Los pasos 27, 29 y 35 desactivan el atajo [E] a propósito (avisa «USA EL RADIAL») para que el comando de [Q] se use de verdad y no se reemplace por la tecla vieja.
 
 ## Paso 1 · MOVER LA CÁMARA
 
@@ -167,7 +167,23 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Explosión.](../Assets/Validacion/Ronda7/tut_11c_explosion.png)
 *Explosión.*
 
-## Paso 12 · VER COBERTURAS Y RUTAS
+## Paso 12 · CAJA DE SUMINISTROS (nuevo, Ronda 8)
+
+- **Tecla(s):** W A S D
+- **Qué hacer:** Ya gastaste 2 granadas y perdiste vida: camina hasta la caja verde con cruz blanca que aparece delante.
+- **Qué se aprende / feedback:** Repone las 3 granadas y cura el 60 % de la vida, suena el «curado» y sale el aviso «SUMINISTROS +2 GRANADAS +VIDA». La caja se vuelve a llenar a los 45 s y flota y gira para verse de lejos.
+- **Cómo está hecho:** CajaDeSuministros: se posa en el piso (raycast + CheckBox), se recoge por cercanía (2,2 m) con el soldado que manejas; en la misión hay 3 repartidas entre la salida y la plaza.
+
+![Aparece el paso con la caja delante y la baliza SUMINISTROS.](../Assets/Validacion/Ronda7/../Ronda8/t_suministros_inicio.png)
+*Aparece el paso con la caja delante y la baliza SUMINISTROS.*
+
+![Caja frente a la mira (granadas x1, vida 108/180).](../Assets/Validacion/Ronda7/../Ronda8/t_suministros_caja_frente.png)
+*Caja frente a la mira (granadas x1, vida 108/180).*
+
+![Recogida: granadas x3 y vida completa.](../Assets/Validacion/Ronda7/../Ronda8/t_suministros_recogida.png)
+*Recogida: granadas x3 y vida completa.*
+
+## Paso 13 · VER COBERTURAS Y RUTAS
 
 - **Tecla(s):** C
 - **Qué hacer:** Mantené C y soltalo.
@@ -180,7 +196,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Coberturas visibles con C apretada.](../Assets/Validacion/Ronda7/tut_12b_coberturas_con_C.png)
 *Coberturas visibles con C apretada.*
 
-## Paso 13 · RTS: ORDEN A LOS 2
+## Paso 14 · RTS: ORDEN A LOS 2
 
 - **Tecla(s):** Tab, arrastrar, clic der.
 - **Qué hacer:** Tab; seleccioná a los 2 aliados; clic derecho en el círculo verde.
@@ -193,7 +209,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![La vista RTS desde arriba.](../Assets/Validacion/Ronda7/tut_13b_vista_rts.png)
 *La vista RTS desde arriba.*
 
-## Paso 14 · VOLVER A PRIMERA PERSONA
+## Paso 15 · VOLVER A PRIMERA PERSONA
 
 - **Tecla(s):** Tab
 - **Qué hacer:** Tab otra vez y un clic para capturar el mouse.
@@ -203,7 +219,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Paso 14.](../Assets/Validacion/Ronda7/tut_14_fps.png)
 *Paso 14.*
 
-## Paso 15 · SÍGANME Y QUIETOS (RADIAL)
+## Paso 16 · SÍGANME Y QUIETOS (RADIAL)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Q → POSICIÓN → SÍGANME; luego TODOS QUIETOS.
@@ -213,7 +229,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Paso 15.](../Assets/Validacion/Ronda7/tut_15_seguir.png)
 *Paso 15.*
 
-## Paso 16 · SELECCIONAR EN FPS
+## Paso 17 · SELECCIONAR EN FPS
 
 - **Tecla(s):** Shift + clic der.
 - **Qué hacer:** Shift + clic derecho sobre un aliado.
@@ -222,7 +238,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Paso 16.](../Assets/Validacion/Ronda7/tut_16_seleccionar.png)
 *Paso 16.*
 
-## Paso 17 · ORDEN DE MOVER EN FPS
+## Paso 18 · ORDEN DE MOVER EN FPS
 
 - **Tecla(s):** Clic der.
 - **Qué hacer:** Clic derecho en el suelo con el aliado seleccionado.
@@ -231,7 +247,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Paso 17.](../Assets/Validacion/Ronda7/tut_17_mover_fps.png)
 *Paso 17.*
 
-## Paso 18 · IR ALLÍ Y ATACAR (RADIAL) (nuevo)
+## Paso 19 · IR ALLÍ Y ATACAR (RADIAL) (nuevo)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Q → IR ALLÍ → TODOS mirando al piso; luego mirá al enemigo y Q → ATACAR → TODOS.
@@ -250,7 +266,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Los aliados disparan.](../Assets/Validacion/Ronda7/tut_18d_aliados_disparan.png)
 *Los aliados disparan.*
 
-## Paso 19 · FORMACIONES Y RETIRADA (RADIAL) (nuevo)
+## Paso 20 · FORMACIONES Y RETIRADA (RADIAL) (nuevo)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Q → POSICIÓN → FORMAR LÍNEA, FORMAR CUÑA y RETIRADA.
@@ -263,7 +279,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Eligiendo FORMAR CUÑA.](../Assets/Validacion/Ronda7/tut_19b_radial_formar_cuna.png)
 *Eligiendo FORMAR CUÑA.*
 
-## Paso 20 · CUBRIRSE HACIA DONDE MIRO (RADIAL)
+## Paso 21 · CUBRIRSE HACIA DONDE MIRO (RADIAL)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Mirá los sacos, Q → CUBRIRSE → TODOS.
@@ -278,7 +294,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Aliados a cubierto.](../Assets/Validacion/Ronda7/tut_20c_aliados_en_cobertura.png)
 *Aliados a cubierto.*
 
-## Paso 21 · CURAR A UN ALIADO (RADIAL)
+## Paso 22 · CURAR A UN ALIADO (RADIAL)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Apuntá al herido, Q → CURAR → CURAR A ESTE.
@@ -294,7 +310,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![El médico curando.](../Assets/Validacion/Ronda7/tut_21c_medico_curando.png)
 *El médico curando.*
 
-## Paso 22 · REANIMAR A UN CAÍDO (RADIAL)
+## Paso 23 · REANIMAR A UN CAÍDO (RADIAL)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Apuntá al caído, Q → CURAR → REVIVIR A ESTE.
@@ -310,7 +326,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Reanimando.](../Assets/Validacion/Ronda7/tut_22c_medico_reanimando.png)
 *Reanimando.*
 
-## Paso 23 · CURARME (RADIAL) (nuevo)
+## Paso 24 · CURARME (RADIAL) (nuevo)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Con vida baja (< 70%): Q → CURAR → CURARME.
@@ -326,7 +342,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![El médico te cura.](../Assets/Validacion/Ronda7/tut_23c_medico_te_cura.png)
 *El médico te cura.*
 
-## Paso 24 · DEMOLER UN MURO (ASALTO)
+## Paso 25 · DEMOLER UN MURO (ASALTO)
 
 - **Tecla(s):** Q, Ctrl
 - **Qué hacer:** Apuntá al muro, Q → DEMOLER → YO DEMUELO y mantené Ctrl quieto 4 s.
@@ -345,7 +361,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Muro demolido.](../Assets/Validacion/Ronda7/tut_24d_muro_demolido.png)
 *Muro demolido.*
 
-## Paso 25 · EL ASALTO ALIADO PONE LA BOMBA (RADIAL) (nuevo)
+## Paso 26 · EL ASALTO ALIADO PONE LA BOMBA (RADIAL) (nuevo)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Con otro soldado: Q → DEMOLER → ASALTO DEMUELE, luego CANCELAR mientras va, y otra vez ASALTO DEMUELE.
@@ -370,7 +386,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![El muro vuela.](../Assets/Validacion/Ronda7/tut_25f_muro_volado.png)
 *El muro vuela.*
 
-## Paso 26 · AMETRALLADORA FIJA (radial)
+## Paso 27 · AMETRALLADORA FIJA (radial)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Q → TORRETA FIJA → USAR, disparar y Q → TORRETA FIJA → SALIR.
@@ -392,7 +408,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![SALIR DE LA TORRETA.](../Assets/Validacion/Ronda7/tut_26f_radial_salir.png)
 *SALIR DE LA TORRETA.*
 
-## Paso 27 · MODO DIOS
+## Paso 28 · MODO DIOS
 
 - **Tecla(s):** F4
 - **Qué hacer:** F4 y F4 otra vez.
@@ -405,7 +421,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Modo dios activo.](../Assets/Validacion/Ronda7/tut_27b_modo_dios_activo.png)
 *Modo dios activo.*
 
-## Paso 28 · ENTRAR AL TANQUE (RADIAL)
+## Paso 29 · ENTRAR AL TANQUE (RADIAL)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Apuntá al tanque: Q → TANQUE → SUBIRME YO.
@@ -421,7 +437,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![SUBIRME YO.](../Assets/Validacion/Ronda7/tut_28c_radial_tanque_subirme_yo.png)
 *SUBIRME YO.*
 
-## Paso 29 · ALIADOS AL TANQUE (RADIAL)
+## Paso 30 · ALIADOS AL TANQUE (RADIAL)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Q → TANQUE → SUBIR TODOS.
@@ -433,7 +449,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![SUBIR TODOS.](../Assets/Validacion/Ronda7/tut_29b_radial_subir_todos.png)
 *SUBIR TODOS.*
 
-## Paso 30 · CAMBIAR A LA TORRETA
+## Paso 31 · CAMBIAR A LA TORRETA
 
 - **Tecla(s):** 2
 - **Qué hacer:** Apretá 2.
@@ -442,7 +458,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Paso 30.](../Assets/Validacion/Ronda7/tut_30_torreta.png)
 *Paso 30.*
 
-## Paso 31 · MIRA DEL CAÑÓN Y LA METRALLETA
+## Paso 32 · MIRA DEL CAÑÓN Y LA METRALLETA
 
 - **Tecla(s):** Clic der.
 - **Qué hacer:** Clic derecho en el cañón [2]; [3] y clic derecho en la metralleta; soltá y volvé al [2].
@@ -457,7 +473,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Mira de la metralleta.](../Assets/Validacion/Ronda7/tut_31c_mira_de_la_metralleta.png)
 *Mira de la metralleta.*
 
-## Paso 32 · AVANZAR Y DISPARAR
+## Paso 33 · AVANZAR Y DISPARAR
 
 - **Tecla(s):** Q, clic izq.
 - **Qué hacer:** Q → TANQUE → TANQUE ALLÍ y derribá 3 enemigos.
@@ -466,7 +482,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Paso 32.](../Assets/Validacion/Ronda7/tut_32_avanzar_disparar.png)
 *Paso 32.*
 
-## Paso 33 · LLEGAR AL FINAL
+## Paso 34 · LLEGAR AL FINAL
 
 - **Tecla(s):** Q
 - **Qué hacer:** Mandá el tanque a la meta dorada.
@@ -475,7 +491,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![Paso 33.](../Assets/Validacion/Ronda7/tut_33_final.png)
 *Paso 33.*
 
-## Paso 34 · BAJAR DEL TANQUE (RADIAL) (nuevo)
+## Paso 35 · BAJAR DEL TANQUE (RADIAL) (nuevo)
 
 - **Tecla(s):** Q
 - **Qué hacer:** Q → TANQUE → BAJAR TODOS y luego BAJARME YO.
@@ -491,7 +507,7 @@ Los pasos 26, 28 y 34 desactivan el atajo [E] a propósito (avisa «USA EL RADIA
 ![BAJARME YO.](../Assets/Validacion/Ronda7/tut_34c_radial_bajarme_yo.png)
 *BAJARME YO.*
 
-## Paso 35 · ¡TUTORIAL COMPLETADO!
+## Paso 36 · ¡TUTORIAL COMPLETADO!
 
 - **Tecla(s):** -
 - **Qué hacer:** Nada: victoria.

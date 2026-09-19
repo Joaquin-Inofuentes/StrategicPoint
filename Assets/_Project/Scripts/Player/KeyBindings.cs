@@ -40,8 +40,8 @@ namespace SP.Player
         public const string VerTactico = "ver_tactico";
         // Era "camara_vehiculo" (V alternaba primera/tercera persona en el
         // vehiculo) -- ese toggle ya no existe, la vista de vehiculo es
-        // siempre 3ra persona. V queda libre y pasa a ser el golpe de
-        // cuchillo, el mismo id de PlayerPrefs se reutiliza a proposito
+        // siempre 3ra persona. La tecla pasa a ser el golpe de
+        // cuchillo ([F] por defecto), el mismo id de PlayerPrefs se reutiliza a proposito
         // para no dejar una tecla remapeada por el jugador apuntando a
         // una accion que ya no existe.
         public const string AtaqueCuchillo = "camara_vehiculo";
