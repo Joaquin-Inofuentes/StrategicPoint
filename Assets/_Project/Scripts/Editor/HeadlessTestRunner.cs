@@ -908,6 +908,7 @@ namespace SP.EditorTools
                 RunPhase16(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase17(inputDriver, vehicle, vega, kes, doc);
                 RunPhase18(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
+                RunPhase19(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia

@@ -74,7 +74,7 @@ namespace SP.Actors
         public void Jump()
         {
             if (IsJumping) { saltoPedidoHasta = Time.time + 0.12f; return; }   // buffer de salto
-            if (IsCrouching) return;
+            if (IsCrouching) SetCrouching(false);   // item 52: saltar agachado primero te levanta, en vez de ignorar la tecla
             IsJumping = true;
             groundY = transform.position.y;
             // Cuanto sobra el pivote sobre el piso (0,8 en los soldados), para volver a apoyar los pies

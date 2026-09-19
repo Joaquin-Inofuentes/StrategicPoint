@@ -157,6 +157,12 @@ namespace SP.Tutorial
 
             DefinirPasos();
             TutorialLog.Escribir("[INICIO]", $"Tutorial listo: {pasos.Count} pasos. Escena {SceneManager.GetActiveScene().name}");
+            int guardado = PasoGuardado;
+            if (guardado >= 2 && guardado < pasos.Count - 1)
+            {
+                avisoRetomarHasta = Time.time + 25f;
+                SP.UI.AlertQueue.Push($"PASO {guardado + 1} GUARDADO: [F7] RETOMAR AHI  ·  [F8] SALTA EL PASO ACTUAL", SP.UI.AlertPriority.Media, 6f);
+            }
             EmpezarPaso(0);
         }
 
@@ -1268,6 +1274,19 @@ namespace SP.Tutorial
                 if (!Physics.Linecast(ojos, objetivo, out var golpe, ~0, QueryTriggerInteraction.Ignore)) return p;
                 if (golpe.collider != null && golpe.collider.GetComponentInParent<Soldier>() != null) return p;
             }
+            // Ningun angulo tiene linea de vista a esa distancia (patio chico, muros): se acerca el punto en vez de
+            // poner al blanco detras de una pared, donde el jugador no lo veria.
+            foreach (var factor in new[] { 0.7f, 0.5f, 0.35f })
+                foreach (var a in angulos)
+                {
+                    var dir = Quaternion.Euler(0f, a, 0f) * dirPreferida;
+                    var lado = Vector3.Cross(Vector3.up, dir);
+                    var p = desde + dir * distancia * factor + lado * desplazamientoLateral * factor;
+                    var objetivo = new Vector3(p.x, 1.2f, p.z);
+                    if (!Physics.Linecast(ojos, objetivo, out var golpe, ~0, QueryTriggerInteraction.Ignore)) return p;
+                    if (golpe.collider != null && golpe.collider.GetComponentInParent<Soldier>() != null) return p;
+                }
+            TutorialLog.Escribir("[AVISO]", "PuntoConVista: sin linea de vista libre a ninguna distancia; se usa la direccion pedida");
             return desde + dirPreferida * distancia;
         }
 
@@ -1585,6 +1604,7 @@ namespace SP.Tutorial
             sinProgreso = 0f;
             pistaMostrada = "";
             pausaActiva = false;
+            if (i > PasoGuardado && i < pasos.Count - 1) { PlayerPrefs.SetInt(ClaveProgreso, i); PlayerPrefs.Save(); }
             foreach (var s in p.Subs) s.Hecha = false;
             p.AlEntrar?.Invoke();
 
@@ -1603,6 +1623,7 @@ namespace SP.Tutorial
         {
             if (driver == null || ui == null || Indice < 0 || Terminado) return;
             var p = pasos[Indice];
+            TickAyudas();
 
             if (Time.time >= proximaCura) { proximaCura = Time.time + 1f; if (p.Id != "curar" && p.Id != "curarme") Protecciones(); }
             if (Time.time >= proximoAcoso) { proximoAcoso = Time.time + 2.2f; AcosarAlTanque(); }
@@ -1650,6 +1671,14 @@ namespace SP.Tutorial
                 }
             }
 
+            if (pendiente != null && sinProgreso > SegundosParaAyuda)
+            {
+                var ob = ObjetivoDeAyuda(p);
+                string flecha = ob != null && ob.gameObject.activeInHierarchy && driver.Rig.Cam != null
+                    ? DireccionHacia(driver.Rig.Cam.transform.position, Yaw(), ob.position) : "";
+                pista = (pista.Length > 0 ? pista + "  ·  " : "") + (flecha.Length > 0 ? flecha + "  ·  " : "") + "[F8] SALTAR PASO";
+            }
+
             string mensaje = p.MensajeVivo != null ? p.MensajeVivo()
                 : pendiente != null ? pendiente.Mensaje : "Paso completo";
             ui.Refrescar(mensaje, HechasDe(p), TextosDe(p), pista, ProgresoTotal());
@@ -1691,7 +1720,7 @@ namespace SP.Tutorial
             ui.DestelloDePaso($"PASO {Indice + 1} COMPLETADO", new Color(0.40f, 0.95f, 0.55f));
             Feedback.Accion(SfxKind.TutStep, null, null, null, aviso: false, pulso: false, volumen: 0.7f);
             pausaActiva = true;
-            pausaHasta = Time.time + pausaEntrePasos;
+            pausaHasta = Time.time + (saltandoHasta > Indice ? 0.05f : pausaEntrePasos);
         }
 
         void AvanzarDePaso()
@@ -1699,7 +1728,7 @@ namespace SP.Tutorial
             if (Indice + 1 < pasos.Count) EmpezarPaso(Indice + 1);
         }
 
-        // Solo para pruebas / editor: da el paso por cumplido.
+        // Da el paso por cumplido (lo usan [F8], el retomado y las pruebas).
         public void SaltarPaso()
         {
             if (Indice < 0 || Indice >= pasos.Count || pausaActiva) return;
@@ -1707,9 +1736,105 @@ namespace SP.Tutorial
             TutorialLog.Escribir("[SALTO]", $"Paso {Indice + 1} marcado como cumplido a mano");
         }
 
+        // ---------------------------------------------------------------
+        // Ayudas: saltar un paso (94), retomar donde se dejo (98), flecha si te trabas (97), aliados cerca (99)
+        // ---------------------------------------------------------------
+        public const string ClaveProgreso = "sp_tutorial_paso";
+        public const float SegundosParaAyuda = 16f;
+        public static int PasoGuardado => PlayerPrefs.GetInt(ClaveProgreso, 0);
+        public static void BorrarProgreso() { PlayerPrefs.DeleteKey(ClaveProgreso); PlayerPrefs.Save(); }
+        float avisoRetomarHasta;
+        int saltandoHasta = -1;
+        public bool Retomando => saltandoHasta > Indice;
+
+        void TickAyudas()
+        {
+            var kb = Keyboard.current;
+            if (kb != null)
+            {
+                if (kb.f8Key.wasPressedThisFrame) SaltarPasoDelJugador();
+                if (kb.f7Key.wasPressedThisFrame) Retomar();
+            }
+            if (saltandoHasta >= 0)
+            {
+                if (Indice >= saltandoHasta) { saltandoHasta = -1; RegruparAliados(); }
+                else if (!pausaActiva) SaltarPaso();
+            }
+        }
+
+        public void SaltarPasoDelJugador()
+        {
+            if (Indice < 0 || Indice >= pasos.Count - 1 || pausaActiva || Terminado) return;
+            TutorialLog.Escribir("[SALTO]", $"El jugador salto el paso {Indice + 1} con [F8]");
+            SaltarPaso();
+            RegruparAliados();
+        }
+
+        // Solo desde el primer paso y mientras dura el aviso: avanza dando cada paso por hecho hasta el guardado.
+        public bool Retomar()
+        {
+            int meta = PasoGuardado;
+            if (Indice != 0 || Time.time > avisoRetomarHasta || meta <= 0 || meta >= pasos.Count - 1) return false;
+            saltandoHasta = meta;
+            TutorialLog.Escribir("[RETOMAR]", $"Retomando en el paso {meta + 1}");
+            return true;
+        }
+
+        // Si te saltaste pasos los aliados pueden haber quedado lejos: se los trae a tu lado (menos los que estan en un vehiculo).
+        public void RegruparAliados(float distanciaMaxima = 14f)
+        {
+            if (driver == null || driver.Squad == null || driver.Brain == null || driver.Brain.Current == null) return;
+            var yo = driver.Brain.Current;
+            int n = 0;
+            foreach (var s in driver.Squad)
+            {
+                if (s == null || s == yo || !s.Health.IsAlive) continue;
+                bool enVehiculo = false;
+                foreach (var v in Vehicle.Todos) { if (v == null) continue; foreach (var o in v.Occupants) if (o == s) enVehiculo = true; }
+                if (enVehiculo) continue;
+                var d = s.transform.position - yo.transform.position; d.y = 0f;
+                if (d.magnitude <= distanciaMaxima) continue;
+                var lado = Vector3.Cross(Vector3.up, FrenteDelJugador());
+                var pos = yo.transform.position - FrenteDelJugador() * 2.2f + lado * (n % 2 == 0 ? 1.6f : -1.6f) * (1 + n / 2);
+                pos.y = s.transform.position.y;
+                s.transform.position = pos;
+                if (s.Brain != null) s.Brain.CancelOrder();
+                n++;
+            }
+            if (n > 0) TutorialLog.Escribir("[REGRUPAR]", $"{n} aliado(s) traidos junto al jugador");
+        }
+
+        // A que apunta la flecha de ayuda segun el paso (solo los pasos con un blanco concreto).
+        Transform ObjetivoDeAyuda(Paso p)
+        {
+            switch (p.Id)
+            {
+                case "disparar": case "mira": case "arsenal": return objDummy;
+                case "cuchillo": return enemigoCuchillo != null ? enemigoCuchillo.transform : null;
+                case "granada": return enemigoGranada != null ? enemigoGranada.transform : null;
+                case "ir_atacar": return enemigoAtaque != null ? enemigoAtaque.transform : null;
+                case "suministros": return cajaTutorial != null ? cajaTutorial.transform : null;
+                default: return null;
+            }
+        }
+
+        // "El objetivo esta a tu DERECHA >> · 12 m": dice hacia donde girar, sin depender de que este en pantalla.
+        public static string DireccionHacia(Vector3 desde, float yawGrados, Vector3 objetivo)
+        {
+            var d = objetivo - desde; d.y = 0f;
+            float dist = d.magnitude;
+            var f = Quaternion.Euler(0f, yawGrados, 0f) * Vector3.forward;
+            float ang = Vector3.SignedAngle(f, d, Vector3.up);
+            string lado = Mathf.Abs(ang) < 15f ? "justo ENFRENTE ^"
+                        : Mathf.Abs(ang) > 135f ? "a tu ESPALDA (gira) vv"
+                        : ang > 0f ? "a tu DERECHA >>" : "a tu IZQUIERDA <<";
+            return $"OBJETIVO {lado} · {dist:0} m";
+        }
+
         public void Finalizar()
         {
             Terminado = true;
+            BorrarProgreso();
             SP.UI.MenuDeOrdenes.PonerPista(-1);
             TutorialLog.Escribir("[FIN]", $"Tutorial finalizado en {TiempoTotal:0.0} s · {bajas} bajas");
         }

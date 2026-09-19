@@ -20,7 +20,7 @@ namespace SP.Combat
             public float ReloadDuration;
             // Aumento REAL de la mira al mantener el clic derecho (1 = sin zoom).
             // El FOV sale de esto: fov = 2*atan(tan(fov0/2)/ZoomFactor).
-            public float ZoomFactor;
+            public float ZoomFactor;   // (item 37: subido; el del fusil pasa de x2,2 a x3 para que apuntar se note)
             public ReticleStyle Reticle;
             // Perdigones por disparo (escopeta) y explosion (lanzacohetes).
             public int Pellets;
@@ -47,23 +47,23 @@ namespace SP.Combat
                     // (respaldo rapido, el mas debil de los tres). Cadencia
                     // y cargador intactos: sigue siendo la mas rapida de
                     // sacar y recargar, solo pega menos por tiro.
-                    return new Spec { Damage = 8, Cooldown = 0.15f, Color = new Color(0.95f, 0.88f, 0.20f), VisualScale = new Vector3(0.13f, 0.13f, 0.28f), MagazineSize = 12, ReloadDuration = 1.0f, ZoomFactor = 1.4f, Reticle = ReticleStyle.Cruz, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Pistola" };
+                    return new Spec { Damage = 8, Cooldown = 0.15f, Color = new Color(0.95f, 0.88f, 0.20f), VisualScale = new Vector3(0.13f, 0.13f, 0.28f), MagazineSize = 12, ReloadDuration = 1.0f, ZoomFactor = 1.6f, Reticle = ReticleStyle.Cruz, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Pistola" };
                 case WeaponKind.Heavy:
                     // Grande y gruesa. Naranja quemado a proposito: el rosa/
                     // magenta anterior (0.80, 0.20, 0.55) se confundia a
                     // simple vista con el fucsia de un material roto.
-                    return new Spec { Damage = 50, Cooldown = 0.80f, Color = new Color(0.85f, 0.35f, 0.10f), VisualScale = new Vector3(0.26f, 0.26f, 0.65f), MagazineSize = 4, ReloadDuration = 2.2f, ZoomFactor = 1.7f, Reticle = ReticleStyle.Anillo, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Ametralladora" };
+                    return new Spec { Damage = 50, Cooldown = 0.80f, Color = new Color(0.85f, 0.35f, 0.10f), VisualScale = new Vector3(0.26f, 0.26f, 0.65f), MagazineSize = 4, ReloadDuration = 2.2f, ZoomFactor = 2.0f, Reticle = ReticleStyle.Anillo, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Ametralladora" };
                 case WeaponKind.Rifle:
                     // Larga y angosta.
-                    return new Spec { Damage = 26, Cooldown = 0.30f, Color = new Color(0.55f, 0.68f, 0.78f), VisualScale = new Vector3(0.15f, 0.15f, 0.55f), MagazineSize = 8, ReloadDuration = 1.5f, ZoomFactor = 2.2f, Reticle = ReticleStyle.Punto, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Fusil" };
+                    return new Spec { Damage = 26, Cooldown = 0.30f, Color = new Color(0.55f, 0.68f, 0.78f), VisualScale = new Vector3(0.15f, 0.15f, 0.55f), MagazineSize = 8, ReloadDuration = 1.5f, ZoomFactor = 3.0f, Reticle = ReticleStyle.Punto, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Fusil" };
                 case WeaponKind.Smg:
                     // Rafaga corta y suelta: dps sostenido parecido al fusil (9 x 24 / 4,2 s).
-                    return new Spec { Damage = 9, Cooldown = 0.11f, Color = new Color(0.62f, 0.9f, 0.45f), VisualScale = new Vector3(0.13f, 0.17f, 0.42f), MagazineSize = 24, ReloadDuration = 1.6f, ZoomFactor = 1.6f, Reticle = ReticleStyle.Chevron, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Metralleta" };
+                    return new Spec { Damage = 9, Cooldown = 0.11f, Color = new Color(0.62f, 0.9f, 0.45f), VisualScale = new Vector3(0.13f, 0.17f, 0.42f), MagazineSize = 24, ReloadDuration = 1.6f, ZoomFactor = 2.0f, Reticle = ReticleStyle.Chevron, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Metralleta" };
                 case WeaponKind.Rocket:
                     // Lanzacohetes: 1 tiro, explosion de 5 m, vuela lento y cae un poco.
                     return new Spec { Damage = 95, Cooldown = 1.2f, Color = new Color(1f, 0.5f, 0.15f), VisualScale = new Vector3(0.18f, 0.2f, 0.7f), MagazineSize = 1, ReloadDuration = 2.8f, ZoomFactor = 2.4f, Reticle = ReticleStyle.Mildot, Pellets = 1, ExplosionRadius = 5f, ProjectileSpeed = 0.4f, ProjectileGravity = 3f, DisplayName = "Lanzacohetes" };
                 case WeaponKind.Shotgun:
-                    return new Spec { Damage = 9, Cooldown = 0.9f, Color = new Color(0.85f, 0.6f, 0.3f), VisualScale = new Vector3(0.14f, 0.16f, 0.6f), MagazineSize = 6, ReloadDuration = 2.4f, ZoomFactor = 1.25f, Reticle = ReticleStyle.Circulo, Pellets = 7, PelletSpreadDeg = 4.5f, ProjectileSpeed = 1f, DisplayName = "Escopeta" };
+                    return new Spec { Damage = 9, Cooldown = 0.9f, Color = new Color(0.85f, 0.6f, 0.3f), VisualScale = new Vector3(0.14f, 0.16f, 0.6f), MagazineSize = 6, ReloadDuration = 2.4f, ZoomFactor = 1.4f, Reticle = ReticleStyle.Circulo, Pellets = 7, PelletSpreadDeg = 4.5f, ProjectileSpeed = 1f, DisplayName = "Escopeta" };
                 case WeaponKind.Sniper:
                     return new Spec { Damage = 70, Cooldown = 1.4f, Color = new Color(0.7f, 0.8f, 0.95f), VisualScale = new Vector3(0.14f, 0.18f, 0.75f), MagazineSize = 5, ReloadDuration = 2.4f, ZoomFactor = 6f, Reticle = ReticleStyle.Telescopica, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Francotirador" };
                 default:

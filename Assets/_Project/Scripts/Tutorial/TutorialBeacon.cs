@@ -19,7 +19,14 @@ namespace SP.Tutorial
         public float Radio = 1.4f;
 
         GameObject columna, anillo, etiqueta;
-        TextMesh mesh;
+        TextMesh mesh, sombraMesh;
+        public float AlfaEtiqueta { get; private set; } = 1f;
+
+        // Item 11: la etiqueta se desvanece cuando cae sobre la mira (centro de la pantalla) para no tapar el blanco.
+        // Radio de 55 px totalmente transparente (piso de 12 %), y a partir de 190 px del centro opaca del todo.
+        public const float RadioDeMiraPx = 55f, RadioLibrePx = 190f, AlfaMinimo = 0.12f;
+        public static float AlfaSegunDistanciaAMira(float distanciaPx)
+            => Mathf.Lerp(AlfaMinimo, 1f, Mathf.Clamp01((distanciaPx - RadioDeMiraPx) / (RadioLibrePx - RadioDeMiraPx)));
         Color color;
         float t;
         static Font fuente;
@@ -97,6 +104,7 @@ namespace SP.Tutorial
             ms.font = fuente; ms.text = texto; ms.fontSize = 64; ms.characterSize = 0.06f;
             ms.anchor = TextAnchor.MiddleCenter; ms.alignment = TextAlignment.Center;
             ms.fontStyle = FontStyle.Bold; ms.color = new Color(0f, 0f, 0f, 0.9f);
+            sombraMesh = ms;
             var rs = sombra.GetComponent<MeshRenderer>();
             rs.sharedMaterial = fuente.material;
             rs.shadowCastingMode = ShadowCastingMode.Off;
@@ -124,6 +132,19 @@ namespace SP.Tutorial
                 float d = Vector3.Distance(cam.transform.position, etiqueta.transform.position);
                 etiqueta.transform.rotation = Quaternion.LookRotation(etiqueta.transform.position - cam.transform.position, cam.transform.up);
                 etiqueta.transform.localScale = Vector3.one * Mathf.Clamp(d * 0.07f, 0.8f, 6f);
+                var sp = cam.WorldToScreenPoint(etiqueta.transform.position);
+                float alfa = 1f;
+                if (sp.z > 0f)
+                {
+                    var centro = new Vector2(cam.pixelWidth * 0.5f, cam.pixelHeight * 0.5f);
+                    alfa = AlfaSegunDistanciaAMira(Vector2.Distance(new Vector2(sp.x, sp.y), centro));
+                }
+                if (!Mathf.Approximately(alfa, AlfaEtiqueta))
+                {
+                    AlfaEtiqueta = alfa;
+                    var cm = color; cm.a = alfa; mesh.color = cm;
+                    if (sombraMesh != null) sombraMesh.color = new Color(0f, 0f, 0f, 0.9f * alfa);
+                }
                 // La columna se aclara al acercarse para no tapar la vista.
                 var rc = columna.GetComponent<MeshRenderer>();
                 float a = Mathf.Clamp01((d - 3f) / 10f) * 0.22f;

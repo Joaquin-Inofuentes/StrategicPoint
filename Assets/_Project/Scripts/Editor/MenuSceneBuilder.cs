@@ -42,7 +42,8 @@ namespace SP.EditorTools
             canvas.planeDistance = 1f;
             var scaler = canvasGO.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            // Misma referencia que el HUD y el menu de pausa (960x540): asi un boton de 260x56 mide lo mismo en las tres pantallas.
+            scaler.referenceResolution = new Vector2(960f, 540f);
             scaler.matchWidthOrHeight = 0.5f;
 
             var titleGO = new GameObject("Title", typeof(Text));
@@ -51,13 +52,32 @@ namespace SP.EditorTools
             titleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             titleTxt.alignment = TextAnchor.MiddleCenter;
             titleTxt.color = Color.white;
-            titleTxt.fontSize = 64;
+            titleTxt.fontSize = 40;
             titleTxt.fontStyle = FontStyle.Bold;
             titleTxt.text = "STRATEGIC POINT";
             var titleRt = titleGO.GetComponent<RectTransform>();
-            titleRt.anchorMin = new Vector2(0.5f, 0.65f);
-            titleRt.anchorMax = new Vector2(0.5f, 0.65f);
-            titleRt.sizeDelta = new Vector2(900f, 100f);
+            titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.5f);
+            titleRt.anchoredPosition = new Vector2(0f, 172f);
+            titleRt.sizeDelta = new Vector2(700f, 70f);
+
+            // Panel oscuro detras de los botones y textos de apoyo: el menu deja de ser botones sobre fondo liso.
+            var panelGO = new GameObject("PanelBotones", typeof(Image));
+            panelGO.transform.SetParent(canvasGO.transform, false);
+            panelGO.GetComponent<Image>().color = new Color(0.13f, 0.15f, 0.2f, 0.9f);
+            var panelRt = panelGO.GetComponent<RectTransform>();
+            panelRt.anchorMin = panelRt.anchorMax = new Vector2(0.5f, 0.5f);
+            panelRt.anchoredPosition = new Vector2(0f, -20f);
+            panelRt.sizeDelta = new Vector2(320f, 218f);
+            var lineaGO = new GameObject("LineaTitulo", typeof(Image));
+            lineaGO.transform.SetParent(canvasGO.transform, false);
+            lineaGO.GetComponent<Image>().color = new Color(0.98f, 0.82f, 0.25f, 0.95f);
+            var lineaRt = lineaGO.GetComponent<RectTransform>();
+            lineaRt.anchorMin = lineaRt.anchorMax = new Vector2(0.5f, 0.5f);
+            lineaRt.anchoredPosition = new Vector2(0f, 142f);
+            lineaRt.sizeDelta = new Vector2(360f, 3f);
+            CrearTextoMenu(canvasGO.transform, "Subtitulo", "COMANDO TACTICO EN PRIMERA PERSONA", 16, FontStyle.Bold, new Color(0.75f, 0.82f, 0.95f), new Vector2(0.5f, 0.5f), new Vector2(0f, 120f), new Vector2(600f, 26f));
+            CrearTextoMenu(canvasGO.transform, "Consejo", "Primera vez? Empieza por el TUTORIAL. En partida: [Esc] pausa, con la lista de CONTROLES", 13, FontStyle.Normal, new Color(0.65f, 0.7f, 0.8f), new Vector2(0.5f, 0.06f), Vector2.zero, new Vector2(760f, 24f));
+            CrearTextoMenu(canvasGO.transform, "Version", "v" + Application.version, 12, FontStyle.Normal, new Color(0.5f, 0.55f, 0.65f), new Vector2(0.98f, 0.03f), Vector2.zero, new Vector2(160f, 20f));
 
             var menuGO = new GameObject("MainMenu", typeof(RectTransform), typeof(MainMenuController));
             menuGO.transform.SetParent(canvasGO.transform, false);
@@ -77,6 +97,21 @@ namespace SP.EditorTools
             RegisterScenesInBuildSettings();
 
             Debug.Log("[MenuSceneBuilder] Escena de menu principal construida en " + ScenePath);
+        }
+
+        static void CrearTextoMenu(Transform padre, string nombre, string texto, int tam, FontStyle estilo, Color color, Vector2 ancla, Vector2 pos, Vector2 caja)
+        {
+            var go = new GameObject(nombre, typeof(Text));
+            go.transform.SetParent(padre, false);
+            var t = go.GetComponent<Text>();
+            t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            t.alignment = nombre == "Version" ? TextAnchor.LowerRight : TextAnchor.MiddleCenter;
+            t.color = color; t.fontSize = tam; t.fontStyle = estilo; t.text = texto;
+            t.raycastTarget = false;
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = ancla;
+            if (nombre == "Version") rt.pivot = new Vector2(1f, 0f);
+            rt.anchoredPosition = pos; rt.sizeDelta = caja;
         }
 
         static Button BuildButton(Transform canvasParent, string name, string label, Vector2 anchoredPos, Color color)

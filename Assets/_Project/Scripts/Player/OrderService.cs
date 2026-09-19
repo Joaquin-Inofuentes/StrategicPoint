@@ -104,11 +104,31 @@ namespace SP.Player
             }
         }
 
+        // Item 62: "IR ALLI" ya no acepta cualquier punto. Si hay malla de navegacion cerca del soldado y el punto pedido
+        // queda a mas de 3 m de ella (adentro de un muro, fuera del mapa), la orden se rechaza con aviso; si queda cerca
+        // se ajusta al punto caminable mas proximo. Sin malla en la escena no se puede validar y se acepta como antes.
+        public const float RadioDeAjusteDePunto = 3f;
+        public static bool PuntoAlcanzable(Vector3 desde, Vector3 punto, out Vector3 ajustado)
+        {
+            ajustado = punto;
+            if (!UnityEngine.AI.NavMesh.SamplePosition(desde, out _, 4f, UnityEngine.AI.NavMesh.AllAreas)) return true;
+            if (!UnityEngine.AI.NavMesh.SamplePosition(punto, out var h, RadioDeAjusteDePunto, UnityEngine.AI.NavMesh.AllAreas)) return false;
+            var plano = new Vector3(h.position.x - punto.x, 0f, h.position.z - punto.z);
+            if (plano.magnitude > 0.3f) ajustado = new Vector3(h.position.x, punto.y, h.position.z);
+            return true;
+        }
+
         public static void IssueMoveOrder(Soldier soldier, Vector3 point, bool queued = false)
         {
             // Cierre por si alguna ruta suelta (la lista del roster, un
             // atajo) apunta al soldado que el jugador tiene en las manos.
             if (LoManejaElJugador(soldier)) return;
+            if (!PuntoAlcanzable(soldier.transform.position, point, out var alcanzable))
+            {
+                SP.UI.AlertQueue.Push("PUNTO INACCESIBLE", SP.UI.AlertPriority.Media, 1.5f);
+                return;
+            }
+            point = alcanzable;
             BajarSiVaMontado(soldier);
             var brain = soldier.GetComponent<AiBrain>();
             // Una orden explícita manda igual aunque el soldado sea el que

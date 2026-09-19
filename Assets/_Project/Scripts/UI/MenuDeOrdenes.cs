@@ -111,6 +111,9 @@ namespace SP.UI
         static readonly Color Dorado = new Color(1f, 0.82f, 0.18f);
         static readonly Color DoradoOscuro = new Color(0.32f, 0.25f, 0.03f, 0.95f);
 
+        // Item 10: letra mas grande (13 -> 15) y anillos mas translucidos, para leer las opciones y ver el mundo detras.
+        public const int TamanoLetra = 15;
+        public const float OpacidadDeFondo = 0.78f;
         const float RadioInterior = 175f;     // borde exterior del anillo de categorias
         const float RadioExterior = 310f;     // borde exterior del abanico de opciones
         const float RadioMaximoCursor = 300f; // alcance del cursor virtual
@@ -379,7 +382,7 @@ namespace SP.UI
                 float centro = AnguloDeSlot(i);
                 rebanadas[i].rectTransform.localRotation = Quaternion.Euler(0f, 0f, -(centro - relleno * 180f));
                 rebanadas[i].color = sel ? new Color(c.r, c.g, c.b, 0.96f)
-                    : ctx ? DoradoOscuro : new Color(0.07f, 0.1f, 0.14f, 0.88f);
+                    : ctx ? DoradoOscuro : new Color(0.07f, 0.1f, 0.14f, OpacidadDeFondo);
                 bool esPista = cat == PistaCategoria && !sel;
                 if (esPista)
                 {
@@ -390,7 +393,7 @@ namespace SP.UI
 
                 float rad = centro * Mathf.Deg2Rad;
                 etiquetas[i].rectTransform.anchoredPosition = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * (RadioInterior * 0.68f);
-                string marca = cat == PistaCategoria && !sel ? "<size=11>▶ ELEGI ESTA</size>" : ctx ? "<size=10>★ AQUI</size>" : "<size=10>" + (i + 1) + "</size>";
+                string marca = cat == PistaCategoria && !sel ? "<size=12>▶ ELEGI ESTA</size>" : ctx ? "<size=11>★ AQUI</size>" : "<size=11>" + (i + 1) + "</size>";
                 etiquetas[i].text = marca + "\n" + Porciones[cat];
                 etiquetas[i].color = sel ? new Color(0.05f, 0.06f, 0.08f) : ctx ? new Color(1f, 0.9f, 0.45f) : Color.white;
             }
@@ -409,7 +412,7 @@ namespace SP.UI
                 var c = ctx ? Dorado : Acentos[Seleccion];
                 bool elegida = opcionesActuales[j] == Sub;
                 opciones[j].rectTransform.localRotation = Quaternion.Euler(0f, 0f, -(centro - AnchoDeOpcion * 0.5f));
-                opciones[j].color = elegida ? new Color(c.r, c.g, c.b, 0.97f) : ctx ? DoradoOscuro : new Color(0.09f, 0.12f, 0.17f, 0.9f);
+                opciones[j].color = elegida ? new Color(c.r, c.g, c.b, 0.97f) : ctx ? DoradoOscuro : new Color(0.09f, 0.12f, 0.17f, OpacidadDeFondo + 0.02f);
                 if (!elegida && Seleccion == PistaCategoria && opcionesActuales[j] == PistaOpcion)
                 {
                     float latido = (Mathf.Sin(Time.unscaledTime * 6f) + 1f) * 0.5f;
@@ -546,7 +549,7 @@ namespace SP.UI
             {
                 var img = NuevaRebanada(go.transform, "Categoria" + (i + 1), interior, RadioInterior, fill);
                 menu.rebanadas[i] = img;
-                var t = NuevoTexto(go.transform, "TextoCategoria" + (i + 1), font, 13, new Vector2(120f, 60f));
+                var t = NuevoTexto(go.transform, "TextoCategoria" + (i + 1), font, TamanoLetra, new Vector2(132f, 66f));
                 t.text = $"<size=10>{i + 1}</size>\n{Porciones[i]}";
                 menu.etiquetas[i] = t;
             }
@@ -559,7 +562,7 @@ namespace SP.UI
             for (int j = 0; j < MaxOpcionesPorCategoria; j++)
             {
                 menu.opciones[j] = NuevaRebanada(go.transform, "Opcion" + (j + 1), exterior, RadioExterior, fillOp);
-                menu.etiquetasOpcion[j] = NuevoTexto(go.transform, "TextoOpcion" + (j + 1), font, 13, new Vector2(120f, 52f));
+                menu.etiquetasOpcion[j] = NuevoTexto(go.transform, "TextoOpcion" + (j + 1), font, TamanoLetra, new Vector2(132f, 58f));
                 menu.opciones[j].gameObject.SetActive(false);
                 menu.etiquetasOpcion[j].gameObject.SetActive(false);
             }
