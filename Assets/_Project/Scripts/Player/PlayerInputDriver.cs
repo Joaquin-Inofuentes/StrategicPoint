@@ -299,6 +299,94 @@ namespace SP.Player
         public void OcultarProgresoDemolicion() { if (circuloRevivir != null) circuloRevivir.SetVisible(false); }
 
         // Zoom real y reticula del arma equipada (ver UI/MirillaView).
+        bool saltandoAntes;
+
+        // Tutorial: mientras esta en true, subir/bajar del tanque y usar la ametralladora fija SOLO se hacen desde
+        // el radial [Q] (el atajo [E] avisa y no hace nada), para que el jugador practique el comando.
+        public bool SoloRadial;
+        float ultimoAvisoSoloRadial = -9f;
+        bool BloqueaAtajo(string pista)
+        {
+            if (!SoloRadial) return false;
+            if (Time.time - ultimoAvisoSoloRadial > 1.5f) { ultimoAvisoSoloRadial = Time.time; RejectOrder(pista); }
+            return true;
+        }
+
+        // ------------------------------------------------------------------
+        // Granada de mano [G]: se MANTIENE para ver la curva y el radio de la explosion, se SUELTA
+        // para lanzarla. El clic derecho o [Esc] la guarda de nuevo sin gastarla.
+        // ------------------------------------------------------------------
+        bool granadaApuntando;
+        public bool GranadaApuntando => granadaApuntando;
+        public int GranadasLanzadasPorElJugador { get; private set; }
+
+        Vector3 OrigenDeGranada(Soldier yo) => yo.transform.position + Vector3.up * 0.55f + yo.transform.forward * 0.55f + yo.transform.right * 0.2f;
+
+        Vector3 PuntoDeGranada(Ray ray, AimResult result, Vector3 origen)
+        {
+            Vector3 punto = result.Type != AimTargetType.None ? result.Point : ray.origin + ray.direction * Granada.AlcanceMaximo;
+            var plano = new Vector3(punto.x - origen.x, 0f, punto.z - origen.z);
+            if (plano.magnitude > Granada.AlcanceMaximo)
+            {
+                plano = plano.normalized * Granada.AlcanceMaximo;
+                punto = new Vector3(origen.x + plano.x, punto.y, origen.z + plano.z);
+            }
+            return punto;
+        }
+
+        void CancelarGranada()
+        {
+            if (!granadaApuntando) return;
+            granadaApuntando = false;
+            TrayectoriaGranadaView.Asegurar().Ocultar();
+        }
+
+        void ActualizarGranada(Keyboard kb, Ray ray, AimResult result)
+        {
+            // Solo en Play: la vista previa crea objetos y en Edit mode (la suite headless) quedarian sueltos.
+            if (!Application.isPlaying) return;
+            var yo = Brain.Current;
+            var vista = TrayectoriaGranadaView.Asegurar();
+            bool bloqueado = TorretaFijaActiva || (OrdenesMenu != null && OrdenesMenu.Abierto) || yo == null || yo.Weapon == null;
+            if (bloqueado) { CancelarGranada(); return; }
+
+            var tecla = KeyBindings.Get(KeyBindings.Granada);
+            bool apretada = tecla != Key.None && kb[tecla].isPressed;
+
+            if (!granadaApuntando && KeyBindings.WasPressed(KeyBindings.Granada))
+            {
+                if (yo.Weapon.Granadas <= 0)
+                {
+                    Feedback.Accion(SfxKind.EmptyClick, "SIN GRANADAS", yo.transform.position, Feedback.Warn, aviso: true, pulso: false, volumen: 0.6f);
+                    return;
+                }
+                granadaApuntando = true;
+                Feedback.Accion(SfxKind.GrenadePin, "GRANADA LISTA · SOLTA [G] PARA LANZAR", yo.transform.position, Feedback.Warn, aviso: true, pulso: true, volumen: 0.8f);
+            }
+            if (!granadaApuntando) return;
+
+            var mouse = Mouse.current;
+            if (kb.escapeKey.wasPressedThisFrame || (mouse != null && mouse.rightButton.wasPressedThisFrame))
+            {
+                CancelarGranada();
+                Feedback.Accion(SfxKind.RadialCancel, "GRANADA GUARDADA", yo.transform.position, Feedback.Info, aviso: true, pulso: false, volumen: 0.5f);
+                return;
+            }
+
+            var origen = OrigenDeGranada(yo);
+            var v = Granada.VelocidadHacia(origen, PuntoDeGranada(ray, result, origen));
+            vista.Mostrar(origen, v, yo.transform);
+            if (apretada) return;
+
+            // Soltada: se lanza.
+            CancelarGranada();
+            if (!yo.Weapon.ConsumirGranada()) return;
+            Granada.Lanzar(origen, v, yo);
+            GranadasLanzadasPorElJugador++;
+            Feedback.Visual($"GRANADA · QUEDAN {yo.Weapon.Granadas}", yo.transform.position, Feedback.Warn, aviso: true, pulso: false);
+            Rig.KickDirectional(-yo.transform.forward, 0.06f);
+        }
+
         void ActualizarMirilla(AimResult result)
         {
             if (Brain.Current == null || Rig == null) return;
@@ -311,7 +399,11 @@ namespace SP.Player
                       : result.Type == AimTargetType.Ally ? new Color(0.45f, 1f, 0.55f)
                       : new Color(1f, 1f, 1f, 0.95f);
             mirilla.Actualizar(Rig.EstaConZoom && Rig.AdsBlend > 0.55f, spec.Reticle, tinte);
-            if (AimUiRef != null) AimUiRef.SetBaseCrosshairHidden(mirilla.Alfa > 0.5f);
+            if (AimUiRef != null)
+            {
+                AimUiRef.SetCrosshairStyle(MirillaView.SpriteDe(spec.Reticle), spec.Reticle == ReticleStyle.Punto ? 46f : 54f);
+                AimUiRef.SetBaseCrosshairHidden(mirilla.Alfa > 0.5f);
+            }
         }
 
         // La optica del arma. Publica para que la suite la pueda mirar sin
@@ -1101,9 +1193,19 @@ namespace SP.Player
             // vive solo adentro de UpdateFps.
             if (kb.spaceKey.wasPressedThisFrame && !TorretaFijaActiva)
             {
+                bool yaSaltaba = Brain.Current.Motor.IsJumping;
                 Brain.Current.Motor.Jump();
-                Feedback.Accion(SfxKind.Crouch, null, Brain.Current.transform.position, Feedback.Info, aviso: false, pulso: false, volumen: 0.25f);
+                if (!yaSaltaba && Brain.Current.Motor.IsJumping)
+                    Feedback.Accion(SfxKind.Jump, null, Brain.Current.transform.position, Feedback.Info, aviso: false, pulso: false, volumen: 0.6f);
             }
+            // Aterrizaje: golpe sordo y un sacudon leve de camara al volver a apoyar los pies.
+            bool enElAire = Brain.Current.Motor.IsJumping;
+            if (saltandoAntes && !enElAire)
+            {
+                Feedback.Accion(SfxKind.Land, null, Brain.Current.transform.position, Feedback.Info, aviso: false, pulso: false, volumen: 0.7f);
+                Rig.KickDirectional(Vector3.down, 0.08f);
+            }
+            saltandoAntes = enElAire;
 
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked)
             {
@@ -1143,7 +1245,7 @@ namespace SP.Player
                 bool yaRecargaba = Brain.Current.Weapon.IsReloading;
                 Brain.Current.Weapon.Reload();
                 if (!yaRecargaba && Brain.Current.Weapon.IsReloading)
-                    Feedback.Accion(SfxKind.Reload, "RECARGANDO", Brain.Current.transform.position, Feedback.Warn, aviso: false, pulso: false, volumen: 0.45f);
+                    Feedback.Visual("RECARGANDO", Brain.Current.transform.position, Feedback.Warn, aviso: false, pulso: false);   // el sonido lo pone WeaponHolder.StartReload
             }
             // La vida del poseido vive SOLO en el roster (abajo a la izquierda):
             // el panel "VIDA" de la esquina derecha repetia el mismo dato.
@@ -1169,7 +1271,7 @@ namespace SP.Player
                 if (!fired && emptyBeforeFire && emptyClickCooldown <= 0f)
                 {
                     emptyClickCooldown = 0.3f;
-                    AudioSource.PlayClipAtPoint(GenericSfx.Get(SfxKind.EmptyClick), Rig.transform.position, 0.5f);
+                    Brain.Current.Weapon.SonarGatilloVacio();
                 }
             }
             emptyClickCooldown = Mathf.Max(0f, emptyClickCooldown - Time.deltaTime);
@@ -1205,8 +1307,10 @@ namespace SP.Player
             // distancia equipada -- es una accion aparte con su propio
             // enfriamiento (ver WeaponHolder.TryMelee), asi que funciona
             // igual sin importar si llevas rifle, pistola o pesada.
-            if (KeyBindings.WasPressed(KeyBindings.AtaqueCuchillo))
+            if (KeyBindings.WasPressed(KeyBindings.AtaqueCuchillo) && !(OrdenesMenu != null && OrdenesMenu.Abierto))
                 Brain.Current.Weapon.TryMelee();
+
+            ActualizarGranada(kb, ray, result);
 
             if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.Poseer) && result.Type == AimTargetType.Ally)
                 TryPossess(result.Soldier);
@@ -1306,7 +1410,8 @@ namespace SP.Player
             // Ametralladora fija: [E] la ocupa (apuntandole o parado junto a ella) y [E] la deja.
             if (TorretaFijaActiva)
             {
-                if (KeyBindings.WasPressed(KeyBindings.Interactuar) || KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo)) SalirDeTorreta();
+                if (KeyBindings.WasPressed(KeyBindings.Interactuar) || KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo))
+                { if (!BloqueaAtajo("USA EL RADIAL: [Q] → TORRETA FIJA → SALIR")) SalirDeTorreta(); }
                 else SetInstructionText("[Mouse] apuntar (arco limitado) · [Click] disparar · [Click der.] mirar por la mira · [R] recargar · [E] salir de la torreta · [TAB] vista RTS");
                 if (TorretaFijaActiva) return;
             }
@@ -1314,7 +1419,10 @@ namespace SP.Player
             {
                 var t = result.Type == AimTargetType.Torreta ? result.Torreta : TorretaFija.MasCercana(Brain.Current.transform.position, TorretaFija.AlcanceDeUso);
                 if (t != null && FindNearestPickup(Brain.Current.transform.position) == null && !(Vehicle != null && Vector3.Distance(Brain.Current.transform.position, Vehicle.transform.position) <= interactRadius))
-                { UsarTorreta(t); return; }
+                {
+                    if (BloqueaAtajo("USA EL RADIAL: [Q] → TORRETA FIJA → USAR")) return;
+                    UsarTorreta(t); return;
+                }
             }
 
             // A4: revivir a un caido tiene prioridad sobre subir al vehiculo
@@ -1342,12 +1450,12 @@ namespace SP.Player
             // romper la memoria muscular de golpe.
             if (KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo) && nearVehicle != null)
             {
-                EnterVehicle(nearVehicle);
+                if (!BloqueaAtajo("USA EL RADIAL: [Q] → TANQUE → SUBIRME YO")) EnterVehicle(nearVehicle);
             }
             else if (KeyBindings.WasPressed(KeyBindings.Interactuar))
             {
                 if (nearPickup != null) nearPickup.EquipOn(Brain.Current.Weapon, Brain.Current.Id);
-                else if (nearVehicle != null) EnterVehicle(nearVehicle);
+                else if (nearVehicle != null && !BloqueaAtajo("USA EL RADIAL: [Q] → TANQUE → SUBIRME YO")) EnterVehicle(nearVehicle);
             }
 
             var torretaCerca = TorretaFija.MasCercana(Brain.Current.transform.position, TorretaFija.AlcanceDeUso);
@@ -2100,11 +2208,13 @@ namespace SP.Player
                     int cat = OrdenesMenu.Seleccion, sub = OrdenesMenu.Sub;
                     bool afuera = OrdenesMenu.EnAnilloExterior;
                     OrdenesMenu.Cerrar();
-                    if (OrdenesMenu.EsRadial && cat >= 0)
+                    bool intento = OrdenesMenu.EsRadial && cat >= 0 && (sub >= 0 || !afuera);
+                    if (intento)
                     {
                         if (sub >= 0) EjecutarOrdenRadial(cat, sub);
-                        else if (!afuera) EjecutarOrdenRadial(cat, PrimeraOpcionVisible(cat));
+                        else EjecutarOrdenRadial(cat, PrimeraOpcionVisible(cat));
                     }
+                    else AudioDirector.PlayUi2D(SfxKind.RadialCancel, 0.5f, 0.8f);   // soltar sin elegir = cancelar (se oye)
                     aimCongelado = null;
                 }
                 return;
@@ -2216,9 +2326,39 @@ namespace SP.Player
 
         public bool EjecutarOrdenRadial(int categoria, int sub = 0)
         {
+            var aim = aimCongelado ?? ultimoResultadoDeMira;
             bool ok = EjecutarOrdenRadialInterno(categoria, sub);
-            if (ok) OrdenRadialEjecutada?.Invoke(categoria, sub);
+            if (ok)
+            {
+                ConfirmarOrdenRadial(categoria, sub, aim);
+                OrdenRadialEjecutada?.Invoke(categoria, sub);
+            }
             return ok;
+        }
+
+        public static readonly Color[] ColorDeCategoria =
+        {
+            new Color(0.35f, 0.75f, 1f),   // 0 IR ALLI
+            new Color(0.30f, 0.80f, 1f),   // 1 CUBRIRSE
+            new Color(1f, 0.35f, 0.30f),   // 2 ATACAR
+            new Color(0.85f, 0.85f, 0.95f),// 3 POSICION
+            new Color(0.35f, 0.95f, 0.5f), // 4 CURAR
+            new Color(1f, 0.82f, 0.25f),   // 5 TANQUE
+            new Color(0.75f, 0.55f, 1f),   // 6 POSEER
+            new Color(1f, 0.6f, 0.2f),     // 7 DEMOLER
+            new Color(1f, 0.82f, 0.25f),   // 8 TORRETA
+        };
+
+        // Toda orden del radial confirma con un "ping" de interfaz, el nombre de la opcion flotando en el
+        // mundo y un pulso de color de la categoria en el punto de la accion (lo apuntado, o el soldado).
+        void ConfirmarOrdenRadial(int categoria, int sub, AimResult aim)
+        {
+            if (categoria < 0 || categoria >= ColorDeCategoria.Length) return;
+            var color = ColorDeCategoria[categoria];
+            var donde = (categoria == 6 || (categoria == 4 && sub == 0)) ? (Brain.Current != null ? Brain.Current.transform.position : transform.position)
+                                                                       : PuntoApuntadoParaOrdenes(aim);
+            string nombre = MenuDeOrdenes.NombreDeOpcion(categoria, sub);
+            Feedback.Accion(SfxKind.RadialConfirm, string.IsNullOrEmpty(nombre) ? null : nombre, donde, color, aviso: false, pulso: true, volumen: 0.45f);
         }
 
         bool EjecutarOrdenRadialInterno(int categoria, int sub)
@@ -2545,7 +2685,7 @@ namespace SP.Player
             {
                 bool cambio = Brain.Current.Weapon.CurrentWeaponKind != kind;
                 Brain.Current.Weapon.EquipFromLoadout(idx);
-                if (cambio) Feedback.Accion(SfxKind.WeaponSwitch, $"[{idx + 1}] {kind.ToString().ToUpperInvariant()}", null, Feedback.Info, aviso: true, pulso: false, volumen: 0.4f);
+                if (cambio) Feedback.Visual($"[{idx + 1}] {WeaponCatalog.Get(kind).DisplayName.ToUpperInvariant()}", null, Feedback.Info, aviso: true, pulso: false);   // suena el desenfunde propio del arma
                 return;
             }
 
@@ -2619,7 +2759,7 @@ namespace SP.Player
                 case AimTargetType.Caido:
                     return "Aliado caido   ·   [Q] mantener: radial → REANIMAR (si queda un medico)   ·   [E] mantener 5 s: reanimarlo vos   ·   [TAB] vista RTS";
                 default:
-                    return "[WASD] moverse   ·   [Shift] correr   ·   [Ctrl] agacharse   ·   [Click] disparar   ·   [Click der.] mantener: mirar por la mira   ·   [Q] mantener: radial   ·   [C] mantener: coberturas   ·   [TAB] vista RTS   ·   [F4] modo dios";
+                    return "[WASD] moverse   ·   [Shift] correr   ·   [Ctrl] agacharse   ·   [F] cuchillo   ·   [G] granada   ·   [Click] disparar   ·   [Click der.] mantener: mirar por la mira   ·   [Q] mantener: radial   ·   [C] mantener: coberturas   ·   [TAB] vista RTS   ·   [F4] modo dios";
             }
         }
 
@@ -2807,7 +2947,10 @@ namespace SP.Player
             }
 
             if (KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo)
-                || KeyBindings.WasPressed(KeyBindings.Interactuar)) { ExitVehicle(); return; }
+                || KeyBindings.WasPressed(KeyBindings.Interactuar))
+            {
+                if (!BloqueaAtajo("USA EL RADIAL: [Q] → TANQUE → BAJARME YO")) { ExitVehicle(); return; }
+            }
 
             // Pedido explicito: "si estoy adentro, como digo que entren
             // los que esten cerca?" -- [U] no vivia aca, solo en

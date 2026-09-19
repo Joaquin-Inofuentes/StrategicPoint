@@ -62,6 +62,20 @@ namespace SP.Core
         public MeleeAttackEvent(int attackerId, bool hitSomething) { AttackerId = attackerId; HitSomething = hitSomething; }
     }
 
+    // Granada de mano ([G], ronda 7): lanzada y explotada. El tutorial y la presentacion escuchan estos dos.
+    public readonly struct GrenadeThrownEvent
+    {
+        public readonly int OwnerId;
+        public GrenadeThrownEvent(int ownerId) => OwnerId = ownerId;
+    }
+
+    public readonly struct GrenadeExplodedEvent
+    {
+        public readonly int OwnerId;
+        public readonly Vector3 Position;
+        public GrenadeExplodedEvent(int ownerId, Vector3 position) { OwnerId = ownerId; Position = position; }
+    }
+
     public readonly struct ProjectileReturnedEvent
     {
         public readonly int ProjectileInstanceId;

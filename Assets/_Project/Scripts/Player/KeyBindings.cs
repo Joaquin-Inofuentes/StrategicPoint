@@ -45,6 +45,8 @@ namespace SP.Player
         // para no dejar una tecla remapeada por el jugador apuntando a
         // una accion que ya no existe.
         public const string AtaqueCuchillo = "camara_vehiculo";
+        // Granada de mano: se MANTIENE para ver la curva y se suelta para lanzar (ronda 7).
+        public const string Granada = "granada";
         public const string Recentrar = "recentrar";
         public const string CancelarOrden = "cancelar_orden";
         public const string Reagrupar = "reagrupar";
@@ -74,7 +76,7 @@ namespace SP.Player
             // estuviera libre para remapear cualquiera de las dos sin
             // pisar a la otra. O esta libre (no tiene default asignado).
             { SubirBajarVehiculo, Key.O },
-            { Poseer, Key.F },
+            { Poseer, Key.None },   // heredada: poseer ahora es del radial; [F] es el cuchillo
             { CiclarPosesion, Key.Q },
             { CiclarPosesionAtras, Key.Z },
             { PoseerMasCercano, Key.None },   // heredada: [C] pasa a ser la vista tactica
@@ -88,7 +90,8 @@ namespace SP.Player
             // pasa a [Espacio] (freno de mano; Espacio solo salta a pie y
             // recentra en RTS, nunca dentro del vehiculo).
             { Frenar, Key.Space },
-            { AtaqueCuchillo, Key.V },
+            { AtaqueCuchillo, Key.F },
+            { Granada, Key.G },
             { Recentrar, Key.Space },
             { CancelarOrden, Key.X },
             { Reagrupar, Key.Y },   // Z ya es ciclar-posesion-atras y las dos se leen en RTS

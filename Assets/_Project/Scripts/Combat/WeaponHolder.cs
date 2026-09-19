@@ -163,6 +163,7 @@ namespace SP.Combat
         // números y el color de lo que dispara. Nada más.
         public void EquipWeapon(WeaponKind kind, int weaponDamage, float cooldown, Color color)
         {
+            bool cambioDeArma = kind != CurrentWeaponKind;
             CurrentWeaponKind = kind;
             damage = weaponDamage;
             fireCooldown = cooldown;
@@ -222,6 +223,8 @@ namespace SP.Combat
             // raro, y sin owner no hay a quien avisarle este evento.
             if (owner == null) Bootstrap();
             if (owner != null) EventBus.Instance.Publish(new WeaponChangedEvent(owner.Id, kind));
+            // El desenfunde suena solo para el arma que el JUGADOR cambia (no cuando la IA arma su loadout).
+            if (cambioDeArma && owner != null && owner.Brain != null && owner.Brain.IsPossessedByPlayer) SonarDesenfunde();
         }
 
         // Cuelga la malla REAL (multi-parte: cañon, cuerpo, culata, etc.)
@@ -401,6 +404,7 @@ namespace SP.Combat
 
             if (best != null) best.Health.TakeDamage(KnifeDamage, owner.Id);
             EventBus.Instance.Publish(new MeleeAttackEvent(owner.Id, best != null));
+            SP.Presentation.CuchilloFx.Tajo(owner, best);
             return true;
         }
 
@@ -518,7 +522,35 @@ namespace SP.Combat
         {
             IsReloading = true;
             reloadTimer = reloadDuration;
+            // Cada arma suena distinto al recargar (cargador, cerrojo, cartuchos, tapa de la caja...).
+            if (Application.isPlaying)
+                SP.Presentation.AudioDirector.PlayClipAt(SP.Presentation.GenericSfx.GetWeaponReload(CurrentWeaponKind), Muzzle != null ? Muzzle.position : transform.position, 0.75f, 0.55f);
         }
+
+        // Sacar el arma (1/2/3, rueda o recoger una): roce de correa y el "clac" propio de cada una.
+        public void SonarDesenfunde()
+        {
+            if (!Application.isPlaying) return;
+            SP.Presentation.AudioDirector.PlayClipAt(SP.Presentation.GenericSfx.GetWeaponDraw(CurrentWeaponKind), Muzzle != null ? Muzzle.position : transform.position, 0.7f, 0.6f);
+        }
+
+        // Gatillo apretado sin balas: clic seco, distinto segun el arma.
+        public void SonarGatilloVacio()
+        {
+            if (!Application.isPlaying) return;
+            SP.Presentation.AudioDirector.PlayClipAt(SP.Presentation.GenericSfx.GetWeaponDry(CurrentWeaponKind), Muzzle != null ? Muzzle.position : transform.position, 0.7f, 0.7f);
+        }
+
+        // Granadas de mano ([G]): tres por soldado.
+        public const int GranadasMaximas = 3;
+        public int Granadas { get; private set; } = GranadasMaximas;
+        public bool ConsumirGranada()
+        {
+            if (Granadas <= 0) return false;
+            Granadas--;
+            return true;
+        }
+        public void ReponerGranadas(int cantidad = GranadasMaximas) => Granadas = Mathf.Clamp(cantidad, 0, GranadasMaximas);
 
         // Antes solo se recargaba solo al vaciar el cargador del todo. No
         // habia forma de rellenar un cargador a medias antes de entrar en

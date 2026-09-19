@@ -142,6 +142,7 @@ namespace SP.UI
             { KeyBindings.Controles, "Ver controles" },
             { KeyBindings.Frenar, "Frenar" },
             { KeyBindings.AtaqueCuchillo, "Ataque de cuchillo" },
+            { KeyBindings.Granada, "Granada (mantener y soltar)" },
             { KeyBindings.Recentrar, "Recentrar camara" },
             { KeyBindings.CancelarOrden, "Cancelar orden" },
             { KeyBindings.Reagrupar, "Reagrupar" },
