@@ -1,6 +1,6 @@
 # Ronda 9: mejoras de la auditoria de 100 puntos
 
-Resumen honesto: de los 100 puntos, **67 hechos, 18 que ya estaban resueltos, 9 parciales y 6 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless termina en OK con la FASE 18 y la FASE 19.
+Resumen honesto: de los 100 puntos, **68 hechos, 18 que ya estaban resueltos, 8 parciales y 6 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless termina en OK con la FASE 18 y la FASE 19.
 
 ## Que se hizo
 
@@ -32,11 +32,13 @@ Resumen honesto: de los 100 puntos, **67 hechos, 18 que ya estaban resueltos, 9 
 |---|---|
 | ![4x3](../Assets/Validacion/Ronda9/hud_4x3.png) | ![21x9](../Assets/Validacion/Ronda9/hud_21x9.png) |
 
+**HUD a 3840x2160** (build, supersampling x2): ![4k](../Assets/Validacion/Ronda9/hud_4k.jpg)
+
 ## Lo que NO esta hecho ni verificado
 
 * **Arte** (36, 44, 55, 21): modelos, animaciones, ragdoll, arte y musica de menu. No se pueden resolver desde codigo.
 * **Oido humano** (65): los sonidos se verificaron por metricas; solo una persona puede juzgarlos.
-* **4K** (19): no se probo (monitor 1080p).
-* **CI** (81): el flujo `.github/workflows/tests.yml` esta escrito pero **nunca se ejecuto en GitHub**.
+* **4K** (19): renderizado a 3840x2160 por supersampling desde el build; no se vio en un monitor 4K fisico.
+* **CI** (81): el flujo SI corre en GitHub, pero falla por falta del secreto `UNITY_LICENSE` (corregido: ahora avisa y se salta la suite). Cargar la licencia es del dueno del repo.
 * **Sin hacer**: localizacion completa del tutorial y las misiones (27, parcial), caida con dano (51, no aplica: no hay caidas), tutorial 100 % con gestos reales (95), canvases (77).
 * Los servidores MCP de GitHub, Sentry y Supabase piden autorizacion y no se usaron.

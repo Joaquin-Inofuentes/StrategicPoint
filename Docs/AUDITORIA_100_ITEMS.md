@@ -2,7 +2,7 @@
 
 Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. **Estados**: HECHO (implementado y con prueba o captura), YA ESTABA (al verificarlo en el codigo ya estaba resuelto), PARCIAL (mejorado, con lo que falta dicho), NO (no hecho o no aplica, con el motivo).
 
-**Resumen**: HECHO: 67, YA ESTABA: 18, PARCIAL: 9, NO: 6 (de 100).
+**Resumen**: HECHO: 68, YA ESTABA: 18, PARCIAL: 8, NO: 6 (de 100).
 
 
 ## HUD y pantallas
@@ -27,7 +27,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 16 | No hay indicador de dirección de daño ni viñeta al recibir golpes. | YA ESTABA | Verificado en el codigo/suite |
 | 17 | [F] y [G] no muestran su enfriamiento. | YA ESTABA | Verificado en el codigo/suite |
 | 18 | El HUD está saturado (misión, roster, minimapa, enemigos, arma, atajos) y no hay modo mínimo. | HECHO |  |
-| 19 | Solo probé 1280×720; falta 4:3, 21:9 y 4K. | PARCIAL | Probado en build real a 4:3, 16:9 y ~21:9 (capturas en Ronda9). 4K NO probado: el monitor es 1080p. |
+| 19 | Solo probé 1280×720; falta 4:3, 21:9 y 4K. | HECHO | Probado en build real a 4:3, 16:9 y ~21:9, y a **3840x2160** (captura con supersampling x2 desde el build, `-spshot ruta -spsuper 2`; el monitor es 1080p, asi que no se vio en una pantalla 4K fisica). Capturas en Ronda9. |
 | 20 | Los cuadrados azules de aliados fuera de pantalla no tienen etiqueta ni distancia. | HECHO |  |
 
 ## Menús y sistema
@@ -124,7 +124,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 78 | No probé ningún build standalone; todo se validó en el Editor. | HECHO |  |
 | 79 | No se fija `targetFrameRate` ni vSync. | HECHO |  |
 | 80 | La suite deja advertencias en consola: material instanciado en modo Edit, `Destroy` en modo Edit y `NullReferenceException`. | HECHO |  |
-| 81 | La carpeta `Tests` está vacía y no hay CI. | PARCIAL | Hay Tests/LEAME.md y .github/workflows/tests.yml, pero el CI NO se ejecuto nunca en GitHub (necesita licencia de Unity como secreto). |
+| 81 | La carpeta `Tests` está vacía y no hay CI. | PARCIAL | Hay Tests/LEAME.md y `.github/workflows/tests.yml`. **Correccion**: el flujo SI se ejecuto en GitHub (lo verifique con `gh run list`) y fallo con "Missing Unity License File": falta cargar el secreto `UNITY_LICENSE`. Ahora avisa y se salta la suite en vez de fallar en rojo; con la licencia cargada correra de verdad. Eso solo lo puede hacer el dueno del repo. |
 | 82 | `PlayerInputDriver.cs` tiene 4381 líneas y conviene partirlo. | HECHO |  |
 | 83 | `AiBrain.cs` tiene 1750 líneas y `HeadlessTestRunner.cs` 6252, también para partir. | HECHO |  |
 | 84 | Los estáticos de juego (`ModoDios`, `Health.RegeneracionPermitida`, `Demolicion.Segundos`) sobreviven entre Play y ya causaron falsos fallos en la suite. | HECHO |  |
@@ -137,7 +137,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 86 | `InputSystem_Actions.inputactions` es de plantilla y no se usa: el juego lee `Keyboard` directo. | YA ESTABA | Verificado en el codigo/suite |
 | 87 | Quedan restos de plantilla: `Readme.asset`, `New Terrain.asset` y `Adaptive Performance`. | HECHO |  |
 | 88 | `0_Plan de mejoras.txt` está suelto en `Assets`; debería ir en `Docs`. | HECHO |  |
-| 89 | `ARTS` pesa 339 MB y parece que solo se usa una parte. | PARCIAL | Se midio el uso de ARTS y se informo; NO se borro nada (decidirlo requiere revision de arte). |
+| 89 | `ARTS` pesa 339 MB y parece que solo se usa una parte. | PARCIAL | Se midio el uso de ARTS y se informo; NO se borro nada (decidirlo requiere revision de arte). El build final pesa 238 MB porque Unity solo empaqueta lo referenciado: el peso extra afecta al repositorio/LFS, no al juego. |
 | 90 | El cuchillo reutiliza el id de PlayerPrefs `camara_vehiculo`: quien remapeó esa tecla hereda un cuchillo en una tecla rara. | HECHO |  |
 | 91 | Un comentario de `KeyBindings` dice "V = cuchillo" pero es F. | HECHO |  |
 | 92 | No hay README raíz ni índice de los documentos de las rondas. | HECHO |  |

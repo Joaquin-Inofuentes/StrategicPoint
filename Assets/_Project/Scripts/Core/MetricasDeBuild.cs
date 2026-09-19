@@ -25,6 +25,7 @@ namespace SP.Core
             {
                 if (args[i] == "-spmetrics") pedido = true;
                 if (args[i] == "-spshot" && i + 1 < args.Length) { pedido = true; rutaCaptura = args[i + 1]; }
+                if (args[i] == "-spsuper" && i + 1 < args.Length) int.TryParse(args[i + 1], out superCaptura);
             }
             if (!pedido) return;
             var go = new GameObject("MetricasDeBuild");
@@ -33,6 +34,7 @@ namespace SP.Core
         }
 
         static string rutaCaptura;
+        static int superCaptura = 1;
 
         class Corredor : MonoBehaviour
         {
@@ -50,7 +52,7 @@ namespace SP.Core
                 if (!string.IsNullOrEmpty(rutaCaptura))
                 {
                     // Modo captura (`-spshot ruta.png`): una imagen del HUD a la resolucion pedida, para revisar otras proporciones.
-                    ScreenCapture.CaptureScreenshot(rutaCaptura);
+                    ScreenCapture.CaptureScreenshot(rutaCaptura, Mathf.Clamp(superCaptura, 1, 4));
                     yield return new WaitForSecondsRealtime(1.5f);
                     Application.Quit();
                     yield break;

@@ -1,6 +1,7 @@
 # Corre la suite del juego en cada push y pull request.
-# NO SE PUDO PROBAR AQUI: necesita una licencia de Unity cargada como secretos del repositorio
-# (UNITY_LICENSE, UNITY_EMAIL, UNITY_PASSWORD) segun https://game-ci.com/docs/github/activation
+# Necesita una licencia de Unity cargada como secretos del repositorio (UNITY_LICENSE, UNITY_EMAIL, UNITY_PASSWORD)
+# segun https://game-ci.com/docs/github/activation. Mientras no esten cargados el trabajo avisa y se salta la suite
+# (antes fallaba en rojo en cada push con "Missing Unity License File"); con los secretos corre y falla si algo falla.
 name: Pruebas
 on:
   push:
@@ -10,11 +11,19 @@ on:
 jobs:
   suite:
     runs-on: ubuntu-latest
+    env:
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
     steps:
+      - name: Aviso si faltan los secretos de Unity
+        if: env.UNITY_LICENSE == ''
+        run: |
+          echo "::warning::Sin secreto UNITY_LICENSE, la suite NO se ejecuto en GitHub. Cargalo en Settings > Secrets (ver game-ci.com/docs/github/activation)."
       - uses: actions/checkout@v4
+        if: env.UNITY_LICENSE != ''
         with:
           lfs: true
       - uses: actions/cache@v4
+        if: env.UNITY_LICENSE != ''
         with:
           path: Library
           key: Library-${{ hashFiles('Packages/manifest.json', 'ProjectSettings/ProjectVersion.txt') }}
@@ -22,6 +31,7 @@ jobs:
       # game-ci ejecuta el metodo y falla el trabajo si Unity sale con codigo distinto de 0
       # (RunAll sale con 0 si toda la suite paso y con 1 si algo fallo).
       - uses: game-ci/unity-builder@v4
+        if: env.UNITY_LICENSE != ''
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
