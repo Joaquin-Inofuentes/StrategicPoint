@@ -1,6 +1,6 @@
 # Ronda 9: mejoras de la auditoria de 100 puntos
 
-Resumen honesto: de los 100 puntos, **65 hechos, 16 que ya estaban resueltos, 10 parciales y 9 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless (`Strategic Point/Run All Tests Headless`) termina en OK con la FASE 18 y la FASE 19 nuevas.
+Resumen honesto: de los 100 puntos, **65 hechos, 16 que ya estaban resueltos, 11 parciales y 8 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless termina en OK con la FASE 18 y la FASE 19.
 
 ## Que se hizo
 
