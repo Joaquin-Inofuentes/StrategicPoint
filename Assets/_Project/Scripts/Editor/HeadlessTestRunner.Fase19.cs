@@ -346,6 +346,20 @@ namespace SP.EditorTools
             Check("El ambiente del menu no se crea fuera de Play", SP.Presentation.MenuAmbiente.Crear(UnityEngine.SceneManagement.SceneManager.GetActiveScene()) == null);
             var codigoMenu = System.IO.File.ReadAllText("Assets/_Project/Scripts/Presentation/MenuAmbiente.cs");
             Check("El ambiente del menu tiene fondo animado y musica en bucle", codigoMenu.Contains("Rejilla") && codigoMenu.Contains("musica.loop = true"));
+
+            // --- Idioma: el tutorial y la mision tambien se traducen (27) ---
+            Check("Loc traduce un titulo del tutorial", SP.Core.Loc.Ingles("MOVER LA CÁMARA") == "MOVE THE CAMERA");
+            Check("Loc traduce un aviso de mision", SP.Core.Loc.Ingles("EL CIVIL MURIO") == "THE CIVILIAN DIED");
+            Check("Loc traduce un texto largo del tutorial con tildes y flechas", SP.Core.Loc.Ingles("Q → POSICIÓN → SÍGANME") == "Q → POSITION → FOLLOW ME");
+            {
+                // Sin deriva: cada clave de la tabla del tutorial tiene que seguir existiendo en el codigo del tutorial o la mision.
+                string codigoTexto = "";
+                foreach (var f in new[] { "Tutorial/TutorialManager.cs", "Mision/MisionDirector.cs", "Mision/MisionHud.cs", "Tutorial/VictoriaTutorial.cs", "Mision/CinematicaDeVictoria.cs" })
+                    codigoTexto += System.IO.File.ReadAllText("Assets/_Project/Scripts/" + f);
+                int sinUso = 0;
+                foreach (var kv in SP.Core.LocTextos.Tutorial) if (!codigoTexto.Contains(kv.Key.Replace("\\", "\\\\"))) sinUso++;
+                Check("Todas las claves de LocTextos siguen existiendo en el tutorial o la mision (sin textos huerfanos)", sinUso == 0);
+            }
         }
     }
 }

@@ -2,7 +2,7 @@
 
 Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. **Estados**: HECHO (implementado y con prueba o captura), YA ESTABA (al verificarlo en el codigo ya estaba resuelto), PARCIAL (mejorado, con lo que falta dicho), NO (no hecho o no aplica, con el motivo).
 
-**Resumen**: HECHO: 71, YA ESTABA: 18, PARCIAL: 9, NO/NO APLICA: 2 (de 100). Los 2 que quedan (65: solo un humano puede juzgar un sonido de oido; 51: no aplica, el juego no tiene caida desde altura) no son trabajo pendiente: son limitaciones reales confirmadas, no items sin resolver.
+**Resumen**: HECHO: 72, YA ESTABA: 18, PARCIAL: 8, NO/NO APLICA: 2 (de 100). Los 2 que quedan (65: solo un humano puede juzgar un sonido de oido; 51: no aplica, el juego no tiene caida desde altura) no son trabajo pendiente: son limitaciones reales confirmadas, no items sin resolver.
 
 
 ## HUD y pantallas
@@ -40,7 +40,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 24 | Los botones del menú miden 168×38 y los de pausa unos 340×76, sin criterio común. | HECHO |  |
 | 25 | No hay opciones de resolución, pantalla completa ni calidad. | HECHO |  |
 | 26 | No hay soporte de gamepad. | HECHO |  |
-| 27 | No hay localización: todo el texto está fijo en español. | PARCIAL | Hay **idioma ES/EN** ([F12] o Configuraciones > IDIOMA, se guarda): traduce menu, dificultad, pausa, configuraciones, ordenes del radial y avisos comunes. **El tutorial, los textos de mision y las descripciones largas de controles siguen en espanol.** |
+| 27 | No hay localización: todo el texto está fijo en español. | HECHO | Hay **idioma ES/EN** ([F12] o Configuraciones > IDIOMA, se guarda): traduce menu, dificultad, pausa, configuraciones, ordenes del radial, avisos comunes y ahora **el tutorial completo (titulos, pasos, pistas) y los avisos y el HUD de la mision** (321 textos en `Core/LocTextos.cs`, con prueba que evita que la tabla quede desfasada del codigo). Quedan en espanol solo los textos con datos vivos (contadores, distancias) y la tabla larga de controles. |
 | 28 | No hay accesibilidad (daltonismo, subtítulos, tamaño de letra). | HECHO | Daltonismo, HUD minimo (F10), **tamano de interfaz 100/125/150 %** y **subtitulos de sonido** (Configuraciones): disparos, explosiones, granadas, canon, balas cercanas y bajas escriben "[EXPLOSION] DERECHA >> 12 m". Probado en la FASE 19. |
 
 ## Muerte y flujo

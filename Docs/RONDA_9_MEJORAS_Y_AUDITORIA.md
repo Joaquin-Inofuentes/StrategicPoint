@@ -1,6 +1,6 @@
 # Ronda 9: mejoras de la auditoria de 100 puntos
 
-Resumen honesto: de los 100 puntos, **69 hechos, 18 que ya estaban resueltos, 7 parciales y 6 sin hacer** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless termina en OK con la FASE 18 y la FASE 19.
+Resumen honesto: de los 100 puntos, **72 hechos, 18 que ya estaban resueltos, 8 parciales y 2 que no se pueden resolver por codigo** (motivo de cada uno en [AUDITORIA_100_ITEMS.md](AUDITORIA_100_ITEMS.md)). La suite headless termina en OK con la FASE 18 y la FASE 19.
 
 ## Que se hizo
 
@@ -49,3 +49,7 @@ Resumen honesto: de los 100 puntos, **69 hechos, 18 que ya estaban resueltos, 7 
 El menu ya no es un color liso: `MenuAmbiente` arma solo, al cargar SC_MainMenu, una cuadricula de mapa tactico que se desliza, siete contactos (3 azules, 4 rojos) que orbitan y pulsan, y la musica calma en bucle. Es procedural: sigue faltando el arte dibujado. La suite lo comprueba (no se crea fuera de Play; tiene fondo animado y musica en bucle).
 
 ![Menu con ambiente](../Assets/Validacion/Ronda9/menu_ambiente.png)
+
+## Idioma completo (item 27)
+
+Con [F12] el juego pasa a ingles tambien en el tutorial (titulos, pasos, pistas y flechas del radial) y en la mision (avisos y HUD de objetivos): 321 textos en `Core/LocTextos.cs`. Los contadores y distancias en vivo siguen en espanol. La suite comprueba que cada clave de la tabla siga existiendo en el codigo.

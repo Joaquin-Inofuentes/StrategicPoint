@@ -8,8 +8,8 @@ namespace SP.Core
     // Localizacion (item 27), espanol -> ingles. El texto original del juego es la CLAVE (no hay tablas de ids que
     // mantener): Loc.T("JUGAR") devuelve "PLAY" en ingles. Un traductor recorre los Text de la escena y cambia los que
     // coinciden con una entrada, tambien en formato "ETIQUETA: valor". El texto que no esta en la tabla queda en espanol.
-    // Cobertura actual: menu, dificultad, pausa, configuraciones y avisos comunes.
-    // NO cubre: el tutorial, los textos de mision ni las descripciones largas de la tabla de controles.
+    // Cobertura actual: menu, dificultad, pausa, configuraciones, avisos comunes y (LocTextos) el tutorial y la mision.
+    // NO cubre: los textos con datos vivos (contadores y distancias) ni las descripciones largas de la tabla de controles.
     public enum Idioma { Es, En }
 
     public static class Loc
@@ -60,6 +60,7 @@ namespace SP.Core
 
         static Loc()
         {
+            foreach (var kv in LocTextos.Tutorial) if (!en.ContainsKey(kv.Key)) en[kv.Key] = kv.Value;
             foreach (var kv in en) { es[kv.Value] = kv.Key; enNorm[Norm(kv.Key)] = kv.Value; }
         }
 
