@@ -81,9 +81,48 @@ namespace SP.Player
             acumulado = 0f;
         }
 
+        // El medico atiende SOLO a un aliado herido cercano (sin que el jugador lo
+        // pida), siempre que no este peleando ni lo maneje el jugador. Reusa el
+        // mismo pedido de arriba: va hasta el herido (orden de seguir) y lo cura
+        // CuracionPorSegundo mientras este a AlcanceDeCuracion.
+        public const float FraccionHerido = 0.75f;
+        public const float RadioDeAtencionAutomatica = 16f;
+        static float proximoEscaneo;
+
+        static void AtenderSolo(float dt)
+        {
+            proximoEscaneo -= dt;
+            if (proximoEscaneo > 0f) return;
+            proximoEscaneo = 1.5f;
+
+            foreach (var medico in ActorRegistry.All)
+            {
+                if (medico == null || medico.Role != RoleType.Medic || medico.Team != TeamId.Player) continue;
+                if (medico.Health == null || !medico.Health.IsAlive || OrderService.LoManejaElJugador(medico)) continue;
+                if (medico.Brain != null && medico.Brain.CurrentTarget != null) continue;
+
+                Soldier peor = null; float peorFrac = FraccionHerido;
+                foreach (var a in ActorRegistry.All)
+                {
+                    if (a == null || a == medico || a.Team != medico.Team || a.Health == null || !a.Health.IsAlive) continue;
+                    float f = (float)a.Health.Current / Mathf.Max(1, a.Health.MaxHealth);
+                    if (f >= peorFrac) continue;
+                    if (Vector3.Distance(a.transform.position, medico.transform.position) > RadioDeAtencionAutomatica) continue;
+                    peor = a; peorFrac = f;
+                }
+                if (peor == null) continue;
+
+                Cancelar();
+                Herido = peor; Enfermero = medico; restante = EsperaMaxima; acumulado = 0f;
+                OrderService.IssueFollowOrder(medico, peor);
+                GameLog.Line($"{medico.DisplayName} atiende solo a {peor.DisplayName} ({peor.Health.Current}/{peor.Health.MaxHealth})");
+                return;
+            }
+        }
+
         public static void Tick(float dt)
         {
-            if (!Activo) return;
+            if (!Activo) { AtenderSolo(dt); return; }
 
             if (!Herido.Health.IsAlive || !Enfermero.Health.IsAlive
                 || Herido.Health.Current >= Herido.Health.MaxHealth)

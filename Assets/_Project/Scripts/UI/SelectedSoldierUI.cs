@@ -69,7 +69,7 @@ namespace SP.UI
                 HealthFill = healthFill,
                 Brain = soldier.GetComponent<AiBrain>(),
             });
-            label.text = $"<size=16><b>{rows.Count} · {soldier.Role}</b></size>\n<size=10><color=#9aa0ac>{soldier.DisplayName}</color></size>";
+            label.text = $"<size=11><b>{rows.Count} · {soldier.ClassNameTitulo}</b></size>\n<size=10><color=#9aa0ac>{soldier.DisplayName}</color></size>";
             background.color = normalColor;
         }
 
@@ -150,8 +150,8 @@ namespace SP.UI
                 // la barra de HealthFill ya es la vida "de un vistazo", este
                 // texto es el detalle para quien lo busca.
                 row.Label.text = alive
-                    ? $"{marker}<size=16><b>{row.Index} · {row.Soldier.Role}</b></size>\n<size=10><color=#9aa0ac>{row.Soldier.DisplayName}   ·   {row.Soldier.Health.Current}/{row.Soldier.Health.MaxHealth}   ·   {weapon}{estadoSuffix}{distancia}</color></size>"
-                    : $"<size=16><b>{row.Index} · {row.Soldier.Role}</b></size>\n<size=10><color=#6f7278>{row.Soldier.DisplayName} — CAIDO</color></size>";
+                    ? $"{marker}<size=11><b>{row.Index} · {row.Soldier.ClassNameTitulo}</b></size>\n<size=10><color=#9aa0ac>{row.Soldier.DisplayName}   ·   {row.Soldier.Health.Current}/{row.Soldier.Health.MaxHealth}   ·   {weapon}{estadoSuffix}{distancia}</color></size>"
+                    : $"<size=11><b>{row.Index} · {row.Soldier.ClassNameTitulo}</b></size>\n<size=10><color=#6f7278>{row.Soldier.DisplayName} — CAIDO</color></size>";
                 row.Label.color = alive ? Color.white : deadTextColor;
 
                 if (row.HealthFill != null)

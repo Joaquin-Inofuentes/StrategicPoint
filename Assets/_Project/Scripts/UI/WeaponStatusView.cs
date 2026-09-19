@@ -19,7 +19,7 @@ namespace SP.UI
         [SerializeField] Image icon;
         public const string IconName = "Icono";
         const string IconFolder = "UI/WeaponIcons/Icono_";
-        static readonly Sprite[] iconCache = new Sprite[3];
+        static readonly Sprite[] iconCache = new Sprite[8];
         WeaponKind? lastKind;
         float punch;
 
@@ -30,7 +30,9 @@ namespace SP.UI
             int i = (int)kind;
             if (i < 0 || i >= iconCache.Length) return null;
             if (iconCache[i] != null) return iconCache[i];
-            var tex = Resources.Load<Texture2D>(IconFolder + kind);
+            // Las armas nuevas comparten el dibujo de la familia mas parecida.
+            var familia = kind switch { WeaponKind.Smg => WeaponKind.Rifle, WeaponKind.Shotgun => WeaponKind.Rifle, WeaponKind.Sniper => WeaponKind.Rifle, WeaponKind.Rocket => WeaponKind.Heavy, _ => kind };
+            var tex = Resources.Load<Texture2D>(IconFolder + familia);
             if (tex == null) return null;
             iconCache[i] = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
             iconCache[i].name = "WeaponIcon_" + kind;
@@ -116,7 +118,7 @@ namespace SP.UI
                 string status = weapon.IsReloading ? "  ·  RECARGANDO" : "";
                 int slot = weapon.Loadout.IndexOf(weapon.CurrentWeaponKind) + 1;
                 string tecla = slot > 0 ? $"[{slot}] " : "";
-                label.text = $"{tecla}{weapon.CurrentWeaponKind}   {weapon.CurrentAmmo}/{weapon.MagazineSize}{status}";
+                label.text = $"{tecla}{WeaponCatalog.Get(weapon.CurrentWeaponKind).DisplayName}   {weapon.CurrentAmmo}/{weapon.MagazineSize}{status}";
 
                 // El contador quedaba blanco fijo hasta llegar a cero, sin
                 // ningun aviso previo de que se estaba por acabar. Rojo

@@ -275,10 +275,15 @@ namespace SP.UI
                 if (crewNameLabels != null && crewNameLabels[i] != null)
                 {
                     var hp = occupante.Health;
-                    crewNameLabels[i].text = $"{occupante.DisplayName} · {RoleLabel(role)}\n{hp.Current}/{hp.MaxHealth} vida";
+                    // La vida vive SOLO en el roster (abajo a la izquierda): aca no se repite.
+                    crewNameLabels[i].text = $"{occupante.DisplayName} · {RoleLabel(role)}";
                 }
                 if (crewHealthFills != null && crewHealthFills[i] != null)
                 {
+                    // Barra de vida duplicada: se oculta (el roster ya la muestra).
+                    var barra = crewHealthFills[i].transform.parent;
+                    if (barra != null && crewRows != null && crewRows[i] != null && barra != crewRows[i].transform) barra.gameObject.SetActive(false);
+                    else crewHealthFills[i].gameObject.SetActive(false);
                     var hp = occupante.Health;
                     float frac = hp.MaxHealth > 0 ? (float)hp.Current / hp.MaxHealth : 0f;
                     crewHealthFills[i].fillAmount = frac;

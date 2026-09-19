@@ -171,7 +171,8 @@ namespace SP.Presentation
             motionBlur.intensity.Override(fxOn ? speedBlur * 0.35f : 0f);
 
             var rig = SP.CameraSystem.CameraRig.Instance;
-            zoomBlurOn = fxOn && rig != null && rig.EstaConZoom;
+            // El zoom ya no difumina el fondo: hay que poder leer lo que se apunta.
+            zoomBlurOn = false;
             if (depthOfField != null)
             {
                 depthOfField.mode.Override(zoomBlurOn ? DepthOfFieldMode.Gaussian : DepthOfFieldMode.Off);

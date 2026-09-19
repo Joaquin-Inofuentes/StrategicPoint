@@ -67,7 +67,8 @@ namespace SP.Presentation
             if (soldier != null)
             {
                 if (soldier.Health == null) return null;
-                string tipo = soldier.Team == TeamId.Player ? "Aliado" : "Enemigo";
+                // La clase (ASALTO, FLANQUEADOR, MEDICO...) en vez de un "Aliado" generico.
+                string tipo = soldier.Team == TeamId.Player ? soldier.ClassName : "Enemigo " + soldier.ClassName;
                 return $"{tipo}  {soldier.Health.Current}/{soldier.Health.MaxHealth}";
             }
             if (vehicle != null)

@@ -281,8 +281,26 @@ namespace SP.Player
             {
                 if (Mira.Forma != weapon.CurrentWeaponKind) Mira.Configurar(weapon.CurrentWeaponKind);
                 Mira.Seguir(Rig.Cam, Rig.FovObjetivo);
-                Mira.Mostrar(Rig.EstaConZoom);
+                Mira.Mostrar(false);   // reemplazada por MirillaView (zoom real + reticula nitida)
             }
+        }
+
+        AimResult ultimoResultadoDeMira;
+
+        // Zoom real y reticula del arma equipada (ver UI/MirillaView).
+        void ActualizarMirilla(AimResult result)
+        {
+            if (Brain.Current == null || Rig == null) return;
+            var spec = WeaponCatalog.Get(Brain.Current.Weapon.CurrentWeaponKind);
+            Rig.SetZoomFactor(spec.ZoomFactor);
+            var canvasRoot = AimUiRef != null ? AimUiRef.transform.parent : null;
+            var mirilla = MirillaView.Asegurar(canvasRoot);
+            if (mirilla == null) return;
+            var tinte = result.Type == AimTargetType.Enemy ? new Color(1f, 0.32f, 0.26f)
+                      : result.Type == AimTargetType.Ally ? new Color(0.45f, 1f, 0.55f)
+                      : new Color(1f, 1f, 1f, 0.95f);
+            mirilla.Actualizar(Rig.EstaConZoom, spec.Reticle, tinte);
+            if (AimUiRef != null) AimUiRef.SetBaseCrosshairHidden(mirilla.Alfa > 0.5f);
         }
 
         // La optica del arma. Publica para que la suite la pueda mirar sin
@@ -362,6 +380,8 @@ namespace SP.Player
         // poseer al primer soldado de la escuadra a mano.
         void Start()
         {
+            // El menu radial de ordenes ([Q] sostenido): si la escena no lo trae, se arma.
+            if (OrdenesMenu == null || !OrdenesMenu.EsRadial) OrdenesMenu = SP.UI.MenuDeOrdenes.AsegurarEnEscena();
             if (Brain.Current == null && Squad != null && Squad.Count > 0)
             {
                 Brain.Possess(Squad[0]);
@@ -729,7 +749,7 @@ namespace SP.Player
                 if (TurretAim != null) TurretAim.SetVisible(false);
                 if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
                 if (AimUiRef != null) AimUiRef.SetVisible(false);
-                if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
+                if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false); MirillaView.Instancia?.Ocultar();
                 deadSoldier.SetBodyVisible(true);
                 deadSoldier.Motor.SetCrouching(false);
                 bodyHiddenFor = null;
@@ -946,7 +966,7 @@ namespace SP.Player
                 // pedido antes se quedaba corto. El blur de fondo mientras
                 // se apunta (PostFxDirector) ya lee Rig.EstaConZoom por su
                 // cuenta.
-                AimUiRef.SetCrosshairZoomScale(Rig.EstaConZoom ? 4f : 1f);
+                AimUiRef.SetCrosshairZoomScale(1f);
             }
             if (SelectionCount != null) SelectionCount.SetModeVisible(false);
 
@@ -1014,8 +1034,15 @@ namespace SP.Player
             if (mouse != null && Cursor.lockState == CursorLockMode.Locked)
             {
                 var delta = mouse.delta.ReadValue();
-                Brain.RotateYaw(delta.x * lookSensitivity);
-                Rig.AddPitch(delta.y * lookSensitivity * (InvertLookY ? -1f : 1f));
+                if (OrdenesMenu != null && OrdenesMenu.Abierto)
+                    OrdenesMenu.MoverSeleccion(delta);   // con el radial abierto el mouse elige, no gira
+                else
+                {
+                    // La sensibilidad baja con el zoom para que apuntar con x6 no sea nervioso.
+                    float k = Rig.EstaConZoom ? 1f / Mathf.Pow(Mathf.Max(1f, Rig.ZoomFactor), 0.75f) : 1f;
+                    Brain.RotateYaw(delta.x * lookSensitivity * k);
+                    Rig.AddPitch(delta.y * lookSensitivity * k * (InvertLookY ? -1f : 1f));
+                }
             }
 
             Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDrop);
@@ -1028,6 +1055,8 @@ namespace SP.Player
             UpdateCoverPreview(kb, result);
             UpdateVehicleMountIndicator(result);
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
+            ultimoResultadoDeMira = result;
+            ActualizarMirilla(result);
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateAmmoWarning(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateReloadCircle(Brain.Current.Weapon);
@@ -1038,11 +1067,9 @@ namespace SP.Player
                 if (!yaRecargaba && Brain.Current.Weapon.IsReloading)
                     Feedback.Accion(SfxKind.Reload, "RECARGANDO", Brain.Current.transform.position, Feedback.Warn, aviso: false, pulso: false, volumen: 0.45f);
             }
-            if (PlayerHealth != null)
-            {
-                PlayerHealth.gameObject.SetActive(true);
-                PlayerHealth.UpdateFrom(Brain.Current);
-            }
+            // La vida del poseido vive SOLO en el roster (abajo a la izquierda):
+            // el panel "VIDA" de la esquina derecha repetia el mismo dato.
+            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
             UpdateWeaponViewmodel(Brain.Current.Weapon);
 
             // isPressed (no wasPressedThisFrame): antes habia que
@@ -1078,9 +1105,11 @@ namespace SP.Player
             bool menuDeOrdenesAbierto = OrdenesMenu != null && OrdenesMenu.Abierto;
             if (!menuDeOrdenesAbierto)
             {
-                if (kb.digit1Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Rifle);
-                if (kb.digit2Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Pistol);
-                if (kb.digit3Key.wasPressedThisFrame) EquipFromCatalog(WeaponKind.Heavy);
+                // Las teclas 1/2/3 son las RANURAS del loadout de la clase que se maneja
+                // (asalto: fusil/pistola/lanzacohetes; flanqueador: metralleta/pistola/escopeta...).
+                if (kb.digit1Key.wasPressedThisFrame) EquipSlot(0);
+                if (kb.digit2Key.wasPressedThisFrame) EquipSlot(1);
+                if (kb.digit3Key.wasPressedThisFrame) EquipSlot(2);
             }
 
             // 206: cambiar de arma con la rueda, la convencion del genero.
@@ -1859,8 +1888,13 @@ namespace SP.Player
         // todavia no se poblo.
         Vehicle FindTheVehicle()
         {
+            // El tanque ALIADO: en el nivel 4x hay tanques enemigos registrados tambien,
+            // y "subir/bajar todos" jamas debe tocar a uno de ellos.
+            if (Vehicle != null && !Vehicle.IsDestroyed && Vehicle.Bando == TeamId.Player) return Vehicle;
             var vehicles = SP.Core.WorldSystemsRegistry.Vehicles;
-            return vehicles.Count > 0 ? vehicles[0] : Vehicle;
+            for (int i = 0; i < vehicles.Count; i++)
+                if (vehicles[i] != null && vehicles[i].Bando == TeamId.Player) return vehicles[i];
+            return vehicles.Count > 0 && vehicles[0] != null && vehicles[0].Bando == TeamId.Player ? vehicles[0] : Vehicle;
         }
 
         // El mas cercano de la escuadra que todavia puede subir: vivo,
@@ -1953,14 +1987,21 @@ namespace SP.Player
                 int elegida = MenuDeOrdenes.LeerTecla();
                 if (elegida > 0)
                 {
-                    EjecutarOrdenDelMenu(elegida);
+                    if (OrdenesMenu.EsRadial) EjecutarOrdenRadial(elegida - 1);
+                    else EjecutarOrdenDelMenu(elegida);
                     OrdenesMenu.Cerrar();
                     return;
                 }
                 // Se cierra al soltar. El toque corto no puede llegar aca
                 // (para abrirse ya hubo que pasar el umbral), asi que
                 // soltar despues de mantener nunca cicla de soldado.
-                if (!sigueApretada) OrdenesMenu.Cerrar();
+                // Al soltar se ejecuta la porcion resaltada del radial.
+                if (!sigueApretada)
+                {
+                    int sel = OrdenesMenu.Seleccion;
+                    OrdenesMenu.Cerrar();
+                    if (OrdenesMenu.EsRadial && sel >= 0) EjecutarOrdenRadial(sel);
+                }
                 return;
             }
 
@@ -2035,6 +2076,94 @@ namespace SP.Player
             return false;
         }
 
+        // Punto del mundo "alli": lo apuntado con la mira (piso, obstaculo, enemigo, aliado
+        // o vehiculo) o, si no se apunta a nada, 14 m al frente del soldado.
+        Vector3 PuntoApuntadoParaOrdenes(AimResult r)
+        {
+            if (r.Type == AimTargetType.Ground || r.Type == AimTargetType.Obstacle) return r.Point;
+            if ((r.Type == AimTargetType.Enemy || r.Type == AimTargetType.Ally) && r.Soldier != null) return r.Soldier.transform.position;
+            if (r.Type == AimTargetType.Vehicle && r.Vehicle != null) return r.Vehicle.transform.position;
+            var yo = Brain != null && Brain.Current != null ? Brain.Current.transform.position : transform.position;
+            var frente = Rig != null && Rig.Cam != null ? Vector3.ProjectOnPlane(Rig.Cam.transform.forward, Vector3.up).normalized : Vector3.forward;
+            return yo + frente * 14f;
+        }
+
+        // Las seis porciones del radial de [Q] (ver UI/MenuDeOrdenes). Publico para que
+        // la suite y las pruebas de juego puedan ejercerlo sin teclado.
+        public bool EjecutarOrdenRadial(int porcion)
+        {
+            var aim = ultimoResultadoDeMira;
+            var aliados = DestinatariosDeOrden();
+            var yo = Brain != null ? Brain.Current : null;
+            switch (porcion)
+            {
+                case 0: // SUBIR AL TANQUE
+                {
+                    var v = FindTheVehicle();
+                    if (v == null || v.IsDestroyed || !v.HasAnyRoom) { RejectOrder("NO HAY LUGAR EN EL TANQUE"); return false; }
+                    var suben = aliados.FindAll(s => v.RoleOf(s) == null);
+                    if (suben.Count == 0) { RejectOrder("NADIE PARA SUBIR"); return false; }
+                    OrderService.IssueMountOrderForSelection(suben, v);
+                    Avisar("TODOS AL TANQUE");
+                    return true;
+                }
+                case 1: // BAJAR TODOS
+                {
+                    var v = FindTheVehicle();
+                    if (v == null || v.OccupantCount == 0) { RejectOrder("NADIE EN EL TANQUE"); return false; }
+                    foreach (var o in new List<Soldier>(v.Occupants))
+                        if (o != yo) v.Dismount(o);
+                    Avisar("TODOS ABAJO");
+                    GameLog.Line("Radial: bajar todos del tanque");
+                    return true;
+                }
+                case 2: // ATACAR
+                {
+                    Soldier objetivo = aim.Type == AimTargetType.Enemy ? aim.Soldier : null;
+                    if (objetivo == null && yo != null)
+                        objetivo = ActorRegistry.FindNearest(yo.transform.position, s => s.Team == TeamId.Enemy && s.Health != null && s.Health.IsAlive && (s.transform.position - yo.transform.position).sqrMagnitude < 100f * 100f);
+                    if (objetivo == null || aliados.Count == 0) { RejectOrder("NO HAY A QUIEN ATACAR"); return false; }
+                    OrderService.IssueAttackOrderForSelection(aliados, objetivo);
+                    Avisar("ATAQUEN A " + objetivo.DisplayName.ToUpperInvariant());
+                    return true;
+                }
+                case 3: // IR ALLI · TODOS
+                {
+                    if (aliados.Count == 0) { RejectOrder("NADIE A QUIEN ORDENAR"); return false; }
+                    var punto = PuntoApuntadoParaOrdenes(aim);
+                    var puntos = OrderService.FormationPoints(punto, aliados.Count);
+                    for (int i = 0; i < aliados.Count; i++) OrderService.IssueMoveOrder(aliados[i], puntos[i]);
+                    Avisar("TODOS AHI");
+                    GameLog.Line($"Radial: {aliados.Count} aliados van a {punto}");
+                    return true;
+                }
+                case 4: // IR ALLI · SOLO EL 2
+                {
+                    var dos = Squad != null && Squad.Count >= 2 ? Squad[1] : null;
+                    if (dos == null || dos.Health == null || !dos.Health.IsAlive) { RejectOrder("EL 2 NO ESTA DISPONIBLE"); return false; }
+                    if (dos == yo) { RejectOrder("VOS SOS EL 2"); return false; }
+                    var punto = PuntoApuntadoParaOrdenes(aim);
+                    OrderService.IssueMoveOrder(dos, punto);
+                    Avisar($"SOLO {dos.DisplayName.ToUpperInvariant()} VA");
+                    GameLog.Line($"Radial: solo {dos.DisplayName} va a {punto}");
+                    return true;
+                }
+                case 5: // CUBRIRSE · TODOS ALLI
+                {
+                    if (aliados.Count == 0) { RejectOrder("NADIE A QUIEN ORDENAR"); return false; }
+                    if (!TryResolverCobertura(aim, out var cobertura, out var dueno)) { RejectOrder("NO HAY COBERTURA AHI"); return false; }
+                    var lateral = Rig != null && Rig.Cam != null ? Vector3.Cross(Vector3.up, Rig.Cam.transform.forward).normalized : Vector3.right;
+                    int n = 0;
+                    for (int i = 0; i < aliados.Count; i++)
+                        if (OrderService.IssueCoverOrder(aliados[i], cobertura + lateral * ((i - (aliados.Count - 1) * 0.5f) * 1.6f), dueno)) n++;
+                    Avisar("A CUBIERTO");
+                    GameLog.Line($"Radial: {n} aliados se cubren en {cobertura}");
+                    return n > 0;
+                }
+            }
+            return false;
+        }
+
         void Avisar(string texto)
         {
             if (ModeToast != null) ModeToast.Show(texto);
@@ -2059,6 +2188,13 @@ namespace SP.Player
         }
 
         void EquipFromCatalog(WeaponKind kind) => EquipWeaponHotkey(kind);
+
+        public void EquipSlot(int slot)
+        {
+            var w = Brain.Current != null ? Brain.Current.Weapon : null;
+            if (w == null || slot < 0 || slot >= w.Loadout.Count) return;
+            EquipWeaponHotkey(w.Loadout[slot]);
+        }
 
         // La rueda del mouse cicla la MISMA lista pública que expone
         // WeaponHolder.Loadout -- antes esto tenía su propio array fijo en
@@ -2297,7 +2433,7 @@ namespace SP.Player
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
             if (AimUiRef != null) AimUiRef.SetVisible(false);
-            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
+            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false); MirillaView.Instancia?.Ocultar();
             if (SelectionCount != null) SelectionCount.SetModeVisible(false);
             HideFpsOnlyIndicators();
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor.Motor.SetCrouching(false); bodyHiddenFor = null; }
@@ -2763,7 +2899,7 @@ namespace SP.Player
             if (TurretAim != null) TurretAim.SetVisible(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
             if (AimUiRef != null) AimUiRef.SetVisible(false);
-            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
+            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false); MirillaView.Instancia?.Ocultar();
             if (SelectionCount != null) SelectionCount.SetModeVisible(true);
             HideFpsOnlyIndicators();
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor.Motor.SetCrouching(false); bodyHiddenFor = null; }

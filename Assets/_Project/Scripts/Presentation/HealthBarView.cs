@@ -148,6 +148,10 @@ namespace SP.Presentation
             // Las dos reglas se componen con un AND: manda la ventana de
             // daño/curacion, y el LOD solo puede restarle.
             bool shouldShow = Time.time <= hideAt && lodAllowed;
+            // La vida propia vive SOLO en el roster de abajo a la izquierda:
+            // con la camara sobre el hombro la barra flotante del poseido se
+            // veia arriba de su cabeza, repitiendo el dato.
+            if (owner != null && owner.Brain != null && owner.Brain.IsPossessedByPlayer) shouldShow = false;
 
             // Los hijos, no este objeto: apagarse a si mismo desde aca
             // dispararia OnDisable y mataria la suscripcion al bus (y

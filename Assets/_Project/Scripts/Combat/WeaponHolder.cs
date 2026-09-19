@@ -452,7 +452,20 @@ namespace SP.Combat
             spreadDeg = Mathf.Min(MaxSpreadDeg, spreadDeg + SpreadGrowthPerShot);
 
             var spawnPos = Muzzle != null ? Muzzle.position : origin;
-            pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor);
+            var espec = WeaponCatalog.Get(CurrentWeaponKind);
+            if (espec.Pellets > 1)
+            {
+                // Escopeta: un cono de perdigones por disparo.
+                for (int p = 0; p < espec.Pellets; p++)
+                    pool.Spawn(spawnPos, ApplySpread(spreadDir, espec.PelletSpreadDeg), owner.Id, owner.Team, damage, projectileColor);
+            }
+            else if (espec.ExplosionRadius > 0f)
+            {
+                // Lanzacohetes: proyectil lento con explosion de area.
+                pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor, espec.ExplosionRadius, espec.ProjectileGravity, null, espec.ProjectileSpeed);
+            }
+            else
+                pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor);
             cooldownTimer = fireCooldown;
             CurrentAmmo--;
             if (CurrentAmmo <= 0) StartReload();

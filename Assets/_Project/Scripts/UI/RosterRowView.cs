@@ -183,7 +183,7 @@ namespace SP.UI
 
             if (!alive)
             {
-                label.text = $"<size=16><b>{Index} · {Soldier.Role}</b></size>\n<size=10><color=#6f7278>{Soldier.DisplayName} — CAIDO</color></size>";
+                label.text = $"<size=11><b>{Index} · {Soldier.ClassNameTitulo}</b></size>\n<size=10><color=#6f7278>{Soldier.DisplayName} — CAIDO</color></size>";
                 label.color = DeadTextColor;
                 return;
             }
@@ -195,7 +195,7 @@ namespace SP.UI
             var hp = Soldier.Health;
             string vida = hp != null ? $"{hp.Current}/{hp.MaxHealth}" : "";
 
-            label.text = $"{marker}<size=16><b>{Index} · {Soldier.Role}</b></size>\n<size=10><color=#9aa0ac>{Soldier.DisplayName}   ·   {vida}   ·   {weapon}{estadoSuffix}</color></size>";
+            label.text = $"{marker}<size=11><b>{Index} · {Soldier.ClassNameTitulo}</b></size>\n<size=10><color=#9aa0ac>{Soldier.DisplayName}   ·   {vida}   ·   {weapon}{estadoSuffix}</color></size>";
             label.color = Color.white;
         }
 

@@ -2294,20 +2294,32 @@ namespace SP.EditorTools
             Check($"Apuntando, la optica queda DENTRO del encuadre con el FOV de zoom (viewport {enPantalla.x:0.00}, {enPantalla.y:0.00})",
                 enPantalla.x > 0f && enPantalla.x < 1f && enPantalla.y > 0f && enPantalla.y < 1f && enPantalla.z > 0f);
 
-            Check("Con el rifle es un tubo que amplia, y lo que muestra ES la textura de la optica",
-                mira.Amplia && mira.Tubo.activeInHierarchy
-                && mira.Tubo.GetComponent<MeshRenderer>().sharedMaterial.mainTexture == mira.Textura
-                && mira.Optica.enabled);
+            // El zoom ahora es REAL: el aumento de cada arma (x2,2 el fusil, x6 el francotirador...)
+            // se traduce en el FOV con la tangente, y la reticula es distinta por arma
+            // (UI/MirillaView). El tubo con RenderTexture de MiraOptica ya no se muestra.
+            var rigZ = inputDriver.Rig;
+            var especFusil = WeaponCatalog.Get(WeaponKind.Rifle);
+            rigZ.SetZoomFactor(especFusil.ZoomFactor);
+            float aumentoFusil = Mathf.Tan(30f * Mathf.Deg2Rad) / Mathf.Tan(rigZ.FovDeZoom * 0.5f * Mathf.Deg2Rad);
+            Check($"Con el fusil el zoom es REAL: x{especFusil.ZoomFactor:0.0} pedido, x{aumentoFusil:0.00} medido en el FOV ({rigZ.FovDeZoom:0.0} grados), reticula {especFusil.Reticle}",
+                Mathf.Abs(aumentoFusil - especFusil.ZoomFactor) < 0.05f && especFusil.Reticle == ReticleStyle.Punto);
+            var especFran = WeaponCatalog.Get(WeaponKind.Sniper);
+            rigZ.SetZoomFactor(especFran.ZoomFactor);
+            float aumentoFran = Mathf.Tan(30f * Mathf.Deg2Rad) / Mathf.Tan(rigZ.FovDeZoom * 0.5f * Mathf.Deg2Rad);
+            Check($"Y el francotirador aumenta x{aumentoFran:0.0} con reticula {especFran.Reticle} (mas que el fusil)",
+                Mathf.Abs(aumentoFran - 6f) < 0.1f && especFran.Reticle == ReticleStyle.Telescopica && especFran.ZoomFactor > especFusil.ZoomFactor);
+            rigZ.SetZoomFactor(especFusil.ZoomFactor);
 
             vega.Weapon.EquipWeapon(WeaponKind.Pistol, 20, 0.2f, Color.white);
             visorMetodo.Invoke(inputDriver, new object[] { vega.Weapon });
-            Check("Con la pistola es un cubo que marca el objetivo, sin aumento ni camara prendida",
-                !mira.Amplia && mira.Tubo.GetComponent<MeshRenderer>().sharedMaterial.mainTexture == null
-                && !mira.Optica.enabled);
+            Check("Con la pistola la reticula es una cruz con poco aumento y la optica vieja sigue apagada",
+                WeaponCatalog.Get(WeaponKind.Pistol).Reticle == ReticleStyle.Cruz
+                && WeaponCatalog.Get(WeaponKind.Pistol).ZoomFactor < especFusil.ZoomFactor && !mira.Optica.enabled);
 
             vega.Weapon.EquipWeapon(WeaponKind.Heavy, 20, 0.2f, Color.white);
             visorMetodo.Invoke(inputDriver, new object[] { vega.Weapon });
-            Check("Y el pesado vuelve a llevar tubo con aumento", mira.Amplia && mira.Optica.enabled);
+            Check("Y el pesado lleva su propia reticula (anillo) con aumento",
+                WeaponCatalog.Get(WeaponKind.Heavy).Reticle == ReticleStyle.Anillo && WeaponCatalog.Get(WeaponKind.Heavy).ZoomFactor > 1f);
 
             inputDriver.Rig.SetZoomed(false);
             visorMetodo.Invoke(inputDriver, new object[] { vega.Weapon });
@@ -2803,7 +2815,7 @@ namespace SP.EditorTools
             Check($"En RTS, con 2 montados de 4, la etiqueta del vehiculo dice 2/4 (\"{etiquetaVehiculo.CurrentText}\")",
                 etiquetaVehiculo.IsVisible && etiquetaVehiculo.CurrentText == $"Vehiculo  2/{vehicle.Capacity}");
             Check($"Y la del aliado muestra su tipo y su vida (\"{etiquetaVega.CurrentText}\")",
-                etiquetaVega.IsVisible && etiquetaVega.CurrentText == $"Aliado  {vega.Health.Current}/{vega.Health.MaxHealth}");
+                etiquetaVega.IsVisible && etiquetaVega.CurrentText == $"{vega.ClassName}  {vega.Health.Current}/{vega.Health.MaxHealth}");
 
             vehicle.Dismount(doc);
             campoProximaEvaluacionC1.SetValue(directorC1, 0f);

@@ -95,6 +95,15 @@ namespace SP.CameraSystem
 
         public void SetZoomed(bool value) => zoomed = value;
 
+        // Zoom REAL: el aumento (x2, x6...) se traduce a FOV con la tangente,
+        // para que "x6" sea de verdad seis veces mas cerca y no una resta de grados.
+        public float ZoomFactor { get; private set; } = 2f;
+        public void SetZoomFactor(float factor)
+        {
+            ZoomFactor = Mathf.Max(1.05f, factor);
+            zoomFov = 2f * Mathf.Atan(Mathf.Tan(normalFov * 0.5f * Mathf.Deg2Rad) / ZoomFactor) * Mathf.Rad2Deg;
+        }
+
         // Lo consulta la optica del arma para saber si mostrarse. Estaba
         // guardado en un bool privado que solo leia LateUpdate.
         public bool EstaConZoom => zoomed;

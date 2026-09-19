@@ -40,6 +40,11 @@ namespace SP.Actors
         public string DisplayName => displayName;
         public TeamId Team => team;
         public RoleType Role => role;
+        // Nombre de la clase para mostrar (ASALTO, FLANQUEADOR, MEDICO...).
+        public string ClassName => SoldierClasses.NombreDe(this);
+        // Titulo en vez de mayusculas: entra en la fila angosta del roster.
+        public string ClassNameTitulo { get { var n = ClassName; return n.Length > 1 ? n[0] + n.Substring(1).ToLowerInvariant() : n; } }
+        public void SetRole(RoleType r) => role = r;
 
         Health health;
         SoldierMotor motor;
@@ -118,6 +123,10 @@ namespace SP.Actors
 
             health.Initialize(Id, maxHealth);
             ActorRegistry.Register(this);
+
+            // En juego, todo soldado se viste segun su clase (los enemigos
+            // instanciados por script tambien, sin tener que cablearlo).
+            if (Application.isPlaying && GetComponent<SoldierLook>() == null) gameObject.AddComponent<SoldierLook>();
         }
 
         void OnDestroy() => ActorRegistry.Unregister(this);

@@ -19,7 +19,7 @@ namespace SP.Presentation
         // mañana el loadout deja de ser fijo, esto sigue andando: cada
         // arma de esta lista que no esté en Loadout simplemente no se
         // instancia.
-        static readonly WeaponKind[] AllKinds = { WeaponKind.Rifle, WeaponKind.Pistol, WeaponKind.Heavy };
+        WeaponKind[] AllKinds = { WeaponKind.Rifle, WeaponKind.Pistol, WeaponKind.Heavy };
 
         // A que largo se ve CUALQUIER arma real sobre la espalda, sin
         // importar su tamaño natural -- ver el comentario de
@@ -60,6 +60,8 @@ namespace SP.Presentation
             if (Mathf.Abs(escalaPadre.y) < 0.0001f) escalaPadre.y = 1f;
             if (Mathf.Abs(escalaPadre.z) < 0.0001f) escalaPadre.z = 1f;
 
+            // El loadout depende de la clase: se cuelgan las armas que de verdad tiene.
+            if (holder != null && holder.Loadout.Count > 0) AllKinds = holder.Loadout.ToArray();
             slots = new Transform[AllKinds.Length];
             for (int i = 0; i < AllKinds.Length; i++)
             {

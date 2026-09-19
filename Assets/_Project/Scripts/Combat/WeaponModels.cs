@@ -21,6 +21,10 @@ namespace SP.Combat
                 WeaponKind.Rifle => "P_Wpn_Fusil",
                 WeaponKind.Pistol => "P_Wpn_Pistola",
                 WeaponKind.Heavy => "P_Wpn_Heavy",
+                WeaponKind.Smg => "P_Wpn_Metralleta",
+                WeaponKind.Rocket => "P_Wpn_Lanzacohetes",
+                WeaponKind.Shotgun => "P_Wpn_Escopeta",
+                WeaponKind.Sniper => "P_Wpn_Sniper",
                 _ => null,
             };
 
@@ -48,6 +52,10 @@ namespace SP.Combat
             WeaponKind.Rifle => 0.761f,
             WeaponKind.Pistol => 0.209f,
             WeaponKind.Heavy => 1.121f,
+            WeaponKind.Smg => 0.5f,
+            WeaponKind.Rocket => 0.92f,
+            WeaponKind.Shotgun => 0.9f,
+            WeaponKind.Sniper => 1.06f,
             _ => 0.5f,
         };
 

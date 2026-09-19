@@ -39,6 +39,10 @@ namespace SP.EditorTools
             Build("SM_Wpn_Pistola", "P_Wpn_Pistola");
             Build("SM_Wpn_LMG", "P_Wpn_Heavy");
             Build("SM_Wpn_Metralleta", "P_Wpn_Metralleta");
+            Build("SM_Wpn_Lanzacohetes", "P_Wpn_Lanzacohetes");
+            Build("SM_Wpn_Escopeta", "P_Wpn_Escopeta");
+            Build("SM_Wpn_Sniper", "P_Wpn_Sniper");
+            Build("SM_Wpn_AK", "P_Wpn_AK");
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();

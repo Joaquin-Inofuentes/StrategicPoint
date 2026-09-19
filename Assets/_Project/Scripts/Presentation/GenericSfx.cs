@@ -78,6 +78,10 @@ namespace SP.Presentation
                 case WeaponKind.Pistol: freq = 1300f; duration = 0.05f; decay = 26f; break;
                 // Heavy: grave y sostenido, se siente mas pesado.
                 case WeaponKind.Heavy: freq = 220f; duration = 0.16f; decay = 8f; break;
+                case WeaponKind.Smg: freq = 1100f; duration = 0.05f; decay = 24f; break;
+                case WeaponKind.Rocket: freq = 130f; duration = 0.34f; decay = 5f; break;
+                case WeaponKind.Shotgun: freq = 300f; duration = 0.13f; decay = 9f; break;
+                case WeaponKind.Sniper: freq = 620f; duration = 0.2f; decay = 12f; break;
                 default: freq = 900f; duration = 0.08f; decay = 18f; break;
             }
             clip = GenerateTone(freq, duration, decay, "Shot_" + kind);

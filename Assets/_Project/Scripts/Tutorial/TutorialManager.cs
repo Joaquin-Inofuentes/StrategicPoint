@@ -403,9 +403,25 @@ namespace SP.Tutorial
                 Id = "seleccionar", Titulo = "SELECCIONAR EN FPS", Teclas = "Shift + RMB", Acento = dorado,
                 Subs = new[]
                 {
-                    S("SHIFT + CLIC DERECHO sobre un aliado", "Mira a un aliado, mantén SHIFT y haz CLIC DERECHO sobre él: queda seleccionado.", "Gira con el mouse hasta tener a un aliado en la mira (está cerca de ti).", () => f.aliadoSeleccionadoEnFps, v => f.aliadoSeleccionadoEnFps = v),
+                    S("SHIFT + CLIC DERECHO sobre un aliado", "Tus aliados se adelantaron. Mira a uno, mantén SHIFT y haz CLIC DERECHO sobre él: queda seleccionado.", "Gira el mouse hasta tener a un aliado en la mira (están unos 9 metros delante).", () => f.aliadoSeleccionadoEnFps, v => f.aliadoSeleccionadoEnFps = v),
                 },
-                AlEntrar = () => { if (driver.Selection != null) driver.Selection.Clear(); aliadoSeleccionadoId = -1; },
+                AlEntrar = () =>
+                {
+                    if (driver.Selection != null) driver.Selection.Clear();
+                    aliadoSeleccionadoId = -1;
+                    // Los aliados que te siguen quedan pegados a tu espalda y con la camara sobre el hombro la
+                    // mira no llega a apuntarlos: se adelantan 9 m para poder mirarlos.
+                    var yo = driver.Brain.Current;
+                    if (yo != null && driver.Rig.Cam != null)
+                    {
+                        var frente = Vector3.ProjectOnPlane(driver.Rig.Cam.transform.forward, Vector3.up).normalized;
+                        var lado = Vector3.Cross(Vector3.up, frente);
+                        int k = 0;
+                        foreach (var a in aliados)
+                            if (a != null && a.Health.IsAlive)
+                                OrderService.IssueMoveOrder(a, yo.transform.position + frente * 9f + lado * (k++ % 2 == 0 ? -3f : 3f));
+                    }
+                },
                 Evaluar = () =>
                 {
                     if (driver.Selection == null) return;

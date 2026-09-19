@@ -56,6 +56,14 @@ namespace SP.UI
             RecomputeCrosshairSize();
         }
 
+        // Con el zoom activo manda la reticula de MirillaView: la base se apaga.
+        public void SetBaseCrosshairHidden(bool hidden)
+        {
+            if (crosshair != null && crosshair.enabled == hidden) crosshair.enabled = !hidden;
+        }
+
+        public Color CurrentAimTintColor => currentAimTint;
+
         void RecomputeCrosshairSize()
         {
             crosshairBaseSize = crosshairSpriteSize * crosshairUserScale * crosshairZoomMultiplier + Vector2.one * (crosshairSpreadFraction * 9f);
@@ -181,8 +189,8 @@ namespace SP.UI
         // mientras se le apunta -- UpdateFromAimResult es quien decide
         // eso y llama a este metodo con el resultado.
         const string EnemyHealthCircleName = "CirculoVidaEnemigo";
-        const float EnemyHealthCircleDiameter = 50f;
-        static readonly Color EnemyHealthCircleFondo = new Color(0f, 0f, 0f, 0.35f);
+        const float EnemyHealthCircleDiameter = 84f;
+        static readonly Color EnemyHealthCircleFondo = new Color(0f, 0f, 0f, 0.55f);
         static readonly Color EnemyHealthCircleRelleno = new Color(0.9f, 0.25f, 0.2f);
 
         CirculoDeProgreso circuloVidaEnemigo;
@@ -610,7 +618,7 @@ namespace SP.UI
             // el control ahora o dejarlo pelear -- el panel mostraba vida,
             // arma y rol, pero no eso.
             string state = s.Brain != null ? StateLabel(s.Brain.State) : "-";
-            soldierInfoText.text = $"{tag}{s.DisplayName}   ·   Vida {s.Health.Current}/{s.Health.MaxHealth}   ·   Arma {s.Weapon.CurrentWeaponKind}   ·   {s.Role}   ·   {state}";
+            soldierInfoText.text = $"{tag}{s.DisplayName}   ·   Vida {s.Health.Current}/{s.Health.MaxHealth}   ·   Arma {SP.Combat.WeaponCatalog.Get(s.Weapon.CurrentWeaponKind).DisplayName}   ·   {s.ClassName}   ·   {state}";
         }
 
         static string StateLabel(SP.Ai.AiState state) => state switch
