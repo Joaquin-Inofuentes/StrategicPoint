@@ -1301,6 +1301,7 @@ namespace SP.Player
                 // Las teclas 1/2/3 son las RANURAS del loadout de la clase que se maneja
                 // (asalto: fusil/pistola/lanzacohetes; flanqueador: metralleta/pistola/escopeta...).
                 TickReordenarEscuadra(kb);
+                TickArsenal(kb);
                 if (kb.digit1Key.wasPressedThisFrame) EquipSlot(0);
                 if (kb.digit2Key.wasPressedThisFrame) EquipSlot(1);
                 if (kb.digit3Key.wasPressedThisFrame) EquipSlot(2);

@@ -172,7 +172,8 @@ namespace SP.UI
             Boton(go.transform, font, "Daltonismo", new Vector2(0f, -10f), () => { AjustesDeJuego.PonerDaltonismo(!AjustesDeJuego.Daltonismo); Refrescar(go.transform); });
             Boton(go.transform, font, "HudMinimo", new Vector2(0f, -70f), () => { AjustesDeJuego.PonerHudMinimo(!AjustesDeJuego.HudMinimo); Refrescar(go.transform); });
             Boton(go.transform, font, "Escala", new Vector2(0f, -130f), () => { AjustesDeJuego.SiguienteEscala(); Refrescar(go.transform); });
-            Texto(go.transform, font, "Daltonismo cambia verde y rojo por azul y naranja.\nHUD minimo oculta mision, minimapa y escuadra (tecla F10).\nMando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.", new Vector2(0f, -225f), 14, TextAnchor.MiddleCenter, FontStyle.Normal, new Vector2(400f, 130f));
+            Boton(go.transform, font, "Idioma", new Vector2(0f, -190f), () => { SP.Core.Loc.Alternar(); Refrescar(go.transform); });
+            Texto(go.transform, font, "Daltonismo cambia verde y rojo por azul y naranja.\nHUD minimo oculta mision, minimapa y escuadra (tecla F10).\nMando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.", new Vector2(0f, -262f), 14, TextAnchor.MiddleCenter, FontStyle.Normal, new Vector2(400f, 100f));
             return go.transform;
         }
 
@@ -185,6 +186,7 @@ namespace SP.UI
             Poner(extra, "Daltonismo", "DALTONISMO: " + (AjustesDeJuego.Daltonismo ? "SI" : "NO"));
             Poner(extra, "HudMinimo", "HUD MINIMO: " + (AjustesDeJuego.HudMinimo ? "SI" : "NO"));
             Poner(extra, "Escala", "TAMANO DE INTERFAZ: " + AjustesDeJuego.TextoEscala());
+            Poner(extra, "Idioma", "IDIOMA / LANGUAGE: " + SP.Core.Loc.NombreDelIdioma + "  [F12]");
         }
         static void Poner(Transform extra, string boton, string texto)
         {

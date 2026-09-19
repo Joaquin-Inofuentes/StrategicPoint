@@ -406,6 +406,29 @@ namespace SP.Combat
             reloadTimer = 0f;
         }
 
+        // Arsenal (item 43): en una caja de suministros se puede cambiar el arma de la ranura 1 por otra del arsenal.
+        // Las ranuras 2 y 3 (pistola y arma pesada) no se tocan y no se repite un arma que ya llevas.
+        public static readonly WeaponKind[] Arsenal = { WeaponKind.Rifle, WeaponKind.Smg, WeaponKind.Shotgun, WeaponKind.Sniper, WeaponKind.Heavy, WeaponKind.Rocket };
+
+        public bool CambiarArmaPrincipal(int direccion)
+        {
+            if (Loadout.Count == 0) return false;
+            int n = Arsenal.Length;
+            int i = System.Array.IndexOf(Arsenal, Loadout[0]);
+            if (i < 0) i = 0;
+            for (int paso = 1; paso <= n; paso++)
+            {
+                var candidata = Arsenal[(((i + direccion * paso) % n) + n) % n];
+                if (candidata == Loadout[0]) continue;
+                if (Loadout.IndexOf(candidata) > 0) continue;   // ya la llevas en otra ranura
+                Loadout[0] = candidata;
+                reservaInicializada[(int)candidata] = false;
+                EquipFromLoadout(0);
+                return true;
+            }
+            return false;
+        }
+
         public void CycleNext() => EquipFromLoadout(CurrentLoadoutIndex + 1);
         public void CyclePrevious() => EquipFromLoadout(CurrentLoadoutIndex - 1);
 

@@ -176,6 +176,51 @@ namespace SP.EditorTools
                 AjustesDeJuego.PonerEscala(escalaPrevia);
                 Object.DestroyImmediate(cv); Object.DestroyImmediate(otro);
             }
+
+            // --- Arsenal en la caja de suministros (43) ---
+            {
+                var w = doc.Weapon;
+                w.Loadout[0] = WeaponKind.Rifle; w.EquipFromLoadout(0);
+                w.CambiarArmaPrincipal(+1);
+                Check("Arsenal: +1 cambia el fusil por la metralleta en la ranura 1", w.Loadout[0] == WeaponKind.Smg && w.CurrentWeaponKind == WeaponKind.Smg);
+                w.CambiarArmaPrincipal(+1); w.CambiarArmaPrincipal(+1);
+                Check("Arsenal: la tercera es el francotirador", w.Loadout[0] == WeaponKind.Sniper);
+                w.CambiarArmaPrincipal(+1);
+                Check("Arsenal: no repite el arma pesada que ya llevas en la ranura 3 (salta al cohete)", w.Loadout[0] == WeaponKind.Rocket && w.Loadout[2] == WeaponKind.Heavy);
+                Check("Arsenal: las ranuras 2 y 3 no se tocan", w.Loadout[1] == WeaponKind.Pistol);
+                w.CambiarArmaPrincipal(-1);
+                Check("Arsenal: -1 vuelve hacia atras", w.Loadout[0] == WeaponKind.Sniper);
+                w.Loadout[0] = WeaponKind.Rifle; w.EquipFromLoadout(0);
+                var cajaArsenal = CajaDeSuministros.Crear(doc.transform.position + doc.transform.forward * 30f);
+                if (!CajaDeSuministros.Todas.Contains(cajaArsenal)) CajaDeSuministros.Todas.Add(cajaArsenal);   // en Edit mode OnEnable no corre
+                Check("Hay caja de suministros a la vista de la busqueda del arsenal", CajaDeSuministros.MasCercana(cajaArsenal.transform.position, CajaDeSuministros.RadioDeArsenal) == cajaArsenal);
+                Check("Lejos de la caja no se puede cambiar de arma", CajaDeSuministros.MasCercana(cajaArsenal.transform.position + Vector3.right * 40f, CajaDeSuministros.RadioDeArsenal) == null);
+                CajaDeSuministros.Todas.Remove(cajaArsenal);
+                Object.DestroyImmediate(cajaArsenal.gameObject);
+            }
+
+            // --- Localizacion espanol/ingles (27) ---
+            {
+                Idioma idiomaPrevio = Loc.Actual;
+                Loc.Poner(Idioma.Es);
+                var cvLoc = new GameObject("CanvasLocTest", typeof(Canvas));
+                var tx = new GameObject("t", typeof(RectTransform), typeof(UnityEngine.UI.Text)).GetComponent<UnityEngine.UI.Text>();
+                tx.transform.SetParent(cvLoc.transform, false);
+                var tx2 = new GameObject("t2", typeof(RectTransform), typeof(UnityEngine.UI.Text)).GetComponent<UnityEngine.UI.Text>();
+                tx2.transform.SetParent(cvLoc.transform, false);
+                tx.text = "VOLVER AL MENÚ"; tx2.text = "PANTALLA: COMPLETA";
+                Check("En espanol Loc.T no cambia el texto", Loc.T("JUGAR") == "JUGAR");
+                Loc.Poner(Idioma.En);
+                Check("En ingles JUGAR es PLAY", Loc.T("JUGAR") == "PLAY");
+                Check("El traductor cambia los Text de la escena (con tilde)", tx.text == "BACK TO MENU");
+                Check("Tambien traduce el formato ETIQUETA: valor", tx2.text == "SCREEN: FULLSCREEN");
+                Check("Un texto sin entrada queda igual", Loc.T("Texto que no esta en la tabla") == "Texto que no esta en la tabla");
+                Loc.Poner(Idioma.Es);
+                Check("Al volver a espanol se restauran los textos originales, con su tilde", tx.text == "VOLVER AL MENÚ" && tx2.text == "PANTALLA: COMPLETA");
+                Check("La preferencia de idioma se guarda", PlayerPrefs.GetInt("sp_idioma", -1) == 0);
+                Loc.Poner(idiomaPrevio);
+                Object.DestroyImmediate(cvLoc);
+            }
         }
     }
 }

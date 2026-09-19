@@ -136,6 +136,7 @@ namespace SP.UI
             new ControlEntry("E", "bajarse del vehículo", AdentroDelVehiculo, SP.Player.KeyBindings.Interactuar),
 
             new ControlEntry("[ ]", "subir o bajar al soldado que manejas en el orden de la escuadra", ControlContext.FpsAPie),
+            new ControlEntry(", .", "junto a una caja de suministros: cambiar el arma principal (arsenal)", ControlContext.FpsAPie),
             new ControlEntry("C", "mantener: ver las coberturas del piso y las rutas de patrulla enemigas", Todos, SP.Player.KeyBindings.VerTactico),
             new ControlEntry("F4", "modo dios: nadie de tu bando recibe daño (otra vez para apagar)", Todos),
 

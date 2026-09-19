@@ -23,6 +23,20 @@ namespace SP.Player
         PlayerInputDriver driver;
         Vector3 basePos;
 
+        // Cerca de una caja (aunque este vacia) se puede cambiar el arma principal.
+        public static CajaDeSuministros MasCercana(Vector3 pos, float radio)
+        {
+            CajaDeSuministros mejor = null; float d2 = radio * radio;
+            foreach (var c in Todas)
+            {
+                if (c == null) continue;
+                var d = c.basePos - pos; d.y = 0f;
+                if (d.sqrMagnitude <= d2) { d2 = d.sqrMagnitude; mejor = c; }
+            }
+            return mejor;
+        }
+        public const float RadioDeArsenal = 3.2f;
+
         public bool Disponible => Time.time >= disponibleDesde;
 
         // Crea una caja en el piso mas cercano a 'pos' (si algo la bloquea, prueba unos metros mas alla).
