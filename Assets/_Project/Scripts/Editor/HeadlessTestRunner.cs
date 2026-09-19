@@ -23,7 +23,7 @@ namespace SP.EditorTools
     // cámara, UI, pool de proyectiles) y corre las 3 fases del guion de test
     // pedido, avanzando la simulación a mano (sin depender de Play mode) y
     // volcando cada paso a la consola con timer. Pensado para -batchmode.
-    public static class HeadlessTestRunner
+    public static partial class HeadlessTestRunner
     {
         const string ScenePath = "Assets/_Project/Scenes/SC_TestLevel.unity";
 
@@ -182,8 +182,12 @@ namespace SP.EditorTools
         public static void RunAll()
         {
             RestablecerEstaticosDeJuego();
+            LimpiarConsola();
             // La suite arma y abre SC_TestLevel: al terminar se vuelve a la escena que el usuario tenia abierta.
             string escenaPrevia = UnityEngine.SceneManagement.SceneManager.GetActiveScene().path;
+            // La suite reescribe SC_TestLevel (52 mil lineas de diff) y el prefab del blindado (solo IDs). Se guardan sus
+            // bytes y se restauran al terminar, asi correr las pruebas no ensucia el repositorio.
+            var respaldo = RespaldarArchivosGenerados();
             bool ok;
             try
             {
@@ -191,6 +195,7 @@ namespace SP.EditorTools
                 EscribirResultado(ok, null);
                 if (!Application.isBatchMode && !string.IsNullOrEmpty(escenaPrevia) && !escenaPrevia.EndsWith("SC_TestLevel.unity"))
                     UnityEditor.SceneManagement.EditorSceneManager.OpenScene(escenaPrevia);
+                RestaurarArchivosGenerados(respaldo);
             }
             catch (Exception ex)
             {
@@ -200,6 +205,36 @@ namespace SP.EditorTools
             }
 
             if (Application.isBatchMode) EditorApplication.Exit(ok ? 0 : 1);
+        }
+
+        static readonly string[] ArchivosGenerados = {
+            "Assets/_Project/Scenes/SC_TestLevel.unity", "Assets/_Project/Prefabs/P_Vehicle_Blindado.prefab" };
+
+        static Dictionary<string, byte[]> RespaldarArchivosGenerados()
+        {
+            var d = new Dictionary<string, byte[]>();
+            foreach (var p in ArchivosGenerados) if (System.IO.File.Exists(p)) d[p] = System.IO.File.ReadAllBytes(p);
+            return d;
+        }
+
+        static void RestaurarArchivosGenerados(Dictionary<string, byte[]> respaldo)
+        {
+            bool cambio = false;
+            foreach (var kv in respaldo)
+            {
+                var actual = System.IO.File.Exists(kv.Key) ? System.IO.File.ReadAllBytes(kv.Key) : null;
+                if (actual != null && actual.Length == kv.Value.Length && System.Linq.Enumerable.SequenceEqual(actual, kv.Value)) continue;
+                System.IO.File.WriteAllBytes(kv.Key, kv.Value);
+                cambio = true;
+            }
+            if (cambio) AssetDatabase.Refresh();
+        }
+
+        // El buffer de la consola del Editor se llenaba con 2000 mensajes de la suite y quedaba congelado mostrando
+        // corridas viejas; se limpia al empezar para que lo que se lea sea de ESTA corrida.
+        static void LimpiarConsola()
+        {
+            try { System.Type.GetType("UnityEditor.LogEntries, UnityEditor")?.GetMethod("Clear")?.Invoke(null, null); } catch { }
         }
 
         // Una corrida completa (construir escena + las 7 fases), extraida de
@@ -872,6 +907,7 @@ namespace SP.EditorTools
                 RunPhase15(inputDriver, aimTargeting, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase16(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase17(inputDriver, vehicle, vega, kes, doc);
+                RunPhase18(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia

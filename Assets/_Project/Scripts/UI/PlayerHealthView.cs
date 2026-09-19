@@ -79,7 +79,7 @@ namespace SP.UI
                 baseColor = new Color(baseColor.r * pulse, baseColor.g * pulse, baseColor.b * pulse);
             }
 
-            fill.color = baseColor;
+            fill.color = AjustesDeJuego.Adaptar(baseColor);
         }
     }
 }

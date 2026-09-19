@@ -218,9 +218,9 @@ namespace SP.UI
             if (!alive || max <= 0) return;
             float frac = (float)current / max;
             healthFill.fillAmount = frac;
-            healthFill.color = frac > 0.6f ? new Color(0.35f, 0.85f, 0.4f)
+            healthFill.color = AjustesDeJuego.Adaptar(frac > 0.6f ? new Color(0.35f, 0.85f, 0.4f)
                 : frac > 0.25f ? new Color(0.95f, 0.8f, 0.25f)
-                : new Color(0.95f, 0.25f, 0.2f);
+                : new Color(0.95f, 0.25f, 0.2f));
         }
 
         void RefreshBackground()

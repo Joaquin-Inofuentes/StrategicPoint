@@ -53,6 +53,25 @@ namespace SP.UI
 
         public int VisibleMarkerCount { get; private set; }
 
+        // Etiqueta "2 · 14 m" junto a cada flecha: antes eran cuadrados azules sin decir de quien ni a que distancia.
+        Text[] etiquetas;
+        Text Etiqueta(int i)
+        {
+            if (etiquetas == null || etiquetas.Length < Arrows.Length) etiquetas = new Text[Arrows.Length];
+            if (etiquetas[i] != null) return etiquetas[i];
+            var go = new GameObject("AllyLabel_" + i, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+            go.transform.SetParent(transform, false);
+            var rt = (RectTransform)go.transform;
+            rt.sizeDelta = new Vector2(90f, 20f);
+            var t = go.GetComponent<Text>();
+            t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            t.fontSize = 13; t.fontStyle = FontStyle.Bold; t.alignment = TextAnchor.MiddleCenter;
+            t.raycastTarget = false; t.horizontalOverflow = HorizontalWrapMode.Overflow;
+            go.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.9f);
+            etiquetas[i] = t;
+            return t;
+        }
+
         void OnEnable()
         {
             if (Arrows == null || Arrows.Length == 0)
@@ -141,6 +160,12 @@ namespace SP.UI
                 // Color por vida: un aliado al borde de morir fuera de
                 // encuadre es justamente la informacion mas urgente.
                 float frac = s.Health.MaxHealth > 0 ? (float)s.Health.Current / s.Health.MaxHealth : 1f;
+                var et = Etiqueta(used);
+                et.gameObject.SetActive(true);
+                var dirCam = s.transform.position - cam.transform.position;
+                et.text = $"{i + 1} · {dirCam.magnitude:0} m";
+                et.rectTransform.anchoredPosition = arrow.rectTransform.anchoredPosition - dir * 30f;
+                et.color = Color.white;
                 arrow.color = frac > 0.6f ? new Color(0.45f, 0.75f, 0.95f, 0.85f)
                     : frac > 0.3f ? new Color(0.95f, 0.85f, 0.35f, 0.9f)
                     : new Color(0.95f, 0.3f, 0.25f, 0.95f);
@@ -149,7 +174,10 @@ namespace SP.UI
             }
 
             for (int i = used; i < Arrows.Length; i++)
+            {
                 if (Arrows[i] != null) Arrows[i].gameObject.SetActive(false);
+                if (etiquetas != null && i < etiquetas.Length && etiquetas[i] != null) etiquetas[i].gameObject.SetActive(false);
+            }
 
             VisibleMarkerCount = used;
         }
@@ -159,6 +187,7 @@ namespace SP.UI
             VisibleMarkerCount = 0;
             if (Arrows == null) return;
             foreach (var a in Arrows) if (a != null) a.gameObject.SetActive(false);
+            if (etiquetas != null) foreach (var e in etiquetas) if (e != null) e.gameObject.SetActive(false);
         }
     }
 }

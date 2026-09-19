@@ -281,7 +281,7 @@ namespace SP.Presentation
         void Update()
         {
             if (Keyboard.current == null || !Application.isPlaying) return;
-            if (!Keyboard.current.escapeKey.wasPressedThisFrame) return;
+            if (!Keyboard.current.escapeKey.wasPressedThisFrame && !SP.Player.MandoFps.Pausa) return;
             // La partida ya terminó (ganaste/perdiste): [ESC] no debe
             // abrir un menú de pausa encima de esa pantalla.
             if (outcome != null && outcome.IsShowing) return;
@@ -350,6 +350,7 @@ namespace SP.Presentation
             // primera vez.
             if (settingsPanel == null || settingsPanel.activeSelf) return;
             settingsPanel.SetActive(true);
+            SP.UI.PanelAjustesExtra.Preparar(settingsPanel);
             GameLog.Line("Se entro a configuraciones");
         }
 
@@ -362,7 +363,13 @@ namespace SP.Presentation
 
         void RefreshControlsList()
         {
-            if (controlsListTxt != null) controlsListTxt.text = SP.UI.ControlsTable.FullText();
+            if (controlsListTxt != null)
+            {
+                controlsListTxt.text = SP.UI.ControlsTable.FullText();
+                controlsListTxt.lineSpacing = 1.12f;   // el texto iba pegado al borde y con el interlineado apretado
+                var rt = controlsListTxt.rectTransform;
+                if (rt.offsetMin.x < 18f) { rt.offsetMin = new Vector2(20f, rt.offsetMin.y); rt.offsetMax = new Vector2(-20f, rt.offsetMax.y); }
+            }
         }
 
         // Abre/cierra el panel de controles SIN pausar el juego -- para

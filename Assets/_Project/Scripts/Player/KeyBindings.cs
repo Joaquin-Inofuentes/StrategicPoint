@@ -41,10 +41,9 @@ namespace SP.Player
         // Era "camara_vehiculo" (V alternaba primera/tercera persona en el
         // vehiculo) -- ese toggle ya no existe, la vista de vehiculo es
         // siempre 3ra persona. La tecla pasa a ser el golpe de
-        // cuchillo ([F] por defecto), el mismo id de PlayerPrefs se reutiliza a proposito
-        // para no dejar una tecla remapeada por el jugador apuntando a
-        // una accion que ya no existe.
-        public const string AtaqueCuchillo = "camara_vehiculo";
+        // cuchillo ([F] por defecto). Ahora tiene su PROPIO id: reutilizar "camara_vehiculo" hacia que
+        // quien habia remapeado esa tecla heredara un cuchillo en una tecla rara.
+        public const string AtaqueCuchillo = "ataque_cuchillo";
         // Granada de mano: se MANTIENE para ver la curva y se suelta para lanzar (ronda 7).
         public const string Granada = "granada";
         public const string Recentrar = "recentrar";

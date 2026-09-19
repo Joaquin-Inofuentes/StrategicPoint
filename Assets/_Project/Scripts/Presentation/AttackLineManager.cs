@@ -83,7 +83,7 @@ namespace SP.Presentation
             lines.Remove(actorId);
             if (lr == null) return;
             
-            var mat = lr.material;
+            var mat = Application.isPlaying ? lr.material : lr.sharedMaterial;   // .material en Edit instancia y filtra un material
             if (Application.isPlaying)
             {
                 if (mat != null) Destroy(mat);
@@ -119,7 +119,7 @@ namespace SP.Presentation
             lr.transform.position = new Vector3(0f, -500f, 0f);
             lr.SetPosition(0, lr.transform.position);
             lr.SetPosition(1, lr.transform.position + Vector3.right * 0.01f);
-            var mat = lr.material;
+            var mat = Application.isPlaying ? lr.material : lr.sharedMaterial;   // .material en Edit instancia y filtra un material
             if (Application.isPlaying) { if (mat != null) Destroy(mat); Object.Destroy(lr.gameObject); }
             else { if (mat != null) DestroyImmediate(mat); Object.DestroyImmediate(lr.gameObject); }
         }

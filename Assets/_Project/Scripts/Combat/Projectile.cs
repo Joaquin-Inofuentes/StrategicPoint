@@ -307,6 +307,7 @@ namespace SP.Combat
             // impacto se leeria como que erraron cuando en realidad
             // acertaron.
             TryPlayNearMissWhizz();
+            SuprimirCercanos();
 
             if (age >= lifetime) Expire();
         }
@@ -452,6 +453,25 @@ namespace SP.Combat
         // metros y salio de la esfera. Sirve para que las balas PROPIAS,
         // que nacen justo encima del jugador, no silben al salir.
         const float WhizzFallbackMinAge = 0.12f;
+
+        // Fuego de supresion: una bala que pasa a menos de 2 m de un soldado enemigo suyo lo agacha unos segundos.
+        // Se revisa unas 12 veces por segundo por bala, contra la grilla espacial (no un barrido de todos los soldados).
+        float proximaSupresion;
+        static readonly System.Collections.Generic.List<SP.Actors.Soldier> bufferSupresion = new System.Collections.Generic.List<SP.Actors.Soldier>();
+        public const float RadioDeSupresion = 2f;
+        void SuprimirCercanos()
+        {
+            if (!Application.isPlaying || Time.time < proximaSupresion || age < 0.05f) return;
+            proximaSupresion = Time.time + 0.08f;
+            bufferSupresion.Clear();
+            var mi = ownerTeam;
+            SpatialGrid.QueryInRange(transform.position, RadioDeSupresion, bufferSupresion, s => s != null && s.Team != mi && s.Health.IsAlive);
+            for (int i = 0; i < bufferSupresion.Count; i++)
+            {
+                var b = bufferSupresion[i].Brain;
+                if (b != null) b.RecibirSupresion(2.5f);
+            }
+        }
 
         void TryPlayNearMissWhizz()
         {
@@ -605,7 +625,9 @@ namespace SP.Combat
             DanarObstaculos(point, radius, damage);
             foreach (var s in ActorRegistry.All)
             {
-                if (s == null || !s.Health.IsAlive || (spareTeam.HasValue && s.Team == spareTeam.Value) || !s.gameObject.activeInHierarchy) continue;
+                if (s == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                bool amigo = spareTeam.HasValue && s.Team == spareTeam.Value;
+                if (amigo && !(spareTeam.Value == TeamId.Player && Dificultad.FuegoAmigoExplosivo)) continue;
                 float dist = Vector3.Distance(s.transform.position, point);
                 if (dist > radius) continue;
 
@@ -625,6 +647,7 @@ namespace SP.Combat
                 // con un piso para que el ultimo metro siga contando.
                 float cercania = 1f - Mathf.Clamp01(dist / radius);
                 int danoReal = Mathf.Max(1, Mathf.RoundToInt(damage * Mathf.Lerp(DanoMinimoEnElBorde, 1f, cercania)));
+                if (amigo) danoReal = Mathf.Max(1, danoReal / 2);   // fuego amigo: la mitad
                 s.Health.TakeDamage(danoReal, ownerId);
 
                 // Antes el daño en area no movia a nadie: una granada se

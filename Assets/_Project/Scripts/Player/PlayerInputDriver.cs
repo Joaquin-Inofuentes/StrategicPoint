@@ -151,7 +151,7 @@ namespace SP.Player
                 weaponViewmodel = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 weaponViewmodel.name = "WeaponViewmodel";
                 var col = weaponViewmodel.GetComponent<Collider>();
-                if (col != null) Destroy(col);
+                if (col != null) { if (Application.isPlaying) Destroy(col); else DestroyImmediate(col); }
                 weaponViewmodel.transform.SetParent(Rig.Cam.transform, false);
                 // Un poco más lejos y más grande que el cubo del cuerpo: tan
                 // cerca de la cámara y tan fino, casi no se veía (se perdía
@@ -1142,6 +1142,8 @@ namespace SP.Player
             if (kb.sKey.isPressed) move -= f;
             if (kb.dKey.isPressed) move += r;
             if (kb.aKey.isPressed) move -= r;
+            var mandoMover = MandoFps.Mover;
+            if (mandoMover.sqrMagnitude > 0f) move += f * mandoMover.y + r * mandoMover.x;
             if (TorretaFijaActiva) { move = Vector3.zero; destinoAuto = null; }
             bool moving = move.sqrMagnitude > 0.0001f;
             // Destino automatico (SetDestination): camina solo hasta el punto,
@@ -1160,7 +1162,7 @@ namespace SP.Player
             }
             // [Shift]: correr (solo hacia adelante, de pie y sin apuntar). Los aliados libres que van
             // con vos tambien corren (AjustesDeEscuadra.Correr) y las piernas aceleran.
-            bool shiftCorrer = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+            bool shiftCorrer = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed || MandoFps.Correr;
             bool correr = shiftCorrer && moving && !Brain.Current.Motor.IsCrouching && Vector3.Dot(move.normalized, f) > 0.2f
                 && !Rig.EstaConZoom && !TorretaFijaActiva;
             Brain.Current.Motor.SetRunning(correr);
@@ -1178,7 +1180,7 @@ namespace SP.Player
             // G2: mismo Ctrl que en RTS usan Ctrl+A y Ctrl+Click (trazar
             // recorrido) -- no colisiona porque son ramas mutuamente
             // excluyentes (UpdateFps vs UpdateRts).
-            bool agacharHeld = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
+            bool agacharHeld = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed || MandoFps.Agachar;
             Brain.Current.Motor.SetCrouching(agacharHeld);
             if (agacharHeld != agachadoAntes)
             {
@@ -1191,7 +1193,7 @@ namespace SP.Player
             // (recentrar camara) ni con el de la camara de muerte (pedir
             // cambio de cuerpo): son ramas mutuamente excluyentes, esta
             // vive solo adentro de UpdateFps.
-            if (kb.spaceKey.wasPressedThisFrame && !TorretaFijaActiva)
+            if ((kb.spaceKey.wasPressedThisFrame || MandoFps.Saltar) && !TorretaFijaActiva)
             {
                 bool yaSaltaba = Brain.Current.Motor.IsJumping;
                 Brain.Current.Motor.Jump();
@@ -1222,6 +1224,17 @@ namespace SP.Player
                 }
             }
 
+            // Mando: el stick derecho gira igual que el mouse (velocidad angular, no delta), sin necesitar cursor capturado.
+            var mandoMirar = MandoFps.Mirar;
+            if (mandoMirar.sqrMagnitude > 0f && !(OrdenesMenu != null && OrdenesMenu.Abierto))
+            {
+                float kMando = Rig.EstaConZoom ? 1f / Mathf.Pow(Mathf.Max(1f, Rig.ZoomFactor), 0.75f) : 1f;
+                float grados = MandoFps.GradosPorSegundo * (lookSensitivity / 0.15f) * kMando * Time.deltaTime;
+                Brain.RotateYaw(mandoMirar.x * grados);
+                if (TorretaFijaActiva) torretaActual.AcotarGiro(Brain.Current);
+                Rig.AddPitch(mandoMirar.y * grados * (InvertLookY ? -1f : 1f));
+            }
+
             // En la torreta la camara va casi al ojo (los techos de las torres no dejan lugar a 4 m detras).
             Rig.FollowOverShoulder(Brain.Current.transform, distance: TorretaFijaActiva ? 1.4f : 4f, heightOffset: Brain.Current.Motor.EyeHeightDrop,
                 ojo: Brain.Current.EyeAnchor != null ? Brain.Current.EyeAnchor.position : (Vector3?)null);
@@ -1240,7 +1253,7 @@ namespace SP.Player
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateAmmoWarning(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateReloadCircle(Brain.Current.Weapon);
-            if (KeyBindings.WasPressed(KeyBindings.Recargar))
+            if (KeyBindings.WasPressed(KeyBindings.Recargar) || MandoFps.Recargar)
             {
                 bool yaRecargaba = Brain.Current.Weapon.IsReloading;
                 Brain.Current.Weapon.Reload();
@@ -1256,7 +1269,7 @@ namespace SP.Player
             // clickear una vez por bala incluso con un rifle. Ahora
             // mantener el boton dispara a la cadencia real del arma
             // (fireCooldown), que ya es distinta por WeaponKind.
-            if (mouse != null && mouse.leftButton.isPressed)
+            if ((mouse != null && mouse.leftButton.isPressed) || MandoFps.Disparar)
             {
                 bool emptyBeforeFire = Brain.Current.Weapon.CurrentAmmo <= 0 && !Brain.Current.Weapon.IsReloading;
                 // El mismo punto que ya muestra la mira (result.Point): si
@@ -1301,6 +1314,8 @@ namespace SP.Player
                 float wheel = mouse.scroll.ReadValue().y;
                 if (Mathf.Abs(wheel) > 0.01f) CycleWeapon(wheel > 0f ? +1 : -1);
             }
+            if (MandoFps.ArmaSiguiente) CycleWeapon(+1);
+            if (MandoFps.ArmaAnterior) CycleWeapon(-1);
 
             // Pedido explicito: "con V quiero q sea el ataque de cuchillo
             // rapido". No pasa por Brain.Fire() ni depende del arma a

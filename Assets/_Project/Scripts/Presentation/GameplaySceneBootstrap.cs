@@ -103,12 +103,12 @@ namespace SP.Presentation
             if (ObjectiveBanner != null && !esTutorial)
                 {
                 if (FindAnyObjectByType<SP.Mision.MisionDirector>() != null)
-                    ObjectiveBanner.Show("MISION: RESCATE\n1 Infiltrate hasta el centro · 2 Resiste 60 s · 3 Rescata al civil · 4 Escapa en el helicoptero", 5f);
+                    ObjectiveBanner.Show("MISION: RESCATE\nCentro · Resiste 60 s · Rescate · Helicoptero", 5f);
                 else
                     ObjectiveBanner.Show("Elimina a todos los enemigos\nmanteniendo viva a tu escuadra", 3f);
                 // La dificultad se dice al arrancar y queda fija en el cartel de la mision.
                 var pf = SP.Core.Dificultad.PerfilActual;
-                SP.UI.AlertQueue.Push($"DIFICULTAD {pf.Nombre}: enemigos vida {Pct(pf.VidaEnemigos)} daño {Pct(pf.DanoEnemigos)} · aliados vida {Pct(pf.VidaAliados)} daño {Pct(pf.DanoAliados)} · vos vida {Pct(pf.VidaJugador)} daño {Pct(pf.DanoJugador)}",
+                SP.UI.AlertQueue.Push($"DIFICULTAD {pf.Nombre}",
                                       SP.UI.AlertPriority.Alta, 6f);
             }
 

@@ -32,6 +32,9 @@ namespace SP.Core
 
         public static bool Activa { get; set; }
 
+        // En DIFICIL las explosiones de tu propio bando (tus granadas, tus cohetes) tambien te dañan, al 50 %.
+        public static bool FuegoAmigoExplosivo => Activa && Actual == NivelDificultad.Dificil;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reiniciar() { Activa = false; actual = null; }
 

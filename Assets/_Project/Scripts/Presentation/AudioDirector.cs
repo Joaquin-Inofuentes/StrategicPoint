@@ -424,11 +424,13 @@ namespace SP.Presentation
             if (src == null) { DroppedCount++; return false; }
 
             var lp = filters3D[slot];
-            if (lp != null) lp.cutoffFrequency = CutoffFor(distance);
+            bool tapado = Ocluido(position);
+            if (lp != null) lp.cutoffFrequency = tapado ? Mathf.Min(CutoffFor(distance), OclusionCorte) : CutoffFor(distance);
 
             src.transform.position = position;
             src.clip = clip;
-            src.volume = finalVolume;
+            src.volume = tapado ? finalVolume * OclusionVolumen : finalVolume;
+            UltimoSonidoTapado = tapado;
             // Pista para la virtualizacion propia del motor, que es
             // independiente de la nuestra: en Unity 0 es la MAXIMA prioridad
             // y 255 la minima, por eso va invertido.
@@ -515,6 +517,29 @@ namespace SP.Presentation
 
         public static float DistanceOrUnknown(Transform listener, Vector3 position) =>
             listener != null ? Vector3.Distance(listener.position, position) : float.MaxValue;
+
+        // Oclusion: un muro entre vos y la fuente apaga los agudos y baja el volumen (el reverb por ambiente queda fuera).
+        public const float OclusionCorte = 1400f;
+        public const float OclusionVolumen = 0.65f;
+        public bool UltimoSonidoTapado { get; private set; }
+        readonly RaycastHit[] golpesOclusion = new RaycastHit[6];
+        public bool Ocluido(Vector3 position)
+        {
+            var l = ResolveListener();
+            if (l == null) return false;
+            var desde = l.position; var hacia = position;
+            var d = hacia - desde; float dist = d.magnitude;
+            if (dist < 4f) return false;   // pegado: nada se interpone
+            int n = Physics.RaycastNonAlloc(desde, d / dist, golpesOclusion, dist - 0.5f, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = golpesOclusion[i].collider;
+                if (c == null || c.attachedRigidbody != null) continue;            // vehiculos, escombros
+                if (c.GetComponentInParent<SP.Actors.Soldier>() != null) continue;  // los cuerpos no tapan el sonido
+                return true;
+            }
+            return false;
+        }
 
         float DistanceToListener(Vector3 position) => DistanceOrUnknown(ResolveListener(), position);
 

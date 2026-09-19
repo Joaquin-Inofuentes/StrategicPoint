@@ -39,12 +39,14 @@ namespace SP.Player
             {
                 var previousBrain = Current.GetComponent<AiBrain>();
                 if (previousBrain != null) previousBrain.IsPossessedByPlayer = false;
+                if (Current.Weapon != null) Current.Weapon.LimitaMunicion = false;
             }
 
             Current = soldier;
 
             var brain = soldier.GetComponent<AiBrain>();
             if (brain != null) brain.IsPossessedByPlayer = true;
+            if (soldier.Weapon != null) soldier.Weapon.LimitaMunicion = true;
             return true;
         }
 

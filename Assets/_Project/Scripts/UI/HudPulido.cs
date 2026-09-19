@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 namespace SP.UI
 {
@@ -14,13 +15,24 @@ namespace SP.UI
         Text cartel;
         MenuDeOrdenes radial;
         float proximaBusqueda;
+        Transform raizHud;
+        bool ultimoHudMinimo;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void Iniciar()
+        {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= AlCargarEscena;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += AlCargarEscena;
+            Crear();
+        }
+        static void AlCargarEscena(UnityEngine.SceneManagement.Scene escena, UnityEngine.SceneManagement.LoadSceneMode modo) => Crear();
+
         static void Crear()
         {
             if (Application.targetFrameRate <= 0) Application.targetFrameRate = 144;   // sin tope el juego rendia al maximo y calentaba de mas
             if (instancia != null) return;
             instancia = new GameObject("HudPulido").AddComponent<HudPulido>();
+            AliadosSinEstorbo.Asegurar();
         }
 
         void LateUpdate()
@@ -36,6 +48,9 @@ namespace SP.UI
                     if (cartel == null) { var t = raiz.transform.Find("PromptText"); if (t != null) cartel = t.GetComponent<Text>(); }
                 }
             }
+            if (Keyboard.current != null && Keyboard.current.f10Key.wasPressedThisFrame) AjustesDeJuego.PonerHudMinimo(!AjustesDeJuego.HudMinimo);
+            if (raizHud == null) { var c = GameObject.Find("Canvas"); if (c != null) raizHud = c.transform; }
+            if (raizHud != null && ultimoHudMinimo != AjustesDeJuego.HudMinimo) { ultimoHudMinimo = AjustesDeJuego.HudMinimo; PanelAjustesExtra.AplicarHudMinimo(raizHud); }
             bool radialAbierto = radial != null && radial.Abierto;
             if (mira != null) mira.enabled = !radialAbierto;
             if (cartel != null && (radialAbierto || Time.timeScale == 0f) && cartel.gameObject.activeSelf) cartel.gameObject.SetActive(false);

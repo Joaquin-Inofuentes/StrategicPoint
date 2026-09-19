@@ -115,24 +115,60 @@ namespace SP.UI
 
             if (label != null)
             {
-                string status = weapon.IsReloading ? "  ·  RECARGANDO" : "";
+                string status = weapon.IsReloading ? $"  ·  RECARGANDO {weapon.ReloadRemaining:0.0}s" : "";
                 int slot = weapon.Loadout.IndexOf(weapon.CurrentWeaponKind) + 1;
                 string tecla = slot > 0 ? $"[{slot}] " : "";
-                label.text = $"{tecla}{WeaponCatalog.Get(weapon.CurrentWeaponKind).DisplayName}   {weapon.CurrentAmmo}/{weapon.MagazineSize}{status}";
+                // Con reservas activas se ve cuantas balas quedan de repuesto ("8/8 · 24"); sin ninguna: "SIN MUNICION".
+                string reserva = weapon.UsaReservas ? (weapon.SinMunicionTotal ? "  ·  SIN MUNICION" : $"  ·  {weapon.ReservaActual}") : "";
+                label.text = $"{tecla}{WeaponCatalog.Get(weapon.CurrentWeaponKind).DisplayName}   {weapon.CurrentAmmo}/{weapon.MagazineSize}{reserva}{status}";
 
                 // El contador quedaba blanco fijo hasta llegar a cero, sin
                 // ningun aviso previo de que se estaba por acabar. Rojo
                 // por debajo del 30% de la carga, para que se note antes
                 // de quedarse en seco en medio de un tiroteo.
                 float frac = weapon.MagazineSize > 0 ? (float)weapon.CurrentAmmo / weapon.MagazineSize : 1f;
-                label.color = (!weapon.IsReloading && frac < 0.3f) ? new Color(0.95f, 0.25f, 0.2f) : Color.white;
+                label.color = (!weapon.IsReloading && frac < 0.3f) || weapon.SinMunicionTotal ? new Color(0.95f, 0.25f, 0.2f) : Color.white;
             }
+            ActualizarRotuloBarra(weapon);
             ActualizarExtras(weapon);
             if (fill != null)
             {
                 fill.fillAmount = weapon.ReadinessFraction01;
-                fill.color = weapon.IsReloading ? new Color(0.95f, 0.6f, 0.2f) : new Color(0.4f, 0.85f, 0.45f);
+                fill.color = AjustesDeJuego.Adaptar(weapon.IsReloading ? new Color(0.95f, 0.6f, 0.2f) : new Color(0.4f, 0.85f, 0.45f));
             }
+        }
+
+        // La barra verde no decia que era: ahora lleva un rotulo ("LISTA", "RECARGA 1.2s", "ENFRIANDO").
+        Text rotuloBarra;
+        void ActualizarRotuloBarra(WeaponHolder weapon)
+        {
+            if (rotuloBarra == null)
+            {
+                var barra = transform.Find("BarBG");
+                if (barra == null) return;
+                var t = barra.Find("Rotulo");
+                if (t == null)
+                {
+                    var go = new GameObject("Rotulo", typeof(RectTransform), typeof(Text));
+                    go.transform.SetParent(barra, false);
+                    var rt = (RectTransform)go.transform;
+                    rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 0f);
+                    rt.pivot = new Vector2(0.5f, 1f);
+                    rt.anchoredPosition = new Vector2(0f, -1f);
+                    rt.sizeDelta = new Vector2(0f, 14f);
+                    var tx = go.GetComponent<Text>();
+                    tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    tx.fontSize = 11; tx.alignment = TextAnchor.MiddleLeft;
+                    tx.raycastTarget = false;
+                    tx.color = new Color(0.85f, 0.9f, 0.85f);
+                    t = go.transform;
+                }
+                rotuloBarra = t.GetComponent<Text>();
+            }
+            if (rotuloBarra == null) return;
+            rotuloBarra.text = weapon.IsReloading ? $"RECARGA {weapon.ReloadRemaining:0.0}s"
+                : weapon.SinMunicionTotal ? "SIN MUNICION"
+                : weapon.ReadinessFraction01 < 0.999f ? "ENFRIANDO" : "LISTA";
         }
 
         // Linea encima del panel con las dos acciones que no son el arma: cuchillo [F] y granadas [G].

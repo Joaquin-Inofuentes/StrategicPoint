@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using SP.Actors;
+using SP.Combat;
 using SP.Presentation;
 
 namespace SP.Player
@@ -55,7 +56,7 @@ namespace SP.Player
         {
             var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
             g.name = nombre;
-            var col = g.GetComponent<Collider>(); if (col != null) Destroy(col);   // no bloquea a la IA ni a las balas
+            var col = g.GetComponent<Collider>(); if (col != null) { if (Application.isPlaying) Destroy(col); else DestroyImmediate(col); }   // no bloquea a la IA ni a las balas
             g.transform.SetParent(padre, false);
             g.transform.localPosition = local;
             g.transform.localScale = escala;
@@ -84,13 +85,14 @@ namespace SP.Player
 
             var arma = yo.Weapon;
             int antes = arma != null ? arma.Granadas : 0;
-            if (arma != null) arma.ReponerGranadas();
+            bool faltabaMunicion = arma != null && !arma.MunicionCompleta();
+            if (arma != null) { arma.ReponerGranadas(); arma.ReponerMunicion(); }
             int cura = Mathf.RoundToInt(yo.Health.MaxHealth * FraccionDeCuracion);
             int vidaAntes = yo.Health.Current;
             yo.Health.Heal(cura);
             int granadasNuevas = arma != null ? arma.Granadas - antes : 0;
             int vidaNueva = yo.Health.Current - vidaAntes;
-            if (granadasNuevas <= 0 && vidaNueva <= 0)
+            if (granadasNuevas <= 0 && vidaNueva <= 0 && !faltabaMunicion)
             {
                 // Ya tenia todo: no se gasta la caja, pero se avisa (feedback siempre).
                 Feedback.Accion(SfxKind.EmptyClick, "SUMINISTROS: YA ESTAS COMPLETO", basePos, Feedback.Warn, aviso: true, pulso: false, volumen: 0.4f);
@@ -102,14 +104,24 @@ namespace SP.Player
             string texto = "SUMINISTROS";
             if (granadasNuevas > 0) texto += $"  +{granadasNuevas} GRANADAS";
             if (vidaNueva > 0) texto += $"  +{vidaNueva} VIDA";
+            if (faltabaMunicion) texto += "  MUNICION";
             Feedback.Accion(SfxKind.HealDone, texto, basePos, Feedback.Ok, aviso: true, pulso: true, volumen: 0.7f);
         }
 
         // Escenas de mision: tres cajas repartidas entre la salida y la plaza. Las pruebas y el tutorial las crean a mano.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void Iniciar()
+        {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= AlCargarEscena;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += AlCargarEscena;
+            CrearEnMision();
+        }
+        static void AlCargarEscena(UnityEngine.SceneManagement.Scene escena, UnityEngine.SceneManagement.LoadSceneMode modo) => CrearEnMision();
+
         static void CrearEnMision()
         {
             var mision = FindAnyObjectByType<SP.Mision.MisionDirector>();
+            WeaponHolder.ReservasActivas = mision != null;   // solo las misiones tienen municion limitada
             if (mision == null || Todas.Count > 0) return;
             var plaza = mision.Plaza;
             Crear(new Vector3(9f, 0f, 8f));

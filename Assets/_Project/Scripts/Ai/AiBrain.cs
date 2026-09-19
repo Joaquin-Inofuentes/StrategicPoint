@@ -1129,6 +1129,7 @@ namespace SP.Ai
             TickSeguirAlJugador();
             TickRetarget(dt);
             if (enCobertura) self.Motor.SetCrouching(true);
+            if (TickGranadas(dt)) return;   // huyendo de una granada viva: este tick no hace nada mas
 
             // BUG REAL: solo se chequeaba IsAlive. Un soldado que sube a un
             // vehiculo sigue vivo pero Vehicle.Mount lo desactiva

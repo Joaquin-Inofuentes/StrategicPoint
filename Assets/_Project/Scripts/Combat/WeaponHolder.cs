@@ -118,6 +118,52 @@ namespace SP.Combat
         public int CurrentAmmo { get; private set; } = 8;
         public int MagazineSize => magazineSize;
         public bool IsReloading { get; private set; }
+        public float ReloadRemaining => IsReloading ? Mathf.Max(0f, reloadTimer) : 0f;
+
+        // ---- Reservas de municion. Antes la municion era infinita. Ahora, en las misiones, el soldado que
+        // maneja el jugador lleva 3 cargadores de reserva por arma; las cajas de suministros los reponen.
+        // Los aliados/enemigos de la IA y las escenas de prueba/tutorial siguen con municion ilimitada.
+        public const int CargadoresDeReserva = 3;
+        public static bool ReservasActivas;                       // lo enciende CajaDeSuministros.CrearEnMision
+        [System.NonSerialized] public bool LimitaMunicion;        // lo marca PlayerBrain.Possess
+        readonly int[] reservaPorArma = new int[16];
+        readonly int[] cargadorPorArma = new int[16];
+        bool[] reservaInicializada = new bool[16];
+        public bool UsaReservas => ReservasActivas && LimitaMunicion;
+        public int ReservaActual { get { if (!UsaReservas) return -1; InicializarReserva(CurrentWeaponKind); return reservaPorArma[(int)CurrentWeaponKind]; } }
+        public bool SinMunicionTotal => UsaReservas && CurrentAmmo <= 0 && ReservaActual <= 0;
+
+        void InicializarReserva(WeaponKind k)
+        {
+            int i = (int)k;
+            if (i < 0 || i >= reservaPorArma.Length || reservaInicializada[i]) return;
+            reservaInicializada[i] = true;
+            reservaPorArma[i] = WeaponCatalog.Get(k).MagazineSize * CargadoresDeReserva;
+            cargadorPorArma[i] = -1;   // -1: cargador lleno la primera vez
+        }
+
+        // Caja de suministros: todas las armas del loadout vuelven a tener sus cargadores de reserva.
+        public void ReponerMunicion()
+        {
+            foreach (var k in Loadout)
+            {
+                int i = (int)k;
+                reservaInicializada[i] = true;
+                reservaPorArma[i] = WeaponCatalog.Get(k).MagazineSize * CargadoresDeReserva;
+                if (k == CurrentWeaponKind && !IsReloading) CurrentAmmo = magazineSize;
+                else if (k != CurrentWeaponKind) cargadorPorArma[i] = -1;
+            }
+        }
+        public bool MunicionCompleta()
+        {
+            if (!UsaReservas) return true;
+            foreach (var k in Loadout)
+            {
+                InicializarReserva(k);
+                if (reservaPorArma[(int)k] < WeaponCatalog.Get(k).MagazineSize * CargadoresDeReserva) return false;
+            }
+            return CurrentAmmo >= magazineSize;
+        }
 
         void Awake() => Bootstrap();
 
@@ -164,6 +210,7 @@ namespace SP.Combat
         public void EquipWeapon(WeaponKind kind, int weaponDamage, float cooldown, Color color)
         {
             bool cambioDeArma = kind != CurrentWeaponKind;
+            if (UsaReservas && cambioDeArma) { InicializarReserva(CurrentWeaponKind); cargadorPorArma[(int)CurrentWeaponKind] = CurrentAmmo; }
             CurrentWeaponKind = kind;
             damage = weaponDamage;
             fireCooldown = cooldown;
@@ -176,6 +223,12 @@ namespace SP.Combat
             magazineSize = catalogSpec.MagazineSize;
             reloadDuration = catalogSpec.ReloadDuration;
             CurrentAmmo = magazineSize;
+            if (UsaReservas && cambioDeArma)
+            {
+                InicializarReserva(kind);
+                int guardado = cargadorPorArma[(int)kind];
+                if (guardado >= 0) CurrentAmmo = Mathf.Min(guardado, magazineSize);
+            }
             IsReloading = false;
             reloadTimer = 0f;
 
@@ -441,7 +494,15 @@ namespace SP.Combat
                 if (reloadTimer <= 0f)
                 {
                     IsReloading = false;
-                    CurrentAmmo = magazineSize;
+                    if (UsaReservas)
+                    {
+                        InicializarReserva(CurrentWeaponKind);
+                        int i = (int)CurrentWeaponKind;
+                        int toma = Mathf.Min(magazineSize - CurrentAmmo, reservaPorArma[i]);
+                        CurrentAmmo += toma;
+                        reservaPorArma[i] -= toma;
+                    }
+                    else CurrentAmmo = magazineSize;
                 }
                 return;
             }
@@ -454,6 +515,7 @@ namespace SP.Combat
 
             if (CurrentAmmo <= 0)
             {
+                if (SinMunicionTotal) return false;   // sin balas y sin cargadores: clic seco hasta reponer
                 StartReload();
                 return false;
             }
@@ -482,7 +544,7 @@ namespace SP.Combat
                 pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor);
             cooldownTimer = fireCooldown;
             CurrentAmmo--;
-            if (CurrentAmmo <= 0) StartReload();
+            if (CurrentAmmo <= 0 && !SinMunicionTotal) StartReload();
             EventBus.Instance.Publish(new ShotFiredEvent(owner.Id));
             return true;
         }
@@ -558,6 +620,7 @@ namespace SP.Combat
         public bool Reload()
         {
             if (IsReloading || CurrentAmmo >= magazineSize) return false;
+            if (UsaReservas && ReservaActual <= 0) return false;   // no queda con que recargar
             StartReload();
             return true;
         }
