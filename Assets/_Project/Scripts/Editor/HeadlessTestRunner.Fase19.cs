@@ -81,6 +81,18 @@ namespace SP.EditorTools
             Check("PlayerInputDriver esta partido (radial y vehiculos en archivos aparte)", System.IO.File.Exists("Assets/_Project/Scripts/Player/PlayerInputDriver.Radial.cs") && System.IO.File.Exists("Assets/_Project/Scripts/Player/PlayerInputDriver.Vehiculo.cs"));
             Check("PlayerInputDriver.cs ya no pasa de 3500 lineas", System.IO.File.ReadAllLines("Assets/_Project/Scripts/Player/PlayerInputDriver.cs").Length < 3500);
             Check("AiBrain.cs y HeadlessTestRunner.cs tambien se partieron", System.IO.File.Exists("Assets/_Project/Scripts/Ai/AiBrain.Navegacion.cs") && System.IO.File.Exists("Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases8a12.cs"));
+            // --- Radial ATACAR: suprimir y granada (61) ---
+            Check("ATACAR tiene 6 opciones (4 destinatarios + suprimir + granada)", MenuDeOrdenes.OpcionesDe[2].Length == 6 && MenuDeOrdenes.MaxOpcionesPorCategoria >= 6);
+            Check("Las opciones nuevas se llaman SUPRIMEN y GRANADA", MenuDeOrdenes.OpcionesDe[2][MenuDeOrdenes.SubSuprimir].Contains("SUPRIMEN") && MenuDeOrdenes.OpcionesDe[2][MenuDeOrdenes.SubGranada].Contains("GRANADA"));
+            var tirador = doc.Brain;
+            tirador.OrdenSuprimir(kes.transform.position + kes.transform.forward * 20f, 2f);
+            Check("La orden de suprimir queda activa unos segundos", tirador.SuprimiendoPorOrden);
+            int granadasAntes = doc.Weapon.Granadas;
+            bool lanzo = tirador.OrdenLanzarGranada(doc.transform.position + doc.transform.forward * 12f);
+            Check("La orden de granada gasta una granada cuando la lanza", !lanzo || doc.Weapon.Granadas == granadasAntes - 1);
+            doc.Weapon.ReponerGranadas();
+            Check("Sin granadas, la orden se rechaza", (doc.Weapon.ConsumirGranada() & doc.Weapon.ConsumirGranada() & doc.Weapon.ConsumirGranada()) && !tirador.OrdenLanzarGranada(doc.transform.position + doc.transform.forward * 12f));
+            doc.Weapon.ReponerGranadas();
         }
     }
 }

@@ -56,7 +56,9 @@ namespace SP.UI
         public const int CantidadDeOpciones = 5;
         public const int CantidadDeCategorias = 9;
         public const int CantidadDePorciones = CantidadDeCategorias;
-        public const int MaxOpcionesPorCategoria = 5;
+        public const int MaxOpcionesPorCategoria = 6;
+        // Item 61: ATACAR tiene, ademas de "a quien ordeno" (0..3), dos ordenes tacticas.
+        public const int SubSuprimir = 4, SubGranada = 5;
 
         // Identificadores estables de categoria (el orden en pantalla cambia con el contexto).
         public const int IrAlli = 0, Cubrirse = 1, Atacar = 2, Posicion = 3, Curar = 4, Tanque = 5, Poseer = 6, Demoler = 7, Torreta = 8;
@@ -91,7 +93,7 @@ namespace SP.UI
         {
             new[] { "TODOS", "SOLO {1}", "SOLO {2}", "SOLO {3}" },
             new[] { "TODOS", "SOLO {1}", "SOLO {2}", "SOLO {3}" },
-            new[] { "TODOS", "SOLO {1}", "SOLO {2}", "SOLO {3}" },
+            new[] { "TODOS", "SOLO {1}", "SOLO {2}", "SOLO {3}", "TODOS SUPRIMEN", "GRANADA ALLI" },
             new[] { "TODOS QUIETOS", "SIGANME", "FORMAR LINEA", "FORMAR CUÑA", "RETIRADA" },
             new[] { "CURARME", "AL MAS HERIDO", "CURAR A ESTE", "REVIVIR A ESTE" },
             new[] { "SUBIR TODOS", "BAJAR TODOS", "TANQUE ALLI", "SUBIRME YO", "BAJARME YO" },

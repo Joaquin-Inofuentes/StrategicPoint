@@ -200,7 +200,7 @@ namespace SP.Tutorial
                 case "aliados_tanque": if (cat == 5 && sub == 0) f.ordenDeSubir = true; break;
                 case "ir_atacar":
                     if (cat == 0) f.ordenIrAlli = true;
-                    if (cat == 2) { f.ordenAtacar = true; PostureDeAliados(CombatStance.Libre); }   // recien con la orden abren fuego
+                    if (cat == 2 && sub < SP.UI.MenuDeOrdenes.SubSuprimir) { f.ordenAtacar = true; PostureDeAliados(CombatStance.Libre); }   // recien con la orden abren fuego
                     break;
                 case "formaciones":
                     if (cat == 3 && sub == 2) f.ordenLinea = true;

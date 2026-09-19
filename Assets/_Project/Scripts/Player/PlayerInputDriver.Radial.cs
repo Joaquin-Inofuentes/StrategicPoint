@@ -273,6 +273,27 @@ namespace SP.Player
                     Soldier objetivo = aim.Type == AimTargetType.Enemy ? aim.Soldier : null;
                     if (objetivo == null && yo != null)
                         objetivo = ActorRegistry.FindNearest(yo.transform.position, s => s.Team == TeamId.Enemy && s.Health != null && s.Health.IsAlive && (s.transform.position - yo.transform.position).sqrMagnitude < 100f * 100f);
+                    if (sub == MenuDeOrdenes.SubSuprimir || sub == MenuDeOrdenes.SubGranada)
+                    {
+                        var todos = DestinatariosPorSub(0, out quien);
+                        if (todos.Count == 0) { RejectOrder("NADIE A QUIEN ORDENAR"); return false; }
+                        var puntoTactico = objetivo != null ? objetivo.transform.position
+                            : aim.Type != AimTargetType.None ? aim.Point
+                            : (yo != null ? yo.transform.position + yo.transform.forward * 15f : transform.position);
+                        if (sub == MenuDeOrdenes.SubSuprimir)
+                        {
+                            foreach (var s in todos) if (s.Brain != null) s.Brain.OrdenSuprimir(puntoTactico);
+                            Avisar("FUEGO DE SUPRESION");
+                            GameLog.Line($"Radial: {todos.Count} aliados suprimen {puntoTactico}");
+                            return true;
+                        }
+                        // GRANADA: la lanza el aliado mas cercano al punto que tenga y alcance
+                        todos.Sort((a, b) => (a.transform.position - puntoTactico).sqrMagnitude.CompareTo((b.transform.position - puntoTactico).sqrMagnitude));
+                        foreach (var s in todos)
+                            if (s.Brain != null && s.Brain.OrdenLanzarGranada(puntoTactico)) { Avisar(s.DisplayName.ToUpperInvariant() + ": GRANADA!"); return true; }
+                        RejectOrder("NADIE TIENE GRANADAS O NO ALCANZA");
+                        return false;
+                    }
                     if (objetivo == null || dest.Count == 0) { RejectOrder(dest.Count == 0 ? (sub <= 0 ? "NADIE A QUIEN ORDENAR" : quien) : "NO HAY A QUIEN ATACAR"); return false; }
                     OrderService.IssueAttackOrderForSelection(dest, objetivo);
                     Avisar((sub <= 0 ? "ATAQUEN A " : quien + " ATACA A ") + objetivo.DisplayName.ToUpperInvariant());

@@ -38,8 +38,55 @@ namespace SP.Ai
             if (self == null || self.Weapon == null) return false;
             if (TickSupresion()) { /* agachado: puede seguir disparando */ }
             if (HuirDeGranada(dt)) return true;
+            if (TickSuprimirOrdenado(dt)) return true;
             IntentarLanzarGranada();
             return false;
+        }
+
+        // ---- Ordenes del radial (item 61): suprimir un punto y lanzar una granada alli
+        public const float SegundosDeSupresionOrdenada = 6f;
+        float suprimirOrdenadoHasta;
+        Vector3 suprimirOrdenadoPunto;
+        public bool SuprimiendoPorOrden => Time.time < suprimirOrdenadoHasta;
+
+        // Dispara rafagas hacia el punto (aunque no vea a nadie) durante unos segundos: mantiene cabezas abajo.
+        public void OrdenSuprimir(Vector3 punto, float segundos = SegundosDeSupresionOrdenada)
+        {
+            if (self == null || IsPossessedByPlayer || !self.Health.IsAlive) return;
+            suprimirOrdenadoPunto = punto;
+            suprimirOrdenadoHasta = Time.time + segundos;
+        }
+
+        bool TickSuprimirOrdenado(float dt)
+        {
+            if (!SuprimiendoPorOrden) return false;
+            var w = self.Weapon;
+            if (w == null) return false;
+            var origen = self.transform.position + Vector3.up * 1.4f;
+            var hacia = suprimirOrdenadoPunto + Vector3.up * 1f - origen;
+            self.Motor.LookTowards(suprimirOrdenadoPunto, 20f);
+            self.Motor.SetCrouching(true);
+            if (w.CurrentAmmo <= 0 && !w.IsReloading) w.Reload();
+            var dir = (hacia.normalized + Random.insideUnitSphere * 0.035f).normalized;
+            w.TryFire(self.transform.position, dir);
+            return true;
+        }
+
+        // Lanza una granada al punto si el soldado tiene y la parabola llega. Devuelve si la lanzo.
+        public bool OrdenLanzarGranada(Vector3 punto)
+        {
+            if (self == null || self.Weapon == null || IsPossessedByPlayer || !self.Health.IsAlive) return false;
+            if (self.Weapon.Granadas <= 0) return false;
+            var origen = self.transform.position + Vector3.up * 1.6f + self.transform.forward * 0.4f;
+            var v = Granada.VelocidadHacia(origen, punto);
+            Granada.Simular(origen, v, self.transform, puntosGranada, out var caida, out _);
+            if ((caida - punto).magnitude > 4f) return false;
+            self.Motor.LookTowards(punto, 20f);
+            if (!self.Weapon.ConsumirGranada()) return false;
+            Granada.Lanzar(origen, v, self);
+            GranadasLanzadasPorIA++;
+            proximaGranadaIA = Time.time + 3f;
+            return true;
         }
 
         bool HuirDeGranada(float dt)
