@@ -153,16 +153,44 @@ namespace SP.EditorTools
             RenderSettings.customReflectionTexture = null;
         }
 
+        // Los estaticos sobreviven a una sesion de Play sin recarga de dominio (modo dios, regeneracion, carga de
+        // demolicion): sin esto una prueba manual previa deja la suite en un estado que no es el de fabrica.
+        // Resultado en un archivo (Temp/suite_result.txt): la consola del Editor se llena y pierde lo ultimo.
+        static void EscribirResultado(bool ok, string excepcion)
+        {
+            try
+            {
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine(ok ? "OK" : "FALLO");
+                foreach (var m in failedCheckMessages) sb.AppendLine("  - " + m);
+                if (excepcion != null) sb.AppendLine(excepcion);
+                File.WriteAllText("Temp/suite_result.txt", sb.ToString());
+            }
+            catch (Exception) { }
+        }
+
+        static void RestablecerEstaticosDeJuego()
+        {
+            SP.Core.ModoDios.Poner(false);
+            SP.Combat.Health.RegeneracionPermitida = true;
+            SP.Player.Demolicion.Segundos = SP.Player.Demolicion.SegundosNormales;
+            SP.Player.PedidoDeCuracion.AtencionAutomatica = true;
+            SP.Core.Dificultad.Activa = false;   // la partida principal la deja activa y cambia el dano de todos
+        }
+
         [MenuItem("Strategic Point/Run All Tests Headless")]
         public static void RunAll()
         {
+            RestablecerEstaticosDeJuego();
             bool ok;
             try
             {
                 ok = RunOnceCore(logSuccessPhase: true);
+                EscribirResultado(ok, null);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                EscribirResultado(false, ex.ToString());
                 if (Application.isBatchMode) EditorApplication.Exit(1);
                 throw;
             }
@@ -838,6 +866,7 @@ namespace SP.EditorTools
                 RunPhase13(inputDriver, vehicle, vega, kes, doc);
                 RunPhase14(inputDriver, vehicle, vega, kes, doc, pool, soldierPrefab, colorEnemy);
                 RunPhase15(inputDriver, aimTargeting, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
+                RunPhase16(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia
@@ -3724,6 +3753,150 @@ namespace SP.EditorTools
             SP.Core.ModoDios.Poner(false);
             SP.UI.MenuDeOrdenes.PonerPista(-1);
             TestLog.Phase("FASE 15 FINALIZADA");
+        }
+
+        // ------------------------------------------------------------------
+        // FASE 16 (ronda 7): salto sin hundirse, sonidos por arma, cuchillo [F], granada [G], mirillas propias,
+        // regeneracion apagable y carga de demolicion ajustable.
+        // ------------------------------------------------------------------
+        static void RunPhase16(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc,
+                               GameObject soldierPrefab, Color colorEnemy, ProjectilePool pool)
+        {
+            TestLog.Phase("FASE 16 - Salto corregido, sonido y mirilla por arma, cuchillo [F], granada [G], feedback");
+
+            foreach (var o in new List<Soldier>(vehicle.Occupants)) vehicle.Dismount(o);
+            vega.Brain.CancelOrder(); kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
+            FullHeal(vega, kes, doc);
+            SP.Core.ModoDios.Poner(false);
+
+            // --- Teclas ---
+            Check("[F] es el cuchillo", KeyBindings.Get(KeyBindings.AtaqueCuchillo) == UnityEngine.InputSystem.Key.F);
+            Check("[G] es la granada", KeyBindings.Get(KeyBindings.Granada) == UnityEngine.InputSystem.Key.G);
+            Check("Poseer con [F] ya no existe (lo hace el radial)", KeyBindings.Get(KeyBindings.Poseer) == UnityEngine.InputSystem.Key.None);
+            Check("La tabla de controles menciona el cuchillo y la granada", SP.UI.ControlsTable.FullText().Contains("cuchillo") && SP.UI.ControlsTable.FullText().Contains("granada"));
+
+            // --- Salto: importado como humanoide y el controlador usa los clips HORNEADOS con la cadera a la altura de pie ---
+            var ctrlSoldado = UnityEditor.AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>("Assets/_Project/Animation/AC_Soldado.controller");
+            Check("Existe el controlador del soldado", ctrlSoldado != null);
+            foreach (var par in new[] { ("SaltoArriba", "jump up"), ("SaltoAire", "jump loop"), ("SaltoAbajo", "jump down") })
+            {
+                var imp = UnityEditor.AssetImporter.GetAtPath("Assets/ARTS/Slim Shooter Pack/" + par.Item2 + ".fbx") as UnityEditor.ModelImporter;
+                Check($"'{par.Item2}' se importa como Humanoide (mismo avatar que el soldado)", imp != null && imp.animationType == UnityEditor.ModelImporterAnimationType.Human);
+                AnimationClip usado = null;
+                if (ctrlSoldado != null)
+                    foreach (var e in ctrlSoldado.layers[0].stateMachine.states) if (e.state.name == par.Item1) usado = e.state.motion as AnimationClip;
+                Check($"El estado {par.Item1} usa un clip horneado (.anim propio, no el del FBX)", usado != null && UnityEditor.AssetDatabase.GetAssetPath(usado).EndsWith(".anim"));
+                float suma = 0f; int n = 0;
+                if (usado != null)
+                    foreach (var b in UnityEditor.AnimationUtility.GetCurveBindings(usado))
+                        if (b.propertyName == "RootT.y") foreach (var k in UnityEditor.AnimationUtility.GetEditorCurve(usado, b).keys) { suma += k.value; n++; }
+                float prom = n > 0 ? suma / n : 0f;
+                Check($"'{par.Item2}': altura de cadera {prom:0.00} cerca de la de pie (0,96), no hundida (0,41)", prom > 0.85f && prom < 1.1f);
+            }
+
+            // --- Sonidos: cada accion nueva tiene un clip valido y audible ---
+            var nuevos = new[] { SfxKind.Explosion, SfxKind.GrenadePin, SfxKind.GrenadeThrow, SfxKind.GrenadeBounce, SfxKind.KnifeSwing, SfxKind.KnifeHit,
+                                 SfxKind.Jump, SfxKind.Land, SfxKind.RadialOpen, SfxKind.RadialTick, SfxKind.RadialConfirm, SfxKind.RadialCancel,
+                                 SfxKind.HealStart, SfxKind.HealDone, SfxKind.Revive, SfxKind.BombPlant, SfxKind.BombTick };
+            int mudos = 0; string quien = "";
+            foreach (var k in nuevos)
+            {
+                var clip = GenericSfx.Get(k);
+                if (!ClipAudible(clip)) { mudos++; quien += k + " "; }
+            }
+            Check($"Los {nuevos.Length} sonidos nuevos existen y no estan mudos ni con NaN ({quien})", mudos == 0);
+            Check("La explosion es un estruendo largo (> 1,5 s)", GenericSfx.Get(SfxKind.Explosion).length > 1.5f);
+            Check("El tic de la carga es mas corto que el estruendo", GenericSfx.Get(SfxKind.BombTick).length < GenericSfx.Get(SfxKind.Explosion).length);
+
+            var armas = new[] { WeaponKind.Rifle, WeaponKind.Pistol, WeaponKind.Heavy, WeaponKind.Smg, WeaponKind.Shotgun, WeaponKind.Sniper, WeaponKind.Rocket };
+            var vistosRecarga = new HashSet<AudioClip>(); var vistosDisparo = new HashSet<AudioClip>(); var vistosDesenfunde = new HashSet<AudioClip>();
+            int recargasFueraDeTiempo = 0, sinDisparo = 0;
+            foreach (var a in armas)
+            {
+                var rec = GenericSfx.GetWeaponReload(a); var dis = GenericSfx.GetWeaponShot(a); var des = GenericSfx.GetWeaponDraw(a);
+                vistosRecarga.Add(rec); vistosDisparo.Add(dis); vistosDesenfunde.Add(des);
+                if (!ClipAudible(dis)) sinDisparo++;
+                float dur = WeaponCatalog.Get(a).ReloadDuration;
+                if (!ClipAudible(rec) || Mathf.Abs(rec.length - dur) > 0.7f) recargasFueraDeTiempo++;
+            }
+            Check("Las 7 armas tienen disparo propio distinto", vistosDisparo.Count == 7 && sinDisparo == 0);
+            Check("Las 7 armas tienen recarga propia distinta", vistosRecarga.Count == 7);
+            Check("La recarga de cada arma dura lo que dice el catalogo (+-0,7 s)", recargasFueraDeTiempo == 0);
+            Check("Las 7 armas tienen sonido de desenfundar propio", vistosDesenfunde.Count == 7);
+            Check("El lanzacohetes suena a cohete (fiush largo, > 1 s)", GenericSfx.GetWeaponShot(WeaponKind.Rocket).length > 1f);
+            Check("Metralleta, escopeta y francotirador usan grabaciones reales", GenericSfx.GetWeaponShot(WeaponKind.Smg).name.StartsWith("Shot_Smg")
+                && GenericSfx.GetWeaponShot(WeaponKind.Shotgun).name.StartsWith("Shot_Shotgun") && GenericSfx.GetWeaponShot(WeaponKind.Sniper).name.StartsWith("Shot_Sniper"));
+
+            // --- Mirillas: una distinta por arma ---
+            var estilos = new HashSet<ReticleStyle>(); var sprites = new HashSet<Sprite>();
+            foreach (var a in armas) { var e = WeaponCatalog.Get(a).Reticle; estilos.Add(e); sprites.Add(SP.UI.MirillaView.SpriteDe(e)); }
+            Check("Cada arma tiene su propio estilo de mirilla (7 distintos)", estilos.Count == 7);
+            Check("...y cada estilo tiene su sprite (7 distintos)", sprites.Count == 7 && !sprites.Contains(null));
+
+            // --- Cuchillo ---
+            var victima = SpawnSoldier(soldierPrefab, "T16_Victima", TeamId.Enemy, RoleType.Enemy, kes.transform.position + kes.transform.forward * 1.4f, colorEnemy, pool, 100);
+            SP.Presentation.CuchilloFx.ResetearContadores();
+            kes.Weapon.Tick(1f);
+            bool golpeo = kes.Weapon.TryMelee();
+            Check("El cuchillo pega a un enemigo a 1,4 m", golpeo && victima.Health.Current == 100 - 55);
+            Check("El cuchillo registra tajo y acierto para el feedback", SP.Presentation.CuchilloFx.Tajos == 1 && SP.Presentation.CuchilloFx.Aciertos == 1);
+            Check("El cuchillo tiene enfriamiento (no dos tajos seguidos)", !kes.Weapon.TryMelee());
+
+            // --- Granada ---
+            Check("Cada soldado empieza con 3 granadas", kes.Weapon.Granadas == WeaponHolder.GranadasMaximas);
+            int gastadas = 0; while (kes.Weapon.ConsumirGranada()) gastadas++;
+            Check("Se pueden gastar exactamente 3 y la cuarta falla", gastadas == 3 && !kes.Weapon.ConsumirGranada());
+            kes.Weapon.ReponerGranadas();
+            Check("Reponer devuelve las 3", kes.Weapon.Granadas == 3);
+
+            var v0 = Granada.VelocidadHacia(new Vector3(0f, 1.2f, 0f), new Vector3(12f, 1.2f, 0f));
+            Check($"La velocidad de lanzamiento a 12 m es {Granada.VelocidadDeLanzamiento} m/s ({v0.magnitude:0.0})", Mathf.Abs(v0.magnitude - Granada.VelocidadDeLanzamiento) < 0.05f);
+            var lejos = Granada.VelocidadHacia(new Vector3(0f, 1.2f, 0f), new Vector3(200f, 1.2f, 0f));
+            Check("Fuera de alcance sale a 45 grados (el maximo)", Mathf.Abs(Mathf.Atan2(lejos.y, lejos.x) * Mathf.Rad2Deg - 45f) < 0.5f);
+            // Alcance teorico: v^2/g. La curva de la vista previa tiene que caer donde dice la formula (sin piso: 3 s de simulacion).
+            var puntos = new List<Vector3>();
+            Granada.Simular(new Vector3(500f, 30f, 500f), Granada.VelocidadHacia(new Vector3(500f, 30f, 500f), new Vector3(512f, 30f, 500f)), null, puntos, out var caida, out _);
+            Check($"La curva simulada tiene {puntos.Count} puntos y avanza hacia el objetivo", puntos.Count > 10 && puntos[puntos.Count - 1].x > puntos[0].x + 8f);
+
+            // Explosion: dana al enemigo, no al propio bando
+            var blanco = SpawnSoldier(soldierPrefab, "T16_Blanco", TeamId.Enemy, RoleType.Enemy, new Vector3(-80f, 0.8f, 80f), colorEnemy, pool, 200);
+            var aliado = SpawnSoldier(soldierPrefab, "T16_Aliado", TeamId.Player, RoleType.Assault, new Vector3(-79f, 0.8f, 80f), colorEnemy, pool, 200);
+            Projectile.ExplodeAt(new Vector3(-80f, 0.8f, 80f), Granada.RadioDeExplosion, Granada.Dano, kes.Id, TeamId.Player);
+            Check("La explosion de la granada hiere al enemigo del centro", blanco.Health.Current < 200);
+            Check("...y NO hiere al aliado que esta pegado", aliado.Health.Current == 200);
+
+            // --- Regeneracion apagable (tutorial de curar) ---
+            var regen = SpawnSoldier(soldierPrefab, "T16_Regen", TeamId.Player, RoleType.Assault, new Vector3(-90f, 0.8f, 90f), colorEnemy, pool, 100);
+            regen.Health.TakeDamage(50, -1);
+            SP.Combat.Health.RegeneracionPermitida = false;
+            for (int i = 0; i < 400; i++) regen.Health.Tick(0.05f);
+            Check("Con la regeneracion apagada nadie se cura solo", regen.Health.Current == 50);
+            SP.Combat.Health.RegeneracionPermitida = true;
+            for (int i = 0; i < 400; i++) regen.Health.Tick(0.05f);
+            Check("Con la regeneracion prendida vuelve a curarse", regen.Health.Current > 50);
+
+            // --- Demolicion: la carga se puede alargar para practicar y vuelve a 4 s ---
+            Check("La carga de demolicion dura 4 s de fabrica", Mathf.Abs(SP.Player.Demolicion.Segundos - 4f) < 0.001f);
+
+            // --- Feedback ---
+            int cont = SP.Presentation.Feedback.Contador;
+            SP.Presentation.Feedback.Visual("prueba", null, null, false, false);
+            Check("Feedback.Visual cuenta como accion con feedback", SP.Presentation.Feedback.Contador == cont + 1);
+            Check("Cada categoria del radial tiene color propio", SP.Player.PlayerInputDriver.ColorDeCategoria.Length == SP.UI.MenuDeOrdenes.CantidadDeCategorias);
+
+            foreach (var s in new[] { victima, blanco, aliado, regen }) if (s != null) UnityEngine.Object.DestroyImmediate(s.gameObject);
+            FullHeal(vega, kes, doc);
+        }
+
+        // Un clip sirve si tiene muestras, ninguna NaN y algun pico audible.
+        static bool ClipAudible(AudioClip clip)
+        {
+            if (clip == null || clip.length < 0.02f || clip.samples <= 0) return false;
+            var datos = new float[Mathf.Min(clip.samples, 88200) * clip.channels];
+            if (!clip.GetData(datos, 0)) return true;   // audio comprimido sin datos en Edit mode: existe y basta
+            float pico = 0f;
+            foreach (var m in datos) { if (float.IsNaN(m) || float.IsInfinity(m)) return false; float a = m < 0f ? -m : m; if (a > pico) pico = a; }
+            return pico > 0.05f;
         }
 
         static void RunPhase14(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc,

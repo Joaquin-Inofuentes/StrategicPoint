@@ -1,3 +1,5 @@
+> **Ronda 7:** el tutorial ahora tiene 35 pasos y usa todos los comandos del radial. El recorrido completo con capturas está en [TUTORIAL_PASO_A_PASO.md](TUTORIAL_PASO_A_PASO.md).
+
 # Módulo de tutorial — SC_Tutorial (26 pasos)
 
 Escena `Assets/_Project/Scenes/SC_Tutorial.unity` con un nivel propio hecho **solo con cubos (blocking) y pintura de terreno**, y un módulo que enseña **todos** los controles del juego con un cuadro de diálogo, banderas booleanas, teclas iluminadas, balizas en el mundo, sonido y logs. Se abre desde el menú principal (botón **TUTORIAL**).

@@ -1,6 +1,6 @@
 # Ronda 6 — Radial contextual, ametralladora fija, mira en primera persona, modo dios, correr y mejoras de UX
 
-Cada cambio de esta ronda está descrito con **qué se hizo, en qué archivo y cómo se probó**, con capturas en `Assets/Validacion/Ronda6/` (35 imágenes). Todo se probó en Play Mode con teclas y mouse reales (Input System + `SetCursorPos/mouse_event` del SO para el RTS). La suite headless quedó en **verde con una fase nueva (FASE 15)**. Nada de esto está commiteado ni pusheado.
+Cada cambio de esta ronda está descrito con **qué se hizo, en qué archivo y cómo se probó**, con capturas en `Assets/Validacion/Ronda6/` (35 imágenes). Todo se probó en Play Mode con teclas y mouse reales (Input System + `SetCursorPos/mouse_event` del SO para el RTS). La suite headless quedó en **verde con una fase nueva (FASE 15)**.
 
 | # | Pedido | Estado |
 |---|---|---|

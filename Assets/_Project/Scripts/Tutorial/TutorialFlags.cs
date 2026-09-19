@@ -62,6 +62,20 @@ namespace SP.Tutorial
         public bool llegoAlFinal;
         // 17 Victoria
         public bool victoria;
+        // Ronda 7: saltar, arsenal (armas/mirillas/sonidos), cuchillo [F], granada [G]
+        public bool salta, aterriza;
+        public bool armaCambiada, armaRecargada, armaNuevaApuntada;
+        public bool tajoAlAire, cuchilladaAcertada, enemigoApunalado;
+        public bool granadaMantenida, granadaLanzada, granadaExplota;
+        // Ronda 7: el resto de los comandos del radial [Q]
+        public bool ordenIrAlli, ordenAtacar, enemigoAtacadoCae;
+        public bool ordenLinea, ordenCuna, ordenRetirada;
+        public bool ordenCurarme, yoCurado;
+        public bool ordenDemolerYo;
+        public bool ordenAsaltoDemuele, asaltoPlanta, ordenCancelarDemolicion, muroAliadoDemolido;
+        public bool ordenUsarTorreta, ordenSalirTorreta;
+        public bool ordenSubirme;
+        public bool ordenBajarTodos, ordenBajarme, todosAbajo;
 
         public void Reiniciar() => JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(new TutorialFlags()), this);
     }

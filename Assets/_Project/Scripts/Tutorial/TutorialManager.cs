@@ -14,7 +14,7 @@ using SP.Vehicles;
 
 namespace SP.Tutorial
 {
-    // Modulo de tutorial. Recorre 26 pasos en orden; cada paso tiene sub-pasos y
+    // Modulo de tutorial. Recorre 35 pasos en orden; cada paso tiene sub-pasos y
     // cada sub-paso una BANDERA booleana (ver TutorialFlags). El cuadro de
     // dialogo (TutorialUI) muestra el mensaje del primer sub-paso pendiente, las
     // teclas que hay que apretar (se iluminan al apretarlas), una pista si el
@@ -105,6 +105,8 @@ namespace SP.Tutorial
 
         void OnDestroy()
         {
+            Health.RegeneracionPermitida = true;
+            Demolicion.Segundos = Demolicion.SegundosNormales;
             if (Instance == this) Instance = null;
             Desuscribir();
             TutorialBeacon.QuitarTodas();
@@ -146,6 +148,9 @@ namespace SP.Tutorial
             suscripciones.Add(EventBus.Instance.Subscribe<EntityDiedEvent>(AlMorir));
             suscripciones.Add(EventBus.Instance.Subscribe<MoveOrderIssuedEvent>(AlOrdenDeMover));
             suscripciones.Add(EventBus.Instance.Subscribe<ShotFiredEvent>(AlDisparar));
+            suscripciones.Add(EventBus.Instance.Subscribe<MeleeAttackEvent>(AlTajo));
+            suscripciones.Add(EventBus.Instance.Subscribe<GrenadeThrownEvent>(AlLanzarGranada));
+            suscripciones.Add(EventBus.Instance.Subscribe<GrenadeExplodedEvent>(AlExplotarGranada));
             ObstacleMarker.Golpeado += AlGolpearObstaculo;
             ObstacleMarker.Derrumbado += AlDerrumbarObstaculo;
             if (driver != null) driver.OrdenRadialEjecutada += AlOrdenRadial;
@@ -187,6 +192,30 @@ namespace SP.Tutorial
                 case "curar": if (cat == 4 && sub != 3) f.ordenDeCurar = true; break;
                 case "reanimar": if (cat == 4 && sub == 3) f.ordenDeReanimar = true; break;
                 case "aliados_tanque": if (cat == 5 && sub == 0) f.ordenDeSubir = true; break;
+                case "ir_atacar":
+                    if (cat == 0) f.ordenIrAlli = true;
+                    if (cat == 2) { f.ordenAtacar = true; PostureDeAliados(CombatStance.Libre); }   // recien con la orden abren fuego
+                    break;
+                case "formaciones":
+                    if (cat == 3 && sub == 2) f.ordenLinea = true;
+                    if (cat == 3 && sub == 3) f.ordenCuna = true;
+                    if (cat == 3 && sub == 4) f.ordenRetirada = true;
+                    break;
+                case "curarme": if (cat == 4 && sub == 0) f.ordenCurarme = true; break;
+                case "demoler": if (cat == 7 && sub == 1) f.ordenDemolerYo = true; break;
+                case "bomba_aliado":
+                    if (cat == 7 && sub == 0) { ordenesDeAsalto++; if (ordenesDeAsalto == 1) f.ordenAsaltoDemuele = true; }
+                    if (cat == 7 && sub == 2) f.ordenCancelarDemolicion = true;
+                    break;
+                case "torreta_fija":
+                    if (cat == 8 && sub == 0) f.ordenUsarTorreta = true;
+                    if (cat == 8 && sub == 1) f.ordenSalirTorreta = true;
+                    break;
+                case "entrar_tanque": if (cat == 5 && sub == 3) f.ordenSubirme = true; break;
+                case "bajar_tanque":
+                    if (cat == 5 && sub == 1) f.ordenBajarTodos = true;
+                    if (cat == 5 && sub == 4) f.ordenBajarme = true;
+                    break;
             }
         }
 
@@ -197,7 +226,7 @@ namespace SP.Tutorial
         }
 
         // ===============================================================
-        // Definicion de los 26 pasos
+        // Definicion de los 35 pasos
         // ===============================================================
         Sub S(string texto, string mensaje, string pista, Func<bool> leer, Action<bool> poner, Func<string> vivo = null)
             => new Sub { Texto = texto, Mensaje = mensaje, Pista = pista, Leer = leer, Poner = poner, TextoVivo = vivo };
@@ -344,6 +373,24 @@ namespace SP.Tutorial
                 },
             });
 
+            // 5b (ronda 7) --------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "saltar", Titulo = "SALTAR", Teclas = "Espacio", Acento = verde,
+                Subs = new[]
+                {
+                    S("ESPACIO: saltas", "Aprieta la barra ESPACIADORA: tu soldado salta. Mira el cuerpo: las piernas se recogen en el aire y no se hunde en el piso.", "Barra espaciadora. No se puede saltar agachado ni desde la torreta.", () => f.salta, v => f.salta = v),
+                    S("Aterrizas", "Espera a caer: al tocar el piso suena el golpe y la cámara se sacude un poco.", "Cae solo, no hace falta apretar nada.", () => f.aterriza, v => f.aterriza = v),
+                },
+                AlEntrar = () => { saltoVisto = false; },
+                Evaluar = () =>
+                {
+                    var c = driver.Brain.Current; if (c == null) return;
+                    if (c.Motor.IsJumping) { f.salta = true; saltoVisto = true; }
+                    else if (saltoVisto) f.aterriza = true;
+                },
+            });
+
             // 6 -------------------------------------------------------
             pasos.Add(new Paso
             {
@@ -361,6 +408,75 @@ namespace SP.Tutorial
                     if (driver.Rig.AdsBlendSuave > 0.9f) f.apuntaEnPrimeraPersona = true;
                     if (f.disparaConZoom && !driver.Rig.EstaConZoom && driver.Rig.AdsBlend < 0.1f) f.sueltaLaMira = true;
                 },
+            });
+
+            // 6b (ronda 7) --------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "arsenal", Titulo = "ARMAS: MIRA Y SONIDO PROPIOS", Teclas = "1 2 3 R RMB", Acento = naranja,
+                Subs = new[]
+                {
+                    S("1 / 2 / 3 o rueda: cambias de arma", "Cambia de arma con [1] [2] [3] (o la rueda del mouse). Cada arma suena distinto al sacarla, al disparar y al recargar, y tiene su PROPIA MIRA (cruz, punto, anillo, chevrón, mildot...).", "Aprieta 2 o 3 (o gira la rueda del mouse).", () => f.armaCambiada, v => f.armaCambiada = v),
+                    S("Dispara y recarga con R", "Dispara unas balas y aprieta [R]: cada arma recarga con su propia secuencia (cargador, cerrojo, cartuchos, tapa de la caja...) y avisa RECARGANDO.", "Primero gasta una bala con el clic izquierdo: con el cargador lleno no recarga.", () => f.armaRecargada, v => f.armaRecargada = v),
+                    S("Apunta con la otra arma: otra mira", "Mantén el CLIC DERECHO con esta arma: la retícula de la mira es distinta a la anterior.", "Clic derecho mantenido con el arma que acabas de elegir.", () => f.armaNuevaApuntada, v => f.armaNuevaApuntada = v),
+                },
+                AlEntrar = () =>
+                {
+                    var w = driver.Brain.Current != null ? driver.Brain.Current.Weapon : null;
+                    armaInicial = w != null ? w.CurrentWeaponKind : WeaponKind.Rifle;
+                    armasVistas.Clear(); armasVistas.Add(armaInicial);
+                },
+                Evaluar = () =>
+                {
+                    var w = driver.Brain.Current != null ? driver.Brain.Current.Weapon : null; if (w == null) return;
+                    armasVistas.Add(w.CurrentWeaponKind);
+                    if (armasVistas.Count >= 2) f.armaCambiada = true;
+                    if (w.IsReloading) f.armaRecargada = true;
+                    if (f.armaCambiada && w.CurrentWeaponKind != armaInicial && driver.Rig.EstaConZoom && driver.Rig.AdsBlend > 0.55f) f.armaNuevaApuntada = true;
+                },
+            });
+
+            // 6b2 (ronda 7) -------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "cuchillo", Titulo = "CUCHILLO", Teclas = "F", Acento = new Color(0.85f, 0.9f, 1f),
+                Subs = new[]
+                {
+                    S("F: das un tajo", "Aprieta [F]: tu soldado saca el cuchillo y da un tajo (arco brillante y silbido). No gasta balas y funciona con cualquier arma.", "Tecla F. Tiene una pequeña espera entre tajos.", () => f.tajoAlAire, v => f.tajoAlAire = v),
+                    S("Acércate al enemigo y apuñálalo", "Camina hasta el ENEMIGO ROJO (a 2 m o menos) y dale un tajo con [F]: golpe sordo, chispa roja y sacudida.", "El cuchillo llega a 2 m. Acércate de frente al enemigo.", () => f.cuchilladaAcertada, v => f.cuchilladaAcertada = v),
+                    S("Derríbalo con el cuchillo", "Sigue dándole tajos con [F] hasta derribarlo.", "Cada cuchillada le quita más de la mitad de la vida a un enemigo normal.", () => f.enemigoApunalado, v => f.enemigoApunalado = v),
+                },
+                AlEntrar = () =>
+                {
+                    var yo = driver.Brain.Current; if (yo == null) return;
+                    var frente = FrenteDelJugador();
+                    enemigoCuchillo = CrearEnemigoDePractica("Tut_Enemigo_Cuchillo", PuntoConVista(yo.transform.position, frente, 6f), yo.transform.position);
+                    if (enemigoCuchillo != null) balizaCuchillo = TutorialBeacon.Crear("ENEMIGO · CUCHILLO [F]", new Color(1f, 0.3f, 0.25f), enemigoCuchillo.transform.position, enemigoCuchillo.transform, 1.2f, 12f);
+                },
+                Evaluar = () => { if (enemigoCuchillo != null && !enemigoCuchillo.Health.IsAlive && f.cuchilladaAcertada) f.enemigoApunalado = true; },
+                AlSalir = () => QuitarEnemigoDePractica(ref enemigoCuchillo, ref balizaCuchillo),
+            });
+
+            // 6b3 (ronda 7) -------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "granada", Titulo = "GRANADA", Teclas = "G", Acento = new Color(1f, 0.8f, 0.3f),
+                Subs = new[]
+                {
+                    S("Mantén G: se dibuja la curva", "Mantén apretada la tecla [G]: aparece la CURVA exacta de la granada y un anillo con el radio de la explosión donde va a caer. Apunta al enemigo rojo.", "Mantén G sin soltarla. Baja un poco la mira si cae corto.", () => f.granadaMantenida, v => f.granadaMantenida = v),
+                    S("Suelta G: la lanzas", "Con el anillo sobre el enemigo, SUELTA [G]: la granada sale, rebota si choca y suena el tic-tac del fusible. (Clic derecho o Esc: la guardas.)", "Suelta la tecla G.", () => f.granadaLanzada, v => f.granadaLanzada = v),
+                    S("Explota: estruendo y onda", "Espera 2 segundos y medio: explota con estruendo, sacudida y daño con caída hacia el borde del anillo. No lastima a tu bando.", "Aléjate del anillo si lanzaste cerca de ti (tu bando no recibe daño, pero la onda empuja).", () => f.granadaExplota, v => f.granadaExplota = v),
+                },
+                AlEntrar = () =>
+                {
+                    var yo = driver.Brain.Current; if (yo == null) return;
+                    yo.Weapon.ReponerGranadas();
+                    var frente = FrenteDelJugador();
+                    enemigoGranada = CrearEnemigoDePractica("Tut_Enemigo_Granada", PuntoConVista(yo.transform.position, frente, 15f), yo.transform.position);
+                    if (enemigoGranada != null) balizaGranada = TutorialBeacon.Crear("BLANCO · GRANADA [G]", new Color(1f, 0.55f, 0.2f), enemigoGranada.transform.position, enemigoGranada.transform, 1.2f, 16f);
+                },
+                Evaluar = () => { if (driver.GranadaApuntando) f.granadaMantenida = true; },
+                AlSalir = () => QuitarEnemigoDePractica(ref enemigoGranada, ref balizaGranada),
             });
 
             // 6c ------------------------------------------------------
@@ -503,6 +619,48 @@ namespace SP.Tutorial
                 Evaluar = () => { },   // lo marca AlOrdenDeMover
                 AlSalir = () => { if (balizaZonaB != null) { balizaZonaB.Quitar(); balizaZonaB = null; } },
             });
+            // 11b (ronda 7) --------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "ir_atacar", Titulo = "IR ALLÍ Y ATACAR (RADIAL)", Teclas = "Q", Acento = naranja,
+                Subs = new[]
+                {
+                    S("Q → IR ALLÍ → TODOS", "Mira al SUELO donde quieres que vayan (círculo verde) y mantén [Q]: IR ALLÍ está siempre. Elige TODOS: los 2 aliados caminan hasta el punto que apuntabas.", "IR ALLÍ es la primera categoría; TODOS la primera opción. Apunta al piso antes de mantener Q.", () => f.ordenIrAlli, v => f.ordenIrAlli = v),
+                    S("Apunta al enemigo → Q → ATACAR (dorado)", "Ahora mira al ENEMIGO ROJO y mantén [Q]: ATACAR aparece en dorado. Elige TODOS: tus aliados le disparan.", "Deja al enemigo rojo en el centro de la mira antes de mantener Q.", () => f.ordenAtacar, v => f.ordenAtacar = v),
+                    S("Tus aliados lo derriban", "Mira cómo se paran a disparar. Espera a que caiga.", "Tardan un par de segundos en verlo y apuntar.", () => f.enemigoAtacadoCae, v => f.enemigoAtacadoCae = v),
+                },
+                AlEntrar = () =>
+                {
+                    ArmarAliados();
+                    var yo = driver.Brain.Current; if (yo == null) return;
+                    var frente = FrenteDelJugador();
+                    var lado = Vector3.Cross(Vector3.up, frente);
+                    enemigoAtaque = CrearEnemigoDePractica("Tut_Enemigo_Ataque", PuntoConVista(yo.transform.position, frente, 16f, -4f), yo.transform.position);
+                    if (enemigoAtaque != null) balizaAtaque = TutorialBeacon.Crear("ENEMIGO · ATACAR", new Color(1f, 0.3f, 0.25f), enemigoAtaque.transform.position, enemigoAtaque.transform, 1.2f, 20f);
+                    balizaPunto = TutorialBeacon.Crear("IR ALLÍ", verde, yo.transform.position + frente * 10f + lado * 5f, null, 2.2f, 10f);
+                },
+                Evaluar = () => { if (enemigoAtaque != null && !enemigoAtaque.Health.IsAlive && f.ordenAtacar) f.enemigoAtacadoCae = true; },
+                AlSalir = () =>
+                {
+                    PostureDeAliados(CombatStance.AltoElFuego);
+                    if (balizaPunto != null) { balizaPunto.Quitar(); balizaPunto = null; }
+                    QuitarEnemigoDePractica(ref enemigoAtaque, ref balizaAtaque);
+                },
+            });
+
+            // 11c (ronda 7) --------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "formaciones", Titulo = "FORMACIONES Y RETIRADA (RADIAL)", Teclas = "Q", Acento = verde,
+                Subs = new[]
+                {
+                    S("Q → POSICIÓN → FORMAR LÍNEA", "Mantén [Q], elige POSICIÓN y sigue hasta FORMAR LÍNEA: los aliados se colocan uno al lado del otro, de cara hacia donde miras.", "POSICIÓN; FORMAR LÍNEA es la tercera opción del anillo de afuera.", () => f.ordenLinea, v => f.ordenLinea = v),
+                    S("Q → POSICIÓN → FORMAR CUÑA", "Ahora FORMAR CUÑA (la cuarta opción): forman una V con la punta hacia adelante.", "POSICIÓN; FORMAR CUÑA está justo a continuación de FORMAR LÍNEA.", () => f.ordenCuna, v => f.ordenCuna = v),
+                    S("Q → POSICIÓN → RETIRADA", "Por último RETIRADA (la última opción): los aliados vuelven hacia ti a cubierto.", "POSICIÓN; RETIRADA es la última opción.", () => f.ordenRetirada, v => f.ordenRetirada = v),
+                },
+                AlEntrar = () => { ArmarAliados(); },
+            });
+
             // 12 (nuevo) -----------------------------------------------
             pasos.Add(new Paso
             {
@@ -540,6 +698,7 @@ namespace SP.Tutorial
                 {
                     AsegurarComoAsalto();
                     ArmarAliados();
+                    Health.RegeneracionPermitida = false;          // que lo cure el medico, no el tiempo
                     PedidoDeCuracion.AtencionAutomatica = false;   // que lo pida el jugador
                     herido = null;
                     foreach (var a in aliados) if (a != null && a.Role != RoleType.Medic) { herido = a; break; }
@@ -552,7 +711,7 @@ namespace SP.Tutorial
                     if (PedidoDeCuracion.Activo) f.ordenDeCurar = true;
                     if (herido != null && herido.Health.Current >= herido.Health.MaxHealth * 0.9f) { f.aliadoCurado = true; f.ordenDeCurar = true; }
                 },
-                AlSalir = () => { PedidoDeCuracion.AtencionAutomatica = true; QuitarBalizasDeAliados(); },
+                AlSalir = () => { Health.RegeneracionPermitida = true; PedidoDeCuracion.AtencionAutomatica = true; QuitarBalizasDeAliados(); },
             });
 
             // 13b (nuevo) ----------------------------------------------
@@ -589,6 +748,35 @@ namespace SP.Tutorial
                 AlSalir = () => { PedidoDeCuracion.AtencionAutomatica = true; QuitarBalizasDeAliados(); },
             });
 
+            // 13c (ronda 7) --------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "curarme", Titulo = "CURARME (RADIAL)", Teclas = "Q", Acento = verde,
+                Subs = new[]
+                {
+                    S("Q → CURAR → CURARME (dorado)", "TÚ estás herido (barra roja abajo a la izquierda). Con la salud baja, CURAR aparece solo en el radial, sin apuntar a nadie. Mantén [Q], elige CURAR y CURARME: el médico viene por ti.", "Con menos del 70% de vida aparece CURAR en dorado.", () => f.ordenCurarme, v => f.ordenCurarme = v),
+                    S("El médico te cura", "Quédate cerca: el médico llega, suena la campanita y recuperas la vida.", "El médico tiene que llegar a menos de 2,5 m.", () => f.yoCurado, v => f.yoCurado = v,
+                      () => $"Recuperas vida ({VidaPropia()}%)"),
+                },
+                AlEntrar = () =>
+                {
+                    AsegurarComoAsalto();
+                    ArmarAliados();
+                    Health.RegeneracionPermitida = false;
+                    PedidoDeCuracion.AtencionAutomatica = false;
+                    PedidoDeCuracion.Cancelar();
+                    var yo = driver.Brain.Current;
+                    if (yo != null) yo.Health.TakeDamage(Mathf.RoundToInt(yo.Health.MaxHealth * 0.62f), -1);
+                },
+                Evaluar = () =>
+                {
+                    var yo = driver.Brain.Current;
+                    if (PedidoDeCuracion.Activo) f.ordenCurarme = true;
+                    if (yo != null && f.ordenCurarme && yo.Health.Current >= yo.Health.MaxHealth * 0.9f) f.yoCurado = true;
+                },
+                AlSalir = () => { Health.RegeneracionPermitida = true; PedidoDeCuracion.AtencionAutomatica = true; },
+            });
+
             // 14 (nuevo) -----------------------------------------------
             pasos.Add(new Paso
             {
@@ -596,7 +784,8 @@ namespace SP.Tutorial
                 Subs = new[]
                 {
                     S("Apunta al muro de práctica (columna naranja)", "Ahora eres el soldado de ASALTO: apunta al muro de práctica (a unos 7 m). Al apuntarlo, el radial [Q] ofrece DEMOLER en dorado. Solo el asalto puede demoler.", "Mira al bloque marcado con la columna naranja.", () => f.apuntaAlMuro, v => f.apuntaAlMuro = v),
-                    S("CTRL agachado y quieto: carga 4 s", "Mantén CTRL (agachado) y NO te muevas: aparece un anillo que se llena en 4 segundos.", "Si te levantas o te mueves, la carga se cancela.", () => f.cargandoDemolicion, v => f.cargandoDemolicion = v),
+                    S("Q → DEMOLER → YO DEMUELO", "Manteniendo el muro en la mira, mantén [Q]: DEMOLER aparece en dorado. Elige YO DEMUELO (la segunda opción).", "DEMOLER solo aparece si apuntas al muro y eres el asalto.", () => f.ordenDemolerYo, v => f.ordenDemolerYo = v),
+                    S("CTRL agachado y quieto: carga 4 s", "Mantén CTRL (agachado) y NO te muevas: aparece un anillo que se llena en 4 segundos y suenan los pitidos de la carga.", "Si te levantas o te mueves, la carga se cancela.", () => f.cargandoDemolicion, v => f.cargandoDemolicion = v),
                     S("El muro vuela en pedazos", "Sigue quieto hasta que el anillo se llene: la carga explota y el muro desaparece.", "Tarda 4 segundos seguidos, quieto y agachado.", () => f.muroDemolido, v => f.muroDemolido = v),
                 },
                 AlEntrar = () =>
@@ -616,6 +805,48 @@ namespace SP.Tutorial
             });
 
 
+            // 14a (ronda 7) --------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "bomba_aliado", Titulo = "EL ASALTO ALIADO PONE LA BOMBA (RADIAL)", Teclas = "Q", Acento = naranja,
+                Subs = new[]
+                {
+                    S("Q → DEMOLER → ASALTO DEMUELE", "Ahora manejas a otro soldado y el ASALTO es tu aliado. Apunta al muro (a unos 24 m), mantén [Q] y elige ASALTO DEMUELE (la primera opción): tu aliado corre, se agacha y planta la carga.", "DEMOLER en dorado; ASALTO DEMUELE es la primera opción.", () => f.ordenAsaltoDemuele, v => f.ordenAsaltoDemuele = v),
+                    S("Q → DEMOLER → CANCELAR (mientras va)", "Sin dejar de mirar el muro, mantén [Q] otra vez: DEMOLER ofrece CANCELAR (la última opción) mientras el asalto está yendo o plantando. Elígela: se detiene.", "Hay que hacerlo antes de que la carga llegue a 4 s. Mira el muro y usa el radial rápido.", () => f.ordenCancelarDemolicion, v => f.ordenCancelarDemolicion = v),
+                    S("Otra vez ASALTO DEMUELE", "Vuelve a elegir ASALTO DEMUELE. Esta vez no canceles.", "Q, DEMOLER, ASALTO DEMUELE.", () => f.asaltoPlanta, v => f.asaltoPlanta = v),
+                    S("El muro vuela en pedazos", "Espera 4 segundos: la carga explota (estruendo, onda y pitidos) y el muro desaparece.", "El asalto tiene que llegar, agacharse y quedarse quieto 4 s.", () => f.muroAliadoDemolido, v => f.muroAliadoDemolido = v),
+                },
+                AlEntrar = () =>
+                {
+                    AsegurarComoNoAsalto();
+                    ArmarAliados();
+                    ordenesDeAsalto = 0;
+                    muroPractica = null;
+                    Demolicion.Segundos = 9f;       // mas tiempo para practicar CANCELAR antes de que estalle
+                    CrearMuroDePractica(24f);
+                    muroAliado = muroPractica;
+                },
+                Evaluar = () =>
+                {
+                    if (muroAliado == null) return;
+                    if (muroAliado.IsCollapsed)
+                    {
+                        if (f.ordenCancelarDemolicion) f.muroAliadoDemolido = true;
+                        else
+                        {
+                            // Voló antes de que cancelaras: se arma otro muro para poder practicar CANCELAR.
+                            TutorialLog.Escribir("[EVENTO]", "   el muro voló antes de cancelar: se crea otro");
+                            if (balizaMuro != null) { balizaMuro.Quitar(); balizaMuro = null; }
+                            muroPractica = null; f.ordenAsaltoDemuele = false; ordenesDeAsalto = 0;
+                            CrearMuroDePractica(24f);
+                            muroAliado = muroPractica;
+                        }
+                    }
+                    if (ordenesDeAsalto >= 2 && f.ordenCancelarDemolicion) f.asaltoPlanta = true;
+                },
+                AlSalir = () => { Demolicion.Segundos = Demolicion.SegundosNormales; if (balizaMuro != null) { balizaMuro.Quitar(); balizaMuro = null; } AsegurarComoAsalto(); },
+            });
+
             // 14b (nuevo) ----------------------------------------------
             pasos.Add(new Paso
             {
@@ -624,14 +855,15 @@ namespace SP.Tutorial
                 {
                     S("Acércate a la torreta amarilla (4 m)", "Camina hasta la AMETRALLADORA FIJA marcada con la columna naranja. Es fija: no se lleva.", "Está unos 9 m delante de ti.", () => f.cercaDeLaTorreta, v => f.cercaDeLaTorreta = v,
                       () => $"Acércate a la torreta ({DistanciaATorreta():0} m)"),
-                    S("E: la ocupas (o Q → TORRETA → USAR)", "Mírala y aprieta [E] (o mantén [Q] y elige TORRETA FIJA en dorado): te plantas detrás del arma. Solo giras dentro de un arco y no puedes caminar.", "Apunta a la torreta: el cartel dorado dice [E] USAR LA AMETRALLADORA FIJA.", () => f.enTorretaFija, v => f.enTorretaFija = v),
+                    S("Q → TORRETA FIJA → USAR", "Mírala y mantén [Q]: TORRETA FIJA aparece en dorado. Elige USAR LA TORRETA: te plantas detrás del arma. Solo giras dentro de un arco y no puedes caminar. (En este paso [E] está desactivado para que practiques el radial.)", "Apunta a la torreta antes de mantener Q; el cartel dorado la marca.", () => f.enTorretaFija, v => f.enTorretaFija = v),
                     S("Dispara una ráfaga", "Dispara con el CLIC IZQUIERDO: la cinta tiene 100 balas. Con el CLIC DERECHO mantenido miras por la mira.", "Clic izquierdo mantenido.", () => f.disparoTorretaFija, v => f.disparoTorretaFija = v),
-                    S("E: sales de la torreta", "Aprieta [E] otra vez para dejar la torreta (vuelves a tu arma y a tu lugar).", "Tecla E.", () => f.salioDeLaTorreta, v => f.salioDeLaTorreta = v),
+                    S("Q → TORRETA FIJA → SALIR", "Mantén [Q] otra vez: estando en la torreta el radial ofrece SALIR DE LA TORRETA. Elígela (vuelves a tu arma y a tu lugar).", "TORRETA FIJA; SALIR DE LA TORRETA es la segunda opción.", () => f.salioDeLaTorreta, v => f.salioDeLaTorreta = v),
                 },
                 AlEntrar = () =>
                 {
                     AsegurarComoAsalto();
                     CrearTorretaDePractica();
+                    driver.SoloRadial = true;
                 },
                 Evaluar = () =>
                 {
@@ -644,10 +876,10 @@ namespace SP.Tutorial
                             // Ya adentro, el cartel 3D de la baliza tapa la pantalla: se quita.
                             if (balizaTorreta != null) { balizaTorreta.Quitar(); balizaTorreta = null; }
                         }
-                        if (f.enTorretaFija && torretaPractica.Ocupante == null && !driver.EnTorretaFija) f.salioDeLaTorreta = true;
+                        if (f.enTorretaFija && torretaPractica.Ocupante == null && !driver.EnTorretaFija && f.ordenSalirTorreta) f.salioDeLaTorreta = true;
                     }
                 },
-                AlSalir = () => { if (driver.EnTorretaFija) driver.SalirDeTorreta(); if (balizaTorreta != null) { balizaTorreta.Quitar(); balizaTorreta = null; } },
+                AlSalir = () => { driver.SoloRadial = false; if (driver.EnTorretaFija) driver.SalirDeTorreta(); if (balizaTorreta != null) { balizaTorreta.Quitar(); balizaTorreta = null; } },
             });
 
             // 14c (nuevo) ----------------------------------------------
@@ -675,10 +907,11 @@ namespace SP.Tutorial
                 {
                     S("Camina hasta el tanque (columna naranja)", "Camina hasta el TANQUE marcado con la columna naranja (W A S D).", "Está al norte, al final del camino de tierra.", () => f.cercaDelTanque, v => f.cercaDelTanque = v,
                       () => $"Camina hasta el tanque ({DistanciaAlTanque():0} m)"),
-                    S("Q → TANQUE → SUBIRME YO", "Estás cerca. MIRA al tanque: la mira se pone dorada y [E] lo sube. También puedes mantener [Q]: TANQUE aparece en dorado; elige SUBIRME YO.", "Apunta al tanque antes de mantener Q. Hay que estar a menos de 7 m.", () => f.dentroDelTanque, v => f.dentroDelTanque = v),
+                    S("Q → TANQUE → SUBIRME YO", "Estás cerca. MIRA al tanque y mantén [Q]: TANQUE aparece en dorado; elige SUBIRME YO (la cuarta opción). (En este paso [E] está desactivado para que practiques el radial.)", "Apunta al tanque antes de mantener Q. Hay que estar a menos de 7 m.", () => f.dentroDelTanque, v => f.dentroDelTanque = v),
                 },
                 AlEntrar = () =>
                 {
+                    driver.SoloRadial = true;
                     if (driver.Vehicle != null)
                         balizaTanque = TutorialBeacon.Crear("TANQUE", naranja, driver.Vehicle.transform.position, driver.Vehicle.transform, 2.2f, 14f);
                 },
@@ -688,7 +921,7 @@ namespace SP.Tutorial
                     if (DistanciaAlTanque() <= 6.5f) f.cercaDelTanque = true;
                     if (driver.Vehicle.PlayerAboard) { f.dentroDelTanque = true; f.cercaDelTanque = true; }
                 },
-                AlSalir = () => { if (balizaTanque != null) { balizaTanque.Quitar(); balizaTanque = null; } },
+                AlSalir = () => { driver.SoloRadial = false; if (balizaTanque != null) { balizaTanque.Quitar(); balizaTanque = null; } },
             });
 
             // 13 ------------------------------------------------------
@@ -802,12 +1035,33 @@ namespace SP.Tutorial
                 AlSalir = () => { if (balizaMeta != null) { balizaMeta.Quitar(); balizaMeta = null; } },
             });
 
+            // 16b (ronda 7) --------------------------------------------
+            pasos.Add(new Paso
+            {
+                Id = "bajar_tanque", Titulo = "BAJAR DEL TANQUE (RADIAL)", Teclas = "Q", Acento = naranja,
+                Subs = new[]
+                {
+                    S("Q → TANQUE → BAJAR TODOS", "Llegaste. Mantén [Q]: TANQUE aparece en dorado. Elige BAJAR TODOS (la segunda opción): tus aliados bajan del tanque (tú te quedas).", "TANQUE (dorado); BAJAR TODOS es la segunda opción.", () => f.ordenBajarTodos, v => f.ordenBajarTodos = v),
+                    S("Los aliados bajan", "Espera a que los 2 aliados salgan del tanque.", "Tardan un instante en bajar.", () => f.todosAbajo, v => f.todosAbajo = v),
+                    S("Q → TANQUE → BAJARME YO", "Ahora tú: mantén [Q], TANQUE y BAJARME YO (la última opción). (En este paso [E] está desactivado para que practiques el radial.)", "TANQUE (dorado); BAJARME YO es la última opción.", () => f.ordenBajarme, v => f.ordenBajarme = v),
+                },
+                AlEntrar = () => { ArmarAliados(); driver.SoloRadial = true; },
+                Evaluar = () =>
+                {
+                    var v = driver.Vehicle; if (v == null) return;
+                    // Sin aliados a bordo BAJAR TODOS no se ofrece: no hay nada que practicar ahi y no se traba.
+                    if (!f.ordenBajarTodos && ABordo() == 0 && Time.time - tPaso > 3f) { f.ordenBajarTodos = true; f.todosAbajo = true; }
+                    if (f.ordenBajarTodos && ABordo() == 0) f.todosAbajo = true;
+                },
+                AlSalir = () => { driver.SoloRadial = false; },
+            });
+
             // 17 ------------------------------------------------------
             pasos.Add(new Paso
             {
                 Id = "victoria", Titulo = "¡TUTORIAL COMPLETADO!", Teclas = "", Acento = dorado, OcultarSubs = true,
                 Subs = new Sub[0],
-                MensajeVivo = () => "Aprendiste a moverte y correr, apuntar en primera persona, dar órdenes con el radial contextual, curar y reanimar, demoler muros, usar la ametralladora fija, el modo dios y el tanque. ¡Buena suerte, comandante!",
+                MensajeVivo = () => "Aprendiste a moverte, correr y saltar, las armas con su mira y su sonido, el cuchillo y las granadas, y TODOS los comandos del radial: ir allí, atacar, cubrirse, formaciones, curar, reanimar, poner bombas, la ametralladora fija, poseer y el tanque. ¡Buena suerte, comandante!",
                 AlEntrar = () =>
                 {
                     f.victoria = true;
@@ -908,6 +1162,12 @@ namespace SP.Tutorial
             return n;
         }
 
+        int VidaPropia()
+        {
+            var yo = driver.Brain.Current;
+            return yo != null ? Mathf.RoundToInt(100f * yo.Health.Current / Mathf.Max(1, yo.Health.MaxHealth)) : 0;
+        }
+
         int VidaDelHerido() => herido != null ? Mathf.RoundToInt(100f * herido.Health.Current / Mathf.Max(1, herido.Health.MaxHealth)) : 0;
 
         // El paso de curar y el de demoler los hace el soldado de ASALTO (el jugador vuelve a ser el).
@@ -954,6 +1214,70 @@ namespace SP.Tutorial
 
         static readonly Color naranja_ = new Color(1f, 0.66f, 0.25f);
         float tCorriendo;
+
+        // Ronda 7: estado de los pasos nuevos.
+        bool saltoVisto;
+        WeaponKind armaInicial;
+        readonly HashSet<WeaponKind> armasVistas = new HashSet<WeaponKind>();
+        Soldier enemigoCuchillo, enemigoGranada, enemigoAtaque;
+        TutorialBeacon balizaCuchillo, balizaGranada, balizaAtaque, balizaPunto;
+        int ordenesDeAsalto;
+        ObstacleMarker muroAliado;
+
+        // Punto a "distancia" del jugador, lo mas cerca posible de la direccion pedida, con linea de vista LIBRE
+        // (sin muros ni cajas en el medio). Prueba abanicos de 25 grados a cada lado.
+        Vector3 PuntoConVista(Vector3 desde, Vector3 dirPreferida, float distancia, float desplazamientoLateral = 0f)
+        {
+            dirPreferida.y = 0f; dirPreferida.Normalize();
+            var ojos = desde + Vector3.up * 1.2f;
+            float[] angulos = { 0f, 25f, -25f, 50f, -50f, 75f, -75f, 100f, -100f, 130f, -130f, 180f };
+            foreach (var a in angulos)
+            {
+                var dir = Quaternion.Euler(0f, a, 0f) * dirPreferida;
+                var lado = Vector3.Cross(Vector3.up, dir);
+                var p = desde + dir * distancia + lado * desplazamientoLateral;
+                var objetivo = new Vector3(p.x, 1.2f, p.z);
+                if (!Physics.Linecast(ojos, objetivo, out var golpe, ~0, QueryTriggerInteraction.Ignore)) return p;
+                if (golpe.collider != null && golpe.collider.GetComponentInParent<Soldier>() != null) return p;
+            }
+            return desde + dirPreferida * distancia;
+        }
+
+        // Un enemigo de practica: quieto y sin disparar (se queda de blanco). No entra en las olas del tanque.
+        Soldier CrearEnemigoDePractica(string nombre, Vector3 pos, Vector3 miraHacia)
+        {
+            if (prefabEnemigo == null) return null;
+            pos.y = 0.8f;
+            var dir = miraHacia - pos; dir.y = 0f;
+            var go = Instantiate(prefabEnemigo, pos, dir.sqrMagnitude > 0.01f ? Quaternion.LookRotation(dir) : Quaternion.identity);
+            go.name = nombre;
+            go.SetActive(true);
+            var s = go.GetComponent<Soldier>();
+            var ai = go.GetComponent<AiBrain>();
+            if (ai != null) { ai.SetPatrolWaypoints(null); ai.Stance = CombatStance.AltoElFuego; }
+            return s;
+        }
+
+        Vector3 FrenteDelJugador()
+        {
+            var f = driver.Rig.Cam != null ? Vector3.ProjectOnPlane(driver.Rig.Cam.transform.forward, Vector3.up).normalized : Vector3.forward;
+            return f.sqrMagnitude < 0.01f ? Vector3.forward : f;
+        }
+
+        void QuitarEnemigoDePractica(ref Soldier s, ref TutorialBeacon baliza)
+        {
+            if (baliza != null) { baliza.Quitar(); baliza = null; }
+            if (s != null && s.Health != null && s.Health.IsAlive) Destroy(s.gameObject);
+            s = null;
+        }
+
+        // Para "bomba del aliado": el jugador pasa a un soldado que NO es de asalto y el asalto queda de aliado.
+        void AsegurarComoNoAsalto()
+        {
+            if (driver.Brain.Current != null && driver.Brain.Current.Role != RoleType.Assault) return;
+            foreach (var s in driver.Squad)
+                if (s != null && s.Role != RoleType.Assault && s.Health.IsAlive) { driver.TryPossess(s); break; }
+        }
 
         // Una ametralladora fija de practica 9 m adelante: base baja, tripode y canon.
         TorretaFija torretaPractica;
@@ -1016,8 +1340,16 @@ namespace SP.Tutorial
                 case "curar": cat = SP.UI.MenuDeOrdenes.Curar; opc = 2; break;
                 case "reanimar": cat = SP.UI.MenuDeOrdenes.Curar; opc = 3; break;
                 case "demoler": cat = SP.UI.MenuDeOrdenes.Demoler; opc = 1; break;
-                case "torreta_fija": cat = SP.UI.MenuDeOrdenes.Torreta; opc = 0; break;
+                case "torreta_fija": cat = SP.UI.MenuDeOrdenes.Torreta; opc = f.enTorretaFija ? 1 : 0; break;
                 case "entrar_tanque": cat = SP.UI.MenuDeOrdenes.Tanque; opc = 3; break;
+                case "ir_atacar": cat = f.ordenIrAlli ? SP.UI.MenuDeOrdenes.Atacar : SP.UI.MenuDeOrdenes.IrAlli; opc = 0; break;
+                case "formaciones": cat = SP.UI.MenuDeOrdenes.Posicion; opc = !f.ordenLinea ? 2 : !f.ordenCuna ? 3 : 4; break;
+                case "curarme": cat = SP.UI.MenuDeOrdenes.Curar; opc = 0; break;
+                case "bomba_aliado":
+                    cat = SP.UI.MenuDeOrdenes.Demoler;
+                    opc = !f.ordenAsaltoDemuele ? 0 : !f.ordenCancelarDemolicion ? 2 : 0;
+                    break;
+                case "bajar_tanque": cat = SP.UI.MenuDeOrdenes.Tanque; opc = !f.ordenBajarTodos ? 1 : 4; break;
                 case "aliados_tanque": cat = SP.UI.MenuDeOrdenes.Tanque; opc = 0; break;
                 case "avanzar_disparar":
                 case "final": cat = SP.UI.MenuDeOrdenes.Tanque; opc = 2; break;
@@ -1029,14 +1361,14 @@ namespace SP.Tutorial
         TutorialBeacon balizaMuro;
 
         // Un bloque demolible a 7 m adelante (para el paso de demoler).
-        void CrearMuroDePractica()
+        void CrearMuroDePractica(float distancia = 7f)
         {
             if (muroPractica != null) return;
             var yo = driver.Brain.Current; if (yo == null || driver.Rig.Cam == null) return;
             var frente = Vector3.ProjectOnPlane(driver.Rig.Cam.transform.forward, Vector3.up).normalized;
             var c = GameObject.CreatePrimitive(PrimitiveType.Cube);
             c.name = "Tut_MuroDemolible";
-            c.transform.position = yo.transform.position + frente * 7f;
+            c.transform.position = yo.transform.position + frente * distancia;
             c.transform.position = new Vector3(c.transform.position.x, 1.25f, c.transform.position.z);
             c.transform.localScale = new Vector3(5f, 2.5f, 1.2f);
             c.transform.rotation = Quaternion.LookRotation(frente);
@@ -1087,6 +1419,25 @@ namespace SP.Tutorial
                 Flags.disparaConZoom = true;
             if (p.Id == "torreta_fija" && e.ShooterId == driver.Brain.Current.Id && driver.EnTorretaFija)
                 Flags.disparoTorretaFija = true;
+        }
+
+        void AlTajo(MeleeAttackEvent e)
+        {
+            var p = PasoActual; if (p == null || p.Id != "cuchillo" || driver.Brain.Current == null || e.AttackerId != driver.Brain.Current.Id) return;
+            Flags.tajoAlAire = true;
+            if (e.HitSomething) Flags.cuchilladaAcertada = true;
+        }
+
+        void AlLanzarGranada(GrenadeThrownEvent e)
+        {
+            var p = PasoActual; if (p == null || p.Id != "granada" || driver.Brain.Current == null || e.OwnerId != driver.Brain.Current.Id) return;
+            Flags.granadaMantenida = true; Flags.granadaLanzada = true;
+        }
+
+        void AlExplotarGranada(GrenadeExplodedEvent e)
+        {
+            var p = PasoActual; if (p == null || p.Id != "granada" || driver.Brain.Current == null || e.OwnerId != driver.Brain.Current.Id) return;
+            Flags.granadaExplota = true;
         }
 
         void AlGolpearObstaculo(ObstacleMarker m, int dano)
@@ -1225,7 +1576,7 @@ namespace SP.Tutorial
             if (driver == null || ui == null || Indice < 0 || Terminado) return;
             var p = pasos[Indice];
 
-            if (Time.time >= proximaCura) { proximaCura = Time.time + 1f; if (p.Id != "curar") Protecciones(); }
+            if (Time.time >= proximaCura) { proximaCura = Time.time + 1f; if (p.Id != "curar" && p.Id != "curarme") Protecciones(); }
             if (Time.time >= proximoAcoso) { proximoAcoso = Time.time + 2.2f; AcosarAlTanque(); }
 
             if (pausaActiva)
