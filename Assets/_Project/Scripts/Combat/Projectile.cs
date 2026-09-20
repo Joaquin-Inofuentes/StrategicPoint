@@ -251,7 +251,14 @@ namespace SP.Combat
                 if (explosionRadius > 0f) Explode(puntoDeImpacto);
                 else
                 {
-                    hit.Health.TakeDamage(damage, ownerId);
+                    // HEADSHOT: instakill SOLO cuando jugador/aliados (ownerTeam ==
+                    // Player) le pegan en la cabeza a un enemigo. Al reves (un enemigo
+                    // pegandole en la cabeza al jugador/aliado) sigue siendo dano
+                    // normal -- ultimoEsCabeza ya sale en false en ese caso porque no
+                    // se evalua nada especial del lado del que dispara, solo importa
+                    // a quien se le pega.
+                    bool headshot = ultimoImpactoFueCabeza && ownerTeam == TeamId.Player && hit.Team == TeamId.Enemy;
+                    hit.Health.TakeDamage(damage, ownerId, headshot);
                     ImpactCubes.Spawn(puntoDeImpacto, -transform.forward, ImpactSurface.Soldier, damage);
                 }
                 Expire();
@@ -771,15 +778,53 @@ namespace SP.Combat
         // La grilla sigue siendo la fase amplia (barata, por celdas): lo
         // que cambia es que ahora la ultima palabra la tiene el collider
         // del soldado, que es la misma forma que se ve en pantalla.
+        // FEATURE headshot: fraccion superior del collider del soldado que cuenta
+        // como "cabeza". No hay un hueso/zona de cabeza propia en el rig -- el
+        // collider entero es la mejor aproximacion disponible, y el 18% superior
+        // es donde cae la cabeza en un humanoide de pie sin exagerar la zona.
+        const float FraccionSuperiorCabeza = 0.18f;
+        bool ultimoImpactoFueCabeza;
+
         bool LeDioAlCuerpo(SP.Actors.Soldier victima, Vector3 punto)
         {
+            ultimoImpactoFueCabeza = false;
             if (victima == null) return false;
             var cuerpo = victima.GetComponent<Collider>();
             // Sin collider no hay con que afinar: se conserva el
             // comportamiento viejo en vez de volverlo invulnerable.
             if (cuerpo == null) return true;
             var cercano = cuerpo.ClosestPoint(punto);
-            return (cercano - punto).sqrMagnitude <= RadioDeBala * RadioDeBala;
+            if ((cercano - punto).sqrMagnitude > RadioDeBala * RadioDeBala) return false;
+
+            // BUG REAL: Collider.bounds es el AABB que cachea PhysX, y ese
+            // cache solo se refresca cuando corre un paso de fisica de
+            // verdad (Physics.Simulate / un FixedUpdate en Play mode). La
+            // suite headless mueve soldados con transform.position a mano
+            // en Edit mode, sin ningun paso de fisica -- Collider.bounds
+            // se quedaba con el AABB de donde el soldado nacio (spawneado
+            // en el origen antes de reposicionarlo), desfasado de su
+            // posicion real. ClosestPoint() arriba SI recalcula contra la
+            // geometria real (por eso el chequeo de radio funcionaba), pero
+            // el umbral de cabeza que le seguia usaba ese mismo bounds
+            // viejo: la "cabeza" quedaba a una altura que no tenia nada que
+            // ver con donde estaba el soldado de verdad, y CUALQUIER tiro
+            // (aunque apuntara al pecho) podia caer del lado de arriba del
+            // umbral corrido. Medido: en Fase 1, un tiro de nivel al pecho
+            // de un enemigo a la misma altura que quien dispara se
+            // registraba como headshot el 100% de las veces -- instakill
+            // en el primer impacto, sin que la IA llegara nunca a Attack.
+            //
+            // Renderer.bounds NO tiene este problema: se recalcula del
+            // transform real cada vez que se lo consulta, sin depender de
+            // ningun paso de fisica. Es la misma caja que se ve en
+            // pantalla, asi que sigue siendo la mejor aproximacion
+            // disponible para "donde esta la cabeza".
+            var renderer = victima.GetComponent<Renderer>();
+            Bounds cuerpoBounds = renderer != null ? renderer.bounds : cuerpo.bounds;
+
+            float alturaCabeza = cuerpoBounds.max.y - cuerpoBounds.size.y * FraccionSuperiorCabeza;
+            ultimoImpactoFueCabeza = punto.y >= alturaCabeza;
+            return true;
         }
 
         void Expire()

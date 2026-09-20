@@ -203,6 +203,17 @@ namespace SP.Ai
         Vector3 stuckAnchor;
         bool repathed;
 
+        // BUG REAL reportado: al demoler el muro del bloque final, los
+        // aliados que ya estaban en camino (MovingToOrder) seguian
+        // bordeando por donde antes habia un obstaculo. PlanPathTo solo
+        // corre UNA vez por orden (ver AiBrain.Navegacion.cs); el rodeo
+        // periodico (AvanzarConRodeo, cada 0.5 s) se autocorrige solo, pero
+        // una orden de movimiento no pasa por ahi. Guardamos con que
+        // Version de NavService se planeo la ruta vigente; si un obstaculo
+        // se demuele (o aparece uno nuevo) de por medio, Version cambia y
+        // AdvanceTo la rehace de inmediato en vez de esperar el atasco.
+        int pathVersion = -1;
+
         // Ronda de patrulla: mientras no haya nada más que hacer (Patrol),
         // camina de waypoint en waypoint en loop. Se corta solo si el
         // sensado detecta un enemigo (como cualquier otra cosa en Patrol).

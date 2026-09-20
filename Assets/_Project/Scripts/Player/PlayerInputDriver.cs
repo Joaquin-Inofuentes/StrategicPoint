@@ -1250,6 +1250,15 @@ namespace SP.Player
             ultimoResultadoDeMira = result;
             ActualizarPromptContextual(result);
             ActualizarMirilla(result);
+            // [Ctrl]: habilidad especial de la clase que se maneja -- medico
+            // cura/reanima, asalto/explosivos/francotirador afinan la
+            // punteria. Mismo Ctrl que ya agacha (agacharHeld arriba): no es
+            // una tecla nueva, se lee la tecla fisica de nuevo aca porque
+            // agacharHeld es una variable local de mas arriba en este mismo
+            // metodo -- se agachan Y afinan la punteria a la vez, algo
+            // coherente (mismo pedido que ya reduce el spread al agachar).
+            bool ctrlSostenido = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed || MandoFps.Agachar;
+            ActualizarHabilidadDeClase(result, ctrlSostenido, moving);
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateAmmoWarning(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateReloadCircle(Brain.Current.Weapon);
@@ -1285,6 +1294,16 @@ namespace SP.Player
                 {
                     emptyClickCooldown = 0.3f;
                     Brain.Current.Weapon.SonarGatilloVacio();
+
+                    // Sin municion de verdad (ni cargador ni reservas): aviso
+                    // en pantalla + log, y cambio solo a la primera arma del
+                    // loadout que si tenga con que disparar.
+                    if (Brain.Current.Weapon.SinMunicionTotal)
+                    {
+                        Debug.Log("SIN MUNICION");
+                        Feedback.Visual("SIN MUNICION", Brain.Current.transform.position, Feedback.Bad, aviso: true, pulso: false);
+                        Brain.Current.Weapon.CambiarASiguienteConMunicion();
+                    }
                 }
             }
             emptyClickCooldown = Mathf.Max(0f, emptyClickCooldown - Time.deltaTime);
@@ -1476,7 +1495,13 @@ namespace SP.Player
             }
 
             var torretaCerca = TorretaFija.MasCercana(Brain.Current.transform.position, TorretaFija.AlcanceDeUso);
-            SetInstructionText(nearVehicle != null ? "[E] Subir al vehiculo  ·  [Q] mantener: radial de ordenes"
+            // Un IInteractable en la mira o pegado al jugador manda sobre el resto del
+            // cartel: es lo que un TAP de [Q] va a disparar (ver TryInteractuarConMira),
+            // asi que el jugador tiene que poder leer ANTES de tocar la tecla que hay
+            // algo interactuable y que hace.
+            var promptInteraccion = PromptDeInteraccion();
+            SetInstructionText(promptInteraccion != null ? promptInteraccion + "  ·  [Q] mantener: radial de ordenes"
+                : nearVehicle != null ? "[E] Subir al vehiculo  ·  [Q] mantener: radial de ordenes"
                 : nearPickup != null ? $"[E] Equipar {nearPickup.Kind}"
                 : torretaCerca != null && torretaCerca.Libre ? "[E] Usar la ametralladora fija  ·  [Q] mantener: radial de ordenes"
                 : BuildFpsInstruction(result));
@@ -1552,6 +1577,167 @@ namespace SP.Player
             }
             circuloRevivir.SetVisible(true);
             circuloRevivir.SetProgreso(progreso01);
+        }
+
+        // -----------------------------------------------------------
+        // [Ctrl]: habilidad especial de la clase que se maneja.
+        //   - Medico: cura a un herido o reanima a un caido (cercano o en
+        //     la mira). Independiente del [E] sostenido de arriba (A4) --
+        //     ese sigue andando para CUALQUIER clase; esto es la version
+        //     "especialista" del medico, mas rapida, atada a otra tecla.
+        //   - Asalto / Explosivos (mismo RoleType.Assault: no hay una clase
+        //     "Explosivos" separada, ver Demolicion.cs) y Francotirador:
+        //     mientras se sostiene [Ctrl] apuntando (click derecho), el
+        //     spread del arma baja progresivamente hasta un piso, con un
+        //     tope de tiempo. Soltar [Ctrl], dejar de apuntar o moverse
+        //     mucho reinicia el progreso a cero.
+        // -----------------------------------------------------------
+        public const float TiempoDeReanimarMedico = 2.5f;   // el especialista reanima el doble de rapido que el [E] generico (TiempoDeRevivir = 5f)
+        public const float CuracionMedicoPorSegundo = 25f;  // mas rapido que el enfermero de IA (PedidoDeCuracion.CuracionPorSegundo = 12)
+        public const float TiempoDeEnfoqueMax = 2.5f;       // segundos sosteniendo [Ctrl]+mira hasta la precision maxima
+
+        float medicoAccionSegundos;
+        float enfoqueSostenidoSegundos;
+        float curacionAcumulada;
+        CirculoDeProgreso circuloEnfoque;
+
+        static readonly Color EnfoqueFondo = new Color(0f, 0f, 0f, 0.4f);
+        static readonly Color EnfoqueRelleno = new Color(0.95f, 0.85f, 0.3f);
+
+        void ActualizarHabilidadDeClase(AimResult result, bool ctrlSostenido, bool moviendoseMucho)
+        {
+            if (Brain.Current == null) return;
+
+            switch (Brain.Current.Role)
+            {
+                case RoleType.Medic:
+                    ActualizarHabilidadMedico(result, ctrlSostenido);
+                    break;
+                case RoleType.Assault:
+                case RoleType.Sniper:
+                    ActualizarEnfoquePrecision(result, ctrlSostenido, moviendoseMucho);
+                    break;
+                default:
+                    // Cualquier otra clase (Flanker, etc.): sin habilidad de
+                    // [Ctrl] todavia -- se asegura que no quede un enfoque
+                    // viejo pegado si el jugador cambio de soldado.
+                    Brain.Current.Weapon.SetEnfoque(0f);
+                    if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
+                    break;
+            }
+        }
+
+        // --- Medico: curar / reanimar con [Ctrl] ---------------------
+        void ActualizarHabilidadMedico(AimResult result, bool ctrlSostenido)
+        {
+            // Prioridad al caido, igual que el [E] generico de arriba: un
+            // companero muerto importa mas que uno solo herido.
+            var caido = result.Type == AimTargetType.Caido ? result.Soldier : FindNearestDownedAlly();
+            if (caido != null)
+            {
+                if (!ctrlSostenido)
+                {
+                    medicoAccionSegundos = 0f;
+                    if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
+                    return;
+                }
+                medicoAccionSegundos += Time.deltaTime;
+                MostrarCirculoEnfoque(Mathf.Clamp01(medicoAccionSegundos / TiempoDeReanimarMedico));
+                SetInstructionText($"[Ctrl] Reanimando a {caido.DisplayName}...");
+                if (medicoAccionSegundos >= TiempoDeReanimarMedico && TryRevivir(caido, true))
+                {
+                    medicoAccionSegundos = 0f;
+                    if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
+                    Feedback.Accion(SfxKind.Revive, $"{caido.DisplayName} REANIMADO", caido.transform.position, Feedback.Ok, aviso: true, pulso: true, volumen: 0.8f);
+                }
+                return;
+            }
+
+            // Sin caido a mano: si hay un herido (con vida pero no al
+            // maximo) cerca o en la mira, se lo cura mientras se sostiene
+            // [Ctrl]. En la mira tiene prioridad sobre el mas cercano --
+            // apuntarle a proposito a un herido especifico entre varios.
+            Soldier herido = (result.Type == AimTargetType.Ally && Herido(result.Soldier)) ? result.Soldier : FindNearestWoundedAlly();
+            if (herido != null && ctrlSostenido)
+            {
+                medicoAccionSegundos = 0f;
+                curacionAcumulada += CuracionMedicoPorSegundo * Time.deltaTime;
+                int entero = Mathf.FloorToInt(curacionAcumulada);
+                if (entero > 0)
+                {
+                    herido.Health.Heal(entero);
+                    curacionAcumulada -= entero;
+                }
+                float frac = herido.Health.MaxHealth > 0 ? (float)herido.Health.Current / herido.Health.MaxHealth : 1f;
+                MostrarCirculoEnfoque(Mathf.Clamp01(frac));
+                SetInstructionText($"[Ctrl] Curando a {herido.DisplayName}...");
+                if (herido.Health.Current >= herido.Health.MaxHealth)
+                {
+                    if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
+                    Feedback.Accion(SfxKind.HealDone, $"{herido.DisplayName} CURADO", herido.transform.position, Feedback.Ok, aviso: true, pulso: false, volumen: 0.7f);
+                }
+                return;
+            }
+
+            medicoAccionSegundos = 0f;
+            curacionAcumulada = 0f;
+            if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
+        }
+
+        // Aliado vivo pero no al maximo de vida, mas cercano -- mismo patron que FindNearestDownedAlly.
+        Soldier FindNearestWoundedAlly()
+        {
+            if (Squad == null || Brain.Current == null) return null;
+            Soldier best = null;
+            float bestDist = interactRadius;
+            foreach (var s in Squad)
+            {
+                if (!Herido(s)) continue;
+                float d = Vector3.Distance(Brain.Current.transform.position, s.transform.position);
+                if (d <= bestDist) { bestDist = d; best = s; }
+            }
+            return best;
+        }
+
+        // --- Asalto / Explosivos / Francotirador: punteria fina con [Ctrl] ---
+        void ActualizarEnfoquePrecision(AimResult result, bool ctrlSostenido, bool moviendoseMucho)
+        {
+            // "apuntando" = el mismo ADS de siempre (click derecho sostenido, Rig.EstaConZoom).
+            bool apuntando = Rig != null && Rig.EstaConZoom;
+            bool activo = ctrlSostenido && apuntando && !moviendoseMucho;
+
+            enfoqueSostenidoSegundos = activo
+                ? Mathf.Min(TiempoDeEnfoqueMax, enfoqueSostenidoSegundos + Time.deltaTime)
+                : 0f;
+
+            float progreso01 = Mathf.Clamp01(enfoqueSostenidoSegundos / TiempoDeEnfoqueMax);
+            Brain.Current.Weapon.SetEnfoque(progreso01);
+
+            if (activo && progreso01 > 0.01f)
+            {
+                MostrarCirculoEnfoque(progreso01);
+                SetInstructionText(progreso01 >= 0.999f ? "[Ctrl] Punteria maxima" : "[Ctrl] Afinando la punteria...");
+            }
+            else if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
+        }
+
+        void MostrarCirculoEnfoque(float progreso01)
+        {
+            if (circuloEnfoque == null)
+            {
+                var canvasRoot = AimUiRef != null ? AimUiRef.transform.parent : null;
+                if (canvasRoot == null) return;
+                circuloEnfoque = CirculoDeProgreso.Construir(canvasRoot, 46f, EnfoqueFondo, EnfoqueRelleno);
+                circuloEnfoque.gameObject.name = "CirculoEnfoque";
+                var rt = (RectTransform)circuloEnfoque.transform;
+                // Mismo anclaje vertical que el circulo de revivir pero del
+                // otro lado del centro, para no superponerse si algun dia
+                // coinciden en pantalla (dos jugadores distintos, replay, etc.).
+                rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.24f);
+                rt.anchoredPosition = Vector2.zero;
+            }
+            circuloEnfoque.SetVisible(true);
+            circuloEnfoque.SetProgreso(progreso01);
         }
 
         // Resalta (aclara el color) el aliado o vehículo al que se le está
@@ -1864,9 +2050,16 @@ namespace SP.Player
             SP.Presentation.SquadStateIndicatorView.Apuntar(
                 result.Type == AimTargetType.Ally ? result.Soldier : null);
 
+            // Unificado: TODO lo interactuable (aliado, enemigo, vehiculo, muro
+            // demolible, caido reanimable, torreta) se resalta igual, para que
+            // cualquier cosa con la que el radial de [Q] pueda hacer algo se
+            // reconozca de un vistazo. Antes Caido y Torreta quedaban afuera:
+            // se ofrecia [Q] REANIMAR o la torreta salia en el radial, pero
+            // nada en pantalla marcaba que ahi habia algo interactuable.
             bool show = result.HitTransform != null && (
                 result.Type == AimTargetType.Ally || result.Type == AimTargetType.Enemy ||
-                result.Type == AimTargetType.Vehicle || result.Type == AimTargetType.Obstacle);
+                result.Type == AimTargetType.Vehicle || result.Type == AimTargetType.Obstacle ||
+                result.Type == AimTargetType.Caido || result.Type == AimTargetType.Torreta);
 
             if (!show)
             {
@@ -2561,7 +2754,7 @@ namespace SP.Player
                     else if (aim.Vehicle != null && aim.Vehicle.IsDestroyed) { texto = "Vehiculo destruido"; destacado = false; }
                     break;
                 case AimTargetType.Torreta:
-                    if (aim.Torreta != null) texto = aim.Torreta.Libre ? "[E] USAR LA AMETRALLADORA FIJA" : "Ametralladora fija (ocupada)";
+                    if (aim.Torreta != null) texto = aim.Torreta.Libre ? "[E] USAR LA AMETRALLADORA FIJA  ·  [Q] radial" : "Ametralladora fija (ocupada)";
                     destacado = aim.Torreta != null && aim.Torreta.Libre;
                     break;
             }

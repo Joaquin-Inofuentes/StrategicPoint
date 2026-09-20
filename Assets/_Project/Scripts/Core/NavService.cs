@@ -76,12 +76,21 @@ namespace SP.Core
             return hayArea;
         }
 
+        // Se incrementa cada vez que la grilla queda invalidada (un muro se
+        // demuele, uno nuevo aparece, cambia la escena). AiBrain guarda con
+        // que Version planeo su ruta actual y, si no coincide, la rehace de
+        // inmediato en vez de esperar a la deteccion de atasco (que podia
+        // tardar 1 s+ y mientras tanto el soldado seguia bordeando un muro
+        // que ya no existia).
+        public static int Version { get; private set; }
+
         // Un obstaculo que se derrumba abre un paso que antes no existia.
         // Tambien lo llama el cambio de escena (ver Reset).
         public static void Invalidate()
         {
             dirty = true;
             hayArea = false;
+            Version++;
         }
 
         // Los statics sobreviven entre corridas en Edit mode (la suite no

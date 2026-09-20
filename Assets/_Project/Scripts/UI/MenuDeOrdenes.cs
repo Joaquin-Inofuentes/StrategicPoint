@@ -255,6 +255,21 @@ namespace SP.UI
             Refrescar();
             if (group != null) group.alpha = 1f;
             SP.Presentation.AudioDirector.PlayUi2D(SP.Presentation.SfxKind.RadialOpen, 0.6f, 0.9f);
+
+            // BUG REAL ("no reconoce el atacar al enemigo con Q"): cuando lo apuntado
+            // ofrece UNA sola categoria contextual (p.ej. ATACAR sobre un enemigo), el
+            // jugador espera que apuntar + mantener Q + soltar sin mover el mouse ya
+            // alcance para confirmarla -- es la unica accion posible sobre eso. Antes
+            // el cursor virtual arrancaba en el centro (Seleccion = -1) y soltar ahi
+            // siempre cancelaba, asi que habia que mover el mouse a ciegas hasta la
+            // porcion dorada antes de soltar. Ahora, si hay una unica contextual, arranca
+            // preseleccionada (como si el cursor ya estuviera sobre ella); mover el mouse
+            // sigue permitiendo elegir otra categoria u opcion, o cancelar yendo al centro.
+            int unicaContextual = -1;
+            if (ctx != null)
+                foreach (int c in ids)
+                    if (ctx.Contextual[c]) { unicaContextual = unicaContextual < 0 ? c : -2; }
+            if (unicaContextual >= 0) ElegirDirecto(unicaContextual);
         }
 
         // Un "tic" cada vez que el cursor pasa a otra categoria u otra opcion: se OYE que el menu responde.

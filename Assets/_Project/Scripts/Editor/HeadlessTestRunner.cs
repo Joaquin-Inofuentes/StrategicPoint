@@ -1025,7 +1025,16 @@ namespace SP.EditorTools
             SimulateSeconds(3.2f);
             Check("El proyectil volvio al pool", pool.FreeCount == freeBefore);
 
-            var enemy1 = SpawnSoldier(soldierPrefab, "Enemigo_1", TeamId.Enemy, RoleType.Enemy, vega.transform.position + vega.transform.forward * 15f + Vector3.up * 0.8f, enemyColor, pool, 180);
+            // BUG REAL de la prueba (no del juego), destapado por la nueva deteccion de
+            // headshot (Projectile.LeDioAlCuerpo): vega ya spawnea con Y=0.8 (el centro
+            // de su propio cubo), asi que sumarle OTRO +0.8 de altura aca ponia al
+            // enemigo flotando 0,8 m mas arriba que el tirador. El tiro "de nuevo" de
+            // abajo apunta derecho al CENTRO de ese cubo mas alto, entrando en un angulo
+            // ascendente que cruzaba justo la franja superior (FraccionSuperiorCabeza)
+            // del collider -- headshot instakill en TODOS los disparos, sin que nadie
+            // apuntara realmente a la cabeza. Mismo plano que vega, como corresponde a
+            // dos soldados parados en el mismo suelo.
+            var enemy1 = SpawnSoldier(soldierPrefab, "Enemigo_1", TeamId.Enemy, RoleType.Enemy, vega.transform.position + vega.transform.forward * 15f, enemyColor, pool, 180);
             TestLog.Step($"Aparecio enemigo: {enemy1.DisplayName}");
 
             Vector3 dirToEnemy = (enemy1.transform.position - vega.transform.position).normalized;

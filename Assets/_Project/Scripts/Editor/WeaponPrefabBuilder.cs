@@ -44,6 +44,16 @@ namespace SP.EditorTools
             Build("SM_Wpn_Sniper", "P_Wpn_Sniper");
             Build("SM_Wpn_AK", "P_Wpn_AK");
 
+            // Auditoria #44: el cuchillo (CuchilloFx.cs) y la granada
+            // (Granada.cs) cargan "Weapons/P_Wpn_Cuchillo" y
+            // "Weapons/P_Wpn_Granada" en runtime; hasta ahora esos dos
+            // prefabs existian en el proyecto pero nadie los regeneraba
+            // desde este builder (se habian armado a mano). Se agregan aca
+            // para que "Build Weapon Prefabs" los reconstruya igual que al
+            // resto si el FBX cambia.
+            Build("SM_Wpn_Cuchillo", "P_Wpn_Cuchillo");
+            Build("SM_Wpn_Granada", "P_Wpn_Granada");
+
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log("[WeaponPrefabBuilder] Prefabs de arma listos en " + PrefabDir);

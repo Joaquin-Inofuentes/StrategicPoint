@@ -21,10 +21,32 @@ namespace SP.Presentation
         // Hasta que distancia de la camara cuenta un soldado en combate.
         public const float AlcanceDeCombate = 15f;
 
-        // Cuanto sube/baja la ganancia por segundo. A esta tasa, de 0 a
-        // 0.8 tarda 0.8/1.5 = 0.53 s -- bien debajo del "menos de 2 s"
-        // que pide el test, y el cruce sigue siendo una rampa, no un corte.
-        const float TasaDeCruce = 1.5f;
+        // Cruce ASIMETRICO: entrar en combate pega un golpe casi inmediato
+        // (calma -> accion en bien menos de 0.5 s, para que se sienta el
+        // impacto), pero salir de combate relaja el ritmo con un crossfade
+        // largo de varios segundos (accion -> calma, 2-4 s). GananciaLucha
+        // sigue siendo una rampa LINEAL en el tiempo (0..1) -- eso es lo que
+        // valida la suite headless (sube >0.8 en <2s, baja <0.05 en <3s) --
+        // la curva de easing no-lineal se aplica solo al mapear esa rampa a
+        // VOLUMEN real en AplicarAAudioFuentes, mas abajo.
+        //
+        // Subida: 1/TasaDeSubida = 0.8/3.5 = 0.229 s hasta el umbral 0.8 (<0.5s).
+        const float TasaDeSubida = 3.5f;
+        // Bajada: 0.95/TasaDeBajada = 0.95/0.35 = 2.71 s hasta el umbral 0.05
+        // (dentro de la ventana 2-4 s pedida, y por debajo del limite de 3 s
+        // que exige el test de Fases8a12).
+        const float TasaDeBajada = 0.35f;
+
+        // Curvas de easing (no lineales) para el VOLUMEN, evaluadas con el
+        // progreso lineal de GananciaLucha como parametro 0..1:
+        //  - CurvaImpacto: ease-out agresivo (arranca con pendiente fuerte y
+        //    se aplana cerca de 1) -- la accion "pega" de entrada.
+        //  - CurvaSuave: ease-in-out clasico (smoothstep) -- transicion pareja
+        //    y natural para relajar hacia la calma.
+        static readonly AnimationCurve CurvaImpacto = new AnimationCurve(
+            new Keyframe(0f, 0f, 0f, 3.2f),
+            new Keyframe(1f, 1f, 0.2f, 0f));
+        static readonly AnimationCurve CurvaSuave = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
 
         const float VolumenBase = 0.35f;
 
@@ -56,10 +78,12 @@ namespace SP.Presentation
         // mano) ejercita exactamente esto.
         public static void Tick(float dt)
         {
-            float objetivo = HayCombateCerca() ? 1f : 0f;
-            GananciaLucha = Mathf.MoveTowards(GananciaLucha, objetivo, TasaDeCruce * dt);
+            bool combate = HayCombateCerca();
+            float objetivo = combate ? 1f : 0f;
+            float tasa = combate ? TasaDeSubida : TasaDeBajada;
+            GananciaLucha = Mathf.MoveTowards(GananciaLucha, objetivo, tasa * dt);
 
-            if (Application.isPlaying) AplicarAAudioFuentes();
+            if (Application.isPlaying) AplicarAAudioFuentes(combate);
         }
 
         // "Hay combate" = algun soldado vivo en Attack o Chase a menos de
@@ -80,7 +104,7 @@ namespace SP.Presentation
             return false;
         }
 
-        static void AplicarAAudioFuentes()
+        static void AplicarAAudioFuentes(bool combate)
         {
             AsegurarFuentes();
             // Reusa el canal Ambient de AudioDirector como volumen maestro
@@ -88,8 +112,21 @@ namespace SP.Presentation
             // la musica lo respeta gratis, sin que este director tenga que
             // saber nada de PlayerPrefs.
             float maestro = AudioDirector.GainFor(SfxChannel.Ambient) * VolumenBase * Atenuacion;
-            if (estrategiaSource != null) estrategiaSource.volume = (1f - GananciaLucha) * maestro;
-            if (luchaSource != null) luchaSource.volume = GananciaLucha * maestro;
+
+            // El progreso lineal (GananciaLucha) solo decide LA RAMPA en el
+            // tiempo (por eso el test de Fases8a12 lo puede medir en
+            // segundos). El VOLUMEN real que sale por los AudioSource pasa
+            // por una curva de easing -- impacto rapido al entrar en
+            // combate, suave al salir -- para que el fade no se sienta
+            // lineal/brusco. Sin AudioMixer en el proyecto (no hay .mixer
+            // bajo Assets/_Project todavia), se modula AudioSource.volume
+            // directamente con el peso ya curveado.
+            var curva = combate ? CurvaImpacto : CurvaSuave;
+            float pesoLucha = Mathf.Clamp01(curva.Evaluate(GananciaLucha));
+            float pesoEstrategia = 1f - pesoLucha;
+
+            if (estrategiaSource != null) estrategiaSource.volume = pesoEstrategia * maestro;
+            if (luchaSource != null) luchaSource.volume = pesoLucha * maestro;
         }
 
         static void AsegurarFuentes()
@@ -98,18 +135,27 @@ namespace SP.Presentation
             fuentesListas = true;
 
             var root = new GameObject("MusicDirector");
-            estrategiaSource = CrearFuenteLoop(root.transform, "Estrategia", CargarORespaldo("Calm", GenerarLoopEstrategia));
-            luchaSource = CrearFuenteLoop(root.transform, "Lucha", CargarORespaldo("Action", GenerarLoopLucha));
+            estrategiaSource = CrearFuenteLoop(root.transform, "Estrategia", CargarORespaldo(GenerarLoopEstrategia, "SA_Calma", "Calm"));
+            luchaSource = CrearFuenteLoop(root.transform, "Lucha", CargarORespaldo(GenerarLoopLucha, "SA_Accion", "Action"));
         }
 
         // Pedido explicito: musica real de fondo en vez de los lechos
-        // procedurales. Resources.Load devuelve null si el .mp3 todavia no
-        // esta importado (o en el editor de tests headless, que no lo
-        // necesita), asi que el generador de siempre queda como red de
-        // seguridad -- la suite headless sigue viendo el cruce de ganancia
-        // funcionar igual, tenga o no clip real cargado.
-        static AudioClip CargarORespaldo(string nombreArchivo, System.Func<AudioClip> respaldo)
-            => SP.Core.RecursosCache.Cargar<AudioClip>("Audio/Music/" + nombreArchivo) ?? respaldo();
+        // procedurales. Prueba cada nombre de archivo en orden (la pista
+        // definitiva primero, "SA_Calma"/"SA_Accion"; el placeholder viejo
+        // "Calm"/"Action" como segunda red de seguridad) y recien si
+        // Resources.Load no encuentra ninguno (p.ej. en el editor de tests
+        // headless, que no lo necesita) cae al generador procedural -- asi
+        // la suite headless sigue viendo el cruce de ganancia funcionar
+        // igual, tenga o no clip real cargado.
+        static AudioClip CargarORespaldo(System.Func<AudioClip> respaldo, params string[] nombresArchivo)
+        {
+            foreach (var nombre in nombresArchivo)
+            {
+                var clip = SP.Core.RecursosCache.Cargar<AudioClip>("Audio/Music/" + nombre);
+                if (clip != null) return clip;
+            }
+            return respaldo();
+        }
 
         static AudioSource CrearFuenteLoop(Transform padre, string nombre, AudioClip clip)
         {

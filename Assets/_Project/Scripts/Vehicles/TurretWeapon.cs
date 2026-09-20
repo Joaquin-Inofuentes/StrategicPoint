@@ -41,6 +41,7 @@ namespace SP.Vehicles
         Vehicle vehicle;
         bool bootstrapped;
 
+
         Transform barrel;
         Vector3 barrelRestLocalPos;
         float barrelRecoil;
@@ -236,6 +237,13 @@ namespace SP.Vehicles
             }
         }
 
+        // BALANCE: canon de vehiculo/artilleria ENEMIGA no debe ser perfectamente
+        // preciso -- TurretAI lo sube cuando la tripulacion es enemiga (y lo deja en
+        // 0 para el jugador y para TorretaFija, que tiene su propio multiplicador de
+        // precision en WeaponHolder). Reusa SP.Combat.WeaponHolder.ApplySpread: mismo
+        // cono de dispersion que cualquier arma de mano, no una formula aparte.
+        public float SpreadDeg;
+
         public bool TryFire()
         {
             if (!bootstrapped) Bootstrap();
@@ -262,13 +270,14 @@ namespace SP.Vehicles
             var team = vehicle != null && vehicle.Gunner != null ? vehicle.Gunner.Team : TeamId.Player;
 
             var spawnPos = Muzzle != null ? Muzzle.position : transform.position;
+            var fireDir = SpreadDeg > 0f ? SP.Combat.WeaponHolder.ApplySpread(transform.forward, SpreadDeg) : transform.forward;
             // Pedido explicito: la bala del cañon vuela al doble de la
             // velocidad base del pool (comun con las armas de mano, que
             // siguen en 1x porque no pasan este parametro). SpeedMultiplier
             // es publico porque TurretAimView.PredictedImpactPoint tiene que
             // simular la MISMA velocidad real para que el anillo de impacto
             // no quede corto.
-            pool.Spawn(spawnPos, transform.forward, shooterId, team, CurrentDamage,
+            pool.Spawn(spawnPos, fireDir, shooterId, team, CurrentDamage,
                 CurrentProjectileColor, ExplosionRadius, ProjectileGravity, vehicle, speedMultiplier: SpeedMultiplier);
             cooldownTimer = EffectiveCooldown;
             Heat = Mathf.Clamp01(Heat + HeatPerShot);

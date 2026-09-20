@@ -21,6 +21,22 @@ namespace SP.Presentation
         Image fill;
         bool bootstrapped;
 
+        // Item 77 (28 canvases/65 graficos UI sin consolidar): esta vista
+        // VIVE en su propio Canvas ("HealthBarCanvas", ver
+        // HeadlessTestRunner.BuildHealthBar) y, hasta ahora, solo apagaba
+        // los hijos (Fill/BG) cuando no correspondia mostrarla -- el
+        // componente Canvas seguia SIEMPRE habilitado, asi que Unity lo
+        // seguia considerando para el CanvasUpdateRegistry aunque no
+        // tuviera nada visible que dibujar. No se puede apagar el
+        // GameObject entero (mataria el OnEnable/OnDisable de esta misma
+        // vista y la borraria de WorldUiDirector para siempre, ver el
+        // comentario de mas abajo en Tick()), pero apagar solo el
+        // COMPONENTE Canvas es seguro: no dispara OnDisable de otros
+        // componentes del mismo objeto. PoC acotada a esta vista y a
+        // UnitLabelView; el resto de los ~28 canvases de la escena queda
+        // para una pasada mayor (ver Docs/AUDITORIA_100_ITEMS.md, item 77).
+        Canvas canvas;
+
         // Mostrar TODAS las barras siempre es inviable con cincuenta
         // unidades: satura la pantalla y ademas cuesta dibujarlas. Solo se
         // muestra la del que acaba de recibir daño o curacion, que es justo
@@ -111,6 +127,7 @@ namespace SP.Presentation
             bootstrapped = true;
             owner = soldier;
             health = soldier.Health;
+            if (canvas == null) canvas = GetComponent<Canvas>();
 
             var fillTransform = transform.Find("Fill");
             fill = fillTransform != null ? fillTransform.GetComponent<Image>() : null;
@@ -163,6 +180,12 @@ namespace SP.Presentation
                 if (child == null) continue;
                 if (child.gameObject.activeSelf != shouldShow) child.gameObject.SetActive(shouldShow);
             }
+            // Item 77: apaga el Canvas en si (no solo los hijos) cuando no
+            // hay nada que dibujar, asi Unity deja de considerarlo para el
+            // rebuild de UI. Es aparte del SetActive de los hijos: aunque
+            // ambos casi siempre coincidan, el Canvas es el costo real de
+            // "canvas sin consolidar" que mide el item.
+            if (canvas != null && canvas.enabled != shouldShow) canvas.enabled = shouldShow;
             if (!shouldShow) return false;
 
             float pct = health.MaxHealth > 0 ? (float)health.Current / health.MaxHealth : 0f;

@@ -167,6 +167,39 @@ namespace SP.Mision
 
         int Escalar(int baseN) => Mathf.Max(2, Mathf.RoundToInt(baseN * Dificultad.PerfilActual.CantidadDeOleadas));
 
+        // Dispersa N puntos alrededor de un centro repartiendo angulos de forma pareja (en vez de
+        // agruparlos con Random.Range en un rango angular chico), con jitter y radio variable, y
+        // descarta puntos que caigan demasiado cerca de uno ya elegido (separacion minima). No cambia
+        // la CANTIDAD de enemigos, solo donde aparecen: la dificultad (Dificultad.CantidadDeOleadas)
+        // sigue decidiendo cuantos son.
+        static List<Vector3> PosicionesDispersas(Vector3 centro, int n, float anguloInicioDeg, float anguloFinDeg, float radioMin, float radioMax, float separacionMinima = 5f)
+        {
+            var puntos = new List<Vector3>(n);
+            if (n <= 0) return puntos;
+            float arco = anguloFinDeg - anguloInicioDeg;
+            float paso = n > 1 ? arco / n : 0f;
+            for (int i = 0; i < n; i++)
+            {
+                Vector3 candidato = Vector3.zero;
+                bool ok = false;
+                for (int intento = 0; intento < 6 && !ok; intento++)
+                {
+                    // Un sector distinto por enemigo (arco / n) + jitter propio, asi no se amontonan
+                    // todos en el mismo angulo; el radio tambien varia enemigo a enemigo.
+                    float centroSector = anguloInicioDeg + paso * i + paso * 0.5f;
+                    float angulo = centroSector + Random.Range(-paso * 0.5f, paso * 0.5f) * (intento == 0 ? 1f : 1.6f);
+                    float radio = Random.Range(radioMin, radioMax);
+                    var dir = Quaternion.Euler(0f, angulo, 0f) * Vector3.forward;
+                    candidato = centro + dir * radio;
+                    ok = true;
+                    foreach (var p in puntos)
+                        if (Plano(p, candidato) < separacionMinima) { ok = false; break; }
+                }
+                puntos.Add(candidato);
+            }
+            return puntos;
+        }
+
         // Dos lineas enemigas entre la base y el centro: campo de tiro (z 52-66) y paso del canon (z 84-92).
         void LanzarLineasEnemigas()
         {
@@ -195,11 +228,18 @@ namespace SP.Mision
         {
             int n = Escalar(TamanoOleada[indice]);
             bool desdeElNorte = indice != 1;
+            // Antes: todos alineados en un x angosto (-12..16) a una z fija -> se sentian "en fila".
+            // Ahora: arco de ~130 grados centrado en la direccion de ataque, con radio (distancia al
+            // borde) variable y separacion minima entre ellos, asi atacan la plaza desde angulos y
+            // distancias distintas en vez de todos juntos en el mismo punto.
+            int nNorte = indice == 2 ? (n + 1) / 2 : (desdeElNorte ? n : 0);
+            int nSur = n - nNorte;
+            var puntosNorte = PosicionesDispersas(Plaza, nNorte, 180f - 65f, 180f + 65f, 30f, 42f, 6f);
+            var puntosSur = PosicionesDispersas(Plaza, nSur, 0f - 65f, 0f + 65f, 24f, 34f, 6f);
             for (int i = 0; i < n; i++)
             {
-                bool norte = indice == 2 ? i % 2 == 0 : desdeElNorte;
-                float x = Random.Range(-12f, 16f);
-                var pos = new Vector3(x, 0f, norte ? 152f : 90f);
+                bool norte = i < nNorte;
+                var pos = norte ? puntosNorte[i] : puntosSur[i - nNorte];
                 var s = CrearEnemigo($"Enemigo_Oleada{indice + 1}_{i + 1}", pos, norte ? 180f : 0f);
                 if (s == null) continue;
                 s.Brain.IssueMoveOrder(Plaza + new Vector3(Random.Range(-6f, 6f), 0f, Random.Range(-6f, 6f)));
@@ -214,10 +254,14 @@ namespace SP.Mision
         {
             refuerzosLanzados = true;
             int n = Escalar(5);
+            // Centro entre la plaza y la base: antes dos franjas de Z angostas con X libre (columnas
+            // paralelas). Ahora un arco amplio con radio variable para que corten el camino de vuelta
+            // desde angulos distintos, no todos en la misma franja.
+            var centro = new Vector3(5f, 0f, 67f);
+            var puntos = PosicionesDispersas(centro, n, 20f, 340f, 18f, 42f, 6f);
             for (int i = 0; i < n; i++)
             {
-                float z = i % 2 == 0 ? Random.Range(70f, 90f) : Random.Range(44f, 60f);
-                var s = CrearEnemigo($"Enemigo_Refuerzo_{i + 1}", new Vector3(Random.Range(-30f, 40f), 0f, z));
+                var s = CrearEnemigo($"Enemigo_Refuerzo_{i + 1}", puntos[i]);
                 if (s != null) Patrullar(s, 6f, 4f);
             }
             AlertQueue.Push("REFUERZOS ENEMIGOS EN EL CAMINO DE VUELTA", AlertPriority.Alta, 3f);
@@ -229,10 +273,14 @@ namespace SP.Mision
         {
             hordaLanzada = true;
             int n = Escalar(6);
+            // Antes: un unico rectangulo angosto al norte del heli -> la horda llegaba en bloque desde
+            // un solo lado. Ahora: arco de 220 grados alrededor del helipuerto (evitando el sur, donde
+            // esta el camino de escape ya recorrido) con radio variable, asi rodean desde varios
+            // angulos y distancias -- mas sensacion de horda envolvente / adrenalina.
+            var puntos = PosicionesDispersas(Helipuerto, n, -20f, 200f, 22f, 45f, 6f);
             for (int i = 0; i < n; i++)
             {
-                var pos = new Vector3(Random.Range(-30f, 30f), 0f, Random.Range(24f, 40f));
-                var s = CrearEnemigo($"Enemigo_Horda_{i + 1}", pos, 180f);
+                var s = CrearEnemigo($"Enemigo_Horda_{i + 1}", puntos[i], 180f);
                 if (s != null) s.Brain.IssueMoveOrder(Helipuerto + new Vector3(Random.Range(-8f, 8f), 0f, Random.Range(6f, 14f)));
             }
             AlertQueue.Push("¡UNA HORDA TE PERSIGUE! ¡AL HELICOPTERO!", AlertPriority.Alta, 3f);
@@ -248,6 +296,7 @@ namespace SP.Mision
             Civil = go.GetComponent<Soldier>();
             Civil.Configure("Civil", TeamId.Player, RoleType.Civilian, 150);
             if (Civil.Brain != null) Civil.Brain.Pasivo = true;
+            Civil.gameObject.AddComponent<Rehen>();   // tinte propio, marcador flotante y aviso sonoro al acercarse
             balizaCivil = TutorialBeacon.Crear("CIVIL", new Color(0.4f, 0.9f, 1f), RefugioDelCivil, Civil.transform, 0.9f, 10f);
             GameLog.Line("Mision: el civil sale de su refugio");
         }

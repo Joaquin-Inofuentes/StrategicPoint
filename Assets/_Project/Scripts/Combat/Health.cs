@@ -101,7 +101,13 @@ namespace SP.Combat
             if (Current >= maxHealth) IsRegenerating = false;
         }
 
-        public void TakeDamage(int amount, int attackerId)
+        public void TakeDamage(int amount, int attackerId) => TakeDamage(amount, attackerId, false);
+
+        // headshot: instakill SOLO lo decide el llamador (Projectile), que ya sabe si
+        // quien pega es jugador/aliado (Team.Player) y a quien: pegarle en la cabeza a
+        // un enemigo mata al toque; un enemigo pegandole en la cabeza al jugador/aliado
+        // sigue siendo daño normal (Projectile nunca pasa headshot=true en ese caso).
+        public void TakeDamage(int amount, int attackerId, bool headshot)
         {
             if (!IsAlive) return;
 
@@ -131,6 +137,12 @@ namespace SP.Combat
             segundosSinDano = 0f;
             regenAcumulada = 0f;
             IsRegenerating = false;
+
+            if (headshot)
+            {
+                amount = Current;   // instakill: se lleva toda la vida que quede
+                GameLog.Line("HEADSHOT");
+            }
 
             Current = Mathf.Clamp(Current - amount, 0, maxHealth);
             LastAttackerId = attackerId;

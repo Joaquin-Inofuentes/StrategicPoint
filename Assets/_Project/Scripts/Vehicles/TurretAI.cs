@@ -15,6 +15,20 @@ namespace SP.Vehicles
         [SerializeField] float range = 40f;
         [SerializeField] float retargetInterval = 0.4f;
 
+        // BALANCE: un canon enemigo perfecto (giro + linea de tiro = tiro instantaneo,
+        // como era antes) no da tiempo a esquivar moviendose lateralmente. Ahora, apenas
+        // queda bien apuntado y con linea de tiro, tiene que sostenerlo este tiempo ANTES
+        // de gatillar -- si el blanco se mueve de costado en el medio, IsAimedAt deja de
+        // cumplirse y el reloj se reinicia solo (ver Tick). El jugador (torreta con
+        // artillero humano) y TorretaFija (ametralladora fija de defensa) no pasan por
+        // este camino, asi que no los toca.
+        const float RetardoDeDisparoEnemigo = 0.5f;
+        // Cono de dispersion del canon enemigo, en grados (mismo mecanismo que
+        // SP.Combat.WeaponHolder.SpreadDegEfectivo). 0 = tiro perfecto, que es lo que
+        // se le saca aca a proposito.
+        const float DispersionCanonEnemigo = 3.2f;
+        float relojDeDisparo;
+
         TurretWeapon turret;
         Vehicle vehicle;
         Soldier target;
@@ -95,6 +109,7 @@ namespace SP.Vehicles
             {
                 PublishControlChange(false);
                 target = null;
+                relojDeDisparo = 0f;
                 return;
             }
 
@@ -106,6 +121,7 @@ namespace SP.Vehicles
             if (hasHumanGunner)
             {
                 target = null;
+                relojDeDisparo = 0f;
                 return;
             }
 
@@ -127,6 +143,7 @@ namespace SP.Vehicles
             {
                 PublishControlChange(false);
                 target = null;
+                relojDeDisparo = 0f;
                 return;
             }
 
@@ -157,15 +174,19 @@ namespace SP.Vehicles
             if (retargetTimer >= retargetInterval - 0.0001f)
                 targetVehicle = BuscarTanqueHostil(crewTeam);
 
+            bool esEnemigo = crewTeam == TeamId.Enemy;
+            turret.SpreadDeg = esEnemigo ? DispersionCanonEnemigo : 0f;
+
             if (targetVehicle != null)
             {
                 var puntoTanque = targetVehicle.transform.position + Vector3.up * 0.9f;
                 turret.AimAt(puntoTanque, dt);
-                if (turret.IsAimedAt(puntoTanque) && HayLineaDeTiro(puntoTanque, targetVehicle.transform)) turret.TryFire();
+                bool listo = turret.IsAimedAt(puntoTanque) && HayLineaDeTiro(puntoTanque, targetVehicle.transform);
+                if (TicketDeDisparo(listo, esEnemigo, dt)) turret.TryFire();
                 return;
             }
 
-            if (target == null || !target.Health.IsAlive) return;
+            if (target == null || !target.Health.IsAlive) { relojDeDisparo = 0f; return; }
 
             var aimPoint = ComputeLeadAimPoint(target, dt);
             turret.AimAt(aimPoint, dt);
@@ -175,7 +196,21 @@ namespace SP.Vehicles
             // invisible mientras los proyectiles atravesaban el escenario,
             // pero ahora seria el tanque bombardeando la barricada que
             // tiene adelante mientras el enemigo mira.
-            if (turret.IsAimedAt(aimPoint) && HayLineaDeTiro(aimPoint)) turret.TryFire();
+            bool listoInfanteria = turret.IsAimedAt(aimPoint) && HayLineaDeTiro(aimPoint);
+            if (TicketDeDisparo(listoInfanteria, esEnemigo, dt)) turret.TryFire();
+        }
+
+        // true = el canon dispara este tick. Tripulacion PROPIA (jugador): tiro
+        // instantaneo apenas queda apuntado, como siempre. Tripulacion ENEMIGA: hay
+        // que sostener la puntada RetardoDeDisparoEnemigo segundos seguidos antes de
+        // gatillar -- si el blanco se corre de costado y deja de estar "listo" en el
+        // medio, el reloj se reinicia y el tanque vuelve a esperar desde cero.
+        bool TicketDeDisparo(bool listo, bool esEnemigo, float dt)
+        {
+            if (!listo) { relojDeDisparo = 0f; return false; }
+            if (!esEnemigo) return true;
+            relojDeDisparo += dt;
+            return relojDeDisparo >= RetardoDeDisparoEnemigo;
         }
 
         Vector3 ComputeLeadAimPoint(Soldier t, float dt)

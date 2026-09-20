@@ -68,10 +68,13 @@ namespace SP.EditorTools
             inputDriver.Brain.Possess(vega);
             inputDriver.OrdenesMenu.Cerrar();
 
+            // Pedido explicito del usuario: "Q debe ser interactuar" -- se saco el
+            // fallback que ciclaba de aliado en el toque corto. Ahora un toque sin
+            // nada interactuable a la mira no hace NADA (ni cicla, ni abre el menu).
             var antesDelToque = inputDriver.Brain.Current;
             inputDriver.ResolverGestoDeQ(toque: true, sostenido: false, sigueApretada: false);
-            Check($"Toque corto: cicla de soldado ({antesDelToque.DisplayName} -> {inputDriver.Brain.Current.DisplayName}) y el menu NO aparece",
-                inputDriver.Brain.Current != antesDelToque && !inputDriver.OrdenesMenu.Abierto);
+            Check($"Toque corto sin interactuable: NO cicla de soldado ({antesDelToque.DisplayName} sigue siendo el poseido) y el menu NO aparece",
+                inputDriver.Brain.Current == antesDelToque && !inputDriver.OrdenesMenu.Abierto);
 
             var antesDeMantener = inputDriver.Brain.Current;
             inputDriver.ResolverGestoDeQ(toque: false, sostenido: true, sigueApretada: true);

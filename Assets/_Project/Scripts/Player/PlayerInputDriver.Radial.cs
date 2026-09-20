@@ -49,7 +49,11 @@ namespace SP.Player
         {
             if (OrdenesMenu == null)
             {
-                if (toque) CycleLivingAlly(+1);
+                // Antes: si no habia interactuable, el toque de Q ciclaba de aliado como
+                // fallback. Se saco a pedido: Q-toque solo debe interactuar con la mira,
+                // nunca poseer a otro. CycleLivingAlly sigue viva via el radial (POSEER,
+                // categoria 6, sub >= 3), asi que no queda huerfana.
+                if (toque) TryInteractuarConMira();
                 return;
             }
 
@@ -61,8 +65,12 @@ namespace SP.Player
                 if (elegida > 0)
                 {
                     int cat = OrdenesMenu.CategoriaDeTecla(elegida);
+                    // PrimeraOpcionVisible lee OrdenesMenu.Abierto: hay que
+                    // preguntarle ANTES de Cerrar(), o siempre contesta 0
+                    // (ver el comentario del mismo bug mas abajo).
+                    int primeraOpcion = cat >= 0 ? PrimeraOpcionVisible(cat) : 0;
                     OrdenesMenu.Cerrar();
-                    if (OrdenesMenu.EsRadial) { if (cat >= 0) EjecutarOrdenRadial(cat, PrimeraOpcionVisible(cat)); }
+                    if (OrdenesMenu.EsRadial) { if (cat >= 0) EjecutarOrdenRadial(cat, primeraOpcion); }
                     else EjecutarOrdenDelMenu(elegida);
                     aimCongelado = null;
                     return;
@@ -76,12 +84,17 @@ namespace SP.Player
                 {
                     int cat = OrdenesMenu.Seleccion, sub = OrdenesMenu.Sub;
                     bool afuera = OrdenesMenu.EnAnilloExterior;
+                    // BUG REAL: PrimeraOpcionVisible mira OrdenesMenu.Abierto/Seleccion para saber
+                    // que opcion esta resaltada -- si se lo llama DESPUES de Cerrar() esos dos ya
+                    // estan en false/-1 y siempre devuelve 0, aunque la opcion realmente visible en
+                    // esa categoria no sea la 0 (por contexto). Se resuelve ANTES de cerrar.
+                    int primeraVisible = sub < 0 ? PrimeraOpcionVisible(cat) : -1;
                     OrdenesMenu.Cerrar();
                     bool intento = OrdenesMenu.EsRadial && cat >= 0 && (sub >= 0 || !afuera);
                     if (intento)
                     {
                         if (sub >= 0) EjecutarOrdenRadial(cat, sub);
-                        else EjecutarOrdenRadial(cat, PrimeraOpcionVisible(cat));
+                        else EjecutarOrdenRadial(cat, primeraVisible);
                     }
                     else AudioDirector.PlayUi2D(SfxKind.RadialCancel, 0.5f, 0.8f);   // soltar sin elegir = cancelar (se oye)
                     aimCongelado = null;
@@ -89,7 +102,8 @@ namespace SP.Player
                 return;
             }
 
-            if (toque) CycleLivingAlly(+1);
+            // Ver comentario arriba: se saco el fallback a CycleLivingAlly en el tap de Q.
+            if (toque) TryInteractuarConMira();
         }
 
         // Punto al que apuntaba el jugador cuando abrio el radial: el mouse se usa para

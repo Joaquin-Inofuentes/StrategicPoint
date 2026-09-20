@@ -305,6 +305,10 @@ namespace SP.EditorTools
             motor.Jump();
             var campo = typeof(SoldierMotor).GetField("saltoPedidoHasta", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             Check("Pedir otro salto en el aire lo deja en el buffer", saltando && campo != null && (float)campo.GetValue(motor) > Time.time);
+            motor.ResetMotionState(); // deja a vega aterrizado: sin esto, IsJumping quedaba pegado en true
+                                       // para el resto de la suite (SetCrouching/Corriendo lo rechazan
+                                       // mientras IsJumping es true), rompiendo los checks de gesto real
+                                       // de la Fase 19 que corren mucho despues sobre el mismo vega.
 
             // --- Minimapa legible ---
             var goMm = new GameObject("t_mm", typeof(Camera));
@@ -366,8 +370,25 @@ namespace SP.EditorTools
                 if (!ClipAudible(clip)) { mudos++; quien += k + " "; }
             }
             Check($"Los {nuevos.Length} sonidos nuevos existen y no estan mudos ni con NaN ({quien})", mudos == 0);
-            Check("La explosion es un estruendo largo (> 1,5 s)", GenericSfx.Get(SfxKind.Explosion).length > 1.5f);
-            Check("El tic de la carga es mas corto que el estruendo", GenericSfx.Get(SfxKind.BombTick).length < GenericSfx.Get(SfxKind.Explosion).length);
+            // BUG REAL de la prueba (no del juego): GenericSfx.Get elige una
+            // grabacion real AL AZAR entre las variantes importadas bajo
+            // Resources/Audio/Sfx/Explosion/ (pedido explicito: "quita todos
+            // los sonidos actuales y remplazalos por los verdaderos"). De
+            // las 5 variantes reales, 2 duran mas de 1,5 s y 3 son mas
+            // cortas (capas de "crunch" pensadas para sonar en capas, no
+            // solas) -- el chequeo original le pedia a UN solo pick al azar
+            // que siempre superara el umbral, asi que fallaba mas o menos 3
+            // de cada 5 veces segun que variante tocara. La garantia real
+            // que hace falta es "existe un estruendo largo en el pool", no
+            // "la tirada de esta vez lo es": se mide contra la MAS LARGA de
+            // las variantes cargadas (o el clip sintetico si no hay
+            // ninguna real), que es la unica forma determinista de probar
+            // la capacidad sin depender de que numero salio.
+            float explosionMasLarga = GenericSfx.Get(SfxKind.Explosion).length;
+            var explosionReal = UnityEngine.Resources.LoadAll<AudioClip>("Audio/Sfx/Explosion");
+            foreach (var c in explosionReal) if (c != null && c.length > explosionMasLarga) explosionMasLarga = c.length;
+            Check($"La explosion es un estruendo largo (> 1,5 s) en al menos una variante ({explosionMasLarga:0.00}s)", explosionMasLarga > 1.5f);
+            Check("El tic de la carga es mas corto que el estruendo", GenericSfx.Get(SfxKind.BombTick).length < explosionMasLarga);
 
             var armas = new[] { WeaponKind.Rifle, WeaponKind.Pistol, WeaponKind.Heavy, WeaponKind.Smg, WeaponKind.Shotgun, WeaponKind.Sniper, WeaponKind.Rocket };
             var vistosRecarga = new HashSet<AudioClip>(); var vistosDisparo = new HashSet<AudioClip>(); var vistosDesenfunde = new HashSet<AudioClip>();

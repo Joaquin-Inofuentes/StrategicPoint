@@ -360,6 +360,16 @@ namespace SP.Player
         public static void IssueAttackOrder(Soldier soldier, Soldier enemy)
         {
             var brain = soldier.GetComponent<AiBrain>();
+            // BUG REAL ("ATACAR con Q no hacia nada"): a diferencia de
+            // IssueMoveOrder e IssueCoverOrder, esta orden nunca bajaba
+            // IsPossessedByPlayer. AiBrain.Tick() se corta en la primera
+            // linea si IsPossessedByPlayer es true, asi que cualquier
+            // soldado que hubiera sido poseido antes (y por lo que sea
+            // siguiera con la bandera en true) aceptaba la orden -- target
+            // fijado, estado en MovingToAttackOrder, marcador en el piso,
+            // el aviso sonaba -- pero su IA nunca corria un solo tick y el
+            // soldado se quedaba quieto para siempre.
+            if (brain != null) brain.IsPossessedByPlayer = false;
             brain?.IssueAttackOrder(enemy);
             OrderMarkerFx.Spawn(enemy.transform.position, OrderMarkerFx.AttackColor);
         }

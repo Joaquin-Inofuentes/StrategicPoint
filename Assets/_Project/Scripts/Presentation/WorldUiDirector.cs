@@ -40,6 +40,7 @@ namespace SP.Presentation
         static readonly List<MinimapIcon> minimapIcons = new List<MinimapIcon>();
         static readonly List<PossessedMarkerView> possessedMarkers = new List<PossessedMarkerView>();
         static readonly List<UnitLabelView> unitLabels = new List<UnitLabelView>();
+        static readonly List<RevivePromptView> revivePrompts = new List<RevivePromptView>();
 
         public static void Register(HealthBarView v) { if (v != null && !healthBars.Contains(v)) healthBars.Add(v); }
         public static void Unregister(HealthBarView v) => healthBars.Remove(v);
@@ -53,12 +54,15 @@ namespace SP.Presentation
         public static void Register(UnitLabelView v) { if (v != null && !unitLabels.Contains(v)) unitLabels.Add(v); }
         public static void Unregister(UnitLabelView v) => unitLabels.Remove(v);
 
+        public static void Register(RevivePromptView v) { if (v != null && !revivePrompts.Contains(v)) revivePrompts.Add(v); }
+        public static void Unregister(RevivePromptView v) => revivePrompts.Remove(v);
+
         // ------------------------------------------------------------
         // Contadores de verificacion
         // ------------------------------------------------------------
         // Cuantos elementos de UI de mundo estan dados de alta ahora
         // mismo. Es el universo que recorre el unico LateUpdate.
-        public static int RegisteredCount => healthBars.Count + minimapIcons.Count + possessedMarkers.Count + unitLabels.Count;
+        public static int RegisteredCount => healthBars.Count + minimapIcons.Count + possessedMarkers.Count + unitLabels.Count + revivePrompts.Count;
 
         // Cuantos de esos quedaron efectivamente dibujados en el ultimo
         // pase. Alejar la camara tiene que hacerlo bajar.
@@ -231,6 +235,17 @@ namespace SP.Presentation
                 if (label.Tick(enRts)) visible++;
             }
 
+            // Cartel de "[Q] REVIVIR" sobre cada caido: no depende del modo
+            // de camara (util sobre todo en FPS), asi que no entra al mismo
+            // if de enRts que las etiquetas de unidad.
+            for (int i = revivePrompts.Count - 1; i >= 0; i--)
+            {
+                var rp = revivePrompts[i];
+                if (rp == null) { revivePrompts.RemoveAt(i); continue; }
+                if (hasCam) rp.ApplyBillboard(camRot);
+                if (rp.Tick()) visible++;
+            }
+
             VisibleCount = visible;
             CulledCount = culled;
         }
@@ -318,6 +333,8 @@ namespace SP.Presentation
                 Register(v);
             foreach (var v in UnityEngine.Object.FindObjectsByType<UnitLabelView>(FindObjectsInactive.Include, FindObjectsSortMode.None))
                 Register(v);
+            foreach (var v in UnityEngine.Object.FindObjectsByType<RevivePromptView>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                Register(v);
         }
 
         public static void Clear()
@@ -326,6 +343,7 @@ namespace SP.Presentation
             minimapIcons.Clear();
             possessedMarkers.Clear();
             unitLabels.Clear();
+            revivePrompts.Clear();
             VisibleCount = 0;
             CulledCount = 0;
             populated = false;

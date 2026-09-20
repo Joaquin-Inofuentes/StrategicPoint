@@ -22,6 +22,10 @@ namespace SP.Ai
             pathIndex = 0;
             repathed = false;
             ResetStuckWatch();
+            // Sella la ruta con la Version actual de la grilla: mientras
+            // nadie demuela ni levante un obstaculo de por medio, no hace
+            // falta volver a correr A* para este mismo destino.
+            pathVersion = SP.Core.NavService.Version;
 
             EnsureAgent();
             if (AgentActivo)
@@ -211,6 +215,14 @@ namespace SP.Ai
             if (TryAdvanceWithAgent(destination, threshold, dt, out bool llegoConAgent))
                 return llegoConAgent;
 
+            // La grilla cambio desde que se planeo esta ruta (un obstaculo
+            // se demolio o aparecio uno nuevo de por medio): rehacerla YA,
+            // no esperar a que el atasco la detecte 1 s+ despues. Sin esto,
+            // un soldado en camino seguia bordeando un muro ya derrumbado
+            // hasta chocar contra la nada y recien ahi replanificar.
+            if (pathVersion != SP.Core.NavService.Version)
+                PlanPathTo(destination);
+
             TickStuckWatch(destination, dt);
 
             if (pathIndex >= path.Count)
@@ -389,6 +401,7 @@ namespace SP.Ai
 
             path.Clear();
             pathIndex = 0;
+            pathVersion = SP.Core.NavService.Version;
             if (SP.Core.NavService.TryFindDetour(self.transform.position, destination, path))
             {
                 pathIndex = 1;

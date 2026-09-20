@@ -21,6 +21,17 @@ namespace SP.Presentation
         ObstacleMarker obstaculo;
         bool bootstrapped;
 
+        // Item 77 (28 canvases/65 graficos UI sin consolidar): mismo
+        // tratamiento que HealthBarView.canvas -- esta vista tambien vive
+        // sobre su propio Canvas ("UnitLabelCanvas"). En FPS (enRts ==
+        // false) la etiqueta nunca se muestra, pero antes el componente
+        // Canvas seguia SIEMPRE habilitado y Unity lo seguia considerando
+        // para el CanvasUpdateRegistry aunque no tuviera nada visible que
+        // dibujar. Se apaga solo el COMPONENTE Canvas (no el GameObject:
+        // eso dispararia OnDisable y la borraria de WorldUiDirector) --
+        // seguro y acotado a esta vista.
+        Canvas canvas;
+
         // Solo para verificacion: que texto quedo puesto, y si el Text
         // hijo esta activo ahora mismo (visible en RTS, apagado en FPS).
         public string CurrentText => label != null ? label.text : null;
@@ -42,6 +53,7 @@ namespace SP.Presentation
             if (label == null) label = GetComponentInChildren<Text>(true);
             if (label == null) return;
             bootstrapped = true;
+            if (canvas == null) canvas = GetComponent<Canvas>();
             soldier = GetComponentInParent<Soldier>();
             vehicle = soldier == null ? GetComponentInParent<Vehicle>() : null;
             obstaculo = (soldier == null && vehicle == null) ? GetComponentInParent<ObstacleMarker>() : null;
@@ -59,6 +71,9 @@ namespace SP.Presentation
             bool visible = texto != null;
             if (label.gameObject.activeSelf != visible) label.gameObject.SetActive(visible);
             if (visible) label.text = texto;
+            // Item 77: apaga el Canvas propio cuando no toca mostrar nada
+            // (fuera de RTS), no solo el Text hijo.
+            if (canvas != null && canvas.enabled != visible) canvas.enabled = visible;
             return visible;
         }
 

@@ -49,6 +49,19 @@ namespace SP.UI
             if (background == null) background = GetComponent<Image>();
             if (label == null) label = transform.Find("Label")?.GetComponent<Text>();
             if (healthFill == null) healthFill = transform.Find("BarBG/BarFill")?.GetComponent<Image>();
+
+            // BUG REAL: GameplaySceneBootstrap.Start() repara (SpriteBlanco)
+            // las Image Filled sin sprite UNA SOLA VEZ al arrancar la escena
+            // (ver SpriteBlanco.cs). Esa barrida cubre a las filas que ya
+            // existen en ese momento, pero RosterView.Rebuild() (llamado por
+            // ejemplo al reordenar la escuadra con [ y ]) destruye esas filas
+            // y las vuelve a instanciar desde CERO a partir del prefab, que
+            // nunca fue reparado. Sin sprite, Image.Filled ignora fillAmount
+            // por completo: la barra queda mostrando el maximo para siempre
+            // sin importar la vida real, exactamente en el momento en que el
+            // roster se reconstruye. Reparar aca, en cada fila nueva, la
+            // hace independiente del orden con el barrido global.
+            SpriteBlanco.Reparar(healthFill);
         }
 
         // Se llama una sola vez, apenas se instancia la fila. Deja el

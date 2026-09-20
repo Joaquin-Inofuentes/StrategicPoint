@@ -93,7 +93,31 @@ namespace SP.Combat
         // cono de dispersion mucho mas lento que el resto.
         const float FactorSniper = 0.35f;
         float MultiplicadorRol => (owner != null && owner.Role == RoleType.Sniper) ? FactorSniper : 1f;
-        public float SpreadDegEfectivo => spreadDeg * MultiplicadorPostura * MultiplicadorRol;
+
+        // Puntera fina ([Ctrl] sostenido apuntando): pedido explicito de
+        // "mantener CTRL para apuntar debe ir reduciendo el spread
+        // progresivamente cuanto mas tiempo se mantiene apretado". El
+        // PROGRESO (0..1) lo calcula PlayerInputDriver (cuanto tiempo lleva
+        // sostenido, si se esta apuntando de verdad y si no se movio
+        // demasiado) -- ac es solo el efecto sobre la dispersion, para que
+        // WeaponHolder no tenga que saber nada de teclado ni de camara.
+        // Solo Asalto (incluye Explosivos: no existe un RoleType separado,
+        // ver Demolicion.cs) y Francotirador la reciben -- Medico usa [Ctrl]
+        // para curar/reanimar, no para apuntar mas fino.
+        const float FactorEnfoqueMax = 0.5f;
+        float enfoque01;
+        public float Enfoque01 => enfoque01;
+        public void SetEnfoque(float progreso01) => enfoque01 = Mathf.Clamp01(progreso01);
+        bool ClaseConEnfoque => owner != null && (owner.Role == RoleType.Assault || owner.Role == RoleType.Sniper);
+        float MultiplicadorEnfoque => ClaseConEnfoque ? Mathf.Lerp(1f, FactorEnfoqueMax, enfoque01) : 1f;
+
+        // TorretaFija (ametralladora fija de defensa) es mucho mas estable que un
+        // soldado de pie apuntando a mano: el arma esta montada sobre un pivote
+        // fijo, no sobre el cuerpo. 1 = sin cambio (todo lo demas). TorretaFija.Ocupar
+        // lo baja al montar y Liberar lo repone al bajar.
+        public float MultiplicadorTorretaFija = 1f;
+
+        public float SpreadDegEfectivo => spreadDeg * MultiplicadorPostura * MultiplicadorRol * MultiplicadorEnfoque * MultiplicadorTorretaFija;
         public float SpreadFraction01 => Mathf.Clamp01(SpreadDegEfectivo / MaxSpreadDeg);
 
         public float CooldownRemaining => Mathf.Max(0f, cooldownTimer);
@@ -154,6 +178,18 @@ namespace SP.Combat
                 else if (k != CurrentWeaponKind) cargadorPorArma[i] = -1;
             }
         }
+        // Pickup de municion soltado por un enemigo al morir (item nuevo): suma
+        // cargadores de reserva al arma EQUIPADA, sin tocar las demas del
+        // loadout -- distinto de ReponerMunicion (caja de suministros), que
+        // repone todo el arsenal de una. Sin reservas activas (fuera de
+        // mision) no hay nada que sumar: la municion ya es ilimitada.
+        public void AgregarMunicion(int cargadores = 1)
+        {
+            if (!UsaReservas) return;
+            InicializarReserva(CurrentWeaponKind);
+            reservaPorArma[(int)CurrentWeaponKind] += WeaponCatalog.Get(CurrentWeaponKind).MagazineSize * Mathf.Max(1, cargadores);
+        }
+
         public bool MunicionCompleta()
         {
             if (!UsaReservas) return true;
@@ -432,6 +468,35 @@ namespace SP.Combat
         public void CycleNext() => EquipFromLoadout(CurrentLoadoutIndex + 1);
         public void CyclePrevious() => EquipFromLoadout(CurrentLoadoutIndex - 1);
 
+        // Municion de una ranura del loadout SIN equiparla: mira el cargador
+        // guardado (o el tamano completo si nunca se toco) mas la reserva.
+        // Sin reservas activas, cualquier arma "tiene" municion (ilimitada).
+        bool RanuraTieneMunicion(int index)
+        {
+            if (!UsaReservas) return true;
+            if (index < 0 || index >= Loadout.Count) return false;
+            var k = Loadout[index];
+            if (k == CurrentWeaponKind) return CurrentAmmo > 0 || ReservaActual > 0;
+            InicializarReserva(k);
+            int i = (int)k;
+            int enCargador = cargadorPorArma[i] >= 0 ? cargadorPorArma[i] : WeaponCatalog.Get(k).MagazineSize;
+            return enCargador > 0 || reservaPorArma[i] > 0;
+        }
+
+        // Feedback de gatillo vacio (item nuevo): si el arma actual se quedo
+        // sin nada, cambia sola a la primera del loadout (en orden, arrancando
+        // por la siguiente) que SI tenga con que disparar. Si ninguna tiene,
+        // no cambia nada -- el aviso en pantalla es todo el feedback que hay.
+        public bool CambiarASiguienteConMunicion()
+        {
+            for (int paso = 1; paso <= Loadout.Count; paso++)
+            {
+                int idx = (CurrentLoadoutIndex + paso) % Loadout.Count;
+                if (RanuraTieneMunicion(idx)) { EquipFromLoadout(idx); return true; }
+            }
+            return false;
+        }
+
         // --------------------------------------------------------------
         // Cuchillo: golpe rápido cuerpo a cuerpo. Pedido explícito ([V] =
         // "ataque de cuchillo rapido"). Independiente del arma a distancia
@@ -572,7 +637,10 @@ namespace SP.Combat
             return true;
         }
 
-        static Vector3 ApplySpread(Vector3 direction, float maxDeg)
+        // Publico: TurretWeapon (canon de vehiculo) reusa exactamente el mismo cono de
+        // dispersion que las armas de mano, en vez de duplicar la matematica aparte
+        // (item de normalizacion de precision jugador/aliado/enemigo/torreta/canon).
+        public static Vector3 ApplySpread(Vector3 direction, float maxDeg)
         {
             if (maxDeg <= 0f) return direction;
             if (direction.sqrMagnitude < 0.000001f) return direction;

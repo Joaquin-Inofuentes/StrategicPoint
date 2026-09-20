@@ -24,6 +24,7 @@ namespace SP.Vehicles
         public const float Cadencia = 0.085f;
         public const int Cinta = 100;
         public const float SegundosDeRecarga = 3.2f;
+        public const float FactorPrecision = 0.35f;   // multiplica SpreadDegEfectivo: mas preciso que a mano
 
         static readonly List<TorretaFija> todas = new List<TorretaFija>();
         public static IReadOnlyList<TorretaFija> Todas => todas;
@@ -102,6 +103,10 @@ namespace SP.Vehicles
             armaPreviaIndice = arma.CurrentLoadoutIndex;
             arma.EquipWeapon(WeaponKind.Smg, DanoPorBala, Cadencia, new Color(1f, 0.85f, 0.3f));
             arma.ConfigurarCargador(Cinta, SegundosDeRecarga);
+            // BALANCE: montada sobre un pivote fijo, no sobre el cuerpo de pie -- mucho
+            // mas estable que la misma arma disparada a mano. 0.35 = 65% menos dispersion
+            // efectiva mientras dura la ocupacion.
+            arma.MultiplicadorTorretaFija = FactorPrecision;
             GameLog.Line($"{s.DisplayName} ocupa la ametralladora fija");
             Ocupada?.Invoke(this, s);
             return true;
@@ -112,7 +117,11 @@ namespace SP.Vehicles
             var s = Ocupante;
             if (s == null) return;
             Ocupante = null;
-            if (s.Weapon != null) s.Weapon.EquipFromLoadout(armaPreviaIndice);
+            if (s.Weapon != null)
+            {
+                s.Weapon.MultiplicadorTorretaFija = 1f;
+                s.Weapon.EquipFromLoadout(armaPreviaIndice);
+            }
             // Baja de la torre: vuelve donde estaba parado antes de subir (si sigue vivo).
             if (s.Health != null && s.Health.IsAlive) s.transform.position = posicionPrevia;
             GameLog.Line($"{s.DisplayName} deja la ametralladora fija");

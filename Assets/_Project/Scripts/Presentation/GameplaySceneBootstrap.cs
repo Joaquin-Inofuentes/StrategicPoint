@@ -98,6 +98,12 @@ namespace SP.Presentation
             int etiquetas = UnitLabelView.RegistrarTodas();
             if (etiquetas > 0) GameLog.Line($"Se armaron {etiquetas} etiquetas de unidad");
 
+            // Cartel "[Q] REVIVIR" sobre cada aliado: arranca oculto (Tick
+            // recien lo prende cuando ESE soldado cae), mismo patron que
+            // las etiquetas de arriba.
+            int cartelesRevivir = RevivePromptView.RegistrarTodas();
+            if (cartelesRevivir > 0) GameLog.Line($"Se armaron {cartelesRevivir} carteles de revivir");
+
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null && !esTutorial)
