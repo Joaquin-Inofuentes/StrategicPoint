@@ -28,6 +28,31 @@ La suite (mas de 460 verificaciones escritas, varias dentro de bucles, en 19 fas
 
 El codigo de la suite esta en `Assets/_Project/Scripts/Editor/HeadlessTestRunner*.cs` (una parte por rango de fases). `Assets/_Project/Tests/` queda reservado para pruebas de Unity Test Framework si algun dia se agregan.
 
+### QA completo en una sola corrida
+
+```bat
+Tools\Qa\qa_total.bat            corrida completa (~45 min)
+Tools\Qa\qa_total.bat --rapido   sin flakiness ni estres (~12 min)
+```
+
+Doce etapas: ficha del entorno, verificacion estatica, compilacion, suite, benchmark, 100 iteraciones,
+build, metricas del `.exe`, **capturas en 7 resoluciones** (de 4:3 a 4K por supersampling), **el tutorial
+entero con el reproductor automatico**, recoleccion de **todos** los logs (Editor, Player, proyecto,
+volcados de crash) y un informe navegable. Deja todo en `Reportes/QA_<sello>/INFORME.html` y suma una
+fila a `Reportes/historico.csv` para comparar rondas. Detalle en
+[Docs/RONDA_10_QA_AUTOMATICO.md](Docs/RONDA_10_QA_AUTOMATICO.md).
+
+### Indice del proyecto para IA
+
+```bash
+py -3 Tools/Indice/indexar_ia.py          # regenera Docs/INDICE_IA/
+py -3 Tools/Indice/indexar_ia.py --check  # falla si quedo viejo
+```
+
+Ocho mapas generados a partir del codigo: archivos, simbolos, dependencias entre subsistemas, bus de
+eventos, entrada, escenas, pruebas y estado estatico. Punto de entrada:
+[Docs/INDICE_IA/00_MAPA.md](Docs/INDICE_IA/00_MAPA.md).
+
 ## Escenas generadas por codigo
 
 `SC_TestLevel`, `SC_MainMenu`, `SC_Tutorial` y parte de `SC_Gameplay` **se generan por codigo** (`Editor/*Builder.cs`, `HeadlessTestRunner`). Editarlas a mano es inutil: se pierden al volver a generarlas. Si queres un cambio permanente, hacelo en el builder correspondiente. La suite ya restaura `SC_TestLevel` y `P_Vehicle_Blindado` al terminar para no ensuciar el repositorio.
@@ -47,6 +72,7 @@ Nota: `Assets/ARTS` pesa ~336 MB pero solo ~35 MB estan referenciados por escena
 
 ## Documentos
 
+* **Ronda 10:** [100 bugs nuevos](Docs/RONDA_10_BUGS.md) · [plan de correccion](Docs/RONDA_10_PLAN_CORRECCION.md) · [22 pasos nuevos de tutorial](Docs/RONDA_10_TUTORIAL_22_PASOS_NUEVOS.md) · [QA automatico](Docs/RONDA_10_QA_AUTOMATICO.md) · [indice para IA](Docs/INDICE_IA/00_MAPA.md)
 * [Indice de la auditoria de 100 puntos](Docs/AUDITORIA_100_ITEMS.md)
 * [Ronda 9](Docs/RONDA_9_MEJORAS_Y_AUDITORIA.md) · [Ronda 8](Docs/RONDA_8_AUDITORIA_Y_MEJORAS.md) · [Ronda 7](Docs/RONDA_7_SALTO_ARMAS_SONIDO_CUCHILLO_GRANADA_Y_FEEDBACK.md) · [Ronda 6](Docs/RONDA_6_RADIAL_CONTEXTUAL_TORRETA_MIRA_Y_UX.md) · [Ronda 5](Docs/RONDA_5_MISION_RESCATE_RADIAL_DIFICULTAD.md) · [Ronda 4](Docs/RONDA_4_CLASES_ARTE_RADIAL.md) · [Informe ronda 2](Docs/INFORME_RONDA_2.md)
 * [Tutorial paso a paso](Docs/TUTORIAL_PASO_A_PASO.md) · [Tutorial (resumen)](Docs/TUTORIAL.md)

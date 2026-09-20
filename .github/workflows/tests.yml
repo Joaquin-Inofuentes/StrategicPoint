@@ -14,7 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 Tools/Ci/verificar_estatico.py
+      - name: Comprobaciones estaticas
+        run: python3 Tools/Ci/verificar_estatico.py
+      # El indice para IA (Docs/INDICE_IA) se genera del codigo: si alguien toca un
+      # script y no lo regenera, queda mintiendo. Un comando lo arregla, y el paso
+      # dice cual.
+      - name: Indice para IA al dia
+        run: python3 Tools/Indice/indexar_ia.py --check
 
   suite:
     runs-on: ubuntu-latest
