@@ -49,6 +49,12 @@ namespace SP.Ai
         // cronometro reusado (sin asignar por llamada): no cambian ninguna
         // logica ni el orden de ejecucion, y su costo es un Restart()/lectura
         // de Stopwatch por bloque -- despreciable frente a lo que miden.
+        // Item 59: distancia (m) a la camara desde la que un soldado se tickea a media frecuencia.
+        public const float DistanciaLod = 120f;
+        public static bool LodPorDistancia = true;
+        public static int LastSoldadosSaltadosPorLod { get; private set; }
+        static int tickNumero;
+
         public static double LastRebuildMs { get; private set; }
         public static double LastAiWeaponMs { get; private set; }
         public static double LastVehicleMs { get; private set; }
@@ -84,17 +90,43 @@ namespace SP.Ai
             // su propio contador de ticks y se desfasa por Id, asi que la
             // carga de sensado ya queda repartida entre frames sin que este
             // bucle tenga que saber nada del tema.
+            //
+            // Item 59 (LOD por distancia a la camara): los soldados a mas de
+            // DistanciaLod metros de la camara principal no se ven, asi que ahi
+            // SI se puede tickear uno de cada dos frames sin tartamudeo visible;
+            // ese tick recibe el dt de los dos frames (el tiempo simulado es el
+            // mismo, solo llega en pasos mas gruesos). Se desfasa por Id para
+            // que la mitad lejana no caiga siempre en el mismo frame. Sin
+            // camara (suite headless) o con LodPorDistancia apagado, todos los
+            // soldados se tickean en todos los frames como antes.
+            tickNumero++;
+            var cam = LodPorDistancia ? CamaraPrincipal.Actual : null;
+            var camPos = cam != null ? cam.transform.position : Vector3.zero;
+            float lod2 = DistanciaLod * DistanciaLod;
+            int saltados = 0;
             foreach (var s in ActorRegistry.All)
             {
                 if (s == null || !s.gameObject.activeInHierarchy) continue;
-                s.Brain?.Tick(dt);
-                if (s.Weapon != null) s.Weapon.Tick(dt);
+                float dtSoldado = dt;
+                if (cam != null)
+                {
+                    if ((s.transform.position - camPos).sqrMagnitude > lod2)
+                    {
+                        s.DtLodPendiente += dt;
+                        if (((tickNumero + s.Id) & 1) != 0) { saltados++; continue; }
+                        dtSoldado = s.DtLodPendiente;
+                    }
+                    s.DtLodPendiente = 0f;
+                }
+                s.Brain?.Tick(dtSoldado);
+                if (s.Weapon != null) s.Weapon.Tick(dtSoldado);
                 // Pedido explicito: a los 3 s sin recibir daño, regenera
                 // solo. Mismo camino de simulacion que Brain/Weapon, para
                 // que la suite headless (SimStep) lo ejercite igual que el
                 // juego real.
-                s.Health?.Tick(dt);
+                s.Health?.Tick(dtSoldado);
             }
+            LastSoldadosSaltadosPorLod = saltados;
             LastAiWeaponMs = profileWatch.Elapsed.TotalMilliseconds;
 
             // El pedido de curacion del menu de ordenes ([Q] sostenido).

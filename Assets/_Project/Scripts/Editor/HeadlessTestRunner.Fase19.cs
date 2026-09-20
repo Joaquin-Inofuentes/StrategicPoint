@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using SP.Actors;
+using SP.Ai;
 using SP.Combat;
 using SP.Core;
 using SP.Player;
@@ -183,6 +184,45 @@ namespace SP.EditorTools
                 }
             }
             Check("Ningun codigo de runtime usa Camera.main ni Resources.Load directo (todo pasa por los caches)", codigoRuntime.Length == 0);
+
+            // --- LOD por distancia del WorldSimulationDriver (59) ---
+            {
+                var cam = CamaraPrincipal.Actual;
+                if (cam == null)
+                {
+                    Check("LOD de simulacion: hay camara principal para probarlo", false);
+                }
+                else
+                {
+                    // Cuantos soldados vivos y activos estan a mas de DistanciaLod de la camara ahora mismo.
+                    System.Func<int> lejanos = () =>
+                    {
+                        int n = 0;
+                        foreach (var s in ActorRegistry.All)
+                            if (s != null && s.gameObject.activeInHierarchy && (s.transform.position - cam.transform.position).sqrMagnitude > WorldSimulationDriver.DistanciaLod * WorldSimulationDriver.DistanciaLod) n++;
+                        return n;
+                    };
+                    System.Func<int> saltadosEn4 = () =>
+                    {
+                        int total = 0;
+                        for (int i = 0; i < 4; i++) { WorldSimulationDriver.Step(0.05f); total += WorldSimulationDriver.LastSoldadosSaltadosPorLod; }
+                        return total;
+                    };
+                    var posOriginal = kes.transform.position;
+                    kes.transform.position = cam.transform.position + cam.transform.forward * (WorldSimulationDriver.DistanciaLod + 60f);
+                    kes.DtLodPendiente = 0f;
+                    int lejos = lejanos();
+                    Check("LOD de simulacion: kes alejado cuenta como lejano", lejos >= 1);
+                    Check("LOD de simulacion: cada soldado lejano se saltea 2 de cada 4 ticks", saltadosEn4() == lejos * 2);
+                    Check("LOD de simulacion: el dt saltado no se pierde (a lo sumo queda un tick pendiente)", kes.DtLodPendiente < 0.0501f);
+                    WorldSimulationDriver.LodPorDistancia = false;
+                    Check("LOD de simulacion: apagado, nadie se saltea ticks", saltadosEn4() == 0);
+                    WorldSimulationDriver.LodPorDistancia = true;
+                    kes.transform.position = posOriginal;
+                    kes.DtLodPendiente = 0f;
+                    Check("LOD de simulacion: al volver a estar cerca kes vuelve a tickear siempre", saltadosEn4() == lejanos() * 2);
+                }
+            }
 
             // --- Trepar obstaculos bajos (53) ---
             {

@@ -25,6 +25,9 @@ namespace SP.Actors
         // (ej. RunEquivalenceCheck) o cualquier aserción que asuma IDs bajos.
         public static void ResetIdCounterForTests() => nextId = 1;
 
+        // Item 59: tiempo simulado que el WorldSimulationDriver le debe a este soldado por los frames que salteo por LOD.
+        [System.NonSerialized] public float DtLodPendiente;
+
         bool bootstrapped;
 
         int id;
