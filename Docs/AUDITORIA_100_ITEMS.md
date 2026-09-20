@@ -4,6 +4,8 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 
 **Resumen**: HECHO: 77, YA ESTABA: 18, PARCIAL: 3, NO/NO APLICA: 2 (de 100). Los 2 que quedan (65: solo un humano puede juzgar un sonido de oido; 51: no aplica, el juego no tiene caida desde altura) no son trabajo pendiente: son limitaciones reales confirmadas, no items sin resolver.
 
+**Cierre (Ronda 11)**: los 100 puntos estan tratados. Los 3 PARCIAL dependen de terceros y no se pueden cerrar desde codigo: 21 (arte dibujado del menu: trabajo de arte), 81 (el secreto `UNITY_LICENSE` lo carga solo el dueno del repo en GitHub) y 89 (borrar los 295 MB sin uso de ARTS es decision del equipo de arte; el reporte `Docs/ARTS_USO.csv` ya esta hecho y no se borro nada).
+
 
 ## HUD y pantallas
 
