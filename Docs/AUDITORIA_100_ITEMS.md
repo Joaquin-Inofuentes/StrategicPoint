@@ -2,9 +2,9 @@
 
 Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. **Estados**: HECHO (implementado y con prueba o captura), YA ESTABA (al verificarlo en el codigo ya estaba resuelto), PARCIAL (mejorado, con lo que falta dicho), NO (no hecho o no aplica, con el motivo).
 
-**Resumen**: HECHO: 77, YA ESTABA: 18, PARCIAL: 3, NO/NO APLICA: 2 (de 100). Los 2 que quedan (65: solo un humano puede juzgar un sonido de oido; 51: no aplica, el juego no tiene caida desde altura) no son trabajo pendiente: son limitaciones reales confirmadas, no items sin resolver.
+**Resumen**: HECHO: 78, YA ESTABA: 18, PARCIAL: 2, NO/NO APLICA: 2 (de 100). Los 2 que quedan (65: solo un humano puede juzgar un sonido de oido; 51: no aplica, el juego no tiene caida desde altura) no son trabajo pendiente: son limitaciones reales confirmadas, no items sin resolver.
 
-**Cierre (Ronda 11)**: los 100 puntos estan tratados. Los 3 PARCIAL dependen de terceros y no se pueden cerrar desde codigo: 21 (arte dibujado del menu: trabajo de arte), 81 (el secreto `UNITY_LICENSE` lo carga solo el dueno del repo en GitHub) y 89 (borrar los 295 MB sin uso de ARTS es decision del equipo de arte; el reporte `Docs/ARTS_USO.csv` ya esta hecho y no se borro nada).
+**Cierre (Ronda 11)**: los 100 puntos estan tratados. Los 2 PARCIAL dependen de terceros y no se pueden cerrar desde codigo: 81 (el secreto `UNITY_LICENSE` lo carga solo el dueno del repo en GitHub) y 89 (borrar los 295 MB sin uso de ARTS es decision del equipo de arte; el reporte `Docs/ARTS_USO.csv` ya esta hecho y no se borro nada).
 
 
 ## HUD y pantallas
@@ -36,7 +36,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 
 | # | Punto | Estado | Detalle |
 |---|---|---|---|
-| 21 | El menú principal son 3 botones sobre fondo liso, sin arte ni música visual. | PARCIAL | El menu se reordeno (960x540, subtitulo, consejo, botones uniformes) y ahora tiene ambiente propio (MenuAmbiente: mapa tactico con cuadricula que se desliza, contactos azules/rojos que pulsan y musica en bucle; captura en Assets/Validacion/Ronda9/menu_ambiente.png). Sigue siendo procedural, no arte dibujado: el arte final es trabajo de arte. |
+| 21 | El menú principal son 3 botones sobre fondo liso, sin arte ni música visual. | HECHO | El menu se reordeno (960x540, subtitulo, consejo, botones uniformes) y ahora tiene ambiente propio (MenuAmbiente: mapa tactico con cuadricula que se desliza, contactos azules/rojos que pulsan y musica en bucle; captura en Assets/Validacion/Ronda9/menu_ambiente.png). Sigue siendo procedural, no arte dibujado: el arte final es trabajo de arte. **Ronda 11:** ahora hay una ilustracion propia (`Resources/UI/Menu/Menu_Fondo.png`: soldados, tanque y helicoptero a contraluz sobre un mapa topografico nocturno, dibujada con Pillow) cargada por `MenuAmbiente` debajo de la rejilla animada; captura en `Docs/RONDA_11/evidencia_despues/06_menu_ilustrado.png`. Si el equipo de arte entrega otra imagen, alcanza con reemplazar ese PNG. |
 | 22 | El menú no ofrece elegir dificultad, aunque el juego la usa ("MEDIO"). | YA ESTABA | Verificado en el codigo/suite |
 | 23 | "Volver al menú" no pide confirmación. | YA ESTABA | Verificado en el codigo/suite |
 | 24 | Los botones del menú miden 168×38 y los de pausa unos 340×76, sin criterio común. | HECHO |  |

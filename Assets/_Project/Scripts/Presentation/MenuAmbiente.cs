@@ -6,7 +6,7 @@ namespace SP.Presentation
 {
     // Ambiente del menu principal (item 21): musica de fondo y un fondo tactico animado (mapa con cuadricula que se
     // desplaza y contactos azules/rojos que se mueven), en vez de tres botones sobre un color liso. Se arma solo al
-    // cargar SC_MainMenu; es procedural (sin arte propio), asi que sigue siendo un fondo provisorio de programacion.
+    // cargar SC_MainMenu. Ronda 11: debajo va una ilustracion propia (Menu_Fondo.png); la rejilla y los contactos son procedurales.
     public class MenuAmbiente : MonoBehaviour
     {
         public const string EscenaDelMenu = "SC_MainMenu";
@@ -64,6 +64,19 @@ namespace SP.Presentation
         void Construir()
         {
             Existe = true;
+            // Ilustracion propia del menu (Resources/UI/Menu/Menu_Fondo.png: soldados, tanque y helicoptero a contraluz);
+            // la rejilla y los contactos se dibujan encima. Si el archivo falta, queda el fondo procedural de antes.
+            var ilustracion = SP.Core.RecursosCache.Cargar<Texture2D>("UI/Menu/Menu_Fondo");
+            if (ilustracion != null)
+            {
+                var fondo = new GameObject("Ilustracion", typeof(RectTransform), typeof(RawImage));
+                fondo.transform.SetParent(transform, false);
+                var fr = (RectTransform)fondo.transform;
+                fr.anchorMin = Vector2.zero; fr.anchorMax = Vector2.one; fr.offsetMin = fr.offsetMax = Vector2.zero;
+                var raw = fondo.GetComponent<RawImage>(); raw.texture = ilustracion; raw.raycastTarget = false;
+                fondo.AddComponent<AspectRatioFitter>().aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+                fondo.GetComponent<AspectRatioFitter>().aspectRatio = (float)ilustracion.width / ilustracion.height;
+            }
             var g = new GameObject("Rejilla", typeof(RectTransform));
             g.transform.SetParent(transform, false);
             rejilla = (RectTransform)g.transform;
