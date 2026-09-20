@@ -137,6 +137,8 @@ namespace SP.Ai
             // A5: rescate automatico cuando muere el jugador. Mismo camino
             // de simulacion por el mismo motivo.
             SP.Player.RescateAutomatico.Tick(dt);
+            // Ronda 11: derrota / recuperacion en calma de la escuadra completa (siempre evaluada, no una sola vez).
+            SP.Mision.EstadoDePartida.Tick(dt);
             // G1: cuenta regresiva de los barriles encendidos hasta que
             // estallan solos. Mismo camino de simulacion por el mismo motivo.
             SP.Presentation.ObstacleMarker.Tick(dt);

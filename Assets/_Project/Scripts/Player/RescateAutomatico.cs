@@ -33,6 +33,17 @@ namespace SP.Player
 
         static float restante;
         static float canalizado;
+        static float reordenar;
+        // Ronda 11 (puntos 2 y 15): la orden de Follow hacia un cuerpo muerto se cancelaba sola en AiBrain (el lider ya no esta vivo)
+        // y el medico volvia a Patrol a 2,8 m sin acercarse nunca. Ahora se le da una orden de MOVER al punto del caido y se reitera
+        // cada segundo mientras siga lejos (el combate o un desvio la pueden cancelar).
+        static void IrHaciaElCaido()
+        {
+            if (Caido == null || Rescatista == null) return;
+            var dir = Rescatista.transform.position - Caido.transform.position; dir.y = 0f;
+            var destino = Caido.transform.position + (dir.sqrMagnitude > 0.01f ? dir.normalized : Vector3.back) * (AlcanceDeRevivir * 0.6f);
+            OrderService.IssueMoveOrder(Rescatista, destino);
+        }
 
         // Se llama al morir el jugador (OnEntityDied). Devuelve false (sin
         // dejar nada pendiente) si no hay nadie libre para mandar.
@@ -48,7 +59,8 @@ namespace SP.Player
             Rescatista = rescatista;
             restante = EsperaMaxima;
             canalizado = 0f;
-            OrderService.IssueFollowOrder(rescatista, caido);
+            reordenar = 0f;
+            IrHaciaElCaido();
             GameLog.Line($"{rescatista.DisplayName} va a revivir a {caido.DisplayName}");
             return true;
         }
@@ -89,13 +101,20 @@ namespace SP.Player
             if (restante <= 0f) { Cancelar(); return; }
 
             float d = Vector3.Distance(Caido.transform.position, Rescatista.transform.position);
-            if (d > AlcanceDeRevivir) { canalizado = 0f; return; } // todavia caminando
+            if (d > AlcanceDeRevivir)
+            {
+                canalizado = 0f;
+                reordenar -= dt;
+                if (reordenar <= 0f) { reordenar = 1f; IrHaciaElCaido(); }
+                return; // todavia caminando
+            }
 
             canalizado += dt;
             if (canalizado < TiempoDeCanal) return;
 
             Caido.Health.Initialize(Caido.Id, Caido.Health.MaxHealth);
             Caido.Motor.ResetMotionState();
+            EventBus.Instance.Publish(new HealedEvent(Caido.Id, Caido.Health.MaxHealth, Caido.Health.Current));
             GameLog.Line($"{Rescatista.DisplayName} revivio a {Caido.DisplayName}");
             Cancelar();
         }

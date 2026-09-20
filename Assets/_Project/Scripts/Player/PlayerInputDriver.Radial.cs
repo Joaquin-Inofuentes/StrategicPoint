@@ -26,7 +26,7 @@ namespace SP.Player
         // Umbral que separa los dos gestos de la MISMA tecla. 0,3 s es el
         // valor por defecto de KeyBindings: bastante mas que un toque
         // deliberado y bastante menos que "lo dejo apretado".
-        public const float SostenerParaMenu = 0.3f;
+        public const float SostenerParaMenu = 0.5f;   // Ronda 11: tap = menos de medio segundo
 
         // Un unico lugar que decide, cada frame, cual de los dos gestos de
         // [Q] esta ocurriendo. Estan juntos a proposito: separarlos en dos
@@ -53,7 +53,7 @@ namespace SP.Player
                 // fallback. Se saco a pedido: Q-toque solo debe interactuar con la mira,
                 // nunca poseer a otro. CycleLivingAlly sigue viva via el radial (POSEER,
                 // categoria 6, sub >= 3), asi que no queda huerfana.
-                if (toque) TryInteractuarConMira();
+                if (toque && !TryInteractuarConMira()) SeguirAlPoseido();
                 return;
             }
 
@@ -103,7 +103,17 @@ namespace SP.Player
             }
 
             // Ver comentario arriba: se saco el fallback a CycleLivingAlly en el tap de Q.
-            if (toque) TryInteractuarConMira();
+            if (toque && !TryInteractuarConMira()) SeguirAlPoseido();
+        }
+
+        // Ronda 11 (punto 8): la accion por defecto del toque de [Q]. Si no hay nada interactuable en la mira, la escuadra te sigue.
+        void SeguirAlPoseido()
+        {
+            if (Brain == null || Brain.Current == null) return;
+            var dest = DestinatariosDeOrden();
+            if (dest.Count == 0) return;
+            OrderService.IssueFollowOrderForSelection(dest, Brain.Current);
+            Avisar("SIGANME");
         }
 
         // Punto al que apuntaba el jugador cuando abrio el radial: el mouse se usa para

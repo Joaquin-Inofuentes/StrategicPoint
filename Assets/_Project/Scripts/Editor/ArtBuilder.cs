@@ -144,6 +144,7 @@ namespace SP.EditorTools
             abajoADePie.hasExitTime = true;
             abajoADePie.exitTime = 0.85f;
             abajoADePie.duration = 0.15f;
+            AjustarTiemposDeSalto(saltoArriba, saltoAire, saltoAbajo, dePie);
 
             // Muerte: una variante por clip, alcanzable desde CUALQUIER
             // estado (AnyState) -- de pie, agachado, a mitad de un blend,
@@ -190,6 +191,34 @@ namespace SP.EditorTools
 
             EditorUtility.SetDirty(ctrl);
             return ctrl;
+        }
+
+        // Ronda 11 (punto 7): medido con AntesProbe (Docs/RONDA_11), el cuerpo tocaba el suelo a 0,91 s pero la pose de aterrizaje
+        // recien terminaba a 1,65 s: los clips de salto son largos (subida 0,4 s + aire + bajada 0,56 s) y el salto fisico dura 0,6 s.
+        // Se aceleran subida y bajada y se acortan los cruces para que la pose vaya pegada a la fisica.
+        public static void AjustarTiemposDeSalto(AnimatorState arriba, AnimatorState aire, AnimatorState abajo, AnimatorState dePie)
+        {
+            arriba.speed = 1.5f;
+            abajo.speed = 1.8f;
+            foreach (var s in new[] { arriba, aire })
+                foreach (var tr in s.transitions) if (tr.destinationState == abajo) tr.duration = 0.05f;
+            foreach (var tr in dePie.transitions) if (tr.destinationState == arriba) tr.duration = 0.05f;
+            foreach (var tr in abajo.transitions) if (tr.destinationState == dePie) { tr.exitTime = 0.5f; tr.duration = 0.1f; }
+        }
+
+        [MenuItem("Strategic Point/Arte/Ajustar tiempos del salto (controller existente)")]
+        public static string AjustarSaltoEnControllerExistente()
+        {
+            var ctrl = AssetDatabase.LoadAssetAtPath<AnimatorController>("Assets/_Project/Animation/AC_Soldado.controller");
+            if (ctrl == null) return "sin controller";
+            var sm = ctrl.layers[0].stateMachine;
+            AnimatorState Buscar(string n) { foreach (var s in sm.states) if (s.state.name == n) return s.state; return null; }
+            var a = Buscar("SaltoArriba"); var b = Buscar("SaltoAire"); var c = Buscar("SaltoAbajo"); var d = Buscar("DePie");
+            if (a == null || b == null || c == null || d == null) return "faltan estados";
+            AjustarTiemposDeSalto(a, b, c, d);
+            EditorUtility.SetDirty(ctrl);
+            AssetDatabase.SaveAssets();
+            return "salto ajustado";
         }
 
         static void AgregarTransicionBool(AnimatorState desde, AnimatorState hacia, string parametro, bool valor)

@@ -120,6 +120,9 @@ namespace SP.Presentation
                 AudioDirector.PlayUi2D(SfxKind.HoloOn, 0.35f, 0.5f);
         }
 
+        // Solo el resaltado del obstaculo (sin holograma): feedback de cobertura al apuntarla en RTS.
+        public static void ResaltarSolo(Transform obstaculo) => Ensure().Resaltar(obstaculo);
+
         public static void Ocultar()
         {
             if (instance == null) return;

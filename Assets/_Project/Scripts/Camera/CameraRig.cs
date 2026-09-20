@@ -800,7 +800,7 @@ namespace SP.CameraSystem
             }
             Vector3 antes = default;
             bool habia = zoomAnclado && SueloBajoPixel(zoomPixel, out antes);
-            rtsCurrentHeight = Mathf.Lerp(rtsCurrentHeight, rtsTargetHeight, 1f - Mathf.Exp(-VelocidadDeZoomAnimado * dt));
+            rtsCurrentHeight = rtsTargetHeight;   // Ronda 11: zoom sin lerp (pedido); VelocidadDeZoomAnimado queda por compatibilidad
             transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
             if (!habia || !SueloBajoPixel(zoomPixel, out var despues)) return;
 

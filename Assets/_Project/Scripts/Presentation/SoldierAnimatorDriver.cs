@@ -86,11 +86,20 @@ namespace SP.Presentation
 
         Soldier soldier;
         Vector3 posicionPrevia;
+        Vector3 ultimaDireccion = Vector3.forward;
         float velocidadSuavizada;
         float restanteDeDisparo;
         float pesoDisparo;
         IDisposable shotSub;
         bool arrancado;
+        // Ronda 11 (punto 6): los clips de costado bajan la cadera y los pies quedan hasta 4 cm bajo el piso (medido: 0,089 contra 0,129
+        // en reposo). Se mide la altura del pie mas bajo respecto de la raiz mientras esta quieto y en el suelo, y despues se sube el
+        // modelo lo que falte, con suavizado.
+        Transform[] pies;
+        float pieEnReposo = float.NaN;
+        float elevacionDePies;
+        Vector3 modeloBase;
+        bool modeloBaseTomada;
 
         void Awake()
         {
@@ -134,6 +143,7 @@ namespace SP.Presentation
         {
             shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShot);
             posicionPrevia = transform.position;
+            ultimaDireccion = transform.forward;
             arrancado = false;
         }
 
@@ -184,12 +194,17 @@ namespace SP.Presentation
             // recibe la misma curva de arranque/frenado que ya tenia el
             // parametro "Velocidad", solo que repartida en adelante/atras
             // y derecha/izquierda en vez de un solo numero de magnitud.
-            Vector3 direccionSuavizada = direccion.sqrMagnitude > 0.0001f
-                ? direccion.normalized * velocidadSuavizada
-                : Vector3.zero;
+            // Ronda 11 (punto 5): al frenar, la direccion medida pasa a 0 de golpe pero la velocidad suavizada tarda ~0,25 s en bajar;
+            // con direccion 0 Adelante/Lateral caian a 0 en un solo cuadro y el blend tree 2D mezclaba las 8 caminatas (el "traba" al
+            // terminar de caminar, medido en Docs/RONDA_11). Se conserva la ULTIMA direccion y se la escala por la velocidad que decae.
+            if (direccion.sqrMagnitude > 0.0001f) ultimaDireccion = direccion.normalized;
+            Vector3 direccionSuavizada = ultimaDireccion * velocidadSuavizada;
             float escala = velocidadDeCarrera > 0.01f ? velocidadDeCarrera : 1f;
-            animator.SetFloat(ParamAdelante, Vector3.Dot(direccionSuavizada, transform.forward) / escala);
-            animator.SetFloat(ParamLateral, Vector3.Dot(direccionSuavizada, transform.right) / escala);
+            // El blend 2D espera un vector de largo <= 1: correr a 1,09 (velocidad real / 5) sobrepasaba el borde y alternaba clips.
+            var ad = new Vector2(Vector3.Dot(direccionSuavizada, transform.forward), Vector3.Dot(direccionSuavizada, transform.right)) / escala;
+            if (ad.sqrMagnitude > 1f) ad.Normalize();
+            animator.SetFloat(ParamAdelante, ad.x);
+            animator.SetFloat(ParamLateral, ad.y);
 
             if (soldier != null && soldier.Motor != null)
             {
@@ -202,6 +217,41 @@ namespace SP.Presentation
             pesoDisparo = Mathf.MoveTowards(pesoDisparo, objetivo, velocidadDeMezcla * dt);
             if (animator.layerCount > CapaDisparo)
                 animator.SetLayerWeight(CapaDisparo, pesoDisparo);
+        }
+
+        float AlturaDelPieMasBajo()
+        {
+            if (pies == null)
+            {
+                var lista = new System.Collections.Generic.List<Transform>();
+                foreach (var tr in animator.GetComponentsInChildren<Transform>(true))
+                {
+                    var n = tr.name.ToLowerInvariant();
+                    if (n.Contains("foot") || n.Contains("toe")) lista.Add(tr);
+                }
+                pies = lista.ToArray();
+            }
+            float min = float.MaxValue;
+            for (int i = 0; i < pies.Length; i++) min = Mathf.Min(min, pies[i].position.y);
+            return min == float.MaxValue ? float.NaN : min - transform.position.y - elevacionDePies;
+        }
+
+        void LateUpdate()
+        {
+            if (animator == null || soldier == null || soldier.Motor == null) return;
+            var modelo = animator.transform;
+            if (modelo == transform) return;
+            if (!modeloBaseTomada) { modeloBase = modelo.localPosition; modeloBaseTomada = true; }
+            float alturaPie = AlturaDelPieMasBajo();
+            if (float.IsNaN(alturaPie)) return;
+            bool quieto = velocidadSuavizada < 0.05f;
+            if (quieto && !soldier.Motor.IsJumping && !soldier.Motor.IsCrouching) pieEnReposo = alturaPie;
+            float objetivo = 0f;
+            if (!float.IsNaN(pieEnReposo) && !soldier.Motor.IsJumping && !soldier.Motor.IsCrouching && !quieto)
+                objetivo = Mathf.Clamp(pieEnReposo - alturaPie, 0f, 0.1f);
+            elevacionDePies = Mathf.MoveTowards(elevacionDePies, objetivo, 0.6f * Time.deltaTime);
+            var lp = modeloBase; lp.y += elevacionDePies;
+            modelo.localPosition = lp;
         }
     }
 }

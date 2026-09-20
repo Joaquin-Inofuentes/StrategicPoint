@@ -70,7 +70,11 @@ namespace SP.Player
         // shooters: sin esto no habia forma de invertir el eje vertical.
         public bool InvertLookY { get; set; }
         [SerializeField] float rtsPanSpeed = 28f;   // x2 (antes 14)
-        [SerializeField] float rtsZoomSpeed = 40f;   // x2 (antes 20)
+        // Ronda 11: 80 (era 40, y antes 20) y sin suavizado (ver CameraRig.AnimarZoom). Const y no [SerializeField]: un valor serializado en la escena pisaria el nuevo.
+        public const float rtsZoomSpeed = 80f;
+        // [E]: menos de esto = interactuar (toque); esto o mas = accion especial de la clase.
+        public const float SostenerParaEspecial = 0.5f;
+        bool eToque;
 
         // Las ordenes de escuadra viven en el radial de [Q]; las teclas sueltas
         // heredadas (F1-F3, G, T, Y, U, I, Z, C, F, B, K) quedan apagadas. Solo
@@ -669,9 +673,13 @@ namespace SP.Player
             if (PauseRef != null && PauseRef.IsControlsOverlayOpen) return;
 
             UpdateCursorLock(kb, Mouse.current);
+            if (Rig.Mode != ControlMode.Rts) CursorContextual.Restaurar();
 
             // [F4] modo dios y [C] (mantener) vista tactica: se atienden en cualquier modo de camara.
             if (kb.f4Key.wasPressedThisFrame) AlternarModoDios();
+            // Ronda 11: [F9] mata al soldado que manejas y [F10] revive a la escuadra caida (para probar si el medico viene).
+            if (kb.f9Key.wasPressedThisFrame) ModeToast?.Show(ComandosDeDepuracion.Matar().ToUpperInvariant(), 1.5f);
+            if (kb.f10Key.wasPressedThisFrame) ModeToast?.Show(ComandosDeDepuracion.Revivir().ToUpperInvariant(), 1.5f);
             ActualizarVistaTactica();
 
             if (MinimapRef != null)
@@ -930,10 +938,10 @@ namespace SP.Player
                 var candidatoAlMorir = OrderService.FindNearestFreeAlly(deadSoldier.transform.position, TeamId.Player, deadSoldier);
                 if (candidatoAlMorir == null)
                 {
-                    GameLog.Line("Perdiste");
+                    // Ronda 11: la derrota (o el revivir en calma) la decide EstadoDePartida, que mira a toda la escuadra en cada tick.
+                    GameLog.Line("Sin aliados libres: EstadoDePartida decide derrota o recuperacion");
                     Rig.SetMode(ControlMode.Rts);
                     Rig.SetRtsView(deadSoldier.transform.position);
-                    if (Outcome != null) Outcome.ShowDefeat();
                 }
                 else
                 {
@@ -1257,7 +1265,10 @@ namespace SP.Player
             // agacharHeld es una variable local de mas arriba en este mismo
             // metodo -- se agachan Y afinan la punteria a la vez, algo
             // coherente (mismo pedido que ya reduce el spread al agachar).
-            bool ctrlSostenido = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed || MandoFps.Agachar;
+            // Ronda 11 (punto 14): la habilidad especial pasa a [E] MANTENIDO (>= SostenerParaEspecial); un toque corto de [E] interactua.
+            // [Ctrl] queda solo para agacharse. eToque se calcula UNA vez por cuadro: WasTapped consume la pulsacion.
+            eToque = KeyBindings.WasTapped(KeyBindings.Interactuar, SostenerParaEspecial);
+            bool ctrlSostenido = KeyBindings.IsHeld(KeyBindings.Interactuar, SostenerParaEspecial) || MandoFps.Agachar;
             ActualizarHabilidadDeClase(result, ctrlSostenido, moving);
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateAmmoWarning(Brain.Current.Weapon);
@@ -1446,12 +1457,12 @@ namespace SP.Player
             // Ametralladora fija: [E] la ocupa (apuntandole o parado junto a ella) y [E] la deja.
             if (TorretaFijaActiva)
             {
-                if (KeyBindings.WasPressed(KeyBindings.Interactuar) || KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo))
+                if (eToque || KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo))
                 { if (!BloqueaAtajo("USA EL RADIAL: [Q] → TORRETA FIJA → SALIR")) SalirDeTorreta(); }
                 else SetInstructionText("[Mouse] apuntar (arco limitado) · [Click] disparar · [Click der.] mirar por la mira · [R] recargar · [E] salir de la torreta · [TAB] vista RTS");
                 if (TorretaFijaActiva) return;
             }
-            else if (KeyBindings.WasPressed(KeyBindings.Interactuar))
+            else if (eToque)
             {
                 var t = result.Type == AimTargetType.Torreta ? result.Torreta : TorretaFija.MasCercana(Brain.Current.transform.position, TorretaFija.AlcanceDeUso);
                 if (t != null && FindNearestPickup(Brain.Current.transform.position) == null && !(Vehicle != null && Vector3.Distance(Brain.Current.transform.position, Vehicle.transform.position) <= interactRadius))
@@ -1488,7 +1499,7 @@ namespace SP.Player
             {
                 if (!BloqueaAtajo("USA EL RADIAL: [Q] → TANQUE → SUBIRME YO")) EnterVehicle(nearVehicle);
             }
-            else if (KeyBindings.WasPressed(KeyBindings.Interactuar))
+            else if (eToque)
             {
                 if (nearPickup != null) nearPickup.EquipOn(Brain.Current.Weapon, Brain.Current.Id);
                 else if (nearVehicle != null && !BloqueaAtajo("USA EL RADIAL: [Q] → TANQUE → SUBIRME YO")) EnterVehicle(nearVehicle);
@@ -1643,7 +1654,7 @@ namespace SP.Player
                 }
                 medicoAccionSegundos += Time.deltaTime;
                 MostrarCirculoEnfoque(Mathf.Clamp01(medicoAccionSegundos / TiempoDeReanimarMedico));
-                SetInstructionText($"[Ctrl] Reanimando a {caido.DisplayName}...");
+                SetInstructionText($"[E mantenido] Reanimando a {caido.DisplayName}...");
                 if (medicoAccionSegundos >= TiempoDeReanimarMedico && TryRevivir(caido, true))
                 {
                     medicoAccionSegundos = 0f;
@@ -1670,7 +1681,7 @@ namespace SP.Player
                 }
                 float frac = herido.Health.MaxHealth > 0 ? (float)herido.Health.Current / herido.Health.MaxHealth : 1f;
                 MostrarCirculoEnfoque(Mathf.Clamp01(frac));
-                SetInstructionText($"[Ctrl] Curando a {herido.DisplayName}...");
+                SetInstructionText($"[E mantenido] Curando a {herido.DisplayName}...");
                 if (herido.Health.Current >= herido.Health.MaxHealth)
                 {
                     if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
@@ -1716,7 +1727,7 @@ namespace SP.Player
             if (activo && progreso01 > 0.01f)
             {
                 MostrarCirculoEnfoque(progreso01);
-                SetInstructionText(progreso01 >= 0.999f ? "[Ctrl] Punteria maxima" : "[Ctrl] Afinando la punteria...");
+                SetInstructionText(progreso01 >= 0.999f ? "[E mantenido] Punteria maxima" : "[E mantenido] Afinando la punteria...");
             }
             else if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
         }
@@ -1880,21 +1891,6 @@ namespace SP.Player
                 if (OrderService.IssueCoverOrder(seleccion[i], Coberturas.Puntos[idx], Coberturas.Duenos[idx])) n++;
             }
             return n;
-        }
-
-        // RTS + [Shift] apuntando a una cobertura: holograma del primer
-        // seleccionado.
-        void UpdateCoverPreviewRts(Keyboard kb, Ray screenRay)
-        {
-            bool ver = KeyBindings.IsPressed(KeyBindings.VerTactico) || (OrdenesMenu != null && OrdenesMenu.Abierto && OrdenesMenu.Seleccion == MenuDeOrdenes.Cubrirse);
-            if (!ver || Selection.Selected.Count == 0) { CoverHologram.Ocultar(); return; }
-            var r = Aim.Evaluate(screenRay, null);
-            if (!TryResolverCobertura(r, out var punto, out var dueno)) { CoverHologram.Ocultar(); return; }
-            Soldier primero = null;
-            foreach (var s in Selection.Selected) if (s != null && s.Health.IsAlive && s.gameObject.activeInHierarchy) { primero = s; break; }
-            if (primero == null) { CoverHologram.Ocultar(); return; }
-            var to = r.Type == AimTargetType.Obstacle ? r.HitTransform : (dueno != null ? dueno.transform : null);
-            CoverHologram.Mostrar(primero, punto, Coberturas.FrenteDe(punto, dueno), to);
         }
 
         // -----------------------------------------------------------
@@ -2469,7 +2465,7 @@ namespace SP.Player
                 case AimTargetType.Caido:
                     return "Aliado caido   ·   [Q] mantener: radial → REANIMAR (si queda un medico)   ·   [E] mantener 5 s: reanimarlo vos   ·   [TAB] vista RTS";
                 default:
-                    return "[WASD] moverse   ·   [Shift] correr   ·   [Ctrl] agacharse   ·   [F] cuchillo   ·   [G] granada   ·   [Click] disparar   ·   [Click der.] mantener: mirar por la mira   ·   [Q] mantener: radial   ·   [C] mantener: coberturas   ·   [TAB] vista RTS   ·   [F4] modo dios";
+                    return "[WASD] moverse   ·   [Shift] correr   ·   [Ctrl] agacharse   ·   [E] tocar: interactuar · mantener: habilidad de clase   ·   [F] cuchillo   ·   [G] granada   ·   [Click] disparar   ·   [Click der.] mantener: mirar por la mira   ·   [Q] mantener: radial   ·   [C] mantener: coberturas   ·   [TAB] vista RTS   ·   [F4] modo dios";
             }
         }
 
@@ -2827,6 +2823,7 @@ namespace SP.Player
             else ultimoResultadoDeMira = resultRts;
             UpdateAimRing(resultRts);
             UpdateVehicleMountIndicatorRts(resultRts);
+            ActualizarCursorRts(resultRts);
 
             // Pedido explicito: mantener click derecho apretado NO mueve
             // la camara. Antes, sostenerlo y mover la mano de mas (aunque
@@ -3072,6 +3069,7 @@ namespace SP.Player
             }
 
             UpdateControlGroups(kb);
+            SeleccionarConFuncion(kb);
             UpdateFormationPreview(mouse, screenRay);
 
             // [Espacio] recentra la camara en el centroide de la escuadra
@@ -3243,6 +3241,14 @@ namespace SP.Player
             {
                 if (!digitKeys[i].wasPressedThisFrame) continue;
                 int group = i + 1;
+
+                // Ronda 11 (punto 18): en RTS [1] [2] [3] seleccionan al soldado 1/2/3 de la escuadra (Shift suma; doble toque centra).
+                // Los grupos de control pasan a [4]-[9] (Ctrl + numero guarda, numero recupera).
+                if (i < 3)
+                {
+                    if (!ctrl) SeleccionarSoldadoDeEscuadra(i, kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed);
+                    continue;
+                }
 
                 if (ctrl)
                 {

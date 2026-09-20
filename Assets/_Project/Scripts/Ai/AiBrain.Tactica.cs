@@ -32,7 +32,7 @@ namespace SP.Ai
         public Vector3 CoberturaPunto => coberturaPunto;
 
         // Solo los enemigos buscan cobertura por su cuenta en pleno combate.
-        bool BuscaCoberturaSolo => self != null && self.Team == TeamId.Enemy;
+        bool BuscaCoberturaSolo => self != null && (self.Team == TeamId.Enemy || (Humanizada && Herido && !IsPossessedByPlayer));
 
         // El jugador manda a este soldado a cubrirse en 'punto': camina, se
         // agacha y se queda ahi hasta recibir otra orden.
@@ -178,6 +178,7 @@ namespace SP.Ai
             if (yendoACobertura)
             {
                 self.Motor.SetCrouching(false);
+                if (FuegoDeCoberturaHerido(dt)) return true;
                 if (AdvanceTo(coberturaPunto, 0.6f, dt)) EntrarEnCoberturaTactica();
                 else return true;
             }

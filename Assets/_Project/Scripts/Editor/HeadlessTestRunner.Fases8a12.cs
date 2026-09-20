@@ -37,10 +37,15 @@ namespace SP.EditorTools
                 SP.Player.KeyBindings.CiclarPosesion, PlayerInputDriver.SostenerParaMenu);
             Check("Un toque de 0,1 s NO llega al umbral de mantener (no abre el menu)", !aLos100ms);
 
+            // Ronda 11 (punto 8): el umbral pasa de 0,3 a 0,5 s: 0,4 s sigue siendo un toque (accion por defecto), 0,6 s ya abre el menu.
             SP.Player.KeyBindings.ForzarInicioDePulsacion(SP.Player.KeyBindings.CiclarPosesion, 0.4f);
             bool aLos400ms = SP.Player.KeyBindings.HayPulsacionRegistrada(
                 SP.Player.KeyBindings.CiclarPosesion, PlayerInputDriver.SostenerParaMenu);
-            Check("Sostener 0,4 s SI llega al umbral de mantener (abre el menu)", aLos400ms);
+            Check("Sostener 0,4 s sigue siendo un toque (umbral de mantener = 0,5 s)", !aLos400ms && PlayerInputDriver.SostenerParaMenu == 0.5f);
+            SP.Player.KeyBindings.ForzarInicioDePulsacion(SP.Player.KeyBindings.CiclarPosesion, 0.6f);
+            bool aLos600ms = SP.Player.KeyBindings.HayPulsacionRegistrada(
+                SP.Player.KeyBindings.CiclarPosesion, PlayerInputDriver.SostenerParaMenu);
+            Check("Sostener 0,6 s SI llega al umbral de mantener (abre el menu)", aLos600ms);
 
             var menu = inputDriver.OrdenesMenu;
             Check("El menu de ordenes existe en el canvas y arranca cerrado", menu != null && !menu.Abierto);

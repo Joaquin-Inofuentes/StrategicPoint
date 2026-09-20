@@ -49,6 +49,7 @@ namespace SP.UI
             if (background == null) background = GetComponent<Image>();
             if (label == null) label = transform.Find("Label")?.GetComponent<Text>();
             if (healthFill == null) healthFill = transform.Find("BarBG/BarFill")?.GetComponent<Image>();
+            if (label != null) label.horizontalOverflow = HorizontalWrapMode.Overflow;   // Ronda 11: 2 renglones fijos, sin wrap que empuje texto sobre la barra
 
             // BUG REAL: GameplaySceneBootstrap.Start() repara (SpriteBlanco)
             // las Image Filled sin sprite UNA SOLA VEZ al arrancar la escena
@@ -208,19 +209,19 @@ namespace SP.UI
 
             if (!alive)
             {
-                label.text = $"<size=11><b>{Index} · {Soldier.ClassNameTitulo}</b></size>\n<size=10><color=#6f7278>{Soldier.DisplayName} — CAIDO</color></size>";
+                label.text = $"<size=11><b>{Index} · {Soldier.ClassNameTitulo}</b></size>\n<size=10><color=#6f7278>CAIDO</color></size>";
                 label.color = DeadTextColor;
                 return;
             }
 
-            string marker = possessed ? "► " : "   ";
-            string weapon = Soldier.Weapon != null ? Soldier.Weapon.CurrentWeaponKind.ToString() : "";
-            string estado = possessed ? "(vos)" : (brain != null ? StateLabel(brain.State) : "");
-            string estadoSuffix = string.IsNullOrEmpty(estado) ? "" : $"   ·   {estado}";
+            // Ronda 11 (punto 10): tres renglones y nada mas. "N · Especialidad" / "vida · arma" / barra de vida (la barra es el
+            // tercero). Nombre propio y estado salieron de la ficha: eran los que la hacian wrappear y pisar la barra.
+            string marker = possessed ? "► " : "";
+            string weapon = Soldier.Weapon != null ? WeaponCatalog.Get(Soldier.Weapon.CurrentWeaponKind).DisplayName : "";
             var hp = Soldier.Health;
             string vida = hp != null ? $"{hp.Current}/{hp.MaxHealth}" : "";
 
-            label.text = $"{marker}<size=11><b>{Index} · {Soldier.ClassNameTitulo}</b></size>\n<size=11><color=#d8dde6>{Soldier.DisplayName}   ·   {vida}   ·   {weapon}{estadoSuffix}</color></size>";
+            label.text = $"{marker}<size=12><b>{Index} · {Soldier.ClassNameTitulo}</b></size>\n<size=10><color=#d8dde6>{vida} · {weapon}</color></size>";
             label.color = Color.white;
         }
 

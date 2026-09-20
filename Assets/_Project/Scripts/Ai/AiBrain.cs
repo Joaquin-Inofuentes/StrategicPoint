@@ -367,7 +367,10 @@ namespace SP.Ai
         // multiplicador es la constante 1f, y x * 1f es bit a bit el mismo
         // float que x: la consulta recibe exactamente visionRange, el mismo
         // valor que recibia antes de existir las posturas.
-        public float EffectiveVisionRange => visionRange * StanceVisionMultiplier;
+        public float EffectiveVisionRange => visionRange * StanceVisionMultiplier * AmpliacionDeVisionActual;
+
+        // Ronda 11: solo en la partida principal (ver AiBrain.Disparo.cs). visionRange < 5 (enemigos dormidos del tutorial) no se toca.
+        float AmpliacionDeVisionActual => !Humanizada || visionRange < 5f ? 1f : AmpliacionDeVision * (self != null && self.Role == SP.Combat.RoleType.Sniper ? sniperAttackRangeMultiplier : 1f);
 
         float StanceVisionMultiplier =>
             stance == CombatStance.Defensiva ? defensiveVisionMultiplier : 1f;
@@ -382,7 +385,7 @@ namespace SP.Ai
         // WeaponHolder.MultiplicadorRol, que lee el mismo Role.
         [SerializeField] float sniperAttackRangeMultiplier = 1.6f;
 
-        public float EffectiveAttackRange => attackRange * RoleAttackRangeMultiplier;
+        public float EffectiveAttackRange => attackRange * RoleAttackRangeMultiplier * (Humanizada && visionRange >= 5f ? AmpliacionDeAtaque : 1f);
 
         // Armas de corto alcance (metralleta, escopeta): el soldado se acerca a 70% del alcance normal,
         // que es donde su dispersion rinde. Sin esto se quedaban a 12 m disparando al aire y perdian
@@ -396,6 +399,7 @@ namespace SP.Ai
                 if (self == null) return 1f;
                 if (self.Role == SP.Combat.RoleType.Sniper) return sniperAttackRangeMultiplier;
                 var w = self.Weapon;
+                if (w != null && w.CurrentWeaponKind == SP.Combat.WeaponKind.Shotgun && Humanizada) return FactorDeAlcanceEscopeta;
                 if (w != null && (w.CurrentWeaponKind == SP.Combat.WeaponKind.Smg || w.CurrentWeaponKind == SP.Combat.WeaponKind.Shotgun)) return FactorDeAlcanceCorto;
                 return 1f;
             }
@@ -489,6 +493,7 @@ namespace SP.Ai
                     self.Motor.SetCrouching(false);
                 }
             }
+            if (next == AiState.Attack) ArmarReaccion();
             State = next;
             EventBus.Instance.Publish(new AiStateChangedEvent(self.Id, next.ToString()));
         }
@@ -1112,7 +1117,7 @@ namespace SP.Ai
                         Vector3 origenDisparo = muzzle != null ? muzzle.position : self.transform.position;
                         Vector3 direccionDisparo = target.transform.position - origenDisparo;
                         if (direccionDisparo.sqrMagnitude < 0.0001f) direccionDisparo = self.transform.forward;
-                        self.Weapon.TryFire(self.transform.position, direccionDisparo.normalized);
+                        DispararConRafagas(direccionDisparo.normalized, dt);
                     }
 
                     // Attack-move: se traslada hacia el destino pedido SIN

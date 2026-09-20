@@ -816,7 +816,7 @@ namespace SP.Tutorial
                 Id = "demoler", Titulo = "DEMOLER UN MURO (ASALTO)", Teclas = "Ctrl", Acento = naranja,
                 Subs = new[]
                 {
-                    S("Apunta al muro de práctica (columna naranja)", "Ahora eres el soldado de ASALTO: apunta al muro de práctica (a unos 7 m). Al apuntarlo, el radial [Q] ofrece DEMOLER en dorado. Solo el asalto puede demoler.", "Mira al bloque marcado con la columna naranja.", () => f.apuntaAlMuro, v => f.apuntaAlMuro = v),
+                    S("Apunta al muro de práctica (columna naranja)", "Ahora eres el soldado de ASALTO: apunta al muro de práctica (a unos 5 m). Al apuntarlo, el radial [Q] ofrece DEMOLER en dorado. Solo el asalto puede demoler.", "Mira al bloque marcado con la columna naranja.", () => f.apuntaAlMuro, v => f.apuntaAlMuro = v),
                     S("Q → DEMOLER → YO DEMUELO", "Manteniendo el muro en la mira, mantén [Q]: DEMOLER aparece en dorado. Elige YO DEMUELO (la segunda opción).", "DEMOLER solo aparece si apuntas al muro y eres el asalto.", () => f.ordenDemolerYo, v => f.ordenDemolerYo = v),
                     S("CTRL agachado y quieto: carga 4 s", "Mantén CTRL (agachado) y NO te muevas: aparece un anillo que se llena en 4 segundos y suenan los pitidos de la carga.", "Si te levantas o te mueves, la carga se cancela.", () => f.cargandoDemolicion, v => f.cargandoDemolicion = v),
                     S("El muro vuela en pedazos", "Sigue quieto hasta que el anillo se llene: la carga explota y el muro desaparece.", "Tarda 4 segundos seguidos, quieto y agachado.", () => f.muroDemolido, v => f.muroDemolido = v),
@@ -1432,8 +1432,8 @@ namespace SP.Tutorial
         ObstacleMarker muroPractica;
         TutorialBeacon balizaMuro;
 
-        // Un bloque demolible a 7 m adelante (para el paso de demoler).
-        void CrearMuroDePractica(float distancia = 7f)
+        // Un bloque demolible a unos 5 m adelante (Ronda 11: el alcance de la carga es 4,5 m) (para el paso de demoler).
+        void CrearMuroDePractica(float distancia = 4.8f)
         {
             if (muroPractica != null) return;
             var yo = driver.Brain.Current; if (yo == null || driver.Rig.Cam == null) return;

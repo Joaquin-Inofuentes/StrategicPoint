@@ -44,6 +44,11 @@ namespace SP.Presentation
 
         GameObject panelDificultad;
 
+        // Ronda 11 (punto 4): el lienzo del menu es de 960x540 (ver MenuSceneBuilder) y este panel estaba dibujado con medidas de
+        // 1920x1080: las tres tarjetas sumaban 1410 de ancho sobre 960 y se salian de la pantalla. Todo se dibuja a media escala.
+        const float E = 0.5f;
+        static int F(int px) => Mathf.Max(11, Mathf.RoundToInt(px * E));
+
         public void MostrarDificultad()
         {
             var raiz = transform.parent;
@@ -54,12 +59,12 @@ namespace SP.Presentation
             panelDificultad = new GameObject("PanelDificultad", typeof(RectTransform), typeof(Image));
             panelDificultad.transform.SetParent(raiz, false);
             var fondo = panelDificultad.GetComponent<Image>();
-            fondo.color = new Color(0.04f, 0.05f, 0.07f, 0.96f);
+            fondo.color = new Color(0.04f, 0.05f, 0.07f, 1f);   // opaco: con 0,96 se transparentaban el titulo y los botones del menu de atras
             var frt = panelDificultad.GetComponent<RectTransform>();
             frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one; frt.offsetMin = frt.offsetMax = Vector2.zero;
 
-            Texto(panelDificultad.transform, font, "ELEGI LA DIFICULTAD", 54, new Vector2(0.5f, 0.86f), new Vector2(1200f, 90f), Color.white);
-            Texto(panelDificultad.transform, font, "Cambia la vida y el daño de los enemigos, de tu escuadra y el tuyo.", 22, new Vector2(0.5f, 0.78f), new Vector2(1200f, 40f), new Color(0.75f, 0.8f, 0.88f));
+            Texto(panelDificultad.transform, font, "ELEGI LA DIFICULTAD", F(54), new Vector2(0.5f, 0.86f), new Vector2(1200f * E, 90f * E), Color.white);
+            Texto(panelDificultad.transform, font, "Cambia la vida y el daño de los enemigos, de tu escuadra y el tuyo.", F(22), new Vector2(0.5f, 0.78f), new Vector2(1200f * E, 40f * E), new Color(0.75f, 0.8f, 0.88f));
 
             var niveles = new[] { NivelDificultad.Facil, NivelDificultad.Medio, NivelDificultad.Dificil };
             var colores = new[] { new Color(0.2f, 0.55f, 0.35f), new Color(0.2f, 0.42f, 0.7f), new Color(0.65f, 0.22f, 0.2f) };
@@ -72,11 +77,11 @@ namespace SP.Presentation
                 go.GetComponent<Image>().color = colores[i];
                 var rt = go.GetComponent<RectTransform>();
                 rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.45f);
-                rt.anchoredPosition = new Vector2((i - 1) * 470f, 0f);
-                rt.sizeDelta = new Vector2(440f, 360f);
-                Texto(go.transform, font, d.Nombre, 40, new Vector2(0.5f, 0.86f), new Vector2(420f, 60f), Color.white);
-                Texto(go.transform, font, Dificultad.Resumen(nivel), 20, new Vector2(0.5f, 0.52f), new Vector2(420f, 130f), Color.white, TextAnchor.MiddleLeft);
-                Texto(go.transform, font, d.Frase, 18, new Vector2(0.5f, 0.15f), new Vector2(400f, 70f), new Color(1f, 1f, 1f, 0.85f));
+                rt.anchoredPosition = new Vector2((i - 1) * 470f * E, 0f);
+                rt.sizeDelta = new Vector2(440f * E, 360f * E);
+                Texto(go.transform, font, d.Nombre, F(40), new Vector2(0.5f, 0.86f), new Vector2(420f * E, 60f * E), Color.white);
+                Texto(go.transform, font, Dificultad.Resumen(nivel), F(22), new Vector2(0.5f, 0.52f), new Vector2(420f * E, 150f * E), Color.white, TextAnchor.MiddleLeft);
+                Texto(go.transform, font, d.Frase, F(20), new Vector2(0.5f, 0.15f), new Vector2(400f * E, 80f * E), new Color(1f, 1f, 1f, 0.85f));
                 var b = go.GetComponent<Button>();
                 b.onClick.AddListener(() => IniciarPartida(nivel));
                 SP.UI.ButtonSfx.Attach(b);
@@ -87,8 +92,8 @@ namespace SP.Presentation
             volver.GetComponent<Image>().color = new Color(0.3f, 0.3f, 0.34f);
             var vrt = volver.GetComponent<RectTransform>();
             vrt.anchorMin = vrt.anchorMax = new Vector2(0.5f, 0.12f);
-            vrt.sizeDelta = new Vector2(260f, 56f);
-            Texto(volver.transform, font, "VOLVER", 26, new Vector2(0.5f, 0.5f), new Vector2(240f, 50f), Color.white);
+            vrt.sizeDelta = new Vector2(260f * E, 56f * E);
+            Texto(volver.transform, font, "VOLVER", F(26), new Vector2(0.5f, 0.5f), new Vector2(240f * E, 50f * E), Color.white);
             var vb = volver.GetComponent<Button>();
             vb.onClick.AddListener(() => panelDificultad.SetActive(false));
             SP.UI.ButtonSfx.Attach(vb);

@@ -31,8 +31,14 @@ namespace SP.UI
             if (i < 0 || i >= iconCache.Length) return null;
             if (iconCache[i] != null) return iconCache[i];
             // Las armas nuevas comparten el dibujo de la familia mas parecida.
-            var familia = kind switch { WeaponKind.Smg => WeaponKind.Rifle, WeaponKind.Shotgun => WeaponKind.Rifle, WeaponKind.Sniper => WeaponKind.Rifle, WeaponKind.Rocket => WeaponKind.Heavy, _ => kind };
-            var tex = SP.Core.RecursosCache.Cargar<Texture2D>(IconFolder + familia);
+            // Ronda 11 (punto 11): cada arma tiene su propio dibujo (antes Sniper/Smg/Shotgun mostraban el fusil de asalto). Si falta el
+            // PNG propio se cae al de la familia mas parecida.
+            var tex = SP.Core.RecursosCache.Cargar<Texture2D>(IconFolder + kind);
+            if (tex == null)
+            {
+                var familia = kind switch { WeaponKind.Smg => WeaponKind.Rifle, WeaponKind.Shotgun => WeaponKind.Rifle, WeaponKind.Sniper => WeaponKind.Rifle, WeaponKind.Rocket => WeaponKind.Heavy, _ => kind };
+                tex = SP.Core.RecursosCache.Cargar<Texture2D>(IconFolder + familia);
+            }
             if (tex == null) return null;
             iconCache[i] = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), 100f);
             iconCache[i].name = "WeaponIcon_" + kind;

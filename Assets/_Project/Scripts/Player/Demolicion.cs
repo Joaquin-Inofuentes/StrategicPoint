@@ -15,7 +15,7 @@ namespace SP.Player
         public const float SegundosNormales = 4f;
         // Tiempo de carga vigente. Es 4 s salvo en el paso del tutorial que practica CANCELAR.
         public static float Segundos = SegundosNormales;
-        public const float AlcanceMaximo = 9f;    // distancia maxima al obstaculo para cargar
+        public const float AlcanceMaximo = 4.5f;  // distancia maxima al obstaculo para cargar (Ronda 11: era 9 m; ahora la mitad)
         public const float LadoMaximo = 45f;      // muros mas largos que esto no se pueden volar
         public const int DanoDeLaCarga = 35;      // a los enemigos pegados al muro (nunca a los propios)
         public const float RadioDeLaCarga = 4.5f;
@@ -71,7 +71,7 @@ namespace SP.Player
     }
 
     // Componente del soldado de asalto. Dos modos:
-    //  * jugador: si lo manejas, se agacha (Ctrl), quieto y apuntando a un obstaculo a <= 9 m
+    //  * jugador: si lo manejas, se agacha (Ctrl), quieto y apuntando a un obstaculo a <= 4,5 m
     //    carga durante 4 s (anillo en pantalla) y estalla.
     //  * aliado: la orden "ASALTO DEMUELE" del radial lo manda al muro, se agacha 4 s y lo vuela.
     public class DemoledorAsalto : MonoBehaviour
@@ -130,7 +130,7 @@ namespace SP.Player
         {
             motivo = null;
             if (yo == null || yo.Role != RoleType.Assault) { motivo = "SOLO EL ASALTO DEMUELE"; return false; }
-            if (Demolicion.DistanciaA(yo, m) > Demolicion.AlcanceMaximo) { motivo = "ACERCATE MAS AL MURO (MAX 9 m)"; return false; }
+            if (Demolicion.DistanciaA(yo, m) > Demolicion.AlcanceMaximo) { motivo = "ACERCATE MAS AL MURO (MAX " + Demolicion.AlcanceMaximo.ToString("0.#") + " m)"; return false; }
             objetivo = m;
             return true;
         }

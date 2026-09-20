@@ -132,7 +132,8 @@ namespace SP.UI
             new ControlEntry("G", "granada: mantener para ver la curva y el radio, soltar para lanzar (clic der. o Esc la guardan)", ControlContext.FpsAPie, SP.Player.KeyBindings.Granada),
             new ControlEntry("1/2/3", "cambiar de arma según tu clase", ControlContext.FpsAPie),
 
-            new ControlEntry("E", "subir al tanque, usar la ametralladora fija o equipar el arma del piso; mantener 5 s junto a un caído: reanimarlo", ControlContext.FpsAPie, SP.Player.KeyBindings.Interactuar),
+            new ControlEntry("E", "tocar: subir al tanque, usar la ametralladora fija o equipar el arma del piso; mantener 5 s junto a un caído: reanimarlo", ControlContext.FpsAPie, SP.Player.KeyBindings.Interactuar),
+            new ControlEntry("E", "mantener (medio segundo): habilidad de clase (el médico cura y reanima, el asalto y el francotirador afinan la puntería)", ControlContext.FpsAPie, SP.Player.KeyBindings.Interactuar),
             new ControlEntry("E", "bajarse del vehículo", AdentroDelVehiculo, SP.Player.KeyBindings.Interactuar),
 
             new ControlEntry("[ ]", "subir o bajar al soldado que manejas en el orden de la escuadra", ControlContext.FpsAPie),
@@ -151,8 +152,9 @@ namespace SP.UI
             new ControlEntry("Espacio", "recentrar la cámara en la escuadra", ControlContext.Rts, SP.Player.KeyBindings.Recentrar),
             new ControlEntry("Rueda", "acercar y alejar la cámara hacia donde está el cursor", VistasRts),
 
-            new ControlEntry("Ctrl+1..9", "guardar la selección como grupo de control", ControlContext.Rts),
-            new ControlEntry("1..9", "recuperar el grupo de control (doble toque: además lleva la cámara ahí)", ControlContext.Rts),
+            new ControlEntry("1 / 2 / 3", "seleccionar al soldado 1, 2 o 3 de la escuadra (también F1 / F2 / F3; Shift suma; doble toque lleva la cámara)", ControlContext.Rts),
+            new ControlEntry("Ctrl+4..9", "guardar la selección como grupo de control", ControlContext.Rts),
+            new ControlEntry("4..9", "recuperar el grupo de control (doble toque: además lleva la cámara ahí)", ControlContext.Rts),
             new ControlEntry("Shift+Clic der.", "encolar el destino detrás de las órdenes ya dadas", ControlContext.Rts),
             new ControlEntry("Clic der.", "mantener: vista previa de la formación antes de soltar la orden", ControlContext.Rts),
 

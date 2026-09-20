@@ -16,6 +16,7 @@ namespace SP.Core
             SP.Combat.Health.RegeneracionPermitida = true;
             SP.Player.Demolicion.Segundos = SP.Player.Demolicion.SegundosNormales;
             SP.Combat.WeaponHolder.ReservasActivas = false;
+            SP.Mision.EstadoDePartida.Reiniciar();
         }
     }
 }

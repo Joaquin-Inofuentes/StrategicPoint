@@ -596,7 +596,10 @@ namespace SP.Combat
             }
         }
 
-        public bool TryFire(Vector3 origin, Vector3 direction)
+        // dispersionMinima (grados): piso de dispersion para la IA (Ronda 11); 0 = solo la del arma. Se atenua igual por el rol (francotirador).
+        public bool TryFire(Vector3 origin, Vector3 direction) => TryFire(origin, direction, 0f);
+
+        public bool TryFire(Vector3 origin, Vector3 direction, float dispersionMinima)
         {
             if (owner == null) Bootstrap();
             if (IsReloading || cooldownTimer > 0f || pool == null || owner == null) return false;
@@ -612,7 +615,7 @@ namespace SP.Combat
             // (el patron acumulado hasta ahora), y recien despues crece
             // para el proximo -- si no, hasta el primer disparo de una
             // rafaga saldria desviado por su propio impacto.
-            var spreadDir = ApplySpread(direction, SpreadDegEfectivo);
+            var spreadDir = ApplySpread(direction, Mathf.Max(SpreadDegEfectivo, dispersionMinima * MultiplicadorRol));
             spreadDeg = Mathf.Min(MaxSpreadDeg, spreadDeg + SpreadGrowthPerShot);
 
             var spawnPos = Muzzle != null ? Muzzle.position : origin;

@@ -202,7 +202,7 @@ namespace SP.Core
             { "Quédate cerca: el médico llega, suena la campanita y recuperas la vida.", "Stay close: the medic arrives, the little bell rings and you recover health." },
             { "DEMOLER UN MURO (ASALTO)", "DEMOLISH A WALL (ASSAULT)" },
             { "Apunta al muro de práctica (columna naranja)", "Aim at the practice wall (orange column)" },
-            { "Ahora eres el soldado de ASALTO: apunta al muro de práctica (a unos 7 m). Al apuntarlo, el radial [Q] ofrece DEMOLER en dorado. Solo el asalto puede demoler.", "You are now the ASSAULT soldier: aim at the practice wall (about 7 m away). When aimed at, the [Q] radial offers DEMOLISH in gold. Only the assault soldier can demolish." },
+            { "Ahora eres el soldado de ASALTO: apunta al muro de práctica (a unos 5 m). Al apuntarlo, el radial [Q] ofrece DEMOLER en dorado. Solo el asalto puede demoler.", "You are now the ASSAULT soldier: aim at the practice wall (about 5 m away). When aimed at, the [Q] radial offers DEMOLISH in gold. Only the assault soldier can demolish." },
             { "Mira al bloque marcado con la columna naranja.", "Look at the block marked with the orange column." },
             { "Q → DEMOLER → YO DEMUELO", "Q → DEMOLISH → I DEMOLISH" },
             { "Manteniendo el muro en la mira, mantén [Q]: DEMOLER aparece en dorado. Elige YO DEMUELO (la segunda opción).", "Keeping the wall in your crosshair, hold [Q]: DEMOLISH shows in gold. Pick I DEMOLISH (the second option)." },

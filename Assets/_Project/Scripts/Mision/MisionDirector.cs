@@ -73,7 +73,14 @@ namespace SP.Mision
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reiniciar() => Instancia = null;
 
-        void Awake() => Instancia = this;
+        void Awake()
+        {
+            // SC_Tutorial quedo con un objeto "Mision" heredado: lanzaba las lineas enemigas y la derrota de la mision
+            // sobre el tutorial (ronda 11: la corrida automatica perdia en el paso 12). El tutorial nunca corre la mision.
+            var boot = FindAnyObjectByType<GameplaySceneBootstrap>();
+            if (boot != null && boot.esTutorial) { Destroy(gameObject); return; }
+            Instancia = this;
+        }
         void OnDestroy() { if (Instancia == this) Instancia = null; MusicDirector.Atenuacion = 1f; }
 
         void Start()
