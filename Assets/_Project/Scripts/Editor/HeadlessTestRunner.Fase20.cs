@@ -77,6 +77,13 @@ namespace SP.EditorTools
             foreach (var k in new[] { WeaponKind.Sniper, WeaponKind.Smg, WeaponKind.Shotgun, WeaponKind.Rocket })
                 Check($"Icono propio de {k}", System.IO.File.Exists("Assets/_Project/Resources/UI/WeaponIcons/Icono_" + k + ".png"));
 
+            // --- Audio (item 65): ningun sonido recorta, tiene corriente continua, NaN ni corte seco al final ---
+            var audio = AudioAnalisisReport.Analizar();
+            string malos = "";
+            foreach (var f in audio)
+                if (f.Avisos.Length > 0 && f.Nombre != "Sfx_EmptyClick") malos += f.Nombre + ":" + f.Avisos.Trim() + " ";   // el clic del arma vacia arranca seco a proposito
+            Check($"Analisis de audio: {audio.Count} sonidos sin recorte, DC, NaN, clics ni volumen extremo ({malos})", audio.Count >= 80 && malos.Length == 0);
+
             // --- Caida (item 51): desde un borde alto cae y se lastima; un escalon chico no hace dano ---
             Check("Formula de dano por caida: 3 m sin dano, 6 m = 75", SoldierMotor.DanioDeCaida(3f) == 0 && SoldierMotor.DanioDeCaida(6f) == 75);
             var pisoPrueba = GameObject.CreatePrimitive(PrimitiveType.Cube);

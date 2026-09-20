@@ -105,7 +105,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 
 | # | Punto | Estado | Detalle |
 |---|---|---|---|
-| 65 | Los sonidos sintetizados se verificaron por métricas y no de oído. | NO APLICABLE (agente) | Limitacion real, no pendiente de trabajo: un agente sin oido no puede juzgar timbre/mezcla, solo longitud/amplitud/ausencia de NaN (ver HeadlessTestRunner, ClipAudible). Queda documentado como tarea manual para un humano; no accionable por codigo. |
+| 65 | Los sonidos sintetizados se verificaron por métricas y no de oído. | NO APLICABLE (agente) | Limitacion real, no pendiente de trabajo: un agente sin oido no puede juzgar timbre/mezcla, solo longitud/amplitud/ausencia de NaN (ver HeadlessTestRunner, ClipAudible). Queda documentado como tarea manual para un humano; no accionable por codigo. **Ronda 11:** se sumo `AudioAnalisisReport` (menu Strategic Point > Reportes > Analisis de audio, `Docs/AUDIO_ANALISIS.csv`): mide los 84 sonidos (SfxKind y los de cada arma) en pico, RMS, recorte, corriente continua, clic al arrancar/cortar y frecuencia dominante. Resultado: ninguno recorta, tiene DC ni NaN, y todos terminan sin corte seco; el unico aviso es el clic del arma vacia, que arranca seco a proposito. La Fase 20 de la suite lo vigila. Sigue sin poder juzgarse el timbre o si un sonido "queda bien": eso es una escucha humana. |
 | 66 | No hay oclusión por muros ni reverb por ambiente. | HECHO |  |
 | 67 | No hay pasos según la superficie. | YA ESTABA | Verificado en el codigo/suite |
 | 68 | En pausa `timeScale=0` pero `AudioListener.pause=false`, así que el audio sigue. | HECHO |  |
