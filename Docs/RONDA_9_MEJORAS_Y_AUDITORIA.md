@@ -53,3 +53,7 @@ El menu ya no es un color liso: `MenuAmbiente` arma solo, al cargar SC_MainMenu,
 ## Idioma completo (item 27)
 
 Con [F12] el juego pasa a ingles tambien en el tutorial (titulos, pasos, pistas y flechas del radial) y en la mision (avisos y HUD de objetivos): 321 textos en `Core/LocTextos.cs`. Los contadores y distancias en vivo siguen en espanol. La suite comprueba que cada clave de la tabla siga existiendo en el codigo.
+
+## Reproductor automatico del tutorial (item 95)
+
+Se agrego `TutorialAutoPlayer` con teclado y mouse virtuales (Input System). Corrida completa en Play: 36 pasos, 0 fallidos. La eleccion de opcion en el anillo del radial se invoca por `EjecutarOrdenRadial` (con mira real); el resto son gestos de teclado y mouse. Corregido de paso: TANQUE ALLI desde un asiento (usaba la mira vieja de a pie) y el relevo de conductor. Detalle en `Docs/TUTORIAL.md`, seccion 6.

@@ -461,7 +461,23 @@ namespace SP.Player
                 case 2: // TANQUE ALLI
                 {
                     if (v == null) { RejectOrder("NO HAY TANQUE"); return false; }
-                    var punto = PuntoApuntadoParaOrdenes(aim);
+                    Vector3 punto;
+                    // Dentro del tanque la mira de a pie no se actualiza (quedaria el propio tanque como "alli"):
+                    // igual que [T], se toma el suelo que toca el rayo de la camara del asiento.
+                    if (currentSeat.HasValue && Rig != null && Rig.Cam != null)
+                    {
+                        if (!TryGroundPointBehindVehicle(Rig.GetForwardRay(), out punto)) { RejectOrder("APUNTA AL SUELO PARA MANDAR EL VEHICULO"); return false; }
+                    }
+                    else punto = PuntoApuntadoParaOrdenes(aim);
+                    // Igual que [T]: si nadie maneja (el jugador esta en el canon), un aliado a bordo toma el volante.
+                    if (v.Driver == null)
+                    {
+                        foreach (var ocupante in v.Occupants)
+                        {
+                            if (ocupante == null || ocupante == yo || ocupante.Health == null || !ocupante.Health.IsAlive || v.IsMountAnimating(ocupante)) continue;
+                            if (v.MoveToSeat(ocupante, VehicleSeatRole.Driver)) break;
+                        }
+                    }
                     if (v.Driver == null) { RejectOrder("EL TANQUE NECESITA UN CONDUCTOR"); return false; }
                     if (!TryIssueVehicleMoveOrder(punto, v)) { RejectOrder("EL TANQUE YA VA / ESTA AHI"); return false; }
                     if (currentSeat == VehicleSeatRole.Driver) autoConduccion = true;

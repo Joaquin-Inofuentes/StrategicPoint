@@ -122,3 +122,14 @@ Sirve por mensaje: `driver.SendMessage("SetDestination", new Vector3(0, 0, 103))
 ## 5. Nivel (blocking)
 
 Terreno 70 × 210 m, de sur a norte: **campo de tiro** (pared gris, caja amarilla destructible, enemigo quieto) → **plaza** (2 aliados lejos, zona A y zona B) → **patio del tanque** → **corredor** de 30 m con 3 chicanes y la **meta** (pilares + dintel dorado). Los pasos nuevos crean sus propios objetos de práctica en runtime y los limpian al salir: **2 coberturas de sacos** (paso 14), **muro demolible** (paso 17) y **ametralladora fija de práctica** (paso 18: base baja, trípode y cañón hechos con primitivas + `TorretaFija.Instalar`).
+
+---
+
+## 6. Reproductor automático del tutorial (gestos reales)
+
+`SP.Tutorial.TutorialAutoPlayer` recorre los 36 pasos sin `SaltarPaso`: crea un **teclado y un mouse virtuales** (`EntradaVirtual`, Input System) y hace lo que haría una persona: camina con W/A/S/D, gira con el delta del mouse, dispara con el clic, recarga con R, usa Shift+clic derecho para seleccionar, mantiene Ctrl para demoler, sube al tanque y gira el cañón con el mouse.
+
+- Lanzar (Play en `SC_Tutorial`): `SP.Tutorial.TutorialAutoPlayer.Lanzar(0)`; con un número se arranca desde ese paso (los anteriores se adelantan con `SaltarPaso`, así que el jugador queda lejos de todo: para probar el tramo del tanque conviene la corrida completa).
+- Cada paso tiene un tope de 45 s (100 s los del tanque y la meta); si se vence, el log dice `TEST FALLIDO` y se fuerza el paso para no trabar la corrida.
+- Órdenes del radial: la mira es real (se gira y se inclina la cámara), y la opción del anillo se elige llamando a `EjecutarOrdenRadial(categoría, opción)`, el mismo método que usa el menú al soltar Q.
+- Último resultado: corrida completa, 36 pasos, 0 fallidos. Dos defectos reales aparecieron y quedaron corregidos: TANQUE ALLÍ desde un asiento usa ahora el suelo que toca la cámara (antes quedaba el tanque como destino) y cede el volante a un aliado a bordo, igual que [T].
