@@ -1,4 +1,4 @@
-# Corre la suite del juego en cada push y pull request.
+# Corre las comprobaciones estaticas (siempre) y la suite del juego (si hay licencia) en cada push y pull request.
 # Necesita una licencia de Unity cargada como secretos del repositorio (UNITY_LICENSE, UNITY_EMAIL, UNITY_PASSWORD)
 # segun https://game-ci.com/docs/github/activation. Mientras no esten cargados el trabajo avisa y se salta la suite
 # (antes fallaba en rojo en cada push con "Missing Unity License File"); con los secretos corre y falla si algo falla.
@@ -9,6 +9,13 @@ on:
   pull_request:
 
 jobs:
+  # No necesita licencia: valida .meta, reglas de codigo, conteos de la auditoria y escenas del build en cada push.
+  estatico:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 Tools/Ci/verificar_estatico.py
+
   suite:
     runs-on: ubuntu-latest
     env:

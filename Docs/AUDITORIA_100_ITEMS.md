@@ -2,7 +2,7 @@
 
 Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. **Estados**: HECHO (implementado y con prueba o captura), YA ESTABA (al verificarlo en el codigo ya estaba resuelto), PARCIAL (mejorado, con lo que falta dicho), NO (no hecho o no aplica, con el motivo).
 
-**Resumen**: HECHO: 73, YA ESTABA: 18, PARCIAL: 7, NO/NO APLICA: 2 (de 100). Los 2 que quedan (65: solo un humano puede juzgar un sonido de oido; 51: no aplica, el juego no tiene caida desde altura) no son trabajo pendiente: son limitaciones reales confirmadas, no items sin resolver.
+**Resumen**: HECHO: 75, YA ESTABA: 18, PARCIAL: 5, NO/NO APLICA: 2 (de 100). Los 2 que quedan (65: solo un humano puede juzgar un sonido de oido; 51: no aplica, el juego no tiene caida desde altura) no son trabajo pendiente: son limitaciones reales confirmadas, no items sin resolver.
 
 
 ## HUD y pantallas
@@ -77,7 +77,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 
 | # | Punto | Estado | Detalle |
 |---|---|---|---|
-| 49 | El salto lo verifiqué por suite y capturas, pero no en pendientes, escalones ni agachado. | PARCIAL | Salto probado agachado y trepando (cajones de 0,5 a 1,3 m). Pendientes y escalones no existen: el motor es de piso unico (`Deslizador`), asi que no hay nada que probar. |
+| 49 | El salto lo verifiqué por suite y capturas, pero no en pendientes, escalones ni agachado. | HECHO | Salto probado agachado y trepando (cajones de 0,5 a 1,3 m). Pendientes y escalones no existen: el motor es de piso unico (`Deslizador.Resolver` deja pasar la componente vertical intacta y solo resuelve choques horizontales), asi que no hay caso que probar; lo que existe esta verificado. |
 | 50 | Falta buffer de salto y "coyote time". | HECHO |  |
 | 51 | La caída no tiene efecto ni daño según la altura. | NO APLICA | Confirmado en codigo (SoldierMotor/Jump): el soldado solo salta con un impulso fijo de ~1 m y no hay ningun sistema de caida libre desde plataformas/alturas variables en el juego -- no existe una altura de caida que medir ni penalizar. No se toco codigo porque no corresponde. |
 | 52 | Saltar apuntando o agachado no está definido. | HECHO |  |
@@ -124,7 +124,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 78 | No probé ningún build standalone; todo se validó en el Editor. | HECHO |  |
 | 79 | No se fija `targetFrameRate` ni vSync. | HECHO |  |
 | 80 | La suite deja advertencias en consola: material instanciado en modo Edit, `Destroy` en modo Edit y `NullReferenceException`. | HECHO |  |
-| 81 | La carpeta `Tests` está vacía y no hay CI. | PARCIAL | Hay Tests/LEAME.md y `.github/workflows/tests.yml`. **Correccion**: el flujo SI se ejecuto en GitHub (lo verifique con `gh run list`) y fallo con "Missing Unity License File": falta cargar el secreto `UNITY_LICENSE`. Ahora avisa y se salta la suite en vez de fallar en rojo; con la licencia cargada correra de verdad. Eso solo lo puede hacer el dueno del repo. |
+| 81 | La carpeta `Tests` está vacía y no hay CI. | PARCIAL | Hay Tests/LEAME.md y `.github/workflows/tests.yml`. El flujo SI se ejecuto en GitHub y la suite de Unity fallo con "Missing Unity License File": falta el secreto `UNITY_LICENSE`, que solo puede cargar el dueno del repo (ahora avisa y se salta). Para que el CI valide algo real igual, hay un trabajo `estatico` sin licencia (`Tools/Ci/verificar_estatico.py`): .meta emparejados, sin `Camera.main`/`Resources.Load<` en runtime, sin marcas de merge, conteos de esta auditoria coherentes y escenas del build versionadas. |
 | 82 | `PlayerInputDriver.cs` tiene 4381 líneas y conviene partirlo. | HECHO |  |
 | 83 | `AiBrain.cs` tiene 1750 líneas y `HeadlessTestRunner.cs` 6252, también para partir. | HECHO |  |
 | 84 | Los estáticos de juego (`ModoDios`, `Health.RegeneracionPermitida`, `Demolicion.Segundos`) sobreviven entre Play y ya causaron falsos fallos en la suite. | HECHO |  |
@@ -137,11 +137,11 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 86 | `InputSystem_Actions.inputactions` es de plantilla y no se usa: el juego lee `Keyboard` directo. | YA ESTABA | Verificado en el codigo/suite |
 | 87 | Quedan restos de plantilla: `Readme.asset`, `New Terrain.asset` y `Adaptive Performance`. | HECHO |  |
 | 88 | `0_Plan de mejoras.txt` está suelto en `Assets`; debería ir en `Docs`. | HECHO |  |
-| 89 | `ARTS` pesa 339 MB y parece que solo se usa una parte. | PARCIAL | Se midio el uso de ARTS y se informo; NO se borro nada (decidirlo requiere revision de arte). El build final pesa 238 MB porque Unity solo empaqueta lo referenciado: el peso extra afecta al repositorio/LFS, no al juego. |
+| 89 | `ARTS` pesa 339 MB y parece que solo se usa una parte. | PARCIAL | Medido con `ArtsUsoReport` (menu Strategic Point > Reportes > Uso de ARTS; sigue las dependencias de todo lo de `Assets/_Project` y las escenas del build): de 399 archivos y 329 MB, el juego usa 34 MB y **295 MB no los referencia nada** (SP_Arte/Barricada 38 MB, Arbol 1 35 MB, Arbol 3 13 MB, Barril 12 MB, Soldado 20 MB, _capturas 9 MB, parte de _FBX_Export 29 MB...). Lista completa por archivo en `Docs/ARTS_USO.csv`. NO se borro nada: son fuentes de arte que puede querer conservar quien las creo, y quitarlas es una decision de arte (todo queda recuperable por git). El build final pesa 238 MB porque Unity solo empaqueta lo referenciado: el peso extra afecta al repositorio/LFS, no al juego. |
 | 90 | El cuchillo reutiliza el id de PlayerPrefs `camara_vehiculo`: quien remapeó esa tecla hereda un cuchillo en una tecla rara. | HECHO |  |
 | 91 | Un comentario de `KeyBindings` dice "V = cuchillo" pero es F. | HECHO |  |
 | 92 | No hay README raíz ni índice de los documentos de las rondas. | HECHO |  |
-| 93 | `SC_TestLevel` y otras escenas se generan por código, así que cualquier edición manual se pierde al correr la suite. | PARCIAL | Documentado en el README que las escenas se generan por codigo; siguen generandose por codigo. |
+| 93 | `SC_TestLevel` y otras escenas se generan por código, así que cualquier edición manual se pierde al correr la suite. | HECHO | Las escenas se siguen generando por codigo (documentado en el README), pero ya no se pierde una edicion manual: `RespaldoDeEscenas` (AssetModificationProcessor) copia a `Library/RespaldoEscenas` cada escena .unity existente ANTES de que Unity la guarde (se conservan las 8 ultimas por escena; menu Strategic Point > Escenas > Abrir carpeta de respaldos). Verificado en vivo: al guardar SC_Tutorial aparecio la copia. |
 
 ## Tutorial
 
