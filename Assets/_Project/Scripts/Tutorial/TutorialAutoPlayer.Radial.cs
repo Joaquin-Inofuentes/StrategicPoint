@@ -252,7 +252,7 @@ namespace SP.Tutorial
                 if (d.EjecutarOrdenRadial(5, 2)) break;
                 yield return new WaitForSeconds(1f);
             }
-            limite = Time.time + 60f;
+            limite = Time.time + 95f;
             while (Time.time < limite && tm.PasoActual != null && tm.PasoActual.Id == "avanzar_disparar")
             {
                 Soldier objetivo = null; float mejor = float.MaxValue;

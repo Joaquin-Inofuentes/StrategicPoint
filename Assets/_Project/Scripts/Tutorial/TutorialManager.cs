@@ -1211,6 +1211,24 @@ namespace SP.Tutorial
                 if (s != null && s.Role == RoleType.Assault && s.Health.IsAlive) { driver.TryPossess(s); break; }
         }
 
+        // true si los dos sacos de practica (y el lugar donde se paran los aliados) caben sin tocar edificios ni otros obstaculos.
+        static bool CoberturasLibres(Vector3 desde, Vector3 frente)
+        {
+            var lado = Vector3.Cross(Vector3.up, frente);
+            for (int i = 0; i < 2; i++)
+            {
+                var centro = desde + frente * 14f + lado * (i == 0 ? -4f : 4f);
+                centro.y = 1f;
+                foreach (var col in Physics.OverlapBox(centro, new Vector3(3f, 0.4f, 2.2f), Quaternion.LookRotation(frente), ~0, QueryTriggerInteraction.Ignore))
+                {
+                    if (col == null || col.name == "Ground" || col.name == "Terrain" || col.bounds.max.y < 0.5f) continue;
+                    if (col.GetComponentInParent<Soldier>() != null) continue;
+                    return false;
+                }
+            }
+            return true;
+        }
+
         // Dos coberturas de sacos a 14 m adelante (para el paso de cubrirse).
         readonly List<GameObject> coberturasPractica = new List<GameObject>();
         readonly List<TutorialBeacon> balizasCobertura = new List<TutorialBeacon>();
@@ -1219,6 +1237,13 @@ namespace SP.Tutorial
             QuitarCoberturasDePractica();
             var yo = driver.Brain.Current; if (yo == null || driver.Rig.Cam == null) return;
             var frente = Vector3.ProjectOnPlane(driver.Rig.Cam.transform.forward, Vector3.up).normalized;
+            // Si hacia donde mira el jugador los sacos quedarian pegados a un edificio (o encima de algo), los aliados no pueden
+            // llegar ("destino bloqueado"): se prueba girar la direccion de a 25 grados hasta encontrar un lugar libre.
+            foreach (var grados in new[] { 0f, 25f, -25f, 50f, -50f, 75f, -75f, 100f, -100f, 125f, -125f, 150f, -150f, 180f })
+            {
+                var probar = Quaternion.Euler(0f, grados, 0f) * frente;
+                if (CoberturasLibres(yo.transform.position, probar)) { frente = probar; break; }
+            }
             var lado = Vector3.Cross(Vector3.up, frente);
             for (int i = 0; i < 2; i++)
             {

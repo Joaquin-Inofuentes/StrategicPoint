@@ -129,7 +129,39 @@ Terreno 70 × 210 m, de sur a norte: **campo de tiro** (pared gris, caja amarill
 
 `SP.Tutorial.TutorialAutoPlayer` recorre los 36 pasos sin `SaltarPaso`: crea un **teclado y un mouse virtuales** (`EntradaVirtual`, Input System) y hace lo que haría una persona: camina con W/A/S/D, gira con el delta del mouse, dispara con el clic, recarga con R, usa Shift+clic derecho para seleccionar, mantiene Ctrl para demoler, sube al tanque y gira el cañón con el mouse.
 
-- Lanzar (Play en `SC_Tutorial`): `SP.Tutorial.TutorialAutoPlayer.Lanzar(0)`; con un número se arranca desde ese paso (los anteriores se adelantan con `SaltarPaso`, así que el jugador queda lejos de todo: para probar el tramo del tanque conviene la corrida completa).
-- Cada paso tiene un tope de 45 s (100 s los del tanque y la meta); si se vence, el log dice `TEST FALLIDO` y se fuerza el paso para no trabar la corrida.
-- Órdenes del radial: la mira es real (se gira y se inclina la cámara), y la opción del anillo se elige llamando a `EjecutarOrdenRadial(categoría, opción)`, el mismo método que usa el menú al soltar Q.
-- Último resultado: corrida completa, 36 pasos, 0 fallidos. Dos defectos reales aparecieron y quedaron corregidos: TANQUE ALLÍ desde un asiento usa ahora el suelo que toca la cámara (antes quedaba el tanque como destino) y cede el volante a un aliado a bordo, igual que [T].
+### Cómo correrlo (un comando)
+
+```bash
+Tools/Autoplay/autoplay.sh [--desde N] [--max SEG] [--sin-capturas] [--humano] [--sin-compilar]
+```
+
+Comprueba que el editor responda (si está cerrado lo abre; los comandos del CLI se reintentan con espera creciente), recompila y aborta si no compila, abre `SC_Tutorial`, entra en Play, lanza el reproductor y lo vigila leyendo `Logs/Autoplay/estado_actual.json` (lo escribe el juego cada segundo, así no depende del CLI; solo si se congela 240 s le pregunta al editor). Pase lo que pase, al salir para Play y devuelve el teclado y el mouse. Sale con 0 si la corrida quedó COMPLETA, 1 si hubo pasos fallidos, 2 si no pudo correr.
+Sin el script: en Play, `SP.Tutorial.TutorialAutoPlayer.Lanzar(desdePaso, ignorarHumano, capturas)` (devuelve el reproductor; `RunId` y `Carpeta` dicen dónde queda el registro).
+
+### Tu teclado y tu mouse quedan ignorados
+
+Mientras corre, todos los teclados, mouses, mandos y pantallas táctiles **reales** quedan desactivados en el Input System y el juego solo ve los virtuales (así nadie ensucia la prueba sin querer). Es un booleano: `SP.Tutorial.EntradaVirtual.IgnorarHumano` (se puede cambiar por eval). Se apaga solo al terminar, al parar Play o al destruirse el reproductor. Si algo lo dejó activo: menú **Strategic Point → Tutorial → Restaurar entrada humana**, o `EntradaVirtual.RestaurarHumano()`. Verificado: 2 dispositivos habilitados → 0 con el bloqueo → 2 al restaurar.
+
+### Registro para analizar (`Logs/Autoplay/<runId>/`, fuera de git)
+
+| Archivo | Contenido |
+|---|---|
+| `log.jsonl` | Una línea por mensaje de consola y por evento propio (`EVENTO:INPUT`, `PASO_INICIO`, `PASO_FIN`, `REINTENTO`, `AVISO`): tiempo real, tiempo de juego, cuadro, paso, fase (`gesto`/`durante`/`despues`), tipo (`Log`/`Warning`/`Error`/`Exception`), texto y pila de los errores. |
+| `resumen.json` | La corrida entera y, por paso: resultado (`OK`, `OK_REINTENTO`, `FALLIDO_FORZADO`, `SALTADO`), intentos, duración real y de juego, FPS medio/mínimo/p5, p95 de cuadro, distancia recorrida, subpasos hechos, **banderas que cambiaron**, errores/avisos, muestras de inicio y fin (posición, vida, munición, aliados y enemigos vivos, memoria) y las capturas. Se reescribe después de cada paso. |
+| `resumen.txt` | La misma información en una tabla compacta. |
+| `estado.json` | Estado vivo (paso, fase, FPS, último mensaje, última captura). `Logs/Autoplay/estado_actual.json` apunta siempre a la última corrida. |
+| `cap/*.jpg` | Capturas reducidas (960 px de ancho): `NN_id_antes`, `NN_id_durante_k` (cada 6 s) y `NN_id_despues`. |
+| `../historial.jsonl` | Una línea por corrida con la duración total y por paso: sirve para estimar cuánto tarda cada test (una corrida completa: unos 285–470 s). |
+
+### Fallbacks
+
+- Captura: `ScreenCapture` → render de la cámara a una textura → `CaptureScreenshot` a archivo; si las tres fallan se anota y la corrida sigue.
+- Disco: si no se puede escribir en `Logs/Autoplay` se usa `persistentDataPath`; si falla el `log.jsonl` se sigue con `resumen.json`.
+- Un paso que no avanza se reintenta una vez (queda como `OK_REINTENTO` o `FALLIDO_FORZADO` con `intentos`); recién entonces se fuerza con `SaltarPaso` para no trabar la corrida.
+
+### Reglas de la corrida
+
+- Con `desdePaso` los pasos anteriores se adelantan con `SaltarPaso`, así que el jugador queda lejos de todo: para probar el tramo del tanque conviene la corrida completa.
+- Órdenes del radial: la mira es real (se gira y se inclina la cámara) y la opción del anillo se elige llamando a `EjecutarOrdenRadial(categoría, opción)`, el mismo método que usa el menú al soltar Q.
+- `victoria` es la pantalla final y no exige gesto (figura como `SALTADO`).
+- Último resultado: 35 pasos `OK`, 0 fallidos, 0 errores, 285 s. Tres defectos reales aparecieron al construirlo y quedaron corregidos: TANQUE ALLÍ desde un asiento usa el suelo que toca la cámara (antes quedaba el tanque como destino), cede el volante a un aliado a bordo como [T], y las coberturas de práctica ya no se generan pegadas a un edificio (el aliado quedaba "trabado").

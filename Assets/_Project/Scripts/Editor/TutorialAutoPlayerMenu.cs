@@ -33,6 +33,15 @@ namespace SP.EditorTools
             }
         }
 
+        // Salida de emergencia: si una corrida se corto y el teclado/mouse reales quedaron desactivados.
+        [MenuItem("Strategic Point/Tutorial/Restaurar entrada humana (teclado y mouse)")]
+        public static void RestaurarEntradaHumana()
+        {
+            EntradaVirtual.IgnorarHumano = false;
+            EntradaVirtual.RestaurarHumano();
+            Debug.Log("[AUTOPLAY] Entrada humana restaurada.");
+        }
+
         static void EsperarYLanzar()
         {
             if (!EditorApplication.isPlaying) { EditorApplication.delayCall += EsperarYLanzar; return; }
