@@ -76,6 +76,43 @@ namespace SP.EditorTools
             // --- Iconos: cada arma tiene el suyo ---
             foreach (var k in new[] { WeaponKind.Sniper, WeaponKind.Smg, WeaponKind.Shotgun, WeaponKind.Rocket })
                 Check($"Icono propio de {k}", System.IO.File.Exists("Assets/_Project/Resources/UI/WeaponIcons/Icono_" + k + ".png"));
+
+            // --- Caida (item 51): desde un borde alto cae y se lastima; un escalon chico no hace dano ---
+            Check("Formula de dano por caida: 3 m sin dano, 6 m = 75", SoldierMotor.DanioDeCaida(3f) == 0 && SoldierMotor.DanioDeCaida(6f) == 75);
+            var pisoPrueba = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            pisoPrueba.name = "TestPisoCaida";
+            pisoPrueba.transform.position = new Vector3(900f, -0.5f, 900f);
+            pisoPrueba.transform.localScale = new Vector3(30f, 1f, 30f);
+            var motorCaida = kes.Motor;
+            var posPrevia = kes.transform.position;
+            bool godCaida = ModoDios.Activo;
+            ModoDios.Poner(false);
+            FullHeal(vega, kes, doc);
+            try
+            {
+                foreach (var caso in new[] { (alto: 1.6f, esperaDanio: false), (alto: 6.8f, esperaDanio: true) })
+                {
+                    motorCaida.ResetMotionState();
+                    kes.transform.position = new Vector3(900f, caso.alto, 900f);
+                    Physics.SyncTransforms();
+                    int vidaAntes = kes.Health.Current;
+                    motorCaida.Move(Vector3.forward, 0.01f);
+                    Check($"Al pisar el aire a {caso.alto - 0.8f:0.0} m del piso el soldado empieza a caer", motorCaida.IsJumping);
+                    for (int i = 0; i < 200 && motorCaida.IsJumping; i++) { motorCaida.TickVertical(0.02f); Physics.SyncTransforms(); }
+                    Check($"Termina apoyado en el piso (salto={motorCaida.IsJumping}, y={kes.transform.position.y:0.00}, caida={motorCaida.UltimaCaidaMetros:0.00})", !motorCaida.IsJumping && Mathf.Abs(kes.transform.position.y - 0.8f) < 0.05f);
+                    int perdida = vidaAntes - kes.Health.Current;
+                    if (caso.esperaDanio) Check($"Una caida de {motorCaida.UltimaCaidaMetros:0.0} m resta {SoldierMotor.DanioDeCaida(motorCaida.UltimaCaidaMetros)} de vida", perdida == SoldierMotor.DanioDeCaida(motorCaida.UltimaCaidaMetros) && perdida > 50);
+                    else Check("Un escalon de 0,8 m no hace dano", perdida == 0);
+                }
+            }
+            finally
+            {
+                motorCaida.ResetMotionState();
+                kes.transform.position = posPrevia;
+                Object.DestroyImmediate(pisoPrueba);
+                ModoDios.Poner(godCaida);
+                FullHeal(vega, kes, doc);
+            }
         }
     }
 }

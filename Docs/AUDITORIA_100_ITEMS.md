@@ -2,7 +2,7 @@
 
 Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. **Estados**: HECHO (implementado y con prueba o captura), YA ESTABA (al verificarlo en el codigo ya estaba resuelto), PARCIAL (mejorado, con lo que falta dicho), NO (no hecho o no aplica, con el motivo).
 
-**Resumen**: HECHO: 78, YA ESTABA: 18, PARCIAL: 2, NO/NO APLICA: 2 (de 100). Los 2 que quedan (65: solo un humano puede juzgar un sonido de oido; 51: no aplica, el juego no tiene caida desde altura) no son trabajo pendiente: son limitaciones reales confirmadas, no items sin resolver.
+**Resumen**: HECHO: 79, YA ESTABA: 18, PARCIAL: 2, NO/NO APLICA: 1 (de 100). El que queda (65: solo un humano puede juzgar un sonido de oido) no es trabajo pendiente de codigo: es una limitacion real confirmada.
 
 **Cierre (Ronda 11)**: los 100 puntos estan tratados. Los 2 PARCIAL dependen de terceros y no se pueden cerrar desde codigo: 81 (el secreto `UNITY_LICENSE` lo carga solo el dueno del repo en GitHub) y 89 (borrar los 295 MB sin uso de ARTS es decision del equipo de arte; el reporte `Docs/ARTS_USO.csv` ya esta hecho y no se borro nada).
 
@@ -81,7 +81,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 |---|---|---|---|
 | 49 | El salto lo verifiqué por suite y capturas, pero no en pendientes, escalones ni agachado. | HECHO | Salto probado agachado y trepando (cajones de 0,5 a 1,3 m). Pendientes y escalones no existen: el motor es de piso unico (`Deslizador.Resolver` deja pasar la componente vertical intacta y solo resuelve choques horizontales), asi que no hay caso que probar; lo que existe esta verificado. |
 | 50 | Falta buffer de salto y "coyote time". | HECHO |  |
-| 51 | La caída no tiene efecto ni daño según la altura. | NO APLICA | Confirmado en codigo (SoldierMotor/Jump): el soldado solo salta con un impulso fijo de ~1 m y no hay ningun sistema de caida libre desde plataformas/alturas variables en el juego -- no existe una altura de caida que medir ni penalizar. No se toco codigo porque no corresponde. |
+| 51 | La caída no tiene efecto ni daño según la altura. | HECHO | Confirmado en codigo (SoldierMotor/Jump): el soldado solo salta con un impulso fijo de ~1 m y no hay ningun sistema de caida libre desde plataformas/alturas variables en el juego -- no existe una altura de caida que medir ni penalizar. No se toco codigo porque no corresponde. **Ronda 11:** el motor si tenia un hueco real: al bajar de un cajon al que se trepo (o de cualquier borde) el soldado se quedaba flotando, porque `ApoyoEnElPiso` corre una sola vez al empezar. Ahora `SoldierMotor.RevisarBorde` mira el piso despues de cada paso y, si hay mas de 0,5 m de vacio, el soldado cae con la gravedad del salto; hasta 3 m no hay dano y por encima resta 25 de vida por metro (`SoldierMotor.DanioDeCaida`, sin dano con modo dios). Cubierto en la Fase 20 de la suite (escalon de 0,8 m sin dano, caida de 6 m = 75) y sin caidas espurias en el autoplayer ni en SC_Gameplay. |
 | 52 | Saltar apuntando o agachado no está definido. | HECHO |  |
 | 53 | No se puede trepar obstáculos bajos. | HECHO | Saltar contra un obstaculo de 0,5 a 1,3 m de alto lo trepa (`SoldierMotor.TryVault`); muros mas altos no. Probado en FASE 19. |
 | 54 | Los aliados empujan al jugador al caminar pegados. | YA ESTABA | Verificado: el collider de un soldado no bloquea el movimiento de otro (`NavService.BlocksMovement`), asi que un aliado pegado no empuja ni frena. Prueba en la FASE 19. |

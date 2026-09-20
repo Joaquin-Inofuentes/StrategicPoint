@@ -147,10 +147,10 @@ namespace SP.Actors
 
         // Piso justo debajo de p: el punto mas alto que no sea el propio cuerpo ni un trigger. Un cuerpo
         // agachado o apilado sobre otro no cuenta como piso.
-        bool BuscarPiso(Vector3 p, out float piso)
+        bool BuscarPiso(Vector3 p, out float piso, float alcance = 6f)
         {
             piso = 0f;
-            int n = Physics.RaycastNonAlloc(p + Vector3.up * 0.3f, Vector3.down, SondeoPiso, 6f, ~0, QueryTriggerInteraction.Ignore);
+            int n = Physics.RaycastNonAlloc(p + Vector3.up * 0.3f, Vector3.down, SondeoPiso, alcance, ~0, QueryTriggerInteraction.Ignore);
             bool hay = false;
             float mejor = float.NegativeInfinity;
             for (int i = 0; i < n; i++)
@@ -176,6 +176,7 @@ namespace SP.Actors
         {
             IsJumping = false;
             Vaulting = false;
+            cayendo = false;
             verticalVelocity = 0f;
             IsCrouching = false;
             pideCorrer = false;
@@ -184,10 +185,42 @@ namespace SP.Actors
         void Update()
         {
             if (Vaulting) { TickTrepa(); return; }
+            TickVertical(Time.deltaTime);
+        }
+
+        // ---- Caida (item 51): un soldado que camina hasta un borde (por ejemplo, bajando de un cajon al que trepo) ya no
+        // se queda flotando: cae con la misma gravedad del salto. Hasta AlturaSinDanio no pasa nada; por encima, cada metro
+        // resta DanioPorMetro de vida (con modo dios no hay dano). ApoyoEnElPiso solo corre una vez al empezar la partida,
+        // y hasta ahora el motor nunca volvia a mirar el piso al caminar.
+        public const float AlturaSinDanio = 3f, DanioPorMetro = 25f, PivoteSobrePiso = 0.8f, HuecoParaCaer = 0.5f;
+        public float UltimaCaidaMetros { get; private set; }
+        public int UltimoDanioDeCaida { get; private set; }
+        float caidaDesdeY;
+        bool cayendo;
+
+        public static int DanioDeCaida(float metros) => metros <= AlturaSinDanio ? 0 : Mathf.CeilToInt((metros - AlturaSinDanio) * DanioPorMetro);
+
+        // Despues de caminar: si el piso quedo mas de HuecoParaCaer por debajo de los pies, arranca la caida.
+        void RevisarBorde()
+        {
+            if (IsJumping || Vaulting) return;
+            if (!BuscarPiso(transform.position, out float piso, 40f)) return;
+            if (transform.position.y - piso <= PivoteSobrePiso + HuecoParaCaer) return;
+            IsJumping = true; cayendo = true;
+            groundY = piso + PivoteSobrePiso;
+            alturaDePivote = PivoteSobrePiso;
+            verticalVelocity = 0f;
+            caidaDesdeY = transform.position.y;
+            if (IsCrouching) SetCrouching(false);
+        }
+
+        // Un paso de la parabola (salto o caida). Publico para poder medirlo desde la suite sin depender de Time.deltaTime.
+        public void TickVertical(float dt)
+        {
             if (!IsJumping) return;
-            verticalVelocity -= gravity * Time.deltaTime;
+            verticalVelocity -= gravity * dt;
             var pos = transform.position;
-            pos.y += verticalVelocity * Time.deltaTime;
+            pos.y += verticalVelocity * dt;
             // El suelo puede subir o bajar mientras se esta en el aire (cuesta, escalon, cajon): se aterriza
             // sobre el de ahora, no sobre el del despegue.
             float suelo = groundY;
@@ -199,10 +232,23 @@ namespace SP.Actors
                 IsJumping = false;
                 verticalVelocity = 0f;
                 transform.position = pos;
-                if (Time.time <= saltoPedidoHasta) { saltoPedidoHasta = 0f; Jump(); }
+                if (cayendo) AplicarDanioDeCaida(caidaDesdeY - pos.y);
+                if (saltoPedidoHasta > 0f && Time.time <= saltoPedidoHasta) { saltoPedidoHasta = 0f; Jump(); }
                 return;
             }
             transform.position = pos;
+        }
+
+        void AplicarDanioDeCaida(float metros)
+        {
+            cayendo = false;
+            UltimaCaidaMetros = metros;
+            UltimoDanioDeCaida = DanioDeCaida(metros);
+            if (UltimoDanioDeCaida <= 0) return;
+            var soldado = GetComponent<Soldier>();
+            if (soldado == null || soldado.Health == null || !soldado.Health.IsAlive) return;
+            soldado.Health.TakeDamage(UltimoDanioDeCaida, soldado.Id);
+            GameLog.Line($"[CAIDA] {soldado.DisplayName} cae {metros:0.0} m: {UltimoDanioDeCaida} de dano");
         }
 
         Soldier soldierCacheado;
@@ -270,6 +316,7 @@ namespace SP.Actors
             if (Vaulting) return;
             if (worldDirection.sqrMagnitude > 1f) worldDirection.Normalize();
             transform.position += Resolve(worldDirection * MoveSpeed * dt);
+            RevisarBorde();
         }
 
         public void RotateYaw(float yawDeltaDegrees)
