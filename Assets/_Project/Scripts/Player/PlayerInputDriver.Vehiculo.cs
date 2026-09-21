@@ -372,7 +372,7 @@ namespace SP.Player
                 }
                 if (TurretAim != null) TurretAim.UpdateFrom(turret);
 
-                UpdateVehicleCameraAimed(turret != null ? turret.transform : null, turret, ReticleStyle.Telescopica);
+                UpdateVehicleCameraAimed(turret != null ? turret.transform : null, turret, ReticleStyle.Artillero);
             }
             // Pedido explicito: "ahora es cañon y metralleta y conductor" --
             // un tercer puesto operable de verdad, no un pasajero mudo.
@@ -388,12 +388,13 @@ namespace SP.Player
                     mgTurret.AddDesiredPitch(-delta.y * turretSensitivity);
                     mgTurret.TickPlayerAim(Time.deltaTime);
                     if (mouse.leftButton.isPressed) mgTurret.TryFire();
-                    Rig.SetZoomFactor(2.2f);
-                    Rig.SetZoomed(mouse.rightButton.isPressed);
+                    // Ronda 12: la metralleta del tanque se apunta con la mirilla NORMAL (la misma que la torreta fija):
+                    // sin zoom ni optica, el clic derecho no hace nada aca.
+                    Rig.SetZoomed(false);
                 }
                 if (TurretAim != null) TurretAim.UpdateFrom(mgTurret);
 
-                UpdateVehicleCameraAimed(mgTurret != null ? mgTurret.transform : null, mgTurret, ReticleStyle.Anillo);
+                UpdateVehicleCameraAimed(mgTurret != null ? mgTurret.transform : null, mgTurret, ReticleStyle.Anillo, conMira: false);
             }
             else
             {
@@ -406,7 +407,7 @@ namespace SP.Player
                 : currentSeat == VehicleSeatRole.Gunner
                     ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom · [R] munición · [Q] radial · " + asientos + " · [E] bajar"
                     : currentSeat == VehicleSeatRole.Passenger1
-                        ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom · [Q] radial · " + asientos + " · [E] bajar"
+                        ? "[Mouse] apuntar · [Click] disparar (mantener = rafaga) · [Q] radial · " + asientos + " · [E] bajar"
                         : "[Q] radial (tanque allí, subir/bajar) · " + asientos + " · [E] bajar · [TAB] vista RTS";
             SetInstructionText(role);
         }
@@ -562,14 +563,18 @@ namespace SP.Player
         // el forward del ARMA (gira con el mouse), no el del casco.
         // Mantener click derecho: la camara pasa a la MIRA del arma (primera persona sobre el canon
         // o la metralleta), con zoom y una reticula de optica. Sin apuntar, sigue en tercera persona.
-        void UpdateVehicleCameraAimed(Transform aimSource, TurretWeapon arma = null, ReticleStyle reticula = ReticleStyle.Telescopica)
+        void UpdateVehicleCameraAimed(Transform aimSource, TurretWeapon arma = null, ReticleStyle reticula = ReticleStyle.Artillero, bool conMira = true)
         {
             if (aimSource != null)
             {
                 // El canon mira por un periscopio sobre el techo de la torreta (0,7 m sobre el pivote, un poco
                 // adelantado: se ve el tubo abajo); la metralleta, desde detras y arriba del arma.
-                bool esCanon = reticula == ReticleStyle.Telescopica;
-                Vector3 miraPos = aimSource.position + aimSource.up * (esCanon ? 0.72f : 0.28f) + aimSource.forward * (esCanon ? 0.3f : -0.4f);
+                bool esCanon = conMira;
+                // Con el cañon inclinado, 'up' de la torreta se tumba y el periscopio quedaba enterrado en el casco (pantalla marron):
+                // la altura se mide en vertical de mundo y el adelanto en horizontal.
+                Vector3 planoFwd = Vector3.ProjectOnPlane(aimSource.forward, Vector3.up);
+                planoFwd = planoFwd.sqrMagnitude > 1e-4f ? planoFwd.normalized : Vehicle.transform.forward;
+                Vector3 miraPos = aimSource.position + Vector3.up * (esCanon ? 0.85f : 0.28f) + (esCanon ? planoFwd * 0.15f : -aimSource.forward * 0.4f);
                 Rig.FollowThirdPersonAimed(Vehicle.transform.position + Vector3.up * 1f, aimSource.forward, 8f, 3.5f,
                     miraPos, Quaternion.LookRotation(aimSource.forward, Vector3.up));
             }
@@ -579,9 +584,9 @@ namespace SP.Player
             var canvasRoot = AimUiRef != null ? AimUiRef.transform.parent : null;
             var mirilla = MirillaView.Asegurar(canvasRoot);
             if (mirilla != null)
-                mirilla.Actualizar(Rig.EstaConZoom && Rig.AdsBlend > 0.55f, reticula,
+                mirilla.Actualizar(conMira && Rig.EstaConZoom && Rig.AdsBlend > 0.55f, reticula,
                     arma != null && arma.IsOnTarget() ? new Color(0.45f, 1f, 0.55f) : new Color(1f, 0.9f, 0.5f));
-            if (TurretAim != null && Rig.AdsBlend > 0.55f) TurretAim.SetVisible(false);
+            if (TurretAim != null && conMira && Rig.AdsBlend > 0.55f) TurretAim.SetVisible(false);
             ApplyVehicleCameraFeel();
             ApplyVehicleSpeedFx();
         }

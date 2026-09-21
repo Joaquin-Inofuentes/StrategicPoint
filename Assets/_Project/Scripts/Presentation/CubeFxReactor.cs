@@ -82,10 +82,27 @@ namespace SP.Presentation
             damageSub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnDamage);
             deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnDeath);
             shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShot);
+            if (soldier != null && soldier.Health != null) soldier.Health.Revivido += AlRevivir;
+        }
+
+        // Ronda 12: revivir (medico o [E]) solo reponia la vida: el cuerpo ya se habia ocultado 2 s despues de morir y el aliado
+        // revivido quedaba invisible. Se deshace todo lo que dejo OnDeath y se corta la corutina que lo iba a ocultar.
+        void AlRevivir()
+        {
+            if (!Application.isPlaying || soldier == null) return;
+            StopAllCoroutines();
+            transform.localScale = baseScale;
+            WriteTint(rend, baseColor);
+            var col = GetComponent<Collider>();
+            if (col != null) col.enabled = true;
+            if (gameObject.activeInHierarchy && animator != null) animator.SetBool(SP.Presentation.SoldierAnimatorDriver.ParamMuerto, false);
+            soldier.SetBodyVisible(true);
+            if (animator == null) transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
         }
 
         void OnDestroy()
         {
+            if (soldier != null && soldier.Health != null) soldier.Health.Revivido -= AlRevivir;
             damageSub?.Dispose();
             deathSub?.Dispose();
             shotSub?.Dispose();
@@ -189,6 +206,7 @@ namespace SP.Presentation
             animator.SetBool(SP.Presentation.SoldierAnimatorDriver.ParamMuerto, true);
 
             yield return new WaitForSeconds(SegundosHastaDesaparecer);
+            if (soldier.Health != null && soldier.Health.IsAlive) yield break;
             soldier.SetBodyVisible(false);
         }
 

@@ -98,6 +98,7 @@ namespace SP.UI
             arrow.rectTransform.localRotation =
                 Quaternion.Euler(0f, 0f, Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg - 90f);
 
+            SpriteTriangulo.Aplicar(arrow);
             arrow.gameObject.SetActive(true);
             // unscaledTime: la ultima baja dispara camara lenta (timeScale
             // 0.25) y con Time.time esta flecha duraba 4.4 s reales en vez

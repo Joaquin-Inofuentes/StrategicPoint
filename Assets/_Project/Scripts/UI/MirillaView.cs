@@ -96,13 +96,22 @@ namespace SP.UI
                 Estilo = estilo;
                 reticula.sprite = SpriteDe(estilo);
                 bool scope = estilo == ReticleStyle.Telescopica;
-                float lado = scope ? 480f : (estilo == ReticleStyle.Mildot ? 300f : 230f);
+                bool periscopio = estilo == ReticleStyle.Artillero;
+                // El periscopio se dimensiona contra el alto REAL del canvas (la escala de pantalla cambia entre monitores): la ventana
+                // ocupa ~64 % del alto y deja marco negro visible en los cuatro lados.
+                var rc = transform.parent as RectTransform;
+                float altoCanvas = rc != null && rc.rect.height > 1f ? rc.rect.height : 720f;
+                float ventana = altoCanvas * 0.64f / 640f;
+                float lado = periscopio ? altoCanvas * 1.5f : scope ? 480f : (estilo == ReticleStyle.Mildot ? 300f : 230f);
                 reticula.rectTransform.sizeDelta = new Vector2(lado, lado);
-                tubo.gameObject.SetActive(scope || estilo == ReticleStyle.Mildot);
+                tubo.gameObject.SetActive(scope || periscopio || estilo == ReticleStyle.Mildot);
+                // Ronda 12: el artillero del tanque mira por un PERISCOPIO RECTANGULAR (ventana ancha y baja con esquinas
+                // redondeadas), no por el tubo redondo del francotirador: la mira del cañon ya no se parece a la de a pie.
+                tubo.sprite = periscopio ? MascaraPeriscopio() : Mascara();
                 // El lanzacohetes lleva un tubo mas suave (visor, no tubo cerrado).
-                tubo.color = scope ? Color.black : new Color(0f, 0f, 0f, 0.55f);
+                tubo.color = scope || periscopio ? Color.black : new Color(0f, 0f, 0f, 0.55f);
                 float agujero = scope ? 500f : 300f;
-                tubo.rectTransform.sizeDelta = Vector2.one * (3600f * agujero / 500f);
+                tubo.rectTransform.sizeDelta = periscopio ? Vector2.one * (3600f * ventana) : Vector2.one * (3600f * agujero / 500f);
             }
             reticula.color = tinte;
             alfa = Mathf.MoveTowards(alfa, zoom ? 1f : 0f, Time.unscaledDeltaTime * 10f);
@@ -110,7 +119,7 @@ namespace SP.UI
 
             // Con tubo (telescopica / visor del cohete) la mira tiene que quedar ENCIMA del resto del HUD (el
             // panel de mision y la barra de arriba se veian a traves del visor), salvo lo que hace falta ver.
-            bool conTubo = estilo == ReticleStyle.Telescopica || estilo == ReticleStyle.Mildot;
+            bool conTubo = estilo == ReticleStyle.Telescopica || estilo == ReticleStyle.Mildot || estilo == ReticleStyle.Artillero;
             if (zoom && conTubo && alfa > 0.5f && !elevada)
             {
                 elevada = true;
@@ -191,6 +200,31 @@ namespace SP.UI
             return mascara;
         }
 
+        // Ventana del periscopio: 1500 x 640 unidades sobre una imagen de 3600, esquinas redondeadas de 70.
+        static Sprite mascaraPeriscopio;
+        static Sprite MascaraPeriscopio()
+        {
+            if (mascaraPeriscopio != null) return mascaraPeriscopio;
+            const int n = 1024;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
+            var px = new Color32[n * n];
+            float k = n / 3600f;
+            var mitad = new Vector2(750f, 320f) * k;
+            float radio = 70f * k;
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    var q = new Vector2(Mathf.Abs(x + 0.5f - n * 0.5f), Mathf.Abs(y + 0.5f - n * 0.5f)) - (mitad - Vector2.one * radio);
+                    float d = new Vector2(Mathf.Max(q.x, 0f), Mathf.Max(q.y, 0f)).magnitude + Mathf.Min(Mathf.Max(q.x, q.y), 0f) - radio;
+                    float a = Mathf.Clamp01(d / 1.2f + 0.5f);   // dentro (d<0) transparente; fuera, negro
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+                }
+            tex.SetPixels32(px); tex.Apply();
+            mascaraPeriscopio = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+            mascaraPeriscopio.hideFlags = HideFlags.HideAndDontSave;
+            return mascaraPeriscopio;
+        }
+
         // Rasterizador minimo con cobertura por distancia (anti-alias de ~1 px).
         static float Cov(float d, float grosor) => Mathf.Clamp01(grosor * 0.5f - d + 0.5f);
 
@@ -263,6 +297,31 @@ namespace SP.UI
                     }
                     a = Mathf.Max(a, Cov(r, 5f));
                     break;
+                case ReticleStyle.Artillero:
+                {
+                    // Reticula de estadia de tanque: escala horizontal de distancia con marcas cada 0,125 y largas cada dos, escalera
+                    // de elevacion hacia abajo y un triangulo apuntador sobre el centro. Nada que ver con la cruz del francotirador.
+                    a = Mathf.Max(a, Cov(DistSegmento(p, new Vector2(-h * 0.97f, 0f), new Vector2(-h * 0.07f, 0f)), 1.8f));
+                    a = Mathf.Max(a, Cov(DistSegmento(p, new Vector2(h * 0.07f, 0f), new Vector2(h * 0.97f, 0f)), 1.8f));
+                    for (int k = 1; k <= 7; k++)
+                    {
+                        float x = h * (0.07f + 0.125f * k), l = (k % 2 == 0) ? h * 0.075f : h * 0.04f;
+                        a = Mathf.Max(a, Cov(DistSegmento(p, new Vector2(x, -l), new Vector2(x, l)), 1.8f));
+                        a = Mathf.Max(a, Cov(DistSegmento(p, new Vector2(-x, -l), new Vector2(-x, l)), 1.8f));
+                    }
+                    a = Mathf.Max(a, Cov(DistSegmento(p, new Vector2(0f, -h * 0.07f), new Vector2(0f, -h * 0.42f)), 1.8f));
+                    for (int k = 1; k <= 6; k++)
+                    {
+                        float y = -h * (0.07f + 0.058f * k), l = (k % 2 == 0) ? h * 0.06f : h * 0.035f;
+                        a = Mathf.Max(a, Cov(DistSegmento(p, new Vector2(-l, y), new Vector2(l, y)), 1.8f));
+                    }
+                    var v0 = new Vector2(0f, h * 0.035f); var v1 = new Vector2(-h * 0.055f, h * 0.16f); var v2 = new Vector2(h * 0.055f, h * 0.16f);
+                    a = Mathf.Max(a, Cov(DistSegmento(p, v0, v1), 2.2f));
+                    a = Mathf.Max(a, Cov(DistSegmento(p, v0, v2), 2.2f));
+                    a = Mathf.Max(a, Cov(DistSegmento(p, v1, v2), 2.2f));
+                    a = Mathf.Max(a, Cov(r, 3.2f));
+                    break;
+                }
                 case ReticleStyle.Telescopica:
                     // Cruz fina de borde a borde con postes gruesos en el exterior.
                     foreach (var d in Cuatro())

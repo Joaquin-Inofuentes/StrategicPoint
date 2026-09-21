@@ -342,7 +342,7 @@ namespace SP.Tutorial
                 Id = "cambiar", Titulo = "CAMBIAR DE SOLDADO (RADIAL)", Teclas = "Q", Acento = verde,
                 Subs = new[]
                 {
-                    S("Mantén Q: se abre el radial de órdenes", "Mantén apretada la tecla [Q]: se abre el RADIAL. Siempre ofrece IR ALLÍ, CUBRIRSE y POSICIÓN; lo demás aparece en DORADO solo si apuntas a algo con lo que se puede interactuar.", "Mantén Q sin soltarla (un toque corto solo cicla de soldado).", () => f.radialAbierto, v => f.radialAbierto = v),
+                    S("Mantén Q: se abre el radial de órdenes", "Mantén apretada la tecla [Q]: se abre el RADIAL. Siempre ofrece IR ALLÍ, CUBRIRSE y POSICIÓN; lo demás aparece en DORADO solo si apuntas a algo con lo que se puede interactuar.", "Mantén Q sin soltarla. Un TOQUE corto de Q hace otra cosa: ejecuta al instante la acción rápida de lo que miras (ATACAR al enemigo, CURAR/REANIMAR al herido o caído, que un aliado te SIGA).", () => f.radialAbierto, v => f.radialAbierto = v),
                     S("Apunta a un aliado → Q → POSEER (dorado)", "MIRA a un aliado (columna celeste) y mantén [Q]: arriba aparece POSEER en dorado. Mueve el mouse hacia ARRIBA (POSEER), sigue hacia AFUERA hasta POSEER A ESTE y suelta Q: tomas su control.", "Primero deja al aliado en el centro de la mira; recién después mantén Q (la mira se congela al abrirse).", () => f.cambioDeSoldado, v => f.cambioDeSoldado = v),
                 },
                 AlEntrar = () =>
@@ -990,13 +990,14 @@ namespace SP.Tutorial
             });
 
             // 14d (nuevo) ----------------------------------------------
+            var tMetra = new float[] { -1f };
             pasos.Add(new Paso
             {
                 Id = "mira_tanque", Titulo = "MIRA DEL CAÑÓN Y LA METRALLETA", Teclas = "RMB", Acento = naranja,
                 Subs = new[]
                 {
-                    S("Clic derecho: miras por la mira del cañón", "Con el CLIC DERECHO mantenido la cámara pasa a la MIRA DEL CAÑÓN (primera persona con zoom y retícula de óptica). El cañón gira lento hacia donde apuntas.", "Mantén el botón derecho estando en el asiento del cañón [2].", () => f.miraDelCanon, v => f.miraDelCanon = v),
-                    S("[3] la metralleta: clic derecho", "Suelta, aprieta [3] para pasar a la METRALLETA y mantén el CLIC DERECHO: la mira de la metralleta.", "El [3] cambia de asiento; después clic derecho mantenido.", () => f.miraDeMetralleta, v => f.miraDeMetralleta = v),
+                    S("Clic derecho: miras por la mira del cañón", "Con el CLIC DERECHO mantenido miras por el PERISCOPIO del cañón: ventana rectangular con escala de distancia y escalera de elevación (no es la mira de a pie). El cañón gira lento hacia donde apuntas.", "Mantén el botón derecho estando en el asiento del cañón [2].", () => f.miraDelCanon, v => f.miraDelCanon = v),
+                    S("[3] la metralleta: mirilla normal", "Suelta, aprieta [3]: la METRALLETA va en el puesto alto del tanque y usa la MIRILLA NORMAL, igual que las torretas fijas (sin zoom ni periscopio). Apunta con el mouse y mantén el CLIC IZQUIERDO para ráfagas.", "El [3] cambia de asiento; la metralleta no lleva mira óptica.", () => f.miraDeMetralleta, v => f.miraDeMetralleta = v),
                     S("Suelta y vuelve al cañón [2]", "Suelta el clic derecho y aprieta [2]: la cámara vuelve a la tercera persona.", "Suelta el botón derecho y aprieta 2.", () => f.sueltaMiraTanque, v => f.sueltaMiraTanque = v),
                 },
                 Evaluar = () =>
@@ -1004,7 +1005,9 @@ namespace SP.Tutorial
                     bool enCanon = driver.CurrentSeat == VehicleSeatRole.Gunner;
                     bool enMetra = driver.CurrentSeat == VehicleSeatRole.Passenger1;
                     if (enCanon && driver.Rig.EstaConZoom && driver.Rig.AdsBlend > 0.9f) f.miraDelCanon = true;
-                    if (f.miraDelCanon && enMetra && driver.Rig.EstaConZoom && driver.Rig.AdsBlend > 0.9f) f.miraDeMetralleta = true;
+                    // Ronda 12: la metralleta ya no hace zoom; alcanza con sentarse en su puesto y mirar con la mirilla normal un momento.
+                    if (!enMetra) tMetra[0] = -1f; else if (tMetra[0] < 0f) tMetra[0] = Time.time;
+                    if (f.miraDelCanon && enMetra && !driver.Rig.EstaConZoom && tMetra[0] >= 0f && Time.time - tMetra[0] > 1.2f) f.miraDeMetralleta = true;
                     if (f.miraDeMetralleta && enCanon && !driver.Rig.EstaConZoom) f.sueltaMiraTanque = true;
                 },
             });
@@ -1015,7 +1018,7 @@ namespace SP.Tutorial
                 Id = "avanzar_disparar", Titulo = "AVANZAR Y DISPARAR", Teclas = "Q LMB", Acento = new Color(1f, 0.45f, 0.35f),
                 Subs = new[]
                 {
-                    S("Q → TANQUE → TANQUE ALLÍ: avanza", "Mira al SUELO, adelante en el camino. Mantén [Q], elige TANQUE y sigue hasta TANQUE ALLÍ: un aliado conduce hasta ahí.", "Baja la mira hasta ver el suelo delante del tanque. TANQUE ALLÍ es la tercera opción.", () => f.ordenDeAvanzar, v => f.ordenDeAvanzar = v),
+                    S("Q → TANQUE → TANQUE ALLÍ: avanza", "Mira al SUELO, adelante en el camino. Mantén [Q], elige TANQUE y sigue hasta TANQUE ALLÍ: un aliado conduce hasta ahí.", "Baja la mira hasta ver el suelo delante del tanque. TANQUE ALLÍ es la tercera opción. El tanque APLASTA los obstáculos y los enemigos que se le cruzan.", () => f.ordenDeAvanzar, v => f.ordenDeAvanzar = v),
                     S("Dispara el cañón (clic izquierdo)", "¡Vienen enemigos! Apunta el cañón con el mouse y dispara con el CLIC IZQUIERDO.", "Mueve el mouse para apuntar el cañón hacia los soldados rojos y haz clic izquierdo.", () => f.disparoCanon, v => f.disparoCanon = v),
                     S("Derriba a los enemigos que se acercan", "Sigue disparando: hay que derribar a 3 enemigos. (La metralleta de un aliado también ayuda.)", "Apunta el cañón a los soldados rojos que se acercan y dispara.", () => f.enemigosEliminados, v => f.enemigosEliminados = v,
                       () => $"Derriba 3 enemigos que se acercan ({Mathf.Min(bajasTotales, BajasNecesarias)}/{BajasNecesarias})"),

@@ -42,6 +42,8 @@ namespace SP.EditorTools
             "DecalPool",
             "DebrisPool",
             "ImpactFxPool",
+            "SpriteFxPool",
+            "FragmentosPool",
             "OrderMarkerPool",
             "MuzzleLightPool",
             "SelectionRing",

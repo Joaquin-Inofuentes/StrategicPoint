@@ -315,8 +315,22 @@ namespace SP.CameraSystem
         {
             Vector3 total = shakeOffset + frame + BobOffset;
             total = Vector3.ClampMagnitude(total, maxShakeMagnitude);
-            if (total.sqrMagnitude > 0.000001f) transform.position += total;
+            offsetAplicado = Vector3.zero;
+            if (total.sqrMagnitude > 0.000001f) { transform.position += total; offsetAplicado = total; }
             shakeOffset = Vector3.Lerp(shakeOffset, Vector3.zero, Mathf.Clamp01(Time.deltaTime * shakeRecoverySpeed));
+        }
+
+        // Ronda 12 ("el tanque tambalea la camara"): la sacudida/inercia/balanceo se SUMABA a transform.position y el frame
+        // siguiente el seguimiento (Lerp desde la posicion actual) partia de esa posicion ya movida. Como el Lerp solo
+        // recupera una fraccion por frame, un empujon continuo se acumulaba ~1/k veces (con k=0,17, casi 6 veces el
+        // offset pedido) y la camara oscilaba de un lado a otro. Ahora se guarda lo aplicado y el seguimiento lo quita
+        // antes de interpolar: el offset es un adorno de UN frame, no parte de la posicion base.
+        Vector3 offsetAplicado;
+        void QuitarOffsetPrevio()
+        {
+            if (offsetAplicado == Vector3.zero) return;
+            transform.position -= offsetAplicado;
+            offsetAplicado = Vector3.zero;
         }
 
         // Vista RTS guardada al salir, para no perder el encuadre que el
@@ -607,10 +621,23 @@ namespace SP.CameraSystem
         // vehiculo) la camara arranca lejos de "desired" y se desliza
         // hasta ahi sola, sin que nadie tenga que orquestar un
         // BeginTransition aparte para este caso.
+        // Ronda 12: la posicion ya no es un Lerp hacia un punto que se mueve con el vehiculo (a 12 m/s dejaba la camara
+        // 1 m atras y la balanceaba en cada giro y cada frenada). Ahora la camara va RIGIDA a la distancia pedida sobre el
+        // vehiculo, y lo unico que se suaviza es el YAW con el que lo mira (SmoothDampAngle): al girar el tanque la camara
+        // lo sigue con un retraso corto y sin oscilar, y al chocar o deslizar contra un muro la camara no tiembla.
+        Transform yawObjetivo;
+        float yawSuave, yawVel;
+        public const float TiempoDeYawDeVehiculo = 0.16f;
+
         public void FollowThirdPerson(Transform target, float distance = 7f, float height = 3f)
         {
             if (target == null || IsTransitioning) return;
-            Vector3 desired = target.position - target.forward * distance + Vector3.up * height;
+            QuitarOffsetPrevio();
+            float yawReal = target.eulerAngles.y;
+            if (yawObjetivo != target) { yawObjetivo = target; yawSuave = yawReal; yawVel = 0f; }
+            yawSuave = Mathf.SmoothDampAngle(yawSuave, yawReal, ref yawVel, TiempoDeYawDeVehiculo);
+            Vector3 atras = Quaternion.Euler(0f, yawSuave, 0f) * Vector3.forward;
+            Vector3 desired = target.position - atras * distance + Vector3.up * height;
             Quaternion desiredRot = Quaternion.LookRotation((target.position + Vector3.up * 1.2f - desired).normalized);
 
             if (blendActive)
@@ -621,9 +648,8 @@ namespace SP.CameraSystem
                 return;
             }
 
-            float k = Mathf.Clamp01(Time.deltaTime * normalFollowSpeed);
-            transform.position = Vector3.Lerp(transform.position, desired, k);
-            transform.rotation = Quaternion.Slerp(transform.rotation, desiredRot, k);
+            transform.position = desired;
+            transform.rotation = desiredRot;
         }
 
         // Tercera persona QUE SIGUE LA PUNTERIA -- pedido explicito:
@@ -649,6 +675,7 @@ namespace SP.CameraSystem
             Vector3? miraPos = null, Quaternion? miraRot = null)
         {
             if (IsTransitioning) return;
+            QuitarOffsetPrevio();
             var flat = new Vector3(aimForward.x, 0f, aimForward.z);
             if (flat.sqrMagnitude < 0.0001f) flat = Vector3.forward;
             flat.Normalize();

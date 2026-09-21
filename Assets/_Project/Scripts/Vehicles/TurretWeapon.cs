@@ -244,6 +244,21 @@ namespace SP.Vehicles
         // cono de dispersion que cualquier arma de mano, no una formula aparte.
         public float SpreadDeg;
 
+        // Quien dispara: el operador del asiento de esta arma, y si no hay, el primer tripulante; sin nadie, el bando del tanque.
+        public void ResolverTirador(out int shooterId, out TeamId team)
+        {
+            shooterId = -1; team = vehicle != null ? vehicle.Bando : TeamId.Player;
+            if (vehicle == null) return;
+            bool esMetralleta = transform.parent != null && transform.parent.name == "MetralletaMount";
+            var operador = esMetralleta ? vehicle.SoldierInSeat(VehicleSeatRole.Passenger1) : vehicle.Gunner;
+            if (operador == null)
+            {
+                var ocupantes = vehicle.Occupants;
+                if (ocupantes.Count > 0) operador = ocupantes[0];
+            }
+            if (operador != null) { shooterId = operador.Id; team = operador.Team; }
+        }
+
         public bool TryFire()
         {
             if (!bootstrapped) Bootstrap();
@@ -266,8 +281,12 @@ namespace SP.Vehicles
             if (pool == null) pool = UnityEngine.Object.FindFirstObjectByType<ProjectilePool>();
             if (cooldownTimer > 0f || pool == null) return false;
 
-            int shooterId = vehicle != null && vehicle.Gunner != null ? vehicle.Gunner.Id : -1;
-            var team = vehicle != null && vehicle.Gunner != null ? vehicle.Gunner.Team : TeamId.Player;
+            // Ronda 12 (BUG REAL): sin artillero humano el proyectil salia con equipo Player por defecto. Los tanques
+            // enemigos (Driver + Passenger2, sin Gunner) disparaban obuses "del jugador": no le pegaban al jugador, ni a
+            // sus aliados, y la explosion perdonaba a los suyos como si fueran amigos. Ahora el equipo y el autor
+            // salen de quien opera esta arma (el cañon: Gunner; la metralleta: Passenger1) y, si la maneja la IA,
+            // de la tripulacion del vehiculo (o su Bando).
+            ResolverTirador(out int shooterId, out TeamId team);
 
             var spawnPos = Muzzle != null ? Muzzle.position : transform.position;
             var fireDir = SpreadDeg > 0f ? SP.Combat.WeaponHolder.ApplySpread(transform.forward, SpreadDeg) : transform.forward;

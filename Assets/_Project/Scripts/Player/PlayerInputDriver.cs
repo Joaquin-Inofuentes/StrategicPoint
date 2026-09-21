@@ -296,6 +296,9 @@ namespace SP.Player
 
         AimResult ultimoResultadoDeMira;
         public AimResult UltimaMira => ultimoResultadoDeMira;
+        // Semilla de prueba: la suite y las pruebas de juego fijan lo que 'hay en la mira' sin tener que alinear la camara
+        // con un soldado que se mueve. En juego normal es siempre null.
+        public AimResult? MiraForzada;
 
         // La carga de demolicion del asalto usa el mismo anillo que el revivir.
         public bool DemolicionEnCurso { get; set; }
@@ -1249,7 +1252,7 @@ namespace SP.Player
             UpdateNearestAllyHighlight();
 
             var ray = Rig.GetForwardRay();
-            var result = Aim.Evaluate(ray, Brain.Current);
+            var result = MiraForzada ?? Aim.Evaluate(ray, Brain.Current);
             UpdateAimHighlight(result);
             UpdateAimRing(result);
             UpdateCoverPreview(kb, result);
@@ -2722,15 +2725,15 @@ namespace SP.Player
             switch (aim.Type)
             {
                 case AimTargetType.Enemy:
-                    texto = aim.Soldier != null ? $"[Q] ATACAR a {aim.Soldier.DisplayName}" : null; break;
+                    texto = aim.Soldier != null ? $"[Q] toque: ATACAR a {aim.Soldier.DisplayName}  ·  [Q] mantener: menu" : null; break;
                 case AimTargetType.Ally:
                     if (aim.Soldier == null) break;
-                    if (aim.Soldier.Role == RoleType.Civilian) { texto = Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null ? $"[Q] CURAR a {aim.Soldier.DisplayName} ({aim.Soldier.Health.Current}/{aim.Soldier.Health.MaxHealth})" : $"Civil: {aim.Soldier.DisplayName}"; destacado = Herido(aim.Soldier); }
-                    else if (Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null) texto = $"[Q] CURAR a {aim.Soldier.DisplayName} ({aim.Soldier.Health.Current}/{aim.Soldier.Health.MaxHealth})  ·  POSEER";
-                    else { texto = $"[Q] POSEER a {aim.Soldier.DisplayName}"; destacado = false; }
+                    if (aim.Soldier.Role == RoleType.Civilian) { texto = Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null ? $"[Q] toque: CURAR a {aim.Soldier.DisplayName} ({aim.Soldier.Health.Current}/{aim.Soldier.Health.MaxHealth})" : $"Civil: {aim.Soldier.DisplayName}"; destacado = Herido(aim.Soldier); }
+                    else if (Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null) texto = $"[Q] toque: CURAR a {aim.Soldier.DisplayName} ({aim.Soldier.Health.Current}/{aim.Soldier.Health.MaxHealth})  ·  [Q] mantener: POSEER / menu";
+                    else { texto = $"[Q] toque: {aim.Soldier.DisplayName} TE SIGUE  ·  [Q] mantener: POSEER / menu"; destacado = false; }
                     break;
                 case AimTargetType.Caido:
-                    texto = aim.Soldier != null && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null ? $"[Q] REANIMAR a {aim.Soldier.DisplayName}" : aim.Soldier != null ? $"{aim.Soldier.DisplayName} esta caido (no queda medico)" : null;
+                    texto = aim.Soldier != null && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null ? $"[Q] toque: REANIMAR a {aim.Soldier.DisplayName}  ·  [Q] mantener: menu" : aim.Soldier != null ? $"{aim.Soldier.DisplayName} esta caido (no queda medico)" : null;
                     destacado = aim.Soldier != null && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null;
                     break;
                 case AimTargetType.Obstacle:
@@ -2746,7 +2749,7 @@ namespace SP.Player
                     break;
                 }
                 case AimTargetType.Vehicle:
-                    if (aim.Vehicle != null && !aim.Vehicle.IsDestroyed && aim.Vehicle.Bando == TeamId.Player) texto = "[E] SUBIR AL TANQUE  ·  [Q] radial: subir a todos";
+                    if (aim.Vehicle != null && !aim.Vehicle.IsDestroyed && aim.Vehicle.Bando == TeamId.Player) texto = "[E] SUBIR AL TANQUE  ·  [Q] toque: subir a todos  ·  [Q] mantener: menu del tanque";
                     else if (aim.Vehicle != null && aim.Vehicle.IsDestroyed) { texto = "Vehiculo destruido"; destacado = false; }
                     break;
                 case AimTargetType.Torreta:

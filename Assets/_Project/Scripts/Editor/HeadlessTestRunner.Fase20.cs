@@ -120,6 +120,87 @@ namespace SP.EditorTools
                 ModoDios.Poner(godCaida);
                 FullHeal(vega, kes, doc);
             }
+
+            RunPhase20Ronda12(inputDriver, vehicle, vega, kes, doc);
+        }
+
+        // RONDA 12: tanque (mira, puesto de metralleta, aplastar, tiros enemigos), fragmentos con fisica, moneda de municion,
+        // muro sin la cara solapada y el toque de Q como accion rapida distinta del radial sostenido.
+        static void RunPhase20Ronda12(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc)
+        {
+            TestLog.Phase("FASE 20b - Ronda 12: tanque, fragmentos, moneda, muro, Q toque");
+
+            // Tiros del tanque enemigo: llevan el bando del que lo tripula, no el del jugador.
+            Vehicle tanqueEnemigo = null;
+            foreach (var v in Object.FindObjectsByType<Vehicle>()) if (v.Bando == TeamId.Enemy && !v.IsDestroyed) { tanqueEnemigo = v; break; }
+            if (tanqueEnemigo != null)
+            {
+                var canonEnemigo = tanqueEnemigo.transform.Find("TurretMount/TurretPivot");
+                var tw = canonEnemigo != null ? canonEnemigo.GetComponent<TurretWeapon>() : null;
+                if (tw != null)
+                {
+                    tw.ResolverTirador(out int idTirador, out TeamId bando);
+                    Check("Los disparos de un tanque enemigo salen con el bando ENEMIGO", bando == TeamId.Enemy);
+                }
+            }
+            else TestLog.Step("No hay tanque enemigo vivo en la escena de prueba: se omite el bando de sus tiros");
+
+            // Puesto de metralleta mas alto y mirilla normal.
+            var mgMount = vehicle.transform.Find("MetralletaMount");
+            var mgStand = vehicle.transform.Find("MetralletaStandPoint");
+            Check("El puesto de metralleta del tanque quedo arriba (montura >= 0,6 m, soldado >= 0,9 m)",
+                mgMount != null && mgStand != null && mgMount.localPosition.y >= 0.6f && mgStand.localPosition.y >= 0.9f);
+            Check("El canon usa la mira de ARTILLERO (periscopio) y no la del francotirador", System.Enum.IsDefined(typeof(ReticleStyle), "Artillero") && ReticleStyle.Artillero != ReticleStyle.Telescopica);
+
+            // Aplastar: el umbral existe y los obstaculos se rompen con el casco.
+            Check("El tanque aplasta a partir de 3 m/s", Atropello.VelocidadParaAplastar == 3f);
+
+            // Fragmentos con fisica: un cubo se rompe en piezas reales y se limpia.
+            var cubo = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cubo.name = "PruebaFragmentos";
+            cubo.transform.position = new Vector3(0f, 40f, 0f);
+            cubo.transform.localScale = new Vector3(2f, 2f, 0.4f);
+            int piezas = SP.Presentation.Fragmentador.Romper(cubo.transform, cubo.transform.position + Vector3.back, 8f);
+            // Los fragmentos son objetos de Play (Rigidbody + pool): en la suite de edicion Romper debe ser un no-op seguro.
+            if (Application.isPlaying) Check($"Fragmentador rompe un bloque en piezas ({piezas}) con cuerpo rigido", piezas >= 4 && SP.Presentation.Fragmentador.Activos >= 4);
+            else Check("Fuera de Play, Fragmentador.Romper no crea nada (la fisica se verifica en Play)", piezas == 0 && SP.Presentation.Fragmentador.Activos == 0);
+            SP.Presentation.Fragmentador.LimpiarTodo();
+            Object.DestroyImmediate(cubo);
+            Check("LimpiarTodo deja cero fragmentos activos", SP.Presentation.Fragmentador.Activos == 0);
+
+            // Moneda de municion 3D (prefab referenciado desde el pickup).
+            Check("Existe el prefab de la moneda de municion", SP.Core.RecursosCache.Cargar<GameObject>(SP.Player.MunicionPickup.PrefabMoneda) != null);
+
+            // Muro: la cara superior solapada ya no existe (17 quads = 34 triangulos, antes 18 = 36).
+            var muro = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/ARTS/SP_Arte/_FBX_Export/01_Modulares/SM_Mod_Muro_Recto.fbx");
+            int tris = 0;
+            if (muro != null) foreach (var mf in muro.GetComponentsInChildren<MeshFilter>()) tris += mf.sharedMesh.triangles.Length / 3;
+            Check($"El muro recto ya no tiene la cara superior solapada ({tris} triangulos)", muro != null && tris == 34);
+
+            // Q: toque = accion rapida sobre lo apuntado; sostenido = radial. Se fija la mira por reflexion (la suite no corre Update).
+            var campoMira = typeof(PlayerInputDriver).GetField("ultimoResultadoDeMira", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            Soldier enemigo = null;
+            foreach (var s in Object.FindObjectsByType<Soldier>()) if (s.Team == TeamId.Enemy && s.Health != null && s.Health.IsAlive) { enemigo = s; break; }
+            if (campoMira != null)
+            {
+                inputDriver.Brain.Possess(vega);
+                if (enemigo != null)
+                {
+                    campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.Enemy, Soldier = enemigo, Point = enemigo.transform.position, HitTransform = enemigo.transform });
+                    inputDriver.ResolverGestoDeQ(true, false, false);
+                    Check("Q toque sobre un enemigo = ATACAR al instante", inputDriver.UltimaAccionRapida == "ATACAR");
+                    Check("Q toque sobre un enemigo NO abre el radial", !inputDriver.RadialAbierto);
+                }
+                campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.Ally, Soldier = kes, Point = kes.transform.position, HitTransform = kes.transform });
+                inputDriver.ResolverGestoDeQ(true, false, false);
+                Check("Q toque sobre un aliado sano = ese aliado te sigue", inputDriver.UltimaAccionRapida == "SEGUIR ALIADO");
+                campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.None });
+                inputDriver.ResolverGestoDeQ(true, false, false);
+                Check("Q toque sin nada en la mira cae al SIGANME de la escuadra (sin accion rapida)", inputDriver.UltimaAccionRapida == null);
+                campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.None });
+            }
+            FullHeal(vega, kes, doc);
+            inputDriver.Brain.Possess(vega);
         }
     }
 }

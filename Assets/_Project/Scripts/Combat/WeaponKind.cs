@@ -6,5 +6,5 @@ namespace SP.Combat
 
     // Estilo de mirilla que se dibuja al apuntar con clic derecho. Cada arma
     // tiene la suya (ver WeaponCatalog.Spec.Reticle y UI/MirillaView).
-    public enum ReticleStyle { Punto, Cruz, Anillo, Chevron, Mildot, Circulo, Telescopica }
+    public enum ReticleStyle { Punto, Cruz, Anillo, Chevron, Mildot, Circulo, Telescopica, Artillero }
 }

@@ -57,9 +57,6 @@ namespace SP.Presentation
             if (root != null) { Destruir(root.gameObject); root = null; }
         }
 
-        static readonly Color CraterColor = new Color(0.18f, 0.14f, 0.10f);
-        static readonly Color BulletHoleColor = new Color(0.12f, 0.12f, 0.13f);
-
 
         // Entrar en Play mode NO destruye los objetos de la escena, pero
         // SI reinicia los estaticos: el root creado en tiempo de edicion
@@ -101,39 +98,34 @@ namespace SP.Presentation
             }
             else
             {
-                decal = GameObject.CreatePrimitive(PrimitiveType.Quad);
-                decal.name = $"Decal_{kind}";
-            // hideFlags va en CADA pieza, no solo en el root: los flags
-            // NO se heredan. Con el flag solo en el padre, las piezas se
-            // serializaban igual y al recargar la escena aparecian como
-            // objetos sueltos de raiz (el padre no se guardaba), fuera de
-            // todo cupo y acumulandose en cada build. Verificado: los
-            // decals llegaron a triplicar su tope asi.
+                decal = new GameObject($"Decal_{kind}");
+                // hideFlags va en CADA pieza, no solo en el root: los flags
+                // NO se heredan. Con el flag solo en el padre, las piezas se
+                // serializaban igual y al recargar la escena aparecian como
+                // objetos sueltos de raiz (el padre no se guardaba), fuera de
+                // todo cupo y acumulandose en cada build. Verificado: los
+                // decals llegaron a triplicar su tope asi.
                 decal.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
-                var col = decal.GetComponent<Collider>();
-                if (col != null)
-                {
-                    if (Application.isPlaying) Object.Destroy(col);
-                    else Object.DestroyImmediate(col);
-                }
                 decal.transform.SetParent(root, false);
-                var rend = decal.GetComponent<MeshRenderer>();
-                rend.sharedMaterial = SafeMaterial.Create(kind == DecalKind.Crater ? CraterColor : BulletHoleColor);
-                rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                var sr = decal.AddComponent<SpriteRenderer>();
+                sr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                sr.receiveShadows = false;
             }
 
-            // Mismo caso que en DebrisPool: el Material creado por codigo
-            // no es un asset, y una reconstruccion de escena lo destruye
-            // dejando al Renderer sin material aunque el objeto siga vivo.
-            var decalRend = decal.GetComponent<MeshRenderer>();
-            if (decalRend != null && decalRend.sharedMaterial == null)
-                decalRend.sharedMaterial = SafeMaterial.Create(kind == DecalKind.Crater ? CraterColor : BulletHoleColor);
+            // Ronda 12: antes era un quad gris liso (placeholder). Ahora es una marca real: sprite de quemadura (Kenney, CC0)
+            // teñido oscuro y girado al azar para que no se repitan.
+            var spr = SpritesReales.Obtener(kind == DecalKind.Crater ? (Random.value < 0.5f ? "scorch_03" : "scorch_01") : (Random.value < 0.5f ? "scorch_02" : "scorch_01"));
+            var decalSr = decal.GetComponent<SpriteRenderer>();
+            decalSr.sprite = spr;
+            decalSr.color = kind == DecalKind.Crater ? new Color(0.06f, 0.05f, 0.04f, 0.92f) : new Color(0.04f, 0.04f, 0.045f, 0.95f);
+            decalSr.sortingOrder = kind == DecalKind.Crater ? -2 : -1;
 
             // Levantado un pelo sobre la superficie para no pelear con ella
             // por el z-buffer.
             decal.transform.position = position + normal * 0.02f;
-            decal.transform.rotation = Quaternion.LookRotation(-normal);
-            decal.transform.localScale = Vector3.one * size;
+            decal.transform.rotation = Quaternion.LookRotation(-normal) * Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
+            // El sprite mide 1 m a escala 1 y su marca ocupa ~60 % del cuadro: se agranda para que "size" sea el ancho visible.
+            decal.transform.localScale = Vector3.one * size * 1.6f;
             decal.SetActive(true);
 
             list.Add(decal);

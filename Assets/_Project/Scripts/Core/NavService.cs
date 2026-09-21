@@ -186,6 +186,8 @@ namespace SP.Core
             var t = c.transform;
             if (t.GetComponentInParent<SP.Actors.Soldier>() != null) return false;
             if (t.GetComponentInParent<SP.Combat.Projectile>() != null) return false;
+            // Ronda 12: los trozos que salen de un obstaculo roto son cuerpos rigidos sueltos, no paredes.
+            if (t.GetComponentInParent<SP.Presentation.Fragmento>() != null) return false;
             return true;
         }
 

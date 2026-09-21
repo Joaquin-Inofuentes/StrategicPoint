@@ -112,10 +112,15 @@ namespace SP.Presentation
         public static event System.Action<ObstacleMarker, int> Golpeado;
         public static event System.Action<ObstacleMarker> Derrumbado;
 
-        public void TakeDamage(int amount)
+        // Ronda 12: de donde vino el golpe (bala, obus, casco del tanque): los trozos salen desde ahi.
+        Vector3? ultimoGolpe;
+        float fuerzaDeRotura = 7f;
+
+        public void TakeDamage(int amount, Vector3? desde = null)
         {
             CacheIfNeeded();
             if (IsCollapsed) return;
+            if (desde.HasValue) ultimoGolpe = desde;
             Golpeado?.Invoke(this, amount);
 
             // G1: "primer impacto: se prende fuego" -- va antes que
@@ -135,12 +140,14 @@ namespace SP.Presentation
 
         // Demolicion por carga (el soldado de asalto): tira el obstaculo entero de una vez,
         // con una nube grande de escombros. Sirve tambien para muros "indestructibles".
-        public void Demoler()
+        public void Demoler(Vector3? desde = null, float fuerza = 9f)
         {
             CacheIfNeeded();
             if (IsCollapsed) return;
             currentHealth = 0;
-            SpawnDebris(30, 9f);
+            if (desde.HasValue) ultimoGolpe = desde;
+            fuerzaDeRotura = fuerza;
+            SpawnDebris(14, 9f);
             Collapse();
         }
 
@@ -167,7 +174,10 @@ namespace SP.Presentation
         {
             IsCollapsed = true;
             Derrumbado?.Invoke(this);
-            SpawnDebris(14, 7f);
+            // Se parte en trozos reales con fisica (Fragmentador); si no se pudo (fuera de Play), quedan los cubitos de antes.
+            var origen = ultimoGolpe ?? (transform.position + Vector3.up * baseScale.y * 0.5f);
+            if (SP.Presentation.Fragmentador.Romper(transform, origen, fuerzaDeRotura) == 0) SpawnDebris(14, 7f);
+            else SpawnDebris(5, 6f);
             gameObject.SetActive(false);
             // El obstaculo que se cayo abrio un paso que la grilla de
             // navegacion todavia cree cerrado: sin esto los soldados

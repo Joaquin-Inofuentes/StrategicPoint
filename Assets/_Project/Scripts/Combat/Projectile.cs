@@ -395,7 +395,7 @@ namespace SP.Combat
             // de largo significaba que solo le pegabas cerca del pivote.
             var marca = impacto.collider.GetComponentInParent<SP.Presentation.ObstacleMarker>();
             var clase = marca != null ? EnvironmentHitKind.Obstacle : EnvironmentHitKind.Ground;
-            if (marca != null) marca.TakeDamage(damage);
+            if (marca != null) marca.TakeDamage(damage, impacto.point);
 
             EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, clase, impacto.point));
             PlayImpactSfx(clase, impacto.point, 0.5f);
@@ -623,7 +623,7 @@ namespace SP.Combat
                 if (marca == null || marca.IsCollapsed || !marcasGolpeadas.Add(marca)) continue;
                 float d = Vector3.Distance(c.ClosestPoint(point), point);
                 float k = 1f - Mathf.Clamp01(d / Mathf.Max(0.1f, radius));
-                marca.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * FactorDanoDeExplosionAObstaculos * Mathf.Lerp(0.35f, 1f, k))));
+                marca.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * FactorDanoDeExplosionAObstaculos * Mathf.Lerp(0.35f, 1f, k))), point);
             }
         }
 

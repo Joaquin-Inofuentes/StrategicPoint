@@ -2355,7 +2355,8 @@ namespace SP.EditorTools
             // DOS ejes en vez de uno).
             var mgMount = new GameObject("MetralletaMount");
             mgMount.transform.SetParent(root.transform, false);
-            mgMount.transform.localPosition = new Vector3(0.35f, 0.30f, 0.1f);
+            // Ronda 12: el puesto de la metralleta va MAS ARRIBA (el artillero quedaba con las piernas metidas en el casco).
+            mgMount.transform.localPosition = new Vector3(0.35f, 0.62f, 0.1f);
             mgMount.transform.localScale = new Vector3(1f / parentScale.x, 1f / parentScale.y, 1f / parentScale.z);
 
             var mgPivot = new GameObject("MetralletaPivot");
@@ -2397,7 +2398,7 @@ namespace SP.EditorTools
             // metralleta se mueve, solo tiene que seguir al tanque.
             var mgStand = new GameObject("MetralletaStandPoint").transform;
             mgStand.SetParent(root.transform, false);
-            mgStand.localPosition = new Vector3(0.30f, 0.55f, 0.05f);
+            mgStand.localPosition = new Vector3(0.30f, 0.95f, 0.05f);
 
             // Mismo cuerpo/torreta/cañon del pack de arte nuevo que
             // WorldArtPipeline.ReemplazarVehiculo cuelga en SC_Gameplay --

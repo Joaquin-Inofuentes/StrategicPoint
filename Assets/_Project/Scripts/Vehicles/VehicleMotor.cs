@@ -91,6 +91,10 @@ namespace SP.Vehicles
         {
             EnsureCuerpo();
 
+            // Ronda 12: el tanque revienta los obstaculos destructibles en su camino (y pierde un poco de velocidad por cada uno).
+            int aplastados = Atropello.AplastarObstaculos(transform, CurrentSpeed, radio);
+            if (aplastados > 0) CurrentSpeed *= Mathf.Pow(0.88f, aplastados);
+
             var pedido = transform.forward * distancia;
             var real = Deslizador.Resolver(transform, cuerpo, pedido, radio);
             transform.position += real;

@@ -53,7 +53,7 @@ namespace SP.Player
                 // fallback. Se saco a pedido: Q-toque solo debe interactuar con la mira,
                 // nunca poseer a otro. CycleLivingAlly sigue viva via el radial (POSEER,
                 // categoria 6, sub >= 3), asi que no queda huerfana.
-                if (toque && !TryInteractuarConMira()) SeguirAlPoseido();
+                if (toque && !TryInteractuarConMira()) AccionRapidaDeQ();
                 return;
             }
 
@@ -103,7 +103,7 @@ namespace SP.Player
             }
 
             // Ver comentario arriba: se saco el fallback a CycleLivingAlly en el tap de Q.
-            if (toque && !TryInteractuarConMira()) SeguirAlPoseido();
+            if (toque && !TryInteractuarConMira()) AccionRapidaDeQ();
         }
 
         // Ronda 11 (punto 8): la accion por defecto del toque de [Q]. Si no hay nada interactuable en la mira, la escuadra te sigue.

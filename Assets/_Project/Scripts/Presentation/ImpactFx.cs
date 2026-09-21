@@ -230,10 +230,13 @@ namespace SP.Presentation
         // un instante en el pico, y colapsa de golpe.
         public static void SpawnExplosion(Vector3 position, float radius)
         {
-            var fx = spheres.Take();
-            // Diametro = 2x radio (la esfera primitiva de Unity tiene 1
-            // unidad de diametro con escala 1).
-            if (fx != null) fx.LaunchExplosion(position, radius * 2f);
+            // Ronda 12: la esfera naranja era un placeholder. Ahora es una explosion de sprites reales (fuego, humo, tierra, chispas).
+            // Si por algun motivo faltan los sprites (Resources), se cae a la esfera de antes.
+            if (SpriteFx.Explosion(position, radius) == 0)
+            {
+                var fx = spheres.Take();
+                if (fx != null) fx.LaunchExplosion(position, radius * 2f);
+            }
 
             // La esfera dice DONDE, pero se colapsa rapido y es dificil leer
             // HASTA DONDE llego. El anillo se expande exactamente hasta

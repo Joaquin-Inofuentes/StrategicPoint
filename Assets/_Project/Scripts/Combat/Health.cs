@@ -49,8 +49,14 @@ namespace SP.Combat
         // saber en ese momento.
         public int LastAttackerId { get; private set; } = -1;
 
+        // Ronda 12: avisa a la presentacion que un caido volvio a la vida (el cuerpo se habia ocultado 2 s despues de morir y
+        // nada lo volvia a mostrar: el aliado revivido quedaba invisible). Solo se dispara al pasar de muerto a vivo.
+        public event System.Action Revivido;
+        bool estuvoVivo;
+
         public void Initialize(int actorId, int max)
         {
+            bool revive = estuvoVivo && Current <= 0 && max > 0;
             ActorId = actorId;
             maxHealth = max;
             Current = max;
@@ -63,6 +69,8 @@ namespace SP.Combat
             segundosSinDano = SegundosSinDanoParaRegenerar;
             regenAcumulada = 0f;
             IsRegenerating = false;
+            estuvoVivo = max > 0;
+            if (revive) Revivido?.Invoke();
         }
 
         // Llamado una vez por frame desde WorldSimulationDriver.Step, igual

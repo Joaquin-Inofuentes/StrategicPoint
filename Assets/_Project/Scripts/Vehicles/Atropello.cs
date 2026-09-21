@@ -74,6 +74,36 @@ namespace SP.Vehicles
             return atropellados;
         }
 
+        // Ronda 12: "el tanque destruye obstaculos tambien". A partir de VelocidadParaAplastar el casco no frena contra un
+        // obstaculo destructible (cubo de cobertura, barril, caja): lo revienta y el bloque sale en trozos con fisica
+        // (Fragmentador). Se llama ANTES de resolver la colision del avance, asi el obstaculo ya no esta cuando el
+        // resolutor lo mire. Devuelve cuantos derribo; el que llama descuenta velocidad por cada uno.
+        public const float VelocidadParaAplastar = 3f;
+        public const float FuerzaDeAplaste = 10f;
+        static readonly Collider[] bufferAplaste = new Collider[24];
+
+        public static int AplastarObstaculos(Transform vehiculo, float velocidad, float radioDelCasco)
+        {
+            if (vehiculo == null || !Application.isPlaying) return 0;
+            if (Mathf.Abs(velocidad) < VelocidadParaAplastar) return 0;
+            Vector3 dir = vehiculo.forward * Mathf.Sign(velocidad);
+            var centro = vehiculo.position + dir * (radioDelCasco + 0.45f) + Vector3.up * 0.5f;
+            var mitad = new Vector3(1.25f, 0.95f, 0.6f);
+            int n = Physics.OverlapBoxNonAlloc(centro, mitad, bufferAplaste, vehiculo.rotation, ~0, QueryTriggerInteraction.Ignore);
+            int derribados = 0;
+            for (int i = 0; i < n; i++)
+            {
+                var c = bufferAplaste[i];
+                if (c == null || c.transform.IsChildOf(vehiculo)) continue;
+                var marca = c.GetComponentInParent<SP.Presentation.ObstacleMarker>();
+                if (marca == null || marca.IsCollapsed) continue;
+                marca.Demoler(vehiculo.position - dir * 0.8f, FuerzaDeAplaste);
+                GameLog.Line($"{vehiculo.name} aplasto un obstaculo a {Mathf.Abs(velocidad):0.0} m/s");
+                derribados++;
+            }
+            return derribados;
+        }
+
         // El equipo de quien va adentro. Sin nadie adentro devuelve null y
         // el vehiculo atropella a cualquiera: no hay a quien respetarle el
         // bando.

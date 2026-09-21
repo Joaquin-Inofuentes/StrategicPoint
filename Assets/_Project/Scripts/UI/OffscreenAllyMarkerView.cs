@@ -142,6 +142,7 @@ namespace SP.UI
 
                 var arrow = Arrows[used];
                 if (arrow == null) continue;
+                SpriteTriangulo.Aplicar(arrow);   // Ronda 12: triangulo y no rectangulo liso
 
                 // Direccion en PIXELES del canvas, no en viewport: en
                 // viewport ambos ejes van 0..1 aunque la pantalla sea 16:9,

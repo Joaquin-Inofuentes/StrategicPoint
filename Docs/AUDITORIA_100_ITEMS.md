@@ -3,6 +3,7 @@
 Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. **Estados**: HECHO (implementado y con prueba o captura), YA ESTABA (al verificarlo en el codigo ya estaba resuelto), PARCIAL (mejorado, con lo que falta dicho), NO (no hecho o no aplica, con el motivo).
 
 **Resumen**: HECHO: 79, YA ESTABA: 18, PARCIAL: 2, NO/NO APLICA: 1 (de 100). El que queda (65: solo un humano puede juzgar un sonido de oido) no es trabajo pendiente de codigo: es una limitacion real confirmada.
+n**Ronda 12** (2026-09-21): ver `Docs/RONDA_12/INFORME.md`. No cambia el conteo de los 100 puntos; los pendientes 81 (secreto UNITY_LICENSE, solo el dueño del repo), 89 (borrado de ARTS, el usuario pidió no tocarlo) y 65 (escucha humana) siguen fuera del alcance del código.
 
 **Cierre (Ronda 11)**: los 100 puntos estan tratados. Los 2 PARCIAL dependen de terceros y no se pueden cerrar desde codigo: 81 (el secreto `UNITY_LICENSE` lo carga solo el dueno del repo en GitHub) y 89 (borrar los 295 MB sin uso de ARTS es decision del equipo de arte; el reporte `Docs/ARTS_USO.csv` ya esta hecho y no se borro nada).
 
