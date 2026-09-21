@@ -2,10 +2,11 @@
 
 Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. **Estados**: HECHO (implementado y con prueba o captura), YA ESTABA (al verificarlo en el codigo ya estaba resuelto), PARCIAL (mejorado, con lo que falta dicho), NO (no hecho o no aplica, con el motivo).
 
-**Resumen**: HECHO: 79, YA ESTABA: 18, PARCIAL: 1, NO/NO APLICA: 2 (de 100). NO APLICA: 65 (solo un humano puede juzgar un sonido de oido) y 89 (la premisa resulto falsa, ver su fila). PARCIAL: 81 (el secreto `UNITY_LICENSE` lo carga el dueno del repo).
+**Resumen**: HECHO: 80, YA ESTABA: 18, PARCIAL: 0, NO/NO APLICA: 2 (de 100). NO APLICA: 65 (solo un humano puede juzgar un sonido de oido) y 89 (la premisa resulto falsa, ver su fila). El 81 pasa a HECHO: el CI corre y esta en verde (opcional: cargar `UNITY_LICENSE` para sumar la suite de Unity al CI).
 **Ronda 12** (2026-09-21): ver `Docs/RONDA_12/INFORME.md`. El 89 se reclasifica a NO APLICA tras analizar que es ARTS (fuentes Maya y FBX, no basura); 81 y 65 siguen fuera del alcance del codigo.
 
 **Cierre (Ronda 11)**: los 100 puntos estan tratados. Los 2 PARCIAL dependen de terceros y no se pueden cerrar desde codigo: 81 (el secreto `UNITY_LICENSE` lo carga solo el dueno del repo en GitHub) y 89 (borrar los 295 MB sin uso de ARTS es decision del equipo de arte; el reporte `Docs/ARTS_USO.csv` ya esta hecho y no se borro nada).
+n**Cierre (Ronda 12)**: el CI de GitHub esta en verde y ya no queda ningun PARCIAL. Los dos NO APLICA no son trabajo de codigo: 65 (escucha humana) y 89 (ARTS es fuente de arte, se conserva).
 
 
 ## HUD y pantallas
@@ -127,7 +128,7 @@ Estado de cada uno de los 100 puntos de la auditoria original tras la Ronda 9. *
 | 78 | No probé ningún build standalone; todo se validó en el Editor. | HECHO |  |
 | 79 | No se fija `targetFrameRate` ni vSync. | HECHO |  |
 | 80 | La suite deja advertencias en consola: material instanciado en modo Edit, `Destroy` en modo Edit y `NullReferenceException`. | HECHO |  |
-| 81 | La carpeta `Tests` está vacía y no hay CI. | PARCIAL | Hay Tests/LEAME.md y `.github/workflows/tests.yml`. El flujo SI se ejecuto en GitHub y la suite de Unity fallo con "Missing Unity License File": falta el secreto `UNITY_LICENSE`, que solo puede cargar el dueno del repo (ahora avisa y se salta). Para que el CI valide algo real igual, hay un trabajo `estatico` sin licencia (`Tools/Ci/verificar_estatico.py`): .meta emparejados, sin `Camera.main`/`Resources.Load<` en runtime, sin marcas de merge, conteos de esta auditoria coherentes y escenas del build versionadas. |
+| 81 | La carpeta `Tests` está vacía y no hay CI. | HECHO | Hay Tests/LEAME.md y `.github/workflows/tests.yml`. El flujo SI se ejecuto en GitHub y la suite de Unity fallo con "Missing Unity License File": falta el secreto `UNITY_LICENSE`, que solo puede cargar el dueno del repo (ahora avisa y se salta). Para que el CI valide algo real igual, hay un trabajo `estatico` sin licencia (`Tools/Ci/verificar_estatico.py`): .meta emparejados, sin `Camera.main`/`Resources.Load<` en runtime, sin marcas de merge, conteos de esta auditoria coherentes y escenas del build versionadas. **Ronda 12, cierre:** el CI llevaba en rojo desde la Ronda 11 (el indice para IA quedaba "viejo" en GitHub porque Windows y Linux ordenaban distinto los archivos; se fijo el orden ordinal y se excluyo `Assets/_Recovery`). Ahora `Pruebas` (jobs `estatico` y `suite`) esta en verde en `main`. Lo unico que sigue dependiendo del dueno del repo es la suite de Unity dentro del CI (`gh secret set UNITY_LICENSE < licencia.ulf`); mientras tanto el job avisa y se salta, y la suite completa se corre localmente (`Strategic Point/Run All Tests Headless`). |
 | 82 | `PlayerInputDriver.cs` tiene 4381 líneas y conviene partirlo. | HECHO |  |
 | 83 | `AiBrain.cs` tiene 1750 líneas y `HeadlessTestRunner.cs` 6252, también para partir. | HECHO |  |
 | 84 | Los estáticos de juego (`ModoDios`, `Health.RegeneracionPermitida`, `Demolicion.Segundos`) sobreviven entre Play y ya causaron falsos fallos en la suite. | HECHO |  |
