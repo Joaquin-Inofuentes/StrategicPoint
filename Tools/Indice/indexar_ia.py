@@ -143,7 +143,7 @@ def limpiar(s: str) -> str:
 
 def escanear() -> dict:
     archivos = []
-    for p in sorted(RAIZ.joinpath("Assets").rglob("*.cs")):
+    for p in sorted(RAIZ.joinpath("Assets").rglob("*.cs"), key=lambda q: q.as_posix()):
         if any(x in p.parts for x in ("Library", "Temp", "obj", "Packages")):
             continue
         try:
@@ -247,7 +247,7 @@ def escanear() -> dict:
         bindings = RE_BINDING.findall(kb.read_text(encoding="utf-8", errors="replace"))
 
     fases = []
-    for p in sorted(RAIZ.joinpath("Assets/_Project/Scripts/Editor").glob("HeadlessTestRunner*.cs")):
+    for p in sorted(RAIZ.joinpath("Assets/_Project/Scripts/Editor").glob("HeadlessTestRunner*.cs"), key=lambda q: q.as_posix()):
         t = p.read_text(encoding="utf-8", errors="replace")
         fases.append(
             {

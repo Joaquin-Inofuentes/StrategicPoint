@@ -1,6 +1,6 @@
 # Mapa del proyecto — indice para IA
 
-> Generado por `Tools/Indice/indexar_ia.py` el 2026-09-21 11:13 UTC.
+> Generado por `Tools/Indice/indexar_ia.py` el 2026-09-21 11:17 UTC.
 > No editar a mano: se regenera. Si algo esta mal, esta mal el generador.
 
 **233 scripts · 60,275 lineas · 5 escenas · 133 prefabs**
@@ -51,9 +51,9 @@ que la IA y que las pruebas.
 | **Mision** | 5 | 1201 | La partida: objetivos, oleadas, rehen, helicoptero, cinematica final. |
 | **Actors** | 4 | 659 | El soldado: identidad, piezas, motor de movimiento y aspecto. |
 | **Camera** | 2 | 896 | Rig de camara: hombro, RTS, transiciones, sacudidas, zoom. |
+| **Otros** | 1 | 17 |  |
 | **Demo** | 1 | 669 | Corredor de demo automatica. |
 | **Interaction** | 1 | 32 | Contrato de lo interactuable. |
-| **Otros** | 1 | 17 |  |
 
 ## Los 12 archivos mas grandes
 

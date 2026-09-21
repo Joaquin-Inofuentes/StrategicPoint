@@ -1,7 +1,465 @@
 {
- "generado": "2026-09-21 11:13 UTC",
+ "generado": "2026-09-21 11:17 UTC",
  "raiz": "My project",
  "archivos": [
+  {
+   "ruta": "Assets/Editor/HeadlessBuilder.cs",
+   "nombre": "HeadlessBuilder.cs",
+   "subsistema": "Editor",
+   "lineas": 141,
+   "bytes": 6400,
+   "namespace": "",
+   "resumen": "Resuelve el path de salida: variable de entorno (para CI) > EditorPrefs (configurable por herramienta) > default relativo al proyecto. Antes era un path absoluto fijo a la máquina del autor original, que rompía en cualquier otra máquina o runner.",
+   "tipos": [
+    {
+     "nombre": "HeadlessBuilder",
+     "clase": "class",
+     "parcial": false,
+     "estatica": false,
+     "linea": 6
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "ResolveBuildPath",
+     "devuelve": "string",
+     "estatico": true,
+     "args": "",
+     "linea": 16
+    },
+    {
+     "nombre": "SetBuildPath",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "string path",
+     "linea": 23
+    },
+    {
+     "nombre": "BuildWebGL",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 30
+    },
+    {
+     "nombre": "BuildWebGLDesdeEditor",
+     "devuelve": "string",
+     "estatico": true,
+     "args": "",
+     "linea": 50
+    }
+   ],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [],
+   "teclas": [],
+   "menu_items": [
+    "MIP/Build WebGL (sin cerrar el Editor)"
+   ],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "8eb206b95c03"
+  },
+  {
+   "ruta": "Assets/Editor/HierarchyPowerTools.cs",
+   "nombre": "HierarchyPowerTools.cs",
+   "subsistema": "Editor",
+   "lineas": 533,
+   "bytes": 19530,
+   "namespace": "",
+   "resumen": "Caches de GUI y GC Alloc",
+   "tipos": [
+    {
+     "nombre": "HierarchyPowerTools",
+     "clase": "class",
+     "parcial": false,
+     "estatica": false,
+     "linea": 5
+    }
+   ],
+   "metodos_publicos": [],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [
+    {
+     "nombre": "selectionHistory",
+     "tipo": "List<EntityId>",
+     "acceso": "private",
+     "linea": 9
+    },
+    {
+     "nombre": "tabIndex",
+     "tipo": "int",
+     "acceso": "private",
+     "linea": 11
+    },
+    {
+     "nombre": "lastHoveredID",
+     "tipo": "EntityId",
+     "acceso": "private",
+     "linea": 14
+    },
+    {
+     "nombre": "lastStateWasActive",
+     "tipo": "bool",
+     "acceso": "private",
+     "linea": 15
+    },
+    {
+     "nombre": "lastHoveredObj",
+     "tipo": "GameObject",
+     "acceso": "private",
+     "linea": 16
+    },
+    {
+     "nombre": "targetPivot",
+     "tipo": "Vector3",
+     "acceso": "private",
+     "linea": 19
+    },
+    {
+     "nombre": "startPivot",
+     "tipo": "Vector3",
+     "acceso": "private",
+     "linea": 20
+    },
+    {
+     "nombre": "isAnimatingPivot",
+     "tipo": "bool",
+     "acceso": "private",
+     "linea": 21
+    },
+    {
+     "nombre": "animationStartTime",
+     "tipo": "float",
+     "acceso": "private",
+     "linea": 22
+    },
+    {
+     "nombre": "objectToHighlight",
+     "tipo": "GameObject",
+     "acceso": "private",
+     "linea": 26
+    },
+    {
+     "nombre": "isMiddleDragging",
+     "tipo": "bool",
+     "acceso": "private",
+     "linea": 27
+    },
+    {
+     "nombre": "isMouseInHierarchy",
+     "tipo": "bool",
+     "acceso": "private",
+     "linea": 28
+    },
+    {
+     "nombre": "draggedObjectsSession",
+     "tipo": "List<EntityId>",
+     "acceso": "private",
+     "linea": 29
+    },
+    {
+     "nombre": "sceneViewPickIgnore",
+     "tipo": "List<GameObject>",
+     "acceso": "private",
+     "linea": 32
+    },
+    {
+     "nombre": "sceneViewPickMousePos",
+     "tipo": "Vector2",
+     "acceso": "private",
+     "linea": 33
+    },
+    {
+     "nombre": "lastCacheTime",
+     "tipo": "double",
+     "acceso": "private",
+     "linea": 38
+    },
+    {
+     "nombre": "cacheDirty",
+     "tipo": "bool",
+     "acceso": "private",
+     "linea": 39
+    },
+    {
+     "nombre": "lastMouseCheckTime",
+     "tipo": "double",
+     "acceso": "private",
+     "linea": 40
+    },
+    {
+     "nombre": "cachedIsMouseInHierarchy",
+     "tipo": "bool",
+     "acceso": "private",
+     "linea": 41
+    },
+    {
+     "nombre": "numberStyle",
+     "tipo": "GUIStyle",
+     "acceso": "private",
+     "linea": 44
+    },
+    {
+     "nombre": "toggleStyle",
+     "tipo": "GUIStyle",
+     "acceso": "private",
+     "linea": 45
+    },
+    {
+     "nombre": "historyStyle",
+     "tipo": "GUIStyle",
+     "acceso": "private",
+     "linea": 46
+    },
+    {
+     "nombre": "indexStrings",
+     "tipo": "string[]",
+     "acceso": "private",
+     "linea": 47
+    }
+   ],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "5b5e606b2da1"
+  },
+  {
+   "ruta": "Assets/Editor/NavMeshSetupPipeline.cs",
+   "nombre": "NavMeshSetupPipeline.cs",
+   "subsistema": "Editor",
+   "lineas": 98,
+   "bytes": 3696,
+   "namespace": "SP.EditorTools",
+   "resumen": "Dejar activa la escena principal",
+   "tipos": [
+    {
+     "nombre": "NavMeshSetupPipeline",
+     "clase": "class",
+     "parcial": false,
+     "estatica": true,
+     "linea": 10
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "RunFullSetup",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 13
+    },
+    {
+     "nombre": "SetupSoldierPrefabs",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 28
+    },
+    {
+     "nombre": "BakeScene",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "string scenePath",
+     "linea": 70
+    }
+   ],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [],
+   "teclas": [],
+   "menu_items": [
+    "Tools/NavMesh/Setup Prefabs and Bake Scenes"
+   ],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "11f8d8653c8f"
+  },
+  {
+   "ruta": "Assets/Editor/TerrainSetupHelper.cs",
+   "nombre": "TerrainSetupHelper.cs",
+   "subsistema": "Editor",
+   "lineas": 319,
+   "bytes": 13487,
+   "namespace": "",
+   "resumen": "1. Asegurar carpeta para assets de terreno",
+   "tipos": [
+    {
+     "nombre": "TerrainSetupHelper",
+     "clase": "class",
+     "parcial": false,
+     "estatica": true,
+     "linea": 4
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "FixAndSetupTerrain",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 8
+    },
+    {
+     "nombre": "CaptureSnapshot",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 203
+    },
+    {
+     "nombre": "PrintMinimapHierarchy",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 232
+    },
+    {
+     "nombre": "ResizeMinimap",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 256
+    },
+    {
+     "nombre": "EnsureGameplaySceneAndCapture",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 276
+    },
+    {
+     "nombre": "DiagnoseTestFailure",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 293
+    }
+   ],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [],
+   "teclas": [],
+   "menu_items": [
+    "Tools/Terrain/Fix and Setup Paintable URP Terrain",
+    "Tools/Terrain/Capture Terrain Snapshot",
+    "Tools/Inspection/PrintMinimapHierarchy",
+    "Tools/Minimap/Resize Minimap To One Third",
+    "Tools/Verification/VerifyAndCapture",
+    "Tools/Debug/DiagnoseTestFailure"
+   ],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "58b32cb39eea"
+  },
+  {
+   "ruta": "Assets/TutorialInfo/Scripts/Editor/ReadmeEditor.cs",
+   "nombre": "ReadmeEditor.cs",
+   "subsistema": "Editor",
+   "lineas": 243,
+   "bytes": 6677,
+   "namespace": "",
+   "resumen": "Match selection color which works nicely for both light and dark skins",
+   "tipos": [
+    {
+     "nombre": "ReadmeEditor",
+     "clase": "class",
+     "parcial": false,
+     "estatica": false,
+     "linea": 8
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "OnInspectorGUI",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 123
+    }
+   ],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [
+    {
+     "nombre": "s_ShowedReadmeSessionStateName",
+     "tipo": "string",
+     "acceso": "private",
+     "linea": 13
+    },
+    {
+     "nombre": "s_ReadmeSourceDirectory",
+     "tipo": "string",
+     "acceso": "private",
+     "linea": 14
+    }
+   ],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "3916f846528f"
+  },
+  {
+   "ruta": "Assets/TutorialInfo/Scripts/Readme.cs",
+   "nombre": "Readme.cs",
+   "subsistema": "Otros",
+   "lineas": 17,
+   "bytes": 302,
+   "namespace": "",
+   "resumen": "",
+   "tipos": [
+    {
+     "nombre": "Readme",
+     "clase": "class",
+     "parcial": false,
+     "estatica": false,
+     "linea": 3
+    },
+    {
+     "nombre": "Section",
+     "clase": "class",
+     "parcial": false,
+     "estatica": false,
+     "linea": 10
+    }
+   ],
+   "metodos_publicos": [],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "5853b87f7a50"
+  },
   {
    "ruta": "Assets/_Project/Scripts/Actors/Soldier.cs",
    "nombre": "Soldier.cs",
@@ -410,218 +868,6 @@
    "sha1": "890fb349b3b5"
   },
   {
-   "ruta": "Assets/_Project/Scripts/Ai/AiBrain.cs",
-   "nombre": "AiBrain.cs",
-   "subsistema": "Ai",
-   "lineas": 1238,
-   "bytes": 63312,
-   "namespace": "SP.Ai",
-   "resumen": "Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las otras dos NO son un camino de codigo alternativo, son modificadores que se aplican sobre las mismas tres decisiones que ya existian (rango de vision, avanzar hacia el objetivo, apretar el gatillo). Con Libre esos modificadores son exactamente neutros: multiplicador 1f y guardas que devuelven true",
-   "tipos": [
-    {
-     "nombre": "CombatStance",
-     "clase": "enum",
-     "parcial": false,
-     "estatica": false,
-     "linea": 17
-    },
-    {
-     "nombre": "AiBrain",
-     "clase": "class",
-     "parcial": true,
-     "estatica": false,
-     "linea": 28
-    }
-   ],
-   "metodos_publicos": [
-    {
-     "nombre": "SetPatrolRoute",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "Vector3[] points",
-     "linea": 220
-    },
-    {
-     "nombre": "SetPatrolWaypoints",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "Transform[] waypoints",
-     "linea": 229
-    },
-    {
-     "nombre": "ReactivarNavegacion",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "",
-     "linea": 303
-    },
-    {
-     "nombre": "ConfigurarAlcances",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "float vision, float ataque",
-     "linea": 359
-    },
-    {
-     "nombre": "Bootstrap",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "",
-     "linea": 448
-    },
-    {
-     "nombre": "IssueMoveOrder",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "Vector3 point, bool queued = false",
-     "linea": 576
-    },
-    {
-     "nombre": "IssueMountOrder",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "Vehicle vehicle",
-     "linea": 624
-    },
-    {
-     "nombre": "IssueFollowOrder",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "Soldier leader, Vector3 formationOffsetLocal = default",
-     "linea": 644
-    },
-    {
-     "nombre": "IssueAttackOrder",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "Soldier enemy",
-     "linea": 661
-    },
-    {
-     "nombre": "CancelOrder",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "",
-     "linea": 681
-    },
-    {
-     "nombre": "Tick",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "float dt",
-     "linea": 708
-    }
-   ],
-   "propiedades_publicas": [
-    {
-     "nombre": "QueuedOrderCount",
-     "tipo": "int",
-     "linea": 177
-    },
-    {
-     "nombre": "QueuedDestinations",
-     "tipo": "System.Collections.Generic.IEnumerable<Vector3>",
-     "linea": 178
-    },
-    {
-     "nombre": "RemainingPathPoints",
-     "tipo": "int",
-     "linea": 188
-    },
-    {
-     "nombre": "CurrentPath",
-     "tipo": "System.Collections.Generic.IReadOnlyList<Vector3>",
-     "linea": 189
-    },
-    {
-     "nombre": "State",
-     "tipo": "AiState",
-     "linea": 236
-    },
-    {
-     "nombre": "IsPossessedByPlayer",
-     "tipo": "bool",
-     "linea": 239
-    },
-    {
-     "nombre": "CurrentTarget",
-     "tipo": "Soldier",
-     "linea": 333
-    },
-    {
-     "nombre": "Stance",
-     "tipo": "CombatStance",
-     "linea": 342
-    },
-    {
-     "nombre": "HomePosition",
-     "tipo": "Vector3",
-     "linea": 355
-    },
-    {
-     "nombre": "EffectiveVisionRange",
-     "tipo": "float",
-     "linea": 370
-    },
-    {
-     "nombre": "EffectiveAttackRange",
-     "tipo": "float",
-     "linea": 388
-    },
-    {
-     "nombre": "SenseIntervalTicks",
-     "tipo": "int",
-     "linea": 411
-    },
-    {
-     "nombre": "TicksSinceLastSense",
-     "tipo": "int",
-     "linea": 424
-    },
-    {
-     "nombre": "LastSensedTarget",
-     "tipo": "Soldier",
-     "linea": 426
-    },
-    {
-     "nombre": "CurrentOrderDestination",
-     "tipo": "Vector3?",
-     "linea": 431
-    },
-    {
-     "nombre": "PendingMoveDestination",
-     "tipo": "Vector3?",
-     "linea": 438
-    },
-    {
-     "nombre": "FollowTarget",
-     "tipo": "Soldier",
-     "linea": 444
-    }
-   ],
-   "estaticos_mutables": [],
-   "publica_eventos": [
-    "AiStateChangedEvent",
-    "OrderCompletedEvent"
-   ],
-   "escucha_eventos": [
-    "DamageTakenEvent",
-    "ShotFiredEvent"
-   ],
-   "declara_eventos": [],
-   "usa": [
-    "SP.Actors",
-    "SP.Core",
-    "SP.Vehicles"
-   ],
-   "teclas": [],
-   "menu_items": [],
-   "checks": 0,
-   "notas_bug": 12,
-   "notas_todo": 1,
-   "sha1": "d575930a5a00"
-  },
-  {
    "ruta": "Assets/_Project/Scripts/Ai/AiBrain.Disparo.cs",
    "nombre": "AiBrain.Disparo.cs",
    "subsistema": "Ai",
@@ -963,6 +1209,218 @@
    "notas_bug": 0,
    "notas_todo": 0,
    "sha1": "da162cd47168"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Ai/AiBrain.cs",
+   "nombre": "AiBrain.cs",
+   "subsistema": "Ai",
+   "lineas": 1238,
+   "bytes": 63312,
+   "namespace": "SP.Ai",
+   "resumen": "Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las otras dos NO son un camino de codigo alternativo, son modificadores que se aplican sobre las mismas tres decisiones que ya existian (rango de vision, avanzar hacia el objetivo, apretar el gatillo). Con Libre esos modificadores son exactamente neutros: multiplicador 1f y guardas que devuelven true",
+   "tipos": [
+    {
+     "nombre": "CombatStance",
+     "clase": "enum",
+     "parcial": false,
+     "estatica": false,
+     "linea": 17
+    },
+    {
+     "nombre": "AiBrain",
+     "clase": "class",
+     "parcial": true,
+     "estatica": false,
+     "linea": 28
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "SetPatrolRoute",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "Vector3[] points",
+     "linea": 220
+    },
+    {
+     "nombre": "SetPatrolWaypoints",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "Transform[] waypoints",
+     "linea": 229
+    },
+    {
+     "nombre": "ReactivarNavegacion",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 303
+    },
+    {
+     "nombre": "ConfigurarAlcances",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "float vision, float ataque",
+     "linea": 359
+    },
+    {
+     "nombre": "Bootstrap",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 448
+    },
+    {
+     "nombre": "IssueMoveOrder",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "Vector3 point, bool queued = false",
+     "linea": 576
+    },
+    {
+     "nombre": "IssueMountOrder",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "Vehicle vehicle",
+     "linea": 624
+    },
+    {
+     "nombre": "IssueFollowOrder",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "Soldier leader, Vector3 formationOffsetLocal = default",
+     "linea": 644
+    },
+    {
+     "nombre": "IssueAttackOrder",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "Soldier enemy",
+     "linea": 661
+    },
+    {
+     "nombre": "CancelOrder",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 681
+    },
+    {
+     "nombre": "Tick",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "float dt",
+     "linea": 708
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "QueuedOrderCount",
+     "tipo": "int",
+     "linea": 177
+    },
+    {
+     "nombre": "QueuedDestinations",
+     "tipo": "System.Collections.Generic.IEnumerable<Vector3>",
+     "linea": 178
+    },
+    {
+     "nombre": "RemainingPathPoints",
+     "tipo": "int",
+     "linea": 188
+    },
+    {
+     "nombre": "CurrentPath",
+     "tipo": "System.Collections.Generic.IReadOnlyList<Vector3>",
+     "linea": 189
+    },
+    {
+     "nombre": "State",
+     "tipo": "AiState",
+     "linea": 236
+    },
+    {
+     "nombre": "IsPossessedByPlayer",
+     "tipo": "bool",
+     "linea": 239
+    },
+    {
+     "nombre": "CurrentTarget",
+     "tipo": "Soldier",
+     "linea": 333
+    },
+    {
+     "nombre": "Stance",
+     "tipo": "CombatStance",
+     "linea": 342
+    },
+    {
+     "nombre": "HomePosition",
+     "tipo": "Vector3",
+     "linea": 355
+    },
+    {
+     "nombre": "EffectiveVisionRange",
+     "tipo": "float",
+     "linea": 370
+    },
+    {
+     "nombre": "EffectiveAttackRange",
+     "tipo": "float",
+     "linea": 388
+    },
+    {
+     "nombre": "SenseIntervalTicks",
+     "tipo": "int",
+     "linea": 411
+    },
+    {
+     "nombre": "TicksSinceLastSense",
+     "tipo": "int",
+     "linea": 424
+    },
+    {
+     "nombre": "LastSensedTarget",
+     "tipo": "Soldier",
+     "linea": 426
+    },
+    {
+     "nombre": "CurrentOrderDestination",
+     "tipo": "Vector3?",
+     "linea": 431
+    },
+    {
+     "nombre": "PendingMoveDestination",
+     "tipo": "Vector3?",
+     "linea": 438
+    },
+    {
+     "nombre": "FollowTarget",
+     "tipo": "Soldier",
+     "linea": 444
+    }
+   ],
+   "estaticos_mutables": [],
+   "publica_eventos": [
+    "AiStateChangedEvent",
+    "OrderCompletedEvent"
+   ],
+   "escucha_eventos": [
+    "DamageTakenEvent",
+    "ShotFiredEvent"
+   ],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Core",
+    "SP.Vehicles"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 12,
+   "notas_todo": 1,
+   "sha1": "d575930a5a00"
   },
   {
    "ruta": "Assets/_Project/Scripts/Ai/AiState.cs",
@@ -5427,6 +5885,218 @@
    "sha1": "4c4d2e52f695"
   },
   {
+   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase18.cs",
+   "nombre": "HeadlessTestRunner.Fase18.cs",
+   "subsistema": "Editor",
+   "lineas": 129,
+   "bytes": 8247,
+   "namespace": "SP.EditorTools",
+   "resumen": "FASE 18 (ronda 9): reservas de municion, mando, accesibilidad, fuego amigo en DIFICIL, IA con granadas y supresion, estaticos, oclusion de sonido y teclas.",
+   "tipos": [
+    {
+     "nombre": "HeadlessTestRunner",
+     "clase": "class",
+     "parcial": true,
+     "estatica": true,
+     "linea": 16
+    }
+   ],
+   "metodos_publicos": [],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.Combat",
+    "SP.Core",
+    "SP.Player",
+    "SP.Presentation",
+    "SP.UI",
+    "SP.Vehicles"
+   ],
+   "teclas": [
+    "F"
+   ],
+   "menu_items": [],
+   "checks": 34,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "5c7ab3f0b03b"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase19.cs",
+   "nombre": "HeadlessTestRunner.Fase19.cs",
+   "subsistema": "Editor",
+   "lineas": 406,
+   "bytes": 30827,
+   "namespace": "SP.EditorTools",
+   "resumen": "FASE 19 (ronda 9, segunda tanda): ayudas del tutorial, radial legible, boton de menu uniforme, zoom, salto agachado, ordenes de mover validadas, y los pendientes de repositorio.",
+   "tipos": [
+    {
+     "nombre": "HeadlessTestRunner",
+     "clase": "class",
+     "parcial": true,
+     "estatica": true,
+     "linea": 16
+    }
+   ],
+   "metodos_publicos": [],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.Combat",
+    "SP.Core",
+    "SP.Player",
+    "SP.Tutorial",
+    "SP.UI",
+    "SP.Vehicles"
+   ],
+   "teclas": [
+    "Replace"
+   ],
+   "menu_items": [],
+   "checks": 92,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "cb477de898d1"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase20.cs",
+   "nombre": "HeadlessTestRunner.Fase20.cs",
+   "subsistema": "Editor",
+   "lineas": 207,
+   "bytes": 14165,
+   "namespace": "SP.EditorTools",
+   "resumen": "FASE 20 (Ronda 11): fin de partida por escuadra caida, IA con dispersion/rafagas/alcance de arma, umbral de Q, E tap/hold, zoom RTS sin lerp, alcance de demolicion e iconos de arma propios.",
+   "tipos": [
+    {
+     "nombre": "HeadlessTestRunner",
+     "clase": "class",
+     "parcial": true,
+     "estatica": true,
+     "linea": 14
+    }
+   ],
+   "metodos_publicos": [],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.Combat",
+    "SP.Core",
+    "SP.Mision",
+    "SP.Player",
+    "SP.Vehicles"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 32,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "7f58d756c614"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases13a17.cs",
+   "nombre": "HeadlessTestRunner.Fases13a17.cs",
+   "subsistema": "Editor",
+   "lineas": 691,
+   "bytes": 51422,
+   "namespace": "SP.EditorTools",
+   "resumen": "HeadlessTestRunner (parte): fases 13 a 17 de la suite.",
+   "tipos": [
+    {
+     "nombre": "HeadlessTestRunner",
+     "clase": "class",
+     "parcial": true,
+     "estatica": false,
+     "linea": 23
+    }
+   ],
+   "metodos_publicos": [],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.CameraSystem",
+    "SP.Combat",
+    "SP.Core",
+    "SP.Player",
+    "SP.Presentation",
+    "SP.UI",
+    "SP.Vehicles"
+   ],
+   "teclas": [
+    "C",
+    "F",
+    "G",
+    "None"
+   ],
+   "menu_items": [],
+   "checks": 134,
+   "notas_bug": 1,
+   "notas_todo": 0,
+   "sha1": "ed40a545dc11"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases8a12.cs",
+   "nombre": "HeadlessTestRunner.Fases8a12.cs",
+   "subsistema": "Editor",
+   "lineas": 1551,
+   "bytes": 98725,
+   "namespace": "SP.EditorTools",
+   "resumen": "HeadlessTestRunner (parte): fases 8 a 12 de la suite.",
+   "tipos": [
+    {
+     "nombre": "HeadlessTestRunner",
+     "clase": "class",
+     "parcial": true,
+     "estatica": false,
+     "linea": 23
+    }
+   ],
+   "metodos_publicos": [],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [
+    "ShotFiredEvent"
+   ],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.CameraSystem",
+    "SP.Combat",
+    "SP.Core",
+    "SP.Player",
+    "SP.Presentation",
+    "SP.UI",
+    "SP.Vehicles"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 148,
+   "notas_bug": 1,
+   "notas_todo": 0,
+   "sha1": "91d09f419ddd"
+  },
+  {
    "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.cs",
    "nombre": "HeadlessTestRunner.cs",
    "subsistema": "Editor",
@@ -5770,218 +6440,6 @@
    "notas_bug": 15,
    "notas_todo": 6,
    "sha1": "887d71312cb7"
-  },
-  {
-   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase18.cs",
-   "nombre": "HeadlessTestRunner.Fase18.cs",
-   "subsistema": "Editor",
-   "lineas": 129,
-   "bytes": 8247,
-   "namespace": "SP.EditorTools",
-   "resumen": "FASE 18 (ronda 9): reservas de municion, mando, accesibilidad, fuego amigo en DIFICIL, IA con granadas y supresion, estaticos, oclusion de sonido y teclas.",
-   "tipos": [
-    {
-     "nombre": "HeadlessTestRunner",
-     "clase": "class",
-     "parcial": true,
-     "estatica": true,
-     "linea": 16
-    }
-   ],
-   "metodos_publicos": [],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [
-    "SP.Actors",
-    "SP.Ai",
-    "SP.Combat",
-    "SP.Core",
-    "SP.Player",
-    "SP.Presentation",
-    "SP.UI",
-    "SP.Vehicles"
-   ],
-   "teclas": [
-    "F"
-   ],
-   "menu_items": [],
-   "checks": 34,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "5c7ab3f0b03b"
-  },
-  {
-   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase19.cs",
-   "nombre": "HeadlessTestRunner.Fase19.cs",
-   "subsistema": "Editor",
-   "lineas": 406,
-   "bytes": 30827,
-   "namespace": "SP.EditorTools",
-   "resumen": "FASE 19 (ronda 9, segunda tanda): ayudas del tutorial, radial legible, boton de menu uniforme, zoom, salto agachado, ordenes de mover validadas, y los pendientes de repositorio.",
-   "tipos": [
-    {
-     "nombre": "HeadlessTestRunner",
-     "clase": "class",
-     "parcial": true,
-     "estatica": true,
-     "linea": 16
-    }
-   ],
-   "metodos_publicos": [],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [
-    "SP.Actors",
-    "SP.Ai",
-    "SP.Combat",
-    "SP.Core",
-    "SP.Player",
-    "SP.Tutorial",
-    "SP.UI",
-    "SP.Vehicles"
-   ],
-   "teclas": [
-    "Replace"
-   ],
-   "menu_items": [],
-   "checks": 92,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "cb477de898d1"
-  },
-  {
-   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase20.cs",
-   "nombre": "HeadlessTestRunner.Fase20.cs",
-   "subsistema": "Editor",
-   "lineas": 207,
-   "bytes": 14165,
-   "namespace": "SP.EditorTools",
-   "resumen": "FASE 20 (Ronda 11): fin de partida por escuadra caida, IA con dispersion/rafagas/alcance de arma, umbral de Q, E tap/hold, zoom RTS sin lerp, alcance de demolicion e iconos de arma propios.",
-   "tipos": [
-    {
-     "nombre": "HeadlessTestRunner",
-     "clase": "class",
-     "parcial": true,
-     "estatica": true,
-     "linea": 14
-    }
-   ],
-   "metodos_publicos": [],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [
-    "SP.Actors",
-    "SP.Ai",
-    "SP.Combat",
-    "SP.Core",
-    "SP.Mision",
-    "SP.Player",
-    "SP.Vehicles"
-   ],
-   "teclas": [],
-   "menu_items": [],
-   "checks": 32,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "7f58d756c614"
-  },
-  {
-   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases13a17.cs",
-   "nombre": "HeadlessTestRunner.Fases13a17.cs",
-   "subsistema": "Editor",
-   "lineas": 691,
-   "bytes": 51422,
-   "namespace": "SP.EditorTools",
-   "resumen": "HeadlessTestRunner (parte): fases 13 a 17 de la suite.",
-   "tipos": [
-    {
-     "nombre": "HeadlessTestRunner",
-     "clase": "class",
-     "parcial": true,
-     "estatica": false,
-     "linea": 23
-    }
-   ],
-   "metodos_publicos": [],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [
-    "SP.Actors",
-    "SP.Ai",
-    "SP.CameraSystem",
-    "SP.Combat",
-    "SP.Core",
-    "SP.Player",
-    "SP.Presentation",
-    "SP.UI",
-    "SP.Vehicles"
-   ],
-   "teclas": [
-    "C",
-    "F",
-    "G",
-    "None"
-   ],
-   "menu_items": [],
-   "checks": 134,
-   "notas_bug": 1,
-   "notas_todo": 0,
-   "sha1": "ed40a545dc11"
-  },
-  {
-   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases8a12.cs",
-   "nombre": "HeadlessTestRunner.Fases8a12.cs",
-   "subsistema": "Editor",
-   "lineas": 1551,
-   "bytes": 98725,
-   "namespace": "SP.EditorTools",
-   "resumen": "HeadlessTestRunner (parte): fases 8 a 12 de la suite.",
-   "tipos": [
-    {
-     "nombre": "HeadlessTestRunner",
-     "clase": "class",
-     "parcial": true,
-     "estatica": false,
-     "linea": 23
-    }
-   ],
-   "metodos_publicos": [],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [],
-   "publica_eventos": [
-    "ShotFiredEvent"
-   ],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [
-    "SP.Actors",
-    "SP.Ai",
-    "SP.CameraSystem",
-    "SP.Combat",
-    "SP.Core",
-    "SP.Player",
-    "SP.Presentation",
-    "SP.UI",
-    "SP.Vehicles"
-   ],
-   "teclas": [],
-   "menu_items": [],
-   "checks": 148,
-   "notas_bug": 1,
-   "notas_todo": 0,
-   "sha1": "91d09f419ddd"
   },
   {
    "ruta": "Assets/_Project/Scripts/Editor/LevelBlockoutBuilder.cs",
@@ -8503,6 +8961,270 @@
    "sha1": "e9a86e70d224"
   },
   {
+   "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Escuadra.cs",
+   "nombre": "PlayerInputDriver.Escuadra.cs",
+   "subsistema": "Player",
+   "lineas": 118,
+   "bytes": 6216,
+   "namespace": "SP.Player",
+   "resumen": "PlayerInputDriver (parte): orden de la escuadra. El lugar en la lista fija a que numero de roster y a que [F1..F9] responde cada soldado; [ y ] suben o bajan al soldado que manejas.",
+   "tipos": [
+    {
+     "nombre": "PlayerInputDriver",
+     "clase": "class",
+     "parcial": true,
+     "estatica": false,
+     "linea": 15
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "MoverEnEscuadra",
+     "devuelve": "bool",
+     "estatico": false,
+     "args": "Soldier s, int direccion",
+     "linea": 44
+    },
+    {
+     "nombre": "SeleccionarSoldadoDeEscuadra",
+     "devuelve": "bool",
+     "estatico": false,
+     "args": "int indice, bool sumar",
+     "linea": 79
+    }
+   ],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.Combat",
+    "SP.Core",
+    "SP.Presentation",
+    "SP.UI",
+    "SP.Vehicles"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "ad5710870af9"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Interaccion.cs",
+   "nombre": "PlayerInputDriver.Interaccion.cs",
+   "subsistema": "Player",
+   "lineas": 123,
+   "bytes": 6133,
+   "namespace": "SP.Player",
+   "resumen": "PlayerInputDriver (parte): detector central de IInteractable. Archivo NUEVO y aditivo: no reemplaza nada de PlayerInputDriver.Radial.cs, solo agrega un paso previo que ResolverGestoDeQ consulta en el TAP de [Q] (ver el cambio quirurgico de dos lineas en ese archivo). Si hay un IInteractable valido en la mira o pegado al jugador, un TAP de [Q] lo dispara; si no hay ninguno, [Q] sigue comportandose exactamente igual que",
+   "tipos": [
+    {
+     "nombre": "PlayerInputDriver",
+     "clase": "class",
+     "parcial": true,
+     "estatica": false,
+     "linea": 26
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "ObjetivoInteractuable",
+     "devuelve": "IInteractable",
+     "estatico": false,
+     "args": "",
+     "linea": 34
+    },
+    {
+     "nombre": "PromptDeInteraccion",
+     "devuelve": "string",
+     "estatico": false,
+     "args": "",
+     "linea": 61
+    },
+    {
+     "nombre": "TryInteractuarConMira",
+     "devuelve": "bool",
+     "estatico": false,
+     "args": "",
+     "linea": 114
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "UltimaAccionRapida",
+     "tipo": "string",
+     "linea": 72
+    }
+   ],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.Combat",
+    "SP.Core",
+    "SP.Interaction",
+    "SP.UI",
+    "SP.Vehicles"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "8bf0a8e095c9"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Radial.cs",
+   "nombre": "PlayerInputDriver.Radial.cs",
+   "subsistema": "Player",
+   "lineas": 585,
+   "bytes": 32398,
+   "namespace": "SP.Player",
+   "resumen": "PlayerInputDriver (parte): menu radial de [Q] y ejecucion de las ordenes de escuadra.",
+   "tipos": [
+    {
+     "nombre": "PlayerInputDriver",
+     "clase": "class",
+     "parcial": true,
+     "estatica": false,
+     "linea": 20
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "ResolverGestoDeQ",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "bool toque, bool sostenido, bool sigueApretada",
+     "linea": 48
+    },
+    {
+     "nombre": "DestinatariosDeOrden",
+     "devuelve": "List<Soldier>",
+     "estatico": false,
+     "args": "",
+     "linea": 137
+    },
+    {
+     "nombre": "EjecutarOrdenDelMenu",
+     "devuelve": "bool",
+     "estatico": false,
+     "args": "int opcion",
+     "linea": 155
+    },
+    {
+     "nombre": "EjecutarOrdenRadial",
+     "devuelve": "bool",
+     "estatico": false,
+     "args": "int categoria, int sub = 0",
+     "linea": 220
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "RadialAbierto",
+     "tipo": "bool",
+     "linea": 123
+    }
+   ],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.CameraSystem",
+    "SP.Combat",
+    "SP.Core",
+    "SP.Presentation",
+    "SP.UI",
+    "SP.Vehicles"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 1,
+   "notas_todo": 0,
+   "sha1": "76fb6f7ca34f"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Vehiculo.cs",
+   "nombre": "PlayerInputDriver.Vehiculo.cs",
+   "subsistema": "Player",
+   "lineas": 651,
+   "bytes": 35745,
+   "namespace": "SP.Player",
+   "resumen": "PlayerInputDriver (parte): manejo de vehiculos (entrar, asientos, camara, ordenes con [T]).",
+   "tipos": [
+    {
+     "nombre": "PlayerInputDriver",
+     "clase": "class",
+     "parcial": true,
+     "estatica": false,
+     "linea": 20
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "EnterVehicle",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "Vehicle vehicle",
+     "linea": 29
+    },
+    {
+     "nombre": "ExitVehicle",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 130
+    },
+    {
+     "nombre": "SwitchSeat",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "VehicleSeatRole newRole",
+     "linea": 415
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "CurrentSeat",
+     "tipo": "VehicleSeatRole?",
+     "linea": 27
+    }
+   ],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.CameraSystem",
+    "SP.Combat",
+    "SP.Core",
+    "SP.Presentation",
+    "SP.UI",
+    "SP.Vehicles"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 4,
+   "notas_todo": 0,
+   "sha1": "3f2bf26f874f"
+  },
+  {
    "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.cs",
    "nombre": "PlayerInputDriver.cs",
    "subsistema": "Player",
@@ -8782,270 +9504,6 @@
    "notas_bug": 11,
    "notas_todo": 2,
    "sha1": "75e1e21257c2"
-  },
-  {
-   "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Escuadra.cs",
-   "nombre": "PlayerInputDriver.Escuadra.cs",
-   "subsistema": "Player",
-   "lineas": 118,
-   "bytes": 6216,
-   "namespace": "SP.Player",
-   "resumen": "PlayerInputDriver (parte): orden de la escuadra. El lugar en la lista fija a que numero de roster y a que [F1..F9] responde cada soldado; [ y ] suben o bajan al soldado que manejas.",
-   "tipos": [
-    {
-     "nombre": "PlayerInputDriver",
-     "clase": "class",
-     "parcial": true,
-     "estatica": false,
-     "linea": 15
-    }
-   ],
-   "metodos_publicos": [
-    {
-     "nombre": "MoverEnEscuadra",
-     "devuelve": "bool",
-     "estatico": false,
-     "args": "Soldier s, int direccion",
-     "linea": 44
-    },
-    {
-     "nombre": "SeleccionarSoldadoDeEscuadra",
-     "devuelve": "bool",
-     "estatico": false,
-     "args": "int indice, bool sumar",
-     "linea": 79
-    }
-   ],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [
-    "SP.Actors",
-    "SP.Ai",
-    "SP.Combat",
-    "SP.Core",
-    "SP.Presentation",
-    "SP.UI",
-    "SP.Vehicles"
-   ],
-   "teclas": [],
-   "menu_items": [],
-   "checks": 0,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "ad5710870af9"
-  },
-  {
-   "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Interaccion.cs",
-   "nombre": "PlayerInputDriver.Interaccion.cs",
-   "subsistema": "Player",
-   "lineas": 123,
-   "bytes": 6133,
-   "namespace": "SP.Player",
-   "resumen": "PlayerInputDriver (parte): detector central de IInteractable. Archivo NUEVO y aditivo: no reemplaza nada de PlayerInputDriver.Radial.cs, solo agrega un paso previo que ResolverGestoDeQ consulta en el TAP de [Q] (ver el cambio quirurgico de dos lineas en ese archivo). Si hay un IInteractable valido en la mira o pegado al jugador, un TAP de [Q] lo dispara; si no hay ninguno, [Q] sigue comportandose exactamente igual que",
-   "tipos": [
-    {
-     "nombre": "PlayerInputDriver",
-     "clase": "class",
-     "parcial": true,
-     "estatica": false,
-     "linea": 26
-    }
-   ],
-   "metodos_publicos": [
-    {
-     "nombre": "ObjetivoInteractuable",
-     "devuelve": "IInteractable",
-     "estatico": false,
-     "args": "",
-     "linea": 34
-    },
-    {
-     "nombre": "PromptDeInteraccion",
-     "devuelve": "string",
-     "estatico": false,
-     "args": "",
-     "linea": 61
-    },
-    {
-     "nombre": "TryInteractuarConMira",
-     "devuelve": "bool",
-     "estatico": false,
-     "args": "",
-     "linea": 114
-    }
-   ],
-   "propiedades_publicas": [
-    {
-     "nombre": "UltimaAccionRapida",
-     "tipo": "string",
-     "linea": 72
-    }
-   ],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [
-    "SP.Actors",
-    "SP.Ai",
-    "SP.Combat",
-    "SP.Core",
-    "SP.Interaction",
-    "SP.UI",
-    "SP.Vehicles"
-   ],
-   "teclas": [],
-   "menu_items": [],
-   "checks": 0,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "8bf0a8e095c9"
-  },
-  {
-   "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Radial.cs",
-   "nombre": "PlayerInputDriver.Radial.cs",
-   "subsistema": "Player",
-   "lineas": 585,
-   "bytes": 32398,
-   "namespace": "SP.Player",
-   "resumen": "PlayerInputDriver (parte): menu radial de [Q] y ejecucion de las ordenes de escuadra.",
-   "tipos": [
-    {
-     "nombre": "PlayerInputDriver",
-     "clase": "class",
-     "parcial": true,
-     "estatica": false,
-     "linea": 20
-    }
-   ],
-   "metodos_publicos": [
-    {
-     "nombre": "ResolverGestoDeQ",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "bool toque, bool sostenido, bool sigueApretada",
-     "linea": 48
-    },
-    {
-     "nombre": "DestinatariosDeOrden",
-     "devuelve": "List<Soldier>",
-     "estatico": false,
-     "args": "",
-     "linea": 137
-    },
-    {
-     "nombre": "EjecutarOrdenDelMenu",
-     "devuelve": "bool",
-     "estatico": false,
-     "args": "int opcion",
-     "linea": 155
-    },
-    {
-     "nombre": "EjecutarOrdenRadial",
-     "devuelve": "bool",
-     "estatico": false,
-     "args": "int categoria, int sub = 0",
-     "linea": 220
-    }
-   ],
-   "propiedades_publicas": [
-    {
-     "nombre": "RadialAbierto",
-     "tipo": "bool",
-     "linea": 123
-    }
-   ],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [
-    "SP.Actors",
-    "SP.Ai",
-    "SP.CameraSystem",
-    "SP.Combat",
-    "SP.Core",
-    "SP.Presentation",
-    "SP.UI",
-    "SP.Vehicles"
-   ],
-   "teclas": [],
-   "menu_items": [],
-   "checks": 0,
-   "notas_bug": 1,
-   "notas_todo": 0,
-   "sha1": "76fb6f7ca34f"
-  },
-  {
-   "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Vehiculo.cs",
-   "nombre": "PlayerInputDriver.Vehiculo.cs",
-   "subsistema": "Player",
-   "lineas": 651,
-   "bytes": 35745,
-   "namespace": "SP.Player",
-   "resumen": "PlayerInputDriver (parte): manejo de vehiculos (entrar, asientos, camara, ordenes con [T]).",
-   "tipos": [
-    {
-     "nombre": "PlayerInputDriver",
-     "clase": "class",
-     "parcial": true,
-     "estatica": false,
-     "linea": 20
-    }
-   ],
-   "metodos_publicos": [
-    {
-     "nombre": "EnterVehicle",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "Vehicle vehicle",
-     "linea": 29
-    },
-    {
-     "nombre": "ExitVehicle",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "",
-     "linea": 130
-    },
-    {
-     "nombre": "SwitchSeat",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "VehicleSeatRole newRole",
-     "linea": 415
-    }
-   ],
-   "propiedades_publicas": [
-    {
-     "nombre": "CurrentSeat",
-     "tipo": "VehicleSeatRole?",
-     "linea": 27
-    }
-   ],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [
-    "SP.Actors",
-    "SP.Ai",
-    "SP.CameraSystem",
-    "SP.Combat",
-    "SP.Core",
-    "SP.Presentation",
-    "SP.UI",
-    "SP.Vehicles"
-   ],
-   "teclas": [],
-   "menu_items": [],
-   "checks": 0,
-   "notas_bug": 4,
-   "notas_todo": 0,
-   "sha1": "3f2bf26f874f"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/PossessionService.cs",
@@ -14372,62 +14830,6 @@
    "sha1": "10bfc8bb5928"
   },
   {
-   "ruta": "Assets/_Project/Scripts/Tutorial/TutorialAutoPlayer.cs",
-   "nombre": "TutorialAutoPlayer.cs",
-   "subsistema": "Tutorial",
-   "lineas": 411,
-   "bytes": 20818,
-   "namespace": "SP.Tutorial",
-   "resumen": "Reproductor automatico y cronometrado del tutorial (pedido: \"quiero un script con timers para el tutorial que de manera mecanica haga todo el tutorial para testear todas las funciones\"). En vez de saltar pasos con [F8] SaltarPaso, ejecuta el GESTO REAL de cada paso llamando a las mismas APIs de gameplay que HeadlessTestRunner.Fase19.cs usa para sus \"gestos reales\" (Motor.RotateYaw, Motor.Move, SetRunning, SetCrouching, Jump, TryFire, EjecutarOrdenRadial, etc.), esperando entre accion y accion con",
-   "tipos": [
-    {
-     "nombre": "TutorialAutoPlayer",
-     "clase": "class",
-     "parcial": true,
-     "estatica": false,
-     "linea": 31
-    }
-   ],
-   "metodos_publicos": [
-    {
-     "nombre": "Lanzar",
-     "devuelve": "TutorialAutoPlayer",
-     "estatico": true,
-     "args": "int desdePaso = 0, bool ignorarHumano = true, bool capturas = true",
-     "linea": 48
-    }
-   ],
-   "propiedades_publicas": [
-    {
-     "nombre": "RunId",
-     "tipo": "string",
-     "linea": 44
-    },
-    {
-     "nombre": "Carpeta",
-     "tipo": "string",
-     "linea": 45
-    }
-   ],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [
-    "SP.Actors",
-    "SP.CameraSystem",
-    "SP.Core",
-    "SP.Player",
-    "SP.Vehicles"
-   ],
-   "teclas": [],
-   "menu_items": [],
-   "checks": 0,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "0c3e30d1937b"
-  },
-  {
    "ruta": "Assets/_Project/Scripts/Tutorial/TutorialAutoPlayer.Entrada.cs",
    "nombre": "TutorialAutoPlayer.Entrada.cs",
    "subsistema": "Tutorial",
@@ -14514,6 +14916,62 @@
    "notas_bug": 0,
    "notas_todo": 0,
    "sha1": "414de97df259"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Tutorial/TutorialAutoPlayer.cs",
+   "nombre": "TutorialAutoPlayer.cs",
+   "subsistema": "Tutorial",
+   "lineas": 411,
+   "bytes": 20818,
+   "namespace": "SP.Tutorial",
+   "resumen": "Reproductor automatico y cronometrado del tutorial (pedido: \"quiero un script con timers para el tutorial que de manera mecanica haga todo el tutorial para testear todas las funciones\"). En vez de saltar pasos con [F8] SaltarPaso, ejecuta el GESTO REAL de cada paso llamando a las mismas APIs de gameplay que HeadlessTestRunner.Fase19.cs usa para sus \"gestos reales\" (Motor.RotateYaw, Motor.Move, SetRunning, SetCrouching, Jump, TryFire, EjecutarOrdenRadial, etc.), esperando entre accion y accion con",
+   "tipos": [
+    {
+     "nombre": "TutorialAutoPlayer",
+     "clase": "class",
+     "parcial": true,
+     "estatica": false,
+     "linea": 31
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "Lanzar",
+     "devuelve": "TutorialAutoPlayer",
+     "estatico": true,
+     "args": "int desdePaso = 0, bool ignorarHumano = true, bool capturas = true",
+     "linea": 48
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "RunId",
+     "tipo": "string",
+     "linea": 44
+    },
+    {
+     "nombre": "Carpeta",
+     "tipo": "string",
+     "linea": 45
+    }
+   ],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.CameraSystem",
+    "SP.Core",
+    "SP.Player",
+    "SP.Vehicles"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "0c3e30d1937b"
   },
   {
    "ruta": "Assets/_Project/Scripts/Tutorial/TutorialBeacon.cs",
@@ -19082,464 +19540,6 @@
    "notas_bug": 0,
    "notas_todo": 0,
    "sha1": "061bc168c576"
-  },
-  {
-   "ruta": "Assets/Editor/HeadlessBuilder.cs",
-   "nombre": "HeadlessBuilder.cs",
-   "subsistema": "Editor",
-   "lineas": 141,
-   "bytes": 6400,
-   "namespace": "",
-   "resumen": "Resuelve el path de salida: variable de entorno (para CI) > EditorPrefs (configurable por herramienta) > default relativo al proyecto. Antes era un path absoluto fijo a la máquina del autor original, que rompía en cualquier otra máquina o runner.",
-   "tipos": [
-    {
-     "nombre": "HeadlessBuilder",
-     "clase": "class",
-     "parcial": false,
-     "estatica": false,
-     "linea": 6
-    }
-   ],
-   "metodos_publicos": [
-    {
-     "nombre": "ResolveBuildPath",
-     "devuelve": "string",
-     "estatico": true,
-     "args": "",
-     "linea": 16
-    },
-    {
-     "nombre": "SetBuildPath",
-     "devuelve": "void",
-     "estatico": true,
-     "args": "string path",
-     "linea": 23
-    },
-    {
-     "nombre": "BuildWebGL",
-     "devuelve": "void",
-     "estatico": true,
-     "args": "",
-     "linea": 30
-    },
-    {
-     "nombre": "BuildWebGLDesdeEditor",
-     "devuelve": "string",
-     "estatico": true,
-     "args": "",
-     "linea": 50
-    }
-   ],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [],
-   "teclas": [],
-   "menu_items": [
-    "MIP/Build WebGL (sin cerrar el Editor)"
-   ],
-   "checks": 0,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "8eb206b95c03"
-  },
-  {
-   "ruta": "Assets/Editor/HierarchyPowerTools.cs",
-   "nombre": "HierarchyPowerTools.cs",
-   "subsistema": "Editor",
-   "lineas": 533,
-   "bytes": 19530,
-   "namespace": "",
-   "resumen": "Caches de GUI y GC Alloc",
-   "tipos": [
-    {
-     "nombre": "HierarchyPowerTools",
-     "clase": "class",
-     "parcial": false,
-     "estatica": false,
-     "linea": 5
-    }
-   ],
-   "metodos_publicos": [],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [
-    {
-     "nombre": "selectionHistory",
-     "tipo": "List<EntityId>",
-     "acceso": "private",
-     "linea": 9
-    },
-    {
-     "nombre": "tabIndex",
-     "tipo": "int",
-     "acceso": "private",
-     "linea": 11
-    },
-    {
-     "nombre": "lastHoveredID",
-     "tipo": "EntityId",
-     "acceso": "private",
-     "linea": 14
-    },
-    {
-     "nombre": "lastStateWasActive",
-     "tipo": "bool",
-     "acceso": "private",
-     "linea": 15
-    },
-    {
-     "nombre": "lastHoveredObj",
-     "tipo": "GameObject",
-     "acceso": "private",
-     "linea": 16
-    },
-    {
-     "nombre": "targetPivot",
-     "tipo": "Vector3",
-     "acceso": "private",
-     "linea": 19
-    },
-    {
-     "nombre": "startPivot",
-     "tipo": "Vector3",
-     "acceso": "private",
-     "linea": 20
-    },
-    {
-     "nombre": "isAnimatingPivot",
-     "tipo": "bool",
-     "acceso": "private",
-     "linea": 21
-    },
-    {
-     "nombre": "animationStartTime",
-     "tipo": "float",
-     "acceso": "private",
-     "linea": 22
-    },
-    {
-     "nombre": "objectToHighlight",
-     "tipo": "GameObject",
-     "acceso": "private",
-     "linea": 26
-    },
-    {
-     "nombre": "isMiddleDragging",
-     "tipo": "bool",
-     "acceso": "private",
-     "linea": 27
-    },
-    {
-     "nombre": "isMouseInHierarchy",
-     "tipo": "bool",
-     "acceso": "private",
-     "linea": 28
-    },
-    {
-     "nombre": "draggedObjectsSession",
-     "tipo": "List<EntityId>",
-     "acceso": "private",
-     "linea": 29
-    },
-    {
-     "nombre": "sceneViewPickIgnore",
-     "tipo": "List<GameObject>",
-     "acceso": "private",
-     "linea": 32
-    },
-    {
-     "nombre": "sceneViewPickMousePos",
-     "tipo": "Vector2",
-     "acceso": "private",
-     "linea": 33
-    },
-    {
-     "nombre": "lastCacheTime",
-     "tipo": "double",
-     "acceso": "private",
-     "linea": 38
-    },
-    {
-     "nombre": "cacheDirty",
-     "tipo": "bool",
-     "acceso": "private",
-     "linea": 39
-    },
-    {
-     "nombre": "lastMouseCheckTime",
-     "tipo": "double",
-     "acceso": "private",
-     "linea": 40
-    },
-    {
-     "nombre": "cachedIsMouseInHierarchy",
-     "tipo": "bool",
-     "acceso": "private",
-     "linea": 41
-    },
-    {
-     "nombre": "numberStyle",
-     "tipo": "GUIStyle",
-     "acceso": "private",
-     "linea": 44
-    },
-    {
-     "nombre": "toggleStyle",
-     "tipo": "GUIStyle",
-     "acceso": "private",
-     "linea": 45
-    },
-    {
-     "nombre": "historyStyle",
-     "tipo": "GUIStyle",
-     "acceso": "private",
-     "linea": 46
-    },
-    {
-     "nombre": "indexStrings",
-     "tipo": "string[]",
-     "acceso": "private",
-     "linea": 47
-    }
-   ],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [],
-   "teclas": [],
-   "menu_items": [],
-   "checks": 0,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "5b5e606b2da1"
-  },
-  {
-   "ruta": "Assets/Editor/NavMeshSetupPipeline.cs",
-   "nombre": "NavMeshSetupPipeline.cs",
-   "subsistema": "Editor",
-   "lineas": 98,
-   "bytes": 3696,
-   "namespace": "SP.EditorTools",
-   "resumen": "Dejar activa la escena principal",
-   "tipos": [
-    {
-     "nombre": "NavMeshSetupPipeline",
-     "clase": "class",
-     "parcial": false,
-     "estatica": true,
-     "linea": 10
-    }
-   ],
-   "metodos_publicos": [
-    {
-     "nombre": "RunFullSetup",
-     "devuelve": "void",
-     "estatico": true,
-     "args": "",
-     "linea": 13
-    },
-    {
-     "nombre": "SetupSoldierPrefabs",
-     "devuelve": "void",
-     "estatico": true,
-     "args": "",
-     "linea": 28
-    },
-    {
-     "nombre": "BakeScene",
-     "devuelve": "void",
-     "estatico": true,
-     "args": "string scenePath",
-     "linea": 70
-    }
-   ],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [],
-   "teclas": [],
-   "menu_items": [
-    "Tools/NavMesh/Setup Prefabs and Bake Scenes"
-   ],
-   "checks": 0,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "11f8d8653c8f"
-  },
-  {
-   "ruta": "Assets/Editor/TerrainSetupHelper.cs",
-   "nombre": "TerrainSetupHelper.cs",
-   "subsistema": "Editor",
-   "lineas": 319,
-   "bytes": 13487,
-   "namespace": "",
-   "resumen": "1. Asegurar carpeta para assets de terreno",
-   "tipos": [
-    {
-     "nombre": "TerrainSetupHelper",
-     "clase": "class",
-     "parcial": false,
-     "estatica": true,
-     "linea": 4
-    }
-   ],
-   "metodos_publicos": [
-    {
-     "nombre": "FixAndSetupTerrain",
-     "devuelve": "void",
-     "estatico": true,
-     "args": "",
-     "linea": 8
-    },
-    {
-     "nombre": "CaptureSnapshot",
-     "devuelve": "void",
-     "estatico": true,
-     "args": "",
-     "linea": 203
-    },
-    {
-     "nombre": "PrintMinimapHierarchy",
-     "devuelve": "void",
-     "estatico": true,
-     "args": "",
-     "linea": 232
-    },
-    {
-     "nombre": "ResizeMinimap",
-     "devuelve": "void",
-     "estatico": true,
-     "args": "",
-     "linea": 256
-    },
-    {
-     "nombre": "EnsureGameplaySceneAndCapture",
-     "devuelve": "void",
-     "estatico": true,
-     "args": "",
-     "linea": 276
-    },
-    {
-     "nombre": "DiagnoseTestFailure",
-     "devuelve": "void",
-     "estatico": true,
-     "args": "",
-     "linea": 293
-    }
-   ],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [],
-   "teclas": [],
-   "menu_items": [
-    "Tools/Terrain/Fix and Setup Paintable URP Terrain",
-    "Tools/Terrain/Capture Terrain Snapshot",
-    "Tools/Inspection/PrintMinimapHierarchy",
-    "Tools/Minimap/Resize Minimap To One Third",
-    "Tools/Verification/VerifyAndCapture",
-    "Tools/Debug/DiagnoseTestFailure"
-   ],
-   "checks": 0,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "58b32cb39eea"
-  },
-  {
-   "ruta": "Assets/TutorialInfo/Scripts/Editor/ReadmeEditor.cs",
-   "nombre": "ReadmeEditor.cs",
-   "subsistema": "Editor",
-   "lineas": 243,
-   "bytes": 6677,
-   "namespace": "",
-   "resumen": "Match selection color which works nicely for both light and dark skins",
-   "tipos": [
-    {
-     "nombre": "ReadmeEditor",
-     "clase": "class",
-     "parcial": false,
-     "estatica": false,
-     "linea": 8
-    }
-   ],
-   "metodos_publicos": [
-    {
-     "nombre": "OnInspectorGUI",
-     "devuelve": "void",
-     "estatico": false,
-     "args": "",
-     "linea": 123
-    }
-   ],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [
-    {
-     "nombre": "s_ShowedReadmeSessionStateName",
-     "tipo": "string",
-     "acceso": "private",
-     "linea": 13
-    },
-    {
-     "nombre": "s_ReadmeSourceDirectory",
-     "tipo": "string",
-     "acceso": "private",
-     "linea": 14
-    }
-   ],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [],
-   "teclas": [],
-   "menu_items": [],
-   "checks": 0,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "3916f846528f"
-  },
-  {
-   "ruta": "Assets/TutorialInfo/Scripts/Readme.cs",
-   "nombre": "Readme.cs",
-   "subsistema": "Otros",
-   "lineas": 17,
-   "bytes": 302,
-   "namespace": "",
-   "resumen": "",
-   "tipos": [
-    {
-     "nombre": "Readme",
-     "clase": "class",
-     "parcial": false,
-     "estatica": false,
-     "linea": 3
-    },
-    {
-     "nombre": "Section",
-     "clase": "class",
-     "parcial": false,
-     "estatica": false,
-     "linea": 10
-    }
-   ],
-   "metodos_publicos": [],
-   "propiedades_publicas": [],
-   "estaticos_mutables": [],
-   "publica_eventos": [],
-   "escucha_eventos": [],
-   "declara_eventos": [],
-   "usa": [],
-   "teclas": [],
-   "menu_items": [],
-   "checks": 0,
-   "notas_bug": 0,
-   "notas_todo": 0,
-   "sha1": "5853b87f7a50"
   }
  ],
  "assets": {
@@ -19838,20 +19838,6 @@
  ],
  "suite": [
   {
-   "archivo": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.cs",
-   "lineas": 4197,
-   "fases": [
-    "RunPhase1",
-    "RunPhase2",
-    "RunPhase3",
-    "RunPhase4",
-    "RunPhase5",
-    "RunPhase6",
-    "RunPhase7"
-   ],
-   "checks": 121
-  },
-  {
    "archivo": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase18.cs",
    "lineas": 129,
    "fases": [
@@ -19896,6 +19882,20 @@
     "RunPhase9"
    ],
    "checks": 148
+  },
+  {
+   "archivo": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.cs",
+   "lineas": 4197,
+   "fases": [
+    "RunPhase1",
+    "RunPhase2",
+    "RunPhase3",
+    "RunPhase4",
+    "RunPhase5",
+    "RunPhase6",
+    "RunPhase7"
+   ],
+   "checks": 121
   }
  ]
 }

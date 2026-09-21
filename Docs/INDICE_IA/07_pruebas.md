@@ -11,12 +11,12 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 
 | Archivo | Lineas | Fases | Checks | Algunas fases |
 |---|---|---|---|---|
-| `HeadlessTestRunner.cs` | 4197 | 7 | 121 | RunPhase1, RunPhase2, RunPhase3, RunPhase4, RunPhase5, RunPhase6 |
 | `HeadlessTestRunner.Fase18.cs` | 129 | 1 | 34 | RunPhase18 |
 | `HeadlessTestRunner.Fase19.cs` | 406 | 1 | 92 | RunPhase19 |
 | `HeadlessTestRunner.Fase20.cs` | 207 | 2 | 32 | RunPhase20, RunPhase20Ronda12 |
 | `HeadlessTestRunner.Fases13a17.cs` | 691 | 5 | 134 | RunPhase13, RunPhase14, RunPhase15, RunPhase16, RunPhase17 |
 | `HeadlessTestRunner.Fases8a12.cs` | 1551 | 2 | 148 | RunPhase8, RunPhase9 |
+| `HeadlessTestRunner.cs` | 4197 | 7 | 121 | RunPhase1, RunPhase2, RunPhase3, RunPhase4, RunPhase5, RunPhase6 |
 
 ## Otras entradas de prueba
 
@@ -46,12 +46,12 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 - `Assets/_Project/Scripts/Actors/SoldierClasses.cs`
 - `Assets/_Project/Scripts/Actors/SoldierLook.cs`
 - `Assets/_Project/Scripts/Actors/SoldierMotor.cs`
-- `Assets/_Project/Scripts/Ai/AiBrain.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Disparo.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Granadas.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Navegacion.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Sentidos.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Tactica.cs`
+- `Assets/_Project/Scripts/Ai/AiBrain.cs`
 - `Assets/_Project/Scripts/Ai/AiState.cs`
 - `Assets/_Project/Scripts/Ai/AjustesDeEscuadra.cs`
 - `Assets/_Project/Scripts/Ai/PathPreview.cs`
