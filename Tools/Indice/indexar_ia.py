@@ -237,7 +237,7 @@ def escanear() -> dict:
             {
                 p.relative_to(RAIZ).as_posix()
                 for p in RAIZ.joinpath("Assets").rglob(patron)
-                if "Library" not in p.parts
+                if "Library" not in p.parts and "_Recovery" not in p.parts
             }
         )
 

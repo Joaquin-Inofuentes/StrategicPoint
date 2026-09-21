@@ -2,7 +2,7 @@
 
 | Tipo | Cantidad |
 |---|---|
-| Escenas | 6 |
+| Escenas | 5 |
 | Prefabs | 133 |
 | Materiales | 22 |
 | Assets (`.asset`) | 23 |
@@ -16,7 +16,6 @@
 - `Assets/_Project/Scenes/SC_MainMenu.unity`
 - `Assets/_Project/Scenes/SC_TestLevel.unity`
 - `Assets/_Project/Scenes/SC_Tutorial.unity`
-- `Assets/_Recovery/0.unity`
 
 ## Shaders
 

@@ -1,9 +1,9 @@
 # Mapa del proyecto — indice para IA
 
-> Generado por `Tools/Indice/indexar_ia.py` el 2026-09-21 11:11 UTC.
+> Generado por `Tools/Indice/indexar_ia.py` el 2026-09-21 11:13 UTC.
 > No editar a mano: se regenera. Si algo esta mal, esta mal el generador.
 
-**233 scripts · 60,275 lineas · 6 escenas · 133 prefabs**
+**233 scripts · 60,275 lineas · 5 escenas · 133 prefabs**
 
 ## Como leer este indice
 
