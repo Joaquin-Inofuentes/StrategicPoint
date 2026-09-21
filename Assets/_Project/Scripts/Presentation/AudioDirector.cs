@@ -547,19 +547,10 @@ namespace SP.Presentation
         Transform ResolveListener()
         {
             if (listenerTf != null) return listenerTf;
-            // Camara primero porque el AudioListener vive ahi y Camera.main
-            // ya esta cacheado por el motor. El barrido de escena es el plan
-            // B y solo corre cuando la referencia se perdio, NUNCA por
-            // frame ni por sonido: un FindAnyObjectByType por disparo con
-            // cincuenta soldados es exactamente lo que no queremos.
-            //
-            // FindAnyObjectByType y no FindFirstObjectByType: el segundo esta
-            // marcado obsoleto en esta version de Unity, justamente porque
-            // depende del orden de instance ID.
+            // El AudioListener vive en la camara principal (CamaraPrincipal.Actual, con cache). Sin camara no se barre
+            // la escena buscando un listener: seria un barrido por disparo con cincuenta soldados.
             var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam != null) { listenerTf = cam.transform; return listenerTf; }
-            var listener = Object.FindAnyObjectByType<AudioListener>();
-            if (listener != null) listenerTf = listener.transform;
             return listenerTf;
         }
 

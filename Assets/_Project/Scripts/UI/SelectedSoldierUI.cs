@@ -108,7 +108,7 @@ namespace SP.UI
             // inicial del arranque. Resultado: al empezar la partida
             // ninguna fila aparecía marcada como "este sos vos" hasta que
             // poseías a otro. Se lee del brain, que es la fuente real.
-            if (brain == null) brain = FindAnyObjectByType<PlayerBrain>();
+            if (brain == null) brain = PlayerBrain.Activo;
             if (brain != null && brain.Current != null && brain.Current.Id != possessedId)
             {
                 possessedId = brain.Current.Id;

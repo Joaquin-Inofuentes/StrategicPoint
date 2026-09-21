@@ -63,6 +63,7 @@ namespace SP.Mision
         bool hordaLanzada, refuerzosLanzados;
         readonly List<bool> oleadaHecha = new List<bool> { false, false, false };
         Transform raizEnemigos;
+        Transform raizDeRutas;
         ProjectilePool pool;
         int contadorNombres;
 
@@ -77,7 +78,7 @@ namespace SP.Mision
         {
             // SC_Tutorial quedo con un objeto "Mision" heredado: lanzaba las lineas enemigas y la derrota de la mision
             // sobre el tutorial (ronda 11: la corrida automatica perdia en el paso 12). El tutorial nunca corre la mision.
-            var boot = FindAnyObjectByType<GameplaySceneBootstrap>();
+            var boot = GameplaySceneBootstrap.Activo;
             if (boot != null && boot.esTutorial) { Destroy(gameObject); return; }
             Instancia = this;
         }
@@ -85,10 +86,13 @@ namespace SP.Mision
 
         void Start()
         {
-            driver = FindAnyObjectByType<PlayerInputDriver>();
-            outcome = FindAnyObjectByType<GameOutcomeController>();
-            var enemigos = GameObject.Find("Enemies");
+            driver = PlayerInputDriver.Activo;
+            outcome = GameOutcomeController.Activo;
+            // "Enemies" y "Waypoints" son raices de escena: se buscan entre las raices, no en toda la jerarquia, y una sola vez.
+            var enemigos = SP.Core.RaicesDeEscena.Buscar("Enemies");
+            if (enemigos == null) SP.Core.GameLog.Line("[MisionDirector] no hay una raiz 'Enemies' en la escena: los enemigos nacen bajo la mision");
             raizEnemigos = enemigos != null ? enemigos.transform : transform;
+            raizDeRutas = SP.Core.RaicesDeEscena.Buscar("Waypoints")?.transform;
 
             if (heliPrefab != null)
             {
@@ -107,7 +111,7 @@ namespace SP.Mision
         // ---------------- utilidades ----------------
         public Vector3 PosicionDelJugador()
         {
-            if (driver == null) driver = FindAnyObjectByType<PlayerInputDriver>();
+            if (driver == null) driver = PlayerInputDriver.Activo;
             if (driver == null || driver.Brain == null || driver.Brain.Current == null) return Vector3.zero;
             if (driver.CurrentSeat.HasValue && driver.Vehicle != null) return driver.Vehicle.transform.position;
             return driver.Brain.Current.transform.position;
@@ -149,7 +153,7 @@ namespace SP.Mision
             // BUG REAL: el prefab no trae el ProjectilePool de la escena (una referencia a un objeto de
             // escena no se guarda en un prefab), y sin pool WeaponHolder.TryFire no dispara nunca:
             // los enemigos que aparecen en juego eran decorativos. Se conecta aca.
-            if (pool == null) pool = FindAnyObjectByType<ProjectilePool>();
+            if (pool == null) pool = ProjectilePool.Activo;
             if (s.Weapon != null && pool != null) s.Weapon.SetPool(pool);
             Dificultad.AjustarVida(s);
             SoldadosGenerados++;
@@ -167,8 +171,7 @@ namespace SP.Mision
                 new Vector3(c.x + mediaX, 0f, c.z + mediaZ), new Vector3(c.x - mediaX, 0f, c.z + mediaZ),
             }, new Color(0.95f, 0.6f, 0.2f));
             linea.gameObject.name = "PatrolRoute_" + s.name;
-            var raizRutas = GameObject.Find("Waypoints");
-            if (raizRutas != null) linea.transform.SetParent(raizRutas.transform, true);
+            if (raizDeRutas != null) linea.transform.SetParent(raizDeRutas, true);
             brain.SetPatrolWaypoints(linea.Markers);
         }
 
@@ -325,7 +328,7 @@ namespace SP.Mision
         void Update()
         {
             if (Fase == FaseDeMision.Victoria || Fase == FaseDeMision.Derrota) return;
-            if (driver == null) driver = FindAnyObjectByType<PlayerInputDriver>();
+            if (driver == null) driver = PlayerInputDriver.Activo;
             float dt = Time.deltaTime;
 
             switch (Fase)

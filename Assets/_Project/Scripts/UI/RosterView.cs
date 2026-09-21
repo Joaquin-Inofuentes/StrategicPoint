@@ -11,13 +11,25 @@ namespace SP.UI
     // PlayerInputDriver y cada fila es duena de su soldado desde que nace.
     public class RosterView : MonoBehaviour
     {
+        // Unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
+        public static RosterView Activo { get; private set; }
+        public static void ReiniciarActivo() => Activo = null;
+        public void RegistrarActivo()
+        {
+            Activo = this;
+        }
         [SerializeField] RosterRowView rowPrefab;
 
         // Para el Editor-tool que arma esto una sola vez al construir la
         // escena (mismo patron que SetPool/SetTuning en WeaponHolder).
         public void SetRowPrefab(RosterRowView prefab) => rowPrefab = prefab;
 
-        void OnEnable() => Rebuild();
+        void OnDisable() { if (Activo == this) Activo = null; }
+        void OnEnable()
+        {
+            RegistrarActivo();
+            Rebuild();
+        }
 
         // Publico ademas de disparado por OnEnable: la posesion inicial de
         // partida (PlayerInputDriver.Start -> Brain.Possess(Squad[0])) NO
@@ -35,7 +47,7 @@ namespace SP.UI
                 Destroy(transform.GetChild(i).gameObject);
 
             if (rowPrefab == null) return;
-            var driver = FindAnyObjectByType<PlayerInputDriver>();
+            var driver = PlayerInputDriver.Activo;
             var squad = driver != null ? driver.Squad : null;
             if (squad == null) return;
 

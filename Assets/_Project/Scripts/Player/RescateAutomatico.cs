@@ -110,10 +110,10 @@ namespace SP.Player
             }
 
             canalizado += dt;
+            AccionesEnCurso.Reportar(Rescatista, "REVIVIENDO", Caido.transform.position, canalizado / TiempoDeCanal, TiempoDeCanal - canalizado, Caido.transform);   // ronda 13 (puntos 2 y 3)
             if (canalizado < TiempoDeCanal) return;
 
-            Caido.Health.Initialize(Caido.Id, Caido.Health.MaxHealth);
-            Caido.Motor.ResetMotionState();
+            Reanimacion.Ejecutar(Caido);   // ronda 13: camino unico
             EventBus.Instance.Publish(new HealedEvent(Caido.Id, Caido.Health.MaxHealth, Caido.Health.Current));
             GameLog.Line($"{Rescatista.DisplayName} revivio a {Caido.DisplayName}");
             Cancelar();

@@ -126,9 +126,9 @@ namespace SP.UI
                 transform.SetAsLastSibling();
                 if (Application.isPlaying)
                 {
-                    var dios = FindAnyObjectByType<ModoDiosView>();
+                    var dios = ModoDiosView.Activo;
                     if (dios != null) dios.transform.SetAsLastSibling();
-                    var arma = FindAnyObjectByType<WeaponStatusView>();
+                    var arma = WeaponStatusView.Activo;
                     if (arma != null) arma.transform.SetAsLastSibling();
                 }
             }

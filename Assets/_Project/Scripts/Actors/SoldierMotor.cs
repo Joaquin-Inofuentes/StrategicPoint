@@ -57,7 +57,10 @@ namespace SP.Actors
 
         // Lo lee AiBrain para acotar el paso cuando sigue la ruta del
         // NavMeshAgent (que solo planifica; este motor es quien camina).
-        public float MoveSpeed => moveSpeed * (Corriendo ? FactorDeCarrera : 1f);
+        // Ronda 13 (punto 7): agachado se camina a la mitad. Antes se iba a la misma velocidad que de pie y los clips de
+        // "walk crouching" (ciclo de ~1,5 m/s) patinaban sobre el piso.
+        public const float FactorDeVelocidadAgachado = 0.5f;
+        public float MoveSpeed => moveSpeed * (Corriendo ? FactorDeCarrera : (IsCrouching ? FactorDeVelocidadAgachado : 1f));
 
         // [Shift]: correr. El jugador lo pide a pie y los aliados libres corren con el
         // (AjustesDeEscuadra.Correr). No se corre agachado ni en el aire.
@@ -267,6 +270,26 @@ namespace SP.Actors
         // pie (0 si no esta agachado); FollowOverShoulder lo resta de su
         // altura fija para que la vista baje junto con el cuerpo.
         public float EyeHeightDrop => IsCrouching ? alturaOjoDePie * (1f - fraccionAlturaAgachado) : 0f;
+
+        // Ronda 13 (punto 7): la camara seguia el agachado con un salto seco (el ancla bajaba de golpe 0,64 m) mientras el cuerpo
+        // tardaba 0,15 s en cruzar de pose. Esta version llega al mismo valor en ~0,15 s; se usa para la camara. Fuera de Play
+        // (suite headless) devuelve el valor exacto.
+        int cuadroOjoSuave = -1;
+        float ojoSuave;
+        public float EyeHeightDropSuave
+        {
+            get
+            {
+                if (!Application.isPlaying) return EyeHeightDrop;
+                if (cuadroOjoSuave != Time.frameCount)
+                {
+                    cuadroOjoSuave = Time.frameCount;
+                    float tope = Mathf.Max(0.5f, alturaOjoDePie * (1f - fraccionAlturaAgachado));
+                    ojoSuave = Mathf.MoveTowards(ojoSuave, EyeHeightDrop, tope / 0.15f * Time.unscaledDeltaTime);
+                }
+                return ojoSuave;
+            }
+        }
 
         void EnsureBody()
         {

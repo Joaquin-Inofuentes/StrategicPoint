@@ -10,6 +10,15 @@ namespace SP.Presentation
     // Se agrega solo desde GameplaySceneBootstrap; no depende de la escena.
     public class AnuncioDeZonas : MonoBehaviour
     {
+        // Unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
+        public static AnuncioDeZonas Activo { get; private set; }
+        public static void ReiniciarActivo() => Activo = null;
+        public void RegistrarActivo()
+        {
+            Activo = this;
+        }
+        void OnDisable() { if (Activo == this) Activo = null; }
+        void OnEnable() => RegistrarActivo();
         struct Zona
         {
             public string Nombre, Consejo;
@@ -41,9 +50,10 @@ namespace SP.Presentation
 
         public static AnuncioDeZonas Asegurar()
         {
-            var a = FindFirstObjectByType<AnuncioDeZonas>();
-            if (a != null) return a;
-            return new GameObject("AnuncioDeZonas").AddComponent<AnuncioDeZonas>();
+            if (Activo != null) return Activo;
+            var a = new GameObject("AnuncioDeZonas").AddComponent<AnuncioDeZonas>();
+            a.RegistrarActivo();
+            return a;
         }
 
         static int IndiceDe(float z)
@@ -57,7 +67,7 @@ namespace SP.Presentation
         {
             if (Time.time < proximo) return;
             proximo = Time.time + 0.5f;
-            if (driver == null) driver = FindFirstObjectByType<PlayerInputDriver>();
+            if (driver == null) driver = PlayerInputDriver.Activo;
             if (driver == null || driver.Brain == null || driver.Brain.Current == null) return;
 
             // Adentro del tanque el soldado esta apagado y quieto: se usa el tanque.

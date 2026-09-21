@@ -14,13 +14,32 @@ namespace SP.Player
         public IReadOnlyList<Soldier> Selected => selected;
         
         System.IDisposable deathSub;
-        void OnEnable() => deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
-        void OnDisable() => deathSub?.Dispose();
+        // Ronda 13 (punto 1): quien estaba seleccionado al morir vuelve a la seleccion al ser revivido. Antes salia y no
+        // volvia a entrar: las ordenes de RTS a "la seleccion" no llegaban al companero revivido.
+        readonly HashSet<Soldier> seleccionadosAlMorir = new HashSet<Soldier>();
+        void OnEnable()
+        {
+            deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
+            Reanimacion.Revivido += OnRevivido;
+        }
+        void OnDisable()
+        {
+            deathSub?.Dispose();
+            Reanimacion.Revivido -= OnRevivido;
+        }
         void OnEntityDied(EntityDiedEvent evt)
         {
             int before = selected.Count;
+            foreach (var s in selected) if (s != null && s.Id == evt.ActorId) seleccionadosAlMorir.Add(s);
             selected.RemoveAll(s => s == null || s.Id == evt.ActorId);
             if (selected.Count != before) Publish();
+        }
+        void OnRevivido(Soldier s)
+        {
+            if (s == null || !seleccionadosAlMorir.Remove(s)) return;
+            if (s.Health == null || !s.Health.IsAlive || selected.Contains(s) || SelectedVehicle != null) return;
+            selected.Add(s);
+            Publish();
         }
 
         // El vehículo es seleccionable, pero por separado de los soldados

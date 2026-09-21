@@ -20,6 +20,13 @@ namespace SP.UI
     // verificar sin escena ni raycasts.
     public class MinimapFollow : MonoBehaviour
     {
+        // Unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
+        public static MinimapFollow Activo { get; private set; }
+        public static void ReiniciarActivo() => Activo = null;
+        public void RegistrarActivo()
+        {
+            Activo = this;
+        }
         public Transform Target;
         [SerializeField] float height = 60f;
 
@@ -79,8 +86,10 @@ namespace SP.UI
         public float GroundY { get => groundY; set => groundY = value; }
         public float MapHalfExtent { get => mapHalfExtent; set => mapHalfExtent = value; }
 
+        void OnDisable() { if (Activo == this) Activo = null; }
         void OnEnable()
         {
+            RegistrarActivo();
             // Tras el domain reload se permite un unico reintento de
             // rescate; si el campo serializado vino bien, ResolveRect ni
             // llega a buscar.
@@ -212,13 +221,10 @@ namespace SP.UI
             if (rectSearchDone) return null;
             rectSearchDone = true;
 
-            // Rescate por nombre. Ojo: la RawImage NO es hija de esta
-            // camara (vive dentro del Canvas), asi que transform.Find no
-            // alcanza y hay que buscar en la escena. Corre como maximo una
-            // vez por activacion, nunca por frame ni por clic.
-            var go = GameObject.Find(MinimapImageName);
-            if (go != null) minimapRect = go.GetComponent<RectTransform>();
-            return minimapRect;
+            // La RawImage vive en el Canvas, no bajo esta camara: la referencia viene serializada en la escena. Si falta
+            // se avisa UNA vez (rectSearchDone) en vez de barrer la escena buscando por nombre.
+            SP.Core.GameLog.Line("[MinimapFollow] falta la referencia 'minimapRect' (" + MinimapImageName + ") en la escena");
+            return null;
         }
 
         Camera ResolveCamera()
@@ -256,15 +262,18 @@ namespace SP.UI
         const string BorderName = "MinimapBorder";
 
         [SerializeField] RectTransform borderRect;
+        bool borderAvisado;
 
         public bool Agrandado { get; private set; }
+
+        // Marco que se redimensiona (MinimapBorder). Lo asigna la escena serializada o quien la arma.
+        public RectTransform Marco { get => ResolveBorder(); set => borderRect = value; }
 
         RectTransform ResolveBorder()
         {
             if (borderRect != null) return borderRect;
-            var go = GameObject.Find(BorderName);
-            if (go != null) borderRect = go.GetComponent<RectTransform>();
-            return borderRect;
+            if (!borderAvisado) { borderAvisado = true; SP.Core.GameLog.Line("[MinimapFollow] falta la referencia 'borderRect' (" + BorderName + ") en la escena"); }
+            return null;
         }
 
         // Deja el minimapa en mini. Lo llama el arranque de la escena (y el

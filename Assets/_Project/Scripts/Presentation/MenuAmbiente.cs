@@ -13,6 +13,7 @@ namespace SP.Presentation
         public const float LadoDeCelda = 64f;
         public const int Contactos = 7;
         public static bool Existe { get; private set; }
+        static MenuAmbiente actual;
 
         RectTransform rejilla;
         RectTransform[] contactos;
@@ -30,13 +31,12 @@ namespace SP.Presentation
         static void AlCargar(Scene e, LoadSceneMode m) => Crear(e);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { Existe = false; }
+        static void Reiniciar() { Existe = false; actual = null; }
 
         public static MenuAmbiente Crear(Scene escena)
         {
             if (!Application.isPlaying || escena.name != EscenaDelMenu) return null;
-            var existente = Object.FindAnyObjectByType<MenuAmbiente>();
-            if (existente != null) return existente;
+            if (actual != null) return actual;
             Canvas canvas = null;
             foreach (var raiz in escena.GetRootGameObjects()) { canvas = raiz.GetComponent<Canvas>(); if (canvas != null) break; }
             if (canvas == null) return null;
@@ -47,6 +47,7 @@ namespace SP.Presentation
             r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one; r.offsetMin = r.offsetMax = Vector2.zero;
             var a = go.AddComponent<MenuAmbiente>();
             a.Construir();
+            actual = a;
             return a;
         }
 

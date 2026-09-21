@@ -19,6 +19,7 @@ namespace SP.Player
     // Traduce teclado/ratón reales a los mismos métodos que usa el test
     // automático. No decide nada nuevo: es el "pegamento" de Play mode.
     // Solo corre cuando el juego está en Play (Application.isPlaying).
+    [DefaultExecutionOrder(-200)]
     public partial class PlayerInputDriver : MonoBehaviour
     {
         public PlayerBrain Brain;
@@ -143,6 +144,8 @@ namespace SP.Player
             // fuerte que Pistol): un proxy razonable de "cuanto empuja"
             // sin sumar un campo de recoil nuevo al catalogo.
             float kickDeg = Mathf.Clamp(spec.Damage * 0.025f, 0.6f, 3f);
+            // Ronda 13 (punto 10): apuntando el retroceso de camara baja a un 40 % (la mira "se planta").
+            kickDeg *= Mathf.Lerp(1f, 0.4f, Brain.Current.Weapon.Apuntado01);
             Rig.KickRecoil(kickDeg);
         }
 
@@ -501,7 +504,7 @@ namespace SP.Player
                 // el comentario en RosterView.Rebuild): sin este empujon, la
                 // fila del roster que arranca poseida podia quedar sin
                 // resaltar si su OnEnable corrio antes que este Start().
-                var roster = FindAnyObjectByType<SP.UI.RosterView>();
+                var roster = SP.UI.RosterView.Activo;
                 if (roster != null) roster.Rebuild();
             }
 
@@ -531,6 +534,7 @@ namespace SP.Player
         IDisposable squadDamageSub;
         void OnEnable()
         {
+            Registrar();
             deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
             vehicleDestroyedSub = EventBus.Instance.Subscribe<VehicleDestroyedEvent>(OnVehicleDestroyed);
             turretControlSub = EventBus.Instance.Subscribe<TurretControlChangedEvent>(OnTurretControlChanged);
@@ -539,6 +543,7 @@ namespace SP.Player
         }
         void OnDisable()
         {
+            QuitarRegistro();
             // Es un estatico: si se queda apuntando al soldado de la
             // partida anterior, la siguiente arranca con un soldado
             // fantasma al que nadie le puede dar ordenes.
@@ -1177,7 +1182,7 @@ namespace SP.Player
             bool correr = shiftCorrer && moving && !Brain.Current.Motor.IsCrouching && Vector3.Dot(move.normalized, f) > 0.2f
                 && !Rig.EstaConZoom && !TorretaFijaActiva;
             Brain.Current.Motor.SetRunning(correr);
-            Rig.EscalaDeRespiracion = Brain.Current.Motor.IsCrouching || TorretaFijaActiva ? 0.3f : moving ? 1.6f : 1f;
+            Rig.EscalaDeRespiracion = (Brain.Current.Motor.IsCrouching || TorretaFijaActiva ? 0.3f : moving ? 1.6f : 1f) * (Brain.Current.Weapon != null && Brain.Current.Weapon.Apuntado01 > 0.5f ? 0.5f : 1f);   // ronda 13: apuntando la respiracion baja a la mitad
             AjustesDeEscuadra.Correr = correr;
             if (moving && !TorretaFijaActiva) Brain.Move(move.normalized, Time.deltaTime);
             // Balanceo al caminar: caminar y estar quieto se veian
@@ -1247,7 +1252,7 @@ namespace SP.Player
             }
 
             // En la torreta la camara va casi al ojo (los techos de las torres no dejan lugar a 4 m detras).
-            Rig.FollowOverShoulder(Brain.Current.transform, distance: TorretaFijaActiva ? 1.4f : 4f, heightOffset: Brain.Current.Motor.EyeHeightDrop,
+            Rig.FollowOverShoulder(Brain.Current.transform, distance: TorretaFijaActiva ? 1.4f : 4f, heightOffset: Brain.Current.Motor.EyeHeightDropSuave,
                 ojo: Brain.Current.EyeAnchor != null ? Brain.Current.EyeAnchor.position : (Vector3?)null);
             UpdateNearestAllyHighlight();
 
@@ -1425,6 +1430,7 @@ namespace SP.Player
             // Mantener click derecho apretado: zoom de mirilla (no manda la
             // camioneta hasta que se suelta, eso sigue siendo un click).
             if (mouse != null) Rig.SetZoomed(mouse.rightButton.isPressed);
+            ActualizarPrecisionAlApuntar();
 
             // Pedido explicito: click derecho sobre un aliado lo
             // selecciona (igual que arrastrar el mouse en RTS, pero
@@ -1549,8 +1555,7 @@ namespace SP.Player
         public bool TryRevivir(Soldier caido, bool sostenidoLoSuficiente)
         {
             if (caido == null || caido.Health == null || caido.Health.IsAlive || !sostenidoLoSuficiente) return false;
-            caido.Health.Initialize(caido.Id, caido.Health.MaxHealth);
-            caido.Motor.ResetMotionState();
+            Reanimacion.Ejecutar(caido);   // ronda 13: camino unico (vida + cerebro + seleccion)
             GameLog.Line($"{caido.DisplayName} fue revivido");
             return true;
         }
@@ -1566,6 +1571,7 @@ namespace SP.Player
 
             float progreso = KeyBindings.HeldSeconds(KeyBindings.Interactuar) / TiempoDeRevivir;
             MostrarCirculoRevivir(Mathf.Clamp01(progreso));
+            AccionesEnCurso.Reportar(Brain.Current, "REVIVIENDO", caido.transform.position, progreso, TiempoDeRevivir * (1f - Mathf.Clamp01(progreso)), caido.transform);   // ronda 13 (puntos 2 y 3)
 
             if (TryRevivir(caido, KeyBindings.IsHeld(KeyBindings.Interactuar, TiempoDeRevivir)))
             {
@@ -1657,6 +1663,7 @@ namespace SP.Player
                 }
                 medicoAccionSegundos += Time.deltaTime;
                 MostrarCirculoEnfoque(Mathf.Clamp01(medicoAccionSegundos / TiempoDeReanimarMedico));
+                AccionesEnCurso.Reportar(Brain.Current, "REVIVIENDO", caido.transform.position, medicoAccionSegundos / TiempoDeReanimarMedico, TiempoDeReanimarMedico - medicoAccionSegundos, caido.transform);   // ronda 13 (puntos 2 y 3)
                 SetInstructionText($"[E mantenido] Reanimando a {caido.DisplayName}...");
                 if (medicoAccionSegundos >= TiempoDeReanimarMedico && TryRevivir(caido, true))
                 {
@@ -1684,6 +1691,7 @@ namespace SP.Player
                 }
                 float frac = herido.Health.MaxHealth > 0 ? (float)herido.Health.Current / herido.Health.MaxHealth : 1f;
                 MostrarCirculoEnfoque(Mathf.Clamp01(frac));
+                AccionesEnCurso.Reportar(Brain.Current, "CURANDO", herido.transform.position, frac, (herido.Health.MaxHealth - herido.Health.Current) / CuracionMedicoPorSegundo, herido.transform);   // ronda 13 (puntos 2 y 3)
                 SetInstructionText($"[E mantenido] Curando a {herido.DisplayName}...");
                 if (herido.Health.Current >= herido.Health.MaxHealth)
                 {
@@ -1730,6 +1738,9 @@ namespace SP.Player
             if (activo && progreso01 > 0.01f)
             {
                 MostrarCirculoEnfoque(progreso01);
+                // Ronda 13 (puntos 2 y 3): el "interactuable" del francotirador / asalto es lo que tiene en la mira.
+                var puntoDeMira = result.Type != AimTargetType.None ? result.Point : Brain.Current.transform.position + Brain.Current.transform.forward * 6f;
+                AccionesEnCurso.Reportar(Brain.Current, "AFINANDO PUNTERIA", puntoDeMira, progreso01, TiempoDeEnfoqueMax - enfoqueSostenidoSegundos, result.HitTransform);
                 SetInstructionText(progreso01 >= 0.999f ? "[E mantenido] Punteria maxima" : "[E mantenido] Afinando la punteria...");
             }
             else if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
@@ -2094,6 +2105,7 @@ namespace SP.Player
             // que llega -- una caminata entera sin ningún resultado ni
             // aviso.
             if (vehicle.IsDestroyed) return;
+            if (!vehicle.PuedeAbordar(Brain.Current, out var motivoNoAbordable)) { RejectOrder(motivoNoAbordable); return; }   // ronda 13 (punto 12)
             if (!vehicle.HasAnyRoom) { RejectOrder("VEHICULO LLENO"); return; }
 
             var next = FindNextSquadmateToBoard(vehicle);
@@ -2117,6 +2129,8 @@ namespace SP.Player
                 return;
             }
 
+            // Ronda 13 (punto 12): sobre un tanque enemigo no se muestra el indicador de "suben" (no se puede abordar).
+            if (result.Vehicle == null || !result.Vehicle.PuedeAbordar(Brain.Current)) { if (mountIndicator != null) mountIndicator.Hide(); return; }
             if (mountIndicator == null) mountIndicator = VehicleMountIndicator.Create();
 
             var incoming = new List<Soldier>();
@@ -2145,6 +2159,7 @@ namespace SP.Player
                 return;
             }
 
+            if (result.Vehicle == null || result.Vehicle.Bando == TeamId.Enemy) { if (mountIndicator != null) mountIndicator.Hide(); return; }   // ronda 13 (punto 12)
             if (mountIndicator == null) mountIndicator = VehicleMountIndicator.Create();
 
             var incoming = new List<Soldier>();
@@ -2954,7 +2969,11 @@ namespace SP.Player
             if (AtajosDeTecladoHeredados && kb.gKey.wasPressedThisFrame)
             {
                 var result = Aim.Evaluate(screenRay, null);
-                if (result.Type == AimTargetType.Vehicle && !result.Vehicle.IsDestroyed)
+                if (result.Type == AimTargetType.Vehicle && result.Vehicle.Bando == TeamId.Enemy && !result.Vehicle.IsDestroyed)
+                {
+                    RejectOrder(Vehicle.MotivoEnemigo);   // ronda 13 (punto 12)
+                }
+                else if (result.Type == AimTargetType.Vehicle && !result.Vehicle.IsDestroyed)
                 {
                     if (!result.Vehicle.HasAnyRoom) { RejectOrder("VEHICULO LLENO"); }
                     else
@@ -2978,7 +2997,7 @@ namespace SP.Player
                 // requerir que primero le apuntes a un soldado -- los
                 // ocupantes están inactivos/ocultos, no se les puede
                 // apuntar directamente.
-                else if (result.Type == AimTargetType.Vehicle && result.Vehicle.OccupantCount > 0)
+                else if (result.Type == AimTargetType.Vehicle && result.Vehicle.OccupantCount > 0 && result.Vehicle.Bando != TeamId.Enemy)
                 {
                     EnterVehicleViewFromRts(result.Vehicle);
                 }

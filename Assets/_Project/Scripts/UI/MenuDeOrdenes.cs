@@ -53,6 +53,13 @@ namespace SP.UI
     // categoria directo (con su primera opcion).
     public class MenuDeOrdenes : MonoBehaviour
     {
+        // Unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
+        public static MenuDeOrdenes Activo { get; private set; }
+        public static void ReiniciarActivo() => Activo = null;
+        public void RegistrarActivo()
+        {
+            Activo = this;
+        }
         public const int CantidadDeOpciones = 5;
         public const int CantidadDeCategorias = 9;
         public const int CantidadDePorciones = CantidadDeCategorias;
@@ -169,8 +176,10 @@ namespace SP.UI
             Cerrar();
         }
 
+        void OnDisable() { if (Activo == this) Activo = null; }
         void OnEnable()
         {
+            RegistrarActivo();
             if (lista == null) lista = GetComponentInChildren<Text>(true);
             if (group == null) group = GetComponent<CanvasGroup>();
             Escribir();
@@ -456,7 +465,7 @@ namespace SP.UI
         // porque SC_Gameplay NO la arma HeadlessTestRunner (esa solo escribe SC_TestLevel).
         public static MenuDeOrdenes AsegurarEnEscena()
         {
-            var driver = Object.FindAnyObjectByType<SP.Player.PlayerInputDriver>();
+            var driver = SP.Player.PlayerInputDriver.Activo;
 
             // El canvas del HUD (pantalla), NO los de barras de vida / etiquetas (mundo).
             Transform raiz = driver != null && driver.AimUiRef != null ? driver.AimUiRef.transform.parent : null;
@@ -465,7 +474,7 @@ namespace SP.UI
                     if (c.isRootCanvas && c.renderMode != RenderMode.WorldSpace) { raiz = c.transform; break; }
             if (raiz == null) return null;
 
-            var existente = Object.FindAnyObjectByType<MenuDeOrdenes>(FindObjectsInactive.Include);
+            var existente = Activo;
             if (existente != null)
             {
                 bool bienPuesto = existente.EsRadial && existente.opciones != null && existente.transform.parent == raiz;
@@ -556,6 +565,7 @@ namespace SP.UI
             cg.interactable = false; cg.blocksRaycasts = false;
 
             var menu = go.GetComponent<MenuDeOrdenes>();
+            menu.RegistrarActivo();   // en Edit mode (suite, builders) no corre OnEnable
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             menu.rebanadas = new Image[CantidadDePorciones];
             menu.etiquetas = new Text[CantidadDePorciones];

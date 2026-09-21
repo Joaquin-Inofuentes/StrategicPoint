@@ -421,6 +421,32 @@ namespace SP.EditorTools
             var mgr = t.GetComponent<TutorialManager>() ?? t.AddComponent<TutorialManager>();
             mgr.prefabEnemigo = prefabEnemigo;
             EditorUtility.SetDirty(mgr);
+            AsegurarCatalogo();
+        }
+
+        // Crea el CatalogoDelTutorial y le asigna los objetos bakeados por nombre AHORA, en el editor, que es donde
+        // buscar por nombre es legitimo: en runtime el tutorial lee las referencias serializadas.
+        [MenuItem("Strategic Point/Tutorial/Asegurar catalogo en la escena abierta")]
+        public static void AsegurarCatalogo()
+        {
+            var cat = Object.FindFirstObjectByType<CatalogoDelTutorial>(FindObjectsInactive.Include);
+            if (cat == null)
+            {
+                var go = new GameObject("CatalogoDelTutorial");
+                var sistemas = GameObject.Find("Systems");
+                if (sistemas != null) go.transform.SetParent(sistemas.transform, false);
+                cat = go.AddComponent<CatalogoDelTutorial>();
+            }
+            cat.EnemigoEstatico = GameObject.Find("Tut_Enemigo_Estatico");
+            cat.Pared = GameObject.Find("Tut_Pared");
+            cat.Destruible = GameObject.Find("Tut_Destruible");
+            cat.ZonaA = GameObject.Find("Tut_ZonaA");
+            cat.ZonaB = GameObject.Find("Tut_ZonaB");
+            cat.Meta = GameObject.Find("Tut_Meta");
+            EditorUtility.SetDirty(cat);
+            EditorSceneManager.MarkSceneDirty(cat.gameObject.scene);
+            var vacios = cat.CamposVacios();
+            if (vacios.Count > 0) Debug.LogError("[Tutorial] Al catalogo le faltan: " + string.Join(", ", vacios));
         }
 
         static void AgregarAlBuild()

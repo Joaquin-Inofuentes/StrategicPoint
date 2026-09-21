@@ -7,8 +7,22 @@ namespace SP.Player
 {
     // La consciencia que salta de cuerpo en cuerpo. Traduce intención en
     // llamadas al soldado que ocupa. Es único en la escena.
+    [DefaultExecutionOrder(-200)]
     public class PlayerBrain : MonoBehaviour
     {
+        // Servicio unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
+        // El suite (Edit mode, donde no corren Awake/OnEnable) llama Registrar() a mano.
+        public static PlayerBrain Activo { get; private set; }
+        public static void ReiniciarActivo() => Activo = null;
+        public void Registrar()
+        {
+            if (Activo != null && Activo != this) SP.Core.GameLog.Line($"[AVISO] Segundo PlayerBrain en la escena: {name}");
+            Activo = this;
+        }
+        void QuitarRegistro() { if (Activo == this) Activo = null; }
+        void Awake() => Registrar();
+        void OnDestroy() => QuitarRegistro();
+
         public Soldier Current { get; private set; }
 
         // Devuelve false si no se pudo poseer. Antes esto no tenia ninguna

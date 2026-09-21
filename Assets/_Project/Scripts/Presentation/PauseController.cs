@@ -92,8 +92,8 @@ namespace SP.Presentation
                 var t = transform.Find("RebindPanel");
                 if (t != null) rebindPanel = t.gameObject;
             }
-            if (outcome == null) outcome = FindAnyObjectByType<GameOutcomeController>();
-            if (input == null) input = FindAnyObjectByType<SP.Player.PlayerInputDriver>();
+            if (outcome == null) outcome = GameOutcomeController.Activo;
+            if (input == null) input = SP.Player.PlayerInputDriver.Activo;
 
             // Igual que en MainMenuController: los onClick.AddListener()
             // hechos al armar la escena en el Editor no sobreviven a Play

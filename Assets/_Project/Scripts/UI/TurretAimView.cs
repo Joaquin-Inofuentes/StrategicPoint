@@ -53,11 +53,6 @@ namespace SP.UI
                 var t = transform.Find("CooldownBG/CooldownFill");
                 if (t != null) cooldownFill = t.GetComponent<Image>();
             }
-            if (radiusRing == null)
-            {
-                var go = GameObject.Find("TurretRadiusRing");
-                if (go != null) radiusRing = go.GetComponent<LineRenderer>();
-            }
         }
 
         public void SetVisible(bool visible)

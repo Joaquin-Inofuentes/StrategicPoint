@@ -90,6 +90,8 @@ namespace SP.Presentation
         float velocidadSuavizada;
         float restanteDeDisparo;
         float pesoDisparo;
+        float mezclaAgachado;
+        public float PesoCapaDisparoActual => animator != null && animator.layerCount > CapaDisparo ? animator.GetLayerWeight(CapaDisparo) : 0f;
         IDisposable shotSub;
         bool arrancado;
         // Ronda 11 (punto 6): los clips de costado bajan la cadera y los pies quedan hasta 4 cm bajo el piso (medido: 0,089 contra 0,129
@@ -179,14 +181,19 @@ namespace SP.Presentation
             arrancado = true;
 
             velocidadSuavizada = Mathf.MoveTowards(velocidadSuavizada, velocidad, 20f * dt);
-            float normalizada = velocidadDeCarrera > 0.01f
-                ? Mathf.Clamp01(velocidadSuavizada / velocidadDeCarrera)
+            // Ronda 13 (punto 7): agachado se camina a la mitad (SoldierMotor.FactorDeVelocidadAgachado). El ciclo "walk crouching"
+            // se alcanza a la velocidad de caminata AGACHADA: sin reescalar, el blend quedaba a medio camino entre el idle y el
+            // paso (pose a medias y pies patinando). Se normaliza contra la velocidad tope de la postura actual.
+            bool agachadoAhora = soldier != null && soldier.Motor != null && soldier.Motor.IsCrouching;
+            float topeDePostura = velocidadDeCarrera * (agachadoAhora ? SP.Actors.SoldierMotor.FactorDeVelocidadAgachado : 1f);
+            float normalizada = topeDePostura > 0.01f
+                ? Mathf.Clamp01(velocidadSuavizada / topeDePostura)
                 : 0f;
             animator.SetFloat(ParamVelocidad, normalizada);
 
             // Correr: el ciclo de piernas llega a su tope a velocidad de caminata, asi que se
             // ACELERA la animacion (hasta x1.7) en proporcion a lo que se corre de mas.
-            float ritmo = velocidadDeCarrera > 0.01f ? Mathf.Clamp(velocidadSuavizada / velocidadDeCarrera, 1f, SP.Actors.SoldierMotor.FactorDeCarrera) : 1f;
+            float ritmo = velocidadDeCarrera > 0.01f && !agachadoAhora ? Mathf.Clamp(velocidadSuavizada / velocidadDeCarrera, 1f, SP.Actors.SoldierMotor.FactorDeCarrera) : 1f;
             animator.speed = Mathf.MoveTowards(animator.speed, normalizada > 0.15f ? ritmo : 1f, 6f * dt);
 
             // Se proyecta la velocidad SUAVIZADA (no la cruda de este
@@ -199,7 +206,7 @@ namespace SP.Presentation
             // terminar de caminar, medido en Docs/RONDA_11). Se conserva la ULTIMA direccion y se la escala por la velocidad que decae.
             if (direccion.sqrMagnitude > 0.0001f) ultimaDireccion = direccion.normalized;
             Vector3 direccionSuavizada = ultimaDireccion * velocidadSuavizada;
-            float escala = velocidadDeCarrera > 0.01f ? velocidadDeCarrera : 1f;
+            float escala = topeDePostura > 0.01f ? topeDePostura : 1f;
             // El blend 2D espera un vector de largo <= 1: correr a 1,09 (velocidad real / 5) sobrepasaba el borde y alternaba clips.
             var ad = new Vector2(Vector3.Dot(direccionSuavizada, transform.forward), Vector3.Dot(direccionSuavizada, transform.right)) / escala;
             if (ad.sqrMagnitude > 1f) ad.Normalize();
@@ -215,8 +222,12 @@ namespace SP.Presentation
             restanteDeDisparo = Mathf.Max(0f, restanteDeDisparo - dt);
             float objetivo = restanteDeDisparo > 0f ? 1f : 0f;
             pesoDisparo = Mathf.MoveTowards(pesoDisparo, objetivo, velocidadDeMezcla * dt);
+            // Ronda 13 (punto 7): la capa de disparo es la pose de "firing rifle" DE PIE sobre la mitad de arriba: agachado
+            // dejaba el torso parado sobre unas piernas en cuclillas. "idle crouching aiming" ya apunta el arma, asi que agachado
+            // la capa se apaga (con la misma mezcla suave) y la pose queda entera.
+            mezclaAgachado = Mathf.MoveTowards(mezclaAgachado, agachadoAhora ? 1f : 0f, velocidadDeMezcla * dt);
             if (animator.layerCount > CapaDisparo)
-                animator.SetLayerWeight(CapaDisparo, pesoDisparo);
+                animator.SetLayerWeight(CapaDisparo, pesoDisparo * (1f - mezclaAgachado));
         }
 
         float AlturaDelPieMasBajo()

@@ -8,6 +8,15 @@ namespace SP.UI
     // nadie juegue una partida entera invencible sin darse cuenta. Late en dorado.
     public class ModoDiosView : MonoBehaviour
     {
+        // Unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
+        public static ModoDiosView Activo { get; private set; }
+        public static void ReiniciarActivo() => Activo = null;
+        public void RegistrarActivo()
+        {
+            Activo = this;
+        }
+        void OnDisable() { if (Activo == this) Activo = null; }
+        void OnEnable() => RegistrarActivo();
         Text texto;
         CanvasGroup grupo;
 

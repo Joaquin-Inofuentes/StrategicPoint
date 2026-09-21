@@ -87,9 +87,7 @@ namespace SP.Mision
             {
                 var s = todos[i];
                 if (!CuentaComoEscuadra(s) || s.Health.IsAlive) continue;
-                s.Health.Initialize(s.Id, Mathf.Max(1, Mathf.RoundToInt(s.Health.MaxHealth * FraccionAlRevivir)));
-                s.Motor.ResetMotionState();
-                s.SetBodyVisible(true);
+                SP.Player.Reanimacion.Ejecutar(s, FraccionAlRevivir);   // ronda 13: camino unico
                 EventBus.Instance.Publish(new HealedEvent(s.Id, s.Health.Current, s.Health.Current));
                 n++;
             }
@@ -103,7 +101,7 @@ namespace SP.Mision
         {
             Perdio = true;
             if (MisionDirector.Activo) { MisionDirector.Instancia.Perder("TODA LA ESCUADRA CAYO"); return; }
-            if (outcomeSuelto == null) outcomeSuelto = Object.FindFirstObjectByType<GameOutcomeController>();
+            if (outcomeSuelto == null) outcomeSuelto = GameOutcomeController.Activo;
             if (outcomeSuelto != null) { GameLog.Line("Perdiste (escuadra completa caida)"); outcomeSuelto.ShowDefeat(); }
         }
     }

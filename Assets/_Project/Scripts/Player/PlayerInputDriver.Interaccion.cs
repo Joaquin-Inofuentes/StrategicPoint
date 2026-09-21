@@ -118,5 +118,14 @@ namespace SP.Player
             it.Interact(this);
             return true;
         }
+
+        // Ronda 13 (punto 10): apuntar (click derecho) hace al arma MUCHO mas precisa. El arma lee esto en su dispersion,
+        // el crecimiento por tiro y la recuperacion; la respiracion de la mira tambien baja a la mitad.
+        void ActualizarPrecisionAlApuntar()
+        {
+            if (Rig == null || Brain == null || Brain.Current == null || Brain.Current.Weapon == null) return;
+            bool ads = Rig.EstaConZoom && !TorretaFijaActiva;
+            Brain.Current.Weapon.SetApuntado(ads ? Rig.AdsBlendSuave : 0f);
+        }
     }
 }

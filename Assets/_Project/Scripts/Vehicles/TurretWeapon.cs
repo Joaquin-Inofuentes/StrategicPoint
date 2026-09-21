@@ -278,7 +278,7 @@ namespace SP.Vehicles
             // busca el unico ProjectilePool de la escena una vez y se la
             // guarda, en vez de depender para siempre de que el wireo a
             // mano haya sobrevivido intacto.
-            if (pool == null) pool = UnityEngine.Object.FindFirstObjectByType<ProjectilePool>();
+            if (pool == null) pool = ProjectilePool.Activo;
             if (cooldownTimer > 0f || pool == null) return false;
 
             // Ronda 12 (BUG REAL): sin artillero humano el proyectil salia con equipo Player por defecto. Los tanques

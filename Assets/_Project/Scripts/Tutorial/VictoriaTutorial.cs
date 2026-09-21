@@ -111,7 +111,7 @@ namespace SP.Tutorial
             Cursor.visible = true;
             if (manager != null && manager.Ui != null)
             {
-                var drv = FindFirstObjectByType<SP.Player.PlayerInputDriver>();
+                var drv = SP.Player.PlayerInputDriver.Activo;
                 if (drv != null) drv.enabled = false;
             }
 

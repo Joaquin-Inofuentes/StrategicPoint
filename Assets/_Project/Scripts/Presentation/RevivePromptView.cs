@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using SP.Actors;
@@ -125,7 +126,8 @@ namespace SP.Presentation
         public static int RegistrarTodas()
         {
             int creadas = 0;
-            foreach (var s in FindObjectsByType<Soldier>(FindObjectsInactive.Include))
+            SP.Core.ActorRegistry.Rebarrer();   // incluye los que arrancan desactivados
+            foreach (var s in new List<Soldier>(SP.Core.ActorRegistry.All))
             {
                 if (s == null || s.Team != TeamId.Player) continue;
                 ConstruirSiFalta(s.transform, ref creadas);

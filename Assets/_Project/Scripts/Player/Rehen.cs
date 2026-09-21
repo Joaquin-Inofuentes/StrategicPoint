@@ -83,7 +83,7 @@ namespace SP.Player
         void Update()
         {
             if (soldier == null || soldier.Health == null || !soldier.Health.IsAlive) return;
-            if (driver == null) driver = FindAnyObjectByType<PlayerInputDriver>();
+            if (driver == null) driver = PlayerInputDriver.Activo;
             var yo = driver != null && driver.Brain != null ? driver.Brain.Current : null;
             if (yo == null || yo == soldier || !yo.Health.IsAlive) return;
             if (Time.time < proximoAviso) return;

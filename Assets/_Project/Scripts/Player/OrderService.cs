@@ -95,7 +95,8 @@ namespace SP.Player
             var cerebro = soldier.Brain;
             if (cerebro == null || cerebro.enabled) return;
 
-            foreach (var v in UnityEngine.Object.FindObjectsByType<SP.Vehicles.Vehicle>(FindObjectsInactive.Include))
+            SP.Core.WorldSystemsRegistry.EnsurePopulated();
+            foreach (var v in SP.Core.WorldSystemsRegistry.Vehicles)
             {
                 if (v == null || v.RoleOf(soldier) == null) continue;
                 v.Dismount(soldier);
@@ -516,7 +517,7 @@ namespace SP.Player
         // lee mas natural pegado, no desparramado. 1.3m sigue siendo mas
         // del doble del cuerpo de un soldado (~0.55m de radio de sondeo),
         // asi que la separacion entre ellos sigue garantizada.
-        const float FollowSpacing = 1.3f;
+        const float FollowSpacing = 0.65f;   // ronda 13 (punto 4): mitad de 1,3 m. Sigue siendo mayor que el radio de un soldado (~0,4 m) entre ranuras vecinas
 
         public static void IssueFollowOrderForSelection(IEnumerable<Soldier> selection, Soldier leader)
         {
@@ -525,7 +526,7 @@ namespace SP.Player
             list.RemoveAll(s => s == leader);
             if (list.Count == 0) return;
 
-            Vector3 puntoDeReferencia = Vector3.back * FollowSpacing;
+            Vector3 puntoDeReferencia = Vector3.back * (FollowSpacing + 0.45f);   // ronda 13: el primero queda a ~1,1 m del lider (con 0,65 se le encimaba)
             Vector3[] ranuras = FormationPoints(puntoDeReferencia, Vector3.forward, list.Count, FormationKind.Cuna, FollowSpacing);
 
             for (int i = 0; i < list.Count; i++)
@@ -537,6 +538,7 @@ namespace SP.Player
 
         public static void IssueMountOrder(Soldier soldier, Vehicle vehicle)
         {
+            if (soldier == null || vehicle == null || !vehicle.PuedeAbordar(soldier)) return;   // ronda 13 (punto 12)
             var brain = soldier.GetComponent<AiBrain>();
             brain?.IssueMountOrder(vehicle);
             OrderMarkerFx.Spawn(vehicle.transform.position, OrderMarkerFx.MountColor);
@@ -544,7 +546,7 @@ namespace SP.Player
 
         public static void IssueMountOrderForSelection(IEnumerable<Soldier> selection, Vehicle vehicle)
         {
-            if (vehicle == null) return;
+            if (vehicle == null || vehicle.Bando == TeamId.Enemy) return;   // ronda 13 (punto 12)
             var list = AliveOnly(selection);
             if (list.Count == 0) return;
 

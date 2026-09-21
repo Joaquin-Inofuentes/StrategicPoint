@@ -1,5 +1,5 @@
 {
- "generado": "2026-09-21 11:21 UTC",
+ "generado": "2026-09-21 20:55 UTC",
  "raiz": "My project",
  "archivos": [
   {
@@ -714,8 +714,8 @@
    "ruta": "Assets/_Project/Scripts/Actors/SoldierMotor.cs",
    "nombre": "SoldierMotor.cs",
    "subsistema": "Actors",
-   "lineas": 361,
-   "bytes": 18565,
+   "lineas": 384,
+   "bytes": 19819,
    "namespace": "SP.Actors",
    "resumen": "Mueve el transform. Lo usan por igual el jugador y la IA detrás de la misma llamada, sin que a ninguno le importe quién conduce. BUG DE FONDO CORREGIDO ACA: esto hacia literalmente \"transform.position += dir * speed * dt\" y nada mas. El cubo \"Muro\" de la escena tiene su BoxCollider bien puesto (activo, no trigger, capa Default) y aun asi TODO lo atravesaba: mover un transform a",
    "tipos": [
@@ -733,77 +733,77 @@
      "devuelve": "void",
      "estatico": false,
      "args": "bool correr",
-     "linea": 67
+     "linea": 70
     },
     {
      "nombre": "Jump",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 74
+     "linea": 77
     },
     {
      "nombre": "TryVault",
      "devuelve": "bool",
      "estatico": false,
      "args": "",
-     "linea": 97
+     "linea": 100
     },
     {
      "nombre": "ResetMotionState",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 175
+     "linea": 178
     },
     {
      "nombre": "DanioDeCaida",
      "devuelve": "int",
      "estatico": true,
      "args": "float metros",
-     "linea": 201
+     "linea": 204
     },
     {
      "nombre": "TickVertical",
      "devuelve": "void",
      "estatico": false,
      "args": "float dt",
-     "linea": 218
+     "linea": 221
     },
     {
      "nombre": "SetCrouching",
      "devuelve": "void",
      "estatico": false,
      "args": "bool agachado",
-     "linea": 297
+     "linea": 320
     },
     {
      "nombre": "Move",
      "devuelve": "void",
      "estatico": false,
      "args": "Vector3 worldDirection, float dt",
-     "linea": 314
+     "linea": 337
     },
     {
      "nombre": "RotateYaw",
      "devuelve": "void",
      "estatico": false,
      "args": "float yawDeltaDegrees",
-     "linea": 322
+     "linea": 345
     },
     {
      "nombre": "LookTowards",
      "devuelve": "void",
      "estatico": false,
      "args": "Vector3 worldPoint, float dt",
-     "linea": 327
+     "linea": 350
     },
     {
      "nombre": "MoveTowards",
      "devuelve": "bool",
      "estatico": false,
      "args": "Vector3 worldPoint, float arriveThreshold, float dt",
-     "linea": 337
+     "linea": 360
     }
    ],
    "propiedades_publicas": [
@@ -815,42 +815,47 @@
     {
      "nombre": "MoveSpeed",
      "tipo": "float",
-     "linea": 60
+     "linea": 63
     },
     {
      "nombre": "Corriendo",
      "tipo": "bool",
-     "linea": 66
+     "linea": 69
     },
     {
      "nombre": "Vaulting",
      "tipo": "bool",
-     "linea": 90
+     "linea": 93
     },
     {
      "nombre": "UltimoMotivoDeTrepa",
      "tipo": "string",
-     "linea": 91
+     "linea": 94
     },
     {
      "nombre": "UltimaCaidaMetros",
      "tipo": "float",
-     "linea": 196
+     "linea": 199
     },
     {
      "nombre": "UltimoDanioDeCaida",
      "tipo": "int",
-     "linea": 197
+     "linea": 200
     },
     {
      "nombre": "IsCrouching",
      "tipo": "bool",
-     "linea": 258
+     "linea": 261
     },
     {
      "nombre": "EyeHeightDrop",
      "tipo": "float",
-     "linea": 269
+     "linea": 272
+    },
+    {
+     "nombre": "EyeHeightDropSuave",
+     "tipo": "float",
+     "linea": 279
     }
    ],
    "estaticos_mutables": [],
@@ -865,7 +870,7 @@
    "checks": 0,
    "notas_bug": 2,
    "notas_todo": 1,
-   "sha1": "890fb349b3b5"
+   "sha1": "7ec517e01245"
   },
   {
    "ruta": "Assets/_Project/Scripts/Ai/AiBrain.Disparo.cs",
@@ -1063,6 +1068,48 @@
    "sha1": "203a4c71fd9a"
   },
   {
+   "ruta": "Assets/_Project/Scripts/Ai/AiBrain.Revivir.cs",
+   "nombre": "AiBrain.Revivir.cs",
+   "subsistema": "Ai",
+   "lineas": 57,
+   "bytes": 2499,
+   "namespace": "SP.Ai",
+   "resumen": "Ronda 13 (punto 1): \"el companero revivido no me sigue ni obedece ninguna orden\". Habia cuatro caminos para revivir (tecla [E], habilidad del medico, PedidoDeCuracion, RescateAutomatico y el EstadoDePartida en calma) y cada uno reponia solo la vida: el cerebro conservaba el estado con el que murio. Se detectaron estas causas (cualquiera basta para que \"no obedezca\"): sale antes de hacer nada, el soldado esta vivo pero inerte; y su postura quedo en Defensiva;",
+   "tipos": [
+    {
+     "nombre": "AiBrain",
+     "clase": "class",
+     "parcial": true,
+     "estatica": false,
+     "linea": 20
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "ResetearTrasRevivir",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "bool soltarPosesion",
+     "linea": 23
+    }
+   ],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Combat"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "3b9256ef3e38"
+  },
+  {
    "ruta": "Assets/_Project/Scripts/Ai/AiBrain.Sentidos.cs",
    "nombre": "AiBrain.Sentidos.cs",
    "subsistema": "Ai",
@@ -1110,7 +1157,7 @@
    "nombre": "AiBrain.Tactica.cs",
    "subsistema": "Ai",
    "lineas": 376,
-   "bytes": 16202,
+   "bytes": 16265,
    "namespace": "SP.Ai",
    "resumen": "Parte \"tactica\" del cerebro: coberturas (ordenadas por el jugador o buscadas por el propio enemigo en combate), seguir al jugador cuando se aleja, y eleccion DINAMICA del objetivo por distancia y vision.",
    "tipos": [
@@ -1208,14 +1255,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "da162cd47168"
+   "sha1": "ab22763c8abe"
   },
   {
    "ruta": "Assets/_Project/Scripts/Ai/AiBrain.cs",
    "nombre": "AiBrain.cs",
    "subsistema": "Ai",
-   "lineas": 1238,
-   "bytes": 63312,
+   "lineas": 1242,
+   "bytes": 63755,
    "namespace": "SP.Ai",
    "resumen": "Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las otras dos NO son un camino de codigo alternativo, son modificadores que se aplican sobre las mismas tres decisiones que ya existian (rango de vision, avanzar hacia el objetivo, apretar el gatillo). Con Libre esos modificadores son exactamente neutros: multiplicador 1f y guardas que devuelven true",
    "tipos": [
@@ -1240,164 +1287,164 @@
      "devuelve": "void",
      "estatico": false,
      "args": "Vector3[] points",
-     "linea": 220
+     "linea": 223
     },
     {
      "nombre": "SetPatrolWaypoints",
      "devuelve": "void",
      "estatico": false,
      "args": "Transform[] waypoints",
-     "linea": 229
+     "linea": 232
     },
     {
      "nombre": "ReactivarNavegacion",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 303
+     "linea": 306
     },
     {
      "nombre": "ConfigurarAlcances",
      "devuelve": "void",
      "estatico": false,
      "args": "float vision, float ataque",
-     "linea": 359
+     "linea": 362
     },
     {
      "nombre": "Bootstrap",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 448
+     "linea": 451
     },
     {
      "nombre": "IssueMoveOrder",
      "devuelve": "void",
      "estatico": false,
      "args": "Vector3 point, bool queued = false",
-     "linea": 576
+     "linea": 579
     },
     {
      "nombre": "IssueMountOrder",
      "devuelve": "void",
      "estatico": false,
      "args": "Vehicle vehicle",
-     "linea": 624
+     "linea": 627
     },
     {
      "nombre": "IssueFollowOrder",
      "devuelve": "void",
      "estatico": false,
      "args": "Soldier leader, Vector3 formationOffsetLocal = default",
-     "linea": 644
+     "linea": 648
     },
     {
      "nombre": "IssueAttackOrder",
      "devuelve": "void",
      "estatico": false,
      "args": "Soldier enemy",
-     "linea": 661
+     "linea": 665
     },
     {
      "nombre": "CancelOrder",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 681
+     "linea": 685
     },
     {
      "nombre": "Tick",
      "devuelve": "void",
      "estatico": false,
      "args": "float dt",
-     "linea": 708
+     "linea": 712
     }
    ],
    "propiedades_publicas": [
     {
      "nombre": "QueuedOrderCount",
      "tipo": "int",
-     "linea": 177
+     "linea": 180
     },
     {
      "nombre": "QueuedDestinations",
      "tipo": "System.Collections.Generic.IEnumerable<Vector3>",
-     "linea": 178
+     "linea": 181
     },
     {
      "nombre": "RemainingPathPoints",
      "tipo": "int",
-     "linea": 188
+     "linea": 191
     },
     {
      "nombre": "CurrentPath",
      "tipo": "System.Collections.Generic.IReadOnlyList<Vector3>",
-     "linea": 189
+     "linea": 192
     },
     {
      "nombre": "State",
      "tipo": "AiState",
-     "linea": 236
+     "linea": 239
     },
     {
      "nombre": "IsPossessedByPlayer",
      "tipo": "bool",
-     "linea": 239
+     "linea": 242
     },
     {
      "nombre": "CurrentTarget",
      "tipo": "Soldier",
-     "linea": 333
+     "linea": 336
     },
     {
      "nombre": "Stance",
      "tipo": "CombatStance",
-     "linea": 342
+     "linea": 345
     },
     {
      "nombre": "HomePosition",
      "tipo": "Vector3",
-     "linea": 355
+     "linea": 358
     },
     {
      "nombre": "EffectiveVisionRange",
      "tipo": "float",
-     "linea": 370
+     "linea": 373
     },
     {
      "nombre": "EffectiveAttackRange",
      "tipo": "float",
-     "linea": 388
+     "linea": 391
     },
     {
      "nombre": "SenseIntervalTicks",
      "tipo": "int",
-     "linea": 411
+     "linea": 414
     },
     {
      "nombre": "TicksSinceLastSense",
      "tipo": "int",
-     "linea": 424
+     "linea": 427
     },
     {
      "nombre": "LastSensedTarget",
      "tipo": "Soldier",
-     "linea": 426
+     "linea": 429
     },
     {
      "nombre": "CurrentOrderDestination",
      "tipo": "Vector3?",
-     "linea": 431
+     "linea": 434
     },
     {
      "nombre": "PendingMoveDestination",
      "tipo": "Vector3?",
-     "linea": 438
+     "linea": 441
     },
     {
      "nombre": "FollowTarget",
      "tipo": "Soldier",
-     "linea": 444
+     "linea": 447
     }
    ],
    "estaticos_mutables": [],
@@ -1420,7 +1467,7 @@
    "checks": 0,
    "notas_bug": 12,
    "notas_todo": 1,
-   "sha1": "d575930a5a00"
+   "sha1": "39456ed8aad7"
   },
   {
    "ruta": "Assets/_Project/Scripts/Ai/AiState.cs",
@@ -1457,8 +1504,8 @@
    "ruta": "Assets/_Project/Scripts/Ai/AjustesDeEscuadra.cs",
    "nombre": "AjustesDeEscuadra.cs",
    "subsistema": "Ai",
-   "lineas": 59,
-   "bytes": 2469,
+   "lineas": 72,
+   "bytes": 2998,
    "namespace": "SP.Ai",
    "resumen": "Ajustes de la escuadra aliada, editables desde el Inspector. GameObject: \"Systems/AjustesDeEscuadra\" (componente AjustesDeEscuadra). distanciaParaSeguir : si el soldado que manejas se aleja MAS de esto de un aliado libre, ese aliado empieza a seguirte. distanciaParaDetenerse : el aliado deja de seguirte al llegar a esto. seguirDesdeCobertura : los que estan en cobertura tambien te siguen.",
    "tipos": [
@@ -1472,51 +1519,71 @@
    ],
    "metodos_publicos": [
     {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 21
+    },
+    {
+     "nombre": "RegistrarActivo",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 22
+    },
+    {
      "nombre": "Aplicar",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 38
+     "linea": 51
     },
     {
      "nombre": "AsegurarEnEscena",
      "devuelve": "AjustesDeEscuadra",
      "estatico": true,
      "args": "",
-     "linea": 50
+     "linea": 63
     }
    ],
-   "propiedades_publicas": [],
+   "propiedades_publicas": [
+    {
+     "nombre": "Activo",
+     "tipo": "AjustesDeEscuadra",
+     "linea": 20
+    }
+   ],
    "estaticos_mutables": [
     {
      "nombre": "DistanciaParaSeguir",
      "tipo": "float",
      "acceso": "public",
-     "linea": 23
+     "linea": 31
     },
     {
      "nombre": "DistanciaParaDetenerse",
      "tipo": "float",
      "acceso": "public",
-     "linea": 24
+     "linea": 32
     },
     {
      "nombre": "SeguirDesdeCobertura",
      "tipo": "bool",
      "acceso": "public",
-     "linea": 25
+     "linea": 33
     },
     {
      "nombre": "Lider",
      "tipo": "Soldier",
      "acceso": "public",
-     "linea": 29
+     "linea": 37
     },
     {
      "nombre": "Correr",
      "tipo": "bool",
      "acceso": "public",
-     "linea": 33
+     "linea": 41
     }
    ],
    "publica_eventos": [],
@@ -1530,7 +1597,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "7dfa2e78aa2e"
+   "sha1": "f36721a9d42a"
   },
   {
    "ruta": "Assets/_Project/Scripts/Ai/PathPreview.cs",
@@ -2395,8 +2462,8 @@
    "ruta": "Assets/_Project/Scripts/Combat/ProjectilePool.cs",
    "nombre": "ProjectilePool.cs",
    "subsistema": "Combat",
-   "lineas": 115,
-   "bytes": 5688,
+   "lineas": 126,
+   "bytes": 6270,
    "namespace": "SP.Combat",
    "resumen": "Dueño del pool de proyectiles. Cero Instantiate en combate: todo pasa por acá. El pool en sí (ObjectPool<T>) es estado de runtime que no sobrevive a un domain reload; se reconstruye solo en Awake a partir de campos serializados.",
    "tipos": [
@@ -2410,51 +2477,70 @@
    ],
    "metodos_publicos": [
     {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 15
+    },
+    {
+     "nombre": "Registrar",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 16
+    },
+    {
      "nombre": "Bootstrap",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 20
+     "linea": 31
     },
     {
      "nombre": "Configure",
      "devuelve": "void",
      "estatico": false,
      "args": "Projectile projectilePrefab, int prewarmCount",
-     "linea": 31
+     "linea": 42
     },
     {
      "nombre": "RecommendedPrewarm",
      "devuelve": "int",
      "estatico": true,
      "args": "int unitCount, float fireRatePerSecond, float projectileLifetime",
-     "linea": 73
+     "linea": 84
     },
     {
      "nombre": "Spawn",
      "devuelve": "Projectile",
      "estatico": false,
      "args": "Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int damage, Color? color = null, float explosionRadius = 0f, float gravity = 0f, SP.Vehicles.Vehicle sourceVehicle = null, float speedMultiplier = 1f",
-     "linea": 90
+     "linea": 101
     },
     {
      "nombre": "Release",
      "devuelve": "void",
      "estatico": false,
      "args": "Projectile p",
-     "linea": 105
+     "linea": 116
     }
    ],
    "propiedades_publicas": [
     {
+     "nombre": "Activo",
+     "tipo": "ProjectilePool",
+     "linea": 14
+    },
+    {
      "nombre": "ExhaustedCount",
      "tipo": "int",
-     "linea": 50
+     "linea": 61
     },
     {
      "nombre": "FreeCount",
      "tipo": "int",
-     "linea": 112
+     "linea": 123
     }
    ],
    "estaticos_mutables": [],
@@ -2469,7 +2555,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "7ba2dc106eee"
+   "sha1": "4c40d3d3eb3f"
   },
   {
    "ruta": "Assets/_Project/Scripts/Combat/RoleType.cs",
@@ -2583,8 +2669,8 @@
    "ruta": "Assets/_Project/Scripts/Combat/WeaponHolder.cs",
    "nombre": "WeaponHolder.cs",
    "subsistema": "Combat",
-   "lineas": 738,
-   "bytes": 40421,
+   "lineas": 752,
+   "bytes": 41862,
    "namespace": "SP.Combat",
    "resumen": "Un solo evento para \"este soldado tiene otra arma puesta\", sin importar el camino (recogida del piso, ciclado 1/2/3, IA). Antes solo existia WeaponPickedUpEvent (especifico de WeaponPickup), asi que cualquier UI que quisiera enterarse de un cambio de arma via evento se perdia los cambios que no vinieran de recoger algo del piso -- ver RosterRowView, que necesita el arma actual de CUALQUIER soldado.",
    "tipos": [
@@ -2612,165 +2698,172 @@
      "linea": 110
     },
     {
+     "nombre": "SetApuntado",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "float a01",
+     "linea": 126
+    },
+    {
      "nombre": "ReponerMunicion",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 170
+     "linea": 180
     },
     {
      "nombre": "AgregarMunicion",
      "devuelve": "void",
      "estatico": false,
      "args": "int cargadores = 1",
-     "linea": 186
+     "linea": 196
     },
     {
      "nombre": "MunicionCompleta",
      "devuelve": "bool",
      "estatico": false,
      "args": "",
-     "linea": 193
+     "linea": 203
     },
     {
      "nombre": "Bootstrap",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 206
+     "linea": 216
     },
     {
      "nombre": "SetPool",
      "devuelve": "void",
      "estatico": false,
      "args": "ProjectilePool projectilePool",
-     "linea": 236
+     "linea": 246
     },
     {
      "nombre": "SetTuning",
      "devuelve": "void",
      "estatico": false,
      "args": "int weaponDamage, float cooldown",
-     "linea": 238
+     "linea": 248
     },
     {
      "nombre": "EquipWeapon",
      "devuelve": "void",
      "estatico": false,
      "args": "WeaponKind kind, int weaponDamage, float cooldown, Color color",
-     "linea": 246
+     "linea": 256
     },
     {
      "nombre": "EquipFromLoadout",
      "devuelve": "void",
      "estatico": false,
      "args": "int index",
-     "linea": 425
+     "linea": 435
     },
     {
      "nombre": "ConfigurarCargador",
      "devuelve": "void",
      "estatico": false,
      "args": "int tamano, float segundosDeRecarga",
-     "linea": 436
+     "linea": 446
     },
     {
      "nombre": "CambiarArmaPrincipal",
      "devuelve": "bool",
      "estatico": false,
      "args": "int direccion",
-     "linea": 449
+     "linea": 459
     },
     {
      "nombre": "CycleNext",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 468
+     "linea": 478
     },
     {
      "nombre": "CyclePrevious",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 469
+     "linea": 479
     },
     {
      "nombre": "CambiarASiguienteConMunicion",
      "devuelve": "bool",
      "estatico": false,
      "args": "",
-     "linea": 490
+     "linea": 500
     },
     {
      "nombre": "TryMelee",
      "devuelve": "bool",
      "estatico": false,
      "args": "",
-     "linea": 520
+     "linea": 530
     },
     {
      "nombre": "Tick",
      "devuelve": "void",
      "estatico": false,
      "args": "float dt",
-     "linea": 563
+     "linea": 573
     },
     {
      "nombre": "TryFire",
      "devuelve": "bool",
      "estatico": false,
      "args": "Vector3 origin, Vector3 direction",
-     "linea": 600
+     "linea": 610
     },
     {
      "nombre": "TryFire",
      "devuelve": "bool",
      "estatico": false,
      "args": "Vector3 origin, Vector3 direction, float dispersionMinima",
-     "linea": 602
+     "linea": 612
     },
     {
      "nombre": "ApplySpread",
      "devuelve": "Vector3",
      "estatico": true,
      "args": "Vector3 direction, float maxDeg",
-     "linea": 646
+     "linea": 660
     },
     {
      "nombre": "SonarDesenfunde",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 687
+     "linea": 701
     },
     {
      "nombre": "SonarGatilloVacio",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 694
+     "linea": 708
     },
     {
      "nombre": "ConsumirGranada",
      "devuelve": "bool",
      "estatico": false,
      "args": "",
-     "linea": 703
+     "linea": 717
     },
     {
      "nombre": "ReponerGranadas",
      "devuelve": "void",
      "estatico": false,
      "args": "int cantidad = GranadasMaximas",
-     "linea": 709
+     "linea": 723
     },
     {
      "nombre": "Reload",
      "devuelve": "bool",
      "estatico": false,
      "args": "",
-     "linea": 714
+     "linea": 728
     }
    ],
    "propiedades_publicas": [
@@ -2780,79 +2873,84 @@
      "linea": 109
     },
     {
+     "nombre": "Apuntado01",
+     "tipo": "float",
+     "linea": 127
+    },
+    {
      "nombre": "SpreadDegEfectivo",
      "tipo": "float",
-     "linea": 120
+     "linea": 130
     },
     {
      "nombre": "SpreadFraction01",
      "tipo": "float",
-     "linea": 121
+     "linea": 131
     },
     {
      "nombre": "CooldownRemaining",
      "tipo": "float",
-     "linea": 123
+     "linea": 133
     },
     {
      "nombre": "CurrentWeaponKind",
      "tipo": "WeaponKind",
-     "linea": 124
+     "linea": 134
     },
     {
      "nombre": "CurrentLoadoutIndex",
      "tipo": "int",
-     "linea": 134
+     "linea": 144
     },
     {
      "nombre": "ReadinessFraction01",
      "tipo": "float",
-     "linea": 138
+     "linea": 148
     },
     {
      "nombre": "CurrentAmmo",
      "tipo": "int",
-     "linea": 142
+     "linea": 152
     },
     {
      "nombre": "MagazineSize",
      "tipo": "int",
-     "linea": 143
+     "linea": 153
     },
     {
      "nombre": "IsReloading",
      "tipo": "bool",
-     "linea": 144
+     "linea": 154
     },
     {
      "nombre": "ReloadRemaining",
      "tipo": "float",
-     "linea": 145
+     "linea": 155
     },
     {
      "nombre": "UsaReservas",
      "tipo": "bool",
-     "linea": 156
+     "linea": 166
     },
     {
      "nombre": "ReservaActual",
      "tipo": "int",
-     "linea": 157
+     "linea": 167
     },
     {
      "nombre": "SinMunicionTotal",
      "tipo": "bool",
-     "linea": 158
+     "linea": 168
     },
     {
      "nombre": "KnifeCooldownRemaining",
      "tipo": "float",
-     "linea": 513
+     "linea": 523
     },
     {
      "nombre": "Granadas",
      "tipo": "int",
-     "linea": 702
+     "linea": 716
     }
    ],
    "estaticos_mutables": [
@@ -2860,7 +2958,7 @@
      "nombre": "ReservasActivas",
      "tipo": "bool",
      "acceso": "public",
-     "linea": 151
+     "linea": 161
     }
    ],
    "publica_eventos": [
@@ -2881,7 +2979,7 @@
    "checks": 0,
    "notas_bug": 7,
    "notas_todo": 1,
-   "sha1": "01e68dcf3eb2"
+   "sha1": "0fa887f7d7c5"
   },
   {
    "ruta": "Assets/_Project/Scripts/Combat/WeaponKind.cs",
@@ -4093,8 +4191,8 @@
    "ruta": "Assets/_Project/Scripts/Core/Loc.cs",
    "nombre": "Loc.cs",
    "subsistema": "Core",
-   "lineas": 182,
-   "bytes": 10527,
+   "lineas": 187,
+   "bytes": 11431,
    "namespace": "SP.Core",
    "resumen": "Localizacion (item 27), espanol -> ingles. El texto original del juego es la CLAVE (no hay tablas de ids que mantener): Loc.T(\"JUGAR\") devuelve \"PLAY\" en ingles. Un traductor recorre los Text de la escena y cambia los que coinciden con una entrada, tambien en formato \"ETIQUETA: valor\". El texto que no esta en la tabla queda en espanol. Cobertura actual: menu, dificultad, pausa, configuraciones, avisos comunes y (LocTextos) el tutorial y la mision. NO cubre: los textos con datos vivos (contadores y distancias) ni las descripciones largas de la tabla de controles.",
    "tipos": [
@@ -4117,7 +4215,7 @@
      "clase": "class",
      "parcial": false,
      "estatica": false,
-     "linea": 136
+     "linea": 141
     }
    ],
    "metodos_publicos": [
@@ -4126,42 +4224,42 @@
      "devuelve": "void",
      "estatico": true,
      "args": "Idioma i",
-     "linea": 85
+     "linea": 90
     },
     {
      "nombre": "Alternar",
      "devuelve": "void",
      "estatico": true,
      "args": "",
-     "linea": 93
+     "linea": 98
     },
     {
      "nombre": "T",
      "devuelve": "string",
      "estatico": true,
      "args": "string textoEs",
-     "linea": 125
+     "linea": 130
     },
     {
      "nombre": "TieneEntrada",
      "devuelve": "bool",
      "estatico": true,
      "args": "string textoEs",
-     "linea": 126
+     "linea": 131
     },
     {
      "nombre": "Ingles",
      "devuelve": "string",
      "estatico": true,
      "args": "string textoEs",
-     "linea": 127
+     "linea": 132
     },
     {
      "nombre": "Recorrer",
      "devuelve": "void",
      "estatico": true,
      "args": "",
-     "linea": 157
+     "linea": 162
     }
    ],
    "propiedades_publicas": [
@@ -4173,12 +4271,12 @@
     {
      "nombre": "NombreDelIdioma",
      "tipo": "string",
-     "linea": 94
+     "linea": 99
     },
     {
      "nombre": "UltimasTraducciones",
      "tipo": "int",
-     "linea": 151
+     "linea": 156
     }
    ],
    "estaticos_mutables": [
@@ -4186,7 +4284,7 @@
      "nombre": "NombreDelIdioma",
      "tipo": "string",
      "acceso": "public",
-     "linea": 94
+     "linea": 99
     }
    ],
    "publica_eventos": [],
@@ -4198,7 +4296,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "0439cbd3f017"
+   "sha1": "707f75aaabd9"
   },
   {
    "ruta": "Assets/_Project/Scripts/Core/LocTextos.cs",
@@ -4547,6 +4645,45 @@
    "sha1": "5e2328a410ac"
   },
   {
+   "ruta": "Assets/_Project/Scripts/Core/RaicesDeEscena.cs",
+   "nombre": "RaicesDeEscena.cs",
+   "subsistema": "Core",
+   "lineas": 29,
+   "bytes": 1120,
+   "namespace": "SP.Core",
+   "resumen": "Busca un objeto que es RAIZ de escena por su nombre. Recorre solo las raices de las escenas cargadas (decenas de objetos), no toda la jerarquia como GameObject.Find. Sirve para los objetos que el propio codigo crea en la raiz (raices de pools, iconos de obstaculos) y quiere reencontrar tras un reinicio.",
+   "tipos": [
+    {
+     "nombre": "RaicesDeEscena",
+     "clase": "class",
+     "parcial": false,
+     "estatica": true,
+     "linea": 9
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "Buscar",
+     "devuelve": "GameObject",
+     "estatico": true,
+     "args": "string nombre",
+     "linea": 13
+    }
+   ],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "470e7a2e1b7d"
+  },
+  {
    "ruta": "Assets/_Project/Scripts/Core/RecursosCache.cs",
    "nombre": "RecursosCache.cs",
    "subsistema": "Core",
@@ -4607,8 +4744,8 @@
    "ruta": "Assets/_Project/Scripts/Core/ReinicioDeEstaticos.cs",
    "nombre": "ReinicioDeEstaticos.cs",
    "subsistema": "Core",
-   "lineas": 23,
-   "bytes": 926,
+   "lineas": 37,
+   "bytes": 1694,
    "namespace": "SP.Core",
    "resumen": "Con \"Enter Play Mode sin recarga de dominio\" los estaticos sobreviven entre una corrida y la otra (modo dios, regeneracion apagada por el tutorial, segundos de demolicion...) y ya causaron falsos fallos. Se restablecen todos juntos al registrar el subsistema, antes de que cargue ninguna escena.",
    "tipos": [
@@ -4640,7 +4777,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "4c2b3d1779e5"
+   "sha1": "ed4d5ce2bd8f"
   },
   {
    "ruta": "Assets/_Project/Scripts/Core/SpatialGrid.cs",
@@ -5929,11 +6066,45 @@
    "sha1": "4c4d2e52f695"
   },
   {
+   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.BusquedasGlobales.cs",
+   "nombre": "HeadlessTestRunner.BusquedasGlobales.cs",
+   "subsistema": "Editor",
+   "lineas": 154,
+   "bytes": 10210,
+   "namespace": "SP.EditorTools",
+   "resumen": "Red de seguridad del plan \"eliminar los Find de runtime\": el codigo de runtime solo puede BAJAR su cantidad de busquedas globales de escena. Cada fase del plan baja el presupuesto; la meta es quedar en la lista blanca.",
+   "tipos": [
+    {
+     "nombre": "HeadlessTestRunner",
+     "clase": "class",
+     "parcial": true,
+     "estatica": true,
+     "linea": 11
+    }
+   ],
+   "metodos_publicos": [],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Combat",
+    "SP.Player"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 5,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "ad0c2fde40d8"
+  },
+  {
    "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase18.cs",
    "nombre": "HeadlessTestRunner.Fase18.cs",
    "subsistema": "Editor",
-   "lineas": 129,
-   "bytes": 8247,
+   "lineas": 132,
+   "bytes": 8718,
    "namespace": "SP.EditorTools",
    "resumen": "FASE 18 (ronda 9): reservas de municion, mando, accesibilidad, fuego amigo en DIFICIL, IA con granadas y supresion, estaticos, oclusion de sonido y teclas.",
    "tipos": [
@@ -5965,17 +6136,17 @@
     "F"
    ],
    "menu_items": [],
-   "checks": 34,
+   "checks": 35,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "5c7ab3f0b03b"
+   "sha1": "677b93297745"
   },
   {
    "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase19.cs",
    "nombre": "HeadlessTestRunner.Fase19.cs",
    "subsistema": "Editor",
-   "lineas": 406,
-   "bytes": 30827,
+   "lineas": 419,
+   "bytes": 32178,
    "namespace": "SP.EditorTools",
    "resumen": "FASE 19 (ronda 9, segunda tanda): ayudas del tutorial, radial legible, boton de menu uniforme, zoom, salto agachado, ordenes de mover validadas, y los pendientes de repositorio.",
    "tipos": [
@@ -6010,7 +6181,7 @@
    "checks": 92,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "cb477de898d1"
+   "sha1": "c47fd55f75b5"
   },
   {
    "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase20.cs",
@@ -6050,6 +6221,85 @@
    "notas_bug": 0,
    "notas_todo": 0,
    "sha1": "7f58d756c614"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase21.cs",
+   "nombre": "HeadlessTestRunner.Fase21.cs",
+   "subsistema": "Editor",
+   "lineas": 529,
+   "bytes": 35844,
+   "namespace": "SP.EditorTools",
+   "resumen": "FASE 21 (Ronda 13): los doce pedidos de la ronda. Cada bloque nombra el punto del pedido que audita. 1 revivido obedece / 2 barra de accion / 3 estado de accion / 4 seguir a la mitad / 5 sin cubo al matar / 6 ajustes 7 agachado / 8 medico reanima en calma / 9 barra de vida del tanque / 10 apuntar preciso / 11 tripulacion enemiga dispara / 12 tanque enemigo no se aborda. Lo que necesita Play (barras dibujadas, capturas, animator vivo) se verifica en Play con las capturas de Validacion/Ronda13.",
+   "tipos": [
+    {
+     "nombre": "HeadlessTestRunner",
+     "clase": "class",
+     "parcial": true,
+     "estatica": true,
+     "linea": 19
+    }
+   ],
+   "metodos_publicos": [],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [
+    "ShotFiredEvent"
+   ],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.Combat",
+    "SP.Core",
+    "SP.Mision",
+    "SP.Player",
+    "SP.Vehicles"
+   ],
+   "teclas": [
+    "name",
+    "text",
+    "transform"
+   ],
+   "menu_items": [],
+   "checks": 70,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "a428a1b2aa39"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase22.cs",
+   "nombre": "HeadlessTestRunner.Fase22.cs",
+   "subsistema": "Editor",
+   "lineas": 51,
+   "bytes": 3257,
+   "namespace": "SP.EditorTools",
+   "resumen": "FASE 22: eliminacion de los Find de runtime. Los servicios unicos exponen \"Activo\", el tutorial lee un catalogo serializado, y cada estatico nuevo se limpia con ReinicioDeEstaticos.",
+   "tipos": [
+    {
+     "nombre": "HeadlessTestRunner",
+     "clase": "class",
+     "parcial": true,
+     "estatica": true,
+     "linea": 9
+    }
+   ],
+   "metodos_publicos": [],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Core",
+    "SP.Tutorial"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 10,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "d9e863c6b4c7"
   },
   {
    "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases13a17.cs",
@@ -6144,8 +6394,8 @@
    "ruta": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.cs",
    "nombre": "HeadlessTestRunner.cs",
    "subsistema": "Editor",
-   "lineas": 4197,
-   "bytes": 243342,
+   "lineas": 4200,
+   "bytes": 243686,
    "namespace": "SP.EditorTools",
    "resumen": "Construye el entorno de prueba (suelo, obstáculos, prefabs, 3 soldados, cámara, UI, pool de proyectiles) y corre las 3 fases del guion de test pedido, avanzando la simulación a mano (sin depender de Play mode) y volcando cada paso a la consola con timer. Pensado para -batchmode.",
    "tipos": [
@@ -6236,17 +6486,17 @@
     {
      "nombre": "LastProjectileMs",
      "tipo": "double",
-     "linea": 1982
+     "linea": 1985
     },
     {
      "nombre": "FailedCheckCount",
      "tipo": "int",
-     "linea": 2014
+     "linea": 2017
     },
     {
      "nombre": "FailedCheckMessages",
      "tipo": "IReadOnlyList<string>",
-     "linea": 2015
+     "linea": 2018
     }
    ],
    "estaticos_mutables": [
@@ -6440,19 +6690,19 @@
      "nombre": "failedChecks",
      "tipo": "int",
      "acceso": "private",
-     "linea": 2011
+     "linea": 2014
     },
     {
      "nombre": "FailedCheckCount",
      "tipo": "int",
      "acceso": "public",
-     "linea": 2014
+     "linea": 2017
     },
     {
      "nombre": "FailedCheckMessages",
      "tipo": "IReadOnlyList<string>",
      "acceso": "public",
-     "linea": 2015
+     "linea": 2018
     }
    ],
    "publica_eventos": [],
@@ -6483,7 +6733,7 @@
    "checks": 121,
    "notas_bug": 15,
    "notas_todo": 6,
-   "sha1": "887d71312cb7"
+   "sha1": "223a883c641f"
   },
   {
    "ruta": "Assets/_Project/Scripts/Editor/LevelBlockoutBuilder.cs",
@@ -7068,8 +7318,8 @@
    "ruta": "Assets/_Project/Scripts/Editor/TutorialSceneBuilder.cs",
    "nombre": "TutorialSceneBuilder.cs",
    "subsistema": "Editor",
-   "lineas": 435,
-   "bytes": 21558,
+   "lineas": 461,
+   "bytes": 23042,
    "namespace": "SP.EditorTools",
    "resumen": "Arma SC_Tutorial: una escena NUEVA hecha a partir de SC_Gameplay (asi trae el jugador, los aliados, el tanque, el HUD, la camara y todos los sistemas) pero con un nivel propio, corto y lineal, hecho SOLO con cubos (blocking) y pintura de terreno: Z -30 .. 28   Campo de tiro   pared gris, caja destructible, enemigo quieto Z  28 .. 80   Plaza           2 aliados lejos, zonas A y B para las ordenes",
    "tipos": [
@@ -7095,6 +7345,13 @@
      "estatico": true,
      "args": "",
      "linea": 39
+    },
+    {
+     "nombre": "AsegurarCatalogo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 430
     }
    ],
    "propiedades_publicas": [],
@@ -7111,12 +7368,13 @@
    ],
    "teclas": [],
    "menu_items": [
-    "Strategic Point/Tutorial/Construir escena SC_Tutorial"
+    "Strategic Point/Tutorial/Construir escena SC_Tutorial",
+    "Strategic Point/Tutorial/Asegurar catalogo en la escena abierta"
    ],
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "344cf0b6432a"
+   "sha1": "6981bb29435b"
   },
   {
    "ruta": "Assets/_Project/Scripts/Editor/WeaponPrefabBuilder.cs",
@@ -7282,7 +7540,7 @@
    "nombre": "CinematicaDeVictoria.cs",
    "subsistema": "Mision",
    "lineas": 259,
-   "bytes": 13256,
+   "bytes": 13240,
    "namespace": "SP.Mision",
    "resumen": "Cinematica de victoria: la escuadra y el civil suben al helicoptero, este despega en una nube de polvo y huye hacia el oeste mientras una horda de enemigos llega corriendo al helipuerto y le dispara desde el piso. Barras de cine, camara propia, fundido a negro y cartel \"MISION CUMPLIDA\"; al terminar aparece la pantalla de victoria de siempre.",
    "tipos": [
@@ -7352,14 +7610,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "385a9c84ab13"
+   "sha1": "fba821171551"
   },
   {
    "ruta": "Assets/_Project/Scripts/Mision/EstadoDePartida.cs",
    "nombre": "EstadoDePartida.cs",
    "subsistema": "Mision",
-   "lineas": 111,
-   "bytes": 5109,
+   "lineas": 109,
+   "bytes": 4981,
    "namespace": "SP.Mision",
    "resumen": "Ronda 11 (puntos 1 y 20). Antes la derrota se decidia UNA sola vez, en la corrutina de muerte del soldado poseido, asi que si moria el ultimo aliado despues nadie volvia a mirar y la partida seguia \"en Infiltrar\" con 0 vivos. Este evaluador corre siempre (WorldSimulationDriver.Step, el camino que comparten el juego y la suite) y mira la escuadra entera: Si la accion vuelve durante la cuenta, la cuenta se reinicia y rige la regla de derrota.",
    "tipos": [
@@ -7440,14 +7698,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "a239cd68c811"
+   "sha1": "32d43d35a361"
   },
   {
    "ruta": "Assets/_Project/Scripts/Mision/Helicoptero.cs",
    "nombre": "Helicoptero.cs",
    "subsistema": "Mision",
    "lineas": 194,
-   "bytes": 8525,
+   "bytes": 8509,
    "namespace": "SP.Mision",
    "resumen": "El helicoptero de extraccion (geometria P_Veh_Heli del arte): helices que giran, disco de desenfoque a tope de vueltas, sonido de rotor real (Resources/Audio/Heli) con respaldo procedural, nube de polvo al piso y fuego de cobertura de su ametralladora de puerta con balas trazadoras cuando el jugador viene llegando.",
    "tipos": [
@@ -7520,14 +7778,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "070f8a84e8cc"
+   "sha1": "f15a3ffcb65b"
   },
   {
    "ruta": "Assets/_Project/Scripts/Mision/MisionDirector.cs",
    "nombre": "MisionDirector.cs",
    "subsistema": "Mision",
-   "lineas": 496,
-   "bytes": 24474,
+   "lineas": 499,
+   "bytes": 24720,
    "namespace": "SP.Mision",
    "resumen": "MISION DE RESCATE (partida principal). 1. INFILTRAR   avanzar entre las lineas enemigas hasta el CENTRO (la plaza de la aldea). 2. RESISTIR    aguantar 60 s en el centro: tres oleadas atacan la plaza. 3. RESCATAR    un civil sale de su refugio: acercarse y sacarlo. Te sigue, tiene vida (si muere se pierde la mision). 4. ESCAPAR     volver al punto de origen atravesando lineas enemigas y refuerzos. Un",
    "tipos": [
@@ -7552,35 +7810,35 @@
      "devuelve": "Vector3",
      "estatico": false,
      "args": "",
-     "linea": 108
+     "linea": 112
     },
     {
      "nombre": "DistanciaAlObjetivo",
      "devuelve": "float",
      "estatico": false,
      "args": "",
-     "linea": 126
+     "linea": 130
     },
     {
      "nombre": "CrearEnemigo",
      "devuelve": "Soldier",
      "estatico": false,
      "args": "string nombre, Vector3 pos, float yaw = 180f",
-     "linea": 139
+     "linea": 143
     },
     {
      "nombre": "Perder",
      "devuelve": "void",
      "estatico": false,
      "args": "string motivo",
-     "linea": 469
+     "linea": 472
     },
     {
      "nombre": "SaltarAFase",
      "devuelve": "void",
      "estatico": false,
      "args": "FaseDeMision f",
-     "linea": 480
+     "linea": 483
     }
    ],
    "propiedades_publicas": [
@@ -7662,14 +7920,14 @@
    "checks": 0,
    "notas_bug": 1,
    "notas_todo": 0,
-   "sha1": "26d260ae8584"
+   "sha1": "60561013a566"
   },
   {
    "ruta": "Assets/_Project/Scripts/Mision/MisionHud.cs",
    "nombre": "MisionHud.cs",
    "subsistema": "Mision",
    "lineas": 141,
-   "bytes": 7567,
+   "bytes": 7551,
    "namespace": "SP.Mision",
    "resumen": "Cartel de la mision (arriba al centro, debajo de \"ENEMIGOS · ESCUADRA\"): capitulo, objetivo con su distancia o su temporizador, barra de progreso y la dificultad elegida.",
    "tipos": [
@@ -7726,7 +7984,94 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "e369d5f9195f"
+   "sha1": "c323152e78cf"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Player/AccionesEnCurso.cs",
+   "nombre": "AccionesEnCurso.cs",
+   "subsistema": "Player",
+   "lineas": 86,
+   "bytes": 3599,
+   "namespace": "SP.Player",
+   "resumen": "Ronda 13 (puntos 2 y 3): registro de \"que esta haciendo ahora cada soldado\" cuando la accion tarda (reanimar, curar, detonar una carga, afinar la punteria). Lo alimentan los sistemas que ya cronometran esas acciones (PlayerInputDriver, PedidoDeCuracion, RescateAutomatico, DemoledorAsalto) llamando a Reportar cada frame que la accion sigue viva; una accion que deja de reportarse caduca sola a los 0,35 s, asi nadie tiene que acordarse de cerrarla (soltar la tecla, morir, cancelar). Lo leen las vistas (barra en el mundo entre el actor y el objetivo, con temporizador, y el texto de estado abajo a la izquierda) y la suite.",
+   "tipos": [
+    {
+     "nombre": "AccionesEnCurso",
+     "clase": "class",
+     "parcial": false,
+     "estatica": true,
+     "linea": 15
+    },
+    {
+     "nombre": "Accion",
+     "clase": "struct",
+     "parcial": false,
+     "estatica": false,
+     "linea": 17
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "Reportar",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "Soldier actor, string verboEs, Vector3 puntoObjetivo, float progreso01, float restanteSegundos, Transform objetivo = null",
+     "linea": 35
+    },
+    {
+     "nombre": "Terminar",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "Soldier actor",
+     "linea": 50
+    },
+    {
+     "nombre": "Limpiar",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 55
+    },
+    {
+     "nombre": "De",
+     "devuelve": "bool",
+     "estatico": true,
+     "args": "Soldier actor, out Accion accion",
+     "linea": 61
+    },
+    {
+     "nombre": "Vigentes",
+     "devuelve": "int",
+     "estatico": true,
+     "args": "List<Accion> destino",
+     "linea": 71
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "Punto",
+     "tipo": "Vector3",
+     "linea": 27
+    },
+    {
+     "nombre": "Cantidad",
+     "tipo": "int",
+     "linea": 83
+    }
+   ],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "654acac7deb5"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/AimTargeting.cs",
@@ -7808,7 +8153,7 @@
    "nombre": "CajaDeSuministros.cs",
    "subsistema": "Player",
    "lineas": 147,
-   "bytes": 7330,
+   "bytes": 7301,
    "namespace": "SP.Player",
    "resumen": "Caja de suministros: antes las granadas (3) y la vida no se reponian NUNCA durante la partida. Caminar hasta la caja con el soldado que manejas repone las granadas al maximo y cura el 60 % de su vida. La caja se vuelve a llenar a los 45 s, asi que no se puede abusar de ella.",
    "tipos": [
@@ -7862,14 +8207,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "7d96c9fadd32"
+   "sha1": "4f410786f5c9"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/Demolicion.cs",
    "nombre": "Demolicion.cs",
    "subsistema": "Player",
-   "lineas": 319,
-   "bytes": 15251,
+   "lineas": 330,
+   "bytes": 15819,
    "namespace": "SP.Player",
    "resumen": "DEMOLER (habilidad del soldado de ASALTO): plantar una carga en un muro o cobertura. Hay que estar AGACHADO y QUIETO frente al objetivo durante 4 segundos; al llegar a cero el obstaculo estalla y desaparece (con nube de escombros, onda y sonido).",
    "tipos": [
@@ -8008,7 +8353,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "71ac137784ab"
+   "sha1": "b6f8b20bde22"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/KeyBindings.cs",
@@ -8337,8 +8682,8 @@
    "ruta": "Assets/_Project/Scripts/Player/MunicionPickup.cs",
    "nombre": "MunicionPickup.cs",
    "subsistema": "Player",
-   "lineas": 115,
-   "bytes": 4920,
+   "lineas": 117,
+   "bytes": 5226,
    "namespace": "SP.Player",
    "resumen": "Municion suelta al morir un enemigo (item nuevo). 100% por codigo, sin prefab ni asset externo -- mismo espiritu que CajaDeSuministros.Crear, pero mas chica y sin reposicion (se recoge una vez y desaparece). Deteccion por DISTANCIA en Update, no OnTriggerEnter: los soldados de este proyecto no llevan Rigidbody (ver Rehen.cs para el mismo razonamiento), asi que un trigger normal de Unity nunca dispararia",
    "tipos": [
@@ -8377,7 +8722,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "8d5b4eaa34a3"
+   "sha1": "2bd2e4c25b89"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/OrdenesDeEscuadra.cs",
@@ -8547,8 +8892,8 @@
    "ruta": "Assets/_Project/Scripts/Player/OrderService.cs",
    "nombre": "OrderService.cs",
    "subsistema": "Player",
-   "lineas": 694,
-   "bytes": 37558,
+   "lineas": 696,
+   "bytes": 37954,
    "namespace": "SP.Player",
    "resumen": "Disposiciones posibles de un lote de destinos. Vive AFUERA de OrderService (que es una clase estatica) para que el driver de input pueda nombrarla directo como FormationKind.Linea sin prefijo.",
    "tipos": [
@@ -8587,133 +8932,133 @@
      "devuelve": "bool",
      "estatico": true,
      "args": "Vector3 desde, Vector3 punto, out Vector3 ajustado",
-     "linea": 111
+     "linea": 112
     },
     {
      "nombre": "IssueMoveOrder",
      "devuelve": "void",
      "estatico": true,
      "args": "Soldier soldier, Vector3 point, bool queued = false",
-     "linea": 121
+     "linea": 122
     },
     {
      "nombre": "IssueCoverOrder",
      "devuelve": "bool",
      "estatico": true,
      "args": "Soldier soldier, Vector3 point, Collider owner",
-     "linea": 149
+     "linea": 150
     },
     {
      "nombre": "FormationPoints",
      "devuelve": "Vector3[]",
      "estatico": true,
      "args": "Vector3 center, int count",
-     "linea": 175
+     "linea": 176
     },
     {
      "nombre": "FormationPoints",
      "devuelve": "Vector3[]",
      "estatico": true,
      "args": "Vector3 center, Vector3 forward, int count, FormationKind kind",
-     "linea": 184
+     "linea": 185
     },
     {
      "nombre": "FormationPoints",
      "devuelve": "Vector3[]",
      "estatico": true,
      "args": "Vector3 center, Vector3 forward, int count, FormationKind kind, float spacing = 2f",
-     "linea": 193
+     "linea": 194
     },
     {
      "nombre": "SpreadOf",
      "devuelve": "float",
      "estatico": true,
      "args": "IReadOnlyList<Vector3> positions",
-     "linea": 286
+     "linea": 287
     },
     {
      "nombre": "IsValidDestination",
      "devuelve": "bool",
      "estatico": true,
      "args": "Vector3 point",
-     "linea": 334
+     "linea": 335
     },
     {
      "nombre": "IssueAttackOrder",
      "devuelve": "void",
      "estatico": true,
      "args": "Soldier soldier, Soldier enemy",
-     "linea": 360
+     "linea": 361
     },
     {
      "nombre": "IssueAttackOrderForSelection",
      "devuelve": "void",
      "estatico": true,
      "args": "IEnumerable<Soldier> selection, Soldier enemy",
-     "linea": 381
+     "linea": 382
     },
     {
      "nombre": "IssueMoveOrderForSelection",
      "devuelve": "void",
      "estatico": true,
      "args": "IEnumerable<Soldier> selection, Vector3 point, bool queued = false",
-     "linea": 392
+     "linea": 393
     },
     {
      "nombre": "IssueFormationOrderForSelection",
      "devuelve": "void",
      "estatico": true,
      "args": "IEnumerable<Soldier> selection, Vector3 center, Vector3 forward, FormationKind kind = FormationKind.Cuadricula, bool queued = false",
-     "linea": 405
+     "linea": 406
     },
     {
      "nombre": "PlayRejectSound",
      "devuelve": "void",
      "estatico": true,
      "args": "",
-     "linea": 482
+     "linea": 483
     },
     {
      "nombre": "IssueFollowOrder",
      "devuelve": "void",
      "estatico": true,
      "args": "Soldier soldier, Soldier leader, Vector3 formationOffsetLocal = default",
-     "linea": 489
+     "linea": 490
     },
     {
      "nombre": "IssueFollowOrderForSelection",
      "devuelve": "void",
      "estatico": true,
      "args": "IEnumerable<Soldier> selection, Soldier leader",
-     "linea": 521
+     "linea": 522
     },
     {
      "nombre": "IssueMountOrder",
      "devuelve": "void",
      "estatico": true,
      "args": "Soldier soldier, Vehicle vehicle",
-     "linea": 538
+     "linea": 539
     },
     {
      "nombre": "IssueMountOrderForSelection",
      "devuelve": "void",
      "estatico": true,
      "args": "IEnumerable<Soldier> selection, Vehicle vehicle",
-     "linea": 545
+     "linea": 547
     },
     {
      "nombre": "RegroupSelection",
      "devuelve": "Vector3[]",
      "estatico": true,
      "args": "IEnumerable<Soldier> selection, FormationKind kind = FormationKind.Cuadricula",
-     "linea": 563
+     "linea": 565
     },
     {
      "nombre": "IssueRetreatOrderForSelection",
      "devuelve": "void",
      "estatico": true,
      "args": "IEnumerable<Soldier> selection, float distance = RetreatDistance, float mapHalfExtent = 0f",
-     "linea": 642
+     "linea": 644
     }
    ],
    "propiedades_publicas": [],
@@ -8744,14 +9089,14 @@
    "checks": 0,
    "notas_bug": 2,
    "notas_todo": 1,
-   "sha1": "897a9b3e07df"
+   "sha1": "632fa53aea7d"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/PedidoDeCuracion.cs",
    "nombre": "PedidoDeCuracion.cs",
    "subsistema": "Player",
-   "lineas": 289,
-   "bytes": 14340,
+   "lineas": 333,
+   "bytes": 17324,
    "namespace": "SP.Player",
    "resumen": "\"Necesito curarme\" del menu de ordenes ([Q] sostenido). De las cinco ordenes del menu, cuatro ya existian en OrderService (linea, cuña, seguirme, alto). Esta es la unica que no tenia nada detras: RoleType.Medic estaba declarado y no lo miraba nadie. Es estatico y con UN solo pedido vivo a la vez a proposito. El pedido lo hace el jugador desde su menu, y el jugador es uno: una",
    "tipos": [
@@ -8797,21 +9142,28 @@
      "devuelve": "Soldier",
      "estatico": true,
      "args": "Soldier herido",
-     "linea": 163
+     "linea": 165
     },
     {
      "nombre": "Cancelar",
      "devuelve": "void",
      "estatico": true,
      "args": "",
-     "linea": 175
+     "linea": 177
+    },
+    {
+     "nombre": "HayCalma",
+     "devuelve": "bool",
+     "estatico": true,
+     "args": "Vector3 punto",
+     "linea": 211
     },
     {
      "nombre": "Tick",
      "devuelve": "void",
      "estatico": true,
      "args": "float dt",
-     "linea": 231
+     "linea": 271
     }
    ],
    "propiedades_publicas": [
@@ -8854,6 +9206,11 @@
      "nombre": "BotiquinActivo",
      "tipo": "bool",
      "linea": 142
+    },
+    {
+     "nombre": "ReanimacionEsAutomatica",
+     "tipo": "bool",
+     "linea": 209
     }
    ],
    "estaticos_mutables": [
@@ -8909,13 +9266,31 @@
      "nombre": "proximoEscaneo",
      "tipo": "float",
      "acceso": "private",
-     "linea": 194
+     "linea": 197
     },
     {
      "nombre": "AtencionAutomatica",
      "tipo": "bool",
      "acceso": "public",
-     "linea": 197
+     "linea": 200
+    },
+    {
+     "nombre": "ReanimarEnCalma",
+     "tipo": "bool",
+     "acceso": "public",
+     "linea": 205
+    },
+    {
+     "nombre": "reanimacionAutomatica",
+     "tipo": "bool",
+     "acceso": "private",
+     "linea": 208
+    },
+    {
+     "nombre": "ReanimacionEsAutomatica",
+     "tipo": "bool",
+     "acceso": "public",
+     "linea": 209
     }
    ],
    "publica_eventos": [],
@@ -8932,14 +9307,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "41088a066e98"
+   "sha1": "3ab3b5f45e54"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/PlayerBrain.cs",
    "nombre": "PlayerBrain.cs",
    "subsistema": "Player",
-   "lineas": 99,
-   "bytes": 4698,
+   "lineas": 113,
+   "bytes": 5440,
    "namespace": "SP.Player",
    "resumen": "La consciencia que salta de cuerpo en cuerpo. Traduce intención en llamadas al soldado que ocupa. Es único en la escena.",
    "tipos": [
@@ -8953,39 +9328,58 @@
    ],
    "metodos_publicos": [
     {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 16
+    },
+    {
+     "nombre": "Registrar",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 17
+    },
+    {
      "nombre": "Possess",
      "devuelve": "bool",
      "estatico": false,
      "args": "Soldier soldier",
-     "linea": 25
+     "linea": 39
     },
     {
      "nombre": "Move",
      "devuelve": "void",
      "estatico": false,
      "args": "Vector3 worldDirection, float dt",
-     "linea": 53
+     "linea": 67
     },
     {
      "nombre": "RotateYaw",
      "devuelve": "void",
      "estatico": false,
      "args": "float yawDeltaDegrees",
-     "linea": 55
+     "linea": 69
     },
     {
      "nombre": "Fire",
      "devuelve": "bool",
      "estatico": false,
      "args": "Vector3? aimPoint = null",
-     "linea": 75
+     "linea": 89
     }
    ],
    "propiedades_publicas": [
     {
+     "nombre": "Activo",
+     "tipo": "PlayerBrain",
+     "linea": 15
+    },
+    {
      "nombre": "Current",
      "tipo": "Soldier",
-     "linea": 12
+     "linea": 26
     }
    ],
    "estaticos_mutables": [],
@@ -9002,14 +9396,14 @@
    "checks": 0,
    "notas_bug": 1,
    "notas_todo": 0,
-   "sha1": "e9a86e70d224"
+   "sha1": "01bf6235e3d1"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Escuadra.cs",
    "nombre": "PlayerInputDriver.Escuadra.cs",
    "subsistema": "Player",
    "lineas": 118,
-   "bytes": 6216,
+   "bytes": 6200,
    "namespace": "SP.Player",
    "resumen": "PlayerInputDriver (parte): orden de la escuadra. El lugar en la lista fija a que numero de roster y a que [F1..F9] responde cada soldado; [ y ] suben o bajan al soldado que manejas.",
    "tipos": [
@@ -9056,14 +9450,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "ad5710870af9"
+   "sha1": "0dc2fec119c9"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Interaccion.cs",
    "nombre": "PlayerInputDriver.Interaccion.cs",
    "subsistema": "Player",
-   "lineas": 123,
-   "bytes": 6133,
+   "lineas": 132,
+   "bytes": 6675,
    "namespace": "SP.Player",
    "resumen": "PlayerInputDriver (parte): detector central de IInteractable. Archivo NUEVO y aditivo: no reemplaza nada de PlayerInputDriver.Radial.cs, solo agrega un paso previo que ResolverGestoDeQ consulta en el TAP de [Q] (ver el cambio quirurgico de dos lineas en ese archivo). Si hay un IInteractable valido en la mira o pegado al jugador, un TAP de [Q] lo dispara; si no hay ninguno, [Q] sigue comportandose exactamente igual que",
    "tipos": [
@@ -9123,7 +9517,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "8bf0a8e095c9"
+   "sha1": "0904e45093f7"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Radial.cs",
@@ -9201,11 +9595,63 @@
    "sha1": "76fb6f7ca34f"
   },
   {
+   "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Registro.cs",
+   "nombre": "PlayerInputDriver.Registro.cs",
+   "subsistema": "Player",
+   "lineas": 19,
+   "bytes": 721,
+   "namespace": "SP.Player",
+   "resumen": "Servicio unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido. El suite (Edit mode, donde no corren Awake/OnEnable) llama Registrar() a mano.",
+   "tipos": [
+    {
+     "nombre": "PlayerInputDriver",
+     "clase": "class",
+     "parcial": true,
+     "estatica": false,
+     "linea": 5
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 10
+    },
+    {
+     "nombre": "Registrar",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 11
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "Activo",
+     "tipo": "PlayerInputDriver",
+     "linea": 9
+    }
+   ],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "2316f2e17944"
+  },
+  {
    "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.Vehiculo.cs",
    "nombre": "PlayerInputDriver.Vehiculo.cs",
    "subsistema": "Player",
-   "lineas": 651,
-   "bytes": 35745,
+   "lineas": 655,
+   "bytes": 35850,
    "namespace": "SP.Player",
    "resumen": "PlayerInputDriver (parte): manejo de vehiculos (entrar, asientos, camara, ordenes con [T]).",
    "tipos": [
@@ -9230,14 +9676,14 @@
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 130
+     "linea": 136
     },
     {
      "nombre": "SwitchSeat",
      "devuelve": "void",
      "estatico": false,
      "args": "VehicleSeatRole newRole",
-     "linea": 415
+     "linea": 419
     }
    ],
    "propiedades_publicas": [
@@ -9266,14 +9712,14 @@
    "checks": 0,
    "notas_bug": 4,
    "notas_todo": 0,
-   "sha1": "3f2bf26f874f"
+   "sha1": "9166ea65596a"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/PlayerInputDriver.cs",
    "nombre": "PlayerInputDriver.cs",
    "subsistema": "Player",
-   "lineas": 3479,
-   "bytes": 187555,
+   "lineas": 3498,
+   "bytes": 189998,
    "namespace": "SP.Player",
    "resumen": "Traduce teclado/ratón reales a los mismos métodos que usa el test automático. No decide nada nuevo: es el \"pegamento\" de Play mode. Solo corre cuando el juego está en Play (Application.isPlaying).",
    "tipos": [
@@ -9291,233 +9737,233 @@
      "devuelve": "void",
      "estatico": false,
      "args": "float f01",
-     "linea": 305
+     "linea": 308
     },
     {
      "nombre": "OcultarProgresoDemolicion",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 306
+     "linea": 309
     },
     {
      "nombre": "SetDestination",
      "devuelve": "void",
      "estatico": false,
      "args": "Vector3 punto",
-     "linea": 442
+     "linea": 445
     },
     {
      "nombre": "CancelDestination",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 464
+     "linea": 467
     },
     {
      "nombre": "ToggleVehicleCameraView",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 466
+     "linea": 469
     },
     {
      "nombre": "ShowTutorialMessage",
      "devuelve": "void",
      "estatico": false,
      "args": "string text, float holdSeconds = 1.4f",
-     "linea": 475
+     "linea": 478
     },
     {
      "nombre": "ReclamarControl",
      "devuelve": "void",
      "estatico": false,
      "args": "Soldier s",
-     "linea": 803
+     "linea": 808
     },
     {
      "nombre": "TryRevivir",
      "devuelve": "bool",
      "estatico": false,
      "args": "Soldier caido, bool sostenidoLoSuficiente",
-     "linea": 1549
+     "linea": 1555
     },
     {
      "nombre": "TryResolverCobertura",
      "devuelve": "bool",
      "estatico": false,
      "args": "AimResult r, out Vector3 punto, out Collider dueno",
-     "linea": 1823
+     "linea": 1834
     },
     {
      "nombre": "IssueCoverOrderT",
      "devuelve": "bool",
      "estatico": false,
      "args": "Vector3 punto, Collider dueno",
-     "linea": 1860
+     "linea": 1871
     },
     {
      "nombre": "IssueCoverOrderForSelection",
      "devuelve": "int",
      "estatico": false,
      "args": "IReadOnlyList<Soldier> seleccion, Vector3 puntoApuntado, Transform obstaculo",
-     "linea": 1884
+     "linea": 1895
     },
     {
      "nombre": "SubirATodos",
      "devuelve": "int",
      "estatico": false,
      "args": "Vehicle v",
-     "linea": 1913
+     "linea": 1924
     },
     {
      "nombre": "BajarATodos",
      "devuelve": "int",
      "estatico": false,
      "args": "Vehicle v",
-     "linea": 1934
+     "linea": 1945
     },
     {
      "nombre": "IssueGroundOrderT",
      "devuelve": "void",
      "estatico": false,
      "args": "Vector3 punto, bool shiftHeld",
-     "linea": 1979
+     "linea": 1990
     },
     {
      "nombre": "GOrderOnVehicle",
      "devuelve": "void",
      "estatico": false,
      "args": "Vehicle vehicle",
-     "linea": 2089
+     "linea": 2100
     },
     {
      "nombre": "SoldadoUnicoSeleccionado",
      "devuelve": "Soldier",
      "estatico": false,
      "args": "",
-     "linea": 2203
+     "linea": 2218
     },
     {
      "nombre": "TryPossess",
      "devuelve": "bool",
      "estatico": false,
      "args": "Soldier target",
-     "linea": 2217
+     "linea": 2232
     },
     {
      "nombre": "EquipSlot",
      "devuelve": "void",
      "estatico": false,
      "args": "int slot",
-     "linea": 2365
+     "linea": 2380
     },
     {
      "nombre": "EquipWeaponHotkey",
      "devuelve": "void",
      "estatico": false,
      "args": "WeaponKind kind",
-     "linea": 2389
+     "linea": 2404
     },
     {
      "nombre": "TryIssueVehicleMoveOrder",
      "devuelve": "bool",
      "estatico": false,
      "args": "Vector3 point, Vehicle vehicle = null",
-     "linea": 2415
+     "linea": 2430
     },
     {
      "nombre": "UsarTorreta",
      "devuelve": "bool",
      "estatico": false,
      "args": "TorretaFija t",
-     "linea": 2526
+     "linea": 2541
     },
     {
      "nombre": "SalirDeTorreta",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 2553
+     "linea": 2568
     },
     {
      "nombre": "ConstruirContextoRadial",
      "devuelve": "ContextoRadial",
      "estatico": false,
      "args": "AimResult aim",
-     "linea": 2607
+     "linea": 2622
     }
    ],
    "propiedades_publicas": [
     {
      "nombre": "LookSensitivity",
      "tipo": "float",
-     "linea": 61
+     "linea": 62
     },
     {
      "nombre": "TurretSensitivity",
      "tipo": "float",
-     "linea": 67
+     "linea": 68
     },
     {
      "nombre": "InvertLookY",
      "tipo": "bool",
-     "linea": 71
+     "linea": 72
     },
     {
      "nombre": "UltimaMira",
      "tipo": "AimResult",
-     "linea": 298
+     "linea": 301
     },
     {
      "nombre": "DemolicionEnCurso",
      "tipo": "bool",
-     "linea": 304
+     "linea": 307
     },
     {
      "nombre": "GranadaApuntando",
      "tipo": "bool",
-     "linea": 327
+     "linea": 330
     },
     {
      "nombre": "GranadasLanzadasPorElJugador",
      "tipo": "int",
-     "linea": 328
+     "linea": 331
     },
     {
      "nombre": "Mira",
      "tipo": "MiraOptica",
-     "linea": 418
+     "linea": 421
     },
     {
      "nombre": "ApuntadoVisual",
      "tipo": "float",
-     "linea": 423
+     "linea": 426
     },
     {
      "nombre": "TieneDestino",
      "tipo": "bool",
-     "linea": 439
+     "linea": 442
     },
     {
      "nombre": "DestinoActual",
      "tipo": "Vector3?",
-     "linea": 440
+     "linea": 443
     },
     {
      "nombre": "IsHandlingDeath",
      "tipo": "bool",
-     "linea": 838
+     "linea": 843
     },
     {
      "nombre": "EnTorretaFija",
      "tipo": "bool",
-     "linea": 2522
+     "linea": 2537
     },
     {
      "nombre": "TorretaActual",
      "tipo": "TorretaFija",
-     "linea": 2523
+     "linea": 2538
     }
    ],
    "estaticos_mutables": [],
@@ -9547,7 +9993,7 @@
    "checks": 0,
    "notas_bug": 11,
    "notas_todo": 2,
-   "sha1": "75e1e21257c2"
+   "sha1": "bf568332f848"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/PossessionService.cs",
@@ -9594,11 +10040,54 @@
    "sha1": "d91e6dc8a11b"
   },
   {
+   "ruta": "Assets/_Project/Scripts/Player/Reanimacion.cs",
+   "nombre": "Reanimacion.cs",
+   "subsistema": "Player",
+   "lineas": 43,
+   "bytes": 1917,
+   "namespace": "SP.Player",
+   "resumen": "Ronda 13 (puntos 1 y 8): UNICO camino para revivir a un soldado caido. Lo usan la tecla [E], la habilidad del medico ([Ctrl]), PedidoDeCuracion (orden de reanimar y reanimacion automatica en calma), RescateAutomatico y el EstadoDePartida. Ver AiBrain.Revivir.cs: reponer solo la vida dejaba el cerebro con el estado de antes de morir.",
+   "tipos": [
+    {
+     "nombre": "Reanimacion",
+     "clase": "class",
+     "parcial": false,
+     "estatica": true,
+     "linea": 12
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "Ejecutar",
+     "devuelve": "bool",
+     "estatico": true,
+     "args": "Soldier caido, float fraccionDeVida = 1f",
+     "linea": 18
+    }
+   ],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.Core"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "de29fd63f004"
+  },
+  {
    "ruta": "Assets/_Project/Scripts/Player/Rehen.cs",
    "nombre": "Rehen.cs",
    "subsistema": "Player",
    "lineas": 140,
-   "bytes": 6164,
+   "bytes": 6148,
    "namespace": "SP.Player",
    "resumen": "Hace que el civil de la mision de rescate (RoleType.Civilian, creado por MisionDirector.AparecerCivil) se distinga a simple vista y de oido, ademas del material propio que ya le pone SoldierLook. Componente chico y aparte (no se toca SoldierLook) para no arriesgar el resto del vestuario de soldados: si algun dia el civil deja de llevar este componente, vuelve a verse como un soldado mas, sin romper nada.",
    "tipos": [
@@ -9633,14 +10122,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 1,
-   "sha1": "3d1a9ac14ed2"
+   "sha1": "37602e482e46"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/RescateAutomatico.cs",
    "nombre": "RescateAutomatico.cs",
    "subsistema": "Player",
    "lineas": 123,
-   "bytes": 5398,
+   "bytes": 5544,
    "namespace": "SP.Player",
    "resumen": "A5: \"un aliado libre va a revivirte y frena el timer\". Mismo patron que PedidoDeCuracion (curarse por pedido del jugador), pero este lo dispara el juego solo cuando MUERE EL JUGADOR, no un pedido de menu. Estatico y con UN solo rescate a la vez a proposito: el jugador es uno, no hace falta cola. El Tick vive en WorldSimulationDriver.Step, el unico camino de simulacion que corren por igual el juego y la",
    "tipos": [
@@ -9733,14 +10222,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "11505ee99c89"
+   "sha1": "9e5356e31ab1"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/SelectionController.cs",
    "nombre": "SelectionController.cs",
    "subsistema": "Player",
-   "lineas": 213,
-   "bytes": 8579,
+   "lineas": 232,
+   "bytes": 9664,
    "namespace": "SP.Player",
    "resumen": "Selección múltiple en vista RTS.",
    "tipos": [
@@ -9758,56 +10247,56 @@
      "devuelve": "void",
      "estatico": false,
      "args": "Soldier s",
-     "linea": 31
+     "linea": 50
     },
     {
      "nombre": "AddToSelection",
      "devuelve": "void",
      "estatico": false,
      "args": "Soldier s",
-     "linea": 39
+     "linea": 58
     },
     {
      "nombre": "SelectVehicle",
      "devuelve": "void",
      "estatico": false,
      "args": "Vehicle v",
-     "linea": 46
+     "linea": 65
     },
     {
      "nombre": "SelectAll",
      "devuelve": "void",
      "estatico": false,
      "args": "IEnumerable<Soldier> squad",
-     "linea": 57
+     "linea": 76
     },
     {
      "nombre": "SelectWoundedOnly",
      "devuelve": "bool",
      "estatico": false,
      "args": "float threshold01 = 0.5f",
-     "linea": 73
+     "linea": 92
     },
     {
      "nombre": "IsWounded",
      "devuelve": "bool",
      "estatico": true,
      "args": "int current, int max, float threshold01",
-     "linea": 113
+     "linea": 132
     },
     {
      "nombre": "SelectSameTypeOnScreen",
      "devuelve": "void",
      "estatico": false,
      "args": "Soldier reference, Camera cam",
-     "linea": 131
+     "linea": 150
     },
     {
      "nombre": "Clear",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 198
+     "linea": 217
     }
    ],
    "propiedades_publicas": [
@@ -9819,7 +10308,7 @@
     {
      "nombre": "SelectedVehicle",
      "tipo": "Vehicle",
-     "linea": 29
+     "linea": 48
     }
    ],
    "estaticos_mutables": [],
@@ -9841,7 +10330,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "f9b6f40db935"
+   "sha1": "0422649978e1"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/TrazadoDeCamino.cs",
@@ -9936,11 +10425,136 @@
    "sha1": "476d94a608e6"
   },
   {
+   "ruta": "Assets/_Project/Scripts/Presentation/AccionesEnCursoView.cs",
+   "nombre": "AccionesEnCursoView.cs",
+   "subsistema": "Presentation",
+   "lineas": 291,
+   "bytes": 13371,
+   "namespace": "SP.Presentation",
+   "resumen": "Ronda 13 (puntos 2 y 3). Dibuja lo que reporta AccionesEnCurso: * una BARRA DE CARGA en el mundo, en el punto medio entre el soldado y lo que esta usando (caido, muro, herido), con el tiempo que falta en texto (\"2.3 s\") y una linea fina que une a los dos; * el texto de ESTADO abajo a la izquierda, sobre la lista de la escuadra: la accion actual del soldado que manejas (\"Reviviendo\", \"Detonando\"...) y, debajo, las de tus aliados. Se crea sola al cargar cada escena (no hay que cablearla): un unico objeto por juego.",
+   "tipos": [
+    {
+     "nombre": "AccionesEnCursoView",
+     "clase": "class",
+     "parcial": false,
+     "estatica": false,
+     "linea": 18
+    },
+    {
+     "nombre": "BarraMundo",
+     "clase": "class",
+     "parcial": false,
+     "estatica": false,
+     "linea": 24
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "Asegurar",
+     "devuelve": "AccionesEnCursoView",
+     "estatico": true,
+     "args": "",
+     "linea": 86
+    },
+    {
+     "nombre": "Refrescar",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 218
+    },
+    {
+     "nombre": "Linea",
+     "devuelve": "string",
+     "estatico": true,
+     "args": "in AccionesEnCurso.Accion a, bool propia",
+     "linea": 276
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "Instancia",
+     "tipo": "AccionesEnCursoView",
+     "linea": 37
+    },
+    {
+     "nombre": "BarrasVisibles",
+     "tipo": "int",
+     "linea": 47
+    },
+    {
+     "nombre": "TextoDeEstado",
+     "tipo": "string",
+     "linea": 48
+    },
+    {
+     "nombre": "TextoDeEstadoCompleto",
+     "tipo": "string",
+     "linea": 49
+    },
+    {
+     "nombre": "HudVisible",
+     "tipo": "bool",
+     "linea": 59
+    },
+    {
+     "nombre": "RaizDelHud",
+     "tipo": "RectTransform",
+     "linea": 60
+    },
+    {
+     "nombre": "PosicionesDeBarras",
+     "tipo": "IReadOnlyList<Vector3>",
+     "linea": 61
+    },
+    {
+     "nombre": "RellenoDeLaPrimeraBarra",
+     "tipo": "float",
+     "linea": 70
+    },
+    {
+     "nombre": "TiempoDeLaPrimeraBarra",
+     "tipo": "string",
+     "linea": 74
+    }
+   ],
+   "estaticos_mutables": [
+    {
+     "nombre": "instancia",
+     "tipo": "AccionesEnCursoView",
+     "acceso": "private",
+     "linea": 35
+    },
+    {
+     "nombre": "Instancia",
+     "tipo": "AccionesEnCursoView",
+     "acceso": "public",
+     "linea": 37
+    }
+   ],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Actors",
+    "SP.Ai",
+    "SP.Combat",
+    "SP.Core",
+    "SP.Player"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "de9e4cd726f0"
+  },
+  {
    "ruta": "Assets/_Project/Scripts/Presentation/AnuncioDeZonas.cs",
    "nombre": "AnuncioDeZonas.cs",
    "subsistema": "Presentation",
-   "lineas": 83,
-   "bytes": 4043,
+   "lineas": 93,
+   "bytes": 4476,
    "namespace": "SP.Presentation",
    "resumen": "Avisa en que bloque del nivel esta el jugador (el nivel mide 320 m de largo: sin esto no hay sensacion de avance). Al entrar en un bloque nuevo: aviso arriba + sonido; si tiene un tanque enemigo, alerta roja. Se agrega solo desde GameplaySceneBootstrap; no depende de la escena.",
    "tipos": [
@@ -9956,28 +10570,47 @@
      "clase": "struct",
      "parcial": false,
      "estatica": false,
-     "linea": 13
+     "linea": 22
     }
    ],
    "metodos_publicos": [
+    {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 15
+    },
+    {
+     "nombre": "RegistrarActivo",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 16
+    },
     {
      "nombre": "Asegurar",
      "devuelve": "AnuncioDeZonas",
      "estatico": true,
      "args": "",
-     "linea": 42
+     "linea": 51
     }
    ],
    "propiedades_publicas": [
     {
+     "nombre": "Activo",
+     "tipo": "AnuncioDeZonas",
+     "linea": 14
+    },
+    {
      "nombre": "ZonaActual",
      "tipo": "int",
-     "linea": 33
+     "linea": 42
     },
     {
      "nombre": "NombreActual",
      "tipo": "string",
-     "linea": 34
+     "linea": 43
     }
    ],
    "estaticos_mutables": [
@@ -9985,7 +10618,7 @@
      "nombre": "NombreActual",
      "tipo": "string",
      "acceso": "public",
-     "linea": 34
+     "linea": 43
     }
    ],
    "publica_eventos": [],
@@ -10000,7 +10633,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "2ccf11204e0f"
+   "sha1": "0dc044e4e2af"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/ArmaEnLaMano.cs",
@@ -10100,8 +10733,8 @@
    "ruta": "Assets/_Project/Scripts/Presentation/AudioDirector.cs",
    "nombre": "AudioDirector.cs",
    "subsistema": "Presentation",
-   "lineas": 645,
-   "bytes": 30425,
+   "lineas": 636,
+   "bytes": 29907,
    "namespace": "SP.Presentation",
    "resumen": "Canales de mezcla (item 186). Van a nivel de namespace y no anidados en AudioDirector por la misma razon que SfxKind vive fuera de GenericSfx: es la convencion del proyecto y evita que cada punto de llamada tenga que escribir AudioDirector.SfxChannel.Sfx. Los miembros nuevos van SIEMPRE al final: el valor entero de cada uno indexa el cache de ganancias y quedaria guardado si se serializara.",
    "tipos": [
@@ -10287,7 +10920,7 @@
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 642
+     "linea": 633
     }
    ],
    "propiedades_publicas": [
@@ -10314,27 +10947,27 @@
     {
      "nombre": "VoiceCount",
      "tipo": "int",
-     "linea": 619
+     "linea": 610
     },
     {
      "nombre": "FreeVoiceCount",
      "tipo": "int",
-     "linea": 621
+     "linea": 612
     },
     {
      "nombre": "ActiveVoiceCount",
      "tipo": "int",
-     "linea": 622
+     "linea": 613
     },
     {
      "nombre": "Active3DVoiceCount",
      "tipo": "int",
-     "linea": 624
+     "linea": 615
     },
     {
      "nombre": "Active2DVoiceCount",
      "tipo": "int",
-     "linea": 625
+     "linea": 616
     }
    ],
    "estaticos_mutables": [
@@ -10354,7 +10987,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "25495afe1396"
+   "sha1": "9be54e8f043a"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/AudioDucking.cs",
@@ -10419,6 +11052,72 @@
    "notas_bug": 0,
    "notas_todo": 0,
    "sha1": "6c87e7dddd0f"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Presentation/BarraDeVidaVehiculo.cs",
+   "nombre": "BarraDeVidaVehiculo.cs",
+   "subsistema": "Presentation",
+   "lineas": 144,
+   "bytes": 6005,
+   "namespace": "SP.Presentation",
+   "resumen": "Ronda 13 (punto 9): los tanques tambien tienen barra de vida. HealthBarView es solo de soldados (se ata con GetComponentInParent<Soldier>() y se enciende con el evento de dano de un ActorId): el Health del vehiculo se inicializa con ActorId -1 (Vehicle.Health), asi que el bus de dano no permite identificarlo y la barra LEE Health.Current cada frame. Es un Canvas en el mundo sobre el casco, que mira a la camara activa. Verde si es del jugador, roja si es enemigo. Se oculta al destruirse, en el tanque donde va el jugador (ya tiene VehicleStatusView) y cuando la camara esta lejos.",
+   "tipos": [
+    {
+     "nombre": "BarraDeVidaVehiculo",
+     "clase": "class",
+     "parcial": false,
+     "estatica": false,
+     "linea": 18
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "Asegurar",
+     "devuelve": "BarraDeVidaVehiculo",
+     "estatico": true,
+     "args": "Vehicle v",
+     "linea": 35
+    },
+    {
+     "nombre": "Refrescar",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 105
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "Relleno01",
+     "tipo": "float",
+     "linea": 31
+    },
+    {
+     "nombre": "Visible",
+     "tipo": "bool",
+     "linea": 32
+    },
+    {
+     "nombre": "ColorDelRelleno",
+     "tipo": "Color",
+     "linea": 33
+    }
+   ],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Combat",
+    "SP.Core",
+    "SP.Vehicles"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "574122693c4e"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/BattleManager.cs",
@@ -11011,7 +11710,7 @@
    "nombre": "EntityStateDebugView.cs",
    "subsistema": "Presentation",
    "lineas": 253,
-   "bytes": 10661,
+   "bytes": 10709,
    "namespace": "SP.Presentation",
    "resumen": "Pedido explicito: una esfera chica flotando arriba de cada soldado (aliado/enemigo), del vehiculo y de cada obstaculo, que cambia de color segun su estado actual. Es PURAMENTE una ayuda de depuracion visual -- no es UI de juego, no afecta gameplay, solo pinta lo que la maquina de estados ya decidio, para poder confirmar a simple vista (sin abrir el debugger) que un aliado que dispara \"para",
    "tipos": [
@@ -11071,7 +11770,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "0ab027f873fd"
+   "sha1": "361603105c3b"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/Feedback.cs",
@@ -11421,8 +12120,8 @@
    "ruta": "Assets/_Project/Scripts/Presentation/GameOutcomeController.cs",
    "nombre": "GameOutcomeController.cs",
    "subsistema": "Presentation",
-   "lineas": 189,
-   "bytes": 7825,
+   "lineas": 200,
+   "bytes": 8526,
    "namespace": "SP.Presentation",
    "resumen": "Pantallas de victoria y derrota: UI distinta para cada una (colores, texto) pero los mismos dos botones -- Reintentar (recarga esta misma escena) y Salir (vuelve al menú principal).",
    "tipos": [
@@ -11436,46 +12135,65 @@
    ],
    "metodos_publicos": [
     {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 19
+    },
+    {
+     "nombre": "Registrar",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 20
+    },
+    {
      "nombre": "Bind",
      "devuelve": "void",
      "estatico": false,
      "args": "GameObject victory, GameObject defeat",
-     "linea": 38
+     "linea": 49
     },
     {
      "nombre": "ShowVictory",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 137
+     "linea": 148
     },
     {
      "nombre": "ShowDefeat",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 150
+     "linea": 161
     },
     {
      "nombre": "OnRetryClicked",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 169
+     "linea": 180
     },
     {
      "nombre": "OnExitClicked",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 178
+     "linea": 189
     }
    ],
    "propiedades_publicas": [
     {
+     "nombre": "Activo",
+     "tipo": "GameOutcomeController",
+     "linea": 18
+    },
+    {
      "nombre": "IsShowing",
      "tipo": "bool",
-     "linea": 36
+     "linea": 47
     }
    ],
    "estaticos_mutables": [],
@@ -11491,14 +12209,14 @@
    "checks": 0,
    "notas_bug": 1,
    "notas_todo": 0,
-   "sha1": "04592c55baa8"
+   "sha1": "57f71484eef5"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/GameplaySceneBootstrap.cs",
    "nombre": "GameplaySceneBootstrap.cs",
    "subsistema": "Presentation",
-   "lineas": 162,
-   "bytes": 8814,
+   "lineas": 172,
+   "bytes": 9254,
    "namespace": "SP.Presentation",
    "resumen": "Marca en el log de flujo que la escena de gameplay terminó de cargar (Start corre después de que todo el resto ya se construyó), y muestra el objetivo de la mision al arrancar -- antes la partida empezaba sin decir que hacer, y el jugador deducia el objetivo matando cosas hasta que aparecia la pantalla de victoria.",
    "tipos": [
@@ -11510,8 +12228,29 @@
      "linea": 13
     }
    ],
-   "metodos_publicos": [],
-   "propiedades_publicas": [],
+   "metodos_publicos": [
+    {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 18
+    },
+    {
+     "nombre": "RegistrarActivo",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 19
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "Activo",
+     "tipo": "GameplaySceneBootstrap",
+     "linea": 17
+    }
+   ],
    "estaticos_mutables": [],
    "publica_eventos": [],
    "escucha_eventos": [],
@@ -11525,7 +12264,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "0b61ef916584"
+   "sha1": "c77098e0eec1"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/GenericSfx.cs",
@@ -11951,8 +12690,8 @@
    "ruta": "Assets/_Project/Scripts/Presentation/KillFeedbackDirector.cs",
    "nombre": "KillFeedbackDirector.cs",
    "subsistema": "Presentation",
-   "lineas": 233,
-   "bytes": 10109,
+   "lineas": 196,
+   "bytes": 8672,
    "namespace": "SP.Presentation",
    "resumen": "Un solo lugar que decide como se comunica una baja. Estaba repartido (el kill feed apilaba lineas por su cuenta, la mirilla hacia lo suyo) y ninguna parte sabia de las otras, asi que en combate masivo se superponian avisos y ninguno quedaba legible.",
    "tipos": [
@@ -11970,7 +12709,7 @@
      "devuelve": "string",
      "estatico": false,
      "args": "",
-     "linea": 224
+     "linea": 187
     }
    ],
    "propiedades_publicas": [
@@ -12002,7 +12741,7 @@
     {
      "nombre": "SlowMotionActive",
      "tipo": "bool",
-     "linea": 173
+     "linea": 136
     }
    ],
    "estaticos_mutables": [],
@@ -12022,7 +12761,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "136ac0b703d0"
+   "sha1": "23872349cdb3"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/LightProp.cs",
@@ -12200,8 +12939,8 @@
    "ruta": "Assets/_Project/Scripts/Presentation/MenuAmbiente.cs",
    "nombre": "MenuAmbiente.cs",
    "subsistema": "Presentation",
-   "lineas": 134,
-   "bytes": 6747,
+   "lineas": 135,
+   "bytes": 6744,
    "namespace": "SP.Presentation",
    "resumen": "Ambiente del menu principal (item 21): musica de fondo y un fondo tactico animado (mapa con cuadricula que se desplaza y contactos azules/rojos que se mueven), en vez de tres botones sobre un color liso. Se arma solo al cargar SC_MainMenu. Ronda 11: debajo va una ilustracion propia (Menu_Fondo.png); la rejilla y los contactos son procedurales.",
    "tipos": [
@@ -12219,7 +12958,7 @@
      "devuelve": "MenuAmbiente",
      "estatico": true,
      "args": "Scene escena",
-     "linea": 35
+     "linea": 36
     }
    ],
    "propiedades_publicas": [
@@ -12229,7 +12968,14 @@
      "linea": 15
     }
    ],
-   "estaticos_mutables": [],
+   "estaticos_mutables": [
+    {
+     "nombre": "actual",
+     "tipo": "MenuAmbiente",
+     "acceso": "private",
+     "linea": 16
+    }
+   ],
    "publica_eventos": [],
    "escucha_eventos": [],
    "declara_eventos": [],
@@ -12239,14 +12985,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "f2240e5ea0f1"
+   "sha1": "8dc552e61d49"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/MinimapIcon.cs",
    "nombre": "MinimapIcon.cs",
    "subsistema": "Presentation",
-   "lineas": 313,
-   "bytes": 14301,
+   "lineas": 314,
+   "bytes": 14012,
    "namespace": "SP.Presentation",
    "resumen": "Circulo chato que representa a un soldado/vehiculo en el minimapa. Vive en su propia capa (Minimap), que la cámara principal no ve y la cámara del minimapa sí — así el minimapa no muestra el terreno ni la geometría real, solo estos íconos de colores sobre fondo negro.",
    "tipos": [
@@ -12313,7 +13059,7 @@
      "devuelve": "MinimapIcon",
      "estatico": true,
      "args": "Transform target, Color color, int layer, float radius = 1.6f",
-     "linea": 289
+     "linea": 290
     }
    ],
    "propiedades_publicas": [
@@ -12364,7 +13110,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "0c6f88be23a0"
+   "sha1": "2aa77593b810"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/MiraOptica.cs",
@@ -12962,7 +13708,7 @@
    "nombre": "PauseController.cs",
    "subsistema": "Presentation",
    "lineas": 464,
-   "bytes": 23391,
+   "bytes": 23359,
    "namespace": "SP.Presentation",
    "resumen": "Pausa con [ESC]: congela el tiempo (Time.timeScale=0) y muestra el panel de pausa, con un sub-panel de \"Configuraciones\" (sensibilidad de mouse y volumen) navegable desde ahí mismo.",
    "tipos": [
@@ -13099,7 +13845,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "cd4968073b25"
+   "sha1": "90bd1142699e"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/PossessedMarkerView.cs",
@@ -13321,8 +14067,8 @@
    "ruta": "Assets/_Project/Scripts/Presentation/RevivePromptView.cs",
    "nombre": "RevivePromptView.cs",
    "subsistema": "Presentation",
-   "lineas": 137,
-   "bytes": 5623,
+   "lineas": 139,
+   "bytes": 5735,
    "namespace": "SP.Presentation",
    "resumen": "Cartel mundial \"[Q] REVIVIR\" sobre un aliado caido. Mismo patron que UnitLabelView (Canvas WorldSpace propio, billboard aplicado por WorldUiDirector, alta/baja estatica): un Canvas por soldado, creado una sola vez, que se prende/apaga segun si ESE soldado esta caido ahora. A diferencia de UnitLabelView (que solo se ve en RTS), este cartel es util sobre todo en FPS: es el mismo [Q] que ResolverGestoDeQ resuelve",
    "tipos": [
@@ -13331,7 +14077,7 @@
      "clase": "class",
      "parcial": false,
      "estatica": false,
-     "linea": 19
+     "linea": 20
     }
    ],
    "metodos_publicos": [
@@ -13340,42 +14086,42 @@
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 37
+     "linea": 38
     },
     {
      "nombre": "Tick",
      "devuelve": "bool",
      "estatico": false,
      "args": "",
-     "linea": 48
+     "linea": 49
     },
     {
      "nombre": "ApplyBillboard",
      "devuelve": "void",
      "estatico": false,
      "args": "Quaternion cameraRotation",
-     "linea": 58
+     "linea": 59
     },
     {
      "nombre": "Construir",
      "devuelve": "RevivePromptView",
      "estatico": true,
      "args": "Transform unidad",
-     "linea": 67
+     "linea": 68
     },
     {
      "nombre": "RegistrarTodas",
      "devuelve": "int",
      "estatico": true,
      "args": "",
-     "linea": 125
+     "linea": 126
     }
    ],
    "propiedades_publicas": [
     {
      "nombre": "IsVisible",
      "tipo": "bool",
-     "linea": 25
+     "linea": 26
     }
    ],
    "estaticos_mutables": [],
@@ -13391,7 +14137,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "7654f6cab3e2"
+   "sha1": "c5d2a865949d"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/SafeMaterial.cs",
@@ -13756,8 +14502,8 @@
    "ruta": "Assets/_Project/Scripts/Presentation/SoldierAnimatorDriver.cs",
    "nombre": "SoldierAnimatorDriver.cs",
    "subsistema": "Presentation",
-   "lineas": 258,
-   "bytes": 13613,
+   "lineas": 269,
+   "bytes": 14882,
    "namespace": "SP.Presentation",
    "resumen": "Traduce lo que el soldado YA hace a parametros del Animator. No decide nada: no mueve, no dispara, no cambia de estado. Es el mismo contrato que CubeFxReactor, y por el mismo motivo -- si la presentacion pudiera decidir, la simulacion dejaria de ser la unica fuente de verdad y la suite headless (que corre sin Animator) veria un juego distinto al que se ve en pantalla.",
    "tipos": [
@@ -13770,7 +14516,13 @@
     }
    ],
    "metodos_publicos": [],
-   "propiedades_publicas": [],
+   "propiedades_publicas": [
+    {
+     "nombre": "PesoCapaDisparoActual",
+     "tipo": "float",
+     "linea": 94
+    }
+   ],
    "estaticos_mutables": [],
    "publica_eventos": [],
    "escucha_eventos": [
@@ -13786,7 +14538,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "21867780755d"
+   "sha1": "f5a1214f32b2"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/SpriteFx.cs",
@@ -14098,8 +14850,8 @@
    "ruta": "Assets/_Project/Scripts/Presentation/UnitLabelView.cs",
    "nombre": "UnitLabelView.cs",
    "subsistema": "Presentation",
-   "lineas": 185,
-   "bytes": 8594,
+   "lineas": 188,
+   "bytes": 8772,
    "namespace": "SP.Presentation",
    "resumen": "C1: etiqueta al pie de cada unidad con su vida, su tipo (aliado / enemigo / vehiculo / interactuable) y, si es montable, la ocupacion (2/4). Solo se ve en RTS -- en FPS, a los pies de decenas de soldados, seria puro ruido debajo de lo que ya muestra el HUD. Ya NO tiene LateUpdate propio: la recorre WorldUiDirector en el mismo pase que HealthBarView y MinimapIcon.",
    "tipos": [
@@ -14108,7 +14860,7 @@
      "clase": "class",
      "parcial": false,
      "estatica": false,
-     "linea": 16
+     "linea": 17
     }
    ],
    "metodos_publicos": [
@@ -14117,47 +14869,47 @@
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 50
+     "linea": 51
     },
     {
      "nombre": "Tick",
      "devuelve": "bool",
      "estatico": false,
      "args": "bool enRts",
-     "linea": 65
+     "linea": 66
     },
     {
      "nombre": "ApplyBillboard",
      "devuelve": "void",
      "estatico": false,
      "args": "Quaternion cameraRotation",
-     "linea": 96
+     "linea": 97
     },
     {
      "nombre": "Construir",
      "devuelve": "UnitLabelView",
      "estatico": true,
      "args": "Transform unidad",
-     "linea": 106
+     "linea": 107
     },
     {
      "nombre": "RegistrarTodas",
      "devuelve": "int",
      "estatico": true,
      "args": "",
-     "linea": 172
+     "linea": 173
     }
    ],
    "propiedades_publicas": [
     {
      "nombre": "CurrentText",
      "tipo": "string",
-     "linea": 37
+     "linea": 38
     },
     {
      "nombre": "IsVisible",
      "tipo": "bool",
-     "linea": 38
+     "linea": 39
     }
    ],
    "estaticos_mutables": [],
@@ -14174,7 +14926,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "2bda462c8cad"
+   "sha1": "3d32f9d90b79"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/VehicleFxReactor.cs",
@@ -14334,8 +15086,8 @@
    "ruta": "Assets/_Project/Scripts/Presentation/WorldUiDirector.cs",
    "nombre": "WorldUiDirector.cs",
    "subsistema": "Presentation",
-   "lineas": 387,
-   "bytes": 18126,
+   "lineas": 384,
+   "bytes": 17920,
    "namespace": "SP.Presentation",
    "resumen": "Un unico recorrido para TODA la UI de mundo (barras de vida, marcador de poseido, iconos de minimapa) mas nivel de detalle por distancia y por encuadre. Antes cada vista tenia su propio LateUpdate. Con cincuenta soldados eso significaba, POR FRAME: gratis (aca se resuelve UNA vez y se guarda);",
    "tipos": [
@@ -14496,7 +15248,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 1,
-   "sha1": "09a9fffa309a"
+   "sha1": "b37da44bbfbb"
   },
   {
    "ruta": "Assets/_Project/Scripts/Tutorial/AutoplayRegistro.cs",
@@ -14667,6 +15419,67 @@
    "notas_bug": 0,
    "notas_todo": 0,
    "sha1": "31944fb2add5"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Tutorial/CatalogoDelTutorial.cs",
+   "nombre": "CatalogoDelTutorial.cs",
+   "subsistema": "Tutorial",
+   "lineas": 40,
+   "bytes": 1754,
+   "namespace": "SP.Tutorial",
+   "resumen": "Los objetos del tutorial que viven bakeados en SC_Tutorial, con referencias serializadas. Antes el tutorial y su corrida automatica los buscaban con GameObject.Find(\"Tut_...\"): un renombre rompia el tutorial en silencio. Ahora las asigna el constructor de la escena (TutorialSceneBuilder) y este componente grita al arrancar si falta alguna.",
+   "tipos": [
+    {
+     "nombre": "CatalogoDelTutorial",
+     "clase": "class",
+     "parcial": false,
+     "estatica": false,
+     "linea": 9
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 13
+    },
+    {
+     "nombre": "RegistrarActivo",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 14
+    },
+    {
+     "nombre": "CamposVacios",
+     "devuelve": "System.Collections.Generic.List<string>",
+     "estatico": false,
+     "args": "",
+     "linea": 31
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "Activo",
+     "tipo": "CatalogoDelTutorial",
+     "linea": 12
+    }
+   ],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Core"
+   ],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "6984d70c234a"
   },
   {
    "ruta": "Assets/_Project/Scripts/Tutorial/EntradaVirtual.cs",
@@ -14878,7 +15691,7 @@
    "nombre": "TutorialAutoPlayer.Entrada.cs",
    "subsistema": "Tutorial",
    "lineas": 200,
-   "bytes": 9119,
+   "bytes": 9112,
    "namespace": "SP.Tutorial",
    "resumen": "Gestos con teclado y mouse virtuales (ver EntradaVirtual): el juego los lee como si los hiciera una persona.",
    "tipos": [
@@ -14918,14 +15731,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "4e8799c1ad65"
+   "sha1": "bfafa170c74e"
   },
   {
    "ruta": "Assets/_Project/Scripts/Tutorial/TutorialAutoPlayer.Radial.cs",
    "nombre": "TutorialAutoPlayer.Radial.cs",
    "subsistema": "Tutorial",
-   "lineas": 298,
-   "bytes": 13821,
+   "lineas": 297,
+   "bytes": 13878,
    "namespace": "SP.Tutorial",
    "resumen": "Gestos de las ordenes radiales, la seleccion en FPS, el tanque y la torreta fija. La mira es real (se gira al soldado y se sube o baja la camara con MirarHacia, asi el juego calcula 'lo apuntado' igual que con una persona); la eleccion en el anillo del radial se dispara con EjecutarOrdenRadial, el mismo camino que ejecuta el menu al soltar Q.",
    "tipos": [
@@ -14959,14 +15772,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "414de97df259"
+   "sha1": "1e8688cc4fb2"
   },
   {
    "ruta": "Assets/_Project/Scripts/Tutorial/TutorialAutoPlayer.cs",
    "nombre": "TutorialAutoPlayer.cs",
    "subsistema": "Tutorial",
    "lineas": 411,
-   "bytes": 20818,
+   "bytes": 20775,
    "namespace": "SP.Tutorial",
    "resumen": "Reproductor automatico y cronometrado del tutorial (pedido: \"quiero un script con timers para el tutorial que de manera mecanica haga todo el tutorial para testear todas las funciones\"). En vez de saltar pasos con [F8] SaltarPaso, ejecuta el GESTO REAL de cada paso llamando a las mismas APIs de gameplay que HeadlessTestRunner.Fase19.cs usa para sus \"gestos reales\" (Motor.RotateYaw, Motor.Move, SetRunning, SetCrouching, Jump, TryFire, EjecutarOrdenRadial, etc.), esperando entre accion y accion con",
    "tipos": [
@@ -15015,7 +15828,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "0c3e30d1937b"
+   "sha1": "eb65d34aabde"
   },
   {
    "ruta": "Assets/_Project/Scripts/Tutorial/TutorialBeacon.cs",
@@ -15238,8 +16051,8 @@
    "ruta": "Assets/_Project/Scripts/Tutorial/TutorialManager.cs",
    "nombre": "TutorialManager.cs",
    "subsistema": "Tutorial",
-   "lineas": 1883,
-   "bytes": 111820,
+   "lineas": 1905,
+   "bytes": 113677,
    "namespace": "SP.Tutorial",
    "resumen": "Modulo de tutorial. Recorre 35 pasos en orden; cada paso tiene sub-pasos y cada sub-paso una BANDERA booleana (ver TutorialFlags). El cuadro de dialogo (TutorialUI) muestra el mensaje del primer sub-paso pendiente, las teclas que hay que apretar (se iluminan al apretarlas), una pista si el jugador se traba y, al terminar todo, el efecto de victoria. El tutorial NO modifica el juego: solo MIRA lo que el jugador hace (teclas,",
    "tipos": [
@@ -15267,67 +16080,74 @@
    ],
    "metodos_publicos": [
     {
+     "nombre": "CoberturaDePractica",
+     "devuelve": "GameObject",
+     "estatico": false,
+     "args": "int numero",
+     "linea": 247
+    },
+    {
      "nombre": "SaltarPaso",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 1760
+     "linea": 1782
     },
     {
      "nombre": "BorrarProgreso",
      "devuelve": "void",
      "estatico": true,
      "args": "",
-     "linea": 1773
+     "linea": 1795
     },
     {
      "nombre": "SaltarPasoDelJugador",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 1793
+     "linea": 1815
     },
     {
      "nombre": "Retomar",
      "devuelve": "bool",
      "estatico": false,
      "args": "",
-     "linea": 1802
+     "linea": 1824
     },
     {
      "nombre": "RegruparAliados",
      "devuelve": "void",
      "estatico": false,
      "args": "float distanciaMaxima = 14f",
-     "linea": 1812
+     "linea": 1834
     },
     {
      "nombre": "DireccionHacia",
      "devuelve": "string",
      "estatico": true,
      "args": "Vector3 desde, float yawGrados, Vector3 objetivo",
-     "linea": 1850
+     "linea": 1872
     },
     {
      "nombre": "Finalizar",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 1862
+     "linea": 1884
     },
     {
      "nombre": "Reintentar",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 1870
+     "linea": 1892
     },
     {
      "nombre": "VolverAlMenu",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 1876
+     "linea": 1898
     }
    ],
    "propiedades_publicas": [
@@ -15387,14 +16207,69 @@
      "linea": 58
     },
     {
+     "nombre": "Dummy",
+     "tipo": "GameObject",
+     "linea": 238
+    },
+    {
+     "nombre": "Pared",
+     "tipo": "GameObject",
+     "linea": 239
+    },
+    {
+     "nombre": "Destruible",
+     "tipo": "GameObject",
+     "linea": 240
+    },
+    {
+     "nombre": "ZonaA",
+     "tipo": "GameObject",
+     "linea": 241
+    },
+    {
+     "nombre": "ZonaB",
+     "tipo": "GameObject",
+     "linea": 242
+    },
+    {
+     "nombre": "Meta",
+     "tipo": "GameObject",
+     "linea": 243
+    },
+    {
+     "nombre": "EnemigoCuchillo",
+     "tipo": "GameObject",
+     "linea": 244
+    },
+    {
+     "nombre": "EnemigoGranada",
+     "tipo": "GameObject",
+     "linea": 245
+    },
+    {
+     "nombre": "EnemigoAtaque",
+     "tipo": "GameObject",
+     "linea": 246
+    },
+    {
+     "nombre": "MuroDePractica",
+     "tipo": "GameObject",
+     "linea": 253
+    },
+    {
+     "nombre": "TorretaDePractica",
+     "tipo": "GameObject",
+     "linea": 254
+    },
+    {
      "nombre": "PasoGuardado",
      "tipo": "int",
-     "linea": 1772
+     "linea": 1794
     },
     {
      "nombre": "Retomando",
      "tipo": "bool",
-     "linea": 1776
+     "linea": 1798
     }
    ],
    "estaticos_mutables": [
@@ -15402,7 +16277,7 @@
      "nombre": "PasoGuardado",
      "tipo": "int",
      "acceso": "public",
-     "linea": 1772
+     "linea": 1794
     }
    ],
    "publica_eventos": [],
@@ -15430,7 +16305,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "bbdf816e8da7"
+   "sha1": "2d4be091a1ef"
   },
   {
    "ruta": "Assets/_Project/Scripts/Tutorial/TutorialUI.cs",
@@ -15566,7 +16441,7 @@
    "nombre": "VictoriaTutorial.cs",
    "subsistema": "Tutorial",
    "lineas": 213,
-   "bytes": 10905,
+   "bytes": 10887,
    "namespace": "SP.Tutorial",
    "resumen": "Efecto de victoria y cierre del tutorial (paso 17): REPETIR TUTORIAL y VOLVER AL MENU",
    "tipos": [
@@ -15645,7 +16520,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "7d444b1906c1"
+   "sha1": "916696638200"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/AimUI.cs",
@@ -15838,8 +16713,8 @@
    "ruta": "Assets/_Project/Scripts/UI/AjustesDeJuego.cs",
    "nombre": "AjustesDeJuego.cs",
    "subsistema": "UI",
-   "lineas": 243,
-   "bytes": 14643,
+   "lineas": 237,
+   "bytes": 14373,
    "namespace": "SP.UI",
    "resumen": "Opciones que no tenian donde vivir: pantalla completa, resolucion, calidad, paleta para daltonismo y HUD minimo. Se guardan en PlayerPrefs y se aplican solas al arrancar cada escena.",
    "tipos": [
@@ -15972,11 +16847,18 @@
      "linea": 137
     },
     {
+     "nombre": "Refrescar",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "Transform extra",
+     "linea": 175
+    },
+    {
      "nombre": "AplicarHudMinimo",
      "devuelve": "void",
      "estatico": true,
      "args": "Transform canvas",
-     "linea": 230
+     "linea": 224
     }
    ],
    "propiedades_publicas": [
@@ -16018,7 +16900,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "24b870f7f994"
+   "sha1": "78f4b1e2d0ad"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/AlertQueue.cs",
@@ -16173,7 +17055,7 @@
    "nombre": "AliadosSinEstorbo.cs",
    "subsistema": "UI",
    "lineas": 80,
-   "bytes": 3438,
+   "bytes": 3422,
    "namespace": "SP.UI",
    "resumen": "Con la camara sobre el hombro, un aliado (vivo o caido) que se para pegado a la camara llenaba media pantalla con un bloque verde. Mientras este a menos de 'Distancia' de la camara, su malla deja de dibujarse (sigue proyectando sombra, asi que no \"desaparece\" del mundo) y vuelve sola al alejarse.",
    "tipos": [
@@ -16242,7 +17124,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "07472a2c8af3"
+   "sha1": "dc58bec586df"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/ButtonSfx.cs",
@@ -16470,7 +17352,7 @@
    "nombre": "DamageDirectionView.cs",
    "subsistema": "UI",
    "lineas": 158,
-   "bytes": 6497,
+   "bytes": 6481,
    "namespace": "SP.UI",
    "resumen": "Marca en el borde de pantalla que apunta hacia de donde vino el ultimo golpe. Antes, recibir un disparo desde fuera de camara no daba ninguna pista de la direccion: el jugador giraba al azar buscando al atacante y a menudo moria mientras lo hacia.",
    "tipos": [
@@ -16521,14 +17403,14 @@
    "checks": 0,
    "notas_bug": 1,
    "notas_todo": 0,
-   "sha1": "14e01add9caa"
+   "sha1": "289ad7cb81b8"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/DamageVignetteView.cs",
    "nombre": "DamageVignetteView.cs",
    "subsistema": "UI",
    "lineas": 147,
-   "bytes": 6643,
+   "bytes": 6627,
    "namespace": "SP.UI",
    "resumen": "Viñeta negra granulada que se degrada hacia el centro (oscura en los bordes, transparente en el medio) y destella cada vez que el soldado poseído recibe daño -- el típico \"flash de impacto\" de un FPS, para que golpear se sienta en pantalla y no solo se lea en la barra de vida.",
    "tipos": [
@@ -16585,7 +17467,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "c8c9fdecd83a"
+   "sha1": "dbbe2e433a44"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/DeadNoticeView.cs",
@@ -16836,8 +17718,8 @@
    "ruta": "Assets/_Project/Scripts/UI/HudPulido.cs",
    "nombre": "HudPulido.cs",
    "subsistema": "UI",
-   "lineas": 60,
-   "bytes": 3031,
+   "lineas": 72,
+   "bytes": 3502,
    "namespace": "SP.UI",
    "resumen": "Ajustes de HUD que valen para TODAS las escenas de juego (gameplay, tutorial, pruebas) sin tocar cada constructor de escena: se crea solo al cargar la escena.",
    "tipos": [
@@ -16868,7 +17750,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "823a3d019c00"
+   "sha1": "baab53637904"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/InstructionBannerView.cs",
@@ -17050,11 +17932,96 @@
    "sha1": "2ff1057377e8"
   },
   {
+   "ruta": "Assets/_Project/Scripts/UI/LayoutDeAjustes.cs",
+   "nombre": "LayoutDeAjustes.cs",
+   "subsistema": "UI",
+   "lineas": 345,
+   "bytes": 17473,
+   "namespace": "SP.UI",
+   "resumen": "Ronda 13 (punto 6): el panel de Configuraciones se rompia con la resolucion, con el tamano de interfaz y al cambiar de idioma varias veces. Causas medidas en SC_Gameplay: * el panel principal mide 480x940 y el extra 440x700 con posiciones escritas a mano; PanelAjustesExtra.Preparar solo los escalaba UNA vez al abrir: cambiar el tamano de interfaz (que cambia la referencia de TODOS los CanvasScaler) o la resolucion con el panel abierto lo dejaba fuera de pantalla o cortado; * las etiquetas de los sliders y de los toggles miden 24 de alto con fuente 18 y \"Truncate\" vertical: con la fuente del",
+   "tipos": [
+    {
+     "nombre": "LayoutDeAjustes",
+     "clase": "class",
+     "parcial": false,
+     "estatica": false,
+     "linea": 19
+    },
+    {
+     "nombre": "Resultado",
+     "clase": "struct",
+     "parcial": false,
+     "estatica": false,
+     "linea": 34
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "Asegurar",
+     "devuelve": "LayoutDeAjustes",
+     "estatico": true,
+     "args": "GameObject settingsPanel",
+     "linea": 47
+    },
+    {
+     "nombre": "AreaDelCanvas",
+     "devuelve": "Vector2",
+     "estatico": false,
+     "args": "",
+     "linea": 86
+    },
+    {
+     "nombre": "Aplicar",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 94
+    },
+    {
+     "nombre": "Aplicar",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "Vector2 area",
+     "linea": 96
+    },
+    {
+     "nombre": "Diagnosticar",
+     "devuelve": "List<string>",
+     "estatico": true,
+     "args": "GameObject settingsPanel, Vector2 area",
+     "linea": 272
+    }
+   ],
+   "propiedades_publicas": [
+    {
+     "nombre": "Ultimo",
+     "tipo": "Resultado",
+     "linea": 44
+    },
+    {
+     "nombre": "Aplicaciones",
+     "tipo": "int",
+     "linea": 45
+    }
+   ],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "de3ea5541077"
+  },
+  {
    "ruta": "Assets/_Project/Scripts/UI/LowHealthPulseView.cs",
    "nombre": "LowHealthPulseView.cs",
    "subsistema": "UI",
    "lineas": 211,
-   "bytes": 9234,
+   "bytes": 9211,
    "namespace": "SP.UI",
    "resumen": "Pulso rojo en los bordes de la pantalla + latido sonoro cuando al soldado poseido le queda poca vida. Hasta ahora la unica senal de \"estas por morir\" era mirar el numero de la barra de vida: en medio de un tiroteo nadie lo mira, y la muerte llegaba sin aviso. El pulso es ambiental (periferia + oido), no pide atencion del ojo. Deliberadamente NO comparte la Image de DamageVignetteView: aquella",
    "tipos": [
@@ -17107,14 +18074,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "506c47e14c26"
+   "sha1": "17e622db43f2"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/MenuDeOrdenes.cs",
    "nombre": "MenuDeOrdenes.cs",
    "subsistema": "UI",
-   "lineas": 625,
-   "bytes": 30967,
+   "lineas": 635,
+   "bytes": 31400,
    "namespace": "SP.UI",
    "resumen": "Contexto del radial: que categorias y opciones tienen sentido AHORA segun lo que se apunta. Las contextuales (curar al herido apuntado, demoler el muro apuntado, subir al tanque apuntado, usar la torreta apuntada...) van arriba y con otro color; el resto solo se ofrece si hay algo que hacer. Sin contexto (null) el radial ofrece todas, como antes.",
    "tipos": [
@@ -17142,153 +18109,172 @@
      "linea": 29
     },
     {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 58
+    },
+    {
+     "nombre": "RegistrarActivo",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 59
+    },
+    {
      "nombre": "PonerPista",
      "devuelve": "void",
      "estatico": true,
      "args": "int categoria, int opcion = -1",
-     "linea": 145
+     "linea": 152
     },
     {
      "nombre": "EsVisible",
      "devuelve": "bool",
      "estatico": false,
      "args": "int categoria",
-     "linea": 160
+     "linea": 167
     },
     {
      "nombre": "EsContextual",
      "devuelve": "bool",
      "estatico": false,
      "args": "int categoria",
-     "linea": 161
+     "linea": 168
     },
     {
      "nombre": "Bind",
      "devuelve": "void",
      "estatico": false,
      "args": "Text texto, CanvasGroup canvasGroup",
-     "linea": 164
+     "linea": 171
     },
     {
      "nombre": "PonerSoldados",
      "devuelve": "void",
      "estatico": false,
      "args": "string s1, string s2, string s3",
-     "linea": 189
+     "linea": 198
     },
     {
      "nombre": "NombreDeOpcion",
      "devuelve": "string",
      "estatico": true,
      "args": "int categoria, int sub",
-     "linea": 201
+     "linea": 210
     },
     {
      "nombre": "Abrir",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 240
+     "linea": 249
     },
     {
      "nombre": "Abrir",
      "devuelve": "void",
      "estatico": false,
      "args": "ContextoRadial ctx",
-     "linea": 245
+     "linea": 254
     },
     {
      "nombre": "CancelarSeleccion",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 286
+     "linea": 295
     },
     {
      "nombre": "Cerrar",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 295
+     "linea": 304
     },
     {
      "nombre": "MoverSeleccion",
      "devuelve": "void",
      "estatico": false,
      "args": "Vector2 delta",
-     "linea": 305
+     "linea": 314
     },
     {
      "nombre": "ElegirDirecto",
      "devuelve": "void",
      "estatico": false,
      "args": "int categoria, int sub = -1",
-     "linea": 356
+     "linea": 365
     },
     {
      "nombre": "CategoriaDeTecla",
      "devuelve": "int",
      "estatico": false,
      "args": "int tecla",
-     "linea": 381
+     "linea": 390
     },
     {
      "nombre": "AsegurarEnEscena",
      "devuelve": "MenuDeOrdenes",
      "estatico": true,
      "args": "",
-     "linea": 457
+     "linea": 466
     },
     {
      "nombre": "Construir",
      "devuelve": "MenuDeOrdenes",
      "estatico": true,
      "args": "Transform padre",
-     "linea": 546
+     "linea": 555
     },
     {
      "nombre": "LeerTecla",
      "devuelve": "int",
      "estatico": true,
      "args": "",
-     "linea": 608
+     "linea": 618
     }
    ],
    "propiedades_publicas": [
     {
+     "nombre": "Activo",
+     "tipo": "MenuDeOrdenes",
+     "linea": 57
+    },
+    {
      "nombre": "Abierto",
      "tipo": "bool",
-     "linea": 152
+     "linea": 159
     },
     {
      "nombre": "Seleccion",
      "tipo": "int",
-     "linea": 154
+     "linea": 161
     },
     {
      "nombre": "Sub",
      "tipo": "int",
-     "linea": 156
+     "linea": 163
     },
     {
      "nombre": "EsRadial",
      "tipo": "bool",
-     "linea": 157
+     "linea": 164
     },
     {
      "nombre": "EnAnilloExterior",
      "tipo": "bool",
-     "linea": 158
+     "linea": 165
     },
     {
      "nombre": "CategoriasVisibles",
      "tipo": "IReadOnlyList<int>",
-     "linea": 159
+     "linea": 166
     },
     {
      "nombre": "OpcionesVisibles",
      "tipo": "IReadOnlyList<int>",
-     "linea": 162
+     "linea": 169
     }
    ],
    "estaticos_mutables": [
@@ -17296,7 +18282,7 @@
      "nombre": "PistaCategoria",
      "tipo": "int",
      "acceso": "public",
-     "linea": 144
+     "linea": 151
     }
    ],
    "publica_eventos": [],
@@ -17308,14 +18294,14 @@
    "checks": 0,
    "notas_bug": 1,
    "notas_todo": 0,
-   "sha1": "638f6ed16dea"
+   "sha1": "65c6fceeeb25"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/MinimapFollow.cs",
    "nombre": "MinimapFollow.cs",
    "subsistema": "UI",
-   "lineas": 338,
-   "bytes": 15532,
+   "lineas": 347,
+   "bytes": 16140,
    "namespace": "SP.UI",
    "resumen": "Cámara cenital del minimapa: sigue al objetivo actual (soldado o vehículo poseído) desde arriba, mirando siempre hacia abajo. Ademas de seguir al objetivo, esta clase es la unica duenia del mapeo mundo <-> minimapa. Vive aca y no en el driver de input porque los tres datos que definen el encuadre (posicion de la camara, orthographicSize y la RenderTexture) los tiene esta camara:",
    "tipos": [
@@ -17329,85 +18315,109 @@
    ],
    "metodos_publicos": [
     {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 25
+    },
+    {
+     "nombre": "RegistrarActivo",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 26
+    },
+    {
      "nombre": "TryMinimapPointToWorld",
      "devuelve": "bool",
      "estatico": false,
      "args": "Vector2 localPoint, out Vector3 world",
-     "linea": 102
+     "linea": 111
     },
     {
      "nombre": "TryWorldToMinimapPoint",
      "devuelve": "bool",
      "estatico": false,
      "args": "Vector3 world, out Vector2 localPoint",
-     "linea": 143
+     "linea": 152
     },
     {
      "nombre": "AplicarTamanoInicial",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 273
+     "linea": 282
     },
     {
      "nombre": "AplicarTamanoGuardado",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 287
+     "linea": 296
     },
     {
      "nombre": "AlternarTamano",
      "devuelve": "bool",
      "estatico": false,
      "args": "",
-     "linea": 292
+     "linea": 301
     },
     {
      "nombre": "TamanoFijo",
      "devuelve": "Vector2",
      "estatico": false,
      "args": "int indice",
-     "linea": 306
+     "linea": 315
     },
     {
      "nombre": "CiclarTamanoFijo",
      "devuelve": "int",
      "estatico": false,
      "args": "",
-     "linea": 312
+     "linea": 321
     }
    ],
    "propiedades_publicas": [
     {
+     "nombre": "Activo",
+     "tipo": "MinimapFollow",
+     "linea": 24
+    },
+    {
      "nombre": "MinimapRect",
      "tipo": "RectTransform",
-     "linea": 67
+     "linea": 74
     },
     {
      "nombre": "MinimapCamera",
      "tipo": "Camera",
-     "linea": 73
+     "linea": 80
     },
     {
      "nombre": "GroundY",
      "tipo": "float",
-     "linea": 79
+     "linea": 86
     },
     {
      "nombre": "MapHalfExtent",
      "tipo": "float",
-     "linea": 80
+     "linea": 87
     },
     {
      "nombre": "Agrandado",
      "tipo": "bool",
-     "linea": 260
+     "linea": 267
+    },
+    {
+     "nombre": "Marco",
+     "tipo": "RectTransform",
+     "linea": 270
     },
     {
      "nombre": "IndiceTamanoFijo",
      "tipo": "int",
-     "linea": 304
+     "linea": 313
     }
    ],
    "estaticos_mutables": [],
@@ -17420,14 +18430,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "c20f5b264ddd"
+   "sha1": "ad0b3e219150"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/MirillaView.cs",
    "nombre": "MirillaView.cs",
    "subsistema": "UI",
    "lineas": 344,
-   "bytes": 18621,
+   "bytes": 18589,
    "namespace": "SP.UI",
    "resumen": "La mirilla que se ve al mantener el clic derecho (apuntar con zoom). Antes el \"zoom\" agrandaba x4 el anillo de la mira (quedaba enorme y borroso) y difuminaba el fondo; ahora el zoom es REAL (el FOV sale del aumento de cada arma, ver WeaponCatalog.Spec.ZoomFactor) y se dibuja una reticula NITIDA, distinta para cada arma: Punto        fusil            punto rojo dentro de un anillo fino",
    "tipos": [
@@ -17533,7 +18543,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "5afdd71f75df"
+   "sha1": "73d2a1177a11"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/MissionStatusView.cs",
@@ -17630,8 +18640,8 @@
    "ruta": "Assets/_Project/Scripts/UI/ModoDiosView.cs",
    "nombre": "ModoDiosView.cs",
    "subsistema": "UI",
-   "lineas": 66,
-   "bytes": 3015,
+   "lineas": 75,
+   "bytes": 3458,
    "namespace": "SP.UI",
    "resumen": "Cartel fijo \"MODO DIOS [F4]\" mientras nadie de tu bando recibe dano: se ve siempre para que nadie juegue una partida entera invencible sin darse cuenta. Late en dorado.",
    "tipos": [
@@ -17645,14 +18655,34 @@
    ],
    "metodos_publicos": [
     {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 13
+    },
+    {
+     "nombre": "RegistrarActivo",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 14
+    },
+    {
      "nombre": "Asegurar",
      "devuelve": "ModoDiosView",
      "estatico": true,
      "args": "Transform canvasRoot",
-     "linea": 14
+     "linea": 23
     }
    ],
-   "propiedades_publicas": [],
+   "propiedades_publicas": [
+    {
+     "nombre": "Activo",
+     "tipo": "ModoDiosView",
+     "linea": 12
+    }
+   ],
    "estaticos_mutables": [],
    "publica_eventos": [],
    "escucha_eventos": [],
@@ -17665,14 +18695,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "13a38acff38d"
+   "sha1": "5d23b3941ce6"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/OffscreenAllyMarkerView.cs",
    "nombre": "OffscreenAllyMarkerView.cs",
    "subsistema": "UI",
    "lineas": 199,
-   "bytes": 9374,
+   "bytes": 9328,
    "namespace": "SP.UI",
    "resumen": "Item 63: marcas en el borde apuntando a los aliados que quedaron fuera de encuadre. En primera persona el jugador perdia de vista a su escuadra apenas giraba, y no habia forma de saber si estaban atras, a los costados o ya muertos sin pasar a vista tactica. Estas flechas dan esa lectura periferica sin cambiar de modo.",
    "tipos": [
@@ -17720,7 +18750,7 @@
    "checks": 0,
    "notas_bug": 1,
    "notas_todo": 0,
-   "sha1": "be2c91efbeb3"
+   "sha1": "9bc912c89954"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/OffscreenKillMarkerView.cs",
@@ -17940,7 +18970,7 @@
    "nombre": "RosterRowView.cs",
    "subsistema": "UI",
    "lineas": 249,
-   "bytes": 10973,
+   "bytes": 10957,
    "namespace": "SP.UI",
    "resumen": "Una fila del roster = un prefab por soldado. Pedido explicito: \"un prefab para cada caso... con puntero al soldado... sincronizado en tiempo real por eventos\". Reemplaza a SelectedSoldierUI para la escena real (esa clase sigue viva solo para el roster propio de HeadlessTestRunner -- ver el comentario en SelectedSoldierUI.cs): antes UN script central re-emparejaba filas por nombre",
    "tipos": [
@@ -18007,14 +19037,14 @@
    "checks": 0,
    "notas_bug": 2,
    "notas_todo": 0,
-   "sha1": "1e2c7d9480d3"
+   "sha1": "594bb9080f38"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/RosterView.cs",
    "nombre": "RosterView.cs",
    "subsistema": "UI",
-   "lineas": 53,
-   "bytes": 2239,
+   "lineas": 65,
+   "bytes": 2669,
    "namespace": "SP.UI",
    "resumen": "Arma el roster instanciando UN prefab de fila (RosterRowView) por soldado del equipo del jugador -- pedido explicito: \"un prefab para cada caso\". Antes las filas vivian pre-armadas a mano en la escena (Row_Soldado_1_Vega, etc.) y SelectedSoldierUI las reencontraba por nombre; ahora la fuente de verdad es el squad real de PlayerInputDriver y cada fila es duena de su soldado desde que nace.",
    "tipos": [
@@ -18028,21 +19058,41 @@
    ],
    "metodos_publicos": [
     {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 16
+    },
+    {
+     "nombre": "RegistrarActivo",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 17
+    },
+    {
      "nombre": "SetRowPrefab",
      "devuelve": "void",
      "estatico": false,
      "args": "RosterRowView prefab",
-     "linea": 18
+     "linea": 25
     },
     {
      "nombre": "Rebuild",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 32
+     "linea": 44
     }
    ],
-   "propiedades_publicas": [],
+   "propiedades_publicas": [
+    {
+     "nombre": "Activo",
+     "tipo": "RosterView",
+     "linea": 15
+    }
+   ],
    "estaticos_mutables": [],
    "publica_eventos": [],
    "escucha_eventos": [],
@@ -18055,7 +19105,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "611cb576a0b3"
+   "sha1": "2ecb3d9cfed8"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/ScreenFlashView.cs",
@@ -18133,7 +19183,7 @@
    "nombre": "SelectedSoldierUI.cs",
    "subsistema": "UI",
    "lineas": 270,
-   "bytes": 12775,
+   "bytes": 12759,
    "namespace": "SP.UI",
    "resumen": "Roster de la escuadra: resalta al soldado poseído y a los seleccionados en vista RTS. Solo escucha el bus, nunca decide nada de gameplay. SC_Gameplay ya NO usa esta clase: el roster real pasó a RosterView + RosterRowView (un prefab por soldado, sync por evento en vez de LateUpdate por nombre). Esta sigue viva porque HeadlessTestRunner arma su propio roster de prueba con AddRow() y su test de resaltado",
    "tipos": [
@@ -18194,7 +19244,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "32c17b5e5f6b"
+   "sha1": "c3e19fdb17a5"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/SelectionCountView.cs",
@@ -18363,8 +19413,8 @@
    "ruta": "Assets/_Project/Scripts/UI/TurretAimView.cs",
    "nombre": "TurretAimView.cs",
    "subsistema": "UI",
-   "lineas": 170,
-   "bytes": 7353,
+   "lineas": 165,
+   "bytes": 7144,
    "namespace": "SP.UI",
    "resumen": "HUD propio del artillero. Como artillero se usaba la misma mirilla de infanteria, que no comunica lo unico que importa en una torreta que gira lento: si el cañon ya llego a donde apuntas, cuanto falta para que llegue, cuanto falta para poder volver a disparar, y que area va a cubrir la explosion.",
    "tipos": [
@@ -18389,21 +19439,21 @@
      "devuelve": "void",
      "estatico": false,
      "args": "bool visible",
-     "linea": 63
+     "linea": 58
     },
     {
      "nombre": "UpdateFrom",
      "devuelve": "void",
      "estatico": false,
      "args": "TurretWeapon turret",
-     "linea": 69
+     "linea": 64
     },
     {
      "nombre": "PredictedImpactPoint",
      "devuelve": "Vector3",
      "estatico": true,
      "args": "TurretWeapon turret",
-     "linea": 125
+     "linea": 120
     }
    ],
    "propiedades_publicas": [],
@@ -18419,7 +19469,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "eb6f3521e964"
+   "sha1": "3823ab805977"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/VehicleKeysPanel.cs",
@@ -18575,8 +19625,8 @@
    "ruta": "Assets/_Project/Scripts/UI/WeaponStatusView.cs",
    "nombre": "WeaponStatusView.cs",
    "subsistema": "UI",
-   "lineas": 219,
-   "bytes": 10554,
+   "lineas": 232,
+   "bytes": 11352,
    "namespace": "SP.UI",
    "resumen": "HUD fijo (no depende de apuntar a nada) con qué arma tenés, cuánta munición te queda y una barra de recarga/enfriamiento.",
    "tipos": [
@@ -18590,39 +19640,58 @@
    ],
    "metodos_publicos": [
     {
+     "nombre": "ReiniciarActivo",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 13
+    },
+    {
+     "nombre": "RegistrarActivo",
+     "devuelve": "void",
+     "estatico": false,
+     "args": "",
+     "linea": 14
+    },
+    {
      "nombre": "IconFor",
      "devuelve": "Sprite",
      "estatico": true,
      "args": "WeaponKind kind",
-     "linea": 28
+     "linea": 35
     },
     {
      "nombre": "EnsureIcon",
      "devuelve": "Image",
      "estatico": false,
      "args": "",
-     "linea": 50
+     "linea": 57
     },
     {
      "nombre": "Bind",
      "devuelve": "void",
      "estatico": false,
      "args": "Text text, Image fillImage",
-     "linea": 79
+     "linea": 86
     },
     {
      "nombre": "UpdateFrom",
      "devuelve": "void",
      "estatico": false,
      "args": "WeaponHolder weapon",
-     "linea": 95
+     "linea": 109
     }
    ],
    "propiedades_publicas": [
     {
+     "nombre": "Activo",
+     "tipo": "WeaponStatusView",
+     "linea": 12
+    },
+    {
      "nombre": "Icon",
      "tipo": "Image",
-     "linea": 26
+     "linea": 33
     }
    ],
    "estaticos_mutables": [],
@@ -18637,7 +19706,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "c8f2f2983f16"
+   "sha1": "bc6decb1134b"
   },
   {
    "ruta": "Assets/_Project/Scripts/Vehicles/Atropello.cs",
@@ -18935,7 +20004,7 @@
    "nombre": "TurretWeapon.cs",
    "subsistema": "Vehicles",
    "lineas": 459,
-   "bytes": 24613,
+   "bytes": 24576,
    "namespace": "SP.Vehicles",
    "resumen": "Arma montada en el vehículo: gira sola (no con el chasis) y dispara proyectiles del mismo pool que las armas de mano.",
    "tipos": [
@@ -19122,14 +20191,14 @@
    "checks": 0,
    "notas_bug": 5,
    "notas_todo": 0,
-   "sha1": "fb8781037bd1"
+   "sha1": "3c92412d62e6"
   },
   {
    "ruta": "Assets/_Project/Scripts/Vehicles/Vehicle.cs",
    "nombre": "Vehicle.cs",
    "subsistema": "Vehicles",
-   "lineas": 648,
-   "bytes": 32236,
+   "lineas": 684,
+   "bytes": 34788,
    "namespace": "SP.Vehicles",
    "resumen": "Vehículo con 4 asientos: conductor, artillero y dos pasajeros. Los soldados que suben quedan ocultos (su cuerpo se desactiva) y el vehículo pasa a moverlos a todos con su propio transform.",
    "tipos": [
@@ -19154,98 +20223,112 @@
      "devuelve": "void",
      "estatico": false,
      "args": "SP.Combat.TeamId bando, Color tinte",
-     "linea": 96
+     "linea": 112
     },
     {
      "nombre": "FinalExplosion",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 133
+     "linea": 149
     },
     {
      "nombre": "IsMountAnimating",
      "devuelve": "bool",
      "estatico": false,
      "args": "Soldier soldier",
-     "linea": 181
+     "linea": 197
     },
     {
      "nombre": "RefreshOccupancyColor",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 203
+     "linea": 219
     },
     {
      "nombre": "ClosestBoardingPoint",
      "devuelve": "Vector3",
      "estatico": false,
      "args": "Vector3 desde",
-     "linea": 256
+     "linea": 272
     },
     {
      "nombre": "IsSeatFree",
      "devuelve": "bool",
      "estatico": false,
      "args": "VehicleSeatRole role",
-     "linea": 276
+     "linea": 292
     },
     {
      "nombre": "FirstFreeSeat",
      "devuelve": "VehicleSeatRole?",
      "estatico": false,
      "args": "",
-     "linea": 278
+     "linea": 294
     },
     {
      "nombre": "ConfigurarTripulacion",
      "devuelve": "void",
      "estatico": false,
      "args": "Soldier[] tripulantes, VehicleSeatRole[] roles, bool enemigo",
-     "linea": 293
+     "linea": 309
+    },
+    {
+     "nombre": "PuedeAbordar",
+     "devuelve": "bool",
+     "estatico": false,
+     "args": "Soldier soldier, out string motivo",
+     "linea": 335
+    },
+    {
+     "nombre": "PuedeAbordar",
+     "devuelve": "bool",
+     "estatico": false,
+     "args": "Soldier soldier",
+     "linea": 343
     },
     {
      "nombre": "Mount",
      "devuelve": "bool",
      "estatico": false,
      "args": "Soldier soldier, VehicleSeatRole? preferredRole = null, bool instantaneo = false",
-     "linea": 314
+     "linea": 345
     },
     {
      "nombre": "Dismount",
      "devuelve": "bool",
      "estatico": false,
      "args": "Soldier soldier",
-     "linea": 524
+     "linea": 556
     },
     {
      "nombre": "SwapSeats",
      "devuelve": "bool",
      "estatico": false,
      "args": "Soldier a, Soldier b",
-     "linea": 570
+     "linea": 606
     },
     {
      "nombre": "MoveToSeat",
      "devuelve": "bool",
      "estatico": false,
      "args": "Soldier soldier, VehicleSeatRole role",
-     "linea": 595
+     "linea": 631
     },
     {
      "nombre": "RoleOf",
      "devuelve": "VehicleSeatRole?",
      "estatico": false,
      "args": "Soldier soldier",
-     "linea": 620
+     "linea": 656
     },
     {
      "nombre": "SoldierInSeat",
      "devuelve": "Soldier",
      "estatico": false,
      "args": "VehicleSeatRole role",
-     "linea": 645
+     "linea": 681
     }
    ],
    "propiedades_publicas": [
@@ -19265,59 +20348,69 @@
      "linea": 78
     },
     {
+     "nombre": "TorretaCanon",
+     "tipo": "TurretWeapon",
+     "linea": 84
+    },
+    {
+     "nombre": "TorretaMetralleta",
+     "tipo": "TurretWeapon",
+     "linea": 85
+    },
+    {
      "nombre": "FinalExplosionDone",
      "tipo": "bool",
-     "linea": 79
+     "linea": 95
     },
     {
      "nombre": "Bando",
      "tipo": "SP.Combat.TeamId",
-     "linea": 93
+     "linea": 109
     },
     {
      "nombre": "PlayerAboard",
      "tipo": "bool",
-     "linea": 218
+     "linea": 234
     },
     {
      "nombre": "Capacity",
      "tipo": "int",
-     "linea": 220
+     "linea": 236
     },
     {
      "nombre": "OccupantCount",
      "tipo": "int",
-     "linea": 221
+     "linea": 237
     },
     {
      "nombre": "HasAnyRoom",
      "tipo": "bool",
-     "linea": 222
+     "linea": 238
     },
     {
      "nombre": "Driver",
      "tipo": "Soldier",
-     "linea": 223
+     "linea": 239
     },
     {
      "nombre": "Gunner",
      "tipo": "Soldier",
-     "linea": 224
+     "linea": 240
     },
     {
      "nombre": "Occupants",
      "tipo": "IReadOnlyList<Soldier>",
-     "linea": 226
+     "linea": 242
     },
     {
      "nombre": "EsTanqueEnemigo",
      "tipo": "bool",
-     "linea": 291
+     "linea": 307
     },
     {
      "nombre": "AllSeatRoles",
      "tipo": "IReadOnlyList<VehicleSeatRole>",
-     "linea": 644
+     "linea": 680
     }
    ],
    "estaticos_mutables": [],
@@ -19338,7 +20431,7 @@
    "checks": 0,
    "notas_bug": 3,
    "notas_todo": 0,
-   "sha1": "86654d6d5b56"
+   "sha1": "03f9f07016a0"
   },
   {
    "ruta": "Assets/_Project/Scripts/Vehicles/VehicleAudioFeedback.cs",
@@ -19882,16 +20975,22 @@
  ],
  "suite": [
   {
+   "archivo": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.BusquedasGlobales.cs",
+   "lineas": 154,
+   "fases": [],
+   "checks": 5
+  },
+  {
    "archivo": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase18.cs",
-   "lineas": 129,
+   "lineas": 132,
    "fases": [
     "RunPhase18"
    ],
-   "checks": 34
+   "checks": 35
   },
   {
    "archivo": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase19.cs",
-   "lineas": 406,
+   "lineas": 419,
    "fases": [
     "RunPhase19"
    ],
@@ -19905,6 +21004,32 @@
     "RunPhase20Ronda12"
    ],
    "checks": 32
+  },
+  {
+   "archivo": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase21.cs",
+   "lineas": 529,
+   "fases": [
+    "Fase21_Acciones",
+    "Fase21_Agachado",
+    "Fase21_Ajustes",
+    "Fase21_ApuntarPreciso",
+    "Fase21_BarraDeVidaDelTanque",
+    "Fase21_MedicoEnCalma",
+    "Fase21_Revivido",
+    "Fase21_SeguirAMitad",
+    "Fase21_SinCubo",
+    "Fase21_TanqueEnemigo",
+    "RunPhase21"
+   ],
+   "checks": 70
+  },
+  {
+   "archivo": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase22.cs",
+   "lineas": 51,
+   "fases": [
+    "RunPhase22"
+   ],
+   "checks": 10
   },
   {
    "archivo": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases13a17.cs",
@@ -19929,7 +21054,7 @@
   },
   {
    "archivo": "Assets/_Project/Scripts/Editor/HeadlessTestRunner.cs",
-   "lineas": 4197,
+   "lineas": 4200,
    "fases": [
     "RunPhase1",
     "RunPhase2",

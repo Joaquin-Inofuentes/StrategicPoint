@@ -113,6 +113,9 @@ namespace SP.EditorTools
             Health.RegeneracionPermitida = false;
             Demolicion.Segundos = 99f;
             ReinicioDeEstaticos.Restablecer();
+            Check("Reiniciar estaticos limpia los servicios unicos (Activo)", PlayerInputDriver.Activo == null && PlayerBrain.Activo == null && ProjectilePool.Activo == null && SP.Presentation.GameOutcomeController.Activo == null
+                  && SP.UI.RosterView.Activo == null && SP.UI.MenuDeOrdenes.Activo == null && SP.Ai.AjustesDeEscuadra.Activo == null);
+            ReRegistrarServiciosDeLaSuite(inputDriver, pool);   // la suite sigue usando la escena armada
             Check("Reiniciar estaticos apaga el modo dios", !SP.Core.ModoDios.Activo);
             Check("Reiniciar estaticos devuelve la regeneracion", Health.RegeneracionPermitida);
             Check("Reiniciar estaticos devuelve los segundos de demolicion", Mathf.Approximately(Demolicion.Segundos, Demolicion.SegundosNormales));

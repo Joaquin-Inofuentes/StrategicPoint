@@ -147,6 +147,8 @@ namespace SP.Player
             if (botiquinRestante <= 0f) return;
             if (BotiquinDe == null || BotiquinDe.Health == null || !BotiquinDe.Health.IsAlive) { botiquinRestante = 0f; return; }
             botiquinRestante -= dt;
+            AccionesEnCurso.Reportar(BotiquinDe, "USANDO BOTIQUIN", BotiquinDe.transform.position + BotiquinDe.transform.forward * 0.6f,
+                1f - Mathf.Clamp01(botiquinRestante / BotiquinSegundos), Mathf.Max(0f, botiquinRestante));   // ronda 13 (puntos 2 y 3)
             if (botiquinRestante <= 0f)
                 Feedback.Accion(SfxKind.HealDone, "¡BOTIQUIN LISTO!", BotiquinDe.transform.position, Feedback.Ok, aviso: false, pulso: true, volumen: 0.7f);
             botiquinAcum += BotiquinVida / BotiquinSegundos * dt;
@@ -180,6 +182,7 @@ namespace SP.Player
             Herido = null;
             Enfermero = null;
             Reanimando = false;
+            reanimacionAutomatica = false;
             restante = 0f;
             acumulado = 0f;
             atendiendo = false;
@@ -196,6 +199,32 @@ namespace SP.Player
         // El tutorial la apaga para que el jugador mande a curar el mismo.
         public static bool AtencionAutomatica = true;
 
+        // Ronda 13 (punto 8): en calma el medico revive por su cuenta a los aliados caidos (antes solo curaba heridos y la
+        // escuadra solo revivia si caian TODOS). "Calma" = ningun enemigo a RadioDeCalma del medico ni del caido.
+        // Tiene prioridad sobre curar heridos. El tutorial tambien la apaga con AtencionAutomatica.
+        public static bool ReanimarEnCalma = true;
+        public const float RadioDeCalma = 25f;
+        public const float RadioParaReanimarEnCalma = 45f;
+        static bool reanimacionAutomatica;
+        public static bool ReanimacionEsAutomatica => Reanimando && reanimacionAutomatica;
+
+        public static bool HayCalma(Vector3 punto) =>
+            ActorRegistry.FindNearestEnemyInRange(punto, TeamId.Player, RadioDeCalma) == null;
+
+        static Soldier CaidoParaReanimar(Soldier medico)
+        {
+            Soldier mejor = null; float mejorD = RadioParaReanimarEnCalma;
+            foreach (var a in ActorRegistry.All)
+            {
+                if (a == null || a == medico || a.Team != medico.Team || a.Role == RoleType.Civilian || a.Health == null || a.Health.IsAlive) continue;
+                if (!a.gameObject.activeInHierarchy) continue;
+                float d = Vector3.Distance(a.transform.position, medico.transform.position);
+                if (d >= mejorD || !HayCalma(a.transform.position)) continue;
+                mejor = a; mejorD = d;
+            }
+            return mejor;
+        }
+
         static void AtenderSolo(float dt)
         {
             if (!AtencionAutomatica) return;
@@ -208,6 +237,17 @@ namespace SP.Player
                 if (medico == null || medico.Role != RoleType.Medic || medico.Team != TeamId.Player) continue;
                 if (medico.Health == null || !medico.Health.IsAlive || OrderService.LoManejaElJugador(medico)) continue;
                 if (medico.Brain != null && medico.Brain.CurrentTarget != null) continue;
+
+                if (ReanimarEnCalma && HayCalma(medico.transform.position))
+                {
+                    var caido = CaidoParaReanimar(medico);
+                    if (caido != null && SolicitarReanimar(caido) && Enfermero == medico)
+                    {
+                        reanimacionAutomatica = true;
+                        GameLog.Line($"{medico.DisplayName} reanima solo a {caido.DisplayName} (calma)");
+                        return;
+                    }
+                }
 
                 Soldier peor = null; float peorFrac = FraccionHerido;
                 foreach (var a in ActorRegistry.All)
@@ -236,15 +276,17 @@ namespace SP.Player
             if (Reanimando)
             {
                 if (Herido.Health.IsAlive || !Enfermero.Health.IsAlive) { Cancelar(); return; }
+                // Reanimacion automatica: si vuelve la accion se corta (el medico vuelve a pelear normal).
+                if (reanimacionAutomatica && !HayCalma(Enfermero.transform.position)) { Cancelar(); return; }
                 restante -= dt;
                 if (restante <= 0f) { Cancelar(); return; }
                 if (Vector3.Distance(Herido.transform.position, Enfermero.transform.position) > AlcanceDeCuracion) return;
                 EmpezarAtencion(Herido.transform.position, "REANIMANDO…");
                 acumulado += dt;
+                AccionesEnCurso.Reportar(Enfermero, "REVIVIENDO", Herido.transform.position, acumulado / SegundosDeReanimar, SegundosDeReanimar - acumulado, Herido.transform);   // ronda 13 (puntos 2 y 3)
                 if (acumulado < SegundosDeReanimar) return;
                 var revivido = Herido;
-                revivido.Health.Initialize(revivido.Id, revivido.Health.MaxHealth);
-                revivido.Motor.ResetMotionState();
+                Reanimacion.Ejecutar(revivido);   // ronda 13: camino unico
                 GameLog.Line($"{Enfermero.DisplayName} reanimo a {revivido.DisplayName}");
                 Feedback.Accion(SfxKind.Revive, "¡" + revivido.DisplayName.ToUpperInvariant() + " DE VUELTA!", revivido.transform.position, Feedback.Ok, aviso: true, pulso: true, volumen: 0.9f);
                 Cancelar();
@@ -264,6 +306,8 @@ namespace SP.Player
             float d = Vector3.Distance(Herido.transform.position, Enfermero.transform.position);
             if (d > AlcanceDeCuracion) return;
             EmpezarAtencion(Herido.transform.position, "CURANDO…");
+            AccionesEnCurso.Reportar(Enfermero, "CURANDO", Herido.transform.position, (float)Herido.Health.Current / Mathf.Max(1, Herido.Health.MaxHealth),
+                (Herido.Health.MaxHealth - Herido.Health.Current) / (float)CuracionPorSegundo, Herido.transform);   // ronda 13 (puntos 2 y 3)
 
             // Se acumula en float y se gasta en enteros: con dt de 1/60 y
             // 12 de vida por segundo, redondear cada frame daria 0 siempre

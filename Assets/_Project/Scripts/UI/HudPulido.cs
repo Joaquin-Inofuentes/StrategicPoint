@@ -14,7 +14,7 @@ namespace SP.UI
         Image mira;
         Text cartel;
         MenuDeOrdenes radial;
-        float proximaBusqueda;
+        bool bootstrapped;
         Transform raizHud;
         bool ultimoHudMinimo;
 
@@ -35,21 +35,33 @@ namespace SP.UI
             AliadosSinEstorbo.Asegurar();
         }
 
+        // Se resuelve UNA vez en el primer LateUpdate (ya corrieron todos los Start de la escena, incluido el que arma el HUD).
+        // Antes esto barria la escena entera cada segundo mientras faltara algo, para siempre.
+        void Bootstrap()
+        {
+            if (bootstrapped) return;
+            bootstrapped = true;
+            radial = MenuDeOrdenes.Activo;
+            // El canvas del HUD es el padre de la mira del driver (ya no se busca por el nombre "Canvas").
+            var driver = SP.Player.PlayerInputDriver.Activo;
+            var raiz = driver != null && driver.AimUiRef != null ? driver.AimUiRef.transform.parent : null;
+            if (raiz == null)
+            {
+                // Sin canvas (menu principal, escena de prueba) no hay nada que pulir: no se reintenta un barrido por frame.
+                SP.Core.GameLog.Line("[HudPulido] sin Canvas en la escena: se desactiva");
+                enabled = false;
+                return;
+            }
+            raizHud = raiz;
+            var t = raizHud.Find("Crosshair"); if (t != null) mira = t.GetComponent<Image>();
+            t = raizHud.Find("PromptText"); if (t != null) cartel = t.GetComponent<Text>();
+        }
+
         void LateUpdate()
         {
-            if (Time.unscaledTime >= proximaBusqueda && (mira == null || cartel == null || radial == null))
-            {
-                proximaBusqueda = Time.unscaledTime + 1f;
-                if (radial == null) radial = FindAnyObjectByType<MenuDeOrdenes>(FindObjectsInactive.Include);
-                var raiz = GameObject.Find("Canvas");
-                if (raiz != null)
-                {
-                    if (mira == null) { var t = raiz.transform.Find("Crosshair"); if (t != null) mira = t.GetComponent<Image>(); }
-                    if (cartel == null) { var t = raiz.transform.Find("PromptText"); if (t != null) cartel = t.GetComponent<Text>(); }
-                }
-            }
+            Bootstrap();
+            if (!enabled) return;
             if (Keyboard.current != null && Keyboard.current.f10Key.wasPressedThisFrame) AjustesDeJuego.PonerHudMinimo(!AjustesDeJuego.HudMinimo);
-            if (raizHud == null) { var c = GameObject.Find("Canvas"); if (c != null) raizHud = c.transform; }
             if (raizHud != null && ultimoHudMinimo != AjustesDeJuego.HudMinimo) { ultimoHudMinimo = AjustesDeJuego.HudMinimo; PanelAjustesExtra.AplicarHudMinimo(raizHud); }
             bool radialAbierto = radial != null && radial.Abierto;
             if (mira != null) mira.enabled = !radialAbierto;

@@ -10,8 +10,18 @@ namespace SP.Presentation
     // y muestra el objetivo de la mision al arrancar -- antes la partida
     // empezaba sin decir que hacer, y el jugador deducia el objetivo
     // matando cosas hasta que aparecia la pantalla de victoria.
+    [DefaultExecutionOrder(-200)]
     public class GameplaySceneBootstrap : MonoBehaviour
     {
+        // Unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
+        public static GameplaySceneBootstrap Activo { get; private set; }
+        public static void ReiniciarActivo() => Activo = null;
+        public void RegistrarActivo()
+        {
+            Activo = this;
+        }
+        void OnDestroy() { if (Activo == this) Activo = null; }
+        void Awake() => RegistrarActivo();
         public PhaseBannerView ObjectiveBanner;
         public ModeToastView ModeToast;
 
@@ -56,7 +66,7 @@ namespace SP.Presentation
             // utilizables, y el cartel de modo dios ([F4]) queda listo.
             int torretas = SP.Vehicles.TorretaFija.InstalarEnEscena();
             if (torretas > 0) GameLog.Line($"{torretas} ametralladoras fijas listas ([E] para usarlas)");
-            var driverBoot = FindAnyObjectByType<SP.Player.PlayerInputDriver>();
+            var driverBoot = SP.Player.PlayerInputDriver.Activo;
             if (driverBoot != null && driverBoot.AimUiRef != null) SP.UI.ModoDiosView.Asegurar(driverBoot.AimUiRef.transform.parent);
 
             // Dificultad elegida en el menu: potenciadores de vida/dano (solo partida principal).
@@ -85,7 +95,7 @@ namespace SP.Presentation
 
             // El minimapa siempre arranca en MINI (MinimapFollow.tamanoMini),
             // desde el primer frame.
-            var minimapFollow = FindAnyObjectByType<SP.UI.MinimapFollow>();
+            var minimapFollow = SP.UI.MinimapFollow.Activo;
             if (minimapFollow != null) minimapFollow.AplicarTamanoInicial();
 
             // Aviso de bloque del nivel (el mapa mide 320 m de largo) y ajustes
@@ -108,7 +118,7 @@ namespace SP.Presentation
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null && !esTutorial)
                 {
-                if (FindAnyObjectByType<SP.Mision.MisionDirector>() != null)
+                if (SP.Mision.MisionDirector.Instancia != null)
                     ObjectiveBanner.Show("MISION: RESCATE\nCentro · Resiste 60 s · Rescate · Helicoptero", 5f);
                 else
                     ObjectiveBanner.Show("Elimina a todos los enemigos\nmanteniendo viva a tu escuadra", 3f);

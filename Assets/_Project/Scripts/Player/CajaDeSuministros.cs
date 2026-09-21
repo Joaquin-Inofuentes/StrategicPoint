@@ -91,7 +91,7 @@ namespace SP.Player
                 transform.Rotate(0f, 45f * Time.deltaTime, 0f, Space.World);
             }
             if (!visible) return;
-            if (driver == null) driver = FindAnyObjectByType<PlayerInputDriver>();
+            if (driver == null) driver = PlayerInputDriver.Activo;
             var yo = driver != null && driver.Brain != null ? driver.Brain.Current : null;
             if (yo == null || !yo.Health.IsAlive) return;
             var d = yo.transform.position - basePos; d.y = 0f;
@@ -134,7 +134,7 @@ namespace SP.Player
 
         static void CrearEnMision()
         {
-            var mision = FindAnyObjectByType<SP.Mision.MisionDirector>();
+            var mision = SP.Mision.MisionDirector.Instancia;
             WeaponHolder.ReservasActivas = mision != null;   // solo las misiones tienen municion limitada
             if (mision == null || Todas.Count > 0) return;
             var plaza = mision.Plaza;

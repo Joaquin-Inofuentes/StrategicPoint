@@ -19,7 +19,7 @@ namespace SP.Mision
 
         public static MisionHud Crear(MisionDirector d)
         {
-            var driver = FindAnyObjectByType<SP.Player.PlayerInputDriver>();
+            var driver = SP.Player.PlayerInputDriver.Activo;
             Transform raiz = driver != null && driver.AimUiRef != null ? driver.AimUiRef.transform.parent : null;
             if (raiz == null) return null;
 

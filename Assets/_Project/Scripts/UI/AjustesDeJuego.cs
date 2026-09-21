@@ -140,17 +140,11 @@ namespace SP.UI
             var rt = (RectTransform)settingsPanel.transform;
             var extra = settingsPanel.transform.Find(Nombre);
             if (extra == null) extra = Construir(rt);
-            var canvas = settingsPanel.GetComponentInParent<Canvas>();
-            var raiz = canvas != null ? (RectTransform)canvas.rootCanvas.transform : null;
-            if (raiz != null)
-            {
-                float alto = 940f + 20f, ancho = 480f + 440f + 30f;
-                float k = Mathf.Min(1f, raiz.rect.height / alto, raiz.rect.width / ancho);
-                rt.localScale = new Vector3(k, k, 1f);
-                // el panel principal queda a la izquierda; el bloque extra cuelga a su derecha
-                rt.anchoredPosition = new Vector2(-(440f * 0.5f + 15f) * k, 0f);
-            }
             Refrescar(extra);
+            // Ronda 13 (punto 6): el reacomodo ya no es un calculo de una sola vez al abrir: LayoutDeAjustes lo repite cada vez
+            // que cambia el area del canvas (resolucion / tamano de interfaz), el idioma o algun texto del panel.
+            var layout = LayoutDeAjustes.Asegurar(settingsPanel);
+            layout.Aplicar();
         }
 
         static Transform Construir(RectTransform padre)
@@ -178,7 +172,7 @@ namespace SP.UI
             return go.transform;
         }
 
-        static void Refrescar(Transform extra)
+        public static void Refrescar(Transform extra)
         {
             if (extra == null) return;
             Poner(extra, "Pantalla", "PANTALLA: " + (AjustesDeJuego.PantallaCompleta ? "COMPLETA" : "VENTANA"));

@@ -130,7 +130,7 @@ namespace SP.Mision
             SoldadosDeLaHorda = horda.Count;
 
             float t = 0f;
-            var pool = FindAnyObjectByType<ProjectilePool>();
+            var pool = ProjectilePool.Activo;
             float proximaTraza = 0f, proximoPolvo = 0f;
             bool despego = false;
             Vector3 heliInicio = heli.transform.position;

@@ -114,9 +114,10 @@ namespace SP.Tutorial
 
         void Start()
         {
-            driver = FindFirstObjectByType<PlayerInputDriver>();
-            var canvas = GameObject.Find("UI_Canvas/Canvas");
-            var cv = canvas != null ? canvas.transform : FindFirstObjectByType<Canvas>().transform;
+            driver = PlayerInputDriver.Activo;
+            // El canvas del HUD es el padre de la mira del driver.
+            var cv = driver != null && driver.AimUiRef != null ? driver.AimUiRef.transform.parent : null;
+            if (cv == null) { GameLog.Line("[Tutorial] no hay canvas de HUD: el tutorial no puede arrancar"); enabled = false; return; }
             ui = TutorialUI.Crear(cv);
 
             Flags.Reiniciar();
@@ -126,12 +127,17 @@ namespace SP.Tutorial
             TutorialLog.Reiniciar();
             tInicio = Time.time;
 
-            objDummy = Buscar("Tut_Enemigo_Estatico");
-            objPared = Buscar("Tut_Pared");
-            objDestruible = Buscar("Tut_Destruible");
-            zonaA = Buscar("Tut_ZonaA");
-            zonaB = Buscar("Tut_ZonaB");
-            meta = Buscar("Tut_Meta");
+            var catalogo = CatalogoDelTutorial.Activo;
+            if (catalogo == null) GameLog.Line("[AVISO] Falta el CatalogoDelTutorial en la escena: regenerar SC_Tutorial");
+            else
+            {
+                objDummy = TransformDe(catalogo.EnemigoEstatico);
+                objPared = TransformDe(catalogo.Pared);
+                objDestruible = TransformDe(catalogo.Destruible);
+                zonaA = TransformDe(catalogo.ZonaA);
+                zonaB = TransformDe(catalogo.ZonaB);
+                meta = TransformDe(catalogo.Meta);
+            }
             if (objDummy != null)
             {
                 dummy = objDummy.GetComponent<Soldier>();
@@ -225,11 +231,27 @@ namespace SP.Tutorial
             }
         }
 
-        static Transform Buscar(string nombre)
+        static Transform TransformDe(GameObject g) => g != null ? g.transform : null;
+
+        // Lo que la corrida automatica (TutorialAutoPlayer) necesita ubicar: los objetos bakeados salen del catalogo y
+        // los de practica, creados en marcha, los tiene este componente.
+        public GameObject Dummy => objDummy != null ? objDummy.gameObject : null;
+        public GameObject Pared => objPared != null ? objPared.gameObject : null;
+        public GameObject Destruible => objDestruible != null ? objDestruible.gameObject : null;
+        public GameObject ZonaA => zonaA != null ? zonaA.gameObject : null;
+        public GameObject ZonaB => zonaB != null ? zonaB.gameObject : null;
+        public GameObject Meta => meta != null ? meta.gameObject : null;
+        public GameObject EnemigoCuchillo => enemigoCuchillo != null ? enemigoCuchillo.gameObject : null;
+        public GameObject EnemigoGranada => enemigoGranada != null ? enemigoGranada.gameObject : null;
+        public GameObject EnemigoAtaque => enemigoAtaque != null ? enemigoAtaque.gameObject : null;
+        public GameObject CoberturaDePractica(int numero)
         {
-            var g = GameObject.Find(nombre);
-            return g != null ? g.transform : null;
+            int i = numero - 1;
+            var c = i >= 0 && i < coberturasPractica.Count ? coberturasPractica[i] : null;
+            return c != null ? c : null;   // un objeto ya destruido sale como null de verdad (sirve para ??)
         }
+        public GameObject MuroDePractica => muroPractica != null ? muroPractica.gameObject : null;
+        public GameObject TorretaDePractica => torretaPractica != null ? torretaPractica.gameObject : null;
 
         // ===============================================================
         // Definicion de los 35 pasos

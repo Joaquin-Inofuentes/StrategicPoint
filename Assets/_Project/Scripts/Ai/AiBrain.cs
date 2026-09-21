@@ -107,6 +107,9 @@ namespace SP.Ai
         // encima del jugador (empujones, camara tapada); demasiado lejos
         // y "seguir" se ve identico a quedarse atras sin hacer nada.
         [SerializeField] float followStopDistance = 2.5f;
+        // Ronda 13 (punto 4): "seguirme" a la mitad de distancia. Es un factor y no un cambio del campo porque
+        // followStopDistance esta serializado en los prefabs y en las escenas (un default nuevo no lo pisa).
+        public const float FactorDeCercaniaAlSeguir = 0.5f;
 
         // La postura NO se serializa a proposito, al reves que patrolRoute:
         // no se asigna al construir la escena sino en runtime (el jugador
@@ -624,6 +627,7 @@ namespace SP.Ai
         public void IssueMountOrder(Vehicle vehicle)
         {
             if (vehicle == null) return;
+            if (!vehicle.PuedeAbordar(self)) return;   // ronda 13 (punto 12): tanque enemigo / destruido: no se ordena subir
             if (!bootstrapped) Bootstrap();
             NuevaOrden();
             target = null;
@@ -954,7 +958,7 @@ namespace SP.Ai
                     Vector3 puntoASeguir = tieneRanura
                         ? followTarget.transform.position + followTarget.transform.TransformDirection(followOffsetLocal)
                         : followTarget.transform.position;
-                    float umbralSeguimiento = tieneRanura ? Mathf.Max(arriveThreshold, 0.5f) : followStopDistance;
+                    float umbralSeguimiento = tieneRanura ? Mathf.Max(arriveThreshold, 0.5f) : followStopDistance * FactorDeCercaniaAlSeguir;
                     SeguirHasta(puntoASeguir, umbralSeguimiento, dt);
                     break;
 

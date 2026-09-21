@@ -58,7 +58,7 @@ namespace SP.Tutorial
 
         IEnumerator GestoMoverFpsReal(PlayerInputDriver d)
         {
-            var zona = GameObject.Find("Tut_ZonaB");
+            var zona = TutorialManager.Instance?.ZonaB;
             var destino = zona != null ? zona.transform.position : d.Brain.Current.transform.position + d.Brain.Current.transform.forward * 8f;
             yield return MirarHacia(d, AlSuelo(destino));
             Entrada.BotonDerecho(true);
@@ -73,8 +73,8 @@ namespace SP.Tutorial
             var frente = Vector3.ProjectOnPlane(d.Rig.Cam.transform.forward, Vector3.up).normalized;
             yield return Radial(d, 0, 0, () => AlSuelo(yo.transform.position + frente * 10f));
             yield return new WaitForSeconds(1f);
-            var e = GameObject.Find("Tut_Enemigo_Ataque");
-            if (e != null) yield return Radial(d, 2, 0, () => GameObject.Find("Tut_Enemigo_Ataque")?.transform.position + Vector3.up * 1.0f);
+            var e = TutorialManager.Instance?.EnemigoAtaque;
+            if (e != null) yield return Radial(d, 2, 0, () => TutorialManager.Instance?.EnemigoAtaque?.transform.position + Vector3.up * 1.0f);
         }
 
         IEnumerator GestoCubrirseReal(PlayerInputDriver d)
@@ -83,11 +83,10 @@ namespace SP.Tutorial
             // Si un aliado queda trabado camino a la cobertura, se repite la orden (otra cobertura la segunda vez), como haria una persona.
             for (int intento = 0; intento < 3 && !tm.Flags.aliadosEnCobertura; intento++)
             {
-                string nombre = "Tut_Cobertura_" + (intento % 2 == 0 ? 1 : 2);
                 if (intento > 0 && d.Squad != null)
                 {
                     // Al que quedo trabado se lo manda primero junto a los sacos (IR ALLI solo a el), para que su cobertura mas cercana sea esa.
-                    var sacos = GameObject.Find(nombre) ?? GameObject.Find("Tut_Cobertura_1");
+                    var sacos = TutorialManager.Instance?.CoberturaDePractica(intento % 2 == 0 ? 1 : 2) ?? TutorialManager.Instance?.CoberturaDePractica(1);
                     for (int i = 0; i < d.Squad.Count && sacos != null; i++)
                     {
                         var a = d.Squad[i];
@@ -99,7 +98,7 @@ namespace SP.Tutorial
                 }
                 yield return Radial(d, 1, 0, () =>
                 {
-                    var c = GameObject.Find(nombre) ?? GameObject.Find("Tut_Cobertura_1");
+                    var c = TutorialManager.Instance?.CoberturaDePractica(intento % 2 == 0 ? 1 : 2) ?? TutorialManager.Instance?.CoberturaDePractica(1);
                     return c != null ? c.transform.position + Vector3.up * 0.5f : (Vector3?)null;
                 });
                 float espera = Time.time + 18f;
@@ -125,8 +124,8 @@ namespace SP.Tutorial
         {
             Vector3? Caido()
             {
-                foreach (var s in Object.FindObjectsByType<Soldier>(FindObjectsInactive.Exclude))
-                    if (s != null && s.Team == TeamId.Player && s.Health != null && !s.Health.IsAlive && s.Role != RoleType.Civilian)
+                foreach (var s in ActorRegistry.All)
+                    if (s != null && s.gameObject.activeInHierarchy && s.Team == TeamId.Player && s.Health != null && !s.Health.IsAlive && s.Role != RoleType.Civilian)
                     {
                         var col = s.GetComponentInChildren<Collider>();
                         return col != null ? col.bounds.center : s.transform.position + Vector3.up * 0.3f;
@@ -145,7 +144,7 @@ namespace SP.Tutorial
 
         static Vector3? PuntoDelMuro()
         {
-            var m = GameObject.Find("Tut_MuroDemolible");
+            var m = TutorialManager.Instance?.MuroDePractica;
             return m != null ? m.transform.position + Vector3.up * 0.8f : (Vector3?)null;
         }
 
@@ -169,7 +168,7 @@ namespace SP.Tutorial
 
         IEnumerator GestoTorretaFijaReal(PlayerInputDriver d)
         {
-            var t = GameObject.Find("Tut_TorretaFija");
+            var t = TutorialManager.Instance?.TorretaDePractica;
             if (t == null) yield break;
             yield return MirarHacia(d, AlSuelo(t.transform.position));
             yield return CaminarHasta(d, t.transform.position, 2.5f, 8f);
@@ -273,7 +272,7 @@ namespace SP.Tutorial
 
         IEnumerator GestoFinalReal(PlayerInputDriver d)
         {
-            var meta = GameObject.Find("Tut_Meta");
+            var meta = TutorialManager.Instance?.Meta;
             var v = d.Vehicle;
             if (meta == null || v == null) yield break;
             var tm = TutorialManager.Instance;

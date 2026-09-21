@@ -16,12 +16,20 @@ namespace SP.Ai
     [ExecuteAlways]
     public class AjustesDeEscuadra : MonoBehaviour
     {
-        public float distanciaParaSeguir = 25f;
-        public float distanciaParaDetenerse = 8f;
+        // Unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
+        public static AjustesDeEscuadra Activo { get; private set; }
+        public static void ReiniciarActivo() => Activo = null;
+        public void RegistrarActivo()
+        {
+            Activo = this;
+        }
+        // Ronda 13 (punto 4): "seguirme" a la MITAD de la distancia anterior (25 / 8 m pasan a 12,5 / 4 m).
+        public float distanciaParaSeguir = 12.5f;
+        public float distanciaParaDetenerse = 4f;
         public bool seguirDesdeCobertura = true;
 
-        public static float DistanciaParaSeguir = 25f;
-        public static float DistanciaParaDetenerse = 8f;
+        public static float DistanciaParaSeguir = 12.5f;
+        public static float DistanciaParaDetenerse = 4f;
         public static bool SeguirDesdeCobertura = true;
 
         // El soldado que maneja el jugador en primera persona (null en RTS o
@@ -32,7 +40,12 @@ namespace SP.Ai
         // una orden de mover o se retiran) tambien corren.
         public static bool Correr;
 
-        void OnEnable() => Aplicar();
+        void OnDisable() { if (Activo == this) Activo = null; }
+        void OnEnable()
+        {
+            RegistrarActivo();
+            Aplicar();
+        }
         void OnValidate() => Aplicar();
 
         public void Aplicar()
@@ -49,10 +62,10 @@ namespace SP.Ai
         // escenas de prueba no).
         public static AjustesDeEscuadra AsegurarEnEscena()
         {
-            var a = FindFirstObjectByType<AjustesDeEscuadra>(FindObjectsInactive.Include);
-            if (a != null) return a;
-            var go = new GameObject("AjustesDeEscuadra");
-            return go.AddComponent<AjustesDeEscuadra>();
+            if (Activo != null) return Activo;
+            var a = new GameObject("AjustesDeEscuadra").AddComponent<AjustesDeEscuadra>();
+            a.RegistrarActivo();
+            return a;
         }
     }
 }

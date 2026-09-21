@@ -82,11 +82,11 @@ namespace SP.Presentation
         static void EnsureExists()
         {
             if (active != null) return;
-            if (FindAnyObjectByType<EntityStateDebugView>() != null) return;
             var go = new GameObject("EntityStateDebugView");
             active = go.AddComponent<EntityStateDebugView>();
         }
 
+        void Awake() { if (active == null) active = this; }   // la escena puede traer el suyo: evita el barrido de busqueda
         void OnDestroy()
         {
             if (active == this) active = null;

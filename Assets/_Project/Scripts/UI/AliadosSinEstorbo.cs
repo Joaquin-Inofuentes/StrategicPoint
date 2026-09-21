@@ -71,7 +71,7 @@ namespace SP.UI
         SP.Player.PlayerInputDriver driverCache;
         SP.Player.PlayerInputDriver FindDriver()
         {
-            if (driverCache == null) driverCache = FindAnyObjectByType<SP.Player.PlayerInputDriver>();
+            if (driverCache == null) driverCache = SP.Player.PlayerInputDriver.Activo;
             return driverCache;
         }
         void OnDestroy() { Restaurar(); if (instancia == this) instancia = null; }

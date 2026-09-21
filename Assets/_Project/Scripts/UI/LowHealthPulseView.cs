@@ -102,7 +102,7 @@ namespace SP.UI
                 // cara, no puede correr todos los frames. FindFirstObjectByType
                 // esta obsoleto en esta version; FindAnyObjectByType alcanza
                 // porque el PlayerBrain es unico en la escena.
-                Brain = Object.FindAnyObjectByType<SP.Player.PlayerBrain>();
+                Brain = SP.Player.PlayerBrain.Activo;
                 if (Brain == null) { Silence(); return; }
             }
 

@@ -91,7 +91,7 @@ namespace SP.UI
             // nunca en la posesion inicial del arranque (mismo bug que ya
             // documentaba SelectedSoldierUI): se lee del brain una vez aca,
             // despues el evento alcanza para todo lo demas.
-            var playerBrain = FindAnyObjectByType<PlayerBrain>();
+            var playerBrain = PlayerBrain.Activo;
             possessed = playerBrain != null && playerBrain.Current != null && playerBrain.Current.Id == SoldierId;
 
             RefreshLabel();

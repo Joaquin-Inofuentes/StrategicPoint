@@ -46,14 +46,16 @@ namespace SP.Player
                 return mp;
             }
 
-            var raiz = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            // Ronda 13 (punto 5): el respaldo ya no es un cubo (se leia como "un cubo que aparece al matar"): es una moneda plana.
+            var raiz = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             raiz.name = "MunicionPickup";
             raiz.transform.position = pos + Vector3.up * 0.3f;
-            raiz.transform.localScale = new Vector3(0.35f, 0.35f, 0.35f);
+            raiz.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            raiz.transform.localScale = new Vector3(0.4f, 0.04f, 0.4f);
 
             var colViejo = raiz.GetComponent<Collider>();
             if (colViejo != null) Destroy(colViejo);
-            var col = raiz.AddComponent<BoxCollider>();
+            var col = raiz.AddComponent<SphereCollider>();
             col.isTrigger = true;
 
             var color = new Color(0.85f, 0.65f, 0.15f); // color "municion", distinto del verde de CajaDeSuministros
@@ -80,7 +82,7 @@ namespace SP.Player
             p.y = alturaBase + Mathf.Sin(edad * 3.2f) * 0.07f;
             transform.position = p;
 
-            if (driver == null) driver = FindAnyObjectByType<PlayerInputDriver>();
+            if (driver == null) driver = PlayerInputDriver.Activo;
             var yo = driver != null && driver.Brain != null ? driver.Brain.Current : null;
             if (yo == null || yo.Weapon == null || !yo.Health.IsAlive) return;
 

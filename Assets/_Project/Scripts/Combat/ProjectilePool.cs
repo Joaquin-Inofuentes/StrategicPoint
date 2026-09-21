@@ -6,14 +6,25 @@ namespace SP.Combat
     // Dueño del pool de proyectiles. Cero Instantiate en combate: todo pasa por acá.
     // El pool en sí (ObjectPool<T>) es estado de runtime que no sobrevive a un
     // domain reload; se reconstruye solo en Awake a partir de campos serializados.
+    [DefaultExecutionOrder(-200)]
     public class ProjectilePool : MonoBehaviour
     {
+        // Servicio unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
+        // El suite (Edit mode, donde no corren Awake/OnEnable) llama Registrar() a mano.
+        public static ProjectilePool Activo { get; private set; }
+        public static void ReiniciarActivo() => Activo = null;
+        public void Registrar()
+        {
+            Activo = this;
+        }
+        void QuitarRegistro() { if (Activo == this) Activo = null; }
         [SerializeField] Projectile prefab;
         [SerializeField] int prewarm = 24;
 
         ObjectPool<Projectile> pool;
 
-        void Awake() => Bootstrap();
+        void Awake() { Registrar(); Bootstrap(); }
+        void OnDestroy() => QuitarRegistro();
 
         int generation;
 

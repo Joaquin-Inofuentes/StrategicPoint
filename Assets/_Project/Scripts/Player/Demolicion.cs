@@ -183,7 +183,7 @@ namespace SP.Player
         // Jugador: solo si esta agachado, quieto y apuntando a algo demolible a tiro de carga.
         void ModoAutomatico(float dt)
         {
-            if (driver == null) driver = FindAnyObjectByType<PlayerInputDriver>();
+            if (driver == null) driver = PlayerInputDriver.Activo;
             if (driver == null) return;
 
             ObstacleMarker m = null;
@@ -204,6 +204,7 @@ namespace SP.Player
                 if (!cargando) { cargando = true; Feedback.Accion(SfxKind.BombPlant, "PLANTANDO CARGA…", yo.transform.position, Feedback.Warn, aviso: true, pulso: true, volumen: 0.7f); }
                 Progreso = Mathf.Min(1f, Progreso + dt / Demolicion.Segundos);
                 TicDeCarga();
+                ReportarAccion();
                 driver.DemolicionEnCurso = true;
                 driver.MostrarProgresoDemolicion(Progreso);
                 if (Progreso >= 1f) Terminar();
@@ -253,12 +254,22 @@ namespace SP.Player
                 if (mira.sqrMagnitude > 0.01f) yo.transform.rotation = Quaternion.Slerp(yo.transform.rotation, Quaternion.LookRotation(mira.normalized), dt * 8f);
             }
             bool enCombate = yo.Brain.State == SP.Ai.AiState.Chase || yo.Brain.State == SP.Ai.AiState.Attack;
-            if (!enCombate) { Progreso = Mathf.Min(1f, Progreso + dt / Demolicion.Segundos); TicDeCarga(); }
+            if (!enCombate) { Progreso = Mathf.Min(1f, Progreso + dt / Demolicion.Segundos); TicDeCarga(); ReportarAccion(); }
             if (Progreso >= 1f) Terminar();
+        }
+
+        // Ronda 13 (puntos 2 y 3): barra de carga entre el soldado y el muro + estado "DETONANDO".
+        void ReportarAccion()
+        {
+            if (objetivo == null) return;
+            var col = objetivo.GetComponent<Collider>();
+            var punto = col != null ? col.ClosestPoint(yo.transform.position) : objetivo.transform.position;
+            AccionesEnCurso.Reportar(yo, "DETONANDO", punto, Progreso, (1f - Progreso) * Demolicion.Segundos, objetivo.transform);
         }
 
         void Terminar()
         {
+            AccionesEnCurso.Terminar(yo);
             var m = objetivo;
             bool eraJugador = yo.Brain != null && yo.Brain.IsPossessedByPlayer;
             cargando = false; modoAliado = false; objetivo = null; Progreso = 0f;

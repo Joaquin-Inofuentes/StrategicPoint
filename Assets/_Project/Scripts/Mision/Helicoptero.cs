@@ -161,7 +161,7 @@ namespace SP.Mision
             if (Time.time < rafagaHasta && Time.time >= proximoDisparo && objetivo != null && objetivo.Health.IsAlive)
             {
                 proximoDisparo = Time.time + 0.09f;
-                if (pool == null) pool = FindAnyObjectByType<ProjectilePool>();
+                if (pool == null) pool = ProjectilePool.Activo;
                 if (pool == null) return;
                 var boca = transform.position + transform.right * 1.3f + Vector3.up * 1.2f;
                 var mira = objetivo.transform.position + Vector3.up * 0.9f;

@@ -184,6 +184,7 @@ namespace SP.EditorTools
                 }
             }
             Check("Ningun codigo de runtime usa Camera.main ni Resources.Load directo (todo pasa por los caches)", codigoRuntime.Length == 0);
+            CheckBusquedasGlobales();
 
             // --- LOD por distancia del WorldSimulationDriver (59) ---
             {
@@ -232,6 +233,17 @@ namespace SP.EditorTools
                 var cajon = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 cajon.transform.localScale = new Vector3(1.2f, 1.0f, 1.2f);
                 cajon.transform.position = new Vector3(posOriginal.x, pisoBajoKes.y + 0.5f, posOriginal.z) + frente * 1.4f;
+                // Ronda 13: la trepa se rechaza si hay OTRO soldado encima del punto de llegada (motivo 5). Segun donde hayan dejado a la
+                // escuadra y a los patrulleros las fases anteriores, alguno podia quedar justo ahi (fallaba una de cada tres corridas).
+                var apartados = new System.Collections.Generic.List<(Soldier, Vector3)>();
+                foreach (var otro in ActorRegistry.All)
+                {
+                    if (otro == null || otro == kes) continue;
+                    var dd = otro.transform.position - cajon.transform.position; dd.y = 0f;
+                    if (dd.magnitude > 3f) continue;
+                    apartados.Add((otro, otro.transform.position));
+                    otro.transform.position += new Vector3(0f, 0f, 500f);
+                }
                 Physics.SyncTransforms();
                 bool trepo = kes.Motor.TryVault();
                 Check("Contra un cajon de 1 m, saltar lo trepa (motivo " + kes.Motor.UltimoMotivoDeTrepa + ")", trepo && kes.Motor.Vaulting);
@@ -245,6 +257,7 @@ namespace SP.EditorTools
                 Physics.SyncTransforms();
                 Check("Un muro de 2,5 m no se trepa", !kes.Motor.TryVault());
                 Object.DestroyImmediate(cajon);
+                foreach (var (otro, pos) in apartados) otro.transform.position = pos;
                 kes.transform.position = posOriginal;
                 Physics.SyncTransforms();
                 Check("En campo abierto no hay nada que trepar", !kes.Motor.TryVault());

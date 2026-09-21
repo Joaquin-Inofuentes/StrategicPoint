@@ -48,7 +48,7 @@ namespace SP.UI
         IReadOnlyList<Soldier> CurrentSquad()
         {
             if (squad.Count > 0) return squad;
-            if (driver == null) driver = Object.FindAnyObjectByType<SP.Player.PlayerInputDriver>();
+            if (driver == null) driver = SP.Player.PlayerInputDriver.Activo;
             return driver != null && driver.Squad != null ? driver.Squad : (IReadOnlyList<Soldier>)System.Array.Empty<Soldier>();
         }
 
@@ -125,7 +125,7 @@ namespace SP.UI
             // cero, al borde entre "delante" y "detras" de la camara por
             // puro ruido de punto flotante. Sin excluirlo, a veces se le
             // dibujaba una flecha a si mismo.
-            if (driver == null) driver = Object.FindAnyObjectByType<SP.Player.PlayerInputDriver>();
+            if (driver == null) driver = SP.Player.PlayerInputDriver.Activo;
             var poseido = driver != null && driver.Brain != null ? driver.Brain.Current : null;
 
             int used = 0;

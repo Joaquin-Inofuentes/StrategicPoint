@@ -93,51 +93,14 @@ namespace SP.Presentation
             // avisa al feed, que lee FeedText()/LastKillWasPlayer.
             if (Feed != null) Feed.ShowKill();
 
-            if (Application.isPlaying) StartCoroutine(SilhouetteFlash(victim));
             if (OffscreenMarker != null) OffscreenMarker.Report(victim.transform.position);
 
             TrySlowMotionOnLastKill();
         }
 
-        // 167: destello del contorno al morir. Un cubo agrandado y pintado
-        // detras del cuerpo hace de contorno sin necesitar un shader
-        // dedicado, que este proyecto no usa en ningun otro lado.
-        static readonly Color SilhouetteColor = new Color(1f, 0.95f, 0.7f);
-
-        IEnumerator SilhouetteFlash(Soldier victim)
-        {
-            var rend = victim.GetComponentInChildren<Renderer>();
-            if (rend == null) yield break;
-
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            go.name = "DeathSilhouette";
-            var col = go.GetComponent<Collider>();
-            if (col != null) Destroy(col);
-            go.transform.position = victim.transform.position;
-            go.transform.rotation = victim.transform.rotation;
-            var baseScale = victim.transform.localScale * 1.25f;
-
-            var mr = go.GetComponent<MeshRenderer>();
-            mr.sharedMaterial = SafeMaterial.Create(SilhouetteColor);
-            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-
-            const float duration = 0.3f;
-            float t = 0f;
-            while (t < duration)
-            {
-                t += Time.unscaledDeltaTime;
-                float k = t / duration;
-                go.transform.localScale = Vector3.Lerp(baseScale, baseScale * 1.6f, k);
-                if (victim != null) go.transform.position = victim.transform.position;
-                yield return null;
-            }
-            // Sin residuo: se destruye entero, no queda un objeto invisible
-            // acumulandose por cada baja. Destruir el GameObject NO libera
-            // el Material creado en runtime -- queda huerfano hasta cambiar
-            // de escena, o sea un material filtrado por cada baja.
-            if (mr != null && mr.sharedMaterial != null) Destroy(mr.sharedMaterial);
-            Destroy(go);
-        }
+        // 167: el destello del contorno al morir era un cubo pintado detras del cuerpo (CreatePrimitive(Cube)) y en
+        // pantalla se veia como un bloque translucido que aparecia con cada baja (ronda 13, punto 5). Se elimino: la
+        // baja se comunica con el kill feed, el marcador fuera de pantalla y el propio efecto de muerte del cuerpo.
 
         // 169: tono que sube con la racha. Se reusa la paleta existente
         // cambiandole el pitch, en vez de generar un clip por nivel.

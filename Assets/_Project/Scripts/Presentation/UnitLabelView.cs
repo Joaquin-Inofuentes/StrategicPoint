@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using SP.Actors;
@@ -172,12 +173,14 @@ namespace SP.Presentation
         public static int RegistrarTodas()
         {
             int creadas = 0;
-            foreach (var s in FindObjectsByType<Soldier>(FindObjectsInactive.Include))
-                ConstruirSiFalta(s.transform, ref creadas);
-            foreach (var v in FindObjectsByType<Vehicle>(FindObjectsInactive.Include))
-                ConstruirSiFalta(v.transform, ref creadas);
-            foreach (var o in FindObjectsByType<ObstacleMarker>(FindObjectsInactive.Include))
-                ConstruirSiFalta(o.transform, ref creadas);
+            SP.Core.ActorRegistry.Rebarrer();   // incluye los que arrancan desactivados
+            SP.Core.WorldSystemsRegistry.EnsurePopulated();
+            foreach (var s in new List<Soldier>(SP.Core.ActorRegistry.All))
+                if (s != null) ConstruirSiFalta(s.transform, ref creadas);
+            foreach (var v in SP.Core.WorldSystemsRegistry.Vehicles)
+                if (v != null) ConstruirSiFalta(v.transform, ref creadas);
+            foreach (var o in SP.Core.WorldSystemsRegistry.Obstacles)
+                if (o != null) ConstruirSiFalta(o.transform, ref creadas);
             return creadas;
         }
     }

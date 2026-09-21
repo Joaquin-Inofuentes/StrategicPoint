@@ -388,7 +388,7 @@ namespace SP.EditorTools
             var soldierPrefab = BuildAndSaveSoldierPrefab();
             var projectilePrefab = BuildAndSaveProjectilePrefab();
             var poolGO = new GameObject("BenchPool");
-            var pool = poolGO.AddComponent<ProjectilePool>();
+            var pool = poolGO.AddComponent<ProjectilePool>(); pool.Registrar();
             pool.Configure(projectilePrefab, SP.Combat.ProjectilePool.RecommendedPrewarm(unitCount, 3f, 3f));
 
             // Semilla FIJA: la misma corrida de N siempre reparte a las
@@ -519,7 +519,7 @@ namespace SP.EditorTools
             var soldierPrefab = BuildAndSaveSoldierPrefab();
             var projectilePrefab = BuildAndSaveProjectilePrefab();
             var poolGO = new GameObject("EquivPool");
-            var pool = poolGO.AddComponent<ProjectilePool>();
+            var pool = poolGO.AddComponent<ProjectilePool>(); pool.Registrar();
             pool.Configure(projectilePrefab, 4);
 
             var rng = new System.Random(999);
@@ -630,7 +630,7 @@ namespace SP.EditorTools
             var soldierPrefab = BuildAndSaveSoldierPrefab();
             var projectilePrefab = BuildAndSaveProjectilePrefab();
             var poolGO = new GameObject("StressPool");
-            var pool = poolGO.AddComponent<ProjectilePool>();
+            var pool = poolGO.AddComponent<ProjectilePool>(); pool.Registrar();
             pool.Configure(projectilePrefab, SP.Combat.ProjectilePool.RecommendedPrewarm(StressSoldierCount, 3f, 3f));
 
             var rng = new System.Random(555);
@@ -740,7 +740,7 @@ namespace SP.EditorTools
             var colorVehicle = new Color(0.98f, 0.65f, 0.15f);
 
             var poolGO = new GameObject("ProjectilePool");
-            var pool = poolGO.AddComponent<ProjectilePool>();
+            var pool = poolGO.AddComponent<ProjectilePool>(); pool.Registrar();
             // 229: el 24 era una constante magica. Ahora se deriva de
             // unidades x cadencia x vida del proyectil, que es lo que
             // realmente determina cuantos hay en vuelo a la vez.
@@ -776,7 +776,7 @@ namespace SP.EditorTools
             rig.SetMode(ControlMode.Fps);
 
             var servicesGO = new GameObject("GameServices");
-            var playerBrain = servicesGO.AddComponent<PlayerBrain>();
+            var playerBrain = servicesGO.AddComponent<PlayerBrain>(); playerBrain.Registrar();
             var aimTargeting = servicesGO.AddComponent<AimTargeting>();
             var selection = servicesGO.AddComponent<SelectionController>();
             playerBrain.Possess(vega);
@@ -784,7 +784,7 @@ namespace SP.EditorTools
 
             BuildUI(squad, cam, playerBrain);
 
-            var inputDriver = servicesGO.AddComponent<PlayerInputDriver>();
+            var inputDriver = servicesGO.AddComponent<PlayerInputDriver>(); inputDriver.Registrar();
             inputDriver.Brain = playerBrain;
             inputDriver.Aim = aimTargeting;
             inputDriver.Rig = rig;
@@ -798,6 +798,7 @@ namespace SP.EditorTools
             inputDriver.MinimapRef = minimapFollowRef;
             inputDriver.DeadNotice = deadNoticeRef;
             inputDriver.WeaponStatus = weaponStatusRef;
+            ReRegistrarServiciosDeLaSuite(inputDriver, pool);
             inputDriver.VehicleStatus = vehicleStatusRef;
             inputDriver.DamageVignette = damageVignetteRef;
             inputDriver.PerfHud = perfHudRef;
@@ -910,6 +911,8 @@ namespace SP.EditorTools
                 RunPhase18(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase19(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase20(inputDriver, vehicle, vega, kes, doc);
+                RunPhase21(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
+                RunPhase22();
 
                 // El cartel de "Felicidades, completaste la Fase N" se
                 // queda ENGANCHADO visible para siempre si no se limpia
@@ -3974,7 +3977,7 @@ namespace SP.EditorTools
             var outcomeGO = new GameObject("GameOutcome", typeof(RectTransform), typeof(GameOutcomeController));
             outcomeGO.transform.SetParent(canvasParent, false);
             StretchFull(outcomeGO.GetComponent<RectTransform>());
-            var outcomeController = outcomeGO.GetComponent<GameOutcomeController>();
+            var outcomeController = outcomeGO.GetComponent<GameOutcomeController>(); outcomeController.Registrar();
 
             var victoryGO = BuildOutcomePanel(outcomeGO.transform, "VictoryPanel", "GANASTE", new Color(0.1f, 0.5f, 0.15f, 0.92f), out var victoryRetry, out var victoryExit);
             var defeatGO = BuildOutcomePanel(outcomeGO.transform, "DefeatPanel", "PERDISTE", new Color(0.55f, 0.1f, 0.1f, 0.92f), out var defeatRetry, out var defeatExit);

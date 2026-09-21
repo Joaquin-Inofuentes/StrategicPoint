@@ -41,6 +41,7 @@
 |---|---|
 | `HeadlessTestRunner.Fase18.cs` | `F` |
 | `HeadlessTestRunner.Fase19.cs` | `Replace` |
+| `HeadlessTestRunner.Fase21.cs` | `name`, `text`, `transform` |
 | `HeadlessTestRunner.Fases13a17.cs` | `C`, `F`, `G`, `None` |
 | `HeadlessTestRunner.cs` | `U` |
 | `KeyBindings.cs` | `B`, `C`, `E`, `F`, `G`, `H`, `J`, `K`, `L`, `M`, `N`, `None`, `O`, `Q`, `R`, `Space`, `Tab`, `X` |

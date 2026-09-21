@@ -98,7 +98,7 @@ namespace SP.UI
                 var t = transform.Find("Arrow");
                 if (t != null) arrow = t.GetComponent<Image>();
             }
-            if (brain == null) brain = FindAnyObjectByType<PlayerBrain>();
+            if (brain == null) brain = PlayerBrain.Activo;
             if (sub == null) Initialize();
         }
 

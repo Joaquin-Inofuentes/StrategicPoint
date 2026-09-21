@@ -1,9 +1,9 @@
 # Mapa del proyecto — indice para IA
 
-> Generado por `Tools/Indice/indexar_ia.py` el 2026-09-21 11:21 UTC.
+> Generado por `Tools/Indice/indexar_ia.py` el 2026-09-21 20:55 UTC.
 > No editar a mano: se regenera. Si algo esta mal, esta mal el generador.
 
-**234 scripts · 60,354 lineas · 5 escenas · 133 prefabs**
+**246 scripts · 62,507 lineas · 5 escenas · 133 prefabs**
 
 ## Como leer este indice
 
@@ -39,17 +39,17 @@ que la IA y que las pruebas.
 
 | Subsistema | Scripts | Lineas | Que hace |
 |---|---|---|---|
-| **Presentation** | 56 | 11427 | Todo lo que se ve y se oye en el mundo: VFX, audio, marcadores, pools visuales. |
-| **UI** | 41 | 7039 | HUD y pantallas: mira, roster, minimapa, radial, menus, ajustes. |
-| **Editor** | 35 | 14724 | Herramientas de Editor: suite headless, constructores de escena, pipelines de arte. |
-| **Core** | 23 | 3667 | Servicios sin escena: bus de eventos, registros, grilla espacial, navegacion, pools, idioma, dificultad. |
-| **Player** | 21 | 7902 | Traduccion de intencion a ordenes: input, posesion, seleccion, ordenes. |
-| **Combat** | 12 | 2449 | Vida, dano, armas, proyectiles y catalogo. |
-| **Tutorial** | 12 | 4483 | Modulo de ensenanza y su reproductor automatico. |
-| **Ai** | 10 | 2819 | Cerebro de una unidad no poseida y el driver que avanza la simulacion. |
-| **Vehicles** | 10 | 2370 | Tanque, asientos, torretas y ametralladoras fijas. |
-| **Mision** | 5 | 1201 | La partida: objetivos, oleadas, rehen, helicoptero, cinematica final. |
-| **Actors** | 4 | 659 | El soldado: identidad, piezas, motor de movimiento y aspecto. |
+| **Presentation** | 58 | 11862 | Todo lo que se ve y se oye en el mundo: VFX, audio, marcadores, pools visuales. |
+| **UI** | 42 | 7438 | HUD y pantallas: mira, roster, minimapa, radial, menus, ajustes. |
+| **Editor** | 38 | 15503 | Herramientas de Editor: suite headless, constructores de escena, pipelines de arte. |
+| **Core** | 24 | 3715 | Servicios sin escena: bus de eventos, registros, grilla espacial, navegacion, pools, idioma, dificultad. |
+| **Player** | 24 | 8174 | Traduccion de intencion a ordenes: input, posesion, seleccion, ordenes. |
+| **Tutorial** | 13 | 4544 | Modulo de ensenanza y su reproductor automatico. |
+| **Combat** | 12 | 2474 | Vida, dano, armas, proyectiles y catalogo. |
+| **Ai** | 11 | 2893 | Cerebro de una unidad no poseida y el driver que avanza la simulacion. |
+| **Vehicles** | 10 | 2406 | Tanque, asientos, torretas y ametralladoras fijas. |
+| **Mision** | 5 | 1202 | La partida: objetivos, oleadas, rehen, helicoptero, cinematica final. |
+| **Actors** | 4 | 682 | El soldado: identidad, piezas, motor de movimiento y aspecto. |
 | **Camera** | 2 | 896 | Rig de camara: hombro, RTS, transiciones, sacudidas, zoom. |
 | **Otros** | 1 | 17 |  |
 | **Demo** | 1 | 669 | Corredor de demo automatica. |
@@ -59,17 +59,17 @@ que la IA y que las pruebas.
 
 | Archivo | Lineas | Subsistema | Que hace |
 |---|---|---|---|
-| `Assets/_Project/Scripts/Editor/HeadlessTestRunner.cs` | 4197 | Editor | Construye el entorno de prueba (suelo, obstáculos, prefabs, 3 soldados, cámara, UI, pool d… |
-| `Assets/_Project/Scripts/Player/PlayerInputDriver.cs` | 3479 | Player | Traduce teclado/ratón reales a los mismos métodos que usa el test automático. No decide na… |
-| `Assets/_Project/Scripts/Tutorial/TutorialManager.cs` | 1883 | Tutorial | Modulo de tutorial. Recorre 35 pasos en orden; cada paso tiene sub-pasos y cada sub-paso u… |
+| `Assets/_Project/Scripts/Editor/HeadlessTestRunner.cs` | 4200 | Editor | Construye el entorno de prueba (suelo, obstáculos, prefabs, 3 soldados, cámara, UI, pool d… |
+| `Assets/_Project/Scripts/Player/PlayerInputDriver.cs` | 3498 | Player | Traduce teclado/ratón reales a los mismos métodos que usa el test automático. No decide na… |
+| `Assets/_Project/Scripts/Tutorial/TutorialManager.cs` | 1905 | Tutorial | Modulo de tutorial. Recorre 35 pasos en orden; cada paso tiene sub-pasos y cada sub-paso u… |
 | `Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases8a12.cs` | 1551 | Editor | HeadlessTestRunner (parte): fases 8 a 12 de la suite. |
-| `Assets/_Project/Scripts/Ai/AiBrain.cs` | 1238 | Ai | Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las … |
+| `Assets/_Project/Scripts/Ai/AiBrain.cs` | 1242 | Ai | Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las … |
 | `Assets/_Project/Scripts/Editor/ArtSetup.cs` | 891 | Editor | Pipeline de importacion del arte de Assets/ARTS. Es una herramienta y no un README con pas… |
 | `Assets/_Project/Scripts/Editor/WorldArtPipeline.cs` | 865 | Editor | Pipeline del pack de arte nuevo (Assets/ARTS/SP_Arte/_FBX_Export): ~90 mallas modulares/am… |
 | `Assets/_Project/Scripts/Camera/CameraRig.cs` | 850 | Camera | Posee la cámara y delega su posición en el modo activo (FPS u RTS). |
 | `Assets/_Project/Scripts/Combat/Projectile.cs` | 839 | Combat | Viaja, comprueba su propio impacto por distancia (sin física) y se devuelve solo al pool. … |
 | `Assets/_Project/Scripts/Editor/ArtBuilder.cs` | 814 | Editor | Segunda mitad del pipeline de arte: con los FBX ya importados y materializados por ArtSetu… |
-| `Assets/_Project/Scripts/Combat/WeaponHolder.cs` | 738 | Combat | Un solo evento para "este soldado tiene otra arma puesta", sin importar el camino (recogid… |
+| `Assets/_Project/Scripts/Combat/WeaponHolder.cs` | 752 | Combat | Un solo evento para "este soldado tiene otra arma puesta", sin importar el camino (recogid… |
 | `Assets/_Project/Scripts/Core/WaypointGraph.cs` | 696 | Core | ITEM 226 -- Grafo de waypoints (grilla + A* sobre el plano XZ). POR QUE EXISTE (y por que … |
 
 ## Documentos de contexto que NO genera este indice

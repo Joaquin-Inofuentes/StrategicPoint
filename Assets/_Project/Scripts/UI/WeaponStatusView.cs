@@ -8,6 +8,13 @@ namespace SP.UI
     // munición te queda y una barra de recarga/enfriamiento.
     public class WeaponStatusView : MonoBehaviour
     {
+        // Unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
+        public static WeaponStatusView Activo { get; private set; }
+        public static void ReiniciarActivo() => Activo = null;
+        public void RegistrarActivo()
+        {
+            Activo = this;
+        }
         Text label;
         Image fill;
 
@@ -82,9 +89,16 @@ namespace SP.UI
             fill = fillImage;
         }
 
+        void OnDisable() { if (Activo == this) Activo = null; }
         void OnEnable()
         {
+            RegistrarActivo();
             if (label == null) label = GetComponentInChildren<Text>(true);
+            if (icon == null)   // se resuelve al habilitar (antes: 2 Transform.Find por frame en UpdateFrom mientras faltaba)
+            {
+                var ti = transform.Find(IconName);
+                if (ti != null) icon = ti.GetComponent<Image>();
+            }
             if (fill == null)
             {
                 var barFill = transform.Find("BarBG/BarFill");
@@ -101,7 +115,6 @@ namespace SP.UI
             }
             gameObject.SetActive(true);
 
-            if (icon == null) icon = transform.Find(IconName) != null ? transform.Find(IconName).GetComponent<Image>() : null;
             if (icon != null)
             {
                 var kind = weapon.CurrentWeaponKind;

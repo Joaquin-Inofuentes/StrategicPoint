@@ -52,7 +52,7 @@ namespace SP.Tutorial
             c.DesdePaso = desdePaso; c.IgnorarHumano = ignorarHumano; c.ConCapturas = capturas;
             // El registro y el bloqueo de la entrada humana arrancan ya, antes de que la corrida espere al tutorial.
             var tm = TutorialManager.Instance;
-            var driver = FindFirstObjectByType<PlayerInputDriver>();
+            var driver = PlayerInputDriver.Activo;
             if (ignorarHumano) { c.Entrada.SoltarTodo(); EntradaVirtual.IgnorarHumano = true; }
             c.reg = AutoplayRegistro.Iniciar(go, driver, tm, capturas, ignorarHumano);
             c.StartCoroutine(c.Envoltorio());
@@ -88,7 +88,7 @@ namespace SP.Tutorial
             var tm = TutorialManager.Instance;
             if (tm == null) { Log("[AUTOPLAY] FALLO: no aparecio TutorialManager.Instance (¿la escena activa es SC_Tutorial?)"); yield break; }
 
-            var driver = FindFirstObjectByType<PlayerInputDriver>();
+            var driver = PlayerInputDriver.Activo;
             if (driver == null) { Log("[AUTOPLAY] FALLO: no hay PlayerInputDriver en la escena"); yield break; }
             if (reg != null) reg.Corrida.pasosTotal = tm.Total;
 
@@ -252,9 +252,9 @@ namespace SP.Tutorial
         IEnumerator GestoDisparar(PlayerInputDriver driver)
         {
             var yo = driver.Brain.Current;
-            var dummy = GameObject.Find("Tut_Enemigo_Estatico");
-            var pared = GameObject.Find("Tut_Pared");
-            var destruible = GameObject.Find("Tut_Destruible");
+            var dummy = TutorialManager.Instance?.Dummy;
+            var pared = TutorialManager.Instance?.Pared;
+            var destruible = TutorialManager.Instance?.Destruible;
             foreach (var obj in new[] { dummy, pared, destruible })
             {
                 if (obj == null) continue;
@@ -301,7 +301,7 @@ namespace SP.Tutorial
             rig.SetZoomed(true);
             float hasta = Time.time + 1.2f;
             while (Time.time < hasta) yield return null;   // deja que AdsBlendSuave llegue a >0.9
-            var dummy = GameObject.Find("Tut_Enemigo_Estatico");
+            var dummy = TutorialManager.Instance?.Dummy;
             var origen = yo.transform.position + Vector3.up * 1.5f;
             var dir = dummy != null ? (dummy.transform.position + Vector3.up * 0.9f - origen).normalized : yo.transform.forward;
             yo.Weapon.TryFire(origen, dir);
@@ -339,7 +339,7 @@ namespace SP.Tutorial
             yield return new WaitForSeconds(0.3f);
             if (driver.Selection != null) driver.Selection.SelectAll(driver.Squad);
             yield return new WaitForSeconds(0.2f);
-            var zonaA = GameObject.Find("Tut_ZonaA");
+            var zonaA = TutorialManager.Instance?.ZonaA;
             if (zonaA != null)
                 foreach (var s in driver.Squad)
                     if (s != null && s != driver.Brain.Current && s.Health.IsAlive)

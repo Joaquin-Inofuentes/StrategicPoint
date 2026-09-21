@@ -76,6 +76,22 @@ namespace SP.Vehicles
         // explosion final (torreta por el aire, casco quemado).
         public const float AgonySeconds = 1.2f;
         public bool IsInAgony { get; private set; }
+
+        // Las dos torretas se resuelven UNA vez (antes UpdateInVehicle hacia dos Transform.Find por frame).
+        // Cada una se busca por su pivote, sin adivinar (hay dos TurretWeapon: canon y metralleta).
+        TurretWeapon torretaCanon, torretaMetralleta;
+        bool torretasResueltas;
+        public TurretWeapon TorretaCanon { get { ResolverTorretas(); return torretaCanon; } }
+        public TurretWeapon TorretaMetralleta { get { ResolverTorretas(); return torretaMetralleta; } }
+        void ResolverTorretas()
+        {
+            if (torretasResueltas) return;
+            torretasResueltas = true;
+            var c = transform.Find("TurretMount/TurretPivot");
+            torretaCanon = c != null ? c.GetComponent<TurretWeapon>() : null;
+            var m = transform.Find("MetralletaMount/MetralletaPivot");
+            torretaMetralleta = m != null ? m.GetComponent<TurretWeapon>() : null;
+        }
         public bool FinalExplosionDone { get; private set; }
 
         // Todos los vehiculos activos (para que la IA de las torretas pueda
@@ -301,6 +317,7 @@ namespace SP.Vehicles
         {
             if (!Application.isPlaying) return;
             if (esTanqueEnemigo) AsignarBando(TeamId.Enemy, new Color(0.55f, 0.13f, 0.11f));
+            SP.Presentation.BarraDeVidaVehiculo.Asegurar(this);   // ronda 13 (punto 9): barra de vida flotante
             if (tripulacionInicial == null) return;
             for (int i = 0; i < tripulacionInicial.Length; i++)
             {
@@ -310,6 +327,20 @@ namespace SP.Vehicles
                 Mount(s, rol, instantaneo: true);
             }
         }
+
+        // Ronda 13 (punto 12): FUENTE UNICA de "este soldado puede subir". Un tanque enemigo (con o sin tripulacion viva) NO
+        // se aborda ni se puede mandar a abordar: solo se destruye. Lo usan Mount, las ordenes de montaje (IA, [G]/[U], RTS,
+        // radial), el indicador de montaje, los carteles y la posesion desde RTS.
+        public const string MotivoEnemigo = "TANQUE ENEMIGO: SOLO SE PUEDE DESTRUIR";
+        public bool PuedeAbordar(Soldier soldier, out string motivo)
+        {
+            motivo = null;
+            if (soldier == null) { motivo = "NADIE PARA SUBIR"; return false; }
+            if (IsDestroyed) { motivo = "VEHICULO DESTRUIDO"; return false; }
+            if (Bando == TeamId.Enemy && soldier.Team != TeamId.Enemy) { motivo = MotivoEnemigo; return false; }
+            return true;
+        }
+        public bool PuedeAbordar(Soldier soldier) => PuedeAbordar(soldier, out _);
 
         public bool Mount(Soldier soldier, VehicleSeatRole? preferredRole = null, bool instantaneo = false)
         {
@@ -321,6 +352,7 @@ namespace SP.Vehicles
             // todos lo hacian. La guarda va aca, en la fuente unica, para
             // que ningun camino futuro pueda repetir el olvido.
             if (soldier == null || IsDestroyed || !soldier.Health.IsAlive) return false;
+            if (!PuedeAbordar(soldier)) return false;   // ronda 13: un tanque enemigo no se aborda
             foreach (var kv in seats) if (kv.Value == soldier) return false; // ya está adentro
 
             VehicleSeatRole role;
@@ -548,7 +580,11 @@ namespace SP.Vehicles
             // chasis), sin importar el asiento -- con varios ocupantes
             // quedaban superpuestos o dentro del chasis. Cada asiento
             // baja por su propio costado.
-            soldier.transform.position = transform.position + DismountOffsetFor(foundRole.Value);
+            var destinoBajada = transform.position + DismountOffsetFor(foundRole.Value);
+            // Ronda 13 (punto 11): la tripulacion que sale de un tanque tiene que caer sobre la malla de navegacion (si no, queda
+            // dentro de un muro/roca y su cerebro no puede moverse ni apuntar) y con el cerebro reiniciado para que combata.
+            if (UnityEngine.AI.NavMesh.SamplePosition(destinoBajada, out var golpeNav, 4f, UnityEngine.AI.NavMesh.AllAreas)) destinoBajada = golpeNav.position;
+            soldier.transform.position = destinoBajada;
             soldier.transform.rotation = transform.rotation;
 
             if (soldier.Brain != null) soldier.Brain.ReactivarNavegacion();

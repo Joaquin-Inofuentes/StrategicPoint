@@ -35,7 +35,7 @@ namespace SP.UI
             // (se construyó en editor, vía Bind()): el campo queda null y
             // OnDamage nunca encuentra a quién le pertenece el golpe. Se
             // busca solo, igual que NearbySquadListView.
-            if (brain == null) brain = FindAnyObjectByType<PlayerBrain>();
+            if (brain == null) brain = PlayerBrain.Activo;
             sub?.Dispose();
             sub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnDamage);
         }

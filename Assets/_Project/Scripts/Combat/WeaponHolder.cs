@@ -117,7 +117,17 @@ namespace SP.Combat
         // lo baja al montar y Liberar lo repone al bajar.
         public float MultiplicadorTorretaFija = 1f;
 
-        public float SpreadDegEfectivo => spreadDeg * MultiplicadorPostura * MultiplicadorRol * MultiplicadorEnfoque * MultiplicadorTorretaFija;
+        // Ronda 13 (punto 10): apuntar (click derecho sostenido) tenia solo efecto visual (zoom): la dispersion era la misma que
+        // a la cadera. Ahora el ADS es la forma MAS precisa de disparar: el cono se reduce a un 15 %, crece un 40 % por tiro y se
+        // recupera al doble de velocidad. Lo fija PlayerInputDriver cada frame (0 = cadera, 1 = ADS completo) y caduca solo
+        // (0,25 s) si nadie lo refresca, para que un soldado que el jugador suelta no quede "apuntando" para siempre.
+        public const float FactorApuntando = 0.15f, CrecimientoApuntando = 0.4f, RecuperacionApuntando = 2f;
+        float apuntado01, apuntadoHasta = -1f;
+        public void SetApuntado(float a01) { apuntado01 = Mathf.Clamp01(a01); apuntadoHasta = Time.time + 0.25f; }
+        public float Apuntado01 => Time.time <= apuntadoHasta ? apuntado01 : 0f;
+        float MultiplicadorApuntando => Mathf.Lerp(1f, FactorApuntando, Apuntado01);
+
+        public float SpreadDegEfectivo => spreadDeg * MultiplicadorPostura * MultiplicadorRol * MultiplicadorEnfoque * MultiplicadorTorretaFija * MultiplicadorApuntando;
         public float SpreadFraction01 => Mathf.Clamp01(SpreadDegEfectivo / MaxSpreadDeg);
 
         public float CooldownRemaining => Mathf.Max(0f, cooldownTimer);
@@ -563,7 +573,7 @@ namespace SP.Combat
         public void Tick(float dt)
         {
             if (knifeCooldownTimer > 0f) knifeCooldownTimer -= dt;
-            spreadDeg = Mathf.MoveTowards(spreadDeg, 0f, SpreadDecayPerSec * dt);
+            spreadDeg = Mathf.MoveTowards(spreadDeg, 0f, SpreadDecayPerSec * Mathf.Lerp(1f, RecuperacionApuntando, Apuntado01) * dt);
 
             // El enfriamiento corre SIEMPRE, tambien durante la recarga.
             // Antes esto estaba despues del return de abajo, asi que el
@@ -602,7 +612,11 @@ namespace SP.Combat
         public bool TryFire(Vector3 origin, Vector3 direction, float dispersionMinima)
         {
             if (owner == null) Bootstrap();
-            if (IsReloading || cooldownTimer > 0f || pool == null || owner == null) return false;
+            if (IsReloading || cooldownTimer > 0f || owner == null) return false;
+            // Ronda 13 (punto 11): 20 soldados de mision (tripulaciones de tanque enemigo, fortines, patrullas) quedaban con el pool
+            // sin cablear en la escena y NUNCA disparaban. Se autocura igual que TurretWeapon: un unico ProjectilePool por escena.
+            if (pool == null) pool = ProjectilePool.Activo;
+            if (pool == null) return false;
 
             if (CurrentAmmo <= 0)
             {
@@ -616,7 +630,7 @@ namespace SP.Combat
             // para el proximo -- si no, hasta el primer disparo de una
             // rafaga saldria desviado por su propio impacto.
             var spreadDir = ApplySpread(direction, Mathf.Max(SpreadDegEfectivo, dispersionMinima * MultiplicadorRol));
-            spreadDeg = Mathf.Min(MaxSpreadDeg, spreadDeg + SpreadGrowthPerShot);
+            spreadDeg = Mathf.Min(MaxSpreadDeg, spreadDeg + SpreadGrowthPerShot * Mathf.Lerp(1f, CrecimientoApuntando, Apuntado01));
 
             var spawnPos = Muzzle != null ? Muzzle.position : origin;
             var espec = WeaponCatalog.Get(CurrentWeaponKind);

@@ -263,7 +263,7 @@ namespace SP.Ai
             ClearPath();
             followTarget = lider;
             // Ranura detras del lider, repartida por Id para que no se apilen.
-            followOffsetLocal = new Vector3(((self.Id % 3) - 1) * 2.2f, 0f, -2.5f - (self.Id % 2) * 1.5f);
+            followOffsetLocal = new Vector3(((self.Id % 3) - 1) * 1.1f, 0f, -1.25f - (self.Id % 2) * 0.75f);   // ronda 13: mitad de la ranura anterior (2,2 / 2,5 / 1,5)
             seguirAuto = true;
             SetState(AiState.Follow);
             forceSense = true;

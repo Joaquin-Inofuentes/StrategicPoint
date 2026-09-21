@@ -252,7 +252,7 @@ namespace SP.Presentation
         // SP.Core.Coberturas.Registrar): llamarlo de nuevo no duplica.
         public static int RegistrarObstaculos(Color color, float radius = 1.4f)
         {
-            var previo = GameObject.Find(ObstaclesRootName);
+            var previo = SP.Core.RaicesDeEscena.Buscar(ObstaclesRootName);
             if (previo != null)
             {
                 if (Application.isPlaying) Destroy(previo);
@@ -263,7 +263,8 @@ namespace SP.Presentation
             if (layer < 0) layer = 8; // TagManager trae "Minimap" fijo en el indice 8.
 
             var root = new GameObject(ObstaclesRootName).transform;
-            var marcas = FindObjectsByType<ObstacleMarker>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            SP.Core.WorldSystemsRegistry.EnsurePopulated();
+            var marcas = SP.Core.WorldSystemsRegistry.Obstacles;
             foreach (var marca in marcas)
             {
                 var icon = Spawn(marca.transform, color, layer, radius);
@@ -283,7 +284,7 @@ namespace SP.Presentation
                     icon.transform.localScale = new Vector3(Mathf.Max(radius, tam.x), 0.2f, Mathf.Max(radius, tam.z));
                 }
             }
-            return marcas.Length;
+            return marcas.Count;
         }
 
         public static MinimapIcon Spawn(Transform target, Color color, int layer, float radius = 1.6f)

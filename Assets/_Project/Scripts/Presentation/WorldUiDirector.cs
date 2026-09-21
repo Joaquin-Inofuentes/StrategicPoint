@@ -376,9 +376,6 @@ namespace SP.Presentation
             // OnEnable de los objetos de escena corre antes que
             // AfterSceneLoad.
             if (active != null) return;
-            // FindAnyObjectByType y no FindFirstObjectByType (obsoleto):
-            // alcanza con saber si existe alguno, no cual.
-            if (FindAnyObjectByType<WorldUiDirector>() != null) return;
             var go = new GameObject("WorldUiDirector");
             go.AddComponent<WorldUiDirector>();
         }

@@ -28,6 +28,12 @@ namespace SP.Player
 
         public void EnterVehicle(Vehicle vehicle)
         {
+            if (vehicle == null) return;
+            if (!vehicle.PuedeAbordar(Brain.Current, out var motivoNoAbordable))   // ronda 13 (punto 12)
+            {
+                RejectOrder(motivoNoAbordable);
+                return;
+            }
             if (torretaActual != null) SalirDeTorreta();
             var role = vehicle.IsSeatFree(VehicleSeatRole.Driver) ? VehicleSeatRole.Driver : vehicle.FirstFreeSeat();
             if (role == null)
@@ -97,7 +103,7 @@ namespace SP.Player
         // su propia UI (velocímetro, vida del vehículo, artillero).
         void EnterVehicleViewFromRts(Vehicle vehicle)
         {
-            if (vehicle == null || vehicle.OccupantCount == 0) return;
+            if (vehicle == null || vehicle.OccupantCount == 0 || vehicle.Bando == TeamId.Enemy) return;   // ronda 13 (punto 12): no se posee a la tripulacion enemiga
             var occupant = vehicle.Driver ?? vehicle.Occupants[0];
             if (occupant == null) return;
 
@@ -142,7 +148,7 @@ namespace SP.Player
             // colgada mientras el modo sigue en ortográfico: hay que
             // recentrar la vista RTS en vez de FollowFps.
             if (Rig.Mode == ControlMode.Rts) Rig.SetRtsView(Brain.Current.transform.position);
-            else Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDrop);
+            else Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDropSuave);
         }
 
         void UpdateInVehicle(Keyboard kb, Mouse mouse)
@@ -169,7 +175,7 @@ namespace SP.Player
             {
                 // Una orden lo bajo del tanque (RTS): el estado de asiento quedo colgado.
                 ClearVehicleSeatState();
-                if (Rig.Mode == ControlMode.Fps) Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDrop);
+                if (Rig.Mode == ControlMode.Fps) Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDropSuave);
                 return;
             }
 
@@ -184,7 +190,7 @@ namespace SP.Player
                 ClearVehicleSeatState();
                 if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
                 if (TurretAim != null) TurretAim.SetVisible(false);
-                Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDrop);
+                Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDropSuave);
                 return;
             }
 
@@ -271,10 +277,8 @@ namespace SP.Player
             // metralleta en "MetralletaPivot") segun el orden de la
             // jerarquia -- ambiguo apenas se agrego un segundo. Cada asiento
             // busca el suyo por nombre, sin adivinar.
-            var turretPivotT = Vehicle.transform.Find("TurretMount/TurretPivot");
-            var turret = turretPivotT != null ? turretPivotT.GetComponent<TurretWeapon>() : null;
-            var mgPivotT = Vehicle.transform.Find("MetralletaMount/MetralletaPivot");
-            var mgTurret = mgPivotT != null ? mgPivotT.GetComponent<TurretWeapon>() : null;
+            var turret = Vehicle.TorretaCanon;
+            var mgTurret = Vehicle.TorretaMetralleta;
             // El HUD de torreta es solo de quien esta apuntando un arma
             // montada: conduciendo no aporta nada y taparia la vista.
             if (TurretAim != null && currentSeat != VehicleSeatRole.Gunner && currentSeat != VehicleSeatRole.Passenger1) TurretAim.SetVisible(false);

@@ -48,7 +48,7 @@ namespace SP.Player
             int j = i + direccion;
             if (i < 0 || j < 0 || j >= Squad.Count) return false;
             (Squad[i], Squad[j]) = (Squad[j], Squad[i]);
-            var roster = FindAnyObjectByType<RosterView>();
+            var roster = RosterView.Activo;
             if (roster != null) roster.Rebuild();
             SP.UI.AlertQueue.Push($"{s.DisplayName.ToUpperInvariant()} ES AHORA EL Nº {j + 1}", SP.UI.AlertPriority.Baja, 1.6f);
             return true;

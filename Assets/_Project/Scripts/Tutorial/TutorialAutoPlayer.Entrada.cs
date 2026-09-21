@@ -73,7 +73,7 @@ namespace SP.Tutorial
         IEnumerator DispararHasta(System.Func<bool> listo, float maxSegundos)
         {
             float limite = Time.time + maxSegundos;
-            var w = Object.FindAnyObjectByType<PlayerInputDriver>()?.Brain.Current.Weapon;
+            var w = PlayerInputDriver.Activo?.Brain.Current.Weapon;
             Entrada.BotonIzquierdo(true);
             while (Time.time < limite && !listo())
             {
@@ -105,9 +105,9 @@ namespace SP.Tutorial
 
         IEnumerator GestoDispararReal(PlayerInputDriver d)
         {
-            var dummy = GameObject.Find("Tut_Enemigo_Estatico");
-            var pared = GameObject.Find("Tut_Pared");
-            var caja = GameObject.Find("Tut_Destruible");
+            var dummy = TutorialManager.Instance?.Dummy;
+            var pared = TutorialManager.Instance?.Pared;
+            var caja = TutorialManager.Instance?.Destruible;
             var yo = d.Brain.Current;
             if (dummy != null)
             {
@@ -135,7 +135,7 @@ namespace SP.Tutorial
 
         IEnumerator GestoMiraReal(PlayerInputDriver d)
         {
-            var dummy = GameObject.Find("Tut_Enemigo_Estatico");
+            var dummy = TutorialManager.Instance?.Dummy;
             if (dummy != null) yield return MirarHacia(d, dummy.transform.position + Vector3.up * 1.0f);
             Entrada.BotonDerecho(true);
             yield return new WaitForSeconds(1.6f);
@@ -162,7 +162,7 @@ namespace SP.Tutorial
         {
             yield return Tocar(Key.F);
             yield return new WaitForSeconds(0.7f);
-            var e = GameObject.Find("Tut_Enemigo_Cuchillo");
+            var e = TutorialManager.Instance?.EnemigoCuchillo;
             if (e == null) yield break;
             var s = e.GetComponent<Soldier>();
             yield return MirarHacia(d, e.transform.position + Vector3.up * 1.0f);
@@ -178,7 +178,7 @@ namespace SP.Tutorial
 
         IEnumerator GestoGranadaReal(PlayerInputDriver d)
         {
-            var e = GameObject.Find("Tut_Enemigo_Granada");
+            var e = TutorialManager.Instance?.EnemigoGranada;
             if (e != null) yield return MirarHacia(d, e.transform.position + Vector3.up * 3f);
             Entrada.Apretar(Key.G);
             yield return new WaitForSeconds(1.5f);
@@ -188,7 +188,7 @@ namespace SP.Tutorial
 
         IEnumerator GestoSuministrosReal(PlayerInputDriver d)
         {
-            var caja = Object.FindAnyObjectByType<CajaDeSuministros>();
+            var caja = CajaDeSuministros.Todas.Count > 0 ? CajaDeSuministros.Todas[0] : null;
             if (caja == null) yield break;
             yield return MirarHacia(d, caja.transform.position);
             yield return CaminarHasta(d, caja.transform.position, 0.6f, 9f);
