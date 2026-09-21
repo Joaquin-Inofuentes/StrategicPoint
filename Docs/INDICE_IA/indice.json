@@ -1,5 +1,5 @@
 {
- "generado": "2026-09-21 11:17 UTC",
+ "generado": "2026-09-21 11:21 UTC",
  "raiz": "My project",
  "archivos": [
   {
@@ -5644,6 +5644,50 @@
    "notas_bug": 0,
    "notas_todo": 0,
    "sha1": "46e376b35b6a"
+  },
+  {
+   "ruta": "Assets/_Project/Scripts/Editor/AudicionDeSonidos.cs",
+   "nombre": "AudicionDeSonidos.cs",
+   "subsistema": "Editor",
+   "lineas": 79,
+   "bytes": 4236,
+   "namespace": "SP.EditorTools",
+   "resumen": "Item 65 (Ronda 12): el analisis de audio mide, pero el timbre y \"si queda bien\" solo lo juzga un oido. Esta herramienta baja el costo de esa escucha a unos minutos: renderiza TODOS los sonidos del juego (SfxKind y los de cada arma) en un unico WAV, en orden, con 0,6 s de silencio entre uno y otro, mas un indice con el segundo en que empieza cada uno. Salida: Docs/AUDICION_SONIDOS.wav y Docs/AUDICION_SONIDOS.txt. Menu: Strategic Point > Reportes > Audicion de sonidos.",
+   "tipos": [
+    {
+     "nombre": "AudicionDeSonidos",
+     "clase": "class",
+     "parcial": false,
+     "estatica": true,
+     "linea": 16
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "Generar",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "",
+     "linea": 22
+    }
+   ],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [
+    "SP.Combat",
+    "SP.Presentation"
+   ],
+   "teclas": [],
+   "menu_items": [
+    "Strategic Point/Reportes/Audicion de sonidos"
+   ],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "cd98b37c353b"
   },
   {
    "ruta": "Assets/_Project/Scripts/Editor/AudioAnalisisReport.cs",

@@ -742,6 +742,16 @@
 |---|---|---|---|---|
 | `Generar` | static | `string` | — | 16 |
 
+## `Assets/_Project/Scripts/Editor/AudicionDeSonidos.cs`
+
+**Tipos:** `class AudicionDeSonidos`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Generar` | static | `void` | — | 22 |
+
 ## `Assets/_Project/Scripts/Editor/AudioAnalisisReport.cs`
 
 **Tipos:** `class AudioAnalisisReport`, `struct Fila`

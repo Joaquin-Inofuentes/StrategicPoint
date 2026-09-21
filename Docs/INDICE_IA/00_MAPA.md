@@ -1,9 +1,9 @@
 # Mapa del proyecto — indice para IA
 
-> Generado por `Tools/Indice/indexar_ia.py` el 2026-09-21 11:17 UTC.
+> Generado por `Tools/Indice/indexar_ia.py` el 2026-09-21 11:21 UTC.
 > No editar a mano: se regenera. Si algo esta mal, esta mal el generador.
 
-**233 scripts · 60,275 lineas · 5 escenas · 133 prefabs**
+**234 scripts · 60,354 lineas · 5 escenas · 133 prefabs**
 
 ## Como leer este indice
 
@@ -41,7 +41,7 @@ que la IA y que las pruebas.
 |---|---|---|---|
 | **Presentation** | 56 | 11427 | Todo lo que se ve y se oye en el mundo: VFX, audio, marcadores, pools visuales. |
 | **UI** | 41 | 7039 | HUD y pantallas: mira, roster, minimapa, radial, menus, ajustes. |
-| **Editor** | 34 | 14645 | Herramientas de Editor: suite headless, constructores de escena, pipelines de arte. |
+| **Editor** | 35 | 14724 | Herramientas de Editor: suite headless, constructores de escena, pipelines de arte. |
 | **Core** | 23 | 3667 | Servicios sin escena: bus de eventos, registros, grilla espacial, navegacion, pools, idioma, dificultad. |
 | **Player** | 21 | 7902 | Traduccion de intencion a ordenes: input, posesion, seleccion, ordenes. |
 | **Combat** | 12 | 2449 | Vida, dano, armas, proyectiles y catalogo. |

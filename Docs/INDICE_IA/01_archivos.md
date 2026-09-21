@@ -1,5 +1,5 @@
 # Mapa de archivos
-> 233 scripts. Generado el 2026-09-21 11:17 UTC.
+> 234 scripts. Generado el 2026-09-21 11:21 UTC.
 
 ## Actors — 4 scripts, 659 lineas
 
@@ -95,7 +95,7 @@
 |---|---|---|---|
 | `AutoDemoRunner.cs` | 669 | AutoDemoRunner | Corre las 4 fases del guion de prueba en Play mode real (no en Edit mode como HeadlessTestRunner): usa las mismas APIs p… |
 
-## Editor — 34 scripts, 14,645 lineas
+## Editor — 35 scripts, 14,724 lineas
 
 > Herramientas de Editor: suite headless, constructores de escena, pipelines de arte.
 
@@ -129,6 +129,7 @@
 | `AudioAnalisisReport.cs` | 101 | AudioAnalisisReport, Fila | Item 65 (Ronda 11): "los sonidos se verificaron por metricas y no de oido". Un agente no oye, pero puede medir mas que "… |
 | `NavMeshSetupPipeline.cs` | 98 | NavMeshSetupPipeline | Dejar activa la escena principal |
 | `PlaymodeCleanup.cs` | 88 | PlaymodeCleanup | BUG REAL: decals (agujeros de bala, crateres) y escombros creados en Play mode quedaban manchando la escena despues de f… |
+| `AudicionDeSonidos.cs` | 79 | AudicionDeSonidos | Item 65 (Ronda 12): el analisis de audio mide, pero el timbre y "si queda bien" solo lo juzga un oido. Esta herramienta … |
 | `SoldierPrefabPipeline.cs` | 64 | SoldierPrefabPipeline | Pedido explicito: "Crea un prefab para cada soldado y limpia un poco". Los 3 aliados jugables (Soldado_1_Vega/2_Kes/3_Do… |
 | `TutorialAutoPlayerMenu.cs` | 57 | TutorialAutoPlayerMenu | Menu de Editor para el pedido "quiero un script con timers para el tutorial que de manera mecanica haga todo el tutorial… |
 | `ArtsUsoReport.cs` | 55 | ArtsUsoReport | Item 89: dice cuanto de Assets/ARTS usa de verdad el juego. Raices = todo lo que vive fuera de ARTS (escenas, prefabs, m… |
