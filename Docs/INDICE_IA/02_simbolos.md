@@ -55,13 +55,21 @@
 | `Jump` |  | `void` | — | 74 |
 | `TryVault` |  | `bool` | — | 97 |
 | `ResetMotionState` |  | `void` | — | 175 |
-| `SetCrouching` |  | `void` | `bool agachado` | 251 |
-| `Move` |  | `void` | `Vector3 worldDirection, float dt` | 268 |
-| `RotateYaw` |  | `void` | `float yawDeltaDegrees` | 275 |
-| `LookTowards` |  | `void` | `Vector3 worldPoint, float dt` | 280 |
-| `MoveTowards` |  | `bool` | `Vector3 worldPoint, float arriveThreshold, float dt` | 290 |
+| `DanioDeCaida` | static | `int` | `float metros` | 201 |
+| `TickVertical` |  | `void` | `float dt` | 218 |
+| `SetCrouching` |  | `void` | `bool agachado` | 297 |
+| `Move` |  | `void` | `Vector3 worldDirection, float dt` | 314 |
+| `RotateYaw` |  | `void` | `float yawDeltaDegrees` | 322 |
+| `LookTowards` |  | `void` | `Vector3 worldPoint, float dt` | 327 |
+| `MoveTowards` |  | `bool` | `Vector3 worldPoint, float arriveThreshold, float dt` | 337 |
 
-**Propiedades:** `IsJumping`, `MoveSpeed`, `Corriendo`, `Vaulting`, `UltimoMotivoDeTrepa`, `IsCrouching`, `EyeHeightDrop`
+**Propiedades:** `IsJumping`, `MoveSpeed`, `Corriendo`, `Vaulting`, `UltimoMotivoDeTrepa`, `UltimaCaidaMetros`, `UltimoDanioDeCaida`, `IsCrouching`, `EyeHeightDrop`
+
+## `Assets/_Project/Scripts/Ai/AiBrain.Disparo.cs`
+
+**Tipos:** `class AiBrain`
+
+**Propiedades:** `Herido`
 
 ## `Assets/_Project/Scripts/Ai/AiBrain.Granadas.cs`
 
@@ -103,7 +111,7 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `IssueCoverOrder` |  | `void` | `Vector3 punto, Collider dueno` | 39 |
-| `PuntajeDeObjetivo` |  | `float` | `Soldier s` | 310 |
+| `PuntajeDeObjetivo` |  | `float` | `Soldier s` | 311 |
 
 **Propiedades:** `MountTargetVehicle`, `EnCobertura`, `YendoACobertura`, `CoberturaPorOrden`, `CoberturaPunto`, `Quieto`, `Pasivo`, `SiguiendoAlJugador`
 
@@ -119,13 +127,13 @@
 | `SetPatrolWaypoints` |  | `void` | `Transform[] waypoints` | 229 |
 | `ReactivarNavegacion` |  | `void` | — | 303 |
 | `ConfigurarAlcances` |  | `void` | `float vision, float ataque` | 359 |
-| `Bootstrap` |  | `void` | — | 444 |
-| `IssueMoveOrder` |  | `void` | `Vector3 point, bool queued = false` | 571 |
-| `IssueMountOrder` |  | `void` | `Vehicle vehicle` | 619 |
-| `IssueFollowOrder` |  | `void` | `Soldier leader, Vector3 formationOffsetLocal = default` | 639 |
-| `IssueAttackOrder` |  | `void` | `Soldier enemy` | 656 |
-| `CancelOrder` |  | `void` | — | 676 |
-| `Tick` |  | `void` | `float dt` | 703 |
+| `Bootstrap` |  | `void` | — | 448 |
+| `IssueMoveOrder` |  | `void` | `Vector3 point, bool queued = false` | 576 |
+| `IssueMountOrder` |  | `void` | `Vehicle vehicle` | 624 |
+| `IssueFollowOrder` |  | `void` | `Soldier leader, Vector3 formationOffsetLocal = default` | 644 |
+| `IssueAttackOrder` |  | `void` | `Soldier enemy` | 661 |
+| `CancelOrder` |  | `void` | — | 681 |
+| `Tick` |  | `void` | `float dt` | 708 |
 
 **Propiedades:** `QueuedOrderCount`, `QueuedDestinations`, `RemainingPathPoints`, `CurrentPath`, `State`, `IsPossessedByPlayer`, `CurrentTarget`, `Stance`, `HomePosition`, `EffectiveVisionRange`, `EffectiveAttackRange`, `SenseIntervalTicks`, `TicksSinceLastSense`, `LastSensedTarget`, `CurrentOrderDestination`, `PendingMoveDestination`, `FollowTarget`
 
@@ -197,22 +205,22 @@
 | `KickDirectional` |  | `void` | `Vector3 worldDirection, float magnitude` | 262 |
 | `AddFrameOffset` |  | `void` | `Vector3 offset` | 276 |
 | `SetWalking` |  | `void` | `bool value` | 298 |
-| `SetMode` |  | `void` | `ControlMode mode, Vector3? rtsFallbackCenter = null` | 329 |
-| `RestoreOrSetRtsView` |  | `void` | `Vector3 fallbackCenter` | 360 |
-| `ToggleMode` |  | `void` | `Vector3? rtsFallbackCenter = null` | 382 |
-| `BeginTransition` |  | `void` | `Transform target, float duration = 0.35f` | 403 |
-| `FollowFps` |  | `void` | `Soldier soldier` | 441 |
-| `BeginFollowBlend` |  | `void` | `float seconds` | 481 |
-| `FollowOverShoulder` |  | `void` | `Transform target, float distance = 4f, float height = 1.53f, float hei` | 559 |
-| `FollowAnchor` |  | `void` | `Transform anchor` | 594 |
-| `FollowThirdPerson` |  | `void` | `Transform target, float distance = 7f, float height = 3f` | 610 |
-| `FollowThirdPersonAimed` |  | `void` | `Vector3 pivotPos, Vector3 aimForward, float distance = 7f, float heigh` | 648 |
-| `SetRtsView` |  | `void` | `Vector3 center` | 673 |
-| `GetForwardRay` |  | `Ray` | — | 684 |
-| `Pan` |  | `void` | `Vector3 worldDelta` | 722 |
-| `RecenterOn` |  | `void` | `Vector3 point` | 734 |
-| `Zoom` |  | `void` | `float delta` | 751 |
-| `ZoomHaciaCursor` |  | `void` | `float delta, Vector2 pantalla` | 778 |
+| `SetMode` |  | `void` | `ControlMode mode, Vector3? rtsFallbackCenter = null` | 343 |
+| `RestoreOrSetRtsView` |  | `void` | `Vector3 fallbackCenter` | 374 |
+| `ToggleMode` |  | `void` | `Vector3? rtsFallbackCenter = null` | 396 |
+| `BeginTransition` |  | `void` | `Transform target, float duration = 0.35f` | 417 |
+| `FollowFps` |  | `void` | `Soldier soldier` | 455 |
+| `BeginFollowBlend` |  | `void` | `float seconds` | 495 |
+| `FollowOverShoulder` |  | `void` | `Transform target, float distance = 4f, float height = 1.53f, float hei` | 573 |
+| `FollowAnchor` |  | `void` | `Transform anchor` | 608 |
+| `FollowThirdPerson` |  | `void` | `Transform target, float distance = 7f, float height = 3f` | 632 |
+| `FollowThirdPersonAimed` |  | `void` | `Vector3 pivotPos, Vector3 aimForward, float distance = 7f, float heigh` | 674 |
+| `SetRtsView` |  | `void` | `Vector3 center` | 700 |
+| `GetForwardRay` |  | `Ray` | — | 711 |
+| `Pan` |  | `void` | `Vector3 worldDelta` | 749 |
+| `RecenterOn` |  | `void` | `Vector3 point` | 761 |
+| `Zoom` |  | `void` | `float delta` | 778 |
+| `ZoomHaciaCursor` |  | `void` | `float delta, Vector2 pantalla` | 805 |
 
 **Propiedades:** `Instance`, `Mode`, `RutasVisibles`, `AdsBlend`, `AdsBlendSuave`, `Respiracion`, `ZoomFactor`, `EstaConZoom`, `FovDeZoom`, `FovObjetivo`, `Pitch`, `RecoilPitch`, `ShakeOffset`, `MaxShakeMagnitude`, `BobOffset`, `IsTransitioning`, `Cam`, `ZoomAtLimit`, `RtsTargetHeight`, `RtsHeight`, `RtsFocus`
 
@@ -239,11 +247,11 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Initialize` |  | `void` | `int actorId, int max` | 52 |
-| `Tick` |  | `void` | `float dt` | 71 |
-| `TakeDamage` |  | `void` | `int amount, int attackerId` | 104 |
-| `TakeDamage` |  | `void` | `int amount, int attackerId, bool headshot` | 110 |
-| `Heal` |  | `void` | `int amount` | 155 |
+| `Initialize` |  | `void` | `int actorId, int max` | 57 |
+| `Tick` |  | `void` | `float dt` | 79 |
+| `TakeDamage` |  | `void` | `int amount, int attackerId` | 112 |
+| `TakeDamage` |  | `void` | `int amount, int attackerId, bool headshot` | 118 |
+| `Heal` |  | `void` | `int amount` | 163 |
 
 **Propiedades:** `MaxHealth`, `Current`, `IsAlive`, `ActorId`, `IsRegenerating`, `LastAttackerId`
 
@@ -313,13 +321,14 @@
 | `CambiarASiguienteConMunicion` |  | `bool` | — | 490 |
 | `TryMelee` |  | `bool` | — | 520 |
 | `Tick` |  | `void` | `float dt` | 563 |
-| `TryFire` |  | `bool` | `Vector3 origin, Vector3 direction` | 599 |
-| `ApplySpread` | static | `Vector3` | `Vector3 direction, float maxDeg` | 643 |
-| `SonarDesenfunde` |  | `void` | — | 684 |
-| `SonarGatilloVacio` |  | `void` | — | 691 |
-| `ConsumirGranada` |  | `bool` | — | 700 |
-| `ReponerGranadas` |  | `void` | `int cantidad = GranadasMaximas` | 706 |
-| `Reload` |  | `bool` | — | 711 |
+| `TryFire` |  | `bool` | `Vector3 origin, Vector3 direction` | 600 |
+| `TryFire` |  | `bool` | `Vector3 origin, Vector3 direction, float dispersionMinima` | 602 |
+| `ApplySpread` | static | `Vector3` | `Vector3 direction, float maxDeg` | 646 |
+| `SonarDesenfunde` |  | `void` | — | 687 |
+| `SonarGatilloVacio` |  | `void` | — | 694 |
+| `ConsumirGranada` |  | `bool` | — | 703 |
+| `ReponerGranadas` |  | `void` | `int cantidad = GranadasMaximas` | 709 |
+| `Reload` |  | `bool` | — | 714 |
 
 **Propiedades:** `Enfoque01`, `SpreadDegEfectivo`, `SpreadFraction01`, `CooldownRemaining`, `CurrentWeaponKind`, `CurrentLoadoutIndex`, `ReadinessFraction01`, `CurrentAmmo`, `MagazineSize`, `IsReloading`, `ReloadRemaining`, `UsaReservas`, `ReservaActual`, `SinMunicionTotal`, `KnifeCooldownRemaining`, `Granadas`
 
@@ -413,6 +422,17 @@
 | `MostrarMarcas` | static | `void` | `bool visibles` | 313 |
 
 **Propiedades:** `Puntos`, `Duenos`, `Cantidad`, `Version`, `MarcasVisibles`
+
+## `Assets/_Project/Scripts/Core/ComandosDeDepuracion.cs`
+
+**Tipos:** `class ComandosDeDepuracion`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Matar` | static | `string` | `int id = -1` | 14 |
+| `Revivir` | static | `string` | — | 27 |
 
 ## `Assets/_Project/Scripts/Core/Deslizador.cs`
 
@@ -534,7 +554,7 @@
 | `EnsureBuilt` | static | `void` | — | 130 |
 | `HayLineaDeTiro` | static | `bool` | `Vector3 desde, Vector3 hasta, Transform ignorarA, Transform ignorarB` | 162 |
 | `BlocksMovement` | static | `bool` | `Collider c` | 182 |
-| `TryFindDetour` | static | `bool` | `Vector3 from, Vector3 to, List<Vector3> result` | 195 |
+| `TryFindDetour` | static | `bool` | `Vector3 from, Vector3 to, List<Vector3> result` | 197 |
 
 **Propiedades:** `Graph`, `IsReady`, `Version`
 
@@ -666,6 +686,22 @@
 
 **Propiedades:** `IsRunning`
 
+## `Assets/_Project/Scripts/Editor/AntesProbe.cs`
+
+**Tipos:** `class AntesProbe`, `struct Paso`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Iniciar` | static | `string` | `string nombre` | 26 |
+| `Marca` | static | `void` | `string que, string detalle = ""` | 72 |
+| `Foto` | static | `string` | `string nombre` | 74 |
+| `Guion` | static | `string` | `int id, string nombre, string texto, float duracion` | 99 |
+| `Cerrar` | static | `void` | — | 166 |
+
+**Propiedades:** `Carpeta`
+
 ## `Assets/_Project/Scripts/Editor/ArtBuilder.cs`
 
 **Tipos:** `class ArtBuilder`, `enum Volumen`, `struct PropDef`, `struct Plantado`
@@ -676,9 +712,11 @@
 |---|---|---|---|---|
 | `ArmarTodo` | static | `void` | — | 33 |
 | `CrearAnimator` | static | `AnimatorController` | — | 70 |
-| `CrearPrefabsDeProps` | static | `void` | — | 351 |
-| `MontarSoldados` | static | `void` | `AnimatorController ctrl` | 426 |
-| `PoblarEscena` | static | `void` | — | 720 |
+| `AjustarTiemposDeSalto` | static | `void` | `AnimatorState arriba, AnimatorState aire, AnimatorState abajo, Animato` | 199 |
+| `AjustarSaltoEnControllerExistente` | static | `string` | — | 210 |
+| `CrearPrefabsDeProps` | static | `void` | — | 380 |
+| `MontarSoldados` | static | `void` | `AnimatorController ctrl` | 455 |
+| `PoblarEscena` | static | `void` | — | 749 |
 
 ## `Assets/_Project/Scripts/Editor/ArtSetup.cs`
 
@@ -703,6 +741,17 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Generar` | static | `string` | — | 16 |
+
+## `Assets/_Project/Scripts/Editor/AudioAnalisisReport.cs`
+
+**Tipos:** `class AudioAnalisisReport`, `struct Fila`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Generar` | static | `void` | — | 31 |
+| `Analizar` | static | `List<Fila>` | — | 47 |
 
 ## `Assets/_Project/Scripts/Editor/BalanceBench.cs`
 
@@ -799,6 +848,16 @@
 |---|---|---|---|---|
 | `Construir` | static | `void` | — | 17 |
 
+## `Assets/_Project/Scripts/Editor/MonedaMunicionBuilder.cs`
+
+**Tipos:** `class MonedaMunicionBuilder`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Construir` | static | `void` | — | 18 |
+
 ## `Assets/Editor/NavMeshSetupPipeline.cs`
 
 **Tipos:** `class NavMeshSetupPipeline`
@@ -819,7 +878,7 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `BarrerHuerfanos` | static | `void` | — | 71 |
+| `BarrerHuerfanos` | static | `void` | — | 73 |
 
 ## `Assets/_Project/Scripts/Editor/PrimerFramePreview.cs`
 
@@ -965,6 +1024,19 @@
 
 **Propiedades:** `EnCurso`, `Terminada`, `SoldadosDeLaHorda`, `TracerasDisparadas`, `Tiempo`, `Plano`
 
+## `Assets/_Project/Scripts/Mision/EstadoDePartida.cs`
+
+**Tipos:** `class EstadoDePartida`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Reiniciar` | static | `void` | — | 32 |
+| `Tick` | static | `void` | `float dt` | 39 |
+
+**Propiedades:** `SinVivos`, `CalmaAcumulada`, `Revivio`, `Perdio`
+
 ## `Assets/_Project/Scripts/Mision/Helicoptero.cs`
 
 **Tipos:** `class Helicoptero`
@@ -985,11 +1057,11 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `PosicionDelJugador` |  | `Vector3` | — | 101 |
-| `DistanciaAlObjetivo` |  | `float` | — | 119 |
-| `CrearEnemigo` |  | `Soldier` | `string nombre, Vector3 pos, float yaw = 180f` | 132 |
-| `Perder` |  | `void` | `string motivo` | 462 |
-| `SaltarAFase` |  | `void` | `FaseDeMision f` | 473 |
+| `PosicionDelJugador` |  | `Vector3` | — | 108 |
+| `DistanciaAlObjetivo` |  | `float` | — | 126 |
+| `CrearEnemigo` |  | `Soldier` | `string nombre, Vector3 pos, float yaw = 180f` | 139 |
+| `Perder` |  | `void` | `string motivo` | 469 |
+| `SaltarAFase` |  | `void` | `FaseDeMision f` | 480 |
 
 **Propiedades:** `Instancia`, `Activo`, `Fase`, `Restante`, `Civil`, `CivilRescatado`, `Heli`, `OleadasLanzadas`, `SoldadosGenerados`, `TensionSonando`
 
@@ -1095,7 +1167,7 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Crear` | static | `MunicionPickup` | `Vector3 pos` | 29 |
+| `Crear` | static | `MunicionPickup` | `Vector3 pos` | 32 |
 
 ## `Assets/_Project/Scripts/Player/OrdenesDeEscuadra.cs`
 
@@ -1196,7 +1268,8 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `MoverEnEscuadra` |  | `bool` | `Soldier s, int direccion` | 39 |
+| `MoverEnEscuadra` |  | `bool` | `Soldier s, int direccion` | 44 |
+| `SeleccionarSoldadoDeEscuadra` |  | `bool` | `int indice, bool sumar` | 79 |
 
 ## `Assets/_Project/Scripts/Player/PlayerInputDriver.Interaccion.cs`
 
@@ -1206,9 +1279,11 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `ObjetivoInteractuable` |  | `IInteractable` | — | 27 |
-| `PromptDeInteraccion` |  | `string` | — | 54 |
-| `TryInteractuarConMira` |  | `bool` | — | 63 |
+| `ObjetivoInteractuable` |  | `IInteractable` | — | 34 |
+| `PromptDeInteraccion` |  | `string` | — | 61 |
+| `TryInteractuarConMira` |  | `bool` | — | 114 |
+
+**Propiedades:** `UltimaAccionRapida`
 
 ## `Assets/_Project/Scripts/Player/PlayerInputDriver.Radial.cs`
 
@@ -1219,9 +1294,9 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `ResolverGestoDeQ` |  | `void` | `bool toque, bool sostenido, bool sigueApretada` | 48 |
-| `DestinatariosDeOrden` |  | `List<Soldier>` | — | 127 |
-| `EjecutarOrdenDelMenu` |  | `bool` | `int opcion` | 145 |
-| `EjecutarOrdenRadial` |  | `bool` | `int categoria, int sub = 0` | 210 |
+| `DestinatariosDeOrden` |  | `List<Soldier>` | — | 137 |
+| `EjecutarOrdenDelMenu` |  | `bool` | `int opcion` | 155 |
+| `EjecutarOrdenRadial` |  | `bool` | `int categoria, int sub = 0` | 220 |
 
 **Propiedades:** `RadialAbierto`
 
@@ -1235,7 +1310,7 @@
 |---|---|---|---|---|
 | `EnterVehicle` |  | `void` | `Vehicle vehicle` | 29 |
 | `ExitVehicle` |  | `void` | — | 130 |
-| `SwitchSeat` |  | `void` | `VehicleSeatRole newRole` | 414 |
+| `SwitchSeat` |  | `void` | `VehicleSeatRole newRole` | 415 |
 
 **Propiedades:** `CurrentSeat`
 
@@ -1247,29 +1322,29 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `MostrarProgresoDemolicion` |  | `void` | `float f01` | 298 |
-| `OcultarProgresoDemolicion` |  | `void` | — | 299 |
-| `SetDestination` |  | `void` | `Vector3 punto` | 435 |
-| `CancelDestination` |  | `void` | — | 457 |
-| `ToggleVehicleCameraView` |  | `void` | — | 459 |
-| `ShowTutorialMessage` |  | `void` | `string text, float holdSeconds = 1.4f` | 468 |
-| `ReclamarControl` |  | `void` | `Soldier s` | 792 |
-| `TryRevivir` |  | `bool` | `Soldier caido, bool sostenidoLoSuficiente` | 1535 |
-| `TryResolverCobertura` |  | `bool` | `AimResult r, out Vector3 punto, out Collider dueno` | 1809 |
-| `IssueCoverOrderT` |  | `bool` | `Vector3 punto, Collider dueno` | 1846 |
-| `IssueCoverOrderForSelection` |  | `int` | `IReadOnlyList<Soldier> seleccion, Vector3 puntoApuntado, Transform obs` | 1870 |
-| `SubirATodos` |  | `int` | `Vehicle v` | 1914 |
-| `BajarATodos` |  | `int` | `Vehicle v` | 1935 |
-| `IssueGroundOrderT` |  | `void` | `Vector3 punto, bool shiftHeld` | 1980 |
-| `GOrderOnVehicle` |  | `void` | `Vehicle vehicle` | 2090 |
-| `SoldadoUnicoSeleccionado` |  | `Soldier` | — | 2204 |
-| `TryPossess` |  | `bool` | `Soldier target` | 2218 |
-| `EquipSlot` |  | `void` | `int slot` | 2366 |
-| `EquipWeaponHotkey` |  | `void` | `WeaponKind kind` | 2390 |
-| `TryIssueVehicleMoveOrder` |  | `bool` | `Vector3 point, Vehicle vehicle = null` | 2416 |
-| `UsarTorreta` |  | `bool` | `TorretaFija t` | 2527 |
-| `SalirDeTorreta` |  | `void` | — | 2554 |
-| `ConstruirContextoRadial` |  | `ContextoRadial` | `AimResult aim` | 2608 |
+| `MostrarProgresoDemolicion` |  | `void` | `float f01` | 305 |
+| `OcultarProgresoDemolicion` |  | `void` | — | 306 |
+| `SetDestination` |  | `void` | `Vector3 punto` | 442 |
+| `CancelDestination` |  | `void` | — | 464 |
+| `ToggleVehicleCameraView` |  | `void` | — | 466 |
+| `ShowTutorialMessage` |  | `void` | `string text, float holdSeconds = 1.4f` | 475 |
+| `ReclamarControl` |  | `void` | `Soldier s` | 803 |
+| `TryRevivir` |  | `bool` | `Soldier caido, bool sostenidoLoSuficiente` | 1549 |
+| `TryResolverCobertura` |  | `bool` | `AimResult r, out Vector3 punto, out Collider dueno` | 1823 |
+| `IssueCoverOrderT` |  | `bool` | `Vector3 punto, Collider dueno` | 1860 |
+| `IssueCoverOrderForSelection` |  | `int` | `IReadOnlyList<Soldier> seleccion, Vector3 puntoApuntado, Transform obs` | 1884 |
+| `SubirATodos` |  | `int` | `Vehicle v` | 1913 |
+| `BajarATodos` |  | `int` | `Vehicle v` | 1934 |
+| `IssueGroundOrderT` |  | `void` | `Vector3 punto, bool shiftHeld` | 1979 |
+| `GOrderOnVehicle` |  | `void` | `Vehicle vehicle` | 2089 |
+| `SoldadoUnicoSeleccionado` |  | `Soldier` | — | 2203 |
+| `TryPossess` |  | `bool` | `Soldier target` | 2217 |
+| `EquipSlot` |  | `void` | `int slot` | 2365 |
+| `EquipWeaponHotkey` |  | `void` | `WeaponKind kind` | 2389 |
+| `TryIssueVehicleMoveOrder` |  | `bool` | `Vector3 point, Vehicle vehicle = null` | 2415 |
+| `UsarTorreta` |  | `bool` | `TorretaFija t` | 2526 |
+| `SalirDeTorreta` |  | `void` | — | 2553 |
+| `ConstruirContextoRadial` |  | `ContextoRadial` | `AimResult aim` | 2607 |
 
 **Propiedades:** `LookSensitivity`, `TurretSensitivity`, `InvertLookY`, `UltimaMira`, `DemolicionEnCurso`, `GranadaApuntando`, `GranadasLanzadasPorElJugador`, `Mira`, `ApuntadoVisual`, `TieneDestino`, `DestinoActual`, `IsHandlingDeath`, `EnTorretaFija`, `TorretaActual`
 
@@ -1291,9 +1366,9 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Solicitar` | static | `bool` | `Soldier caido` | 39 |
-| `Cancelar` | static | `void` | — | 67 |
-| `Tick` | static | `void` | `float dt` | 75 |
+| `Solicitar` | static | `bool` | `Soldier caido` | 50 |
+| `Cancelar` | static | `void` | — | 79 |
+| `Tick` | static | `void` | `float dt` | 87 |
 
 **Propiedades:** `Caido`, `Rescatista`, `Activo`
 
@@ -1418,7 +1493,8 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Mostrar` | static | `void` | `Soldier quien, Vector3 p, Vector3 frente, Transform obstaculo` | 96 |
-| `Ocultar` | static | `void` | — | 123 |
+| `ResaltarSolo` | static | `void` | `Transform obstaculo` | 124 |
+| `Ocultar` | static | `void` | — | 126 |
 
 **Propiedades:** `Instance`, `Visible`, `PuntoActual`, `ModeloActual`
 
@@ -1431,8 +1507,8 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Bootstrap` |  | `void` | — | 51 |
-| `WriteTint` | static | `void` | `Renderer r, Color c` | 204 |
-| `ReadTint` | static | `Color` | `Renderer r` | 216 |
+| `WriteTint` | static | `void` | `Renderer r, Color c` | 222 |
+| `ReadTint` | static | `Color` | `Renderer r` | 234 |
 
 ## `Assets/_Project/Scripts/Presentation/CuchilloFx.cs`
 
@@ -1447,6 +1523,19 @@
 | `Iniciar` |  | `void` | `Transform dueno` | 50 |
 
 **Propiedades:** `Tajos`, `Aciertos`
+
+## `Assets/_Project/Scripts/Presentation/CursorContextual.cs`
+
+**Tipos:** `enum CursorTipo`, `class CursorContextual`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Aplicar` | static | `void` | `CursorTipo tipo` | 16 |
+| `Restaurar` | static | `void` | — | 28 |
+
+**Propiedades:** `Actual`
 
 ## `Assets/_Project/Scripts/Presentation/DebrisPool.cs`
 
@@ -1478,7 +1567,7 @@
 | `CountOf` | static | `int` | `DecalKind kind` | 23 |
 | `ResetIfStale` | static | `void` | — | 25 |
 | `ClearAll` | static | `void` | — | 46 |
-| `Spawn` | static | `GameObject` | `DecalKind kind, Vector3 position, Vector3 normal, float size` | 80 |
+| `Spawn` | static | `GameObject` | `DecalKind kind, Vector3 position, Vector3 normal, float size` | 77 |
 
 ## `Assets/_Project/Scripts/Presentation/EnemyAlertIndicatorView.cs`
 
@@ -1507,6 +1596,35 @@
 | `Spawn` | static | `WorldTag` | `Vector3 pos, string text, Color color` | 94 |
 
 **Propiedades:** `Contador`, `UltimoTexto`, `UltimoSonido`, `ActiveCount`
+
+## `Assets/_Project/Scripts/Presentation/Fragmentador.cs`
+
+**Tipos:** `class Fragmento`, `class Fragmentador`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Liberar` |  | `void` | — | 34 |
+| `LimpiarTodo` | static | `void` | — | 58 |
+| `Romper` | static | `int` | `Transform objeto, Vector3 origen, float fuerza, int piezas = 0` | 206 |
+
+**Propiedades:** `Lanzados`, `Activos`, `Piezas`
+
+## `Assets/_Project/Scripts/Presentation/FuentesBelicas.cs`
+
+**Tipos:** `class FuentesBelicas`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `EsBelica` | static | `bool` | `Font f` | 45 |
+| `Aplicar` | static | `int` | — | 48 |
+| `Aplicar` | static | `bool` | `Text t, Font titulo, Font texto` | 61 |
+| `Aplicar` | static | `bool` | `TextMesh m, Font texto` | 73 |
+
+**Propiedades:** `Cambiados`, `Titulo`, `Texto`
 
 ## `Assets/_Project/Scripts/Presentation/GameOutcomeController.cs`
 
@@ -1581,14 +1699,14 @@
 | `SpawnScaledByDamage` | static | `void` | `Vector3 position, Color color, int damage` | 208 |
 | `SpawnArmorSparks` | static | `void` | `Vector3 position, Vector3 surfaceNormal` | 217 |
 | `SpawnExplosion` | static | `void` | `Vector3 position, float radius` | 231 |
-| `SpawnShockwaveRing` | static | `void` | `Vector3 center, float radius` | 255 |
-| `Recycle` |  | `void` | — | 467 |
-| `Contains` |  | `bool` | `ImpactFx fx` | 504 |
-| `ResetIfStale` |  | `void` | — | 509 |
-| `Take` |  | `ImpactFx` | — | 540 |
-| `Release` |  | `void` | `ImpactFx fx` | 573 |
-| `LimpiarTodo` |  | `void` | — | 583 |
-| `RecycleAll` |  | `void` | — | 603 |
+| `SpawnShockwaveRing` | static | `void` | `Vector3 center, float radius` | 258 |
+| `Recycle` |  | `void` | — | 470 |
+| `Contains` |  | `bool` | `ImpactFx fx` | 507 |
+| `ResetIfStale` |  | `void` | — | 512 |
+| `Take` |  | `ImpactFx` | — | 543 |
+| `Release` |  | `void` | `ImpactFx fx` | 576 |
+| `LimpiarTodo` |  | `void` | — | 586 |
+| `RecycleAll` |  | `void` | — | 606 |
 
 **Propiedades:** `Budget`, `ActiveCount`, `Budget`, `ActiveCount`, `TotalCount`
 
@@ -1636,10 +1754,10 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `OnPlayClicked` |  | `void` | — | 38 |
-| `MostrarDificultad` |  | `void` | — | 47 |
-| `IniciarPartida` |  | `void` | `NivelDificultad nivel` | 111 |
-| `OnTutorialClicked` |  | `void` | — | 120 |
-| `OnExitClicked` |  | `void` | — | 128 |
+| `MostrarDificultad` |  | `void` | — | 52 |
+| `IniciarPartida` |  | `void` | `NivelDificultad nivel` | 116 |
+| `OnTutorialClicked` |  | `void` | — | 125 |
+| `OnExitClicked` |  | `void` | — | 133 |
 
 ## `Assets/_Project/Scripts/Presentation/MenuAmbiente.cs`
 
@@ -1722,8 +1840,8 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Tick` | static | `void` | `float dt` | 49 |
-| `TakeDamage` |  | `void` | `int amount` | 115 |
-| `Demoler` |  | `void` | — | 138 |
+| `TakeDamage` |  | `void` | `int amount, Vector3? desde = null` | 119 |
+| `Demoler` |  | `void` | `Vector3? desde = null, float fuerza = 9f` | 143 |
 
 **Propiedades:** `EsExplosivo`, `EstaEncendido`, `MaxHealth`, `CurrentHealth`, `IsCollapsed`, `Stage`
 
@@ -1911,6 +2029,22 @@
 | `Recarga` | static | `AudioClip` | `WeaponKind arma` | 306 |
 | `Desenfundar` | static | `AudioClip` | `WeaponKind arma` | 401 |
 | `GatilloVacio` | static | `AudioClip` | `WeaponKind arma` | 419 |
+
+## `Assets/_Project/Scripts/Presentation/SpriteFx.cs`
+
+**Tipos:** `class SpritesReales`, `class SpriteFx`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Obtener` | static | `Sprite` | `string nombre` | 17 |
+| `LimpiarTodo` | static | `void` | — | 46 |
+| `Lanzar` | static | `SpriteFx` | `string sprite, Vector3 pos, Color color, float tam0, float tam1, float` | 80 |
+| `Explosion` | static | `int` | `Vector3 pos, float radio` | 131 |
+| `Golpe` | static | `void` | `Vector3 pos, Color color, float tam` | 158 |
+
+**Propiedades:** `Activos`, `Lanzados`
 
 ## `Assets/_Project/Scripts/Presentation/SquadStateIndicatorView.cs`
 
@@ -2133,15 +2267,15 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `SaltarPaso` |  | `void` | — | 1757 |
-| `BorrarProgreso` | static | `void` | — | 1770 |
-| `SaltarPasoDelJugador` |  | `void` | — | 1790 |
-| `Retomar` |  | `bool` | — | 1799 |
-| `RegruparAliados` |  | `void` | `float distanciaMaxima = 14f` | 1809 |
-| `DireccionHacia` | static | `string` | `Vector3 desde, float yawGrados, Vector3 objetivo` | 1847 |
-| `Finalizar` |  | `void` | — | 1859 |
-| `Reintentar` |  | `void` | — | 1867 |
-| `VolverAlMenu` |  | `void` | — | 1873 |
+| `SaltarPaso` |  | `void` | — | 1760 |
+| `BorrarProgreso` | static | `void` | — | 1773 |
+| `SaltarPasoDelJugador` |  | `void` | — | 1793 |
+| `Retomar` |  | `bool` | — | 1802 |
+| `RegruparAliados` |  | `void` | `float distanciaMaxima = 14f` | 1812 |
+| `DireccionHacia` | static | `string` | `Vector3 desde, float yawGrados, Vector3 objetivo` | 1850 |
+| `Finalizar` |  | `void` | — | 1862 |
+| `Reintentar` |  | `void` | — | 1870 |
+| `VolverAlMenu` |  | `void` | — | 1876 |
 
 **Propiedades:** `Instance`, `Indice`, `Total`, `Terminado`, `EnPausa`, `Ui`, `TiempoTotal`, `PasoActual`, `DuracionPorPaso`, `Bajas`, `TextoActual`, `PasoGuardado`, `Retomando`
 
@@ -2296,14 +2430,14 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `For` | static | `IEnumerable<ControlEntry>` | `ControlContext ctx` | 170 |
-| `LineFor` | static | `string` | `ControlContext ctx` | 180 |
-| `LineFor` | static | `string` | `ControlContext ctx, int maxEntries` | 183 |
-| `FullText` | static | `string` | — | 199 |
-| `DisplayKeyFor` | static | `string` | `ControlEntry e` | 213 |
-| `HeaderFor` | static | `string` | `ControlContext ctx` | 222 |
-| `FormatKey` | static | `string` | `string key` | 237 |
-| `Validate` | static | `bool` | `out string problem` | 249 |
+| `For` | static | `IEnumerable<ControlEntry>` | `ControlContext ctx` | 172 |
+| `LineFor` | static | `string` | `ControlContext ctx` | 182 |
+| `LineFor` | static | `string` | `ControlContext ctx, int maxEntries` | 185 |
+| `FullText` | static | `string` | — | 201 |
+| `DisplayKeyFor` | static | `string` | `ControlEntry e` | 215 |
+| `HeaderFor` | static | `string` | `ControlContext ctx` | 224 |
+| `FormatKey` | static | `string` | `string key` | 239 |
+| `Validate` | static | `bool` | `out string problem` | 251 |
 
 ## `Assets/_Project/Scripts/UI/DamageDirectionView.cs`
 
@@ -2484,8 +2618,8 @@
 |---|---|---|---|---|
 | `Asegurar` | static | `MirillaView` | `Transform canvasRoot` | 43 |
 | `Actualizar` |  | `void` | `bool zoom, ReticleStyle estilo, Color tinte` | 92 |
-| `Ocultar` |  | `void` | — | 155 |
-| `SpriteDe` | static | `Sprite` | `ReticleStyle e` | 164 |
+| `Ocultar` |  | `void` | — | 164 |
+| `SpriteDe` | static | `Sprite` | `ReticleStyle e` | 173 |
 
 **Propiedades:** `Visible`, `Estilo`, `Alfa`, `Reticula`, `Instancia`
 
@@ -2589,7 +2723,7 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Bind` |  | `void` | `Soldier soldier, int index` | 69 |
+| `Bind` |  | `void` | `Soldier soldier, int index` | 70 |
 
 **Propiedades:** `Soldier`, `SoldierId`, `Index`, `IsHighlighted`
 
@@ -2654,6 +2788,17 @@
 | `Reparar` | static | `void` | `Image img` | 46 |
 | `RepararTodo` | static | `int` | `GameObject raiz` | 56 |
 
+## `Assets/_Project/Scripts/UI/SpriteDeTriangulo.cs`
+
+**Tipos:** `class SpriteTriangulo`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Obtener` | static | `Sprite` | — | 12 |
+| `Aplicar` | static | `void` | `Image img` | 38 |
+
 ## `Assets/_Project/Scripts/UI/TurretAimView.cs`
 
 **Tipos:** `class TurretAimView`
@@ -2706,9 +2851,9 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `IconFor` | static | `Sprite` | `WeaponKind kind` | 28 |
-| `EnsureIcon` |  | `Image` | — | 44 |
-| `Bind` |  | `void` | `Text text, Image fillImage` | 73 |
-| `UpdateFrom` |  | `void` | `WeaponHolder weapon` | 89 |
+| `EnsureIcon` |  | `Image` | — | 50 |
+| `Bind` |  | `void` | `Text text, Image fillImage` | 79 |
+| `UpdateFrom` |  | `void` | `WeaponHolder weapon` | 95 |
 
 **Propiedades:** `Icon`
 
@@ -2721,8 +2866,9 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Barrer` | static | `int` | `Transform vehiculo, Collider casco, float velocidad, Vehicle datos` | 37 |
-| `EquipoDeLaTripulacion` | static | `TeamId?` | `Vehicle datos` | 80 |
-| `Derribar` | static | `void` | `Soldier victima, Vector3 direccion` | 93 |
+| `AplastarObstaculos` | static | `int` | `Transform vehiculo, float velocidad, float radioDelCasco` | 85 |
+| `EquipoDeLaTripulacion` | static | `TeamId?` | `Vehicle datos` | 110 |
+| `Derribar` | static | `void` | `Soldier victima, Vector3 direccion` | 123 |
 
 ## `Assets/_Project/Scripts/Vehicles/DetachedTurretFlight.cs`
 
@@ -2785,7 +2931,8 @@
 | `AimAt` |  | `void` | `Vector3 worldPoint, float dt` | 181 |
 | `IsAimedAt` |  | `bool` | `Vector3 worldPoint, float toleranceDeg = 4f` | 204 |
 | `Tick` |  | `void` | `float dt` | 213 |
-| `TryFire` |  | `bool` | — | 247 |
+| `ResolverTirador` |  | `void` | `out int shooterId, out TeamId team` | 248 |
+| `TryFire` |  | `bool` | — | 262 |
 
 **Propiedades:** `Ammo`, `ExplosionRadius`, `CurrentDamage`, `CurrentProjectileColor`, `ProjectileGravity`, `Heat`, `EffectiveCooldown`, `CooldownFraction01`, `DesiredYaw`, `DesiredPitch`, `YawGapDeg`, `MuzzleIsNearGround`
 
@@ -2841,6 +2988,6 @@
 |---|---|---|---|---|
 | `Drive` |  | `void` | `float throttle, float steer, float dt` | 29 |
 | `Brake` |  | `void` | `float dt` | 51 |
-| `Nudge` |  | `void` | `Vector3 worldDelta` | 151 |
+| `Nudge` |  | `void` | `Vector3 worldDelta` | 155 |
 
 **Propiedades:** `CurrentSpeed`, `MaxSpeed`, `IsStopped`

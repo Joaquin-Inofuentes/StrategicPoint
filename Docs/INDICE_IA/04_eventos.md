@@ -13,11 +13,11 @@
 | `EnvironmentHitEvent` | 1 | 1 | `Projectile.cs` | `AimUI.cs` |
 | `GrenadeExplodedEvent` | 1 | 1 | `Granada.cs` | `TutorialManager.cs` |
 | `GrenadeThrownEvent` | 1 | 1 | `Granada.cs` | `TutorialManager.cs` |
-| `HealedEvent` | 1 | 1 | `Health.cs` | `RosterRowView.cs` |
+| `HealedEvent` | 3 | 1 | `Health.cs`, `EstadoDePartida.cs`, `RescateAutomatico.cs` | `RosterRowView.cs` |
 | `MeleeAttackEvent` | 1 | 1 | `WeaponHolder.cs` | `TutorialManager.cs` |
 | `MoveOrderIssuedEvent` | 1 | 1 | `OrderService.cs` | `TutorialManager.cs` |
 | `OrderAcknowledgedEvent` | 1 | 1 | `OrderService.cs` | `SelectionRingManager.cs` |
-| `OrderCompletedEvent` | 2 | 0 | `AiBrain.Navegacion.cs`, `AiBrain.cs` | — ⚠ nadie lo escucha |
+| `OrderCompletedEvent` | 2 | 0 | `AiBrain.cs`, `AiBrain.Navegacion.cs` | — ⚠ nadie lo escucha |
 | `PossessionChangedEvent` | 1 | 3 | `PossessionService.cs` | `PossessedMarkerView.cs`, `RosterRowView.cs`, `SelectedSoldierUI.cs` |
 | `ProjectileReturnedEvent` | 1 | 0 | `Projectile.cs` | — ⚠ nadie lo escucha |
 | `SelectionChangedEvent` | 1 | 4 | `SelectionController.cs` | `SelectionRingManager.cs`, `RosterRowView.cs`, `SelectedSoldierUI.cs`, `SelectionCountView.cs` |

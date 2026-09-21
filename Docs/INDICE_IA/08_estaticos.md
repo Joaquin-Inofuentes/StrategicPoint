@@ -5,18 +5,19 @@
 > restablezca es una fuga de estado entre corridas — y la causa de los falsos fallos mas dificiles de
 > encontrar.
 
-**161 estaticos mutables fuera de `Editor/`:
-6 cubiertos por `ReinicioDeEstaticos`,
-38 en archivos con hook propio (hay que mirar si el hook cubre ESE campo),
-y 117 sin nada.**
+**174 estaticos mutables fuera de `Editor/`:
+8 cubiertos por `ReinicioDeEstaticos`,
+45 en archivos con hook propio (hay que mirar si el hook cubre ESE campo),
+y 121 sin nada.**
 
 | Campo | Tipo | Donde | Quien lo restablece |
 |---|---|---|---|
 | `nextId` | `int` | `Soldier.cs:18` | **nada** |
 | `matCivil` | `Material` | `SoldierLook.cs:53` | **nada** |
+| `Humanizada` | `bool` | `AiBrain.Disparo.cs:31` | **nada** |
 | `proximoAvisoRadio` | `float` | `AiBrain.Granadas.cs:25` | **nada** |
 | `ultimoAvisoDeteccion` | `float` | `AiBrain.Tactica.cs:87` | **nada** |
-| `ultimoAvisoDeSeguir` | `float` | `AiBrain.Tactica.cs:218` | **nada** |
+| `ultimoAvisoDeSeguir` | `float` | `AiBrain.Tactica.cs:219` | **nada** |
 | `DistanciaParaSeguir` | `float` | `AjustesDeEscuadra.cs:23` | hook propio *(revisar si cubre este campo)* |
 | `DistanciaParaDetenerse` | `float` | `AjustesDeEscuadra.cs:24` | hook propio *(revisar si cubre este campo)* |
 | `SeguirDesdeCobertura` | `bool` | `AjustesDeEscuadra.cs:25` | hook propio *(revisar si cubre este campo)* |
@@ -60,6 +61,8 @@ y 117 sin nada.**
 | `Vehicles` | `IReadOnlyList<Vehicle>` | `WorldSystemsRegistry.cs:30` | **nada** |
 | `Obstacles` | `IReadOnlyList<SP.Presentation.ObstacleMarker>` | `WorldSystemsRegistry.cs:31` | **nada** |
 | `populated` | `bool` | `WorldSystemsRegistry.cs:54` | **nada** |
+| `avisoDeCuenta` | `bool` | `EstadoDePartida.cs:28` | `ReinicioDeEstaticos` |
+| `outcomeSuelto` | `GameOutcomeController` | `EstadoDePartida.cs:30` | `ReinicioDeEstaticos` |
 | `Activo` | `bool` | `MisionDirector.cs:32` | hook propio *(revisar si cubre este campo)* |
 | `Segundos` | `float` | `Demolicion.cs:17` | `ReinicioDeEstaticos` |
 | `Todos` | `IReadOnlyList<DemoledorAsalto>` | `Demolicion.cs:101` | `ReinicioDeEstaticos` |
@@ -93,6 +96,7 @@ y 117 sin nada.**
 | `Activo` | `bool` | `RescateAutomatico.cs:32` | **nada** |
 | `restante` | `float` | `RescateAutomatico.cs:33` | **nada** |
 | `canalizado` | `float` | `RescateAutomatico.cs:35` | **nada** |
+| `reordenar` | `float` | `RescateAutomatico.cs:36` | **nada** |
 | `Puntos` | `IReadOnlyList<Vector3>` | `TrazadoDeCamino.cs:36` | **nada** |
 | `Cantidad` | `int` | `TrazadoDeCamino.cs:37` | **nada** |
 | `HayTrazado` | `bool` | `TrazadoDeCamino.cs:38` | **nada** |
@@ -106,7 +110,7 @@ y 117 sin nada.**
 | `Visible` | `bool` | `CoverHologram.cs:21` | **nada** |
 | `PuntoActual` | `Vector3` | `CoverHologram.cs:22` | **nada** |
 | `ModeloActual` | `Soldier` | `CoverHologram.cs:23` | **nada** |
-| `tintBlock` | `MaterialPropertyBlock` | `CubeFxReactor.cs:200` | **nada** |
+| `tintBlock` | `MaterialPropertyBlock` | `CubeFxReactor.cs:218` | **nada** |
 | `root` | `Transform` | `DebrisPool.cs:20` | **nada** |
 | `ActiveCount` | `int` | `DebrisPool.cs:22` | **nada** |
 | `TotalCount` | `int` | `DebrisPool.cs:23` | **nada** |
@@ -117,6 +121,12 @@ y 117 sin nada.**
 | `active` | `EntityStateDebugView` | `EntityStateDebugView.cs:78` | hook propio *(revisar si cubre este campo)* |
 | `next` | `int` | `Feedback.cs:81` | **nada** |
 | `font` | `Font` | `Feedback.cs:82` | **nada** |
+| `root` | `Transform` | `Fragmentador.cs:49` | hook propio *(revisar si cubre este campo)* |
+| `mallas` | `Mesh[]` | `Fragmentador.cs:50` | hook propio *(revisar si cubre este campo)* |
+| `Piezas` | `IReadOnlyList<Fragmento>` | `Fragmentador.cs:53` | hook propio *(revisar si cubre este campo)* |
+| `instancia` | `FuentesBelicas` | `FuentesBelicas.cs:17` | hook propio *(revisar si cubre este campo)* |
+| `Titulo` | `Font` | `FuentesBelicas.cs:21` | hook propio *(revisar si cubre este campo)* |
+| `Texto` | `Font` | `FuentesBelicas.cs:22` | hook propio *(revisar si cubre este campo)* |
 | `Budget` | `int` | `ImpactFx.cs:51` | **nada** |
 | `ActiveCount` | `int` | `ImpactFx.cs:52` | **nada** |
 | `sharedMaterial` | `Material` | `ImpactFx.cs:58` | **nada** |
@@ -138,6 +148,7 @@ y 117 sin nada.**
 | `template` | `Material` | `SafeMaterial.cs:19` | **nada** |
 | `sharedMaterial` | `Material` | `SelectionRingFx.cs:30` | **nada** |
 | `propertyBlock` | `MaterialPropertyBlock` | `SelectionRingFx.cs:32` | **nada** |
+| `root` | `Transform` | `SpriteFx.cs:34` | hook propio *(revisar si cubre este campo)* |
 | `apuntado` | `Soldier` | `SquadStateIndicatorView.cs:49` | **nada** |
 | `apuntadoHasta` | `float` | `SquadStateIndicatorView.cs:50` | **nada** |
 | `RegisteredCount` | `int` | `WorldUiDirector.cs:65` | hook propio *(revisar si cubre este campo)* |
@@ -149,7 +160,7 @@ y 117 sin nada.**
 | `Lineas` | `IReadOnlyList<string>` | `TutorialLog.cs:17` | **nada** |
 | `t0` | `float` | `TutorialLog.cs:18` | **nada** |
 | `RutaArchivo` | `string` | `TutorialLog.cs:19` | **nada** |
-| `PasoGuardado` | `int` | `TutorialManager.cs:1769` | `ReinicioDeEstaticos` |
+| `PasoGuardado` | `int` | `TutorialManager.cs:1772` | `ReinicioDeEstaticos` |
 | `anilloCache` | `Sprite` | `AimUI.cs:99` | **nada** |
 | `PantallaCompleta` | `bool` | `AjustesDeJuego.cs:68` | hook propio *(revisar si cubre este campo)* |
 | `count` | `int` | `AlertQueue.cs:60` | hook propio *(revisar si cubre este campo)* |
@@ -169,8 +180,10 @@ y 117 sin nada.**
 | `PistaCategoria` | `int` | `MenuDeOrdenes.cs:144` | **nada** |
 | `sprites` | `Sprite[]` | `MirillaView.cs:27` | **nada** |
 | `mascara` | `Sprite` | `MirillaView.cs:29` | **nada** |
-| `cuatro` | `Vector2[]` | `MirillaView.cs:280` | **nada** |
+| `mascaraPeriscopio` | `Sprite` | `MirillaView.cs:204` | **nada** |
+| `cuatro` | `Vector2[]` | `MirillaView.cs:339` | **nada** |
 | `cache` | `Sprite` | `SpriteBlanco.cs:26` | **nada** |
+| `cache` | `Sprite` | `SpriteDeTriangulo.cs:10` | **nada** |
 | `Todas` | `IReadOnlyList<TorretaFija>` | `TorretaFija.cs:30` | hook propio *(revisar si cubre este campo)* |
 | `cachedLoopClip` | `AudioClip` | `VehicleAudioFeedback.cs:15` | **nada** |
 

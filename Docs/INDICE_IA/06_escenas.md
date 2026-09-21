@@ -2,10 +2,10 @@
 
 | Tipo | Cantidad |
 |---|---|
-| Escenas | 5 |
-| Prefabs | 132 |
-| Materiales | 19 |
-| Assets (`.asset`) | 20 |
+| Escenas | 6 |
+| Prefabs | 133 |
+| Materiales | 22 |
+| Assets (`.asset`) | 23 |
 | Shaders | 2 |
 | Input Actions | 1 |
 
@@ -16,6 +16,7 @@
 - `Assets/_Project/Scenes/SC_MainMenu.unity`
 - `Assets/_Project/Scenes/SC_TestLevel.unity`
 - `Assets/_Project/Scenes/SC_Tutorial.unity`
+- `Assets/_Recovery/0.unity`
 
 ## Shaders
 
@@ -108,7 +109,7 @@
 - `Assets/_Project/Prefabs/ArteMundo/P_Mod_Piso_Pasto_Var270.prefab`
 - `Assets/_Project/Prefabs/ArteMundo/P_Mod_Piso_Pasto_Var90.prefab`
 - `Assets/_Project/Prefabs/ArteMundo/P_Mod_Piso_Tierra.prefab`
-- …y 52 mas
+- …y 53 mas
 
 ## Como se construyen las escenas
 
