@@ -20,7 +20,8 @@ jobs:
       # script y no lo regenera, queda mintiendo. Un comando lo arregla, y el paso
       # dice cual.
       - name: Indice para IA al dia
-        run: python3 Tools/Indice/indexar_ia.py --check
+        run: |
+          python3 Tools/Indice/indexar_ia.py --check || { python3 Tools/Indice/indexar_ia.py > /dev/null; git diff --ignore-matching-lines='Generado por' -- Docs/INDICE_IA | head -80; exit 1; }
 
   suite:
     runs-on: ubuntu-latest
