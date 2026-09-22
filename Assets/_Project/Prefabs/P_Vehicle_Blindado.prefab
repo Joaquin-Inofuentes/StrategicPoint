@@ -617,7 +617,7 @@ Transform:
   m_Children:
   - {fileID: 9030509756838995070}
   - {fileID: 1262121457326407266}
-  - {fileID: 2500768722823653713}
+  - {fileID: 3696361771011085861}
   m_Father: {fileID: 4736711599988627201}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6360321236730742580
@@ -641,7 +641,7 @@ MonoBehaviour:
   playerTurnSpeedDegPerSec: 160
   minPitchDeg: -8
   maxPitchDeg: 35
-  Muzzle: {fileID: 2500768722823653713}
+  Muzzle: {fileID: 3696361771011085861}
   projectileGravity: 0
   SpreadDeg: 0
 --- !u!1 &4581602151036461976
@@ -675,37 +675,6 @@ Transform:
   m_Children:
   - {fileID: 118709542462445626}
   m_Father: {fileID: 7013702220749121913}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &5858193555760767062
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 2500768722823653713}
-  m_Layer: 0
-  m_Name: Muzzle
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &2500768722823653713
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5858193555760767062}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0.5}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 3237311850909168175}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &5897980532276074765
 GameObject:
@@ -829,6 +798,37 @@ MeshRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_AdditionalVertexStreams: {fileID: 0}
+--- !u!1 &7272758597995600050
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3696361771011085861}
+  m_Layer: 0
+  m_Name: Muzzle
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3696361771011085861
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7272758597995600050}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0.5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 3237311850909168175}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &7616012328992597560
 GameObject:
   m_ObjectHideFlags: 0
@@ -839,6 +839,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4269514617112309058}
   - component: {fileID: 113685612821932762}
+  - component: {fileID: 3763831835098109213}
   m_Layer: 0
   m_Name: TurretHitbox
   m_TagString: Untagged
@@ -882,6 +883,18 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 1.2983624, y: 0.66360784, z: 2.7310684}
   m_Center: {x: 0, y: 0.30163965, z: 0.19057357}
+--- !u!114 &3763831835098109213
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7616012328992597560}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16085b5dc66d3e14aa434846ddf67639, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SP.Vehicles.HitboxDeImpacto
 --- !u!1001 &1571986674180059697
 PrefabInstance:
   m_ObjectHideFlags: 0

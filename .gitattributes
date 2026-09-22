@@ -169,3 +169,13 @@ Packages/packages-lock.json linguist-generated
 
 # Exceptions for .asset files such as lightning pre-baking
 LightingData.asset     binary
+
+# Fix: los siguientes archivos se guardan en formato BINARIO nativo de Unity,
+# no YAML. Sin este override, las reglas unity-yaml de arriba (eol=lf) los
+# tratan como texto y git corrompe sus bytes en cada commit/checkout cuando
+# core.autocrlf esta activo. Ver diagnostico de la sesion 2026-09-22.
+Assets/_Project/Scenes/SC_Gameplay.unity -text -diff -merge binary
+Assets/_Project/Scenes/SC_Tutorial.unity -text -diff -merge binary
+Assets/_Project/Terrains/TerrainData_Main.asset -text -diff -merge binary
+Assets/_Project/Terrains/TerrainData_Main_ANTES_del_blockout.asset -text -diff -merge binary
+Assets/_Project/Terrains/TerrainData_Tutorial.asset -text -diff -merge binary
