@@ -188,6 +188,8 @@ namespace SP.Core
             if (t.GetComponentInParent<SP.Combat.Projectile>() != null) return false;
             // Ronda 12: los trozos que salen de un obstaculo roto son cuerpos rigidos sueltos, no paredes.
             if (t.GetComponentInParent<SP.Presentation.Fragmento>() != null) return false;
+            // Hitbox auxiliar (p.ej. TurretHitbox del tanque): existe solo para recibir impactos, no es un obstaculo real.
+            if (t.GetComponentInParent<SP.Vehicles.HitboxDeImpacto>() != null) return false;
             return true;
         }
 

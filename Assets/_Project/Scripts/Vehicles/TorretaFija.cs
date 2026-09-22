@@ -37,6 +37,33 @@ namespace SP.Vehicles
         int armaPreviaIndice;
         Vector3 posicionPrevia;
 
+        // BUG REAL reportado: "montas la torreta y la torreta no se mueve, se deberia rotar". El
+        // codigo de arriba (Ocupar/AcotarGiro) siempre giro al SOLDADO, nunca al mesh del arma --
+        // el emplazamiento (P_Env_Emplazamiento_MG) es una sola pieza con un BoxCollider SOLIDO en
+        // la raiz (el parapeto de sacos con el que choca todo el mundo); girar transform ENTERO
+        // giraria tambien ese collider y dejaria el parapeto desalineado del arte del nivel en
+        // cuanto alguien la use. No se puede resolver moviendo el mesh a un hijo pivote nuevo:
+        // ese mesh (GRP_Env_Emplazamiento) es parte de la estructura de un Prefab Instance conectado
+        // y Unity ignora en silencio el SetParent que lo saca de ahi (verificado en vivo). En cambio
+        // se gira cada hijo visual EN SU LUGAR (pos/rot local original + delta de yaw), que da el
+        // mismo resultado visual que orbitar alrededor de un pivote sin tocar la estructura del prefab.
+        readonly List<Transform> hijosVisuales = new List<Transform>();
+        readonly List<Vector3> posLocalOriginal = new List<Vector3>();
+        readonly List<Quaternion> rotLocalOriginal = new List<Quaternion>();
+        float yawNeutro;
+
+        void GirarVisual(float yaw)
+        {
+            var delta = Quaternion.Euler(0f, Mathf.DeltaAngle(yawNeutro, yaw), 0f);
+            for (int i = 0; i < hijosVisuales.Count; i++)
+            {
+                var c = hijosVisuales[i];
+                if (c == null) continue;
+                c.localPosition = delta * posLocalOriginal[i];
+                c.localRotation = delta * rotLocalOriginal[i];
+            }
+        }
+
         // Aviso para el tutorial, la interfaz y las pruebas.
         public static event System.Action<TorretaFija, Soldier> Ocupada;
         public static event System.Action<TorretaFija, Soldier> Liberada;
@@ -148,7 +175,13 @@ namespace SP.Vehicles
         void LateUpdate()
         {
             var s = Ocupante;
-            if (s == null) return;
+            if (s == null)
+            {
+                // Sin nadie a bordo el arma vuelve a mirar hacia donde la puso el nivel: no queda
+                // apuntando para siempre hacia donde disparo el ultimo que la uso.
+                GirarVisual(yawNeutro);
+                return;
+            }
             // Muerto, o sacado del puesto por una orden (RTS): se libera solo.
             if (s.Health == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy
                 || (s.transform.position - Puesto).sqrMagnitude > 2.25f)
@@ -158,6 +191,10 @@ namespace SP.Vehicles
             }
             var p = s.transform.position;
             if ((p - Puesto).sqrMagnitude > 0.0001f) s.transform.position = Puesto;
+
+            // El mesh sigue la punteria YA acotada al arco (PlayerInputDriver llama AcotarGiro en
+            // Update, que corre siempre antes que este LateUpdate).
+            GirarVisual(s.transform.eulerAngles.y);
         }
 
         // ---- Instalacion sobre el arte del mapa -------------------------------------------------
@@ -199,6 +236,19 @@ namespace SP.Vehicles
             caja.center = go.transform.InverseTransformPoint(b.center);
             var e = go.transform.lossyScale;
             caja.size = new Vector3(b.size.x / Mathf.Max(0.01f, Mathf.Abs(e.x)) + 0.4f, b.size.y / Mathf.Max(0.01f, Mathf.Abs(e.y)) + 0.4f, b.size.z / Mathf.Max(0.01f, Mathf.Abs(e.z)) + 0.4f);
+
+            // Todos los hijos existentes (el mesh, donde vive el prefab anidado del arte) se guardan
+            // como "hijos visuales": se giran en su lugar con la punteria (ver GirarVisual) sin tocar
+            // el root, que es donde viven los dos colliders de arriba (el solido del parapeto y esta
+            // caja de apuntado).
+            torreta.yawNeutro = go.transform.eulerAngles.y;
+            for (int i = 0; i < go.transform.childCount; i++)
+            {
+                var c = go.transform.GetChild(i);
+                torreta.hijosVisuales.Add(c);
+                torreta.posLocalOriginal.Add(c.localPosition);
+                torreta.rotLocalOriginal.Add(c.localRotation);
+            }
             return torreta;
         }
     }

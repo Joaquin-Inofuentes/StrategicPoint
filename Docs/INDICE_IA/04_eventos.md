@@ -21,7 +21,7 @@
 | `PossessionChangedEvent` | 1 | 3 | `PossessionService.cs` | `PossessedMarkerView.cs`, `RosterRowView.cs`, `SelectedSoldierUI.cs` |
 | `ProjectileReturnedEvent` | 1 | 0 | `Projectile.cs` | — ⚠ nadie lo escucha |
 | `SelectionChangedEvent` | 1 | 4 | `SelectionController.cs` | `SelectionRingManager.cs`, `RosterRowView.cs`, `SelectedSoldierUI.cs`, `SelectionCountView.cs` |
-| `ShotFiredEvent` | 2 | 6 | `WeaponHolder.cs`, `HeadlessTestRunner.Fases8a12.cs` | `AiBrain.cs`, `HeadlessTestRunner.Fase21.cs`, `PlayerInputDriver.cs`, `CubeFxReactor.cs`, `SoldierAnimatorDriver.cs`, `TutorialManager.cs` |
+| `ShotFiredEvent` | 3 | 6 | `WeaponHolder.cs`, `HeadlessTestRunner.Fases8a12.cs`, `CinematicaDeVictoria.cs` | `AiBrain.cs`, `HeadlessTestRunner.Fase21.cs`, `PlayerInputDriver.cs`, `CubeFxReactor.cs`, `SoldierAnimatorDriver.cs`, `TutorialManager.cs` |
 | `SwapTargetClearedEvent` | 1 | 0 | `AimTargeting.cs` | — ⚠ nadie lo escucha |
 | `SwapTargetHighlightedEvent` | 1 | 0 | `AimTargeting.cs` | — ⚠ nadie lo escucha |
 | `TurretControlChangedEvent` | 1 | 1 | `TurretAI.cs` | `PlayerInputDriver.cs` |

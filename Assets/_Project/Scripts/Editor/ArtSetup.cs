@@ -571,6 +571,127 @@ namespace SP.EditorTools
             CorregirPisoDeAgachado();
             CorregirGrupoDeAltura("idle crouching aiming", ClipsAgachadoACorregir);
             AssetDatabase.SaveAssets();
+            // BUG REAL (ronda de mejoras): el usuario reporto que caminar/correr hacia la derecha
+            // se sigue enterrando en el PIE (build jugado por fuera del Editor), pese a que esta
+            // correccion mide "walking"=0.9457 y "run right"=0.9457 EN VIVO en el editor. La curva
+            // editada arriba (AnimationUtility.SetEditorCurve) vive en la cache de Library, no en
+            // ningun asset serializado: un build no corre ArtSetup (es codigo de Editor/), asi que
+            // importa el .fbx crudo sin calibrar y el hundimiento vuelve, exactamente el mismo
+            // patron que ya forzo a hornear los clips de salto a .anim (ver HornearClipsDeSalto).
+            // Mismo remedio aca: hornear el grupo de marcha y el de agachado a assets .anim propios
+            // que sobreviven a un build.
+            HornearClipsDeMarcha();
+        }
+
+        // Directorio propio (no Assets/ARTS, que es el import cache del pack) para que la cadera
+        // calibrada sobreviva a un build real y no solo a la cache de Library del Editor.
+        internal const string MarchaDir = "Assets/_Project/Animation/Marcha";
+        internal static string RutaDeMarchaHorneado(string nombre) => MarchaDir + "/" + nombre.Replace(' ', '_') + ".anim";
+
+        internal static void HornearClipsDeMarcha()
+        {
+            System.IO.Directory.CreateDirectory(MarchaDir);
+            HornearGrupoDeMarcha("walking", ClipsDeMarchaACorregir);
+            HornearGrupoDeMarcha("idle crouching aiming", ClipsAgachadoACorregir);
+            AssetDatabase.SaveAssets();
+            ReapuntarControladorAMarchaHorneada();
+        }
+
+        // El controlador YA CONSTRUIDO (AC_Soldado.controller) referencia los clips crudos del pack
+        // por objeto directo (BlendTree.children[].motion), no por nombre: hornear el .anim de arriba
+        // no alcanza si nadie repunta esas referencias. Mismo principio que
+        // ReapuntarControladorASaltoHorneado, pero recursivo -- el grupo de marcha vive DOS niveles
+        // adentro (Locomocion -> Correr/Caminar -> los 8 clips direccionales de cada BlendTree
+        // anidado), a diferencia del salto que son 3 estados sueltos en la raiz.
+        //
+        // El repunte es por REFERENCIA de objeto (CargarClip(nombre)), no por AnimationClip.name: el
+        // .name interno de cada sub-asset del FBX es el que trae Mixamo (p.ej. "mixamo.com"), no
+        // coincide con el nombre logico "run right" que usa el resto del pipeline.
+        internal static void ReapuntarControladorAMarchaHorneada()
+        {
+            var ctrl = AssetDatabase.LoadAssetAtPath<UnityEditor.Animations.AnimatorController>("Assets/_Project/Animation/AC_Soldado.controller");
+            if (ctrl == null || ctrl.layers.Length == 0) return;
+
+            var mapa = new Dictionary<AnimationClip, AnimationClip>();
+            void Mapear(string[] nombres)
+            {
+                foreach (var nombre in nombres)
+                {
+                    var origen = CargarClip(nombre);
+                    var horneado = AssetDatabase.LoadAssetAtPath<AnimationClip>(RutaDeMarchaHorneado(nombre));
+                    if (origen != null && horneado != null) mapa[origen] = horneado;
+                }
+            }
+            Mapear(ClipsDeMarchaACorregir);
+            Mapear(ClipsAgachadoACorregir);
+            if (mapa.Count == 0) return;
+
+            bool algo = false;
+            foreach (var l in ctrl.layers)
+                foreach (var e in l.stateMachine.states)
+                {
+                    var m = e.state.motion; // Motion.motion es una propiedad: no se puede pasar por ref directo.
+                    if (RepuntarMotion(ref m, mapa)) { e.state.motion = m; algo = true; }
+                }
+            if (algo) { EditorUtility.SetDirty(ctrl); AssetDatabase.SaveAssets(); }
+        }
+
+        // Devuelve true si repunto algo. Recorre BlendTree anidados.
+        static bool RepuntarMotion(ref UnityEngine.Motion motion, Dictionary<AnimationClip, AnimationClip> mapa)
+        {
+            bool tocado = false;
+            if (motion is UnityEditor.Animations.BlendTree bt)
+            {
+                var hijos = bt.children;
+                for (int i = 0; i < hijos.Length; i++)
+                {
+                    var m = hijos[i].motion;
+                    if (RepuntarMotion(ref m, mapa)) { hijos[i].motion = m; tocado = true; }
+                }
+                if (tocado) { bt.children = hijos; EditorUtility.SetDirty(bt); }
+            }
+            else if (motion is AnimationClip clip && clip != null && mapa.TryGetValue(clip, out var horneado) && horneado != clip)
+            {
+                motion = horneado; tocado = true;
+            }
+            return tocado;
+        }
+
+        // Mismo principio que HornearClipsDeSalto (copia + corrimiento de RootT.y + guardado como
+        // asset propio) pero el delta se mide siempre CONTRA EL CLIP CRUDO recien cargado -- no
+        // contra el estado ya editado en la cache de Library -- para que el resultado sea el mismo
+        // sin importar si esta sesion de Editor ya corrio, o no, CorregirGrupoDeAltura antes.
+        static void HornearGrupoDeMarcha(string nombreReferencia, string[] clipsACorregir)
+        {
+            var referencia = CargarClip(nombreReferencia);
+            if (referencia == null || !TryPromedioRootTy(referencia, out float alturaReferencia)) return;
+
+            foreach (var nombre in clipsACorregir)
+            {
+                var origen = CargarClip(nombre);
+                if (origen == null || !TryPromedioRootTy(origen, out float alturaPropia)) continue;
+                float delta = alturaReferencia - alturaPropia;
+
+                var copia = Object.Instantiate(origen);
+                copia.name = nombre;
+                if (Mathf.Abs(delta) >= 0.001f)
+                    foreach (var binding in AnimationUtility.GetCurveBindings(copia))
+                    {
+                        if (binding.propertyName != "RootT.y") continue;
+                        var curva = AnimationUtility.GetEditorCurve(copia, binding);
+                        var keys = curva.keys;
+                        for (int k = 0; k < keys.Length; k++) keys[k].value += delta;
+                        curva.keys = keys;
+                        AnimationUtility.SetEditorCurve(copia, binding, curva);
+                    }
+                var ajustes = AnimationUtility.GetAnimationClipSettings(origen);
+                AnimationUtility.SetAnimationClipSettings(copia, ajustes);
+
+                string ruta = RutaDeMarchaHorneado(nombre);
+                var existente = AssetDatabase.LoadAssetAtPath<AnimationClip>(ruta);
+                if (existente != null) { EditorUtility.CopySerialized(copia, existente); Object.DestroyImmediate(copia); EditorUtility.SetDirty(existente); }
+                else AssetDatabase.CreateAsset(copia, ruta);
+            }
         }
 
         // BUG REAL reportado por el usuario: "cuando se agacha con Ctrl no

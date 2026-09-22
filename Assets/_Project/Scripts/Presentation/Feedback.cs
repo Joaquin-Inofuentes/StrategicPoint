@@ -89,7 +89,25 @@ namespace SP.Presentation
 
         public static int ActiveCount { get { int n = 0; foreach (var t in pool) if (t != null && t.gameObject.activeSelf) n++; return n; } }
 
-        public static void ResetPool() { pool.Clear(); next = 0; }
+        // Cada instancia es su propio GameObject raiz (sin un root que las agrupe, a
+        // diferencia de DecalPool/DebrisPool), creado con hideFlags DontSaveInEditor|
+        // DontSaveInBuild igual que esos pools. Sin este ClearAll, sobreviven a un
+        // SceneManager.LoadScene en modo Single como huerfanos (scene.IsValid() ==
+        // false) -- verificado: 113 WorldTag acumulados tras varias sesiones de Play,
+        // algunos con el Canvas/Text todavia visible en pantalla.
+        public static void ClearAll()
+        {
+            foreach (var t in pool)
+                if (t != null) Destruir(t.gameObject);
+            pool.Clear();
+            next = 0;
+        }
+
+        static void Destruir(GameObject go)
+        {
+            if (Application.isPlaying) Object.Destroy(go);
+            else Object.DestroyImmediate(go);
+        }
 
         public static WorldTag Spawn(Vector3 pos, string text, Color color)
         {

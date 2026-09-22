@@ -27,6 +27,7 @@ namespace SP.Mision
         public const float Duracion = 15.5f;
 
         readonly List<Soldier> horda = new List<Soldier>();
+        readonly List<Vector3> hordaDestino = new List<Vector3>();
         readonly List<Soldier> pasajeros = new List<Soldier>();
         GameObject lienzo;
         Image negro, barraArriba, barraAbajo;
@@ -124,8 +125,10 @@ namespace SP.Mision
                     var s = m.CrearEnemigo("Enemigo_HordaFinal_" + (i + 1), new Vector3(Random.Range(-34f, 14f), 0f, Random.Range(14f, 36f)), 180f);
                     if (s == null) continue;
                     s.Brain.Pasivo = true;   // solo corren hacia el helicoptero
-                    s.Brain.IssueMoveOrder(pad + new Vector3(Random.Range(-8f, 10f), 0f, Random.Range(7f, 14f)));
+                    var destino = pad + new Vector3(Random.Range(-8f, 10f), 0f, Random.Range(7f, 14f));
+                    s.Brain.IssueMoveOrder(destino);
                     horda.Add(s);
+                    hordaDestino.Add(destino);
                 }
             SoldadosDeLaHorda = horda.Count;
 
@@ -177,19 +180,34 @@ namespace SP.Mision
                     ImpactFx.Spawn(pad + new Vector3(Mathf.Cos(ang), 0.3f, Mathf.Sin(ang)) * Random.Range(2f, 9f), new Color(0.65f, 0.52f, 0.38f), Random.Range(1.8f, 3.2f), 0.9f);
                 }
 
-                // la horda dispara al helicoptero desde el piso (trazadoras, sin dano)
+                // la horda dispara al helicoptero desde el piso (trazadoras, sin dano). Solo
+                // dispara el que ya llego a su puesto (no en plena carrera): se para, gira para
+                // encarar el helicoptero y recien ahi tira -- y se publica ShotFiredEvent para que
+                // el Animator levante la pose de disparo real en vez de verse correr con balas
+                // saliendole del pecho, que era la queja original.
                 if (t >= 5.2f && pool != null && t >= proximaTraza && horda.Count > 0)
                 {
                     proximaTraza = t + 0.05f;
                     for (int i = 0; i < 2; i++)
                     {
-                        var s = horda[Random.Range(0, horda.Count)];
+                        int idx = Random.Range(0, horda.Count);
+                        var s = horda[idx];
                         if (s == null || !s.gameObject.activeInHierarchy) continue;
-                        var boca = s.transform.position + Vector3.up * 1.1f;
-                        var dir = (heli.transform.position + Vector3.up * 1.4f - boca).normalized;
+                        var faltante = hordaDestino[idx] - s.transform.position; faltante.y = 0f;
+                        if (faltante.sqrMagnitude > 6.25f) continue; // todavia corriendo: no dispara en el aire
+
+                        var mira = heli.transform.position + Vector3.up * 1.4f;
+                        var haciaHeli = mira - s.transform.position; haciaHeli.y = 0f;
+                        if (haciaHeli.sqrMagnitude > 0.01f) s.transform.rotation = Quaternion.LookRotation(haciaHeli.normalized);
+
+                        var boca = s.Weapon != null && s.Weapon.Muzzle != null
+                            ? s.Weapon.Muzzle.position
+                            : s.transform.position + Vector3.up * 1.4f + s.transform.forward * 0.5f;
+                        var dir = (mira - boca).normalized;
                         dir = (dir + Random.insideUnitSphere * 0.03f).normalized;
                         pool.Spawn(boca, dir, -1, TeamId.Enemy, 0, new Color(1f, 0.45f, 0.25f));
                         MuzzleLightPool.Flash(boca, new Color(1f, 0.6f, 0.3f), 4f, 7f);
+                        EventBus.Instance.Publish(new ShotFiredEvent(s.Id));
                         TracerasDisparadas++;
                     }
                 }
@@ -215,10 +233,16 @@ namespace SP.Mision
                     }
                     else
                     {
-                        Plano = "3 · la horda";
-                        float u = (t - 10.5f) / 5f;
-                        pos = pad + new Vector3(12f + u * 3f, 11f + u * 3f, -20f);
-                        mira = Vector3.Lerp(pad + new Vector3(-2f, 4f, 10f), heli.transform.position, 0.45f);
+                        // Camara baja, a la altura de la horda (no un plano cenital generico):
+                        // queda entre los soldados que disparan, con el fogonazo de las trazadoras
+                        // en primer plano y el helicoptero huyendo al fondo. Un vaiveen suave
+                        // (mano en cámara) le da energia en vez de un travelling perfecto.
+                        Plano = "3 · la horda dispara";
+                        float u = Mathf.Clamp01((t - 10.5f) / 5f);
+                        float vaivenX = Mathf.Sin(t * 11f) * 0.05f;
+                        float vaivenY = Mathf.Sin(t * 17f + 1.3f) * 0.035f;
+                        pos = pad + new Vector3(-6f + u * 10f, 2.1f + vaivenY, 5f - u * 2f);
+                        mira = Vector3.Lerp(heli.transform.position, pad + new Vector3(2f, 3f, 9f), 0.3f) + new Vector3(vaivenX, 0f, 0f);
                     }
                     cam.transform.position = Vector3.Lerp(cam.transform.position, pos, t < 0.05f ? 1f : Mathf.Clamp01(dt * 6f));
                     var rotDeseada = Quaternion.LookRotation((mira - cam.transform.position).normalized);

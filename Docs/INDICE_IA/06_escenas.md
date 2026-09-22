@@ -2,10 +2,10 @@
 
 | Tipo | Cantidad |
 |---|---|
-| Escenas | 5 |
+| Escenas | 6 |
 | Prefabs | 133 |
-| Materiales | 22 |
-| Assets (`.asset`) | 23 |
+| Materiales | 23 |
+| Assets (`.asset`) | 24 |
 | Shaders | 2 |
 | Input Actions | 1 |
 
@@ -13,6 +13,7 @@
 
 - `Assets/Scenes/SampleScene.unity`
 - `Assets/_Project/Scenes/SC_Gameplay.unity`
+- `Assets/_Project/Scenes/SC_Loading.unity`
 - `Assets/_Project/Scenes/SC_MainMenu.unity`
 - `Assets/_Project/Scenes/SC_TestLevel.unity`
 - `Assets/_Project/Scenes/SC_Tutorial.unity`

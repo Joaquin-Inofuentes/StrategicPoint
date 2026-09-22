@@ -92,6 +92,41 @@ namespace SP.EditorTools
             var exitBtn = BuildButton(canvasGO.transform, "ExitButton", "SALIR", new Vector2(0f, -90f), new Color(0.6f, 0.25f, 0.25f));
             exitBtn.onClick.AddListener(menuController.OnExitClicked);
 
+            // Confirmacion antes de cerrar el juego: SALIR esta pegado a
+            // JUGAR y TUTORIAL, mismo tamaño y misma fila de botones, y un
+            // click de mas cerraba la aplicacion sin aviso. Mismo patron
+            // que ConfirmExitPanel de la pausa (ver HeadlessTestRunner.BuildUI).
+            var confirmExitGO = new GameObject("ConfirmExitPanel", typeof(Image));
+            confirmExitGO.transform.SetParent(canvasGO.transform, false);
+            confirmExitGO.GetComponent<Image>().color = new Color(0.08f, 0.05f, 0.05f, 0.97f);
+            var confirmExitRt = confirmExitGO.GetComponent<RectTransform>();
+            confirmExitRt.anchorMin = confirmExitRt.anchorMax = new Vector2(0.5f, 0.5f);
+            confirmExitRt.sizeDelta = new Vector2(420f, 200f);
+
+            var confirmExitTextGO = new GameObject("Text", typeof(Text));
+            confirmExitTextGO.transform.SetParent(confirmExitGO.transform, false);
+            var confirmExitTxt = confirmExitTextGO.GetComponent<Text>();
+            confirmExitTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            confirmExitTxt.alignment = TextAnchor.MiddleCenter;
+            confirmExitTxt.color = Color.white;
+            confirmExitTxt.fontSize = 22;
+            confirmExitTxt.text = "¿Seguro que queres salir del juego?";
+            confirmExitTxt.raycastTarget = false;
+            var confirmExitTextRt = confirmExitTextGO.GetComponent<RectTransform>();
+            confirmExitTextRt.anchorMin = confirmExitTextRt.anchorMax = new Vector2(0.5f, 1f);
+            confirmExitTextRt.pivot = new Vector2(0.5f, 1f);
+            confirmExitTextRt.anchoredPosition = new Vector2(0f, -20f);
+            confirmExitTextRt.sizeDelta = new Vector2(380f, 90f);
+
+            var confirmNoBtn = BuildButton(confirmExitGO.transform, "NoButton", "CANCELAR", Vector2.zero, new Color(0.4f, 0.4f, 0.45f));
+            confirmNoBtn.onClick.AddListener(menuController.OnConfirmExitNo);
+            var confirmYesBtn = BuildButton(confirmExitGO.transform, "YesButton", "SALIR", Vector2.zero, new Color(0.6f, 0.25f, 0.2f));
+            confirmYesBtn.onClick.AddListener(menuController.OnConfirmExitYes);
+            // Las posiciones/tamaños reales los pone el diagramador, misma
+            // cuenta que usa el panel equivalente de la pausa.
+            SP.UI.Diagramador.AcomodarConfirmarSalida(confirmExitGO);
+            confirmExitGO.SetActive(false);
+
             Directory.CreateDirectory("Assets/_Project/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
             RegisterScenesInBuildSettings();
@@ -151,7 +186,11 @@ namespace SP.EditorTools
             var gameplay = new EditorBuildSettingsScene("Assets/_Project/Scenes/SC_Gameplay.unity", true);
             var testLevel = new EditorBuildSettingsScene("Assets/_Project/Scenes/SC_TestLevel.unity", true);
             var tutorial = new EditorBuildSettingsScene("Assets/_Project/Scenes/SC_Tutorial.unity", true);
-            EditorBuildSettings.scenes = new[] { menu, gameplay, testLevel, tutorial };
+            // Ronda 13: esta lista REEMPLAZA Build Settings entero, asi que si
+            // no se suma aca, un "Construir menu principal" posterior a
+            // "Construir escena de carga" borraria SC_Loading de la lista.
+            var loading = new EditorBuildSettingsScene(SP.EditorTools.LoadingSceneBuilder.ScenePath, true);
+            EditorBuildSettings.scenes = new[] { menu, gameplay, testLevel, tutorial, loading };
         }
     }
 }

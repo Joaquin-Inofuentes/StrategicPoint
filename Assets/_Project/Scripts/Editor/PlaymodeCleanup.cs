@@ -48,6 +48,8 @@ namespace SP.EditorTools
             "MuzzleLightPool",
             "SelectionRing",
             "EntityStateDebugView",
+            "WorldTag",
+            "TrayectoriaGranada",
         };
 
         static PlaymodeCleanup()

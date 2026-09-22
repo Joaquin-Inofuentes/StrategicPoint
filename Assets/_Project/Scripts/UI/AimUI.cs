@@ -609,6 +609,24 @@ namespace SP.UI
                     break;
             }
 
+            // Mejora pedida: "si te acercas a un enemigo q aparezca para apretar F para
+            // cuchillo". Es POR PROXIMIDAD (el arco/alcance real de WeaponHolder.TryMelee),
+            // no por puntería de la mira -- por eso se suma DESPUÉS del switch de arriba en
+            // vez de ser un caso mas de AimTargetType: un enemigo puede estar al lado tuyo
+            // sin que el rayo de la mira lo toque (mirando al piso, a otro aliado, etc.).
+            // Solo se agrega si el cartel de arriba no dice ya algo mas especifico sobre ESE
+            // enemigo (el de "[Q] radial: atacar" ya lo cubre) para no duplicar informacion.
+            if (result.Type != AimTargetType.Enemy)
+            {
+                var driver = PlayerInputDriver.Activo;
+                var arma = driver != null && driver.Brain != null && driver.Brain.Current != null ? driver.Brain.Current.Weapon : null;
+                if (arma != null && arma.KnifeCooldownRemaining <= 0f && arma.HayObjetivoDeCuchilloCerca())
+                {
+                    CurrentPrompt = string.IsNullOrEmpty(CurrentPrompt) ? "[F] CUCHILLO" : CurrentPrompt + " · [F] CUCHILLO";
+                    currentAimTint = EnemyTint;
+                }
+            }
+
             CurrentPulseFrequency = PulseFrequencyFor(result.Type);
 
             if (promptText != null)

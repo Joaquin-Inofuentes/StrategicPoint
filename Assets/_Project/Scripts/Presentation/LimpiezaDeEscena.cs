@@ -56,6 +56,13 @@ namespace SP.Presentation
             // El cuarto pool. Medido: sin esto, 7 marcadores de orden de la
             // partida anterior quedaban pintados sobre el mapa nuevo.
             OrderMarkerFx.LimpiarTodo();
+            KillCylinderFx.LimpiarTodo();
+            // WorldTag (etiquetas flotantes de Feedback.Accion/Visual) y la vista de
+            // trayectoria de granada: mismo problema, nunca enganchados a este
+            // mecanismo. Medido: 113 WorldTag huerfanos acumulados, algunos con el
+            // Canvas/Text todavia visible en pantalla ("A CUBIERTO", "CURADO").
+            WorldTag.ClearAll();
+            TrayectoriaGranadaView.ClearAll();
             BarrerRootsSueltos();
             return antes - ContarHuerfanos();
         }
@@ -64,6 +71,11 @@ namespace SP.Presentation
         {
             "DecalPool", "DebrisPool", "ImpactFxPool", "ShockwaveRingPool",
             "OrderMarkerPool", SP.Core.Coberturas.NombreDelRoot,
+            // WorldTag no tiene un root que las agrupe: cada instancia del pool
+            // ES un root propio con ese nombre. TrayectoriaGranada es un singleton,
+            // pero mismo caso. Este barrido es lo que alcanza a los huerfanos de
+            // sesiones anteriores a este fix, cuyo static ya no los referencia.
+            "WorldTag", "TrayectoriaGranada",
         };
 
         // Los ClearAll de arriba solo destruyen el root que el pool tiene
@@ -101,6 +113,7 @@ namespace SP.Presentation
                     || t.name.StartsWith("OrderMarker")
                     || t.name == "DecalPool" || t.name == "DebrisPool"
                     || t.name == "ImpactFxPool" || t.name == "ShockwaveRingPool"
+                    || t.name == "WorldTag" || t.name == "TrayectoriaGranada"
                     || go.GetComponent<ImpactFx>() != null)
                     n++;
             }

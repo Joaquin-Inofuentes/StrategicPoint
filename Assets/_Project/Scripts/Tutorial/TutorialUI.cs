@@ -146,6 +146,26 @@ namespace SP.Tutorial
             pista = NuevoTexto("Pista", panel, 12, FontStyle.Bold, new Color(1f, 0.86f, 0.35f), TextAnchor.LowerLeft);
             Anclar(pista.rectTransform, 14, 259, 328, 24);
 
+            // Mejora pedida: "quiero q lo de saltarse con X tecla este siempre visible" -- antes
+            // [F8] SaltarPasoDelJugador (TutorialManager) funcionaba en CUALQUIER paso pero nada en
+            // pantalla lo decia; el jugador solo se enteraba si alguien se lo contaba aparte. Es un
+            // rotulo FIJO fuera del panel (no depende del paso actual ni de sus sub-pasos), asi que
+            // sigue ahi sin que ninguna otra actualizacion del HUD lo pueda tapar u ocultar.
+            var saltoGo = new GameObject("AyudaSaltar", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+            saltoGo.transform.SetParent(raiz, false);
+            var saltoTxt = saltoGo.GetComponent<Text>();
+            saltoTxt.font = fuente; saltoTxt.fontSize = 12; saltoTxt.fontStyle = FontStyle.Bold;
+            saltoTxt.color = new Color(1f, 1f, 1f, 0.55f);
+            saltoTxt.alignment = TextAnchor.MiddleRight;
+            saltoTxt.raycastTarget = false;
+            saltoTxt.text = "[F8] Saltar este paso";
+            var saltoRt = (RectTransform)saltoGo.transform;
+            saltoRt.anchorMin = saltoRt.anchorMax = new Vector2(1f, 1f);
+            saltoRt.pivot = new Vector2(1f, 1f);
+            // Justo debajo del panel (mismo ancho, mismo margen de 12 px), sin invadirlo.
+            saltoRt.anchoredPosition = new Vector2(posBase.x, posBase.y - panel.sizeDelta.y - 4f);
+            saltoRt.sizeDelta = new Vector2(panel.sizeDelta.x, 18f);
+
             // ---- Destello de paso completo (toda la pantalla, verde suave) ----
             var dgo = new GameObject("Destello", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             dgo.transform.SetParent(raiz, false);

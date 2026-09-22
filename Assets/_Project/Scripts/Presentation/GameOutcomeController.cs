@@ -183,7 +183,7 @@ namespace SP.Presentation
             actionTaken = true;
             GameLog.Line("Se selecciono reintentar");
             Time.timeScale = 1f;
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            SceneLoader.Cargar(SceneManager.GetActiveScene().name);
         }
 
         public void OnExitClicked()
@@ -193,7 +193,7 @@ namespace SP.Presentation
             GameLog.Line("Se selecciono salir");
             Time.timeScale = 1f;
             GameLog.Line("Iniciando escena de menu inicial");
-            SceneManager.LoadScene("SC_MainMenu");
+            SceneLoader.Cargar("SC_MainMenu");
         }
     }
 }

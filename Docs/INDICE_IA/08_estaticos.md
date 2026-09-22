@@ -5,10 +5,10 @@
 > restablezca es una fuga de estado entre corridas — y la causa de los falsos fallos mas dificiles de
 > encontrar.
 
-**180 estaticos mutables fuera de `Editor/`:
+**185 estaticos mutables fuera de `Editor/`:
 19 cubiertos por `ReinicioDeEstaticos`,
 40 en archivos con hook propio (hay que mirar si el hook cubre ESE campo),
-y 121 sin nada.**
+y 126 sin nada.**
 
 | Campo | Tipo | Donde | Quien lo restablece |
 |---|---|---|---|
@@ -115,7 +115,7 @@ y 121 sin nada.**
 | `Visible` | `bool` | `CoverHologram.cs:21` | **nada** |
 | `PuntoActual` | `Vector3` | `CoverHologram.cs:22` | **nada** |
 | `ModeloActual` | `Soldier` | `CoverHologram.cs:23` | **nada** |
-| `tintBlock` | `MaterialPropertyBlock` | `CubeFxReactor.cs:218` | **nada** |
+| `tintBlock` | `MaterialPropertyBlock` | `CubeFxReactor.cs:224` | **nada** |
 | `root` | `Transform` | `DebrisPool.cs:20` | **nada** |
 | `ActiveCount` | `int` | `DebrisPool.cs:22` | **nada** |
 | `TotalCount` | `int` | `DebrisPool.cs:23` | **nada** |
@@ -137,6 +137,10 @@ y 121 sin nada.**
 | `sharedMaterial` | `Material` | `ImpactFx.cs:58` | **nada** |
 | `propertyBlock` | `MaterialPropertyBlock` | `ImpactFx.cs:73` | **nada** |
 | `shaderWarmed` | `bool` | `ImpactFx.cs:189` | **nada** |
+| `Budget` | `int` | `KillCylinderFx.cs:23` | **nada** |
+| `root` | `Transform` | `KillCylinderFx.cs:30` | **nada** |
+| `sharedMaterial` | `Material` | `KillCylinderFx.cs:31` | **nada** |
+| `propertyBlock` | `MaterialPropertyBlock` | `KillCylinderFx.cs:78` | **nada** |
 | `enganchado` | `bool` | `LimpiezaDeEscena.cs:27` | hook propio *(revisar si cubre este campo)* |
 | `actual` | `MenuAmbiente` | `MenuAmbiente.cs:16` | hook propio *(revisar si cubre este campo)* |
 | `mallaTriangulo` | `Mesh` | `MinimapIcon.cs:143` | **nada** |
@@ -184,6 +188,7 @@ y 121 sin nada.**
 | `cachedTexture` | `Texture2D` | `LowHealthPulseView.cs:50` | **nada** |
 | `cachedSprite` | `Sprite` | `LowHealthPulseView.cs:52` | **nada** |
 | `PistaCategoria` | `int` | `MenuDeOrdenes.cs:151` | `ReinicioDeEstaticos` |
+| `sharedSprite` | `Sprite` | `MilitaryButtonSkin.cs:24` | **nada** |
 | `sprites` | `Sprite[]` | `MirillaView.cs:27` | **nada** |
 | `mascara` | `Sprite` | `MirillaView.cs:29` | **nada** |
 | `mascaraPeriscopio` | `Sprite` | `MirillaView.cs:204` | **nada** |

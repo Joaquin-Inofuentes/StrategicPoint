@@ -3,6 +3,7 @@ using System.Collections;
 using UnityEngine;
 using SP.Core;
 using SP.Actors;
+using SP.Combat;
 
 namespace SP.Presentation
 {
@@ -184,6 +185,11 @@ namespace SP.Presentation
 
             var col = GetComponent<Collider>();
             if (col != null) col.enabled = false;
+
+            // Marca de kill: solo enemigos, para no llenar de rayos la
+            // pantalla cada vez que cae un aliado propio.
+            if (soldier != null && soldier.Team == TeamId.Enemy)
+                KillCylinderFx.Spawn(transform.position);
 
             // Con arte real y Animator, la muerte es una animacion de
             // verdad (una de las 6 del pack, sorteada) y no el volteo de

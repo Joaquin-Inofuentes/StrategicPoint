@@ -57,6 +57,7 @@ namespace SP.Mision
         PlayerInputDriver driver;
         GameOutcomeController outcome;
         MisionHud hud;
+        SP.Presentation.ObjectiveArrowIndicator flechaDeObjetivo;
         TutorialBeacon baliza, balizaCivil;
         AudioSource tension;
         float tRescate, proximoSeguir, avisoAtras, tiempoFuera, proximoAvisoCentro;
@@ -103,6 +104,7 @@ namespace SP.Mision
 
             LanzarLineasEnemigas();
             hud = MisionHud.Crear(this);
+            flechaDeObjetivo = SP.Presentation.ObjectiveArrowIndicator.Crear();
             baliza = TutorialBeacon.Crear("CENTRO", new Color(1f, 0.85f, 0.25f), Plaza, null, 3.2f, 24f);
             GameLog.Line($"Mision iniciada (dificultad {Dificultad.PerfilActual.Nombre})");
             CambioDeFase?.Invoke(Fase);
@@ -127,6 +129,19 @@ namespace SP.Mision
             return Civil.transform.position;
         }
 
+        // Punto de mundo del objetivo activo -- mismo criterio de DistanciaAlObjetivo (fase por
+        // fase) pero devolviendo la posicion en vez de la distancia, para la flecha en el piso.
+        public Vector3 PuntoObjetivoActual()
+        {
+            switch (Fase)
+            {
+                case FaseDeMision.Infiltrar: return Plaza;
+                case FaseDeMision.Resistir: return Plaza;
+                case FaseDeMision.Rescatar: return Civil != null ? Civil.transform.position : PosicionDelJugador();
+                default: return Helipuerto;
+            }
+        }
+
         public float DistanciaAlObjetivo()
         {
             var p = PosicionDelJugador();
@@ -140,9 +155,63 @@ namespace SP.Mision
         }
 
         // ---------------- creacion de enemigos ----------------
+        // BUG REAL reportado: "los enemigos que aparecen parecen aparecer desde adentro de las
+        // casas" -- los puntos de aparicion (lineas, oleadas, refuerzos, horda) son coordenadas de
+        // mundo fijas o dispersadas por angulo/radio sin conocer donde estan las casas del blockout
+        // (LevelBlockoutBuilder), asi que a veces caen adentro de una. Se corrige en UN solo lugar
+        // (todo enemigo nace via CrearEnemigo) empujando el punto fuera de la casa mas cercana antes
+        // de instanciar, en vez de tener que auditar cada llamador.
+        List<Bounds> casasCache;
+        List<Bounds> Casas()
+        {
+            // No se memoriza un resultado vacio: si "Nivel_Blockout" todavia no estaba listo la
+            // primera vez que se llamo (orden de carga de la escena), un cache vacio dejaria la
+            // proteccion apagada para el resto de la partida. Recalcular unas pocas veces (una por
+            // oleada de enemigos, no por enemigo) no cuesta nada.
+            if (casasCache != null && casasCache.Count > 0) return casasCache;
+            casasCache = new List<Bounds>();
+            var raiz = GameObject.Find("Nivel_Blockout");
+            if (raiz != null)
+            {
+                foreach (var r in raiz.GetComponentsInChildren<MeshRenderer>())
+                {
+                    if (r.sharedMaterial == null || r.sharedMaterial.name != "M_Blocking_Casa") continue;
+                    casasCache.Add(r.bounds);
+                }
+            }
+            return casasCache;
+        }
+
+        Vector3 EmpujarFueraDeCasas(Vector3 pos)
+        {
+            const float margen = 2f; // asi el soldado no aparece pegado a la pared, tiene donde pararse
+            for (int pasada = 0; pasada < 2; pasada++)
+            {
+                foreach (var b in Casas())
+                {
+                    float minX = b.min.x - margen, maxX = b.max.x + margen;
+                    float minZ = b.min.z - margen, maxZ = b.max.z + margen;
+                    if (pos.x < minX || pos.x > maxX || pos.z < minZ || pos.z > maxZ) continue;
+
+                    var centro = b.center;
+                    var fuera = new Vector2(pos.x - centro.x, pos.z - centro.z);
+                    if (fuera.sqrMagnitude < 0.0001f) fuera = new Vector2(0f, 1f); // exacto en el centro: empuja al norte
+                    fuera.Normalize();
+                    float mitadX = (maxX - minX) * 0.5f, mitadZ = (maxZ - minZ) * 0.5f;
+                    // Distancia al borde de la caja expandida en la direccion "fuera" (caja, no circulo).
+                    float t = Mathf.Min(
+                        Mathf.Abs(fuera.x) > 0.0001f ? mitadX / Mathf.Abs(fuera.x) : float.MaxValue,
+                        Mathf.Abs(fuera.y) > 0.0001f ? mitadZ / Mathf.Abs(fuera.y) : float.MaxValue);
+                    pos = new Vector3(centro.x + fuera.x * t, pos.y, centro.z + fuera.y * t);
+                }
+            }
+            return pos;
+        }
+
         public Soldier CrearEnemigo(string nombre, Vector3 pos, float yaw = 180f)
         {
             if (enemigoPrefab == null) return null;
+            pos = EmpujarFueraDeCasas(pos);
             var go = Instantiate(enemigoPrefab, new Vector3(pos.x, 0.8f, pos.z), Quaternion.Euler(0f, yaw, 0f), raizEnemigos);
             go.name = nombre;
             var s = go.GetComponent<Soldier>();
@@ -327,7 +396,11 @@ namespace SP.Mision
         // ---------------- maquina de estados ----------------
         void Update()
         {
-            if (Fase == FaseDeMision.Victoria || Fase == FaseDeMision.Derrota) return;
+            if (Fase == FaseDeMision.Victoria || Fase == FaseDeMision.Derrota)
+            {
+                if (flechaDeObjetivo != null) flechaDeObjetivo.Ocultar();
+                return;
+            }
             if (driver == null) driver = PlayerInputDriver.Activo;
             float dt = Time.deltaTime;
 
@@ -339,6 +412,12 @@ namespace SP.Mision
                 case FaseDeMision.Escapar: TickEscapar(dt); break;
             }
             if (hud != null) hud.Refrescar();
+            if (flechaDeObjetivo != null)
+            {
+                var p = PosicionDelJugador();
+                if (p != Vector3.zero) flechaDeObjetivo.Actualizar(p, PuntoObjetivoActual());
+                else flechaDeObjetivo.Ocultar();
+            }
         }
 
         void CambiarFase(FaseDeMision f)

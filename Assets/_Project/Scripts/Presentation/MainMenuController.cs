@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using SP.Core;
 
@@ -25,7 +24,18 @@ namespace SP.Presentation
             if (tutorialBtn != null) { tutorialBtn.onClick.AddListener(OnTutorialClicked); SP.UI.ButtonSfx.Attach(tutorialBtn); }
             if (playBtn != null) { playBtn.onClick.AddListener(OnPlayClicked); SP.UI.ButtonSfx.Attach(playBtn); }
             if (exitBtn != null) { exitBtn.onClick.AddListener(OnExitClicked); SP.UI.ButtonSfx.Attach(exitBtn); }
+
+            confirmExitPanel = canvasRoot.Find("ConfirmExitPanel")?.gameObject;
+            if (confirmExitPanel != null)
+            {
+                var noBtn = confirmExitPanel.transform.Find("NoButton")?.GetComponent<Button>();
+                var yesBtn = confirmExitPanel.transform.Find("YesButton")?.GetComponent<Button>();
+                if (noBtn != null) { noBtn.onClick.AddListener(OnConfirmExitNo); SP.UI.ButtonSfx.Attach(noBtn); }
+                if (yesBtn != null) { yesBtn.onClick.AddListener(OnConfirmExitYes); SP.UI.ButtonSfx.Attach(yesBtn); }
+            }
         }
+
+        GameObject confirmExitPanel;
 
         void Start() => GameLog.Line("Pantalla de menu cargada");
 
@@ -119,7 +129,7 @@ namespace SP.Presentation
             actionTaken = true;
             Dificultad.Actual = nivel;
             GameLog.Line($"Se selecciono iniciar partida (dificultad {Dificultad.Datos(nivel).Nombre})");
-            SceneManager.LoadScene("SC_Gameplay");
+            SceneLoader.Cargar("SC_Gameplay");
         }
 
         public void OnTutorialClicked()
@@ -127,10 +137,27 @@ namespace SP.Presentation
             if (actionTaken) return;
             actionTaken = true;
             GameLog.Line("Se selecciono el tutorial");
-            SceneManager.LoadScene("SC_Tutorial");
+            SceneLoader.Cargar("SC_Tutorial");
         }
 
+        // Un click accidental en SALIR (pegado a JUGAR y TUTORIAL) no debe
+        // cerrar la aplicacion sin aviso -- mismo motivo y mismo patron que
+        // el ConfirmExitPanel de la pausa (PauseController.OnMenuClicked).
         public void OnExitClicked()
+        {
+            if (actionTaken) return;
+            if (confirmExitPanel == null) { OnConfirmExitYes(); return; }
+            if (confirmExitPanel.activeSelf) return;
+            confirmExitPanel.SetActive(true);
+        }
+
+        public void OnConfirmExitNo()
+        {
+            if (confirmExitPanel == null || !confirmExitPanel.activeSelf) return;
+            confirmExitPanel.SetActive(false);
+        }
+
+        public void OnConfirmExitYes()
         {
             if (actionTaken) return;
             actionTaken = true;

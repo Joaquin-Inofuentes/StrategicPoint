@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using SP.Core;
 using SP.UI;
@@ -457,7 +456,7 @@ namespace SP.Presentation
             GameLog.Line("Se selecciono volver al menu desde pausa");
             Time.timeScale = 1f;
             AudioListener.pause = false;
-            SceneManager.LoadScene("SC_MainMenu");
+            SceneLoader.Cargar("SC_MainMenu");
         }
     }
 }

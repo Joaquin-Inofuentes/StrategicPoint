@@ -3,6 +3,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using SP.Presentation;
 
 namespace SP.EditorTools
 {
@@ -341,7 +342,9 @@ namespace SP.EditorTools
                 }
             }
 
-            // Faroles a lo largo de la ruta, uno cada 30 m a cada lado.
+            // Faroles a lo largo de la ruta, uno cada 30 m a cada lado. Pedido explicito: "usa el
+            // prefab de luces, y que sean siempre luces duras" -- P_Env_Farol era solo el mastil
+            // (sin luz real); cada instancia se cuelga ahora una Light de verdad en la punta.
             var farol = P("P_Env_Farol");
             if (farol != null)
                 for (float z = z0 + 10f; z < z1 - 6f; z += 30f)
@@ -357,9 +360,107 @@ namespace SP.EditorTools
                         foreach (var c in inst.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
                         inst.transform.position = new Vector3(x, y, z);
                         inst.transform.rotation = Quaternion.Euler(0f, lado < 0f ? 90f : -90f, 0f);
+                        AgregarLuzDeFarol(inst.transform);
                         total++;
                     }
+
+            // Perimetro: pedido explicito "el perimetro debe estar tapado entre arboles y
+            // obstaculos y debe estar cerrado". Fuera de la zona de la base (que ya tiene sus
+            // propios muros, ver LevelBlockoutBuilder), los lados este/oeste del nivel quedaban
+            // abiertos al campo vacio del terreno.
+            total += Perimetro(ambiente.transform, x0, x1, z0, z1, terreno, rnd);
             return total;
+        }
+
+        // Luz calida de lampara: siempre dura (pedido explicito), rango corto -- ilumina el
+        // charco de piso alrededor del farol, no satura la escena.
+        static void AgregarLuzDeFarol(Transform farolRaiz)
+        {
+            var luzGo = new GameObject("Luz");
+            luzGo.transform.SetParent(farolRaiz, false);
+            luzGo.transform.localPosition = new Vector3(0f, 4.0f, 0f);
+            var luz = luzGo.AddComponent<Light>();
+            luz.type = LightType.Point;
+            luz.color = new Color(1f, 0.78f, 0.45f);
+            luz.intensity = 2.2f;
+            luz.range = 11f;
+            luz.shadows = LightShadows.Hard;
+        }
+
+        // Cierra el rectangulo jugable con un muro FISICO invisible (BoxCollider + ObstacleMarker,
+        // igual que cualquier obstaculo del blockout) exactamente sobre el borde -- garantiza que
+        // no quede ningun hueco pase lo que pase con el arbolado, que es la parte VISIBLE del
+        // mismo limite. Encima se reparte una fila densa de arboles/arbustos (con su propio
+        // collider, a diferencia del resto de Repartir()) y algun vehiculo quemado de tanto en
+        // tanto, para que se vea "tapado" y no una pared invisible en la nada.
+        static int Perimetro(Transform ambiente, float x0, float x1, float z0, float z1, Terrain terreno, System.Random rnd)
+        {
+            var muro = new GameObject("Perimetro_Muro").transform;
+            muro.SetParent(ambiente, false);
+            const float altoMuro = 6f, espesorMuro = 2f;
+            float cx = (x0 + x1) * 0.5f, cz = (z0 + z1) * 0.5f;
+            float baseY = terreno != null ? terreno.transform.position.y : 0f;
+            void Tira(string nombre, Vector3 centro, Vector3 tamano)
+            {
+                var go = new GameObject(nombre);
+                go.transform.SetParent(muro, false);
+                go.transform.position = centro;
+                var col = go.AddComponent<BoxCollider>();
+                col.size = tamano;
+                var marca = go.AddComponent<ObstacleMarker>();
+                var so = new SerializedObject(marca);
+                so.FindProperty("maxHealth").intValue = 999999;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+            float y = baseY + altoMuro * 0.5f;
+            Tira("Oeste", new Vector3(x0, y, cz), new Vector3(espesorMuro, altoMuro, z1 - z0 + espesorMuro));
+            Tira("Este", new Vector3(x1, y, cz), new Vector3(espesorMuro, altoMuro, z1 - z0 + espesorMuro));
+            Tira("Sur", new Vector3(cx, y, z0), new Vector3(x1 - x0 + espesorMuro, altoMuro, espesorMuro));
+            Tira("Norte", new Vector3(cx, y, z1), new Vector3(x1 - x0 + espesorMuro, altoMuro, espesorMuro));
+
+            var visual = new GameObject("Perimetro_Vegetacion").transform;
+            visual.SetParent(ambiente, false);
+            var props = new[] { "P_Env_ArbolA", "P_Env_ArbolB", "P_Env_Arbusto_Grande", "P_Env_Arbusto_Medio" };
+            const string obstaculo = "P_Env_Auto_Quemado";
+            const float paso = 2.4f;
+            float perimetroLargo = 2f * ((x1 - x0) + (z1 - z0));
+            int cantidad = Mathf.RoundToInt(perimetroLargo / paso);
+            int total = 0;
+            for (int i = 0; i < cantidad; i++)
+            {
+                BordeDelRectangulo(i * paso, x0, x1, z0, z1, out var p, out var yawAfuera);
+                float jitter = (float)(rnd.NextDouble() * 1.4 - 0.2); // sobre el borde o un poco afuera, nunca adentro
+                var dirFuera = Quaternion.Euler(0f, yawAfuera, 0f) * Vector3.forward;
+                var pos = new Vector3(p.x, 0f, p.z) + dirFuera * jitter;
+                float suelo = terreno != null ? terreno.SampleHeight(pos) + terreno.transform.position.y : 0f;
+
+                bool esObstaculo = i % 9 == 4;
+                string prefab = esObstaculo ? obstaculo : props[(i + (int)(rnd.NextDouble() * props.Length)) % props.Length];
+                var g = P(prefab);
+                if (g == null) continue;
+                var inst = (GameObject)PrefabUtility.InstantiatePrefab(g, visual);
+                // A diferencia del resto de Repartir(): el collider de estos NO se destruye -- es
+                // parte del cierre fisico del perimetro, ademas del muro invisible de arriba.
+                inst.transform.position = new Vector3(pos.x, suelo, pos.z);
+                inst.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
+                inst.transform.localScale = Vector3.one * (esObstaculo ? 1f : Mathf.Lerp(1f, 1.3f, (float)rnd.NextDouble()));
+                total++;
+            }
+            return total;
+        }
+
+        // Punto sobre el borde del rectangulo [x0,x1]x[z0,z1] a distancia `d` recorrida en sentido
+        // horario desde la esquina suroeste, mas el yaw cuyo "adelante" mira hacia AFUERA de ese
+        // borde (para el jitter de Perimetro).
+        static void BordeDelRectangulo(float d, float x0, float x1, float z0, float z1, out Vector3 p, out float yawAfuera)
+        {
+            float anchoX = x1 - x0, anchoZ = z1 - z0;
+            float perim = 2f * (anchoX + anchoZ);
+            d = ((d % perim) + perim) % perim;
+            if (d < anchoZ) { p = new Vector3(x0, 0f, z0 + d); yawAfuera = -90f; }
+            else if ((d -= anchoZ) < anchoX) { p = new Vector3(x0 + d, 0f, z1); yawAfuera = 0f; }
+            else if ((d -= anchoX) < anchoZ) { p = new Vector3(x1, 0f, z1 - d); yawAfuera = 90f; }
+            else { d -= anchoZ; p = new Vector3(x1 - d, 0f, z0); yawAfuera = 180f; }
         }
     }
 }

@@ -1892,13 +1892,13 @@ namespace SP.Tutorial
         public void Reintentar()
         {
             Time.timeScale = 1f;
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            SceneLoader.Cargar(SceneManager.GetActiveScene().name);
         }
 
         public void VolverAlMenu()
         {
             Time.timeScale = 1f;
-            SceneManager.LoadScene("SC_MainMenu");
+            SceneLoader.Cargar("SC_MainMenu");
         }
     }
 }

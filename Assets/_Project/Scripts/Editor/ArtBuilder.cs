@@ -346,6 +346,10 @@ namespace SP.EditorTools
                 var horneado = AssetDatabase.LoadAssetAtPath<AnimationClip>(ArtSetup.RutaDeSaltoHorneado(nombre));
                 if (horneado != null) return horneado;
             }
+            // Grupo de marcha/agachado: mismo motivo -- la cadera calibrada (ArtSetup.CorregirAlturaDeCadera)
+            // vive en la cache de Library del Editor y NO sobrevive a un build; el asset horneado si.
+            var horneadoMarcha = AssetDatabase.LoadAssetAtPath<AnimationClip>(ArtSetup.RutaDeMarchaHorneado(nombre));
+            if (horneadoMarcha != null) return horneadoMarcha;
             foreach (var o in AssetDatabase.LoadAllAssetsAtPath(Pack + "/" + nombre + ".fbx"))
                 if (o is AnimationClip c && !c.name.StartsWith("__preview__")) return c;
             return null;

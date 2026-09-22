@@ -533,6 +533,15 @@ namespace SP.Combat
             if (owner == null || knifeCooldownTimer > 0f) return false;
             knifeCooldownTimer = KnifeCooldown;
 
+            var best = BuscarObjetivoDeCuchillo();
+            if (best != null) best.Health.TakeDamage(KnifeDamage, owner.Id);
+            EventBus.Instance.Publish(new MeleeAttackEvent(owner.Id, best != null));
+            SP.Presentation.CuchilloFx.Tajo(owner, best);
+            return true;
+        }
+
+        Soldier BuscarObjetivoDeCuchillo()
+        {
             Soldier best = null;
             float bestDist = KnifeRange;
             foreach (var s in ActorRegistry.All)
@@ -552,11 +561,18 @@ namespace SP.Combat
                 if (dist > 0.05f && Vector3.Angle(owner.transform.forward, to) > KnifeArcDeg) continue;
                 if (dist < bestDist) { bestDist = dist; best = s; }
             }
+            return best;
+        }
 
-            if (best != null) best.Health.TakeDamage(KnifeDamage, owner.Id);
-            EventBus.Instance.Publish(new MeleeAttackEvent(owner.Id, best != null));
-            SP.Presentation.CuchilloFx.Tajo(owner, best);
-            return true;
+        // Mejora pedida: "si te acercas a un enemigo q aparezca para apretar F".
+        // Solo lectura (no gasta el enfriamiento ni golpea a nadie) -- AimUI la usa
+        // para decidir si muestra el cartel "[F] CUCHILLO", con el MISMO alcance y
+        // arco que TryMelee realmente usa, para que el cartel nunca prometa un golpe
+        // que despues no conecta.
+        public bool HayObjetivoDeCuchilloCerca()
+        {
+            if (owner == null) Bootstrap();
+            return owner != null && BuscarObjetivoDeCuchillo() != null;
         }
 
         // Igual que con el material de Projectile: un Material creado en

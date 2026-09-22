@@ -131,7 +131,7 @@ namespace SP.EditorTools
             light.type = LightType.Directional;
             light.intensity = 1.05f;
             light.color = new Color(1f, 0.98f, 0.93f);
-            light.shadows = LightShadows.Soft;
+            light.shadows = LightShadows.Hard;   // pedido explicito: siempre luces duras, en toda la escena
             light.shadowStrength = 0.55f;
             lightGO.transform.rotation = Quaternion.Euler(48f, -35f, 0f);
 
@@ -2412,6 +2412,55 @@ namespace SP.EditorTools
             // corrio (Paso 4/5), los prefabs no existen y esto es un no-op
             // silencioso (mismo fallback que ya usa ReemplazarVehiculo).
             WorldArtPipeline.AplicarVisualesVehiculo(root);
+
+            // BUG REAL ("el tanque enemigo no recibe dano"): el BoxCollider del
+            // chasis -- el unico hitbox del vehiculo, el que resuelve todos los
+            // impactos en Projectile.ChocoContraElMundo -- solo cubre el CASCO.
+            // La torreta y el cañon del arte real cuelgan de TurretPivot bien
+            // por encima del techo del chasis (medido en vivo: casco hasta
+            // Y=1,40, torreta+cañon hasta Y=1,80) y no tenian collider propio.
+            // Cualquier tiro apuntado al cañon -- el blanco mas grande y mas
+            // natural para apuntar -- pasaba de largo sin registrar impacto.
+            // Se agrega un BoxCollider hijo de TurretPivot en vez de agrandar
+            // el del chasis: ese collider tambien define cuanto se ESTIRA el
+            // cuerpo (ReemplazarVisualEnCollider), agrandarlo deformaria el
+            // casco. Cuelga de TurretPivot (no de TurretMount) para que rote
+            // CON la torreta y siga cubriendo el cañon apunte donde apunte.
+            // Medido a partir de los renderers reales ya colgados arriba (con
+            // fallback al graybox si el pack de arte no corrio), no a mano:
+            // si el arte cambia de tamaño el hitbox se recalcula solo.
+            {
+                var turretRenderers = turretPivot.GetComponentsInChildren<Renderer>(true);
+                Bounds? turretBounds = null;
+                foreach (var r in turretRenderers)
+                {
+                    if (!r.enabled) continue;
+                    if (turretBounds == null) turretBounds = r.bounds;
+                    else { var b = turretBounds.Value; b.Encapsulate(r.bounds); turretBounds = b; }
+                }
+                if (turretBounds.HasValue)
+                {
+                    var tb = turretBounds.Value;
+                    var pivotXform = turretPivot.transform;
+                    Vector3 centroLocal = pivotXform.InverseTransformPoint(tb.center);
+                    Vector3 escala = pivotXform.lossyScale;
+                    Vector3 tamLocal = new Vector3(
+                        escala.x > 0.0001f ? tb.size.x / escala.x : tb.size.x,
+                        escala.y > 0.0001f ? tb.size.y / escala.y : tb.size.y,
+                        escala.z > 0.0001f ? tb.size.z / escala.z : tb.size.z);
+
+                    var turretHitbox = new GameObject("TurretHitbox");
+                    turretHitbox.transform.SetParent(pivotXform, false);
+                    var thCol = turretHitbox.AddComponent<BoxCollider>();
+                    thCol.center = centroLocal;
+                    // 10% de margen: mejor pasarse un poco de cobertura que dejar un flanco sin collider.
+                    thCol.size = tamLocal * 1.1f;
+                    // No es un obstaculo real (NavService.BlocksMovement lo excluye): sin esto contaba
+                    // como un segundo "solido" separado del chasis para caminata, linea de tiro y
+                    // Coberturas.Solidos(), generando puntos de cobertura fantasma a la altura de la torreta.
+                    turretHitbox.AddComponent<SP.Vehicles.HitboxDeImpacto>();
+                }
+            }
 
             Directory.CreateDirectory("Assets/_Project/Prefabs");
             string path = "Assets/_Project/Prefabs/P_Vehicle_Blindado.prefab";

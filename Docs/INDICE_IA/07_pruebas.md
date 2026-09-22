@@ -11,7 +11,7 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 
 | Archivo | Lineas | Fases | Checks | Algunas fases |
 |---|---|---|---|---|
-| `HeadlessTestRunner.BusquedasGlobales.cs` | 154 | 0 | 5 | — |
+| `HeadlessTestRunner.BusquedasGlobales.cs` | 158 | 0 | 5 | — |
 | `HeadlessTestRunner.Fase18.cs` | 132 | 1 | 35 | RunPhase18 |
 | `HeadlessTestRunner.Fase19.cs` | 419 | 1 | 92 | RunPhase19 |
 | `HeadlessTestRunner.Fase20.cs` | 207 | 2 | 32 | RunPhase20, RunPhase20Ronda12 |
@@ -19,7 +19,7 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 | `HeadlessTestRunner.Fase22.cs` | 51 | 1 | 10 | RunPhase22 |
 | `HeadlessTestRunner.Fases13a17.cs` | 691 | 5 | 134 | RunPhase13, RunPhase14, RunPhase15, RunPhase16, RunPhase17 |
 | `HeadlessTestRunner.Fases8a12.cs` | 1551 | 2 | 148 | RunPhase8, RunPhase9 |
-| `HeadlessTestRunner.cs` | 4200 | 7 | 121 | RunPhase1, RunPhase2, RunPhase3, RunPhase4, RunPhase5, RunPhase6 |
+| `HeadlessTestRunner.cs` | 4249 | 7 | 121 | RunPhase1, RunPhase2, RunPhase3, RunPhase4, RunPhase5, RunPhase6 |
 
 ## Otras entradas de prueba
 
@@ -40,7 +40,7 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 | `Tools/Qa/qa_total.bat` | Corrida completa: suite + build + metricas + capturas en 7 resoluciones + tutorial automatico + todos los logs. |
 | `Tools/Autoplay/autoplay.sh` | Solo el tutorial automatico, desde git-bash. |
 
-## Archivos de logica sin una sola asercion (90)
+## Archivos de logica sin una sola asercion (92)
 
 > Un archivo de `Ai`, `Combat`, `Player`, `Vehicles`, `Core`, `Actors` o `Mision` sin ningun `Check`
 > puede estar cubierto desde otro archivo — pero vale mirarlo.
@@ -85,4 +85,4 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 - `Assets/_Project/Scripts/Core/GameLog.cs`
 - `Assets/_Project/Scripts/Core/Loc.cs`
 - `Assets/_Project/Scripts/Core/LocTextos.cs`
-- …y 50 mas
+- …y 52 mas

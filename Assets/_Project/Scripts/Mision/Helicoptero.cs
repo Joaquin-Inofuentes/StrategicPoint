@@ -54,9 +54,13 @@ namespace SP.Mision
         }
 
         // ---------------- sonido ----------------
+        // Rotor real: "Helicopter Rotor Loop" de qubodup (freesound.org/people/qubodup/sounds/187681),
+        // extraido de un video de una agencia del gobierno de EE.UU. -- CC0/dominio publico. Recortado
+        // (se le sacaron los bordes de silencio y se le puso un fundido de 12 ms en cada punta para que
+        // el loop no chasquee).
         void ArmarSonido()
         {
-            var clip = SP.Core.RecursosCache.Cargar<AudioClip>("Audio/Heli/Chinook_flying_over_Greenwich");
+            var clip = SP.Core.RecursosCache.Cargar<AudioClip>("Audio/Heli/RotorReal_Freesound_qubodup");
             if (clip == null) clip = GenerarRotor();
             sonido = gameObject.AddComponent<AudioSource>();
             sonido.clip = clip;

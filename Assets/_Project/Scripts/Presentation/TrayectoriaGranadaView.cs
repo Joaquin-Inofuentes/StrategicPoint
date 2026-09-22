@@ -37,6 +37,17 @@ namespace SP.Presentation
             return Instancia;
         }
 
+        // Mismo bug que WorldTag (Feedback.cs): sin escena propia ni root que la
+        // agrupe, sobrevive a un SceneManager.LoadScene en modo Single como huerfano.
+        public static void ClearAll()
+        {
+            if (Instancia == null) return;
+            var go = Instancia.gameObject;
+            Instancia = null;
+            if (Application.isPlaying) Object.Destroy(go);
+            else Object.DestroyImmediate(go);
+        }
+
         LineRenderer NuevaLinea(string nombre, Color c, float ancho, bool cerrada)
         {
             var go = new GameObject(nombre);

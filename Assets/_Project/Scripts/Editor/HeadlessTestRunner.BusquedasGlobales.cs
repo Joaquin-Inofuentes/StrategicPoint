@@ -26,6 +26,7 @@ namespace SP.EditorTools
             { "Presentation/LimpiezaDeEscena.cs", 2 }, // utilidad de limpieza, una vez
             { "Presentation/ImpactFx.cs", 1 },         // DestroyOrphans: huerfanos tras Enter Play Mode sin recarga, al rearmar el pool
             { "Presentation/OrderMarkerFx.cs", 1 },    // idem
+            { "Presentation/KillCylinderFx.cs", 1 },   // idem
             { "Presentation/DebrisPool.cs", 1 },       // idem
             { "Presentation/DecalPool.cs", 1 },        // idem
             { "Presentation/WorldUiDirector.cs", 5 },  // EnsurePopulated: una sola vez, guardado por flag (igual que WorldSystemsRegistry)
@@ -33,6 +34,7 @@ namespace SP.EditorTools
             { "Core/Loc.cs", 1 },                      // pasada de traduccion de los Text (sin registro de Text)
             { "Presentation/FuentesBelicas.cs", 2 },   // pasada de fuentes sobre Text/TextMesh (sin registro)
             { "Mision/CinematicaDeVictoria.cs", 2 },   // una vez al empezar y una al terminar la cinematica
+            { "Mision/MisionDirector.cs", 1 },         // Casas(): cachea el resultado (nunca uno vacio) y solo se llama al crear un enemigo, no por frame
             { "UI/MenuDeOrdenes.cs", 1 },              // AsegurarEnEscena: una vez al arrancar, busca el canvas del HUD
             { "UI/AjustesDeJuego.cs", 1 },             // AplicarEscala: al cambiar la escala de interfaz
         };
@@ -97,7 +99,9 @@ namespace SP.EditorTools
 
         // Busquedas por nombre en la jerarquia (Transform.Find): quedan las de arranque (OnEnable/Awake/Ensure*) y las
         // "crear si no existe" que se guardan en un campo. Ninguna puede correr por frame. Tope = las de hoy: solo baja.
-        const int PresupuestoFindPorNombre = 115;
+        // Ronda 13: +3 por el ConfirmExitPanel del menu principal (MainMenuController.Awake), mismo patron de
+        // arranque que el resto del presupuesto -- no corre por frame.
+        const int PresupuestoFindPorNombre = 118;
         static readonly Regex PatronFindPorNombre = new Regex(@"(?<!Shader)(?<!GameObject)(?<!Object)\.Find\(\s*[""\w]");
         static readonly Regex PatronMetodoPorFrame = new Regex(@"\b(void|bool|float|Vector\d)\s+(Update|LateUpdate|FixedUpdate|UpdateFrom|UpdateInVehicle|TickPlayerAim|Tick)\s*\(");
         static readonly Regex PatronCabeceraMetodo = new Regex(@"^\s*(public |private |protected |internal |static |override |virtual )*[\w<>\[\],\.?]+\s+\w+\s*\([^;]*\)\s*$");

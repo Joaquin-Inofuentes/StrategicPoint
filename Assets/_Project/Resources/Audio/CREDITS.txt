@@ -27,11 +27,28 @@ Audio replacements added for Strategic Point (prototype, not for distribution).
   Kevin MacLeod (incompetech.com). Licensed under Creative Commons: By Attribution 3.0.
   http://creativecommons.org/licenses/by/3.0/
 
-- Heli/Chinook_flying_over_Greenwich.ogg  (CC0, uploader JoBrodie, 751739 bytes):
-  helicopter rotor recording downloaded from Wikimedia Commons
-  (https://commons.wikimedia.org/wiki/File:Chinook_helicopter_flying_over_Greenwich_in_London.ogg).
-  Used by the extraction helicopter of the main mission. (A second candidate,
-  "Helicopter over a lake.ogg", was discarded: Unity could not import its Ogg variant.)
+- Heli/RotorReal_Freesound_qubodup.wav (CC0/public domain, uploader qubodup):
+  "Helicopter Rotor Loop", a real military helicopter recording extracted from a
+  US Government agency video (https://freesound.org/people/qubodup/sounds/187681/).
+  Downloaded from Freesound's public preview CDN (the original .flac needs a
+  Freesound login to download; the hq preview stream does not). Trimmed to cut the
+  silent edges and given a 12 ms fade on each end so the loop doesn't click. Used
+  by the extraction helicopter of the main mission.
+  (Ronda 13 replaced the earlier Heli/Chinook_flying_over_Greenwich.ogg, a real
+  Wikimedia Commons recording of a Chinook over Greenwich, CC0/uploader JoBrodie --
+  correct but a single 62 s documentary take, not built to loop cleanly. Still CC0;
+  kept out of the build only because this one loops better.)
+
+- Sfx/Shot_Rocket/Shot_Rocket_RPG.wav (CC0, uploader klangfabrik):
+  "rpg launcher three shots.wav", a real exterior recording of an RPG (rocket
+  propelled grenade) launcher/anti-tank weapon firing
+  (https://freesound.org/people/klangfabrik/sounds/249298/). Downloaded from
+  Freesound's public preview CDN (same method as the helicopter rotor: the
+  hq preview stream needs no login). The source has three shots; kept only
+  the first (~1.1 s, launch crack + its natural echo) with a 5 ms fade-in and
+  a 60 ms fade-out so the cut doesn't click. Used by WeaponKind.Rocket
+  (GenericSfx.GetWeaponShot picks it up automatically from Resources/Audio/
+  Sfx/Shot_Rocket -- no code change needed).
 
 - Music/Tension.wav: generated procedurally by a script (drone + heartbeat + strings + clock);
   no third-party material.
