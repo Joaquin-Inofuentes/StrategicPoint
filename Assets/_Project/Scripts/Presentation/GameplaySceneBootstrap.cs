@@ -114,6 +114,20 @@ namespace SP.Presentation
             int cartelesRevivir = RevivePromptView.RegistrarTodas();
             if (cartelesRevivir > 0) GameLog.Line($"Se armaron {cartelesRevivir} carteles de revivir");
 
+            // BUG REPORTADO: recargar la escena o volver de SC_Tutorial a
+            // SC_Gameplay (SceneLoader.Cargar) dejaba a algun aliado de la
+            // escuadra teletransportado a cientos de metros del nivel real
+            // (fuera del NavMesh) apenas arranca la partida -- se lo ve
+            // "corriendo desde la nada" un par de segundos hasta que la IA
+            // de seguimiento lo trae de vuelta. No se identifico el punto
+            // exacto donde algo escribe esa posicion (corre en el primer
+            // Update de otro sistema, despues de este Start en orden -200),
+            // asi que esto es la misma red de seguridad que ApoyoEnElPiso:
+            // un frame despues de que todo termino de arrancar, se verifica
+            // que cada soldado de la escuadra este de verdad DENTRO del
+            // nivel, y si no, se lo reubica al lado del lider.
+            StartCoroutine(ValidarPosicionDeEscuadraUnFrameDespues());
+
             GameLog.Line("Inicio partida");
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null && !esTutorial)
@@ -148,6 +162,51 @@ namespace SP.Presentation
                                       SP.UI.AlertPriority.Baja, 3.5f);
                 PlayerPrefs.SetInt(PrefFirstActionShown, 1);
                 PlayerPrefs.Save();
+            }
+        }
+
+        // BUG REAL encontrado en vivo: con el umbral original (60 m) un
+        // aliado que aparecio a 512 m se corrigio bien, pero otro que
+        // aparecio a ~59 m (fuera del rango normal de la escuadra, que
+        // arranca agrupada a metros del lider) se colaba sin corregir. El
+        // seguimiento automatico recien dispara a los 12,5 m
+        // (AjustesDeEscuadra.DistanciaParaSeguir); no hay ningun escenario
+        // normal de arranque de mision donde alguien de la escuadra este a
+        // mas de 20 m del lider.
+        const float DistanciaMaximaRazonable = 20f;
+
+        System.Collections.IEnumerator ValidarPosicionDeEscuadraUnFrameDespues()
+        {
+            // Un solo chequeo a destiempo cero no alcanza: lo que sea que
+            // provoca el salto no se vio en el primer frame en las pruebas
+            // en vivo, sino recien despues de un par de segundos de
+            // simulacion real. Se repite unas cuantas veces al arrancar en
+            // vez de una unica vez, y se corta apenas la escuadra esta bien.
+            for (int intento = 0; intento < 10; intento++)
+            {
+                yield return new WaitForSeconds(0.5f);
+
+                var lider = SP.Ai.AjustesDeEscuadra.Lider;
+                var raizEscuadra = SP.Core.RaicesDeEscena.Buscar("PlayerSquad");
+                if (lider == null || raizEscuadra == null) continue;
+
+                bool huboProblema = false;
+                foreach (var soldier in raizEscuadra.GetComponentsInChildren<SP.Actors.Soldier>(true))
+                {
+                    if (soldier == null || soldier == lider) continue;
+                    float dist = Vector3.Distance(soldier.transform.position, lider.transform.position);
+                    if (dist <= DistanciaMaximaRazonable) continue;
+
+                    huboProblema = true;
+                    var destino = lider.transform.position - lider.transform.forward * 2f;
+                    if (UnityEngine.AI.NavMesh.SamplePosition(destino, out var hit, 8f, UnityEngine.AI.NavMesh.AllAreas))
+                        destino = hit.position;
+                    soldier.transform.position = destino;
+                    SP.Core.ApoyoEnElPiso.Apoyar(soldier.transform);
+                    if (soldier.Brain != null) soldier.Brain.ReactivarNavegacion();
+                    GameLog.Line($"{soldier.DisplayName} aparecio a {dist:0} m del resto de la escuadra: reubicado junto al lider");
+                }
+                if (!huboProblema) yield break;
             }
         }
 

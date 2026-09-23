@@ -680,7 +680,7 @@ namespace SP.Player
             }
             if (PauseRef != null && PauseRef.IsControlsOverlayOpen) return;
 
-            UpdateCursorLock(kb, Mouse.current);
+            UpdateCursorLock(kb);
             if (Rig.Mode != ControlMode.Rts) CursorContextual.Restaurar();
 
             // [F4] modo dios y [C] (mantener) vista tactica: se atienden en cualquier modo de camara.
@@ -1060,7 +1060,7 @@ namespace SP.Player
         // primer click adentro se bloquea y esconde, como cualquier FPS; con
         // Escape se libera de nuevo. En vista RTS lo dejamos libre siempre,
         // porque ahí el mouse selecciona y arrastra en vez de mirar.
-        void UpdateCursorLock(Keyboard kb, Mouse mouse)
+        void UpdateCursorLock(Keyboard kb)
         {
             // Antes también se bloqueaba con solo currentSeat.HasValue,
             // sin mirar el modo -- si estabas manejando un vehiculo y
@@ -1081,7 +1081,14 @@ namespace SP.Player
 
             if (wantsLock)
             {
-                if (mouse != null && mouse.leftButton.wasPressedThisFrame && Cursor.lockState != CursorLockMode.Locked)
+                // BUG REAL: exigir un click para recapturar el cursor
+                // tenia sentido al arrancar desde el menu, pero tambien
+                // se aplicaba al volver de RTS a FPS -- la mira quedaba
+                // "rota" (el mouse mueve el cursor del SO en vez de
+                // rotar la camara) hasta que el jugador clickeaba una
+                // vez a ciegas. Si ya no hay modal (wantsLock ya lo
+                // filtra), no hay razon para esperar el click.
+                if (Cursor.lockState != CursorLockMode.Locked)
                 {
                     Cursor.lockState = CursorLockMode.Locked;
                     Cursor.visible = false;

@@ -2107,6 +2107,11 @@ namespace SP.EditorTools
             if (team == TeamId.Enemy) instance.AddComponent<EnemyAlertIndicatorView>();
             else instance.AddComponent<SquadStateIndicatorView>();
 
+            // Columna localizadora (enemigos Y aliados): se apaga sola en
+            // cuanto el jugador la tiene adentro de la mira, ver
+            // UnitLocatorCylinder.
+            instance.AddComponent<SP.Presentation.UnitLocatorCylinder>();
+
             // El color del cuerpo (color) varia por soldado para
             // distinguirlos entre si de cerca -- pero eso significa que
             // Vega (colorVega = 0.95,0.35,0.30) y los enemigos

@@ -305,21 +305,26 @@ namespace SP.EditorTools
             // (70 x 210) no puede tener la misma densidad de arboles que el nivel completo (117 x 320).
             float factorArea = Mathf.Clamp(((x1 - x0) * (z1 - z0)) / 33000f, 0.25f, 1f);
 
-            var lista = new (string prefab, int cantidad, bool lejosDeRuta, float escalaMin, float escalaMax)[]
+            // esDestructible: bushes/barriles/neumaticos/palets/escombros reaccionan a
+            // disparos y explosiones (lanzacohetes, cañon del tanque) como cualquier
+            // obstaculo de LevelBlockoutBuilder -- antes eran puro decorado sin collider
+            // ni vida, asi que ni bloqueaban ni se podian destruir.
+            var lista = new (string prefab, int cantidad, bool lejosDeRuta, float escalaMin, float escalaMax, bool esDestructible, int vida)[]
             {
-                ("P_Env_ArbolA", 46, true, 0.9f, 1.4f), ("P_Env_ArbolB", 38, true, 0.9f, 1.4f),
-                ("P_Env_Arbusto_Grande", 34, true, 0.9f, 1.3f), ("P_Env_Arbusto_Medio", 44, true, 0.9f, 1.4f),
-                ("P_Env_Barril", 10, false, 0.5f, 0.6f), ("P_Env_Neumaticos", 8, false, 0.9f, 1.1f),
-                ("P_Env_Palet", 8, false, 1f, 1.2f), ("P_Env_Escombro_Pila_A", 10, false, 0.9f, 1.3f),
-                ("P_Env_Crater", 12, false, 0.8f, 1.5f), ("P_Env_Poste_Caido", 4, true, 1f, 1f),
-                ("P_Env_Cartel", 6, false, 1f, 1.2f),
+                ("P_Env_ArbolA", 46, true, 0.9f, 1.4f, false, 0), ("P_Env_ArbolB", 38, true, 0.9f, 1.4f, false, 0),
+                ("P_Env_Arbusto_Grande", 34, true, 0.9f, 1.3f, true, 60), ("P_Env_Arbusto_Medio", 44, true, 0.9f, 1.4f, true, 40),
+                ("P_Env_Barril", 10, false, 0.5f, 0.6f, true, 40), ("P_Env_Neumaticos", 8, false, 0.9f, 1.1f, true, 80),
+                ("P_Env_Palet", 8, false, 1f, 1.2f, true, 70), ("P_Env_Escombro_Pila_A", 10, false, 0.9f, 1.3f, true, 100),
+                ("P_Env_Crater", 12, false, 0.8f, 1.5f, false, 0), ("P_Env_Poste_Caido", 4, true, 1f, 1f, false, 0),
+                ("P_Env_Cartel", 6, false, 1f, 1.2f, true, 50),
             };
 
             int total = 0;
-            foreach (var (prefab, cantidad, lejos, emin, emax) in lista)
+            foreach (var (prefab, cantidad, lejos, emin, emax, esDestructible, vida) in lista)
             {
                 var g = P(prefab);
                 if (g == null) continue;
+                bool esBarril = prefab == "P_Env_Barril";
                 int meta = Mathf.Max(3, Mathf.RoundToInt(cantidad * factorArea));
                 int puestos = 0, intentos = 0;
                 while (puestos < meta && intentos++ < meta * 40)
@@ -338,6 +343,7 @@ namespace SP.EditorTools
                     inst.transform.position = new Vector3(x, y, z);
                     inst.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
                     inst.transform.localScale = Vector3.one * Mathf.Lerp(emin, emax, (float)rnd.NextDouble());
+                    AgregarColliderYDestruccion(inst, esDestructible, vida, esBarril);
                     puestos++; total++;
                 }
             }
@@ -361,6 +367,7 @@ namespace SP.EditorTools
                         inst.transform.position = new Vector3(x, y, z);
                         inst.transform.rotation = Quaternion.Euler(0f, lado < 0f ? 90f : -90f, 0f);
                         AgregarLuzDeFarol(inst.transform);
+                        AgregarColliderYDestruccion(inst, esDestructible: false, vida: 0, esBarril: false);
                         total++;
                     }
 
@@ -370,6 +377,40 @@ namespace SP.EditorTools
             // abiertos al campo vacio del terreno.
             total += Perimetro(ambiente.transform, x0, x1, z0, z1, terreno, rnd);
             return total;
+        }
+
+        // Le da un collider de verdad (ajustado a los bounds reales del mesh, ya con la
+        // escala puesta) a un adorno de Ambiente que antes quedaba fantasma -- ni bloqueaba
+        // el paso ni un rayo/proyectil lo podia tocar. Si es destructible, ademas le cuelga
+        // ObstacleMarker (el mismo componente de los obstaculos del blockout) para que
+        // reaccione a disparos/explosiones con las mismas etapas de daño y escombros.
+        static void AgregarColliderYDestruccion(GameObject inst, bool esDestructible, int vida, bool esBarril)
+        {
+            var renderers = inst.GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length == 0) return;
+            var bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+
+            var box = inst.AddComponent<BoxCollider>();
+            box.center = inst.transform.InverseTransformPoint(bounds.center);
+            var ext = bounds.size;
+            var escala = inst.transform.lossyScale;
+            box.size = new Vector3(
+                Mathf.Abs(escala.x) > 0.0001f ? ext.x / Mathf.Abs(escala.x) : ext.x,
+                Mathf.Abs(escala.y) > 0.0001f ? ext.y / Mathf.Abs(escala.y) : ext.y,
+                Mathf.Abs(escala.z) > 0.0001f ? ext.z / Mathf.Abs(escala.z) : ext.z);
+
+            if (!esDestructible) return;
+            var marker = inst.AddComponent<ObstacleMarker>();
+            var so = new SerializedObject(marker);
+            so.FindProperty("maxHealth").intValue = vida;
+            if (esBarril)
+            {
+                so.FindProperty("esExplosivo").boolValue = true;
+                so.FindProperty("radioExplosion").floatValue = 5f;
+                so.FindProperty("danoExplosion").intValue = 45;
+            }
+            so.ApplyModifiedPropertiesWithoutUndo();
         }
 
         // Luz calida de lampara: siempre dura (pedido explicito), rango corto -- ilumina el

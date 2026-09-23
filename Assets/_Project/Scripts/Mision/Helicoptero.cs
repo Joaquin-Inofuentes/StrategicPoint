@@ -125,7 +125,11 @@ namespace SP.Mision
             float k = Mathf.InverseLerp(VueltasEnEspera, VueltasEnAlerta, Vueltas);
             if (sonido != null)
             {
-                sonido.volume = Mathf.Lerp(0.30f, 1f, k);
+                // El rotor no pasaba por ningun canal de mezcla: sonaba
+                // igual de fuerte aunque el jugador bajara "Efectos" a
+                // cero en Opciones. GainFor se relee cada frame (barato,
+                // cache en memoria) para que el slider surta efecto en vivo.
+                sonido.volume = Mathf.Lerp(0.30f, 1f, k) * SP.Presentation.AudioDirector.GainFor(SP.Presentation.SfxChannel.Sfx);
                 sonido.pitch = Mathf.Lerp(0.85f, 1.25f, k);
             }
             if (disco != null && matDisco != null)

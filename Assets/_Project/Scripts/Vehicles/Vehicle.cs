@@ -476,28 +476,29 @@ namespace SP.Vehicles
                     mountTrueScale.Remove(soldier);
                     yield break;
                 }
-                // Se cuelga del chasis DESPUES de llegar, con valores
-                // LOCALES puestos a mano (worldPositionStays=false) en vez
-                // de dejar que Unity los derive del mundo: el chasis tiene
-                // escala no uniforme (2.2/1.4/3.6), y un SetParent con
-                // worldPositionStays=true sobre eso puede terminar
-                // estirando al soldado en vez de solo reposicionarlo. Se
-                // replica el mismo patron de contra-escala que ya usan
-                // TurretPivot/MetralletaPivot: escala local = 1/escala del
-                // padre, para que el tamaño real del soldado no cambie.
+                // BUG REAL: colgarlo directo del chasis (transform) con una
+                // simple contra-escala arreglaba el TAMAÑO en el instante de
+                // subir, pero no el andar/girar despues -- el chasis tiene
+                // escala NO uniforme (2.2/1.4/3.6), y con una rotacion local
+                // no identidad (la de standPoint) entre medio, escala no
+                // uniforme + rotacion no conmutan: el resultado es una
+                // MATRIZ CON SHEAR, no un cuerpo rigido. Se nota poco en un
+                // caño de cañon (simetrico) pero mucho en un cuerpo humano
+                // (se ve estirado/retorcido en cuanto el tanque gira).
+                // La solucion real es un "carrito" intermedio con escala
+                // uniforme (1,1,1) colgado del chasis en la posicion del
+                // punto de pie: shear y rotacion SI conmutan con escala
+                // uniforme, asi que lo que cuelgue de el rota rigido.
                 if (standPoint != null)
                 {
-                    var chassisScale = transform.localScale;
+                    var carrito = ObtenerOCrearCarritoDeParado(standPoint);
                     // Se recuerda de quien colgaba para devolverlo ahi al bajar
                     // (antes quedaba suelto en la raiz de la escena).
-                    if (soldier.transform.parent != transform) padreAnterior[soldier] = soldier.transform.parent;
-                    soldier.transform.SetParent(transform, false);
-                    soldier.transform.localPosition = standPoint.localPosition;
-                    soldier.transform.localRotation = standPoint.localRotation;
-                    soldier.transform.localScale = new Vector3(
-                        startScale.x / (Mathf.Abs(chassisScale.x) > 0.0001f ? chassisScale.x : 1f),
-                        startScale.y / (Mathf.Abs(chassisScale.y) > 0.0001f ? chassisScale.y : 1f),
-                        startScale.z / (Mathf.Abs(chassisScale.z) > 0.0001f ? chassisScale.z : 1f));
+                    if (soldier.transform.parent != carrito) padreAnterior[soldier] = soldier.transform.parent;
+                    soldier.transform.SetParent(carrito, false);
+                    soldier.transform.localPosition = Vector3.zero;
+                    soldier.transform.localRotation = Quaternion.identity;
+                    soldier.transform.localScale = startScale;
                 }
                 mountAnimations.Remove(soldier);
                 mountTrueScale.Remove(soldier);
@@ -552,6 +553,32 @@ namespace SP.Vehicles
             mountTrueScale.Remove(soldier);
         }
 
+        const string NombreCarritoDeParado = "MetralletaStandCarrier";
+        Transform carritoDeParado;
+
+        // Carrito con escala uniforme (1,1,1) colgado del chasis en la
+        // posicion/rotacion del punto de pie: ver el comentario en
+        // PlayMountAnimation sobre por que hace falta (shear al girar).
+        // Idempotente: se crea una sola vez y se reutiliza.
+        Transform ObtenerOCrearCarritoDeParado(Transform standPoint)
+        {
+            if (carritoDeParado != null) return carritoDeParado;
+            var existente = transform.Find(NombreCarritoDeParado);
+            if (existente != null) { carritoDeParado = existente; return carritoDeParado; }
+
+            var go = new GameObject(NombreCarritoDeParado);
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = standPoint.localPosition;
+            go.transform.localRotation = standPoint.localRotation;
+            var chassisScale = transform.localScale;
+            go.transform.localScale = new Vector3(
+                1f / (Mathf.Abs(chassisScale.x) > 0.0001f ? chassisScale.x : 1f),
+                1f / (Mathf.Abs(chassisScale.y) > 0.0001f ? chassisScale.y : 1f),
+                1f / (Mathf.Abs(chassisScale.z) > 0.0001f ? chassisScale.z : 1f));
+            carritoDeParado = go.transform;
+            return carritoDeParado;
+        }
+
         // Baja a un soldado y lo reaparece junto al vehículo.
         public bool Dismount(Soldier soldier)
         {
@@ -569,7 +596,7 @@ namespace SP.Vehicles
             // worldPositionStays=true porque la posicion de mundo actual
             // no importa: dos lineas mas abajo se pisa con el offset de
             // desmontaje de todas formas.
-            if (soldier.transform.parent == transform)
+            if (soldier.transform.parent == transform || soldier.transform.parent == carritoDeParado)
             {
                 padreAnterior.TryGetValue(soldier, out var padre);
                 soldier.transform.SetParent(padre, true);
@@ -586,6 +613,13 @@ namespace SP.Vehicles
             if (UnityEngine.AI.NavMesh.SamplePosition(destinoBajada, out var golpeNav, 4f, UnityEngine.AI.NavMesh.AllAreas)) destinoBajada = golpeNav.position;
             soldier.transform.position = destinoBajada;
             soldier.transform.rotation = transform.rotation;
+            // El muestreo del NavMesh da una posicion aproximada (la malla
+            // horneada no es identica a la geometria real): sin este apoyo,
+            // el soldado quedaba levemente hundido o flotando al bajar, y
+            // como ApoyoEnElPiso.ApoyarATodos() solo corre una vez al
+            // iniciar la partida, nadie lo corregia despues -- de ahi que
+            // moverse despues de bajar del tanque se sintiera roto.
+            SP.Core.ApoyoEnElPiso.Apoyar(soldier.transform);
 
             if (soldier.Brain != null) soldier.Brain.ReactivarNavegacion();
 

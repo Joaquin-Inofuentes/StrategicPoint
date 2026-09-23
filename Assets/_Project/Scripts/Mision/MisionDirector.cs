@@ -106,6 +106,7 @@ namespace SP.Mision
             hud = MisionHud.Crear(this);
             flechaDeObjetivo = SP.Presentation.ObjectiveArrowIndicator.Crear();
             baliza = TutorialBeacon.Crear("CENTRO", new Color(1f, 0.85f, 0.25f), Plaza, null, 3.2f, 24f);
+            SP.Presentation.RutaAlObjetivo.Crear();
             GameLog.Line($"Mision iniciada (dificultad {Dificultad.PerfilActual.Nombre})");
             CambioDeFase?.Invoke(Fase);
         }
@@ -432,6 +433,12 @@ namespace SP.Mision
             if (Plano(PosicionDelJugador(), Plaza) > RadioCentro) return;
             Restante = SegundosDeResistencia;
             CambiarFase(FaseDeMision.Resistir);
+            // La columna es guia de LARGA distancia; con el jugador ya
+            // parado adentro (justo donde va a pelear los proximos
+            // SegundosDeResistencia) queda atravesandole la vista. El
+            // fundido por distancia de camara no alcanza a apagarla sola
+            // porque RadioCentro es mas grande que el radio del fundido.
+            if (baliza != null) baliza.OcultarColumna();
             AlertQueue.Push($"LLEGASTE AL CENTRO: RESISTI {Mathf.RoundToInt(SegundosDeResistencia)} SEGUNDOS", AlertPriority.Alta, 3.5f);
         }
 

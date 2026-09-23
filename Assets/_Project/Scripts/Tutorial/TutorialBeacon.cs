@@ -57,6 +57,18 @@ namespace SP.Tutorial
             Destroy(gameObject);
         }
 
+        // La columna alta sirve de guia a distancia; una vez que el jugador
+        // ya llego al objetivo (no antes: llegar puede tardar bastante mas
+        // que el radio de 13 m donde el fundido por camara la apaga sola)
+        // se apaga a mano, sin esperar el fundido ambiental -- que ademas
+        // solo mira la distancia de la CAMARA, no si la mision considera
+        // "llegado" al jugador. El anillo del piso se deja: sigue marcando
+        // la zona a mantener durante la resistencia.
+        public void OcultarColumna()
+        {
+            if (columna != null) columna.SetActive(false);
+        }
+
         void Armar(string texto, float alto)
         {
             var mat = CoverHologram.NuevoTransparente(new Color(color.r, color.g, color.b, 0.22f));

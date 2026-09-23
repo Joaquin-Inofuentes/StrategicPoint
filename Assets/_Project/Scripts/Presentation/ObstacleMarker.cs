@@ -174,6 +174,12 @@ namespace SP.Presentation
         {
             IsCollapsed = true;
             Derrumbado?.Invoke(this);
+            // Pedido explicito: "sonido al destruir objetos ya sea con
+            // lanzacohetes o tanque" -- Demoler() (lo llama Atropello al
+            // aplastar con el casco) y el colapso por disparos comparten
+            // este mismo camino, asi que un solo sonido cubre los dos
+            // origenes sin duplicar codigo.
+            SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.Explosion, transform.position, 0.55f);
             // Se parte en trozos reales con fisica (Fragmentador); si no se pudo (fuera de Play), quedan los cubitos de antes.
             var origen = ultimoGolpe ?? (transform.position + Vector3.up * baseScale.y * 0.5f);
             if (SP.Presentation.Fragmentador.Romper(transform, origen, fuerzaDeRotura) == 0) SpawnDebris(14, 7f);

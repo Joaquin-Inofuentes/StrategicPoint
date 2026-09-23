@@ -68,6 +68,10 @@ namespace SP.Vehicles
                 int quien = datos != null && datos.Driver != null ? datos.Driver.Id : -1;
                 s.Health.TakeDamage(danio, quien);
                 GameLog.Line($"{s.DisplayName} fue atropellado a {Mathf.Abs(velocidad):0.0} m/s ({danio} de daño)");
+                // Pedido explicito: "sonido al atropellar enemigos" -- el
+                // golpe del casco no tenia NINGUN sonido, a diferencia de
+                // cualquier otro impacto del juego.
+                SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.ImpactMetal, s.transform.position, 0.8f);
                 if (!s.Health.IsAlive) Derribar(s, direccion);
                 atropellados++;
             }
