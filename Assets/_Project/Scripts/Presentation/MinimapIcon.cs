@@ -85,28 +85,32 @@ namespace SP.Presentation
             if (Target == null) return;
             soldierDetectado = Target.GetComponent<Soldier>();
             if (soldierDetectado == null) return;
-            ConvertirEnDobleTriangulo();
-            RepintarPorEquipo(forzar: true);
+            equipoPintadoMinimapa = soldierDetectado.Team;
+            var color = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
+            ConvertirEnTrianguloAnidado(color);
             autoColoreado = true;
         }
 
+        // Pedido explicito: "el enemigo no se ve claro... fondo blanco y
+        // relleno variante (rojo/amarillo/azul segun los rombos)". Antes
+        // esto pintaba el UNICO renderer del icono (el triangulo entero)
+        // del color de equipo -- ahora ese renderer es SIEMPRE blanco (el
+        // "fondo"/borde del triangulo anidado) y lo que cambia de color es
+        // el triangulo hijo mas chico (interior).
         void RepintarPorEquipo(bool forzar = false)
         {
             if (soldierDetectado == null) return;
             if (!forzar && soldierDetectado.Team == equipoPintadoMinimapa) return;
             equipoPintadoMinimapa = soldierDetectado.Team;
-            EnsureRenderer();
-            if (selfRenderer == null) return;
             var color = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
-            // ".material" (no ".sharedMaterial"): si el icono vino de la
-            // escena con un material COMPARTIDO entre varios soldados,
-            // ".material" lo clona automaticamente para este renderer antes
-            // de tocarlo -- sin esto, repintar a un enemigo podria repintar
-            // de paso a todos los que comparten el mismo asset de material.
-            var mat = selfRenderer.material;
-            if (mat == null) return;
-            mat.color = color;
-            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            PintarInterior(color);
+        }
+
+        void PintarInterior(Color color)
+        {
+            if (materialInterior == null) return;
+            materialInterior.color = color;
+            if (materialInterior.HasProperty("_BaseColor")) materialInterior.SetColor("_BaseColor", color);
         }
 
         // selfRenderer es un campo privado comun: NO sobrevive al domain
@@ -300,6 +304,90 @@ namespace SP.Presentation
             filtro.sharedMesh = MallaDobleTriangulo();
             esTriangulo = false;
             esDobleTriangulo = true;
+            return true;
+        }
+
+        // Pedido explicito: "los jugadores sean 2 triangulos uno dentro de
+        // otro, fondo blanco y relleno variante (rojo/amarillo/azul)".
+        // Reusa la MISMA malla de MallaTriangulo() para el triangulo GRANDE
+        // (el icono propio, siempre blanco -- el "fondo"/marco) y agrega un
+        // hijo "Interior" con un triangulo mas chico (mismo mesh, escalado)
+        // que lleva el color de equipo/rol -- mismo patron de dos caras
+        // anidadas que ya usa DiamondGizmo (Borde+Interior) para los rombos
+        // de mundo, aplicado aca al minimapa.
+        Renderer interior;
+        Material materialInterior;
+
+        static Mesh mallaTrianguloInterior;
+        static Mesh MallaTrianguloInterior()
+        {
+            if (mallaTrianguloInterior != null) return mallaTrianguloInterior;
+            var m = new Mesh { name = "MinimapTrianguloInterior", hideFlags = HideFlags.HideAndDontSave };
+            // Mismas proporciones que MallaTriangulo(), a 60% -- deja un
+            // marco blanco parejo alrededor visible en los cuatro lados.
+            const float k = 0.6f;
+            m.vertices = new[]
+            {
+                new Vector3(0f, 0f, 0.55f * k),
+                new Vector3(-0.45f * k, 0f, -0.40f * k),
+                new Vector3(0.45f * k, 0f, -0.40f * k),
+            };
+            m.triangles = new[] { 0, 1, 2, 0, 2, 1 };
+            m.normals = new[] { Vector3.up, Vector3.up, Vector3.up };
+            m.RecalculateBounds();
+            m.hideFlags = HideFlags.HideAndDontSave;
+            mallaTrianguloInterior = m;
+            return m;
+        }
+
+        public bool ConvertirEnTrianguloAnidado(Color colorRelleno)
+        {
+            if (directionMarker != null)
+            {
+                var go = directionMarker.gameObject;
+                if (Application.isPlaying) Destroy(go); else DestroyImmediate(go);
+                directionMarker = null;
+            }
+            var filtro = GetComponent<MeshFilter>();
+            if (filtro == null) return false;
+            filtro.sharedMesh = MallaTriangulo();
+            esTriangulo = true;
+            esDobleTriangulo = false;
+
+            EnsureRenderer();
+            if (selfRenderer != null)
+            {
+                var matBorde = selfRenderer.material;
+                if (matBorde != null)
+                {
+                    matBorde.color = Color.white;
+                    if (matBorde.HasProperty("_BaseColor")) matBorde.SetColor("_BaseColor", Color.white);
+                }
+            }
+
+            if (interior == null)
+            {
+                var existente = transform.Find("Interior");
+                GameObject go;
+                if (existente != null) go = existente.gameObject;
+                else
+                {
+                    go = new GameObject("Interior", typeof(MeshFilter), typeof(MeshRenderer));
+                    go.layer = gameObject.layer;
+                    go.transform.SetParent(transform, false);
+                    // Un pelo hacia arriba en Y local para no competir en
+                    // profundidad con el triangulo grande (mismo motivo que
+                    // el offset de -0.02 entre Borde/Interior en DiamondGizmo).
+                    go.transform.localPosition = new Vector3(0f, 0.01f, 0f);
+                }
+                go.GetComponent<MeshFilter>().sharedMesh = MallaTrianguloInterior();
+                interior = go.GetComponent<MeshRenderer>();
+                interior.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                interior.receiveShadows = false;
+                materialInterior = DiamondGizmo.NuevoMaterial(Color.white);
+                interior.sharedMaterial = materialInterior;
+            }
+            PintarInterior(colorRelleno);
             return true;
         }
 

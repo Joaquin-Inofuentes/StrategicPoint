@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using SP.Core;
+using SP.Presentation;
 
 namespace SP.UI
 {
@@ -20,6 +21,13 @@ namespace SP.UI
         Text texto;
         CanvasGroup grupo;
 
+        // Pedido explicito: "q este mas abajo, mas alineado al filo
+        // inferior, mas delgado y mas corto, y un icono q lo distinga".
+        // Antes: 360x34 flotando a 96px del piso con "★ MODO DIOS · [F4]
+        // apagar". Ahora: caja angosta de 190x22 pegada casi al borde
+        // (8px), texto recortado a lo esencial, y un escudo (HudIconFactory)
+        // en vez de la estrella de texto para que se lea sin depender del
+        // color dorado.
         public static ModoDiosView Asegurar(Transform canvasRoot)
         {
             if (canvasRoot == null) return null;
@@ -31,8 +39,8 @@ namespace SP.UI
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0f);
             rt.pivot = new Vector2(0.5f, 0f);
-            rt.anchoredPosition = new Vector2(0f, 96f);
-            rt.sizeDelta = new Vector2(360f, 34f);
+            rt.anchoredPosition = new Vector2(0f, 8f);
+            rt.sizeDelta = new Vector2(190f, 22f);
 
             var fondo = new GameObject("Fondo", typeof(RectTransform), typeof(Image));
             fondo.transform.SetParent(go.transform, false);
@@ -42,17 +50,31 @@ namespace SP.UI
             var frt = (RectTransform)fondo.transform;
             frt.anchorMin = Vector2.zero; frt.anchorMax = Vector2.one; frt.offsetMin = frt.offsetMax = Vector2.zero;
 
+            var iconGO = new GameObject("Icono", typeof(RectTransform), typeof(Image));
+            iconGO.transform.SetParent(go.transform, false);
+            var irt = (RectTransform)iconGO.transform;
+            irt.anchorMin = new Vector2(0f, 0.5f); irt.anchorMax = new Vector2(0f, 0.5f);
+            irt.pivot = new Vector2(0f, 0.5f);
+            irt.sizeDelta = new Vector2(16f, 16f);
+            irt.anchoredPosition = new Vector2(4f, 0f);
+            var iimg = iconGO.GetComponent<Image>();
+            iimg.sprite = HudIconFactory.Escudo();
+            iimg.color = new Color(1f, 0.85f, 0.25f);
+            iimg.raycastTarget = false;
+            iimg.preserveAspect = true;
+
             var tGO = new GameObject("Texto", typeof(RectTransform), typeof(Text));
             tGO.transform.SetParent(go.transform, false);
             var tx = tGO.GetComponent<Text>();
             tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            tx.fontSize = 16; tx.fontStyle = FontStyle.Bold;
+            tx.fontSize = 13; tx.fontStyle = FontStyle.Bold;
             tx.alignment = TextAnchor.MiddleCenter;
             tx.color = new Color(1f, 0.85f, 0.25f);
             tx.raycastTarget = false;
-            tx.text = "★  MODO DIOS  ·  [F4] apagar";
+            tx.text = "MODO DIOS · F4";
             var trt = (RectTransform)tGO.transform;
-            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = trt.offsetMax = Vector2.zero;
+            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+            trt.offsetMin = new Vector2(22f, 0f); trt.offsetMax = Vector2.zero;
 
             var v = go.GetComponent<ModoDiosView>();
             v.texto = tx;

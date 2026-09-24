@@ -70,11 +70,14 @@ namespace SP.Presentation
             {
                 int layerMinimapa = LayerMask.NameToLayer("Minimap");
                 if (layerMinimapa < 0) layerMinimapa = 8;
-                // Pedido explicito: "los q me importan son muy pequeños" --
-                // el objetivo/interactuable sube de 2.4 a 4.2 (sigue siendo
-                // el marcador mas grande del minimapa, como corresponde).
-                var iconoMinimapa = MinimapIcon.Spawn(transform, ColorObjetivo, layerMinimapa, 4.2f);
-                iconoMinimapa.ConvertirEnDobleTriangulo();
+                // Pedido explicito (ronda 1): "los q me importan son muy
+                // pequeños" -- subio de 2.4 a 4.2. Pedido explicito (ronda
+                // 2): "los rombos q se ven quiero q sean mitad de tamaño"
+                // -- baja a la mitad de ESE valor (2.1), y pasa al mismo
+                // estilo "triangulo anidado" (blanco + relleno de color)
+                // que los soldados en vez del bowtie de doble punta.
+                var iconoMinimapa = MinimapIcon.Spawn(transform, ColorObjetivo, layerMinimapa, 2.1f);
+                iconoMinimapa.ConvertirEnTrianguloAnidado(ColorObjetivo);
             }
         }
 

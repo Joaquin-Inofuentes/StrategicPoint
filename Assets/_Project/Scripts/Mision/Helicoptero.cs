@@ -33,7 +33,7 @@ namespace SP.Mision
         // TickEscapar sigue llamando Alerta(cerca) de ahi en mas), asi que
         // no hace falta tocar ningun otro archivo.
         float objetivoVueltas = 0f;
-        float proximoPolvo, proximoDisparo, rafagaHasta, pausaHasta;
+        float proximoDisparo, rafagaHasta, pausaHasta;
         ProjectilePool pool;
 
         public float Vueltas { get; private set; } = 0f;
@@ -55,9 +55,15 @@ namespace SP.Mision
             }
             ArmarSonido();
             ArmarDisco();
+            ArmarPolvo();
         }
 
-        void OnDestroy() { if (Instancia == this) Instancia = null; if (matDisco != null) Destroy(matDisco); }
+        void OnDestroy()
+        {
+            if (Instancia == this) Instancia = null;
+            if (matDisco != null) Destroy(matDisco);
+            if (polvo != null) Destroy(polvo.GetComponent<ParticleSystemRenderer>().sharedMaterial);
+        }
 
         public void Alerta(bool on)
         {
@@ -125,6 +131,71 @@ namespace SP.Mision
             disco.SetActive(false);
         }
 
+        // ---------------- polvo del rotor ----------------
+        // Pedido explicito: "q tenga un sistema de particulas para emular
+        // el polvo q expulsa". Antes esto eran puffs sueltos de ImpactFx
+        // (el mismo helper de "fisica simple" que usa el resto del juego
+        // para impactos/curaciones) -- funcional, pero un helicoptero
+        // levantando tierra de verdad se lee mejor como una nube continua
+        // que como bochas individuales apareciendo una por una. Este es el
+        // primer ParticleSystem de verdad del proyecto (no hay ningun otro
+        // en el codebase para copiar): shape en disco a ras de piso,
+        // emision solo mientras el rotor gira rapido, color tierra que se
+        // desvanece y crece un poco con la vida de la particula.
+        ParticleSystem polvo;
+
+        void ArmarPolvo()
+        {
+            var go = new GameObject("PolvoDelRotor");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0f, 0.05f, 0f);
+
+            polvo = go.AddComponent<ParticleSystem>();
+            var main = polvo.main;
+            main.loop = true;
+            main.playOnAwake = false;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.1f, 1.8f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.6f, 1.8f);
+            main.startSize = new ParticleSystem.MinMaxCurve(2f, 4f);
+            // Tierra clara (no el marron oscuro del piso): contra el piso de
+            // tierra del helipuerto, un polvo del MISMO tono quedaba
+            // practicamente invisible en las capturas -- mas claro y con
+            // mas alpha para que se note la nube contra el suelo oscuro.
+            main.startColor = new Color(0.78f, 0.72f, 0.6f, 0.8f);
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.maxParticles = 200;
+
+            var emission = polvo.emission;
+            emission.enabled = true;
+            emission.rateOverTime = 0f; // arranca apagado; Update() lo prende segun k
+
+            var shape = polvo.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = 6f;
+            shape.arc = 360f;
+            shape.radiusThickness = 1f; // 1 = todo el disco (no solo el borde): tierra levantada bajo toda el area de las palas
+
+            var colorOverLifetime = polvo.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            var gradiente = new Gradient();
+            gradiente.SetKeys(
+                new[] { new GradientColorKey(new Color(0.78f, 0.72f, 0.6f), 0f), new GradientColorKey(new Color(0.85f, 0.8f, 0.7f), 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.75f, 0.2f), new GradientAlphaKey(0f, 1f) });
+            colorOverLifetime.color = gradiente;
+
+            var sizeOverLifetime = polvo.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.6f, 1f, 1.6f));
+
+            var rend = go.GetComponent<ParticleSystemRenderer>();
+            rend.renderMode = ParticleSystemRenderMode.Billboard;
+            rend.material = SafeMaterial.Create(Color.white);
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            polvo.Play();
+        }
+
         // ---------------- frame ----------------
         void Update()
         {
@@ -156,12 +227,14 @@ namespace SP.Mision
                 if (matDisco.HasProperty("_BaseColor")) matDisco.SetColor("_BaseColor", c);
             }
 
-            if (k > 0.5f && !Volando && Time.time >= proximoPolvo)
+            // Nube continua (ParticleSystem) en vez de puffs sueltos de
+            // ImpactFx: emite mientras el rotor gira rapido y no esta en la
+            // cinematica de despegue (Volando), con la tasa creciendo con
+            // k para que se note la diferencia entre ralenti y alerta.
+            if (polvo != null)
             {
-                proximoPolvo = Time.time + 0.16f;
-                float ang = Random.value * Mathf.PI * 2f;
-                var p = transform.position + new Vector3(Mathf.Cos(ang), 0.25f, Mathf.Sin(ang)) * Random.Range(3f, 6.5f);
-                ImpactFx.Spawn(p, new Color(0.62f, 0.5f, 0.36f, 1f), Random.Range(1.4f, 2.6f), 0.7f);
+                var emission = polvo.emission;
+                emission.rateOverTime = (k > 0.5f && !Volando) ? Mathf.Lerp(30f, 90f, Mathf.InverseLerp(0.5f, 1f, k)) : 0f;
             }
 
             if (DisparaCobertura && k > 0.6f) Cobertura(dt);

@@ -54,13 +54,15 @@ namespace SP.UI
         }
 
         // Arma el hijo "Icono" a la izquierda del panel. Idempotente: si ya
-        // existe solo lo devuelve. Pedido explicito: "simplificalo y q use
-        // iconos, mas vistoso, intenta evitar textos" -- el panel paso de
-        // "220x46 con todo en texto" a un layout fijo de 190x72 (ver
-        // constantes de abajo) con el arma como icono grande arriba a la
-        // izquierda; WeaponStatusUiPipeline.cs deja el panel/Text/BarBG de
-        // la escena con ese mismo tamaño para que esto encaje.
-        public const float AnchoPanel = 190f, AltoPanel = 72f;
+        // existe solo lo devuelve. Pedido explicito (ronda 2): "2 renglones:
+        // la barra de municion [abajo] y arriba municion texto y F icono
+        // de cuchillo y G icono de granada". El panel quedo en 226x54 (ver
+        // constantes de abajo): el icono del arma ocupa la columna
+        // izquierda abarcando las dos filas, y a la derecha el renglon de
+        // arriba (texto + F/cuchillo + G/granada) y el de abajo (barra).
+        // WeaponStatusUiPipeline.cs deja el panel/Text/BarBG de la escena
+        // con ese mismo tamaño para que esto encaje.
+        public const float AnchoPanel = 226f, AltoPanel = 54f;
 
         public Image EnsureIcon()
         {
@@ -73,8 +75,8 @@ namespace SP.UI
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
             rt.pivot = new Vector2(0f, 0f);
-            rt.sizeDelta = new Vector2(40f, 40f);
-            rt.anchoredPosition = new Vector2(4f, 10f);
+            rt.sizeDelta = new Vector2(36f, 40f);
+            rt.anchoredPosition = new Vector2(4f, 8f);
             icon = go.GetComponent<Image>();
             icon.raycastTarget = false;
             icon.preserveAspect = true;
@@ -176,8 +178,8 @@ namespace SP.UI
                     var rt = (RectTransform)go.transform;
                     rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
                     rt.pivot = new Vector2(0f, 0f);
-                    rt.sizeDelta = new Vector2(18f, 18f);
-                    rt.anchoredPosition = new Vector2(28f, 8f);
+                    rt.sizeDelta = new Vector2(16f, 16f);
+                    rt.anchoredPosition = new Vector2(24f, 6f);
                     var im = go.GetComponent<Image>();
                     im.raycastTarget = false;
                     im.sprite = HudIconFactory.Reloj();
@@ -190,8 +192,44 @@ namespace SP.UI
             reloj.gameObject.SetActive(weapon.ReadinessFraction01 < 0.999f);
         }
 
-        // Insignia de cuchillo [F] y granadas [G] arriba a la derecha del panel: dos iconos, sin
-        // texto salvo el numero de granadas (un digito no es "texto descriptivo", es un contador).
+        // Pedido explicito: "F icono de cuchillo y G icono de granada" -- en
+        // el renglon de arriba, junto al numero de municion. La letra de la
+        // tecla es parte del pedido (no es texto descriptivo, es el atajo).
+        static Text CrearEtiqueta(Transform padre, string nombre, string letra, Vector2 pos)
+        {
+            var go = new GameObject(nombre, typeof(RectTransform), typeof(Text));
+            go.transform.SetParent(padre, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.pivot = new Vector2(0f, 0f);
+            rt.sizeDelta = new Vector2(12f, 24f);
+            rt.anchoredPosition = pos;
+            var tx = go.GetComponent<Text>();
+            tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            tx.fontSize = 12; tx.fontStyle = FontStyle.Bold;
+            tx.alignment = TextAnchor.MiddleCenter;
+            tx.color = new Color(0.75f, 0.78f, 0.82f);
+            tx.raycastTarget = false;
+            tx.text = letra;
+            return tx;
+        }
+
+        static Image CrearIconoExtra(Transform padre, string nombre, Sprite sprite, Vector2 pos)
+        {
+            var go = new GameObject(nombre, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            go.transform.SetParent(padre, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.pivot = new Vector2(0f, 0f);
+            rt.sizeDelta = new Vector2(20f, 20f);
+            rt.anchoredPosition = pos;
+            var im = go.GetComponent<Image>();
+            im.raycastTarget = false;
+            im.preserveAspect = true;
+            im.sprite = sprite;
+            return im;
+        }
+
         Image extrasCuchillo, extrasGranada;
         Text extrasGranadaCount;
         void ActualizarExtras(WeaponHolder weapon)
@@ -199,44 +237,16 @@ namespace SP.UI
             if (extrasCuchillo == null)
             {
                 var t = transform.Find("ExtrasCuchillo");
-                GameObject go;
-                if (t == null)
-                {
-                    go = new GameObject("ExtrasCuchillo", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                    go.transform.SetParent(transform, false);
-                    var rt = (RectTransform)go.transform;
-                    rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
-                    rt.pivot = new Vector2(0f, 0f);
-                    rt.sizeDelta = new Vector2(20f, 20f);
-                    rt.anchoredPosition = new Vector2(108f, 50f);
-                    var im = go.GetComponent<Image>();
-                    im.raycastTarget = false;
-                    im.preserveAspect = true;
-                    im.sprite = HudIconFactory.Cuchillo();
-                    t = go.transform;
-                }
-                extrasCuchillo = t.GetComponent<Image>();
+                extrasCuchillo = t != null ? t.GetComponent<Image>()
+                    : CrearIconoExtra(transform, "ExtrasCuchillo", HudIconFactory.Cuchillo(), new Vector2(142f, 28f));
+                if (transform.Find("ExtrasCuchilloLabel") == null) CrearEtiqueta(transform, "ExtrasCuchilloLabel", "F", new Vector2(128f, 26f));
             }
             if (extrasGranada == null)
             {
                 var t = transform.Find("ExtrasGranada");
-                GameObject go;
-                if (t == null)
-                {
-                    go = new GameObject("ExtrasGranada", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                    go.transform.SetParent(transform, false);
-                    var rt = (RectTransform)go.transform;
-                    rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
-                    rt.pivot = new Vector2(0f, 0f);
-                    rt.sizeDelta = new Vector2(20f, 20f);
-                    rt.anchoredPosition = new Vector2(132f, 50f);
-                    var im = go.GetComponent<Image>();
-                    im.raycastTarget = false;
-                    im.preserveAspect = true;
-                    im.sprite = HudIconFactory.Granada();
-                    t = go.transform;
-                }
-                extrasGranada = t.GetComponent<Image>();
+                extrasGranada = t != null ? t.GetComponent<Image>()
+                    : CrearIconoExtra(transform, "ExtrasGranada", HudIconFactory.Granada(), new Vector2(180f, 28f));
+                if (transform.Find("ExtrasGranadaLabel") == null) CrearEtiqueta(transform, "ExtrasGranadaLabel", "G", new Vector2(166f, 26f));
             }
             if (extrasGranadaCount == null)
             {
@@ -249,8 +259,8 @@ namespace SP.UI
                     var rt = (RectTransform)go.transform;
                     rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
                     rt.pivot = new Vector2(0f, 0f);
-                    rt.sizeDelta = new Vector2(30f, 20f);
-                    rt.anchoredPosition = new Vector2(154f, 50f);
+                    rt.sizeDelta = new Vector2(20f, 24f);
+                    rt.anchoredPosition = new Vector2(202f, 26f);
                     var tx = go.GetComponent<Text>();
                     tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                     tx.fontSize = 15; tx.fontStyle = FontStyle.Bold;

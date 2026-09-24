@@ -137,6 +137,15 @@ namespace SP.EditorTools
             var iconRt = iconGO.GetComponent<RectTransform>();
             iconRt.anchorMin = new Vector2(0f, 0f);
             iconRt.anchorMax = new Vector2(1f, 1f);
+            // BUG REAL: el "Icon" de la ronda anterior (con pivot (0, 0.5),
+            // pensado para un layout viejo con el icono pegado a la
+            // izquierda) seguia vivo y este metodo nunca reseteaba el pivot
+            // al reusarlo. Image.preserveAspect usa el pivot para decidir
+            // hacia que lado "sobra" el rect al encajar el aspect ratio --
+            // con pivot.x=0 el icono quedaba pegado al borde izquierdo del
+            // cuadrado en vez de centrado. Pedido explicito: "q los iconos
+            // esten centrados en el eje X".
+            iconRt.pivot = new Vector2(0.5f, 0.5f);
             iconRt.offsetMin = new Vector2(4f, 27f);
             iconRt.offsetMax = new Vector2(-4f, -4f);
 

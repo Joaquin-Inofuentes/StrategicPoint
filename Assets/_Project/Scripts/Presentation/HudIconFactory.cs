@@ -11,12 +11,13 @@ namespace SP.Presentation
     {
         const int Size = 64;
 
-        static Texture2D cuchillo, granada, reloj;
-        static Sprite spriteCuchillo, spriteGranada, spriteReloj;
+        static Texture2D cuchillo, granada, reloj, escudo;
+        static Sprite spriteCuchillo, spriteGranada, spriteReloj, spriteEscudo;
 
         public static Sprite Cuchillo() => spriteCuchillo ??= AsSprite(cuchillo ??= BuildCuchillo());
         public static Sprite Granada() => spriteGranada ??= AsSprite(granada ??= BuildGranada());
         public static Sprite Reloj() => spriteReloj ??= AsSprite(reloj ??= BuildReloj());
+        public static Sprite Escudo() => spriteEscudo ??= AsSprite(escudo ??= BuildEscudo());
 
         static Sprite AsSprite(Texture2D tex)
             => Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
@@ -63,6 +64,38 @@ namespace SP.Presentation
                 float dAnillo = Mathf.Sqrt(dxAnillo * dxAnillo + dyAnillo * dyAnillo);
                 if (dAnillo <= 0.12f && dAnillo >= 0.07f) anillo = true;
                 bool dentro = (cuerpo && !costilla) || palanca || anillo;
+                tex.SetPixel(x, y, new Color(0f, 0f, 0f, dentro ? 1f : 0f));
+            }
+            tex.Apply();
+            return tex;
+        }
+
+        // Escudo: forma clasica de blason (punta abajo) con una marca en V adentro -- identifica
+        // el cartel de MODO DIOS (invencibilidad) de un vistazo, sin depender solo del color dorado.
+        static Texture2D BuildEscudo()
+        {
+            var tex = NuevaTextura();
+            for (int y = 0; y < Size; y++)
+            for (int x = 0; x < Size; x++)
+            {
+                float nx = (x + 0.5f) / Size * 2f - 1f;
+                float ny = (y + 0.5f) / Size * 2f - 1f;
+                // Contorno del blason: rectangulo arriba, se angosta a una punta abajo.
+                bool enFormaBase;
+                if (ny > -0.1f) enFormaBase = ny <= 0.85f && Mathf.Abs(nx) <= 0.62f;
+                else enFormaBase = ny > -0.85f && Mathf.Abs(nx) <= Mathf.Lerp(0.62f, 0f, Mathf.InverseLerp(-0.1f, -0.85f, ny));
+                // Se resta un anillo interior (mismo contorno, mas chico) para que quede hueco
+                // y una marca en V (tilde) al medio, como el resto de los iconos de esta clase.
+                bool enFormaInterior;
+                if (ny > -0.02f) enFormaInterior = ny <= 0.68f && Mathf.Abs(nx) <= 0.46f;
+                else enFormaInterior = ny > -0.68f && Mathf.Abs(nx) <= Mathf.Lerp(0.46f, 0f, Mathf.InverseLerp(-0.02f, -0.68f, ny));
+                bool marco = enFormaBase && !enFormaInterior;
+
+                bool tildeIzq = (nx + ny * 0.4f) is > -0.42f and < -0.1f && ny < 0.15f && ny > -0.35f && nx < 0.02f;
+                bool tildeDer = (nx - ny * 0.9f) is > -0.1f and < 0.2f && ny < 0.35f && ny > -0.35f && nx >= -0.05f;
+                bool tilde = enFormaInterior && (tildeIzq || tildeDer);
+
+                bool dentro = marco || tilde;
                 tex.SetPixel(x, y, new Color(0f, 0f, 0f, dentro ? 1f : 0f));
             }
             tex.Apply();
