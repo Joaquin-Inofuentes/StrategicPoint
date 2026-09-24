@@ -29,6 +29,7 @@ namespace SP.Presentation
         Soldier soldier;
         GameObject marcador;   // raiz billboardeada (rombo blanco + rombo de color)
         Material materialInterior;
+        TeamId equipoPintado;
 
         const string MarkerName = "LocatorRombo";
         public const float AnguloDeMira = 5f;
@@ -110,7 +111,8 @@ namespace SP.Presentation
             // alrededor del rombo de color.
             DiamondGizmo.CrearCara("Borde", marcador.transform, TamanoBorde, MaterialBorde());
 
-            materialInterior = DiamondGizmo.NuevoMaterial(soldier.Team == TeamId.Enemy ? ColorEnemigo : ColorAliado);
+            equipoPintado = soldier.Team;
+            materialInterior = DiamondGizmo.NuevoMaterial(equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado);
             var interior = DiamondGizmo.CrearCara("Interior", marcador.transform, TamanoInterior, materialInterior);
             // Un pelo hacia la camara para que nunca compita en Z con el
             // borde (evita z-fighting entre los dos rombos coplanares).
@@ -134,6 +136,22 @@ namespace SP.Presentation
                 if (!soldier.Health.IsAlive) { dead = true; marcador.SetActive(false); return; }
                 // El propio poseido no necesita ubicarse a si mismo.
                 if (soldier.Brain != null && soldier.Brain.IsPossessedByPlayer) { marcador.SetActive(false); return; }
+
+                // BUG REAL encontrado jugando: el civil (y cualquier otro
+                // soldado cuyo equipo se fija DESPUES de Instantiate, via
+                // Configure) ya tenia este componente corriendo su OnEnable
+                // -- que pasa DURANTE Instantiate, antes de esa linea -- asi
+                // que el rombo quedaba pintado para siempre con el equipo
+                // que traiga el prefab de base (a veces el de Enemigo), sin
+                // importar el equipo real. Se revisa en cada tick de LOD
+                // (barato, ya corre cada 0.15 s) y se repinta si cambio.
+                if (soldier.Team != equipoPintado)
+                {
+                    equipoPintado = soldier.Team;
+                    var colorNuevo = equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado;
+                    materialInterior.color = colorNuevo;
+                    if (materialInterior.HasProperty("_BaseColor")) materialInterior.SetColor("_BaseColor", colorNuevo);
+                }
 
                 var haciaSoldado = transform.position - cam.transform.position;
                 float distancia = haciaSoldado.magnitude;
