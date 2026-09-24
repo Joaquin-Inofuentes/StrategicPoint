@@ -23,7 +23,12 @@ namespace SP.Presentation
 
         const string MarkerName = "LocatorRombo";
         public const float AnguloDeMira = 5f;
-        const float DistanciaVisible = 90f;
+        // BUG REAL: con 90 m, los enemigos casi nunca mostraban el rombo en
+        // combate real -- las lineas iniciales y las oleadas de esta mision
+        // se enfrentan habitualmente entre 90 y 180 m (medido en vivo). El
+        // jugador reportaba "no veo los rombos de enemigo" porque el rombo
+        // se apagaba antes de que el enemigo entrara en rango util de mira.
+        const float DistanciaVisible = 160f;
         const float Altura = 2.4f;          // flota sobre la cabeza, no a 14 m como la columna vieja
         const float TamanoBorde = 0.62f;
         const float TamanoInterior = 0.40f;

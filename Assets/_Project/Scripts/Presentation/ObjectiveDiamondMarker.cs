@@ -15,7 +15,13 @@ namespace SP.Presentation
         Material materialInterior;
 
         const string MarkerName = "LocatorRomboObjetivo";
-        const float Altura = 3.2f;
+        // BUG REAL: a 3.2 m quedaba pegado a la etiqueta de texto del
+        // TutorialBeacon ("CENTRO"/"HELICOPTERO", ver MisionDirector) que
+        // vive casi en la misma altura (3.4 m) y en el MISMO punto -- las
+        // dos cosas se superponian y el rombo se perdia detras/al lado del
+        // texto y la columna traslucida del beacon. Ahora flota bien por
+        // encima de esa etiqueta, como un marcador propio y separado.
+        const float Altura = 6f;
         const float TamanoBorde = 1.05f;
         const float TamanoInterior = 0.72f;
         const float DistanciaVisible = 220f; // bien mas lejos que enemigo/aliado: es el faro del nivel

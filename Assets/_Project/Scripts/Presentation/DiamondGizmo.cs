@@ -64,28 +64,53 @@ namespace SP.Presentation
             return go;
         }
 
-        // BUG REAL encontrado jugando: la emision iba al 100% del color base
-        // (blanco puro en el borde, rojo/azul/amarillo puros adentro). Con
-        // Bloom activo eso vuela la exposicion de TODA la pantalla apenas
-        // hay dos o tres rombos a la vista -- "la luz que emana es
-        // demasiada, opaca todo". El color base (mat.color, sin emision) ya
-        // es solido y saturado y se lee bien de por si; la emision ahora es
-        // solo un empujon chico para que no se apague en el modo noche, no
-        // el brillo principal.
-        const float IntensidadEmision = 0.12f;
+        // BUG REAL encontrado jugando, dos vueltas:
+        // 1) La emision iba al 100% del color base (blanco puro en el
+        //    borde, rojo/azul/amarillo puros adentro). Con Bloom activo eso
+        //    volaba la exposicion de TODA la pantalla apenas habia varios
+        //    rombos a la vista -- "la luz que emana es demasiada, opaca todo".
+        // 2) Bajar la emision a un empujon chico (12%) arreglo el bloom pero
+        //    desenmascaro el problema de fondo: el material seguia siendo
+        //    "Lit", y en el modo noche del nivel (ambiente casi negro, luz de
+        //    luna MUY azulada) un shader Lit multiplica el color base por esa
+        //    luz de escena -- el azul (aliado) se ve bien porque coincide con
+        //    el tono de la luna, pero el rojo (enemigo) y el amarillo
+        //    (objetivo) casi no tienen componente azul y quedaban opacos/
+        //    grisaceos, "invisibles" pese a que el codigo y el color eran
+        //    correctos.
+        // La solucion de raiz: un shader UNLIT. Sin interaccion con luces,
+        // el color que se le pide es exactamente el color que se dibuja,
+        // de dia o de noche, sea cual sea su tono -- sin balancear emision
+        // contra bloom nunca mas.
+        static Shader shaderUnlit;
+        static Shader ResolverShaderUnlit()
+        {
+            if (shaderUnlit != null && shaderUnlit.isSupported) return shaderUnlit;
+            var s = Shader.Find("Universal Render Pipeline/Unlit");
+            if (s == null || !s.isSupported) s = Shader.Find("Unlit/Color");
+            if (s == null || !s.isSupported) s = Shader.Find("Sprites/Default");
+            shaderUnlit = s;
+            return s;
+        }
 
-        // Material SOLIDO (no transparente) y con un toque de emision: pedido
-        // explicito de "mucho contraste con el ambiente", y estos rombos
-        // tienen que leerse igual de bien en el modo noche/niebla del nivel
-        // que a pleno dia.
+        // Material SOLIDO, sin luces: pedido explicito de "mucho contraste
+        // con el ambiente", y estos rombos tienen que leerse igual de bien
+        // en el modo noche/niebla del nivel que a pleno dia.
         public static Material NuevoMaterial(Color color)
         {
-            var mat = SafeMaterial.Create(color);
-            if (mat.HasProperty("_EmissionColor"))
+            var shader = ResolverShaderUnlit();
+            Material mat;
+            if (shader != null)
             {
-                mat.EnableKeyword("_EMISSION");
-                mat.SetColor("_EmissionColor", color * IntensidadEmision);
-                mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
+                mat = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
+                mat.color = color;
+                if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+            }
+            else
+            {
+                // Ultimo recurso si ni Unlit ni Sprites/Default resuelven en
+                // esta pipeline: el Lit de siempre (mejor iluminado mal que magenta).
+                mat = SafeMaterial.Create(color);
             }
             // Cull Off: la malla del rombo tiene una sola cara (ver el
             // comentario en MallaCompartida); esto la hace visible aunque el
