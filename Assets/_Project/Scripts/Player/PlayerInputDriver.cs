@@ -70,7 +70,9 @@ namespace SP.Player
         // Requisito de accesibilidad basico y preferencia muy comun en
         // shooters: sin esto no habia forma de invertir el eje vertical.
         public bool InvertLookY { get; set; }
-        [SerializeField] float rtsPanSpeed = 28f;   // x2 (antes 14)
+        [SerializeField] float rtsPanSpeed = 56f;   // pedido explicito: x2 de nuevo (antes 28, que ya era x2 de 14)
+        // Pedido explicito: "si mantengo shift WASD se desplaza mas rapido".
+        const float RtsPanShiftMultiplier = 2.2f;
         // Ronda 11: 80 (era 40, y antes 20) y sin suavizado (ver CameraRig.AnimarZoom). Const y no [SerializeField]: un valor serializado en la escena pisaria el nuevo.
         public const float rtsZoomSpeed = 80f;
         // [E]: menos de esto = interactuar (toque); esto o mas = accion especial de la clase.
@@ -962,9 +964,15 @@ namespace SP.Player
                     float height = toCam.y;
                     float angle = Mathf.Atan2(toCam.z, toCam.x) * Mathf.Rad2Deg;
 
+                    // Pedido explicito: avisar que [Espacio] espera respuesta
+                    // mientras dura esta orbita (A2, arriba) -- antes el
+                    // jugador tenia que saber de memoria esa tecla.
+                    SP.UI.RespawnPromptView.Mostrar();
+
                     float espera = 0f;
                     while (true)
                     {
+                        SP.UI.RespawnPromptView.Tick();
                         // A5: un aliado libre puede estar de camino a
                         // revivirte (RescateAutomatico, pedido apenas
                         // moriste). Mientras te esta reviviendo, el timer
@@ -1053,6 +1061,7 @@ namespace SP.Player
                 deathPullBackGO = null;
             }
 
+            SP.UI.RespawnPromptView.Ocultar();
             handlingDeath = false;
         }
 
@@ -2828,7 +2837,16 @@ namespace SP.Player
                         bool asalto = (yo != null && yo.Role == RoleType.Assault) || DestinatariosDeOrden().Exists(x => x.Role == RoleType.Assault);
                         mostrar = true;
                         destacado = asalto;
-                        ancla = aim.Point + Vector3.up * AlturaGearObstaculo;
+                        // Pedido explicito: "los rombos siempre son en el
+                        // centro arriba de los interactuables" -- aim.Point
+                        // es el punto RAW del rayo sobre la superficie del
+                        // muro (varia segun donde apuntes, hasta una punta),
+                        // no el centro del objeto. Se centra en los bounds
+                        // reales del collider en vez de eso.
+                        var colObstaculo = m.GetComponent<Collider>();
+                        Vector3 centro = colObstaculo != null ? colObstaculo.bounds.center : m.transform.position;
+                        float tope = colObstaculo != null ? colObstaculo.bounds.max.y : centro.y;
+                        ancla = new Vector3(centro.x, tope + AlturaGearObstaculo, centro.z);
                     }
                     break;
                 }
@@ -2898,7 +2916,12 @@ namespace SP.Player
             // panear -- sin este corte, Ctrl+A tambien empujaria la
             // camara a la izquierda en el mismo instante.
             if (kb.aKey.isPressed && !ctrlHeld) pan += Vector3.left;
-            if (pan.sqrMagnitude > 0.0001f) Rig.Pan(pan.normalized * rtsPanSpeed * Time.deltaTime);
+            if (pan.sqrMagnitude > 0.0001f)
+            {
+                bool shiftHeld = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
+                float velocidad = rtsPanSpeed * (shiftHeld ? RtsPanShiftMultiplier : 1f);
+                Rig.Pan(pan.normalized * velocidad * Time.deltaTime);
+            }
 
             if (mouse != null)
             {
@@ -2907,7 +2930,7 @@ namespace SP.Player
             }
 
             string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
-            SetInstructionText($"[Arrastrar] seleccionar · [Shift+Click] sumar · [Click der.] mover la selección · [Ctrl+Click der.] trazar recorrido · [Q] mantener: radial · [C] mantener: coberturas y rutas · [WASD] panear · [Rueda] zoom al cursor · [TAB] vista FPS · {selectionLabel}");
+            SetInstructionText($"[Arrastrar] seleccionar · [Shift+Click] sumar · [Click der.] mover la selección · [Ctrl+Click der.] trazar recorrido · [Q] mantener: radial · [C] mantener: coberturas y rutas · [WASD] panear · [Shift] panear rápido · [Rueda] zoom al cursor · [TAB] vista FPS · {selectionLabel}");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -3274,7 +3297,9 @@ namespace SP.Player
                 var col = go.GetComponent<Collider>();
                 if (col != null) Destroy(col);
                 go.transform.localScale = new Vector3(0.9f, 0.03f, 0.9f);
-                go.GetComponent<MeshRenderer>().sharedMaterial = SP.Presentation.SafeMaterial.Create(new Color(0.35f, 0.85f, 0.35f));
+                var rendGhost = go.GetComponent<MeshRenderer>();
+                rendGhost.sharedMaterial = SP.Presentation.SafeMaterial.Create(new Color(0.35f, 0.85f, 0.35f));
+                rendGhost.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 formationGhosts.Add(go);
             }
             while (formationGhosts.Count > count)

@@ -103,7 +103,9 @@ namespace SP.Presentation
                 else Object.DestroyImmediate(col);
             }
             go.transform.SetParent(root, false);
-            go.GetComponent<MeshRenderer>().sharedMaterial = SharedMaterial;
+            var rend = go.GetComponent<MeshRenderer>();
+            rend.sharedMaterial = SharedMaterial;
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // pedido explicito: cilindros sin sombra
 
             var fx = go.AddComponent<KillCylinderFx>();
             go.SetActive(false);

@@ -78,6 +78,7 @@ namespace SP.Presentation
             if (col != null) DestroyInmediatoOTardio(col);
             Tubo.transform.SetParent(visorDelArma, false);
             tuboRenderer = Tubo.GetComponent<MeshRenderer>();
+            tuboRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // pedido explicito: cilindros sin sombra
 
             // Shader propio y no el del arma: ese declara solo _BaseColor
             // y su vertex ni lee UVs, asi que asignarle mainTexture no hace

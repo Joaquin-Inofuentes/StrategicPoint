@@ -347,7 +347,13 @@ namespace SP.Core
                 marca.transform.position = puntos[i] + Vector3.up * 0.02f;
                 marca.transform.localScale = new Vector3(0.7f, 0.02f, 0.7f);
                 var rend = marca.GetComponent<MeshRenderer>();
-                if (rend != null) rend.sharedMaterial = material;
+                if (rend != null)
+                {
+                    rend.sharedMaterial = material;
+                    // Pedido explicito: "los cilindros deben ser sin sombras".
+                    rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    rend.receiveShadows = false;
+                }
             }
         }
     }

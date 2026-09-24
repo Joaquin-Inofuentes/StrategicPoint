@@ -58,8 +58,9 @@ namespace SP.Player
             var col = raiz.AddComponent<SphereCollider>();
             col.isTrigger = true;
 
-            var color = new Color(0.85f, 0.65f, 0.15f); // color "municion", distinto del verde de CajaDeSuministros
-            raiz.GetComponent<Renderer>().sharedMaterial = SafeMaterial.Create(color);
+            var rendMoneda = raiz.GetComponent<Renderer>();
+            rendMoneda.sharedMaterial = SafeMaterial.Create(ColorMoneda); // distinto del verde de CajaDeSuministros
+            rendMoneda.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // pedido explicito: cilindros sin sombra
 
             var pk = raiz.AddComponent<MunicionPickup>();
             pk.alturaBase = raiz.transform.position.y;
@@ -91,8 +92,21 @@ namespace SP.Player
 
             yo.Weapon.AgregarMunicion(1);
             Feedback.Accion(SfxKind.HealDone, "+MUNICION", transform.position, Feedback.Ok, aviso: true, pulso: true, volumen: 0.5f);
+
+            // Pedido explicito: "al recoger una municion que tenga fisicas
+            // y que desaparezca con un efecto de fisicas simples" -- en vez
+            // de un Destroy() seco, unas chispitas doradas salen disparadas
+            // con la misma fisica simple (gravedad + rebote) que ya usa
+            // DebrisPool para escombros de impacto.
+            for (int i = 0; i < 5; i++)
+            {
+                var dir = (Random.insideUnitSphere + Vector3.up * 1.4f).normalized;
+                DebrisPool.Spawn(transform.position, dir * Random.Range(2.5f, 5f), ColorMoneda, Random.Range(0.06f, 0.11f), 0.7f);
+            }
             Destroy(gameObject);
         }
+
+        static readonly Color ColorMoneda = new Color(0.85f, 0.65f, 0.15f);
 
         // ------------------------------------------------------------------
         // Enganche con la muerte de un enemigo: un solo listener global (no

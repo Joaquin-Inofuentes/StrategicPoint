@@ -407,7 +407,11 @@ namespace SP.Mision
             Civil.Configure("Civil", TeamId.Player, RoleType.Civilian, 150);
             if (Civil.Brain != null) Civil.Brain.Pasivo = true;
             Civil.gameObject.AddComponent<Rehen>();   // tinte propio, marcador flotante y aviso sonoro al acercarse
-            balizaCivil = TutorialBeacon.Crear("CIVIL", new Color(0.4f, 0.9f, 1f), RefugioDelCivil, Civil.transform, 0.9f, 10f);
+            // Pedido explicito: "el cartel de civil rescatado mas delgado...
+            // y sea en la base de abajo" -- columna mas fina (0.35 en vez de
+            // 0.9), texto mas chico (escalaTexto 0.6) y pegado al piso
+            // (0.7 m) en vez de flotando a la altura de la cabeza (3.4 m).
+            balizaCivil = TutorialBeacon.Crear("CIVIL", new Color(0.4f, 0.9f, 1f), RefugioDelCivil, Civil.transform, 0.35f, 10f, alturaEtiqueta: 0.7f, escalaTexto: 0.6f);
             GameLog.Line("Mision: el civil sale de su refugio");
         }
 
@@ -463,6 +467,20 @@ namespace SP.Mision
             if (Plano(PosicionDelJugador(), Plaza) > RadioCentro) return;
             Restante = SegundosDeResistencia;
             CambiarFase(FaseDeMision.Resistir);
+
+            // Pedido explicito: "feedback visual de cuando llegue al centro,
+            // particulas simples" -- un estallido chico de escombros dorados
+            // (mismo color que el rombo de objetivo) mas el flash de
+            // ImpactFx, en la posicion del jugador. Reusa DebrisPool/ImpactFx
+            // en vez de un ParticleSystem nuevo: mismo criterio "fisica
+            // simple" que ya usa el resto del juego para este tipo de aviso.
+            var puntoDeLlegada = PosicionDelJugador();
+            ImpactFx.Spawn(puntoDeLlegada + Vector3.up, DiamondGizmo.ColorObjetivo, 1.1f, 0.4f);
+            for (int i = 0; i < 10; i++)
+            {
+                var dir = (Random.insideUnitSphere + Vector3.up * 1.6f).normalized;
+                DebrisPool.Spawn(puntoDeLlegada + Vector3.up * 0.4f, dir * Random.Range(3f, 7f), DiamondGizmo.ColorObjetivo, Random.Range(0.08f, 0.15f), 0.9f);
+            }
             // La columna es guia de LARGA distancia; con el jugador ya
             // parado adentro (justo donde va a pelear los proximos
             // SegundosDeResistencia) queda atravesandole la vista. El

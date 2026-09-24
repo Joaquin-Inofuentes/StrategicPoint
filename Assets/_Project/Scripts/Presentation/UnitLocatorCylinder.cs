@@ -120,6 +120,27 @@ namespace SP.Presentation
             interior.transform.localPosition = new Vector3(0f, 0f, -0.02f);
 
             marcador.SetActive(false);
+
+            // BUG REAL reportado jugando: "el minimapa no se ven los
+            // triangulos de los enemigos, aliados". Ningun soldado (ni la
+            // escuadra inicial ni los que aparecen durante la mision via
+            // MisionDirector.CrearEnemigo) tenia jamas un MinimapIcon --
+            // solo los obstaculos lo tenian (GameplaySceneBootstrap llama
+            // MinimapIcon.RegistrarObstaculos, pero nada equivalente existia
+            // para soldados). Este componente SI esta garantizado en cada
+            // soldado (viene en el prefab, por eso el rombo de mundo
+            // siempre aparece), asi que es el enganche natural: en vez de
+            // agregar un hook nuevo en cada lugar que crea un soldado, el
+            // icono de minimapa se arma aca, una sola vez, junto con el
+            // resto de la señalizacion de esta unidad. MinimapIcon.Spawn ya
+            // detecta el Soldier del Target solo y se pinta/convierte a
+            // doble triangulo por su cuenta (ver MinimapIcon.DetectarSoldado).
+            if (Application.isPlaying)
+            {
+                int layerMinimapa = LayerMask.NameToLayer("Minimap");
+                if (layerMinimapa < 0) layerMinimapa = 8;
+                MinimapIcon.Spawn(soldier.transform, equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado, layerMinimapa, 1.6f);
+            }
         }
 
         void Update()

@@ -82,6 +82,7 @@ namespace SP.Presentation
             // unidades eran 50 Shader.Find y 50 materiales, y el manager los
             // destruia y recreaba en CADA cambio de seleccion.
             rend.sharedMaterial = SharedMaterial;
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // pedido explicito: cilindros sin sombra
 
             var fx = go.AddComponent<SelectionRingFx>();
             fx.SetColor(color);

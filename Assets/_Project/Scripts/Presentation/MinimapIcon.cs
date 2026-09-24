@@ -414,7 +414,13 @@ namespace SP.Presentation
             go.transform.localScale = new Vector3(radius, 0.2f, radius);
 
             var rend = go.GetComponent<MeshRenderer>();
-            rend.sharedMaterial = SafeMaterial.Create(color);
+            // Unlit (no SafeMaterial.Create, que es Lit): mismo bug de fondo
+            // que ya se encontro en los rombos de mundo -- de noche, con
+            // ambiente casi negro y luz de luna azulada, un material Lit
+            // apaga los colores que no tengan componente azul (el rojo de
+            // un enemigo, el gris claro de un obstaculo) justo cuando mas
+            // contraste hace falta en el minimapa.
+            rend.sharedMaterial = DiamondGizmo.NuevoMaterial(color);
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             rend.receiveShadows = false;
 

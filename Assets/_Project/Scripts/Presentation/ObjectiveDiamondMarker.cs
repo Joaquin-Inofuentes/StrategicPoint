@@ -60,6 +60,19 @@ namespace SP.Presentation
             materialInterior = DiamondGizmo.NuevoMaterial(ColorObjetivo);
             var interior = DiamondGizmo.CrearCara("Interior", marcador.transform, TamanoInterior, materialInterior);
             interior.transform.localPosition = new Vector3(0f, 0f, -0.02f);
+
+            // Pedido explicito: "el minimapa no se ven los triangulos... y
+            // objetivo" -- el objetivo actual tampoco tenia ninguna marca en
+            // el minimapa, solo en el mundo. Sigue este mismo transform
+            // (Update ya lo reposiciona en XZ sobre el punto objetivo cada
+            // frame), asi que basta con colgarle un icono mas.
+            if (Application.isPlaying)
+            {
+                int layerMinimapa = LayerMask.NameToLayer("Minimap");
+                if (layerMinimapa < 0) layerMinimapa = 8;
+                var iconoMinimapa = MinimapIcon.Spawn(transform, ColorObjetivo, layerMinimapa, 2.4f);
+                iconoMinimapa.ConvertirEnDobleTriangulo();
+            }
         }
 
         void Update()

@@ -31,7 +31,11 @@ namespace SP.Tutorial
         float t;
         static Font fuente;
 
-        public static TutorialBeacon Crear(string texto, Color color, Vector3 posicion, Transform sigue = null, float radio = 1.4f, float alto = 16f)
+        // alturaEtiqueta: pedido explicito para el cartel del civil rescatado
+        // ("mas delgado... y sea en la base de abajo") -- por defecto el
+        // texto flota a 3.4 m (altura de cabeza), pero un valor mas bajo lo
+        // deja pegado al piso, junto a la columna, en vez de arriba de todo.
+        public static TutorialBeacon Crear(string texto, Color color, Vector3 posicion, Transform sigue = null, float radio = 1.4f, float alto = 16f, float alturaEtiqueta = 3.4f, float escalaTexto = 1f)
         {
             var go = new GameObject("TutorialBeacon_" + texto);
             var b = go.AddComponent<TutorialBeacon>();
@@ -39,7 +43,7 @@ namespace SP.Tutorial
             b.Posicion = posicion;
             b.Radio = radio;
             b.color = color;
-            b.Armar(texto, alto);
+            b.Armar(texto, alto, alturaEtiqueta, escalaTexto);
             activas.Add(b);
             return b;
         }
@@ -69,7 +73,7 @@ namespace SP.Tutorial
             if (columna != null) columna.SetActive(false);
         }
 
-        void Armar(string texto, float alto)
+        void Armar(string texto, float alto, float alturaEtiqueta, float escalaTexto)
         {
             var mat = CoverHologram.NuevoTransparente(new Color(color.r, color.g, color.b, 0.22f));
             columna = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -94,12 +98,12 @@ namespace SP.Tutorial
             if (fuente == null) fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             etiqueta = new GameObject("Etiqueta");
             etiqueta.transform.SetParent(transform, false);
-            etiqueta.transform.localPosition = new Vector3(0f, 3.4f, 0f);
+            etiqueta.transform.localPosition = new Vector3(0f, alturaEtiqueta, 0f);
             mesh = etiqueta.AddComponent<TextMesh>();
             mesh.font = fuente;
             mesh.text = texto;
             mesh.fontSize = 64;
-            mesh.characterSize = 0.06f;
+            mesh.characterSize = 0.06f * escalaTexto;
             mesh.anchor = TextAnchor.MiddleCenter;
             mesh.alignment = TextAlignment.Center;
             mesh.color = color;
@@ -113,7 +117,7 @@ namespace SP.Tutorial
             sombra.transform.SetParent(etiqueta.transform, false);
             sombra.transform.localPosition = new Vector3(0.05f, -0.05f, 0.02f);
             var ms = sombra.AddComponent<TextMesh>();
-            ms.font = fuente; ms.text = texto; ms.fontSize = 64; ms.characterSize = 0.06f;
+            ms.font = fuente; ms.text = texto; ms.fontSize = 64; ms.characterSize = 0.06f * escalaTexto;
             ms.anchor = TextAnchor.MiddleCenter; ms.alignment = TextAlignment.Center;
             ms.fontStyle = FontStyle.Bold; ms.color = new Color(0f, 0f, 0f, 0.9f);
             sombraMesh = ms;

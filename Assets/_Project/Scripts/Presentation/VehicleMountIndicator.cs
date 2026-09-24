@@ -45,6 +45,7 @@ namespace SP.Presentation
             shaft.transform.localScale = new Vector3(0.12f, 0.5f, 0.12f);
             ApplyColor(shaft, ArrowColor);
             shaftRenderer = shaft.GetComponent<Renderer>();
+            shaftRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // pedido explicito: cilindros sin sombra
 
             var head = new GameObject("Head");
             head.transform.SetParent(arrowRoot.transform, false);
@@ -53,6 +54,7 @@ namespace SP.Presentation
             mf.sharedMesh = BuildConeMesh(0.3f, 0.55f, 14);
             var mr = head.AddComponent<MeshRenderer>();
             mr.sharedMaterial = SafeMaterial.Create(ArrowColor);
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             headRenderer = mr;
         }
 
