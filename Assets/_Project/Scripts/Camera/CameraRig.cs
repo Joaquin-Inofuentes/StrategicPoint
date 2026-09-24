@@ -38,10 +38,20 @@ namespace SP.CameraSystem
         // Pedido explicito: "no quiero que sea ortogonal, quiero que sea
         // perspectiva". 90° puros (mirando derecho hacia abajo) en una
         // camara en perspectiva se ve IGUAL que ortografico -- sin angulo no
-        // hay profundidad que mostrar. 55° es un picado real (estilo
-        // Age of Empires/Company of Heroes): se sigue leyendo el mapa desde
-        // arriba pero los soldados y el terreno muestran volumen de verdad.
-        [SerializeField] Vector3 rtsLookEuler = new Vector3(90f, 0f, 0f);
+        // hay profundidad que mostrar.
+        //
+        // Pedido explicito (ronda nueva): "en la camara RTS quiero q tenga
+        // ligera inclinacion hacia adelante 20°... y q sea ajustado por
+        // variable publica". rtsLookEuler era un Vector3 fijo (90,0,0);
+        // ahora la inclinacion es este unico float ajustable desde el
+        // Inspector -- 0 = cenital puro (derecho hacia abajo), mayor valor =
+        // mas inclinada hacia adelante (mas picado, estilo Age of
+        // Empires/Company of Heroes: se sigue leyendo el mapa desde arriba
+        // pero el terreno y los soldados muestran volumen de verdad).
+        [SerializeField, Range(0f, 60f)]
+        public float rtsInclinacionAdelante = 20f;
+
+        Vector3 RtsLookEuler => new Vector3(90f - rtsInclinacionAdelante, 0f, 0f);
 
         // Punto del SUELO que la camara de RTS esta mirando. En ortografico
         // alcanzaba con la posicion XZ de la camara (miraba derecho hacia
@@ -214,7 +224,7 @@ namespace SP.CameraSystem
                     var lerped = Vector3.Lerp(focusXZ, targetXZ, Time.deltaTime * panSmoothSpeed);
                     rtsFocusPoint = new Vector3(lerped.x, rtsFocusPoint.y, lerped.z);
                 }
-                transform.rotation = Quaternion.Euler(rtsLookEuler);
+                transform.rotation = Quaternion.Euler(RtsLookEuler);
                 transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
                 AnimarZoom(Time.unscaledDeltaTime);
             }
@@ -231,7 +241,7 @@ namespace SP.CameraSystem
         // arriba/abajo del centro de la pantalla en vez de en el medio.
         Vector3 RtsCameraPositionFor(Vector3 focus, float height)
         {
-            Vector3 forward = Quaternion.Euler(rtsLookEuler) * Vector3.forward;
+            Vector3 forward = Quaternion.Euler(RtsLookEuler) * Vector3.forward;
             float descenso = -forward.y; // positivo: cuanto mira hacia abajo
             if (descenso < 0.01f) return focus + Vector3.up * height; // picado casi nulo: evita dividir por ~0
             float t = height / descenso;
@@ -410,7 +420,7 @@ namespace SP.CameraSystem
                 rtsFocusPoint = savedRtsFocus.Value;
                 rtsCurrentHeight = savedRtsHeight;
                 rtsTargetHeight = savedRtsHeight;
-                transform.rotation = Quaternion.Euler(rtsLookEuler);
+                transform.rotation = Quaternion.Euler(RtsLookEuler);
                 transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
                 // El objetivo de paneo suavizado debe re-sincronizarse con
                 // el foco recien restaurado -- si no, el primer Pan()
@@ -734,7 +744,7 @@ namespace SP.CameraSystem
             rtsFocusPoint = new Vector3(center.x, 0f, center.z);
             rtsCurrentHeight = rtsHeight;
             rtsTargetHeight = rtsHeight;
-            transform.rotation = Quaternion.Euler(rtsLookEuler);
+            transform.rotation = Quaternion.Euler(RtsLookEuler);
             transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
             panTargetInitialized = false;
         }

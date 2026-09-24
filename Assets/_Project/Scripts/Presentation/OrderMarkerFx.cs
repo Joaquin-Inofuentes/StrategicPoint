@@ -4,9 +4,12 @@ using SP.Core;
 
 namespace SP.Presentation
 {
-    // Cilindro que aparece en el punto de una orden y se achica con un lerp
-    // hasta desaparecer. El color indica que tipo de orden fue: mover,
-    // atacar o subir a un vehiculo. Puramente cosmetico, no afecta logica.
+    // Pedido explicito: "en el caso de la orden no quiero un cilindro en
+    // destino, quiero un sistema de particulas". Estallido de chispas
+    // (ParticleSystem de verdad, ver ParticleMaterialFactory) que aparece
+    // en el punto de una orden. El color indica que tipo de orden fue:
+    // mover, atacar o subir a un vehiculo. Puramente cosmetico, no afecta
+    // logica.
     //
     // PRESUPUESTO DE EFECTOS: esto se llama UNA VEZ POR SOLDADO. Ordenar
     // mover a 50 unidades hacia 50 CreatePrimitive + 50 Shader.Find + 50
@@ -113,25 +116,56 @@ namespace SP.Presentation
 
         static OrderMarkerFx Create()
         {
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            go.name = "OrderMarker";
+            var go = new GameObject("OrderMarker");
             // hideFlags va en CADA pieza, no solo en el root: los flags NO
             // se heredan (ver DebrisPool). Sin esto lo creado en tiempo de
             // edicion queda serializado en la escena y al entrar en Play
             // mode conviven los guardados con los del pool nuevo.
             go.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
-            var col = go.GetComponent<Collider>();
-            if (col != null)
-            {
-                if (Application.isPlaying) Object.Destroy(col);
-                else Object.DestroyImmediate(col);
-            }
             go.transform.SetParent(root, false);
 
-            var rend = go.GetComponent<MeshRenderer>();
-            rend.sharedMaterial = SharedMaterial;
+            var ps = go.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.loop = true; // el propio marcador decide burst unico (orden inmediata) o goteo sostenido (orden en cola)
+            main.playOnAwake = false;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.6f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.7f, 1.7f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.14f, 0.28f);
+            main.maxParticles = 40;
+
+            var emission = ps.emission;
+            emission.enabled = true;
+            emission.rateOverTime = 0f; // Launch* decide
+
+            var shape = ps.shape;
+            shape.enabled = true;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radiusThickness = 0f; // solo el borde: anillo de chispas, no disco solido
+            shape.radius = 1.1f;
+
+            var velOverLifetime = ps.velocityOverLifetime;
+            velOverLifetime.enabled = true;
+            velOverLifetime.space = ParticleSystemSimulationSpace.World;
+            velOverLifetime.y = new ParticleSystem.MinMaxCurve(0.5f, 1.3f); // suben un poco, como chispas
+
+            var colorOverLifetime = ps.colorOverLifetime;
+            colorOverLifetime.enabled = true;
+            var gradiente = new Gradient();
+            gradiente.SetKeys(
+                new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new[] { new GradientAlphaKey(0.95f, 0f), new GradientAlphaKey(0f, 1f) });
+            colorOverLifetime.color = gradiente;
+
+            var rend = go.GetComponent<ParticleSystemRenderer>();
+            rend.renderMode = ParticleSystemRenderMode.Mesh;
+            rend.mesh = ParticleMaterialFactory.MallaEsfera();
+            rend.material = ParticleMaterialFactory.CreateTransparent(Color.white);
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rend.receiveShadows = false;
 
             var fx = go.AddComponent<OrderMarkerFx>();
+            fx.particulas = ps;
             go.SetActive(false);
             all.Add(fx);
             return fx;
@@ -429,20 +463,19 @@ namespace SP.Presentation
         float proximoChequeo;
         float age;
         float duration;
-        Vector3 startScale;
-
-        MeshRenderer cachedRenderer;
 
         // Los campos privados de un MonoBehaviour no sobreviven a un domain
-        // reload: se vuelve a buscar el renderer en vez de darlo por
+        // reload: se vuelve a buscar el componente en vez de darlo por
         // cacheado.
-        MeshRenderer Rend
+        ParticleSystem particulasCache;
+        ParticleSystem particulas
         {
             get
             {
-                if (cachedRenderer == null) cachedRenderer = GetComponent<MeshRenderer>();
-                return cachedRenderer;
+                if (particulasCache == null) particulasCache = GetComponent<ParticleSystem>();
+                return particulasCache;
             }
+            set => particulasCache = value;
         }
 
         void LaunchFading(Vector3 position, Color color, float durationSeconds)
@@ -453,12 +486,19 @@ namespace SP.Presentation
             // origen (un ataque usa la posicion del pecho del enemigo, subir
             // usa el centro del vehiculo -- ninguno es "el suelo").
             transform.position = new Vector3(position.x, 0.05f, position.z);
-            transform.localScale = new Vector3(1.6f, 0.05f, 1.6f);
 
-            ApplyColor(Rend, color);
+            var shape = particulas.shape;
+            shape.radius = 1.3f;
+            var main = particulas.main;
+            main.startColor = color;
             SetPipCount(0, color);
 
-            startScale = transform.localScale;
+            // Estallido unico ("poof") al dar la orden: nada de emision
+            // continua, es un pulso que se apaga solo.
+            particulas.Clear(true);
+            particulas.Play(true);
+            particulas.Emit(18);
+
             duration = Mathf.Max(0.01f, durationSeconds);
             age = 0f;
             fading = true;
@@ -473,10 +513,19 @@ namespace SP.Presentation
             esPlan = false;
             proximoChequeo = Time.time + 0.3f;
             transform.position = new Vector3(position.x, 0.05f, position.z);
-            transform.localScale = new Vector3(1.1f, 0.05f, 1.1f);
 
-            ApplyColor(Rend, color);
+            var shape = particulas.shape;
+            shape.radius = 0.9f;
+            var main = particulas.main;
+            main.startColor = color;
             SetPipCount(Mathf.Min(orderIndex, MaxPips), color);
+
+            // Orden en cola: goteo sostenido y suave mientras siga pendiente
+            // (Update()/HayOrdenPendienteEn decide cuando apagarlo).
+            particulas.Clear(true);
+            var emission = particulas.emission;
+            emission.rateOverTime = 5f;
+            particulas.Play(true);
 
             age = 0f;
             fading = false;
@@ -538,8 +587,6 @@ namespace SP.Presentation
             }
             if (!fading) return;
             age += Time.deltaTime;
-            float k = Mathf.Clamp01(age / duration);
-            transform.localScale = Vector3.Lerp(startScale, new Vector3(0f, startScale.y, 0f), k);
             if (age < duration) return;
 
             // El test automatico (HeadlessTestRunner) dispara ordenes en Edit
@@ -562,6 +609,12 @@ namespace SP.Presentation
             // Si estaba haciendo de marcador de cola, deja de representar un
             // plan pendiente: sale de la lista publica antes de apagarse.
             QueuedMarkers.Remove(gameObject);
+            if (particulas != null)
+            {
+                particulas.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var emission = particulas.emission;
+                emission.rateOverTime = 0f;
+            }
             gameObject.SetActive(false);
         }
     }

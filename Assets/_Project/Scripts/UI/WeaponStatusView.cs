@@ -56,13 +56,16 @@ namespace SP.UI
         // Arma el hijo "Icono" a la izquierda del panel. Idempotente: si ya
         // existe solo lo devuelve. Pedido explicito (ronda 2): "2 renglones:
         // la barra de municion [abajo] y arriba municion texto y F icono
-        // de cuchillo y G icono de granada". El panel quedo en 226x54 (ver
-        // constantes de abajo): el icono del arma ocupa la columna
-        // izquierda abarcando las dos filas, y a la derecha el renglon de
-        // arriba (texto + F/cuchillo + G/granada) y el de abajo (barra).
-        // WeaponStatusUiPipeline.cs deja el panel/Text/BarBG de la escena
-        // con ese mismo tamaño para que esto encaje.
-        public const float AnchoPanel = 226f, AltoPanel = 54f;
+        // de cuchillo y G icono de granada". Pedido explicito (ronda
+        // nueva): "los iconos agrandalos y toda la ui de esa esquina la
+        // mitad de ancho... q ocupen todo el espacio". El panel paso de
+        // 226x54 (todo en una linea) a 136x112 (angosto y alto): el icono
+        // del arma ocupa TODA la columna izquierda de arriba a abajo, y a
+        // la derecha se apilan 3 renglones -- municion arriba, cuchillo,
+        // granada -- y la barra al pie. WeaponStatusUiPipeline.cs deja el
+        // panel/Text/BarBG de la escena con ese mismo tamaño para que esto
+        // encaje.
+        public const float AnchoPanel = 136f, AltoPanel = 112f;
 
         public Image EnsureIcon()
         {
@@ -75,8 +78,8 @@ namespace SP.UI
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
             rt.pivot = new Vector2(0f, 0f);
-            rt.sizeDelta = new Vector2(36f, 40f);
-            rt.anchoredPosition = new Vector2(4f, 8f);
+            rt.sizeDelta = new Vector2(52f, 104f);
+            rt.anchoredPosition = new Vector2(4f, 4f);
             icon = go.GetComponent<Image>();
             icon.raycastTarget = false;
             icon.preserveAspect = true;
@@ -95,11 +98,15 @@ namespace SP.UI
         {
             RegistrarActivo();
             if (label == null) label = GetComponentInChildren<Text>(true);
-            if (icon == null)   // se resuelve al habilitar (antes: 2 Transform.Find por frame en UpdateFrom mientras faltaba)
-            {
-                var ti = transform.Find(IconName);
-                if (ti != null) icon = ti.GetComponent<Image>();
-            }
+            // BUG REAL encontrado esta ronda: esto antes solo hacia
+            // transform.Find(IconName) -- si "Icono" no estaba YA guardado
+            // en la escena (por ejemplo, porque PrimerFramePreview.cs
+            // nunca corrio o la escena se re-guardo sin el), el icono del
+            // arma no aparecia NUNCA en partida real, sin ningun error en
+            // consola. EnsureIcon() busca y si no encuentra CREA -- mismo
+            // criterio de auto-reparacion que ya usan Reloj/Extras* mas
+            // abajo.
+            if (icon == null) icon = EnsureIcon();
             if (fill == null)
             {
                 var barFill = transform.Find("BarBG/BarFill");
@@ -140,7 +147,10 @@ namespace SP.UI
                 // palabra "RECARGANDO"/"SIN MUNICION" (la barra de abajo y
                 // el reloj de arena ya avisan de eso sin palabras). Quedan
                 // solo los numeros: cargador/reserva.
-                string reserva = weapon.UsaReservas ? $" · {weapon.ReservaActual}" : "";
+                // Sin espacios alrededor del punto: con el panel angosto y
+                // el texto agrandado (fontSize 22), "8/8 · 24" con espacios
+                // se salia del panel por la derecha.
+                string reserva = weapon.UsaReservas ? $"·{weapon.ReservaActual}" : "";
                 label.text = $"{weapon.CurrentAmmo}/{weapon.MagazineSize}{reserva}";
 
                 // El contador quedaba blanco fijo hasta llegar a cero, sin
@@ -178,8 +188,8 @@ namespace SP.UI
                     var rt = (RectTransform)go.transform;
                     rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
                     rt.pivot = new Vector2(0f, 0f);
-                    rt.sizeDelta = new Vector2(16f, 16f);
-                    rt.anchoredPosition = new Vector2(24f, 6f);
+                    rt.sizeDelta = new Vector2(22f, 22f);
+                    rt.anchoredPosition = new Vector2(36f, 4f);
                     var im = go.GetComponent<Image>();
                     im.raycastTarget = false;
                     im.sprite = HudIconFactory.Reloj();
@@ -202,11 +212,11 @@ namespace SP.UI
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
             rt.pivot = new Vector2(0f, 0f);
-            rt.sizeDelta = new Vector2(12f, 24f);
+            rt.sizeDelta = new Vector2(16f, 30f);
             rt.anchoredPosition = pos;
             var tx = go.GetComponent<Text>();
             tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            tx.fontSize = 12; tx.fontStyle = FontStyle.Bold;
+            tx.fontSize = 15; tx.fontStyle = FontStyle.Bold;
             tx.alignment = TextAnchor.MiddleCenter;
             tx.color = new Color(0.75f, 0.78f, 0.82f);
             tx.raycastTarget = false;
@@ -221,7 +231,7 @@ namespace SP.UI
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
             rt.pivot = new Vector2(0f, 0f);
-            rt.sizeDelta = new Vector2(20f, 20f);
+            rt.sizeDelta = new Vector2(30f, 30f);
             rt.anchoredPosition = pos;
             var im = go.GetComponent<Image>();
             im.raycastTarget = false;
@@ -230,6 +240,12 @@ namespace SP.UI
             return im;
         }
 
+        // Pedido explicito (ronda nueva): "los iconoes agrandalos... q
+        // ocupen todo el espacio". Con el panel angosto (136 de ancho, ver
+        // AnchoPanel) ya no entran F+cuchillo+G+granada+contador agrandados
+        // en una sola linea junto al numero de municion -- se apilan en 2
+        // renglones propios (cuchillo arriba, granada abajo) entre el
+        // numero de municion y la barra.
         Image extrasCuchillo, extrasGranada;
         Text extrasGranadaCount;
         void ActualizarExtras(WeaponHolder weapon)
@@ -238,15 +254,15 @@ namespace SP.UI
             {
                 var t = transform.Find("ExtrasCuchillo");
                 extrasCuchillo = t != null ? t.GetComponent<Image>()
-                    : CrearIconoExtra(transform, "ExtrasCuchillo", HudIconFactory.Cuchillo(), new Vector2(142f, 28f));
-                if (transform.Find("ExtrasCuchilloLabel") == null) CrearEtiqueta(transform, "ExtrasCuchilloLabel", "F", new Vector2(128f, 26f));
+                    : CrearIconoExtra(transform, "ExtrasCuchillo", HudIconFactory.Cuchillo(), new Vector2(78f, 54f));
+                if (transform.Find("ExtrasCuchilloLabel") == null) CrearEtiqueta(transform, "ExtrasCuchilloLabel", "F", new Vector2(60f, 58f));
             }
             if (extrasGranada == null)
             {
                 var t = transform.Find("ExtrasGranada");
                 extrasGranada = t != null ? t.GetComponent<Image>()
-                    : CrearIconoExtra(transform, "ExtrasGranada", HudIconFactory.Granada(), new Vector2(180f, 28f));
-                if (transform.Find("ExtrasGranadaLabel") == null) CrearEtiqueta(transform, "ExtrasGranadaLabel", "G", new Vector2(166f, 26f));
+                    : CrearIconoExtra(transform, "ExtrasGranada", HudIconFactory.Granada(), new Vector2(78f, 18f));
+                if (transform.Find("ExtrasGranadaLabel") == null) CrearEtiqueta(transform, "ExtrasGranadaLabel", "G", new Vector2(60f, 22f));
             }
             if (extrasGranadaCount == null)
             {
@@ -259,11 +275,11 @@ namespace SP.UI
                     var rt = (RectTransform)go.transform;
                     rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
                     rt.pivot = new Vector2(0f, 0f);
-                    rt.sizeDelta = new Vector2(20f, 24f);
-                    rt.anchoredPosition = new Vector2(202f, 26f);
+                    rt.sizeDelta = new Vector2(28f, 30f);
+                    rt.anchoredPosition = new Vector2(110f, 18f);
                     var tx = go.GetComponent<Text>();
                     tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    tx.fontSize = 15; tx.fontStyle = FontStyle.Bold;
+                    tx.fontSize = 18; tx.fontStyle = FontStyle.Bold;
                     tx.alignment = TextAnchor.MiddleLeft;
                     tx.raycastTarget = false;
                     t = go.transform;

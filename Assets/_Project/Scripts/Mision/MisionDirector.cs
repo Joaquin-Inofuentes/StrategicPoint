@@ -531,6 +531,12 @@ namespace SP.Mision
             if (balizaCivil != null) { balizaCivil.Quitar(); balizaCivil = null; }
             if (baliza != null) { baliza.Quitar(); baliza = null; }
             baliza = TutorialBeacon.Crear("HELICOPTERO", new Color(0.35f, 1f, 0.5f), Helipuerto + Vector3.right * 6f, null, 3.2f, 26f);
+            // Pedido explicito (ronda nueva): "al llegar al objetivo [del]
+            // civil q tambien tenga su sistema de particulas" -- antes este
+            // momento no tenia ningun efecto visual, solo el texto de
+            // AlertQueue de abajo. Estallido blanco-verdoso ("a salvo") en
+            // el punto del civil.
+            SparkleBurstFx.Spawn(Civil.transform.position + Vector3.up * 1f, new Color(0.55f, 1f, 0.65f), 1f, 2.6f, 30, 3f);
             LanzarRefuerzos();
             CambiarFase(FaseDeMision.Escapar);
             AlertQueue.Push("¡CIVIL RESCATADO! LLEVALO AL HELICOPTERO (PUNTO DE ORIGEN)", AlertPriority.Alta, 4f);

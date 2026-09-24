@@ -103,6 +103,13 @@ namespace SP.Player
             AudioDirector.PlayAt(SfxKind.AmmoPickup, transform.position, 0.5f, 0.7f);
             OrderMarkerFx.Spawn(transform.position, ColorMoneda, 0.5f);
 
+            // Pedido explicito (ronda nueva): "revisa q al recojer... tenga
+            // sistema de particulas interesante". El anillo de OrderMarkerFx
+            // de arriba ya es un ParticleSystem, pero es el mismo aviso
+            // generico que comparten las ordenes -- este estallido dorado
+            // hacia arriba es propio del pickup, mas vistoso y distinto.
+            SparkleBurstFx.Spawn(transform.position, ColorMoneda, 0.6f, 2f, 22, 3.2f);
+
             // Pedido explicito: "al recoger una municion que tenga fisicas
             // y que desaparezca con un efecto de fisicas simples" -- en vez
             // de un Destroy() seco, unas chispitas doradas salen disparadas

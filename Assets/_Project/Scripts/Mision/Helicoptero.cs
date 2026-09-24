@@ -142,6 +142,17 @@ namespace SP.Mision
         // en el codebase para copiar): shape en disco a ras de piso,
         // emision solo mientras el rotor gira rapido, color tierra que se
         // desvanece y crece un poco con la vida de la particula.
+        //
+        // BUG REAL ("las particulas del helicoptero estan muy rotas"): la
+        // primera version usaba SafeMaterial.Create() (material Lit/opaco
+        // de un primitivo solido) en un renderer Billboard. Ese shader no
+        // lee el color de vertice de colorOverLifetime NI hace blend
+        // alfa -- las particulas nunca se desvanecian, aparecian y
+        // desaparecian de golpe como cuadrados solidos girando para
+        // encarar la camara. Ahora usa ParticleMaterialFactory (shader de
+        // particulas de URP, con blend real) y ParticleSystemRenderMode.
+        // Mesh con esferas de verdad en vez de cuadrados de cartel --
+        // pedido explicito: "cubistos o esferas como se vean mejor".
         ParticleSystem polvo;
 
         void ArmarPolvo()
@@ -154,16 +165,17 @@ namespace SP.Mision
             var main = polvo.main;
             main.loop = true;
             main.playOnAwake = false;
-            main.startLifetime = new ParticleSystem.MinMaxCurve(1.1f, 1.8f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.6f, 1.8f);
-            main.startSize = new ParticleSystem.MinMaxCurve(2f, 4f);
+            main.startLifetime = new ParticleSystem.MinMaxCurve(1.3f, 2.1f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0.5f, 1.6f);
+            main.startSize = new ParticleSystem.MinMaxCurve(0.9f, 1.9f);
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, 360f * Mathf.Deg2Rad);
             // Tierra clara (no el marron oscuro del piso): contra el piso de
             // tierra del helipuerto, un polvo del MISMO tono quedaba
             // practicamente invisible en las capturas -- mas claro y con
             // mas alpha para que se note la nube contra el suelo oscuro.
-            main.startColor = new Color(0.78f, 0.72f, 0.6f, 0.8f);
+            main.startColor = new Color(0.78f, 0.72f, 0.6f, 0.55f);
             main.simulationSpace = ParticleSystemSimulationSpace.World;
-            main.maxParticles = 200;
+            main.maxParticles = 260;
 
             var emission = polvo.emission;
             emission.enabled = true;
@@ -176,22 +188,39 @@ namespace SP.Mision
             shape.arc = 360f;
             shape.radiusThickness = 1f; // 1 = todo el disco (no solo el borde): tierra levantada bajo toda el area de las palas
 
+            // Velocidad hacia afuera (radial), como tierra empujada por el
+            // aire de las palas hacia los costados, no solo flotando quieta.
+            var velOverLifetime = polvo.velocityOverLifetime;
+            velOverLifetime.enabled = true;
+            velOverLifetime.space = ParticleSystemSimulationSpace.Local;
+            velOverLifetime.radial = new ParticleSystem.MinMaxCurve(1.1f);
+
+            // Rotacion continua por particula: mallas 3D quietas se leen
+            // como piedras flotando; girando lento se leen como tierra
+            // suelta arremolinada por el viento del rotor.
+            var rotOverLifetime = polvo.rotationOverLifetime;
+            rotOverLifetime.enabled = true;
+            rotOverLifetime.z = new ParticleSystem.MinMaxCurve(-90f * Mathf.Deg2Rad, 90f * Mathf.Deg2Rad);
+
             var colorOverLifetime = polvo.colorOverLifetime;
             colorOverLifetime.enabled = true;
             var gradiente = new Gradient();
             gradiente.SetKeys(
                 new[] { new GradientColorKey(new Color(0.78f, 0.72f, 0.6f), 0f), new GradientColorKey(new Color(0.85f, 0.8f, 0.7f), 1f) },
-                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.75f, 0.2f), new GradientAlphaKey(0f, 1f) });
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(0.6f, 0.2f), new GradientAlphaKey(0f, 1f) });
             colorOverLifetime.color = gradiente;
 
             var sizeOverLifetime = polvo.sizeOverLifetime;
             sizeOverLifetime.enabled = true;
-            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.6f, 1f, 1.6f));
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, AnimationCurve.Linear(0f, 0.5f, 1f, 1.8f));
 
             var rend = go.GetComponent<ParticleSystemRenderer>();
-            rend.renderMode = ParticleSystemRenderMode.Billboard;
-            rend.material = SafeMaterial.Create(Color.white);
+            rend.renderMode = ParticleSystemRenderMode.Mesh;
+            rend.mesh = ParticleMaterialFactory.MallaEsfera();
+            rend.alignment = ParticleSystemRenderSpace.World;
+            rend.material = ParticleMaterialFactory.CreateTransparent(Color.white);
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rend.receiveShadows = false;
 
             polvo.Play();
         }

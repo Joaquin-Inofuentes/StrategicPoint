@@ -189,7 +189,14 @@ namespace SP.Presentation
             // Marca de kill: solo enemigos, para no llenar de rayos la
             // pantalla cada vez que cae un aliado propio.
             if (soldier != null && soldier.Team == TeamId.Enemy)
+            {
                 KillCylinderFx.Spawn(transform.position);
+                // Pedido explicito (ronda nueva): "revisa q al... matar
+                // enemigos... tengan sistemas de particulas interesantes".
+                // Estallido naranja/rojo a la altura del pecho -- lectura de
+                // impacto/energia liberada, sin sangre (tono del proyecto).
+                SparkleBurstFx.Spawn(transform.position + Vector3.up * 0.9f, new Color(0.95f, 0.4f, 0.15f), 0.7f, 3f, 30, 3.5f);
+            }
 
             // Con arte real y Animator, la muerte es una animacion de
             // verdad (una de las 6 del pack, sorteada) y no el volteo de
