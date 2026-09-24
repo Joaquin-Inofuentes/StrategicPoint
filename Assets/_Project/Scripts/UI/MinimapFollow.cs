@@ -218,12 +218,24 @@ namespace SP.UI
         RectTransform ResolveRect()
         {
             if (minimapRect != null) return minimapRect;
-            if (rectSearchDone) return null;
-            rectSearchDone = true;
 
-            // La RawImage vive en el Canvas, no bajo esta camara: la referencia viene serializada en la escena. Si falta
-            // se avisa UNA vez (rectSearchDone) en vez de barrer la escena buscando por nombre.
-            SP.Core.GameLog.Line("[MinimapFollow] falta la referencia 'minimapRect' (" + MinimapImageName + ") en la escena");
+            // BUG REAL encontrado jugando: en SC_Gameplay el objeto
+            // MinimapImage existe en la jerarquia (Canvas/MinimapBorder/
+            // MinimapFrame/MinimapImage) pero el campo serializado nunca
+            // se arrastro en el Inspector -- quedaba en null y clickear el
+            // minimapa no hacia nada, en silencio. Rescate por nombre: se
+            // reintenta en cada llamada mientras siga sin encontrarse (por
+            // si se pide antes de que el Canvas termine de armarse), pero
+            // una vez resuelto queda cacheado para siempre y no vuelve a
+            // buscar; el aviso en consola sale una unica vez.
+            var found = GameObject.Find(MinimapImageName);
+            if (found != null) { minimapRect = found.GetComponent<RectTransform>(); return minimapRect; }
+
+            if (!rectSearchDone)
+            {
+                rectSearchDone = true;
+                SP.Core.GameLog.Line("[MinimapFollow] falta la referencia 'minimapRect' (" + MinimapImageName + ") en la escena");
+            }
             return null;
         }
 
@@ -272,7 +284,20 @@ namespace SP.UI
         RectTransform ResolveBorder()
         {
             if (borderRect != null) return borderRect;
-            if (!borderAvisado) { borderAvisado = true; SP.Core.GameLog.Line("[MinimapFollow] falta la referencia 'borderRect' (" + BorderName + ") en la escena"); }
+
+            // Mismo rescate que ResolveRect (ver su comentario): MinimapBorder
+            // existe en la escena pero el campo nunca quedo wireado, asi que
+            // [M]/[L] (redimensionar el minimapa) no hacian nada. Reintenta
+            // en cada llamada hasta encontrarlo (recien ahi queda cacheado
+            // para siempre); el aviso en consola sale una unica vez.
+            var found = GameObject.Find(BorderName);
+            if (found != null) { borderRect = found.GetComponent<RectTransform>(); return borderRect; }
+
+            if (!borderAvisado)
+            {
+                borderAvisado = true;
+                SP.Core.GameLog.Line("[MinimapFollow] falta la referencia 'borderRect' (" + BorderName + ") en la escena");
+            }
             return null;
         }
 

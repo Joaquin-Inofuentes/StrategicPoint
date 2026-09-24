@@ -362,8 +362,21 @@ namespace SP.CameraSystem
             // se encarga de la mirilla desde ahi.
             if (cam != null) cam.fieldOfView = normalFov;
 
-            if (goingToRts && !wasRts && rtsFallbackCenter.HasValue)
-                RestoreOrSetRtsView(rtsFallbackCenter.Value);
+            // BUG REAL encontrado jugando: el [TAB] normal (el 99% de las
+            // veces que se entra a RTS) llama ToggleMode()/SetMode(mode) SIN
+            // fallback -- antes esta condicion exigia rtsFallbackCenter.HasValue
+            // para hacer CUALQUIER cosa, asi que en ese camino la camara nunca
+            // tocaba posicion NI rotacion: se quedaba con rtsFocusPoint=(0,0,0)
+            // y rtsCurrentHeight=0 (los defaults de C#, nunca inicializados en
+            // Awake/OnEnable), y LateUpdate la mandaba a esa altura 0 en el
+            // origen del mundo mirando para donde la habia dejado FPS -- la
+            // camara terminaba enterrada en el piso mirando al cielo (el
+            // "tunel de estrellas" que se ve en RTS). Ahora SIEMPRE se llama
+            // a RestoreOrSetRtsView, con el fallback explicito si lo hay o la
+            // posicion actual de la camara si no -- y esa funcion ya sabe
+            // preferir la vista RTS guardada de la sesion si existe.
+            if (goingToRts && !wasRts)
+                RestoreOrSetRtsView(rtsFallbackCenter ?? transform.position);
         }
 
         // Si hay una vista RTS guardada, la restaura en vez de recentrar
