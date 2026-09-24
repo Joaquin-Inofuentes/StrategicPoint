@@ -255,6 +255,16 @@ namespace SP.EditorTools
             // pintura quedaba a 0,6 m por pixel en Z. 1024 la deja a 0,3 m.
             td.alphamapResolution = 1024;
 
+            // Pedido explicito: "mejora la pintada del terrain". Antes las
+            // dos texturas (pasto y tierra) usaban el mismo tile de 10x10 m
+            // -- en un terreno de 117x320 m eso se repite ~12x en X y ~32x
+            // en Z, y las dos capas se repiten en el MISMO patron, lo que
+            // se nota como una grilla. Tiles mas grandes y DISTINTOS entre
+            // capas rompen ese patron; un poco de smoothness en el pasto
+            // (la tierra queda en 0, mate, tal cual el material real) le
+            // da algo de vida bajo luz dinamica en vez de leerse plano.
+            AjustarCapasDeTerreno(td);
+
             int res = td.alphamapResolution;
             int capas = td.alphamapLayers;
             var mapa = new float[res, res, capas];
@@ -281,6 +291,31 @@ namespace SP.EditorTools
             AssetDatabase.SaveAssets();
         }
 
+        // Tile mas grande (menos repeticiones visibles) y DISTINTO por capa
+        // (pasto y tierra no se repiten en el mismo patron); un toque de
+        // smoothness en el pasto para que no se vea 100% mate bajo luz
+        // dinamica. Se toca el asset compartido (.terrainlayer), no la
+        // instancia del terreno -- por eso el SetDirty + guardado aparte.
+        static void AjustarCapasDeTerreno(TerrainData td)
+        {
+            var layers = td.terrainLayers;
+            if (layers == null || layers.Length == 0) return;
+
+            var grass = layers[0];
+            if (grass != null)
+            {
+                grass.tileSize = new Vector2(15f, 15f);
+                grass.smoothness = 0.12f;
+                EditorUtility.SetDirty(grass);
+            }
+            if (layers.Length > 1 && layers[1] != null)
+            {
+                var dirt = layers[1];
+                dirt.tileSize = new Vector2(11f, 11f);
+                EditorUtility.SetDirty(dirt);
+            }
+        }
+
         // 0 = pasto, 1 = tierra. Formas suaves + ruido para que los bordes no
         // sean rectas de regla.
         static readonly Vector2[] CaminoPrincipal =
@@ -292,7 +327,14 @@ namespace SP.EditorTools
 
         static float PesoDeTierra(float x, float z)
         {
-            float ruido = (Mathf.PerlinNoise(x * 0.09f + 40f, z * 0.09f + 90f) - 0.5f) * 3.4f;
+            // Dos octavas: la gruesa da la ondulacion general del borde
+            // (como antes), la fina le suma mordidas chicas e irregulares.
+            // Un camino de tierra pisado de verdad no tiene un borde de una
+            // sola frecuencia prolija -- con una sola octava se notaba como
+            // una curva de manual, no como tierra gastada.
+            float ruidoGrueso = (Mathf.PerlinNoise(x * 0.09f + 40f, z * 0.09f + 90f) - 0.5f) * 3.4f;
+            float ruidoFino = (Mathf.PerlinNoise(x * 0.35f + 500f, z * 0.35f + 700f) - 0.5f) * 1.1f;
+            float ruido = ruidoGrueso + ruidoFino;
             float d = float.MaxValue;
             var p = new Vector2(x, z);
 
@@ -319,7 +361,19 @@ namespace SP.EditorTools
             d = Mathf.Min(d, Vector2.Distance(p, new Vector2(48f, 150f)) - 6f);
 
             float borde = 2.6f;
-            return Mathf.Clamp01(1f - Mathf.SmoothStep(0f, 1f, (d + ruido) / borde + 0.5f));
+            float caminoYPlaza = Mathf.Clamp01(1f - Mathf.SmoothStep(0f, 1f, (d + ruido) / borde + 0.5f));
+
+            // Manchones de tierra sueltos y sutiles en el pasto abierto,
+            // lejos del camino: un campo 100% parejo se lee como una
+            // alfombra pintada. Dos ruidos combinados (uno ancho para donde
+            // aparecen las manchas, uno fino para que el borde de cada
+            // mancha no sea un circulo perfecto) y un tope bajo (0.35) para
+            // que nunca compita visualmente con el camino real.
+            float manchaAncha = Mathf.PerlinNoise(x * 0.05f + 1000f, z * 0.05f + 2000f);
+            float manchaFina = Mathf.PerlinNoise(x * 0.22f + 3000f, z * 0.22f + 4000f);
+            float desgaste = Mathf.Clamp01((manchaAncha - 0.62f) * 6f) * Mathf.Clamp01((manchaFina - 0.4f) * 3f) * 0.35f;
+
+            return Mathf.Max(caminoYPlaza, desgaste);
         }
 
         // Distancia (negativa adentro) de un punto a un rectangulo XZ.

@@ -15,6 +15,15 @@ namespace SP.Presentation
     // Se sigue apagando solo en cuanto el jugador lo tiene encima de la mira
     // (adentro del cono de AnguloDeMira grados): ahi ya lo esta viendo/
     // apuntando, y el rombo solo taparia la vista.
+    //
+    // Pedido explicito: "en rojo los enemigos solamente los que los aliados
+    // hayan visto o vos hayas visto o te hayan disparado". El rombo de
+    // ALIADO sigue mostrandose siempre (no hay "fog of war" entre
+    // companeros); el de ENEMIGO ahora exige ademas que
+    // InteligenciaDeEnemigos.EstaRevelado(soldier.Id) sea verdadero, que se
+    // marca desde tres lugares: un aliado lo senso (AiBrain.Sentidos.cs),
+    // le disparo al jugador (InteligenciaDeEnemigos.AlRecibirDano), o el
+    // propio jugador lo tuvo delante con linea de tiro libre (mas abajo).
     public class UnitLocatorCylinder : MonoBehaviour
     {
         Soldier soldier;
@@ -23,6 +32,12 @@ namespace SP.Presentation
 
         const string MarkerName = "LocatorRombo";
         public const float AnguloDeMira = 5f;
+        // Pedido explicito: "en rojo los enemigos solamente los que los
+        // aliados hayan visto o vos hayas visto o te hayan disparado" -- el
+        // cono, mas ancho que AnguloDeMira (que es "lo tengo en la mira,
+        // apagar el rombo"), representa "lo tengo mas o menos delante,
+        // pude haberlo notado".
+        const float ConoDeVisionJugador = 45f;
         // BUG REAL: con 90 m, los enemigos casi nunca mostraban el rombo en
         // combate real -- las lineas iniciales y las oleadas de esta mision
         // se enfrentan habitualmente entre 90 y 180 m (medido en vivo). El
@@ -125,7 +140,20 @@ namespace SP.Presentation
                 if (distancia > DistanciaVisible) { marcador.SetActive(false); return; }
 
                 float angulo = Vector3.Angle(cam.transform.forward, haciaSoldado);
-                marcador.SetActive(angulo > AnguloDeMira);
+                bool esEnemigo = soldier.Team == TeamId.Enemy;
+
+                // Tercera fuente de revelado (las otras dos son
+                // AiBrain.Sentidos.cs para los aliados e
+                // InteligenciaDeEnemigos.AlRecibirDano para "te disparo"):
+                // el propio jugador lo tiene mas o menos delante Y con
+                // linea de tiro libre -- no a traves de una pared.
+                if (esEnemigo && angulo <= ConoDeVisionJugador &&
+                    SP.Core.NavService.HayLineaDeTiro(cam.transform.position, transform.position, null, soldier.transform))
+                    SP.Core.InteligenciaDeEnemigos.Revelar(soldier.Id);
+
+                bool anguloOk = angulo > AnguloDeMira;
+                bool inteligenciaOk = !esEnemigo || SP.Core.InteligenciaDeEnemigos.EstaRevelado(soldier.Id);
+                marcador.SetActive(anguloOk && inteligenciaOk);
             }
 
             // Billboard: hay que rehacerlo TODOS los frames que este

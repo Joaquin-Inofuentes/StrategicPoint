@@ -4,6 +4,7 @@ using UnityEngine.AI;
 using SP.Core;
 using SP.Actors;
 using SP.Vehicles;
+using SP.Combat;
 
 namespace SP.Ai
 {
@@ -142,6 +143,14 @@ namespace SP.Ai
                 forceSense = false;
                 lastSenseTick = tickCount;
                 sensedTarget = MejorObjetivoVisible();
+
+                // Pedido explicito: el rombo rojo del locator solo se
+                // muestra para enemigos que el bando del jugador ya
+                // detecto -- si un ALIADO (no otro enemigo sensando al
+                // jugador) acaba de ver a este soldado, queda revelado
+                // para siempre.
+                if (sensedTarget != null && self.Team == TeamId.Player)
+                    SP.Core.InteligenciaDeEnemigos.Revelar(sensedTarget.Id);
             }
 
             return sensedTarget;
