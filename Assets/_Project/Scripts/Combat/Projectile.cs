@@ -49,6 +49,16 @@ namespace SP.Combat
         int instanceId;
         Renderer cachedRenderer;
         bool ownMaterialReady;
+
+        // BUG REAL de rendimiento con muchos disparos a la vez: estos dos
+        // predicados eran lambdas creadas DENTRO de BuscarBlancoEnElTramo
+        // (una por cada paso del muestreo, hasta 5 por bala por frame) y de
+        // SuprimirCercanos (una por chequeo). Con varias balas en vuelo eso
+        // es basura de GC constante en el camino mas caliente del juego.
+        // ownerTeam no cambia en la vida del proyectil, asi que se arman
+        // UNA sola vez por disparo (en Configure) y se reusan siempre.
+        System.Func<SP.Actors.Soldier, bool> predicadoObjetivo;
+        System.Func<SP.Actors.Soldier, bool> predicadoSupresion;
         // 0 = proyectil normal (solo le pega a lo que toca). >0 = granada
         // de tanque: al impactar, reparte daño a todo lo que esté en este
         // radio y dibuja la esfera de explosión (ImpactFx.SpawnExplosion)
@@ -123,6 +133,9 @@ namespace SP.Combat
             transform.localScale = new Vector3(RestScale, RestScale, RestScale * TraceStretch);
             ownerId = shooterId;
             ownerTeam = shooterTeam;
+            var miEquipo = shooterTeam;
+            predicadoObjetivo = s => s.Health.IsAlive && s.Team != miEquipo && s.gameObject.activeInHierarchy;
+            predicadoSupresion = s => s != null && s.Team != miEquipo && s.Health.IsAlive;
             damage = dmg;
             explosionRadius = explosionRadiusValue;
             effectiveSpeed = VelocidadBase * speedMultiplier;
@@ -471,8 +484,7 @@ namespace SP.Combat
             if (!Application.isPlaying || Time.time < proximaSupresion || age < 0.05f) return;
             proximaSupresion = Time.time + 0.08f;
             bufferSupresion.Clear();
-            var mi = ownerTeam;
-            SpatialGrid.QueryInRange(transform.position, RadioDeSupresion, bufferSupresion, s => s != null && s.Team != mi && s.Health.IsAlive);
+            SpatialGrid.QueryInRange(transform.position, RadioDeSupresion, bufferSupresion, predicadoSupresion);
             for (int i = 0; i < bufferSupresion.Count; i++)
             {
                 var b = bufferSupresion[i].Brain;
@@ -746,10 +758,7 @@ namespace SP.Combat
             for (int i = 1; i <= pasos; i++)
             {
                 var muestra = Vector3.Lerp(desde, hasta, i / (float)pasos);
-                var s = SpatialGrid.FindNearestInRange(muestra, hitRadius, x =>
-                    x.Health.IsAlive &&
-                    x.Team != ownerTeam &&
-                    x.gameObject.activeInHierarchy);
+                var s = SpatialGrid.FindNearestInRange(muestra, hitRadius, predicadoObjetivo);
                 // La grilla es la fase AMPLIA: dice "hay alguien cerca".
                 // Quien decide si le dio es el cuerpo.
                 if (s != null && LeDioAlCuerpo(s, muestra)) { punto = muestra; return s; }

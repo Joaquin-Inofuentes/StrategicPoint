@@ -11,6 +11,18 @@ namespace SP.Core
 
         readonly Dictionary<Type, Delegate> handlers = new Dictionary<Type, Delegate>();
 
+        // BUG REAL de rendimiento encontrado con muchos disparos a la vez:
+        // Publish llamaba action.GetInvocationList() SIEMPRE, aunque
+        // hubiera un solo suscriptor -- GetInvocationList asigna un array
+        // nuevo cada vez que se llama. ShotFiredEvent/DamageTakenEvent los
+        // escucha un componente por soldado (AiBrain, CubeFxReactor,
+        // SoldierAnimatorDriver), asi que con muchos soldados disparando
+        // eso es un array nuevo en el punto mas caliente del juego. Ahora
+        // se cuenta la cantidad de suscriptores al (des)suscribirse, y el
+        // caso comun (un solo suscriptor, la mayoria de los eventos de UI)
+        // invoca directo sin asignar nada.
+        readonly Dictionary<Type, int> subscriberCounts = new Dictionary<Type, int>();
+
         public IDisposable Subscribe<T>(Action<T> handler)
         {
             var type = typeof(T);
@@ -19,12 +31,16 @@ namespace SP.Core
             else
                 handlers[type] = handler;
 
+            subscriberCounts.TryGetValue(type, out var count);
+            subscriberCounts[type] = count + 1;
+
             return new ActionDisposable(() => Unsubscribe(handler));
         }
 
         public void Publish<T>(T evt)
         {
-            if (!handlers.TryGetValue(typeof(T), out var existing)) return;
+            var type = typeof(T);
+            if (!handlers.TryGetValue(type, out var existing)) return;
             if (!(existing is Action<T> action)) return;
 
             // BUG REAL: antes esto era un unico action.Invoke(evt). Un
@@ -43,14 +59,21 @@ namespace SP.Core
             //
             // Ahora cada suscriptor se invoca por separado: el que falla se
             // reporta con nombre y los demas reciben su evento igual.
-            var lista = action.GetInvocationList();
-            if (lista.Length == 1)
+            if (!subscriberCounts.TryGetValue(type, out var count) || count <= 1)
             {
-                // Caso comun: un solo suscriptor, sin recorrer ni capturar.
-                action.Invoke(evt);
+                // Caso comun: un solo suscriptor, sin GetInvocationList (sin asignar memoria).
+                try
+                {
+                    action.Invoke(evt);
+                }
+                catch (Exception e)
+                {
+                    UnityEngine.Debug.LogError($"[EventBus] Un suscriptor de {type.Name} lanzo una excepcion.\n{e}");
+                }
                 return;
             }
 
+            var lista = action.GetInvocationList();
             for (int i = 0; i < lista.Length; i++)
             {
                 try
@@ -61,7 +84,7 @@ namespace SP.Core
                 {
                     var destino = lista[i].Target;
                     UnityEngine.Debug.LogError(
-                        $"[EventBus] Un suscriptor de {typeof(T).Name} lanzo una excepcion y se lo salteo " +
+                        $"[EventBus] Un suscriptor de {type.Name} lanzo una excepcion y se lo salteo " +
                         $"({(destino != null ? destino.GetType().Name : "estatico")}). Los demas reciben el evento igual.\n{e}");
                 }
             }
@@ -74,10 +97,21 @@ namespace SP.Core
             var result = Delegate.Remove(existing, handler);
             if (result == null) handlers.Remove(type);
             else handlers[type] = result;
+
+            if (subscriberCounts.TryGetValue(type, out var count))
+            {
+                count--;
+                if (count <= 0) subscriberCounts.Remove(type);
+                else subscriberCounts[type] = count;
+            }
         }
 
         // Solo para tests/reinicios de escena: vacía todas las suscripciones.
-        public void ClearAll() => handlers.Clear();
+        public void ClearAll()
+        {
+            handlers.Clear();
+            subscriberCounts.Clear();
+        }
 
         sealed class ActionDisposable : IDisposable
         {

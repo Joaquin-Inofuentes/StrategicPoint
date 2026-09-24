@@ -20,22 +20,40 @@ namespace SP.Core
         // llamaba.
         static readonly HashSet<Soldier> registrados = new HashSet<Soldier>();
 
+        // BUG REAL de rendimiento encontrado con muchos disparos a la vez:
+        // FindById (mas abajo) barria esta lista entera -- O(n) -- y se
+        // llama una vez por CADA suscriptor de ShotFiredEvent/DamageTakenEvent
+        // (AiBrain de cada soldado), o sea que un solo disparo terminaba
+        // costando O(n^2) en soldados. Con este indice el alta sigue siendo
+        // O(1) (ya lo era, ver comentario de arriba) y FindById pasa a ser
+        // O(1) tambien.
+        static readonly Dictionary<int, Soldier> porId = new Dictionary<int, Soldier>();
+
         public static void Register(Soldier soldier)
         {
             if (soldier == null) return;
-            if (registrados.Add(soldier)) soldiers.Add(soldier);
+            if (registrados.Add(soldier))
+            {
+                soldiers.Add(soldier);
+                porId[soldier.Id] = soldier;
+            }
         }
 
         public static void Unregister(Soldier soldier)
         {
             if (soldier == null) return;
-            if (registrados.Remove(soldier)) soldiers.Remove(soldier);
+            if (registrados.Remove(soldier))
+            {
+                soldiers.Remove(soldier);
+                porId.Remove(soldier.Id);
+            }
         }
 
         public static void Clear()
         {
             soldiers.Clear();
             registrados.Clear();
+            porId.Clear();
             proximoBarrido = 0f;
         }
 
@@ -120,9 +138,7 @@ namespace SP.Core
 
         public static Soldier FindById(int id)
         {
-            foreach (var s in soldiers)
-                if (s != null && s.Id == id) return s;
-            return null;
+            return porId.TryGetValue(id, out var s) && s != null ? s : null;
         }
 
         public static Soldier FindNearest(Vector3 point, Func<Soldier, bool> predicate)
