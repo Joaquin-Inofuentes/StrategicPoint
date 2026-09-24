@@ -281,24 +281,53 @@ namespace SP.Mision
             return puntos;
         }
 
+        // Posiciones al azar dentro de una franja rectangular (X entre xMin/xMax, Z entre
+        // zMin/zMax), con separacion minima entre ellas -- mismo criterio de rechazo por
+        // intentos que PosicionesDispersas, pero para una franja en vez de un arco: la forma
+        // que hace falta para una "linea" que cruza el corredor de aproximacion.
+        static List<Vector3> PosicionesEnFranja(float xMin, float xMax, float zMin, float zMax, int n, float separacionMinima)
+        {
+            var puntos = new List<Vector3>(n);
+            for (int i = 0; i < n; i++)
+            {
+                Vector3 candidato = Vector3.zero;
+                bool ok = false;
+                for (int intento = 0; intento < 8 && !ok; intento++)
+                {
+                    candidato = new Vector3(Random.Range(xMin, xMax), 0f, Random.Range(zMin, zMax));
+                    ok = true;
+                    foreach (var p in puntos)
+                        if (Plano(p, candidato) < separacionMinima) { ok = false; break; }
+                }
+                puntos.Add(candidato);
+            }
+            return puntos;
+        }
+
         // Dos lineas enemigas entre la base y el centro: campo de tiro (z 52-66) y paso del canon (z 84-92).
         void LanzarLineasEnemigas()
         {
             // El campo de tiro arranca a 46 m de la base: mas cerca, los aliados (vision 20 m) los ven
             // y salen a pelear solos contra todo el grupo antes de que el jugador decida nada.
-            var campo = new[] { new Vector2(-34f, 52f), new Vector2(-12f, 58f), new Vector2(12f, 54f), new Vector2(34f, 60f), new Vector2(-22f, 64f), new Vector2(24f, 66f), new Vector2(0f, 62f), new Vector2(46f, 52f) };
-            var paso = new[] { new Vector2(-20f, 86f), new Vector2(-2f, 92f), new Vector2(22f, 88f), new Vector2(34f, 92f), new Vector2(6f, 84f), new Vector2(-32f, 90f) };
+            //
+            // Pedido explicito: "reubicar mejor la aparicion de enemigos asi se ve mejor". Antes
+            // estas eran 8+6 coordenadas fijas a mano: la MISMA formacion, en el MISMO lugar
+            // exacto, en cada partida -- se leia artificial/"en fila" apenas se jugaba dos veces.
+            // Se mantienen las mismas franjas tacticas (mismo rango de X/Z que las coordenadas
+            // viejas cubrian) pero dispersas al azar con separacion minima, mismo criterio que ya
+            // usa PosicionesDispersas para las oleadas (que tuvo este mismo problema y se arreglo
+            // asi -- ver su comentario mas abajo).
             int nc = Escalar(5), np = Escalar(4);
+            var campo = PosicionesEnFranja(-34f, 46f, 52f, 66f, nc, 7f);
+            var paso = PosicionesEnFranja(-32f, 34f, 84f, 92f, np, 7f);
             for (int i = 0; i < nc; i++)
             {
-                var p = campo[i % campo.Length];
-                var s = CrearEnemigo($"Enemigo_LineaA_{i + 1}", new Vector3(p.x, 0f, p.y));
+                var s = CrearEnemigo($"Enemigo_LineaA_{i + 1}", campo[i]);
                 if (s != null) Patrullar(s, 5f, 3f);
             }
             for (int i = 0; i < np; i++)
             {
-                var p = paso[i % paso.Length];
-                var s = CrearEnemigo($"Enemigo_LineaB_{i + 1}", new Vector3(p.x, 0f, p.y));
+                var s = CrearEnemigo($"Enemigo_LineaB_{i + 1}", paso[i]);
                 if (s != null) Patrullar(s, 5f, 3f);
             }
             GameLog.Line($"Mision: lineas enemigas listas ({nc} + {np})");
