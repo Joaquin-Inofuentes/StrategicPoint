@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using SP.Combat;
+using SP.Presentation;
 
 namespace SP.UI
 {
@@ -52,8 +53,15 @@ namespace SP.UI
             return iconCache[i];
         }
 
-        // Arma el hijo "Icono" a la izquierda del panel y le hace lugar al
-        // texto. Idempotente: si ya existe solo lo devuelve.
+        // Arma el hijo "Icono" a la izquierda del panel. Idempotente: si ya
+        // existe solo lo devuelve. Pedido explicito: "simplificalo y q use
+        // iconos, mas vistoso, intenta evitar textos" -- el panel paso de
+        // "220x46 con todo en texto" a un layout fijo de 190x72 (ver
+        // constantes de abajo) con el arma como icono grande arriba a la
+        // izquierda; WeaponStatusUiPipeline.cs deja el panel/Text/BarBG de
+        // la escena con ese mismo tamaño para que esto encaje.
+        public const float AnchoPanel = 190f, AltoPanel = 72f;
+
         public Image EnsureIcon()
         {
             if (icon != null) return icon;
@@ -63,23 +71,14 @@ namespace SP.UI
             var go = new GameObject(IconName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             go.transform.SetParent(transform, false);
             var rt = (RectTransform)go.transform;
-            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f);
-            rt.pivot = new Vector2(0f, 0.5f);
-            rt.sizeDelta = new Vector2(52f, 36f);
-            rt.anchoredPosition = new Vector2(6f, 4f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+            rt.pivot = new Vector2(0f, 0f);
+            rt.sizeDelta = new Vector2(40f, 40f);
+            rt.anchoredPosition = new Vector2(4f, 10f);
             icon = go.GetComponent<Image>();
             icon.raycastTarget = false;
             icon.preserveAspect = true;
             icon.sprite = IconFor(WeaponKind.Rifle);
-
-            var panel = (RectTransform)transform;
-            panel.sizeDelta = new Vector2(Mathf.Max(panel.sizeDelta.x, 270f), panel.sizeDelta.y);
-            var t = label != null ? label : GetComponentInChildren<Text>(true);
-            if (t != null)
-            {
-                var trt = t.rectTransform;
-                trt.offsetMin = new Vector2(trt.offsetMin.x + 60f, trt.offsetMin.y);
-            }
             return icon;
         }
 
@@ -134,12 +133,13 @@ namespace SP.UI
 
             if (label != null)
             {
-                string status = weapon.IsReloading ? $"  ·  RECARGANDO {weapon.ReloadRemaining:0.0}s" : "";
-                int slot = weapon.Loadout.IndexOf(weapon.CurrentWeaponKind) + 1;
-                string tecla = slot > 0 ? $"[{slot}] " : "";
-                // Con reservas activas se ve cuantas balas quedan de repuesto ("8/8 · 24"); sin ninguna: "SIN MUNICION".
-                string reserva = weapon.UsaReservas ? (weapon.SinMunicionTotal ? "  ·  SIN MUNICION" : $"  ·  {weapon.ReservaActual}") : "";
-                label.text = $"{tecla}{WeaponCatalog.Get(weapon.CurrentWeaponKind).DisplayName}   {weapon.CurrentAmmo}/{weapon.MagazineSize}{reserva}{status}";
+                // Pedido explicito: "intenta evitar textos" -- se cae el
+                // nombre del arma (ya lo dice el icono), la tecla [N] y la
+                // palabra "RECARGANDO"/"SIN MUNICION" (la barra de abajo y
+                // el reloj de arena ya avisan de eso sin palabras). Quedan
+                // solo los numeros: cargador/reserva.
+                string reserva = weapon.UsaReservas ? $" · {weapon.ReservaActual}" : "";
+                label.text = $"{weapon.CurrentAmmo}/{weapon.MagazineSize}{reserva}";
 
                 // El contador quedaba blanco fijo hasta llegar a cero, sin
                 // ningun aviso previo de que se estaba por acabar. Rojo
@@ -148,7 +148,7 @@ namespace SP.UI
                 float frac = weapon.MagazineSize > 0 ? (float)weapon.CurrentAmmo / weapon.MagazineSize : 1f;
                 label.color = (!weapon.IsReloading && frac < 0.3f) || weapon.SinMunicionTotal ? new Color(0.95f, 0.25f, 0.2f) : Color.white;
             }
-            ActualizarRotuloBarra(weapon);
+            ActualizarReloj(weapon);
             ActualizarExtras(weapon);
             if (fill != null)
             {
@@ -157,75 +157,118 @@ namespace SP.UI
             }
         }
 
-        // La barra verde no decia que era: ahora lleva un rotulo ("LISTA", "RECARGA 1.2s", "ENFRIANDO").
-        Text rotuloBarra;
-        void ActualizarRotuloBarra(WeaponHolder weapon)
+        // Pedido explicito: "intenta evitar textos" -- la barra ya no lleva
+        // un rotulo de palabras ("LISTA"/"RECARGA 1.2s"/"ENFRIANDO"): un
+        // pequeño reloj de arena aparece como insignia sobre el icono del
+        // arma mientras la barra no esta llena (recargando o enfriando), y
+        // desaparece cuando esta lista. El color de la barra (verde/naranja,
+        // ya existia) sigue siendo la señal principal.
+        Image reloj;
+        void ActualizarReloj(WeaponHolder weapon)
         {
-            if (rotuloBarra == null)
+            if (reloj == null)
             {
-                var barra = transform.Find("BarBG");
-                if (barra == null) return;
-                var t = barra.Find("Rotulo");
+                var t = transform.Find("Reloj");
                 if (t == null)
                 {
-                    var go = new GameObject("Rotulo", typeof(RectTransform), typeof(Text));
-                    go.transform.SetParent(barra, false);
-                    var rt = (RectTransform)go.transform;
-                    rt.anchorMin = new Vector2(0f, 0f); rt.anchorMax = new Vector2(1f, 0f);
-                    rt.pivot = new Vector2(0.5f, 1f);
-                    rt.anchoredPosition = new Vector2(0f, -1f);
-                    rt.sizeDelta = new Vector2(0f, 14f);
-                    var tx = go.GetComponent<Text>();
-                    tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    tx.fontSize = 11; tx.alignment = TextAnchor.MiddleLeft;
-                    tx.raycastTarget = false;
-                    tx.color = new Color(0.85f, 0.9f, 0.85f);
-                    t = go.transform;
-                }
-                rotuloBarra = t.GetComponent<Text>();
-            }
-            if (rotuloBarra == null) return;
-            rotuloBarra.text = weapon.IsReloading ? $"RECARGA {weapon.ReloadRemaining:0.0}s"
-                : weapon.SinMunicionTotal ? "SIN MUNICION"
-                : weapon.ReadinessFraction01 < 0.999f ? "ENFRIANDO" : "LISTA";
-        }
-
-        // Linea encima del panel con las dos acciones que no son el arma: cuchillo [F] y granadas [G].
-        Text extras;
-        void ActualizarExtras(WeaponHolder weapon)
-        {
-            if (extras == null)
-            {
-                var t = transform.Find("Extras");
-                if (t == null)
-                {
-                    var go = new GameObject("Extras", typeof(RectTransform), typeof(Text));
+                    var go = new GameObject("Reloj", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
                     go.transform.SetParent(transform, false);
                     var rt = (RectTransform)go.transform;
-                    rt.anchorMin = new Vector2(0f, 1f); rt.anchorMax = new Vector2(1f, 1f);
-                    rt.pivot = new Vector2(0.5f, 0f);
-                    rt.anchoredPosition = new Vector2(0f, 2f);
-                    rt.sizeDelta = new Vector2(0f, 22f);
-                    var tx = go.GetComponent<Text>();
-                    tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                    tx.fontSize = 14; tx.fontStyle = FontStyle.Bold;
-                    tx.alignment = TextAnchor.MiddleRight;
-                    tx.raycastTarget = false;
-                    var sombra = go.AddComponent<Shadow>();
-                    sombra.effectColor = new Color(0f, 0f, 0f, 0.8f);
+                    rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+                    rt.pivot = new Vector2(0f, 0f);
+                    rt.sizeDelta = new Vector2(18f, 18f);
+                    rt.anchoredPosition = new Vector2(28f, 8f);
+                    var im = go.GetComponent<Image>();
+                    im.raycastTarget = false;
+                    im.sprite = HudIconFactory.Reloj();
+                    im.color = new Color(1f, 0.75f, 0.35f);
                     t = go.transform;
                 }
-                extras = t.GetComponent<Text>();
+                reloj = t.GetComponent<Image>();
             }
-            if (extras == null) return;
-            bool cuchilloListo = weapon.KnifeCooldownRemaining <= 0f;
-            int claveExtras = (cuchilloListo ? 1 : 0) | (weapon.Granadas << 1);
-            if (claveExtras == ultimaClaveExtras && extras.text.Length > 0) return;   // nada cambio: no se rearma el texto cada frame
-            ultimaClaveExtras = claveExtras;
-            string cuchillo = cuchilloListo ? "<color=#E6EEF5>[F] CUCHILLO</color>" : "<color=#7C8794>[F] CUCHILLO</color>";
-            string granada = weapon.Granadas > 0 ? $"<color=#FFC94A>[G] GRANADA x{weapon.Granadas}</color>" : "<color=#E0503C>[G] SIN GRANADAS</color>";
-            extras.text = cuchillo + "     " + granada;
+            if (reloj == null) return;
+            reloj.gameObject.SetActive(weapon.ReadinessFraction01 < 0.999f);
         }
-        int ultimaClaveExtras = -1;
+
+        // Insignia de cuchillo [F] y granadas [G] arriba a la derecha del panel: dos iconos, sin
+        // texto salvo el numero de granadas (un digito no es "texto descriptivo", es un contador).
+        Image extrasCuchillo, extrasGranada;
+        Text extrasGranadaCount;
+        void ActualizarExtras(WeaponHolder weapon)
+        {
+            if (extrasCuchillo == null)
+            {
+                var t = transform.Find("ExtrasCuchillo");
+                GameObject go;
+                if (t == null)
+                {
+                    go = new GameObject("ExtrasCuchillo", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                    go.transform.SetParent(transform, false);
+                    var rt = (RectTransform)go.transform;
+                    rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+                    rt.pivot = new Vector2(0f, 0f);
+                    rt.sizeDelta = new Vector2(20f, 20f);
+                    rt.anchoredPosition = new Vector2(108f, 50f);
+                    var im = go.GetComponent<Image>();
+                    im.raycastTarget = false;
+                    im.preserveAspect = true;
+                    im.sprite = HudIconFactory.Cuchillo();
+                    t = go.transform;
+                }
+                extrasCuchillo = t.GetComponent<Image>();
+            }
+            if (extrasGranada == null)
+            {
+                var t = transform.Find("ExtrasGranada");
+                GameObject go;
+                if (t == null)
+                {
+                    go = new GameObject("ExtrasGranada", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                    go.transform.SetParent(transform, false);
+                    var rt = (RectTransform)go.transform;
+                    rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+                    rt.pivot = new Vector2(0f, 0f);
+                    rt.sizeDelta = new Vector2(20f, 20f);
+                    rt.anchoredPosition = new Vector2(132f, 50f);
+                    var im = go.GetComponent<Image>();
+                    im.raycastTarget = false;
+                    im.preserveAspect = true;
+                    im.sprite = HudIconFactory.Granada();
+                    t = go.transform;
+                }
+                extrasGranada = t.GetComponent<Image>();
+            }
+            if (extrasGranadaCount == null)
+            {
+                var t = transform.Find("ExtrasGranadaCount");
+                GameObject go;
+                if (t == null)
+                {
+                    go = new GameObject("ExtrasGranadaCount", typeof(RectTransform), typeof(Text));
+                    go.transform.SetParent(transform, false);
+                    var rt = (RectTransform)go.transform;
+                    rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f);
+                    rt.pivot = new Vector2(0f, 0f);
+                    rt.sizeDelta = new Vector2(30f, 20f);
+                    rt.anchoredPosition = new Vector2(154f, 50f);
+                    var tx = go.GetComponent<Text>();
+                    tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    tx.fontSize = 15; tx.fontStyle = FontStyle.Bold;
+                    tx.alignment = TextAnchor.MiddleLeft;
+                    tx.raycastTarget = false;
+                    t = go.transform;
+                }
+                extrasGranadaCount = t.GetComponent<Text>();
+            }
+
+            bool cuchilloListo = weapon.KnifeCooldownRemaining <= 0f;
+            extrasCuchillo.color = cuchilloListo ? new Color(0.9f, 0.94f, 0.98f) : new Color(0.45f, 0.48f, 0.52f);
+
+            bool tieneGranadas = weapon.Granadas > 0;
+            var colorGranada = tieneGranadas ? new Color(1f, 0.79f, 0.29f) : new Color(0.45f, 0.48f, 0.52f);
+            extrasGranada.color = colorGranada;
+            extrasGranadaCount.color = colorGranada;
+            extrasGranadaCount.text = weapon.Granadas.ToString();
+        }
     }
 }

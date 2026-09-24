@@ -91,7 +91,17 @@ namespace SP.Player
             if (d.sqrMagnitude > Radio * Radio) return;
 
             yo.Weapon.AgregarMunicion(1);
-            Feedback.Accion(SfxKind.HealDone, "+MUNICION", transform.position, Feedback.Ok, aviso: true, pulso: true, volumen: 0.5f);
+
+            // Pedido explicito: "no quiero texto, quiero visuales" -- antes
+            // esto pasaba por Feedback.Accion(..., "+MUNICION", ...), que
+            // ademas del sonido siempre agrega el texto flotante en el
+            // mundo Y el aviso en la cola de HUD. Aca se arma a mano solo
+            // la mitad sin texto: sonido dedicado (AmmoPickup, no el
+            // generico de curacion de antes) + el mismo anillo pulsante que
+            // usa el feedback de ordenes (OrderMarkerFx), sin ninguna
+            // palabra en pantalla.
+            AudioDirector.PlayAt(SfxKind.AmmoPickup, transform.position, 0.5f, 0.7f);
+            OrderMarkerFx.Spawn(transform.position, ColorMoneda, 0.5f);
 
             // Pedido explicito: "al recoger una municion que tenga fisicas
             // y que desaparezca con un efecto de fisicas simples" -- en vez

@@ -66,8 +66,19 @@ namespace SP.CameraSystem
         // apuntar con la mira. Un lerp simple, no un corte seco.
         [SerializeField] float normalFov = 60f;
         [SerializeField] float zoomFov = 25f;
-        [SerializeField] float zoomLerpSpeed = 12f;
         bool zoomed;
+
+        // Pedido explicito: "al hacer zoom click derecho quiero un lerp
+        // zoom de medio segundo al entrar y salir". El Lerp de arriba
+        // (velocidad fija) era asintotico -- se acercaba rapido al
+        // principio y se quedaba "casi llegando" varios frames mas, nunca
+        // una duracion pareja. Esto persigue el FOV con un tiempo FIJO de
+        // 0.5s de punta a punta, para adentro y para afuera por igual, sin
+        // importar desde donde arranque (si se interrumpe a mitad de
+        // camino, arranca de nuevo desde el FOV actual, no pega un salto).
+        public const float ZoomLerpDuration = 0.5f;
+        float zoomTransicionElapsed = ZoomLerpDuration;
+        float zoomFovAlEmpezar;
 
         public ControlMode Mode { get; private set; } = ControlMode.Fps;
 
@@ -109,7 +120,13 @@ namespace SP.CameraSystem
             else cam.cullingMask &= ~(1 << layer);
         }
 
-        public void SetZoomed(bool value) => zoomed = value;
+        public void SetZoomed(bool value)
+        {
+            if (zoomed == value) return;
+            zoomed = value;
+            zoomFovAlEmpezar = cam != null ? cam.fieldOfView : normalFov;
+            zoomTransicionElapsed = 0f;
+        }
 
         // APUNTAR (mantener click derecho) pasa la camara a PRIMERA PERSONA de verdad: del
         // encuadre por encima del hombro se desliza al ojo del soldado (o a la mira del
@@ -173,7 +190,8 @@ namespace SP.CameraSystem
             {
                 adsBlend = Mathf.MoveTowards(adsBlend, zoomed ? 1f : 0f, Time.unscaledDeltaTime * VelocidadDeApuntado);
                 float goal = zoomed ? zoomFov : normalFov;
-                cam.fieldOfView = Mathf.Lerp(cam.fieldOfView, goal, Time.deltaTime * zoomLerpSpeed);
+                zoomTransicionElapsed = Mathf.Min(ZoomLerpDuration, zoomTransicionElapsed + Time.deltaTime);
+                cam.fieldOfView = Mathf.Lerp(zoomFovAlEmpezar, goal, SmoothStep01(zoomTransicionElapsed / ZoomLerpDuration));
                 ApplyCameraOffsets(frame);
                 AplicarRespiracion();
                 return;

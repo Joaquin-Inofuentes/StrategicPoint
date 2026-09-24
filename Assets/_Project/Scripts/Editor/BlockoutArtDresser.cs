@@ -469,7 +469,12 @@ namespace SP.EditorTools
             visual.SetParent(ambiente, false);
             var props = new[] { "P_Env_ArbolA", "P_Env_ArbolB", "P_Env_Arbusto_Grande", "P_Env_Arbusto_Medio" };
             const string obstaculo = "P_Env_Auto_Quemado";
-            const float paso = 2.4f;
+            // Pedido explicito: "en el perimetro q haya mas arboles afuera
+            // para q no se vea el vacio" -- antes UNA sola fila cada 2,4 m
+            // dejaba huecos por donde se colaba el vacio del terreno vacio.
+            // Ahora son dos filas: esta (mas densa, 1,6 m) mas una segunda
+            // fila mas afuera y mas arbolada (ver abajo).
+            const float paso = 1.6f;
             float perimetroLargo = 2f * ((x1 - x0) + (z1 - z0));
             int cantidad = Mathf.RoundToInt(perimetroLargo / paso);
             int total = 0;
@@ -491,6 +496,70 @@ namespace SP.EditorTools
                 inst.transform.position = new Vector3(pos.x, suelo, pos.z);
                 inst.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
                 inst.transform.localScale = Vector3.one * (esObstaculo ? 1f : Mathf.Lerp(1f, 1.3f, (float)rnd.NextDouble()));
+                total++;
+            }
+
+            // Segunda fila, mas afuera (5 a 9 m del borde) y solo arboles (sin autos quemados ni
+            // arbustos chicos): tapa la profundidad que la primera fila sola no alcanza a cubrir
+            // -- de costado, entre dos arboles de la fila 1 todavia se veia el vacio del fondo.
+            var arboles = new[] { "P_Env_ArbolA", "P_Env_ArbolB" };
+            const float paso2 = 3.4f;
+            int cantidad2 = Mathf.RoundToInt(perimetroLargo / paso2);
+            for (int i = 0; i < cantidad2; i++)
+            {
+                BordeDelRectangulo(i * paso2 + paso2 * 0.5f, x0, x1, z0, z1, out var p, out var yawAfuera);
+                float jitter = (float)(5f + rnd.NextDouble() * 4f);
+                var dirFuera = Quaternion.Euler(0f, yawAfuera, 0f) * Vector3.forward;
+                var pos = new Vector3(p.x, 0f, p.z) + dirFuera * jitter;
+                float suelo = terreno != null ? terreno.SampleHeight(pos) + terreno.transform.position.y : 0f;
+
+                var g = P(arboles[(int)(rnd.NextDouble() * arboles.Length) % arboles.Length]);
+                if (g == null) continue;
+                var inst = (GameObject)PrefabUtility.InstantiatePrefab(g, visual);
+                inst.transform.position = new Vector3(pos.x, suelo, pos.z);
+                inst.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
+                inst.transform.localScale = Vector3.one * Mathf.Lerp(1.2f, 1.6f, (float)rnd.NextDouble());
+                total++;
+            }
+
+            // Tercera fila: siluetas de cerros bajos en el horizonte (sin prefab de montaña en el
+            // kit de arte -- se arman a mano con primitivos, mismo criterio que el resto de FX
+            // proceduales del proyecto). Sin collider: quedan bien afuera del muro invisible, nadie
+            // los toca nunca.
+            total += Cerros(ambiente, x0, x1, z0, z1, terreno, rnd, perimetroLargo);
+            return total;
+        }
+
+        // Bultos achatados y verdosos, bien afuera y bien altos, para que la linea del horizonte
+        // deje de mostrar el vacio del terreno detras del arbolado.
+        static int Cerros(Transform ambiente, float x0, float x1, float z0, float z1, Terrain terreno, System.Random rnd, float perimetroLargo)
+        {
+            var raiz = new GameObject("Perimetro_Cerros").transform;
+            raiz.SetParent(ambiente, false);
+            const float paso = 22f;
+            int cantidad = Mathf.RoundToInt(perimetroLargo / paso);
+            var colorBase = new Color(0.22f, 0.28f, 0.18f);
+            int total = 0;
+            for (int i = 0; i < cantidad; i++)
+            {
+                BordeDelRectangulo(i * paso + (float)(rnd.NextDouble() * paso), x0, x1, z0, z1, out var p, out var yawAfuera);
+                float afuera = 16f + (float)rnd.NextDouble() * 10f;
+                var dirFuera = Quaternion.Euler(0f, yawAfuera, 0f) * Vector3.forward;
+                var pos = new Vector3(p.x, 0f, p.z) + dirFuera * afuera;
+                float suelo = terreno != null ? terreno.SampleHeight(pos) + terreno.transform.position.y : 0f;
+
+                var cerro = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                cerro.name = "Cerro";
+                Object.DestroyImmediate(cerro.GetComponent<Collider>());
+                cerro.transform.SetParent(raiz, false);
+                float ancho = Mathf.Lerp(14f, 24f, (float)rnd.NextDouble());
+                float alto = Mathf.Lerp(9f, 16f, (float)rnd.NextDouble());
+                cerro.transform.position = new Vector3(pos.x, suelo - alto * 0.35f, pos.z);
+                cerro.transform.localScale = new Vector3(ancho, alto, ancho);
+                var mr = cerro.GetComponent<MeshRenderer>();
+                var tono = Mathf.Lerp(0.8f, 1.15f, (float)rnd.NextDouble());
+                mr.sharedMaterial = SafeMaterial.Create(colorBase * tono);
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 total++;
             }
             return total;

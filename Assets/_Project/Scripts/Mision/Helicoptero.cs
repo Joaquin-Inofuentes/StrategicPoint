@@ -21,11 +21,22 @@ namespace SP.Mision
         AudioSource sonido;
         GameObject disco;
         Material matDisco;
-        float objetivoVueltas = VueltasEnEspera;
+        // Pedido explicito: "las helices del helicoptero q al inicio esten
+        // apagado solamente se encienda cuando estes volviendo". Antes
+        // objetivoVueltas arrancaba directo en VueltasEnEspera: el
+        // helicoptero giraba en ralenti desde el primer frame de la
+        // mision, aunque el jugador estuviera del otro lado del mapa sin
+        // haber rescatado a nadie todavia. Ahora arranca parado (0) y solo
+        // se prende con el primer Alerta(...) real -- que en los hechos ya
+        // solo llega cuando arranca la fase Escapar (MisionDirector.
+        // TickRescatar llama Alerta(false) justo al empezar a volver, y
+        // TickEscapar sigue llamando Alerta(cerca) de ahi en mas), asi que
+        // no hace falta tocar ningun otro archivo.
+        float objetivoVueltas = 0f;
         float proximoPolvo, proximoDisparo, rafagaHasta, pausaHasta;
         ProjectilePool pool;
 
-        public float Vueltas { get; private set; } = VueltasEnEspera;
+        public float Vueltas { get; private set; } = 0f;
         public bool EnAlerta => objetivoVueltas > VueltasEnEspera;
         public bool DisparaCobertura { get; set; }
         public int DisparosHechos { get; private set; }
@@ -123,13 +134,17 @@ namespace SP.Mision
             if (rotorCola != null) rotorCola.Rotate(Vueltas * 1.6f * dt, 0f, 0f, Space.Self);
 
             float k = Mathf.InverseLerp(VueltasEnEspera, VueltasEnAlerta, Vueltas);
+            // Motor apagado (Vueltas todavia subiendo desde 0 hacia el ralenti):
+            // sin este factor el piso de volumen de abajo (0.30) sonaba igual
+            // de fuerte con el rotor parado que en ralenti real.
+            float arrancando = Mathf.InverseLerp(0f, VueltasEnEspera, Vueltas);
             if (sonido != null)
             {
                 // El rotor no pasaba por ningun canal de mezcla: sonaba
                 // igual de fuerte aunque el jugador bajara "Efectos" a
                 // cero en Opciones. GainFor se relee cada frame (barato,
                 // cache en memoria) para que el slider surta efecto en vivo.
-                sonido.volume = Mathf.Lerp(0.30f, 1f, k) * SP.Presentation.AudioDirector.GainFor(SP.Presentation.SfxChannel.Sfx);
+                sonido.volume = Mathf.Lerp(0.30f, 1f, k) * arrancando * SP.Presentation.AudioDirector.GainFor(SP.Presentation.SfxChannel.Sfx);
                 sonido.pitch = Mathf.Lerp(0.85f, 1.25f, k);
             }
             if (disco != null && matDisco != null)
