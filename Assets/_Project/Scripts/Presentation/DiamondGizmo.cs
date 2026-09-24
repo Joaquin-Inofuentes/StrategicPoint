@@ -64,18 +64,27 @@ namespace SP.Presentation
             return go;
         }
 
-        // Material SOLIDO (no transparente) y con emision propia: pedido
+        // BUG REAL encontrado jugando: la emision iba al 100% del color base
+        // (blanco puro en el borde, rojo/azul/amarillo puros adentro). Con
+        // Bloom activo eso vuela la exposicion de TODA la pantalla apenas
+        // hay dos o tres rombos a la vista -- "la luz que emana es
+        // demasiada, opaca todo". El color base (mat.color, sin emision) ya
+        // es solido y saturado y se lee bien de por si; la emision ahora es
+        // solo un empujon chico para que no se apague en el modo noche, no
+        // el brillo principal.
+        const float IntensidadEmision = 0.12f;
+
+        // Material SOLIDO (no transparente) y con un toque de emision: pedido
         // explicito de "mucho contraste con el ambiente", y estos rombos
         // tienen que leerse igual de bien en el modo noche/niebla del nivel
-        // que a pleno dia. Emission los deja brillando parejo sin depender
-        // de cuanta luz de escena les llegue encima.
+        // que a pleno dia.
         public static Material NuevoMaterial(Color color)
         {
             var mat = SafeMaterial.Create(color);
             if (mat.HasProperty("_EmissionColor"))
             {
                 mat.EnableKeyword("_EMISSION");
-                mat.SetColor("_EmissionColor", color);
+                mat.SetColor("_EmissionColor", color * IntensidadEmision);
                 mat.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
             }
             // Cull Off: la malla del rombo tiene una sola cara (ver el
