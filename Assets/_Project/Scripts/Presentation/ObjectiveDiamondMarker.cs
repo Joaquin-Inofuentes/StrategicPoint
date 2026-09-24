@@ -26,7 +26,7 @@ namespace SP.Presentation
         const float TamanoInterior = 0.72f;
         const float DistanciaVisible = 220f; // bien mas lejos que enemigo/aliado: es el faro del nivel
 
-        static readonly Color ColorObjetivo = new Color(1f, 0.85f, 0.05f, 1f);
+        static readonly Color ColorObjetivo = DiamondGizmo.ColorObjetivo;
         static readonly Color ColorBorde = Color.white;
 
         System.Func<Vector3> obtenerPunto;
@@ -65,6 +65,8 @@ namespace SP.Presentation
         void Update()
         {
             if (marcador == null || obtenerPunto == null) return;
+
+            if (RomboVisibilidad.Suprimidos) { marcador.SetActive(false); return; }
 
             var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam == null) { marcador.SetActive(false); return; }

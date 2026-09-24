@@ -53,9 +53,10 @@ namespace SP.Presentation
         // "mucho contraste": el cilindro viejo era 16% opaco y se perdia
         // contra el pasto/tierra. Rojo/azul puros + emision (ver
         // DiamondGizmo.NuevoMaterial) se leen igual de bien de dia, de
-        // noche o contra niebla.
-        static readonly Color ColorEnemigo = new Color(1f, 0.05f, 0.05f, 1f);
-        static readonly Color ColorAliado = new Color(0.1f, 0.45f, 1f, 1f);
+        // noche o contra niebla. Compartidos con DiamondGizmo para que el
+        // minimapa use exactamente el mismo par.
+        static readonly Color ColorEnemigo = DiamondGizmo.ColorEnemigo;
+        static readonly Color ColorAliado = DiamondGizmo.ColorAliado;
         static readonly Color ColorBorde = Color.white;
 
         // El rombo blanco de fondo es identico para todos los enemigos Y
@@ -124,6 +125,8 @@ namespace SP.Presentation
         void Update()
         {
             if (dead || marcador == null || soldier == null || soldier.Health == null) return;
+
+            if (RomboVisibilidad.Suprimidos) { marcador.SetActive(false); return; }
 
             var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam == null) { marcador.SetActive(false); return; }

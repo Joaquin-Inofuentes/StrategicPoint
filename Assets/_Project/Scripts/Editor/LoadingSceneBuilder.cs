@@ -86,9 +86,27 @@ namespace SP.EditorTools
             rellenoRt.anchorMin = Vector2.zero; rellenoRt.anchorMax = Vector2.one;
             rellenoRt.offsetMin = rellenoRt.offsetMax = Vector2.zero;
 
+            // Pedido explicito: "que se vea el porcentaje de carga lentamente" --
+            // numero debajo de la barra, mismo dorado que el relleno.
+            var porcentajeGO = new GameObject("Porcentaje", typeof(Text));
+            porcentajeGO.transform.SetParent(canvasGO.transform, false);
+            var porcentaje = porcentajeGO.GetComponent<Text>();
+            porcentaje.font = font;
+            porcentaje.text = "0%";
+            porcentaje.alignment = TextAnchor.MiddleCenter;
+            porcentaje.color = new Color(0.98f, 0.82f, 0.25f, 0.95f);
+            porcentaje.fontSize = 18;
+            porcentaje.fontStyle = FontStyle.Bold;
+            porcentaje.raycastTarget = false;
+            var porcentajeRt = porcentajeGO.GetComponent<RectTransform>();
+            porcentajeRt.anchorMin = porcentajeRt.anchorMax = new Vector2(0.5f, 0.5f);
+            porcentajeRt.anchoredPosition = new Vector2(0f, -34f);
+            porcentajeRt.sizeDelta = new Vector2(200f, 30f);
+
             var controllerGO = new GameObject("LoadingScreen", typeof(LoadingScreenController));
             var controller = controllerGO.GetComponent<LoadingScreenController>();
             controller.barra = relleno;
+            controller.textoPorcentaje = porcentaje;
 
             Directory.CreateDirectory("Assets/_Project/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);

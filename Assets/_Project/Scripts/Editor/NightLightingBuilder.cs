@@ -32,7 +32,7 @@ namespace SP.EditorTools
             DynamicGI.UpdateEnvironment();
             AplicarNiebla();
             PonerLucesDeCamino();
-            PonerBarandasDeCamino();
+            QuitarBarandasDeCamino();
 
             // BUG REAL encontrado en vivo: la MainCamera de SC_Gameplay tiene clearFlags=SolidColor
             // (limpia a un gris/blanco fijo) -- con eso, NINGUN skybox se dibuja jamas, la escena se
@@ -93,29 +93,6 @@ namespace SP.EditorTools
         const float EspaciadoLuces = 18f;
         const float AlturaLuces = 3f;
         const int MaxLuces = 14;
-
-        // Esquinas CRUDAS del camino real de mision (Helipuerto -> Plaza ->
-        // RefugioDelCivil), sin re-muestrear -- las usan tanto las luces
-        // (que las re-muestrean mas fino en PonerLucesDeCamino) como las
-        // barandas nuevas (que necesitan los tramos RECTOS entre esquinas
-        // para no curvar un modulo rigido).
-        static List<Vector3> ObtenerEsquinasDelCamino(MisionDirector director)
-        {
-            var esquinas = new List<Vector3> { director.Helipuerto };
-            var tramo1 = new List<Vector3>();
-            if (NavService.Graph.TryFindPath(director.Helipuerto, director.Plaza, tramo1) && tramo1.Count > 0)
-                esquinas.AddRange(tramo1);
-            else
-                esquinas.Add(director.Plaza);
-
-            var tramo2 = new List<Vector3>();
-            if (NavService.Graph.TryFindPath(director.Plaza, director.RefugioDelCivil, tramo2) && tramo2.Count > 0)
-                esquinas.AddRange(tramo2);
-            else
-                esquinas.Add(director.RefugioDelCivil);
-
-            return esquinas;
-        }
 
         static void PonerLucesDeCamino()
         {
@@ -187,76 +164,15 @@ namespace SP.EditorTools
             luz.shadows = LightShadows.None; // un farol por luz dinamica con sombras cada 18 m es caro y no se nota a esa escala
         }
 
-        // Pedido explicito: "el camino debe estar iluminado con barandas y
-        // las barandas... deben ser destruibles y colliders". Se paran
-        // barandas de madera (P_Mod_Valla_Madera, el mismo modulo de 3.83 m
-        // de ancho que ya usan los muros del blockout) a los dos lados de
-        // CADA tramo recto del camino real de mision, estiradas para cubrir
-        // el tramo entero sin huecos (mismo criterio de BlockoutArtDresser.Muro),
-        // con collider real y ObstacleMarker (destructible) via el helper
-        // que ya usa el resto del arte del nivel.
-        const string PrefabBaranda = "Assets/_Project/Prefabs/ArteMundo/P_Mod_Valla_Madera.prefab";
-        const float AnchoModuloBaranda = 3.83f;
-        const float OffsetBaranda = 3f;      // separacion del centro del camino a cada lado
-        const int VidaBaranda = 70;
-
-        static void PonerBarandasDeCamino()
+        // Pedido explicito: "quita las vallas" -- las barandas de madera que
+        // antes bordeaban el camino de mision (P_Mod_Valla_Madera) molestaban
+        // y se sacan. Esto NO solo deja de ponerlas: las escenas horneadas en
+        // sesiones anteriores ya las tenian guardadas, asi que se borra
+        // tambien la raiz vieja si aparece (idempotente).
+        static void QuitarBarandasDeCamino()
         {
             var raizVieja = GameObject.Find("CaminoBarandas");
             if (raizVieja != null) Object.DestroyImmediate(raizVieja);
-
-            var director = Object.FindFirstObjectByType<MisionDirector>();
-            if (director == null) return;
-
-            var modulo = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabBaranda);
-            if (modulo == null)
-            {
-                Debug.LogWarning($"[NightLightingBuilder] No se encontro {PrefabBaranda}: se omiten las barandas.");
-                return;
-            }
-
-            var esquinas = ObtenerEsquinasDelCamino(director);
-            if (esquinas.Count < 2) return;
-
-            var terreno = Terrain.activeTerrain;
-            var raizGo = new GameObject("CaminoBarandas");
-            int puestas = 0;
-            for (int i = 0; i < esquinas.Count - 1; i++)
-            {
-                Vector3 a = esquinas[i], b = esquinas[i + 1];
-                Vector3 plano = new Vector3(b.x - a.x, 0f, b.z - a.z);
-                float largo = plano.magnitude;
-                if (largo < 0.5f) continue; // esquinas pegadas (cambio de altura, curva cerrada): sin tramo recto que bordear
-
-                Vector3 dir = plano / largo;
-                Vector3 lateral = new Vector3(-dir.z, 0f, dir.x); // perpendicular en el plano XZ
-                Quaternion rot = Quaternion.FromToRotation(Vector3.right, dir);
-
-                foreach (float lado in new[] { -1f, 1f })
-                {
-                    Vector3 offset = lateral * (OffsetBaranda * lado);
-                    int cant = Mathf.Max(1, Mathf.RoundToInt(largo / AnchoModuloBaranda));
-                    float escalaAncho = largo / (cant * AnchoModuloBaranda);
-                    for (int m = 0; m < cant; m++)
-                    {
-                        float u = (m + 0.5f) / cant;
-                        Vector3 pos = Vector3.Lerp(a, b, u) + offset;
-                        // El offset lateral puede caer en un desnivel distinto al de la
-                        // linea central del camino (terreno no siempre plano): se
-                        // resamplea la altura real del terreno en el punto final.
-                        if (terreno != null) pos.y = terreno.SampleHeight(pos) + terreno.transform.position.y;
-
-                        var inst = (GameObject)PrefabUtility.InstantiatePrefab(modulo, raizGo.transform);
-                        foreach (var c in inst.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
-                        inst.transform.position = pos;
-                        inst.transform.rotation = rot;
-                        inst.transform.localScale = new Vector3(escalaAncho, 1f, 1f);
-                        BlockoutArtDresser.AgregarColliderYDestruccion(inst, esDestructible: true, vida: VidaBaranda, esBarril: false);
-                        puestas++;
-                    }
-                }
-            }
-            Debug.Log($"[NightLightingBuilder] {puestas} tramos de baranda puestos a lo largo del camino de mision.");
         }
 
         static Material ConstruirMaterialDeCielo()

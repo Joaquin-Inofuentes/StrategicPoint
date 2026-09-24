@@ -63,6 +63,13 @@ namespace SP.Player
             var caja = raiz.AddComponent<CajaDeSuministros>();
             caja.renderers = raiz.GetComponentsInChildren<Renderer>();
             caja.basePos = raiz.transform.position;
+            // Pedido explicito: "los interactuables en el piso resalten con
+            // un cilindro... solamente al apuntarle".
+            if (Application.isPlaying)
+            {
+                var resaltado = PisoInteractableHighlight.Agregar(raiz.transform, 1.3f, -0.45f);
+                resaltado.CondicionExtra = () => caja.Disponible;
+            }
             return caja;
         }
 

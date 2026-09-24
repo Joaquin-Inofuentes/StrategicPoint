@@ -559,7 +559,10 @@ namespace SP.UI
             switch (result.Type)
             {
                 case AimTargetType.Ally:
-                    CurrentPrompt = $"[Q] radial: poseer a {result.Soldier.DisplayName}";
+                    // Pedido explicito: sin cartel de texto -- el rombo con
+                    // engranaje de InteractGearMarker (PlayerInputDriver.
+                    // ActualizarPromptContextual) ya avisa que es interactuable.
+                    CurrentPrompt = "";
                     currentAimTint = AllyTint;
                     break;
                 case AimTargetType.Enemy:
@@ -575,7 +578,7 @@ namespace SP.UI
                     // destruida -- Vehicle.Mount() ya lo rechaza en
                     // silencio, pero el cartel no avisaba nada, como si
                     // sí fuera a funcionar.
-                    CurrentPrompt = result.Vehicle.IsDestroyed ? "Vehículo destruido" : "[E] subir · [Q] radial: subir a todos";
+                    CurrentPrompt = "";
                     currentAimTint = result.Vehicle.IsDestroyed ? ObstacleTint : VehicleTint;
                     break;
                 case AimTargetType.Obstacle:
@@ -585,11 +588,7 @@ namespace SP.UI
                     // municion contra ella.
                     bool esDestructible = result.HitTransform != null
                         && result.HitTransform.GetComponent<SP.Presentation.ObstacleMarker>() != null;
-                    // Solo si esta cerca: apuntando a un muro a 100 m el cartel gigante tapaba el centro
-                    // de la pantalla sin que el jugador pudiera hacer nada con esa informacion.
-                    var camObs = SP.Core.CamaraPrincipal.Actual;
-                    bool cerca = camObs == null || (camObs.transform.position - result.Point).sqrMagnitude <= DistanciaMaximaCartelObstaculo * DistanciaMaximaCartelObstaculo;
-                    CurrentPrompt = !cerca ? "" : esDestructible ? "Obstáculo destructible" : "Obstáculo";
+                    CurrentPrompt = "";
                     currentAimTint = esDestructible ? DestructibleTint : ObstacleTint;
                     break;
                 case AimTargetType.Ground:
@@ -646,17 +645,6 @@ namespace SP.UI
             UpdateSoldierInfo(result);
             UpdateVehicleInfo(result);
             UpdateEnemyHealthCircle(result);
-        }
-
-        // El driver conoce lo que el radial ofrece para lo apuntado: lo escribe aca (dorado = accion contextual).
-        public void PonerPromptContextual(string texto, bool destacado)
-        {
-            if (promptText == null) return;
-            promptText.text = texto;
-            promptText.color = destacado ? new Color(1f, 0.85f, 0.25f) : Color.white;
-            promptText.gameObject.SetActive(!string.IsNullOrEmpty(texto));
-            if (destacado && crosshair != null && !flashing) crosshair.color = new Color(1f, 0.85f, 0.25f);
-            CurrentPrompt = texto;
         }
 
         void UpdateSoldierInfo(AimResult result)

@@ -1,4 +1,5 @@
 using UnityEngine;
+using SP.Actors;
 using SP.Core;
 using SP.Combat;
 
@@ -10,7 +11,20 @@ namespace SP.Presentation
     // geometría real, solo estos íconos de colores sobre fondo negro.
     public class MinimapIcon : MonoBehaviour
     {
-        public Transform Target;
+        [SerializeField] Transform target;
+        // Propiedad (no campo) a proposito: BUG REAL encontrado al escribir
+        // esto -- Spawn() hace "AddComponent<MinimapIcon>()" y RECIEN
+        // DESPUES asigna Target; OnEnable ya corrio para entonces (Unity lo
+        // llama en el mismo AddComponent), asi que DetectarSoldado() se
+        // encontraba con Target en null y nunca coloreaba por equipo a los
+        // iconos creados en runtime (los de la escena horneada no tenian
+        // este problema: su Target ya viene serializado ANTES de OnEnable).
+        // El setter vuelve a intentarlo apenas Target llega de verdad.
+        public Transform Target
+        {
+            get => target;
+            set { target = value; if (Application.isPlaying) DetectarSoldado(); }
+        }
         [SerializeField] float height = 55f;
         // El icono es un circulo chato: rotarlo no cambia nada visible.
         // Para que el minimapa diga "hacia donde estas mirando" (no solo
@@ -51,6 +65,50 @@ namespace SP.Presentation
             if (selfRenderer != null) selfRenderer.enabled = false;
         }
 
+        // Pedido explicito: "que haya muchisimo contraste entre environment
+        // y soldados e interactuables" + "los enemigos, aliados y resto que
+        // resalten con doble triangulo y colores iguales a los rombos". Los
+        // iconos de soldado en la escena real (SC_Gameplay) venian con su
+        // color pintado A MANO en el material de la escena -- pedirle al
+        // jugador o a un editor que retoque decenas de soldados a mano para
+        // este cambio de paleta seria fragil (el proximo soldado que se
+        // agregue quedaria con el color viejo). En cambio, cualquier icono
+        // cuyo Target tenga un Soldier se repinta solo por equipo (mismos
+        // colores que DiamondGizmo) y se convierte a la malla de doble
+        // triangulo, sin importar que traiga serializado.
+        Soldier soldierDetectado;
+        TeamId equipoPintadoMinimapa;
+        bool autoColoreado;
+
+        void DetectarSoldado()
+        {
+            if (Target == null) return;
+            soldierDetectado = Target.GetComponent<Soldier>();
+            if (soldierDetectado == null) return;
+            ConvertirEnDobleTriangulo();
+            RepintarPorEquipo(forzar: true);
+            autoColoreado = true;
+        }
+
+        void RepintarPorEquipo(bool forzar = false)
+        {
+            if (soldierDetectado == null) return;
+            if (!forzar && soldierDetectado.Team == equipoPintadoMinimapa) return;
+            equipoPintadoMinimapa = soldierDetectado.Team;
+            EnsureRenderer();
+            if (selfRenderer == null) return;
+            var color = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
+            // ".material" (no ".sharedMaterial"): si el icono vino de la
+            // escena con un material COMPARTIDO entre varios soldados,
+            // ".material" lo clona automaticamente para este renderer antes
+            // de tocarlo -- sin esto, repintar a un enemigo podria repintar
+            // de paso a todos los que comparten el mismo asset de material.
+            var mat = selfRenderer.material;
+            if (mat == null) return;
+            mat.color = color;
+            if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
+        }
+
         // selfRenderer es un campo privado comun: NO sobrevive al domain
         // reload al entrar en Play. OnEnable si vuelve a correr ahi, asi
         // que la referencia se recompone sola.
@@ -68,6 +126,7 @@ namespace SP.Presentation
             // los iconos de SC_Gameplay estan serializados con la cuña, y
             // reconstruirlos a mano seria un diff de escena por soldado.
             if (Application.isPlaying && (esTriangulo || directionMarker != null)) ConvertirEnTriangulo();
+            if (Application.isPlaying) DetectarSoldado();
             WorldUiDirector.Register(this);
         }
 
@@ -99,8 +158,9 @@ namespace SP.Presentation
                 return false;
             }
             transform.position = new Vector3(Target.position.x, height, Target.position.z);
-            if (esTriangulo || directionMarker != null)
+            if (esTriangulo || esDobleTriangulo || directionMarker != null)
                 transform.rotation = Quaternion.Euler(0f, Target.eulerAngles.y, 0f);
+            if (autoColoreado) RepintarPorEquipo();
             return true;
         }
 
@@ -193,6 +253,56 @@ namespace SP.Presentation
             return true;
         }
 
+        // Pedido explicito: "doble triangulo" -- un icono con mas superficie
+        // y mas contraste que la flecha fina de un solo triangulo, leyendose
+        // como un "moño"/reloj de arena: una punta apunta hacia donde mira la
+        // unidad (igual que el triangulo simple) y la otra, mas chica, hacia
+        // atras, para que el blip se note incluso a los zooms mas alejados
+        // del minimapa.
+        [SerializeField] bool esDobleTriangulo;
+
+        static Mesh mallaDobleTriangulo;
+
+        static Mesh MallaDobleTriangulo()
+        {
+            if (mallaDobleTriangulo != null) return mallaDobleTriangulo;
+            var m = new Mesh { name = "MinimapDobleTriangulo", hideFlags = HideFlags.HideAndDontSave };
+            m.vertices = new[]
+            {
+                new Vector3(0f, 0f, 0.55f),      // 0 punta delantera
+                new Vector3(-0.42f, 0f, -0.08f),  // 1
+                new Vector3(0.42f, 0f, -0.08f),   // 2
+                new Vector3(0f, 0f, -0.55f),      // 3 punta trasera (mas chica de base)
+                new Vector3(-0.28f, 0f, 0.08f),   // 4
+                new Vector3(0.28f, 0f, 0.08f),    // 5
+            };
+            // Dos triangulos, cada uno con sus dos vueltas (visible desde
+            // arriba y desde abajo, mismo motivo que el resto de las mallas
+            // de este archivo).
+            m.triangles = new[] { 0, 1, 2, 0, 2, 1, 3, 4, 5, 3, 5, 4 };
+            m.normals = new[] { Vector3.up, Vector3.up, Vector3.up, Vector3.up, Vector3.up, Vector3.up };
+            m.RecalculateBounds();
+            m.hideFlags = HideFlags.HideAndDontSave;
+            mallaDobleTriangulo = m;
+            return m;
+        }
+
+        public bool ConvertirEnDobleTriangulo()
+        {
+            if (directionMarker != null)
+            {
+                var go = directionMarker.gameObject;
+                if (Application.isPlaying) Destroy(go); else DestroyImmediate(go);
+                directionMarker = null;
+            }
+            var filtro = GetComponent<MeshFilter>();
+            if (filtro == null) return false;
+            filtro.sharedMesh = MallaDobleTriangulo();
+            esTriangulo = false;
+            esDobleTriangulo = true;
+            return true;
+        }
+
         // C2: la forma distingue la categoria (unidad vs interactuable),
         // el color distingue el bando. Mismo patron que esTriangulo/
         // MallaTriangulo, para un cuadrado en vez de una cuña.
@@ -238,9 +348,12 @@ namespace SP.Presentation
 
         // Color fijo para los obstaculos del minimapa (D1): no son un
         // bando -- no atacan, no se poseen -- asi que no comparten paleta
-        // con el azul de la escuadra ni el rojo enemigo. Un gris piedra
-        // que se lee como "terreno", no como unidad.
-        public static readonly Color ObstacleMinimapColor = new Color(0.55f, 0.50f, 0.42f);
+        // con el azul de la escuadra ni el rojo enemigo. Pedido explicito:
+        // "muchisimo contraste" y "los rectangulos gris claro, fondo negro
+        // oscuro" -- el gris piedra apagado de antes casi se fundia con el
+        // fondo del minimapa; un gris CLARO sobre el fondo casi negro
+        // (MinimapFollow.ColorDeFondo) se lee de un vistazo.
+        public static readonly Color ObstacleMinimapColor = new Color(0.80f, 0.82f, 0.85f);
 
         const string ObstaclesRootName = "ObstaculoIconosRoot";
 

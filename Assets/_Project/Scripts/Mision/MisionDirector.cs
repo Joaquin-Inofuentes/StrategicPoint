@@ -374,7 +374,7 @@ namespace SP.Mision
                 var s = CrearEnemigo($"Enemigo_Refuerzo_{i + 1}", puntos[i]);
                 if (s != null) Patrullar(s, 6f, 4f);
             }
-            AlertQueue.Push("REFUERZOS ENEMIGOS EN EL CAMINO DE VUELTA", AlertPriority.Alta, 3f);
+            // Pedido explicito: quitar el aviso "REFUERZOS ENEMIGOS EN EL CAMINO DE VUELTA" -- molesta.
             GameLog.Line($"Mision: refuerzos ({n})");
         }
 

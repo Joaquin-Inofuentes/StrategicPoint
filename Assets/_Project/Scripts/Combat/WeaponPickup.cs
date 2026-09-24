@@ -1,5 +1,6 @@
 using UnityEngine;
 using SP.Core;
+using SP.Presentation;
 
 namespace SP.Combat
 {
@@ -32,6 +33,11 @@ namespace SP.Combat
 
         public WeaponKind Kind => kind;
         public Color Color => color;
+
+        // Pedido explicito: "los interactuables en el piso resalten con un
+        // cilindro... solamente al apuntarle" -- se arma solo (no depende de
+        // como se haya colocado el pickup: a mano en la escena o por codigo).
+        void Awake() { if (Application.isPlaying) PisoInteractableHighlight.Agregar(transform, 0.9f, -0.5f); }
 
         // Antes tomaba tambien damage/cooldown y los guardaba en campos
         // propios -- muertos desde que EquipOn() (mas abajo) empezo a leer

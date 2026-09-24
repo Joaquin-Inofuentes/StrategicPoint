@@ -1096,7 +1096,11 @@ namespace SP.EditorTools
             Check($"Apuntando... {(resultAlly.Type == AimTargetType.Ally ? resultAlly.Soldier.DisplayName + " en la mira" : "nada en la mira")}", resultAlly.Type == AimTargetType.Ally && resultAlly.Soldier == kes);
 
             aimUiRef.UpdateFromAimResult(resultAlly);
-            Check("Se activo la UI de apuntado con exito", aimUiRef.IsVisible && aimUiRef.CurrentPrompt.Contains(kes.DisplayName));
+            // Pedido explicito: ya no hay cartel de texto al apuntar a un
+            // aliado (lo reemplazo el rombo con engranaje de
+            // InteractGearMarker) -- lo que sigue siendo verificable aca es
+            // que la mirilla tomo el tinte de "aliado" al apuntarlo.
+            Check("Se activo la UI de apuntado con exito", aimUiRef.CurrentAimTintColor == new Color(0.4f, 0.85f, 1f));
 
             TestLog.Step("Se simula apretar F");
             PossessionService.Swap(brain, kes);

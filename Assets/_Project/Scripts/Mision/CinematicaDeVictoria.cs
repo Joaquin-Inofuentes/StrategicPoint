@@ -80,6 +80,11 @@ namespace SP.Mision
         IEnumerator Rutina(MisionDirector m, PlayerInputDriver driver, GameOutcomeController outcome, Helicoptero heli, GameObject enemigoPrefab, AudioSource tension)
         {
             EnCurso = true;
+            // Pedido explicito: "en la cinematica se desactivan todos los
+            // rombos, todos" -- el jugador ya no controla la camara ni
+            // apunta nada durante la secuencia, asi que los rombos de
+            // equipo/objetivo/interaccion solo estorbarian el plano.
+            RomboVisibilidad.Suprimidos = true;
             ArmarLienzo();
 
             // 1. el jugador pierde el control y se apaga el HUD del juego
@@ -269,6 +274,7 @@ namespace SP.Mision
         IEnumerator EsperarYCerrar(GameOutcomeController outcome, float espera)
         {
             yield return new WaitForSeconds(espera);
+            RomboVisibilidad.Suprimidos = false;
             foreach (var s in horda) if (s != null) Destroy(s.gameObject);
             horda.Clear();
             foreach (var cv in FindObjectsByType<Canvas>(FindObjectsInactive.Include))

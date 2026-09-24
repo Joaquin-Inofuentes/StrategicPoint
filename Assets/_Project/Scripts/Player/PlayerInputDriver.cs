@@ -2776,31 +2776,48 @@ namespace SP.Player
             return c;
         }
 
-        // Texto sobre la mira: dice QUE ofrece el radial para lo apuntado (dorado = accion contextual).
+        // Pedido explicito: "que no aparezca texto sino arriba un rombo con
+        // imagen de un engranaje para saber que es interactuable -- enemigos,
+        // aliados, todo -- y ese rombo resalte al apuntarle". Ya no escribe
+        // ningun cartel: decide si hay algo interactuable bajo la mira, DONDE
+        // flota el rombo (altura propia por tipo de objetivo) y si hay una
+        // accion lista ahora mismo (destacado = dorado) o es solo informativo
+        // (gris), y se lo pasa a InteractGearMarker.
+        const float AlturaGearSoldado = 3.0f;   // por encima del rombo de equipo (Altura=2.4 en UnitLocatorCylinder)
+        const float AlturaGearVehiculo = 3.6f;
+        const float AlturaGearTorreta = 2.6f;
+        const float AlturaGearObstaculo = 2.0f;
+
         void ActualizarPromptContextual(AimResult aim)
         {
-            if (AimUiRef == null) return;
-            if (OrdenesMenu != null && OrdenesMenu.Abierto) return;
+            if (OrdenesMenu != null && OrdenesMenu.Abierto) { InteractGearMarker.Ocultar(); return; }
             var yo = Brain != null ? Brain.Current : null;
-            string texto = null;
+            bool mostrar = false;
             bool destacado = true;
+            Vector3 ancla = Vector3.zero;
+
             switch (aim.Type)
             {
                 case AimTargetType.Enemy:
-                    // Pedido explicito: sacar el cartel de "ATACAR" -- molesta.
-                    // Sin esto, AimUI.UpdateFromAimResult ya dejo CurrentPrompt
-                    // vacio para Enemy (ver su comentario), asi que no escribir
-                    // nada aca alcanza para que no aparezca texto.
+                    // Antes no ofrecia ningun cartel (se saco el "ATACAR" por
+                    // pedido explicito); ahora SI muestra el rombo -- es lo
+                    // que reemplaza a ese cartel, con imagen de engranaje en
+                    // vez de la palabra "atacar" tapando pantalla.
+                    if (aim.Soldier != null) { mostrar = true; destacado = true; ancla = aim.Soldier.transform.position + Vector3.up * AlturaGearSoldado; }
                     break;
                 case AimTargetType.Ally:
                     if (aim.Soldier == null) break;
-                    if (aim.Soldier.Role == RoleType.Civilian) { texto = Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null ? $"[Q] toque: CURAR a {aim.Soldier.DisplayName} ({aim.Soldier.Health.Current}/{aim.Soldier.Health.MaxHealth})" : $"Civil: {aim.Soldier.DisplayName}"; destacado = Herido(aim.Soldier); }
-                    else if (Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null) texto = $"[Q] toque: CURAR a {aim.Soldier.DisplayName} ({aim.Soldier.Health.Current}/{aim.Soldier.Health.MaxHealth})  ·  [Q] mantener: POSEER / menu";
-                    else { texto = $"[Q] toque: {aim.Soldier.DisplayName} TE SIGUE  ·  [Q] mantener: POSEER / menu"; destacado = false; }
+                    mostrar = true;
+                    ancla = aim.Soldier.transform.position + Vector3.up * AlturaGearSoldado;
+                    if (aim.Soldier.Role == RoleType.Civilian) destacado = Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null;
+                    else if (Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null) destacado = true;
+                    else destacado = false; // simplemente te sigue: interactuable, pero sin accion urgente
                     break;
                 case AimTargetType.Caido:
-                    texto = aim.Soldier != null && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null ? $"[Q] toque: REANIMAR a {aim.Soldier.DisplayName}  ·  [Q] mantener: menu" : aim.Soldier != null ? $"{aim.Soldier.DisplayName} esta caido (no queda medico)" : null;
-                    destacado = aim.Soldier != null && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null;
+                    if (aim.Soldier == null) break;
+                    mostrar = true;
+                    ancla = aim.Soldier.transform.position + Vector3.up * AlturaGearSoldado;
+                    destacado = PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null;
                     break;
                 case AimTargetType.Obstacle:
                 {
@@ -2809,21 +2826,36 @@ namespace SP.Player
                     if (m != null && Demolicion.EsDemolible(m, out motivo))
                     {
                         bool asalto = (yo != null && yo.Role == RoleType.Assault) || DestinatariosDeOrden().Exists(x => x.Role == RoleType.Assault);
-                        texto = asalto ? "[Q] DEMOLER este muro (carga de 4 s)" : "Muro destructible: hace falta un soldado de ASALTO";
+                        mostrar = true;
                         destacado = asalto;
+                        ancla = aim.Point + Vector3.up * AlturaGearObstaculo;
                     }
                     break;
                 }
                 case AimTargetType.Vehicle:
-                    if (aim.Vehicle != null && !aim.Vehicle.IsDestroyed && aim.Vehicle.Bando == TeamId.Player) texto = "[E] SUBIR AL TANQUE  ·  [Q] toque: subir a todos  ·  [Q] mantener: menu del tanque";
-                    else if (aim.Vehicle != null && aim.Vehicle.IsDestroyed) { texto = "Vehiculo destruido"; destacado = false; }
+                    if (aim.Vehicle != null && !aim.Vehicle.IsDestroyed && aim.Vehicle.Bando == TeamId.Player)
+                    {
+                        mostrar = true; destacado = true;
+                        ancla = aim.Vehicle.transform.position + Vector3.up * AlturaGearVehiculo;
+                    }
+                    else if (aim.Vehicle != null && aim.Vehicle.IsDestroyed)
+                    {
+                        mostrar = true; destacado = false;
+                        ancla = aim.Vehicle.transform.position + Vector3.up * AlturaGearVehiculo;
+                    }
                     break;
                 case AimTargetType.Torreta:
-                    if (aim.Torreta != null) texto = aim.Torreta.Libre ? "[E] USAR LA AMETRALLADORA FIJA  ·  [Q] radial" : "Ametralladora fija (ocupada)";
-                    destacado = aim.Torreta != null && aim.Torreta.Libre;
+                    if (aim.Torreta != null)
+                    {
+                        mostrar = true;
+                        destacado = aim.Torreta.Libre;
+                        ancla = aim.Torreta.transform.position + Vector3.up * AlturaGearTorreta;
+                    }
                     break;
             }
-            if (texto != null) AimUiRef.PonerPromptContextual(texto, destacado);
+
+            if (mostrar) InteractGearMarker.Mostrar(ancla, destacado);
+            else InteractGearMarker.Ocultar();
         }
 
         // -----------------------------------------------------------

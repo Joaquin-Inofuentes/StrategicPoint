@@ -13,11 +13,28 @@ namespace SP.Presentation
     public class LoadingScreenController : MonoBehaviour
     {
         public Image barra;
+        public Text textoPorcentaje;
 
         // SceneManager tapa el progreso real en 0.9 mientras allowSceneActivation
         // esta en false -- sin este mapeo la barra se queda pegada en 90% varios
         // cuadros y despues salta de golpe a 100 al activarse.
         const float TopeProgresoReal = 0.9f;
+
+        // Pedido explicito: "que inicie la pantalla, espere medio segundo y
+        // inicie a cargar" -- la pantalla de CARGANDO aparece de inmediato
+        // (Start ya puso 0%), pero SceneManager.LoadSceneAsync recien arranca
+        // despues de esta espera, para que el jugador alcance a leer "CARGANDO"
+        // antes de que el numero empiece a moverse.
+        const float EsperaInicial = 0.5f;
+
+        // Pedido explicito: "que termine de cargar lentamente, quiero que se
+        // vea el porcentaje de carga lentamente" -- una escena chica carga de
+        // verdad en 1-2 cuadros (SceneManager.LoadSceneAsync.progress salta
+        // de 0 a 0.9 casi instantaneo), asi que el numero mostrado NO sigue el
+        // progreso real: sube a este ritmo fijo, mas lento que cualquier carga
+        // real, y se queda esperando al progreso real solo si este fuera mas
+        // lento todavia (nunca se adelanta a la carga de verdad).
+        const float DuracionMinimaCarga = 2.6f;
 
         // Minimo de tiempo que se ve esta pantalla. Si la escena destino ya esta
         // en cache (recargar SC_Gameplay al Reintentar, por ejemplo) la carga
@@ -36,15 +53,18 @@ namespace SP.Presentation
             // nunca arranca.
             if (string.IsNullOrEmpty(destino)) destino = "SC_MainMenu";
 
-            float inicio = Time.unscaledTime;
             SetProgreso(0f);
+            yield return new WaitForSecondsRealtime(EsperaInicial);
 
+            float inicio = Time.unscaledTime;
             var op = SceneManager.LoadSceneAsync(destino);
             op.allowSceneActivation = false;
 
-            while (op.progress < TopeProgresoReal)
+            float t = 0f;
+            while (t < 1f || op.progress < TopeProgresoReal)
             {
-                SetProgreso(op.progress / TopeProgresoReal);
+                t = Mathf.Min(1f, t + Time.unscaledDeltaTime / DuracionMinimaCarga);
+                SetProgreso(Mathf.Min(t, op.progress / TopeProgresoReal));
                 yield return null;
             }
             SetProgreso(1f);
@@ -57,7 +77,9 @@ namespace SP.Presentation
 
         void SetProgreso(float t)
         {
-            if (barra != null) barra.fillAmount = Mathf.Clamp01(t);
+            t = Mathf.Clamp01(t);
+            if (barra != null) barra.fillAmount = t;
+            if (textoPorcentaje != null) textoPorcentaje.text = Mathf.RoundToInt(t * 100f) + "%";
         }
     }
 }

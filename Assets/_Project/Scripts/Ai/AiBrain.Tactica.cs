@@ -252,7 +252,6 @@ namespace SP.Ai
 
         void ComenzarSeguirAlJugador(Soldier lider)
         {
-            bool deCobertura = enCobertura;
             LiberarCobertura();
             target = null;
             hasOrder = true;
@@ -271,8 +270,10 @@ namespace SP.Ai
             if (Time.unscaledTime - ultimoAvisoDeSeguir > 4f)
             {
                 ultimoAvisoDeSeguir = Time.unscaledTime;
-                Feedback.Accion(SfxKind.FollowCall, deCobertura ? "ALIADOS TE SIGUEN (DEJAN LA COBERTURA)" : "ALIADOS TE SIGUEN",
-                    self.transform.position, Feedback.Ok, aviso: true, pulso: true, volumen: 0.5f);
+                // Pedido explicito: quitar el cartel "ALIADOS TE SIGUEN" -- molesta.
+                // Se deja solo el sonido (sin texto no hay WorldTag ni AlertQueue,
+                // ver Feedback.Accion) como confirmacion de que la orden llego.
+                Feedback.Accion(SfxKind.FollowCall, null, self.transform.position, Feedback.Ok, aviso: true, pulso: true, volumen: 0.5f);
             }
         }
 

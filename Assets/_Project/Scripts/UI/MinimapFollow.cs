@@ -279,12 +279,23 @@ namespace SP.UI
         // Deja el minimapa en mini. Lo llama el arranque de la escena (y el
         // Editor al tocar las variables), para que el primer frame ya sea
         // el definitivo.
+        // Pedido explicito: "que haya muchisimo contraste entre environment
+        // y soldados e interactuables" -- el verde oscuro de antes competia
+        // con el gris de los obstaculos y no dejaba tanto margen contra los
+        // colores saturados de los rombos. Un fondo casi negro (no negro
+        // puro, para poder distinguirlo de "no hay nada renderizado" si algo
+        // falla) maximiza el contraste contra CUALQUIER color de icono.
+        public static readonly Color ColorDeFondo = new Color(0.025f, 0.03f, 0.035f);
+
         public void AplicarTamanoInicial()
         {
             // Escenas ya horneadas guardaron 107 px (ilegible): se sube al nuevo minimo y el fondo deja de ser negro puro.
             if (tamanoMini.x < 140f) tamanoMini = new Vector2(150f, 150f);
             var camMini = GetComponent<Camera>();
-            if (camMini != null && camMini.backgroundColor == Color.black) camMini.backgroundColor = new Color(0.10f, 0.15f, 0.12f);
+            // Siempre se fuerza (no solo cuando ya era negro puro): asi una
+            // escena horneada con el verde oscuro viejo tambien se pone al
+            // dia sin tener que retocarla a mano.
+            if (camMini != null) camMini.backgroundColor = ColorDeFondo;
             Agrandado = false;
             indiceTamanoFijo = 0;
             var b = ResolveBorder();

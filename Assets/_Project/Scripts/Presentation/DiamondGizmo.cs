@@ -12,6 +12,14 @@ namespace SP.Presentation
     // aliado) y ObjectiveDiamondMarker (objetivo).
     public static class DiamondGizmo
     {
+        // Paleta unica de los rombos: la usan UnitLocatorCylinder (enemigo/
+        // aliado), ObjectiveDiamondMarker (objetivo) y el minimapa (para que
+        // "los colores sean iguales a los rombos" en todos lados a la vez,
+        // sin tres copias del mismo trio de colores desincronizandose).
+        public static readonly Color ColorEnemigo = new Color(1f, 0.05f, 0.05f, 1f);
+        public static readonly Color ColorAliado = new Color(0.1f, 0.45f, 1f, 1f);
+        public static readonly Color ColorObjetivo = new Color(1f, 0.85f, 0.05f, 1f);
+
         static Mesh caraCompartida;
 
         // Malla de un rombo unidad en el plano XY (vertices arriba/derecha/
@@ -117,6 +125,59 @@ namespace SP.Presentation
             // billboard quede mirando de canto por un frame en vez de
             // desaparecer o duplicar geometria.
             if (mat.HasProperty("_Cull")) mat.SetInt("_Cull", (int)CullMode.Off);
+            return mat;
+        }
+
+        // Pedido explicito: "un rombo pero con imagen de un engranaje para
+        // saber que es interactuable" (reemplaza a los carteles de texto de
+        // interaccion -- DEMOLER, CURAR, POSEER, etc.). Un engranaje simple
+        // dibujado por codigo (mismo espiritu que CursorContextual: sin
+        // ningun asset de imagen), blanco sobre transparente, para poder
+        // teñirlo con cualquier color (dorado = accion lista, gris = solo
+        // informativo) igual que el resto de los materiales de este archivo.
+        static Texture2D texturaEngranaje;
+        static Texture2D TexturaEngranaje()
+        {
+            if (texturaEngranaje != null) return texturaEngranaje;
+            const int lado = 64;
+            const int dientes = 8;
+            var centro = new Vector2(lado * 0.5f, lado * 0.5f);
+            const float radioExterior = lado * 0.40f;
+            const float radioValle = lado * 0.30f;
+            const float radioInterior = lado * 0.16f; // agujero central del engranaje
+            var tex = new Texture2D(lado, lado, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave };
+            var pix = new Color32[lado * lado];
+            for (int y = 0; y < lado; y++)
+            {
+                for (int x = 0; x < lado; x++)
+                {
+                    float dx = x + 0.5f - centro.x, dy = y + 0.5f - centro.y;
+                    float r = Mathf.Sqrt(dx * dx + dy * dy);
+                    float ang = Mathf.Atan2(dy, dx);
+                    // Diente cada 360/dientes grados: una onda cuadrada sobre el angulo
+                    // decide si el borde de ESTE rayo llega hasta radioExterior (diente)
+                    // o se queda en radioValle (valle entre dientes).
+                    float cicloDiente = Mathf.Repeat(ang / (Mathf.PI * 2f) * dientes, 1f);
+                    float radioDeBorde = cicloDiente < 0.5f ? radioExterior : radioValle;
+                    bool relleno = r <= radioDeBorde && r >= radioInterior;
+                    pix[y * lado + x] = relleno ? new Color32(255, 255, 255, 255) : new Color32(255, 255, 255, 0);
+                }
+            }
+            tex.SetPixels32(pix);
+            tex.Apply(false, false);
+            texturaEngranaje = tex;
+            return tex;
+        }
+
+        // Mismo material Unlit que NuevoMaterial, pero con el engranaje como
+        // textura -- el color pedido tiñe el blanco del dibujo (multiplica),
+        // asi que sigue sirviendo "dorado = accion lista, gris = informativo".
+        public static Material NuevoMaterialConEngranaje(Color color)
+        {
+            var mat = NuevoMaterial(color);
+            var tex = TexturaEngranaje();
+            mat.mainTexture = tex;
+            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
             return mat;
         }
     }
