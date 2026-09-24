@@ -872,8 +872,11 @@ namespace SP.EditorTools
 
             aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Enemy, Soldier = enemigoParaE1,
                 Point = enemigoParaE1.transform.position, HitTransform = enemigoParaE1.transform });
-            Check($"Apuntando a un enemigo, el cartel invita a atacar (\"{aimUiRef.CurrentPrompt}\")",
-                aimUiRef.CurrentPrompt.Contains("tacar") && aimUiRef.CurrentPrompt.Contains(enemigoParaE1.DisplayName));
+            // Pedido explicito: sacar el cartel de "atacar" -- molesta. El
+            // tinte rojo de la mira (EnemyTint) sigue avisando que hay un
+            // enemigo encima; antes este check pedia lo contrario.
+            Check($"Apuntando a un enemigo, no aparece cartel de atacar (\"{aimUiRef.CurrentPrompt}\")",
+                string.IsNullOrEmpty(aimUiRef.CurrentPrompt));
 
             OrderService.IssueAttackOrderForSelection(inputDriver.Selection.Selected, enemigoParaE1);
             SimulateSeconds(1f); // deja que Chase/Attack se resuelva tras la orden

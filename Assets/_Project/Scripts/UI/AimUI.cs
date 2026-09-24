@@ -563,9 +563,11 @@ namespace SP.UI
                     currentAimTint = AllyTint;
                     break;
                 case AimTargetType.Enemy:
-                    // E1: antes solo decia el nombre -- no invitaba a
-                    // ninguna accion, aunque [F] ya la ejecutara.
-                    CurrentPrompt = $"[Q] radial: atacar a {result.Soldier.DisplayName}";
+                    // Pedido explicito: sacar el cartel de "atacar" -- molesta.
+                    // El tinte rojo de la mira ya avisa que hay un enemigo
+                    // encima; [F]/[Q] siguen funcionando igual, solo que sin
+                    // texto tapando pantalla.
+                    CurrentPrompt = "";
                     currentAimTint = EnemyTint;
                     break;
                 case AimTargetType.Vehicle:

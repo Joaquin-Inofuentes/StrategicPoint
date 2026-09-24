@@ -2629,9 +2629,25 @@ namespace SP.Player
         public ContextoRadial ConstruirContextoRadial(AimResult aim)
         {
             var c = new ContextoRadial();
+
+            // Pedido explicito: "si apunto al aire y posicion solo sea
+            // seguirme, ir alli y retirada" -- apuntando al piso/aire (nada
+            // interactuable en la mira), Posicion ya no ofrece su abanico
+            // completo de 5 sub-ordenes: solo Siganme y Retirada, que son
+            // las dos que tienen sentido sin apuntar a nada en particular.
+            // Cubrirse queda SIEMPRE visible (no se lo saca de este caso a
+            // proposito): el tutorial ensena "[Q] -> CUBRIRSE -> TODOS"
+            // apuntando justo al piso/las coberturas, y ademas es una orden
+            // tan direccional como Ir alli (no depende de tener un blanco).
+            // Apuntando a algo (aliado/enemigo/vehiculo/etc.) Posicion sigue
+            // completa, ya que ahi si puede hacer falta una formacion.
+            bool apuntaAlVacio = aim.Type == AimTargetType.Ground || aim.Type == AimTargetType.None;
             c.Mostrar(MenuDeOrdenes.IrAlli, false);
             c.Mostrar(MenuDeOrdenes.Cubrirse, false);
-            c.Mostrar(MenuDeOrdenes.Posicion, false);
+            if (apuntaAlVacio)
+                c.Mostrar(MenuDeOrdenes.Posicion, false, 1 /* SIGANME */, 4 /* RETIRADA */);
+            else
+                c.Mostrar(MenuDeOrdenes.Posicion, false);
 
             var yo = Brain != null ? Brain.Current : null;
             var curar = new List<int>();
@@ -2747,7 +2763,11 @@ namespace SP.Player
             switch (aim.Type)
             {
                 case AimTargetType.Enemy:
-                    texto = aim.Soldier != null ? $"[Q] toque: ATACAR a {aim.Soldier.DisplayName}  ·  [Q] mantener: menu" : null; break;
+                    // Pedido explicito: sacar el cartel de "ATACAR" -- molesta.
+                    // Sin esto, AimUI.UpdateFromAimResult ya dejo CurrentPrompt
+                    // vacio para Enemy (ver su comentario), asi que no escribir
+                    // nada aca alcanza para que no aparezca texto.
+                    break;
                 case AimTargetType.Ally:
                     if (aim.Soldier == null) break;
                     if (aim.Soldier.Role == RoleType.Civilian) { texto = Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null ? $"[Q] toque: CURAR a {aim.Soldier.DisplayName} ({aim.Soldier.Health.Current}/{aim.Soldier.Health.MaxHealth})" : $"Civil: {aim.Soldier.DisplayName}"; destacado = Herido(aim.Soldier); }
