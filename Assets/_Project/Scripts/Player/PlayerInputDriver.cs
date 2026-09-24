@@ -2033,6 +2033,18 @@ namespace SP.Player
             ultimoTSoldado = candidato;
         }
 
+        // Pedido explicito: "que los enemigos y aliados al apuntarles tengan
+        // algo para diferenciarlo de cuando no los apunto" -- antes el
+        // resaltado era el MISMO blanco para cualquier cosa (enemigo, aliado
+        // o vehiculo), asi que no avisaba A QUIEN se le estaba apuntando,
+        // solo que se apuntaba a algo. Ahora el tinte vira hacia el color
+        // del equipo (rojo tibio para enemigo, azul tibio para aliado -- el
+        // mismo par de colores que ya usa el rombo localizador nuevo, para
+        // que todo el feedback de "esto es enemigo/aliado" sea consistente)
+        // en vez de ir siempre a blanco puro.
+        static readonly Color TinteApuntadoEnemigo = new Color(1f, 0.55f, 0.5f);
+        static readonly Color TinteApuntadoAliado = new Color(0.55f, 0.75f, 1f);
+
         void UpdateAimHighlight(AimResult result)
         {
             Renderer target = null;
@@ -2054,7 +2066,10 @@ namespace SP.Player
             if (target != null)
             {
                 highlightedOriginalColor = SP.Presentation.CubeFxReactor.ReadTint(target);
-                SP.Presentation.CubeFxReactor.WriteTint(target, Color.Lerp(highlightedOriginalColor, Color.white, 0.65f));
+                Color hacia = result.Type == AimTargetType.Enemy ? TinteApuntadoEnemigo
+                    : result.Type == AimTargetType.Ally ? TinteApuntadoAliado
+                    : Color.white;
+                SP.Presentation.CubeFxReactor.WriteTint(target, Color.Lerp(highlightedOriginalColor, hacia, 0.65f));
             }
         }
 
@@ -2087,6 +2102,15 @@ namespace SP.Player
             if (aimRing == null) aimRing = SelectionRingFx.Spawn(result.HitTransform, AimRingColor, 0.9f);
             aimRing.gameObject.SetActive(true);
             aimRing.Target = result.HitTransform;
+
+            // Mismo pedido que UpdateAimHighlight: el anillo se creaba UNA
+            // vez con AimRingColor y se reusaba para cualquier cosa (nunca
+            // se le volvia a tocar el color), asi que apuntar a un enemigo
+            // o a un aliado se veia identico. Ahora se recolorea cada vez
+            // segun a que se apunta.
+            aimRing.SetColor(result.Type == AimTargetType.Enemy ? TinteApuntadoEnemigo
+                : result.Type == AimTargetType.Ally ? TinteApuntadoAliado
+                : AimRingColor);
         }
 
         // [G] apuntando a un vehículo: sube UN aliado por apretada, al
