@@ -384,7 +384,10 @@ namespace SP.EditorTools
         // el paso ni un rayo/proyectil lo podia tocar. Si es destructible, ademas le cuelga
         // ObstacleMarker (el mismo componente de los obstaculos del blockout) para que
         // reaccione a disparos/explosiones con las mismas etapas de daño y escombros.
-        static void AgregarColliderYDestruccion(GameObject inst, bool esDestructible, int vida, bool esBarril)
+        // Publico: NightLightingBuilder lo reusa para las barandas del
+        // camino de mision, en vez de duplicar el ajuste de collider +
+        // ObstacleMarker.
+        public static void AgregarColliderYDestruccion(GameObject inst, bool esDestructible, int vida, bool esBarril)
         {
             var renderers = inst.GetComponentsInChildren<Renderer>(true);
             if (renderers.Length == 0) return;
