@@ -22,14 +22,15 @@ namespace SP.UI
 
         IDisposable diedSub;
 
+        // Pedido explicito: "quita el cartel q dice enemigos y escuadra".
+        // Se apaga el GameObject entero (fondo + texto) apenas se activa,
+        // en vez de borrar el componente: la cuenta de vivos que hace
+        // Refresh() puede volver a servir el dia de mañana sin tener que
+        // rehacerla, y ROSTER (abajo a la izquierda) ya muestra quien de
+        // la escuadra sigue en pie.
         void OnEnable()
         {
-            if (label == null) label = GetComponentInChildren<Text>(true);
-            // Se recalcula por evento de muerte, no cada frame: el número
-            // solo puede cambiar cuando alguien muere.
-            diedSub?.Dispose();
-            diedSub = EventBus.Instance.Subscribe<EntityDiedEvent>(_ => Refresh());
-            Refresh();
+            gameObject.SetActive(false);
         }
 
         void OnDisable() => diedSub?.Dispose();

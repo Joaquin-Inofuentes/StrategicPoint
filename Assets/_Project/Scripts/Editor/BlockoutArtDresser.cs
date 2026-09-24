@@ -348,12 +348,15 @@ namespace SP.EditorTools
                 }
             }
 
-            // Faroles a lo largo de la ruta, uno cada 30 m a cada lado. Pedido explicito: "usa el
-            // prefab de luces, y que sean siempre luces duras" -- P_Env_Farol era solo el mastil
-            // (sin luz real); cada instancia se cuelga ahora una Light de verdad en la punta.
+            // Faroles a lo largo de la ruta, uno cada 15 m a cada lado (pedido explicito:
+            // "agrega un camino de luces" -- antes eran 30 m y quedaban charcos de piso a
+            // oscuras entre uno y otro; al doble de densidad la ruta principal queda iluminada
+            // de punta a punta). Pedido explicito tambien: "usa el prefab de luces, y que
+            // sean siempre luces duras" -- P_Env_Farol era solo el mastil (sin luz real); cada
+            // instancia se cuelga ahora una Light de verdad en la punta.
             var farol = P("P_Env_Farol");
             if (farol != null)
-                for (float z = z0 + 10f; z < z1 - 6f; z += 30f)
+                for (float z = z0 + 10f; z < z1 - 6f; z += 15f)
                     foreach (var lado in new[] { -9f, 17f })
                     {
                         float x = ejeX + lado;

@@ -70,7 +70,10 @@ namespace SP.Presentation
             {
                 int layerMinimapa = LayerMask.NameToLayer("Minimap");
                 if (layerMinimapa < 0) layerMinimapa = 8;
-                var iconoMinimapa = MinimapIcon.Spawn(transform, ColorObjetivo, layerMinimapa, 2.4f);
+                // Pedido explicito: "los q me importan son muy pequeños" --
+                // el objetivo/interactuable sube de 2.4 a 4.2 (sigue siendo
+                // el marcador mas grande del minimapa, como corresponde).
+                var iconoMinimapa = MinimapIcon.Spawn(transform, ColorObjetivo, layerMinimapa, 4.2f);
                 iconoMinimapa.ConvertirEnDobleTriangulo();
             }
         }

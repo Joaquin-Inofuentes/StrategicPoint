@@ -632,6 +632,28 @@ namespace SP.EditorTools
         // acá sólo se decide si además se agrega el piso visual encima).
         const int TilesMaximos = 900;
 
+        // Pedido explicito: "mejora la pintada del piso". Wrapper propio
+        // para no tener que correr TODO "6. Reemplazar assets viejos"
+        // (armas/vehiculo/muros incluidos) solo para refrescar el tinte y
+        // la vuelta al azar de las baldosas. ReemplazarGround() ya es
+        // idempotente (destruye "PisoMundo" antes de rearmarlo).
+        [MenuItem("Strategic Point/Arte/6b. Solo repintar el piso")]
+        public static void RepintarPisoEnEscena()
+        {
+            var escena = EditorSceneManager.GetActiveScene();
+            if (!escena.name.Contains("Gameplay"))
+            {
+                EditorSceneManager.OpenScene(ScenePath);
+                escena = EditorSceneManager.GetActiveScene();
+            }
+
+            ReemplazarGround();
+
+            EditorSceneManager.MarkSceneDirty(escena);
+            EditorSceneManager.SaveScene(escena);
+            Debug.Log("[WorldArtPipeline] Piso repintado y escena guardada.");
+        }
+
         static void ReemplazarGround()
         {
             var ground = GameObject.Find("Ground");
@@ -691,11 +713,39 @@ namespace SP.EditorTools
             float zIni = centro.z - tam.z * 0.5f + tileZ * 0.5f;
             float y = centro.y + tam.y * 0.5f;
 
+            // Pedido explicito: "mejora la pintada del piso". Con las 630
+            // baldosas identicas, en la misma orientacion, la repeticion se
+            // notaba como una grilla pintada -- acá se rompe con dos trucos
+            // sin costo extra de geometria: 1) una vuelta al azar de 90° por
+            // baldosa (el propio trimsheet ya es simetrico a 90°, asi que no
+            // deja costuras) y 2) un tinte gris sutil por instancia via
+            // MaterialPropertyBlock (mismo patron que SelectionRingFx/
+            // KillCylinderFx: NO clona el material, solo pinta esa instancia).
+            var rndPiso = new System.Random(1337);
+            var bloquePiso = new MaterialPropertyBlock();
+            // Solo 0/180: a diferencia de 90/270, nunca intercambia ancho y
+            // profundidad de la baldosa -- si el tile no es cuadrado, girarlo
+            // 90 grados abriria huecos o solapamientos contra el vecino. 0/180
+            // ya alcanza para romper cualquier patron direccional de la textura
+            // (rayaduras, manchas) sin arriesgar la grilla.
+            int[] vueltas90 = { 0, 180 };
+
             for (int fz = 0; fz < filas; fz++)
                 for (int cx = 0; cx < columnas; cx++)
                 {
                     var tile = (GameObject)PrefabUtility.InstantiatePrefab(pisoPrefab, raiz.transform);
                     tile.transform.position = new Vector3(xIni + cx * tileX, y, zIni + fz * tileZ);
+                    tile.transform.rotation = Quaternion.Euler(0f, vueltas90[rndPiso.Next(vueltas90.Length)], 0f);
+
+                    float tono = Mathf.Lerp(0.88f, 1.08f, (float)rndPiso.NextDouble());
+                    var tintePiso = new Color(tono, tono, tono);
+                    foreach (var rend in tile.GetComponentsInChildren<Renderer>(true))
+                    {
+                        rend.GetPropertyBlock(bloquePiso);
+                        bloquePiso.SetColor("_BaseColor", tintePiso);
+                        bloquePiso.SetColor("_Color", tintePiso);
+                        rend.SetPropertyBlock(bloquePiso);
+                    }
 
                     // BUG REAL que esto corrige: P_Mod_Piso_Concreto (y las
                     // variantes CespedSeco/Grava) traen su propio BoxCollider

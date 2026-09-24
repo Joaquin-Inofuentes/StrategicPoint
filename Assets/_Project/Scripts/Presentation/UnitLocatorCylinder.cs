@@ -139,7 +139,11 @@ namespace SP.Presentation
             {
                 int layerMinimapa = LayerMask.NameToLayer("Minimap");
                 if (layerMinimapa < 0) layerMinimapa = 8;
-                MinimapIcon.Spawn(soldier.transform, equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado, layerMinimapa, 1.6f);
+                // Pedido explicito: "los q me importan son muy pequeños" --
+                // el radio subio de 1.6 a 3.0 para que un soldado se lea a
+                // simple vista contra los rectangulos grises de obstaculos
+                // (esos quedan en su propio tamaño, ver RegistrarObstaculos).
+                MinimapIcon.Spawn(soldier.transform, equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado, layerMinimapa, 3.0f);
             }
         }
 

@@ -490,6 +490,19 @@ namespace SP.Player
             Instructions.SetText(TutorialActive ? tutorialText : contextual);
         }
 
+        // Pedido explicito: "quiero q por defecto el soldado activo sea el
+        // soldado de asalto". Antes siempre era Squad[0] (el primero en el
+        // orden de la escena, que resulto ser el Medico) sin importar el
+        // rol. Busca el primer Asalto vivo; si no hay ninguno (escuadra sin
+        // asaltador, o todos caidos de arranque), cae en Squad[0] como antes.
+        Soldier SoldadoInicial()
+        {
+            foreach (var s in Squad)
+                if (s != null && s.Role == RoleType.Assault && s.Health != null && s.Health.IsAlive)
+                    return s;
+            return Squad[0];
+        }
+
         // PlayerBrain.Current no se serializa con la escena (es estado de
         // runtime, no de diseño). Al entrar en Play desde cero hay que
         // poseer al primer soldado de la escuadra a mano.
@@ -499,8 +512,9 @@ namespace SP.Player
             if (OrdenesMenu == null || !OrdenesMenu.EsRadial) OrdenesMenu = SP.UI.MenuDeOrdenes.AsegurarEnEscena();
             if (Brain.Current == null && Squad != null && Squad.Count > 0)
             {
-                Brain.Possess(Squad[0]);
-                Rig.FollowOverShoulder(Squad[0].transform);
+                var inicial = SoldadoInicial();
+                Brain.Possess(inicial);
+                Rig.FollowOverShoulder(inicial.transform);
 
                 // La posesion inicial no publica PossessionChangedEvent (ver
                 // el comentario en RosterView.Rebuild): sin este empujon, la

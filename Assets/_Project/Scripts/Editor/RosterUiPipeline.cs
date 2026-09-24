@@ -87,6 +87,61 @@ namespace SP.EditorTools
             Debug.Log("[RosterUiPipeline] Roster migrado a RosterView + " + PrefabPath + ". Escena guardada.");
         }
 
+        // Pedido explicito: "la UI de abajo a la izq q sea mas
+        // simplificado con iconos simples". Le agrega al prefab de fila un
+        // hijo "Icon" (franja fija de 24px a la izquierda) y corre Label/
+        // BarBG para no pisarlo -- RosterRowView.Bind() le asigna el sprite
+        // segun el rol (RoleIconFactory). Idempotente: si "Icon" ya existe
+        // no lo duplica, solo reacomoda.
+        [MenuItem("Strategic Point/UI/2. Simplificar fila del Roster (icono de rol)")]
+        public static void SimplificarConIconos()
+        {
+            var root = PrefabUtility.LoadPrefabContents(PrefabPath);
+            if (root == null)
+            {
+                Debug.LogError("[RosterUiPipeline] No se pudo abrir " + PrefabPath + " (correr primero \"1. Migrar Roster a prefab por soldado\").");
+                return;
+            }
+
+            var labelT = root.transform.Find("Label");
+            var barT = root.transform.Find("BarBG");
+            if (labelT == null || barT == null)
+            {
+                Debug.LogError("[RosterUiPipeline] El prefab no tiene Label/BarBG como se esperaba.");
+                PrefabUtility.UnloadPrefabContents(root);
+                return;
+            }
+            var labelRt = labelT.GetComponent<RectTransform>();
+            var barRt = barT.GetComponent<RectTransform>();
+
+            var iconoExistente = root.transform.Find("Icon");
+            var iconGO = iconoExistente != null ? iconoExistente.gameObject
+                : new GameObject("Icon", typeof(RectTransform), typeof(CanvasRenderer), typeof(UnityEngine.UI.Image));
+            iconGO.transform.SetParent(root.transform, false);
+            iconGO.transform.SetAsFirstSibling();
+
+            var iconRt = iconGO.GetComponent<RectTransform>();
+            iconRt.anchorMin = new Vector2(0f, 0f);
+            iconRt.anchorMax = new Vector2(0f, 1f);
+            iconRt.pivot = new Vector2(0f, 0.5f);
+            iconRt.offsetMin = new Vector2(6f, 4f);
+            iconRt.offsetMax = new Vector2(30f, -4f);
+
+            var iconImg = iconGO.GetComponent<UnityEngine.UI.Image>();
+            iconImg.color = Color.white;
+            iconImg.preserveAspect = true;
+
+            labelRt.offsetMin = new Vector2(36f, labelRt.offsetMin.y);
+            barRt.offsetMin = new Vector2(36f, barRt.offsetMin.y);
+
+            var labelText = labelT.GetComponent<UnityEngine.UI.Text>();
+            if (labelText != null) labelText.alignment = TextAnchor.MiddleLeft;
+
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
+            PrefabUtility.UnloadPrefabContents(root);
+            Debug.Log("[RosterUiPipeline] Fila simplificada con icono de rol. Prefab guardado.");
+        }
+
         static RosterRowView CrearPrefab(Transform filaMolde)
         {
             if (!AssetDatabase.IsValidFolder("Assets/_Project/Prefabs"))

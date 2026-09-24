@@ -6,6 +6,7 @@ using SP.Ai;
 using SP.Combat;
 using SP.Core;
 using SP.Player;
+using SP.Presentation;
 
 namespace SP.UI
 {
@@ -23,6 +24,7 @@ namespace SP.UI
         [SerializeField] Image background;
         [SerializeField] Text label;
         [SerializeField] Image healthFill;
+        [SerializeField] Image icon;
 
         // El "puntero al soldado" pedido explicitamente: quien tenga la
         // fila puede leer directo del soldado real, no solo de lo que la
@@ -49,6 +51,7 @@ namespace SP.UI
             if (background == null) background = GetComponent<Image>();
             if (label == null) label = transform.Find("Label")?.GetComponent<Text>();
             if (healthFill == null) healthFill = transform.Find("BarBG/BarFill")?.GetComponent<Image>();
+            if (icon == null) icon = transform.Find("Icon")?.GetComponent<Image>();
             if (label != null) label.horizontalOverflow = HorizontalWrapMode.Overflow;   // Ronda 11: 2 renglones fijos, sin wrap que empuje texto sobre la barra
 
             // BUG REAL: GameplaySceneBootstrap.Start() repara (SpriteBlanco)
@@ -93,6 +96,10 @@ namespace SP.UI
             // despues el evento alcanza para todo lo demas.
             var playerBrain = PlayerBrain.Activo;
             possessed = playerBrain != null && playerBrain.Current != null && playerBrain.Current.Id == SoldierId;
+
+            // El rol no cambia en la vida de un soldado: alcanza con
+            // asignarlo una vez aca en vez de en cada Refresh*.
+            if (icon != null) icon.sprite = RoleIconFactory.For(soldier.Role);
 
             RefreshLabel();
             RefreshHealthBar(soldier.Health != null ? soldier.Health.Current : 0, soldier.Health != null ? soldier.Health.MaxHealth : 0);
@@ -200,28 +207,25 @@ namespace SP.UI
             _ => "",
         };
 
-        // Formato pedido explicito: numero + profesion primero y grande,
-        // nombre/vida/arma/estado abajo, chico y apagado -- la barra de
-        // HealthFill ya es la vida "de un vistazo".
+        // Pedido explicito: "mas simplificado con iconos simples". El icono
+        // (asignado en Bind) ya dice el rol de un vistazo y el resaltado de
+        // background ya dice quien esta poseido/seleccionado -- ahi el
+        // bloque de texto de 2 renglones (profesion + vida + arma) sobraba.
+        // Queda solo el numero de vida: la barra de HealthFill es la lectura
+        // rapida, el numero es el dato exacto para quien lo necesite.
         void RefreshLabel()
         {
             if (label == null || Soldier == null) return;
 
             if (!alive)
             {
-                label.text = $"<size=11><b>{Index} · {Soldier.ClassNameTitulo}</b></size>\n<size=10><color=#6f7278>CAIDO</color></size>";
+                label.text = "<size=10><color=#6f7278>CAIDO</color></size>";
                 label.color = DeadTextColor;
                 return;
             }
 
-            // Ronda 11 (punto 10): tres renglones y nada mas. "N · Especialidad" / "vida · arma" / barra de vida (la barra es el
-            // tercero). Nombre propio y estado salieron de la ficha: eran los que la hacian wrappear y pisar la barra.
-            string marker = possessed ? "► " : "";
-            string weapon = Soldier.Weapon != null ? WeaponCatalog.Get(Soldier.Weapon.CurrentWeaponKind).DisplayName : "";
             var hp = Soldier.Health;
-            string vida = hp != null ? $"{hp.Current}/{hp.MaxHealth}" : "";
-
-            label.text = $"{marker}<size=12><b>{Index} · {Soldier.ClassNameTitulo}</b></size>\n<size=10><color=#d8dde6>{vida} · {weapon}</color></size>";
+            label.text = hp != null ? $"<size=12>{hp.Current}</size>" : "";
             label.color = Color.white;
         }
 
