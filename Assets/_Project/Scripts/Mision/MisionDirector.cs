@@ -107,6 +107,7 @@ namespace SP.Mision
             flechaDeObjetivo = SP.Presentation.ObjectiveArrowIndicator.Crear();
             baliza = TutorialBeacon.Crear("CENTRO", new Color(1f, 0.85f, 0.25f), Plaza, null, 3.2f, 24f);
             SP.Presentation.RutaAlObjetivo.Crear();
+            SP.Presentation.ObjectiveDiamondMarker.Crear(PuntoObjetivoActual);
             GameLog.Line($"Mision iniciada (dificultad {Dificultad.PerfilActual.Nombre})");
             CambioDeFase?.Invoke(Fase);
         }

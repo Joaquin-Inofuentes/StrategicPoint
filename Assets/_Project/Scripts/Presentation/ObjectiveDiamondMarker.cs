@@ -1,0 +1,75 @@
+using UnityEngine;
+
+namespace SP.Presentation
+{
+    // Pedido explicito: el mismo gizmo de rombo (fondo blanco + interior de
+    // color) que usan enemigos/aliados, pero AMARILLO y sobre el objetivo
+    // actual de la mision -- y "quiero que el rombo del objetivo destaque
+    // mucho": tamano mayor que el de enemigo/aliado y siempre visible
+    // mientras haya mision en curso (no se apaga por angulo de mira como el
+    // de las unidades: el objetivo es justo lo que el jugador tiene que
+    // poder encontrar desde lejos).
+    public class ObjectiveDiamondMarker : MonoBehaviour
+    {
+        GameObject marcador;
+        Material materialInterior;
+
+        const string MarkerName = "LocatorRomboObjetivo";
+        const float Altura = 3.2f;
+        const float TamanoBorde = 1.05f;
+        const float TamanoInterior = 0.72f;
+        const float DistanciaVisible = 220f; // bien mas lejos que enemigo/aliado: es el faro del nivel
+
+        static readonly Color ColorObjetivo = new Color(1f, 0.85f, 0.05f, 1f);
+        static readonly Color ColorBorde = Color.white;
+
+        System.Func<Vector3> obtenerPunto;
+
+        public static ObjectiveDiamondMarker Crear(System.Func<Vector3> obtenerPunto)
+        {
+            var go = new GameObject("ObjectiveDiamondMarker");
+            var m = go.AddComponent<ObjectiveDiamondMarker>();
+            m.obtenerPunto = obtenerPunto;
+            return m;
+        }
+
+        void OnEnable() { if (marcador == null) Construir(); }
+        void OnDisable() { if (marcador != null) marcador.SetActive(false); }
+
+        void OnDestroy()
+        {
+            if (materialInterior == null) return;
+            if (Application.isPlaying) Destroy(materialInterior);
+            else DestroyImmediate(materialInterior);
+            materialInterior = null;
+        }
+
+        void Construir()
+        {
+            marcador = new GameObject(MarkerName);
+            marcador.transform.SetParent(transform, false);
+
+            DiamondGizmo.CrearCara("Borde", marcador.transform, TamanoBorde, DiamondGizmo.NuevoMaterial(ColorBorde));
+
+            materialInterior = DiamondGizmo.NuevoMaterial(ColorObjetivo);
+            var interior = DiamondGizmo.CrearCara("Interior", marcador.transform, TamanoInterior, materialInterior);
+            interior.transform.localPosition = new Vector3(0f, 0f, -0.02f);
+        }
+
+        void Update()
+        {
+            if (marcador == null || obtenerPunto == null) return;
+
+            var cam = SP.Core.CamaraPrincipal.Actual;
+            if (cam == null) { marcador.SetActive(false); return; }
+
+            var punto = obtenerPunto();
+            transform.position = punto + Vector3.up * Altura;
+
+            var haciaMarcador = transform.position - cam.transform.position;
+            bool visible = haciaMarcador.magnitude <= DistanciaVisible;
+            marcador.SetActive(visible);
+            if (visible) marcador.transform.rotation = cam.transform.rotation;
+        }
+    }
+}

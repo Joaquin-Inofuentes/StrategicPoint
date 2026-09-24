@@ -1,35 +1,62 @@
 using UnityEngine;
-using UnityEngine.Rendering;
 using SP.Actors;
 using SP.Combat;
 
 namespace SP.Presentation
 {
-    // Pedido explicito: "cilindros para enemigos y aliados que no estan en
-    // donde miro, a 5 grados izq y der de donde miro" -- una columna alta y
-    // transparente sobre cada soldado (propio o enemigo, menos el poseido
-    // por el jugador) para ubicarlo rapido desde lejos o fuera de la mira.
-    // Se apaga sola en cuanto el jugador lo tiene encima de la mira (adentro
-    // del cono de AnguloDeMira grados): ahi ya lo esta viendo/apuntando, y
-    // la columna solo taparia la vista.
+    // Pedido explicito: reemplazar los cilindros localizadores por un gizmo
+    // de ROMBO (dos capas: un rombo blanco de fondo, mas grande, que hace de
+    // contorno, y uno interior mas chico que varia de color -- rojo enemigo,
+    // azul aliado) que SIEMPRE mira de frente al jugador principal
+    // (billboard) y hace mucho contraste contra el ambiente. Reemplaza al
+    // cilindro columna que habia antes; se mantiene el mismo nombre de clase
+    // para no romper la referencia serializada en los prefabs de soldado.
+    //
+    // Se sigue apagando solo en cuanto el jugador lo tiene encima de la mira
+    // (adentro del cono de AnguloDeMira grados): ahi ya lo esta viendo/
+    // apuntando, y el rombo solo taparia la vista.
     public class UnitLocatorCylinder : MonoBehaviour
     {
         Soldier soldier;
-        GameObject columna;
-        Material material;
+        GameObject marcador;   // raiz billboardeada (rombo blanco + rombo de color)
+        Material materialInterior;
 
-        const string MarkerName = "LocatorCylinder";
+        const string MarkerName = "LocatorRombo";
         public const float AnguloDeMira = 5f;
         const float DistanciaVisible = 90f;
-        const float Altura = 14f;
-        const float RadioVisual = 0.35f;
+        const float Altura = 2.4f;          // flota sobre la cabeza, no a 14 m como la columna vieja
+        const float TamanoBorde = 0.62f;
+        const float TamanoInterior = 0.40f;
 
-        static readonly Color ColorEnemigo = new Color(0.95f, 0.2f, 0.15f, 0.16f);
-        static readonly Color ColorAliado = new Color(0.3f, 0.85f, 1f, 0.16f);
+        // Colores solidos y saturados a proposito -- pedido explicito de
+        // "mucho contraste": el cilindro viejo era 16% opaco y se perdia
+        // contra el pasto/tierra. Rojo/azul puros + emision (ver
+        // DiamondGizmo.NuevoMaterial) se leen igual de bien de dia, de
+        // noche o contra niebla.
+        static readonly Color ColorEnemigo = new Color(1f, 0.05f, 0.05f, 1f);
+        static readonly Color ColorAliado = new Color(0.1f, 0.45f, 1f, 1f);
+        static readonly Color ColorBorde = Color.white;
 
-        // Throttle igual que EnemyAlertIndicatorView: con muchos soldados en
-        // pantalla, el angulo/distancia contra camara no necesita mirarse
-        // cada frame -- el jugador no gira tan rapido como para notar 0.15 s.
+        // El rombo blanco de fondo es identico para todos los enemigos Y
+        // todos los aliados (mismo color, mismo tamano): un solo material
+        // compartido en vez de uno por soldado.
+        static Material materialBordeCompartido;
+
+        // Los estaticos sobreviven a "Enter Play Mode" sin domain reload
+        // (mismo patron que el resto del proyecto): sin este reset, el
+        // material compartido de una sesion de Play anterior podria quedar
+        // referenciado como "fake null" si algo lo destruyo entre medio.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetearMaterialCompartido() => materialBordeCompartido = null;
+
+        static Material MaterialBorde()
+        {
+            if (materialBordeCompartido == null) materialBordeCompartido = DiamondGizmo.NuevoMaterial(ColorBorde);
+            return materialBordeCompartido;
+        }
+
+        // Throttle igual que antes: con muchos soldados en pantalla, el
+        // angulo/distancia contra camara no necesita mirarse cada frame.
         const float LodCheckInterval = 0.15f;
         float lodTimer;
         bool dead;
@@ -39,57 +66,68 @@ namespace SP.Presentation
             dead = false;
             if (soldier == null) soldier = GetComponent<Soldier>();
             if (soldier == null) { enabled = false; return; }
-            if (columna == null) Construir();
+            if (marcador == null) Construir();
         }
 
-        void OnDisable() { if (columna != null) columna.SetActive(false); }
+        void OnDisable() { if (marcador != null) marcador.SetActive(false); }
 
         void OnDestroy()
         {
-            if (material == null) return;
-            if (Application.isPlaying) Destroy(material);
-            else DestroyImmediate(material);
-            material = null;
+            if (materialInterior == null) return;
+            if (Application.isPlaying) Destroy(materialInterior);
+            else DestroyImmediate(materialInterior);
+            materialInterior = null;
         }
 
         void Construir()
         {
-            columna = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            columna.name = MarkerName;
-            var col = columna.GetComponent<Collider>();
-            if (col != null) { if (Application.isPlaying) Destroy(col); else DestroyImmediate(col); }
-            columna.transform.SetParent(transform, false);
-            columna.transform.localPosition = new Vector3(0f, Altura * 0.5f, 0f);
-            columna.transform.localScale = new Vector3(RadioVisual, Altura * 0.5f, RadioVisual);
+            marcador = new GameObject(MarkerName);
+            marcador.transform.SetParent(transform, false);
+            marcador.transform.localPosition = new Vector3(0f, Altura, 0f);
 
-            material = CoverHologram.NuevoTransparente(soldier.Team == TeamId.Enemy ? ColorEnemigo : ColorAliado);
-            var r = columna.GetComponent<MeshRenderer>();
-            r.sharedMaterial = material;
-            r.shadowCastingMode = ShadowCastingMode.Off;
-            columna.SetActive(false);
+            // Fondo blanco primero (mas grande, sin offset): al ser mas
+            // grande que el interior, siempre asoma como un contorno parejo
+            // alrededor del rombo de color.
+            DiamondGizmo.CrearCara("Borde", marcador.transform, TamanoBorde, MaterialBorde());
+
+            materialInterior = DiamondGizmo.NuevoMaterial(soldier.Team == TeamId.Enemy ? ColorEnemigo : ColorAliado);
+            var interior = DiamondGizmo.CrearCara("Interior", marcador.transform, TamanoInterior, materialInterior);
+            // Un pelo hacia la camara para que nunca compita en Z con el
+            // borde (evita z-fighting entre los dos rombos coplanares).
+            interior.transform.localPosition = new Vector3(0f, 0f, -0.02f);
+
+            marcador.SetActive(false);
         }
 
         void Update()
         {
-            if (dead || columna == null || soldier == null || soldier.Health == null) return;
-
-            lodTimer -= Time.deltaTime;
-            if (lodTimer > 0f) return;
-            lodTimer = LodCheckInterval;
-
-            if (!soldier.Health.IsAlive) { dead = true; columna.SetActive(false); return; }
-            // El propio poseido no necesita ubicarse a si mismo.
-            if (soldier.Brain != null && soldier.Brain.IsPossessedByPlayer) { columna.SetActive(false); return; }
+            if (dead || marcador == null || soldier == null || soldier.Health == null) return;
 
             var cam = SP.Core.CamaraPrincipal.Actual;
-            if (cam == null) { columna.SetActive(false); return; }
+            if (cam == null) { marcador.SetActive(false); return; }
 
-            var haciaSoldado = transform.position - cam.transform.position;
-            float distancia = haciaSoldado.magnitude;
-            if (distancia > DistanciaVisible) { columna.SetActive(false); return; }
+            lodTimer -= Time.deltaTime;
+            if (lodTimer <= 0f)
+            {
+                lodTimer = LodCheckInterval;
 
-            float angulo = Vector3.Angle(cam.transform.forward, haciaSoldado);
-            columna.SetActive(angulo > AnguloDeMira);
+                if (!soldier.Health.IsAlive) { dead = true; marcador.SetActive(false); return; }
+                // El propio poseido no necesita ubicarse a si mismo.
+                if (soldier.Brain != null && soldier.Brain.IsPossessedByPlayer) { marcador.SetActive(false); return; }
+
+                var haciaSoldado = transform.position - cam.transform.position;
+                float distancia = haciaSoldado.magnitude;
+                if (distancia > DistanciaVisible) { marcador.SetActive(false); return; }
+
+                float angulo = Vector3.Angle(cam.transform.forward, haciaSoldado);
+                marcador.SetActive(angulo > AnguloDeMira);
+            }
+
+            // Billboard: hay que rehacerlo TODOS los frames que este
+            // visible (no solo en el tick de LOD de arriba), si no el giro
+            // se nota a los tirones cada 0.15 s en vez de verse fijo mirando
+            // a camara mientras el jugador se mueve alrededor.
+            if (marcador.activeSelf) marcador.transform.rotation = cam.transform.rotation;
         }
     }
 }

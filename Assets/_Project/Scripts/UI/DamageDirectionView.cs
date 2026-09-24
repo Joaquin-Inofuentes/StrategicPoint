@@ -139,16 +139,30 @@ namespace SP.UI
             routine = StartCoroutine(ShowAndHide());
         }
 
+        // Pedido explicito: "que esa señalizacion dure 3 segundos con fade
+        // despues de recibir el impacto". Antes eran 0.9s de fade continuo
+        // desde el primer frame (nunca se veia del todo firme). Ahora se
+        // mantiene solida la mayor parte del tiempo y recien sobre el final
+        // hace el fade, sumando 3 segundos en total.
+        const float HoldTime = 2f;
+        const float FadeTime = 1f;
         IEnumerator ShowAndHide()
         {
             arrow.gameObject.SetActive(true);
             arrow.color = new Color(0.95f, 0.25f, 0.2f, 1f);
-            const float holdTime = 0.9f;
+
             float t = 0f;
-            while (t < holdTime)
+            while (t < HoldTime)
             {
                 t += Time.unscaledDeltaTime;
-                arrow.color = new Color(0.95f, 0.25f, 0.2f, Mathf.Lerp(1f, 0f, t / holdTime));
+                yield return null;
+            }
+
+            t = 0f;
+            while (t < FadeTime)
+            {
+                t += Time.unscaledDeltaTime;
+                arrow.color = new Color(0.95f, 0.25f, 0.2f, Mathf.Lerp(1f, 0f, t / FadeTime));
                 yield return null;
             }
             arrow.gameObject.SetActive(false);
