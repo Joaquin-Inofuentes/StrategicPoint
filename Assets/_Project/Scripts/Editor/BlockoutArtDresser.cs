@@ -418,12 +418,18 @@ namespace SP.EditorTools
             if (terreno == null) return;
             var td = terreno.terrainData;
             if (td.detailWidth <= 0) td.SetDetailResolution(DetailResolution, 32);
+            // CoverageMode (default en Unity 6 para TerrainData nuevo) ignora en la práctica los
+            // valores que se escriben con SetDetailLayer para un prototipo con mesh propio --
+            // ComputeDetailCoverage() da 0% aunque se pinten celdas a 255. InstanceCountMode es el
+            // único modo donde SetDetailLayer funciona como "cantidad de instancias por celda"
+            // (comportamiento verificado a mano contra el Terrain vivo).
+            td.SetDetailScatterMode(DetailScatterMode.InstanceCountMode);
             var protos = new List<DetailPrototype>();
             var grande = P("P_Env_Arbusto_Grande");
             var medio = P("P_Env_Arbusto_Medio");
             DetailPrototype Proto(GameObject prefab, float escMin, float escMax) => new DetailPrototype
             {
-                prototype = prefab,
+                prototype = PrototipoVisualLimpio(prefab),
                 usePrototypeMesh = true,
                 renderMode = DetailRenderMode.VertexLit,
                 useInstancing = true,
@@ -438,6 +444,31 @@ namespace SP.EditorTools
             if (medio != null) { capaArbustoMedio = protos.Count; protos.Add(Proto(medio, 0.9f, 1.4f)); }
             td.detailPrototypes = protos.ToArray();
             terrenoDeArbustos = terreno;
+        }
+
+        const string DirDetalle = "Assets/_Project/Prefabs/ArteMundo/TerrainDetail/";
+
+        // El renderer de detalles de Terrain instancia el prototipo a partir de su mesh; si la raiz
+        // del prefab tiene un Collider (como P_Env_Arbusto_Grande/Medio, que eran obstaculos
+        // destructibles con CapsuleCollider), Unity 6 produce geometria corrupta -- confirmado a
+        // ojo contra el Terrain vivo: en vez del arbusto aparecia un pico delgado y deforme, y
+        // ComputeDetailCoverage() medía 0% de cobertura real pese a tener celdas pintadas.
+        // Se genera (una vez por corrida, sobrescribiendo) un prefab "solo visual": mismo mesh y
+        // material, sin collider ni scripts, y ESE es el que se usa como DetailPrototype.prototype.
+        static GameObject PrototipoVisualLimpio(GameObject origen)
+        {
+            var mf = origen.GetComponentInChildren<MeshFilter>();
+            var mr = origen.GetComponentInChildren<MeshRenderer>();
+            if (mf == null || mr == null) return origen; // sin mesh que copiar: mejor el original que nada
+            if (!AssetDatabase.IsValidFolder(DirDetalle.TrimEnd('/')))
+                AssetDatabase.CreateFolder("Assets/_Project/Prefabs/ArteMundo", "TerrainDetail");
+            string ruta = DirDetalle + origen.name + "_DetailProto.prefab";
+            var temp = new GameObject(origen.name + "_DetailProto");
+            temp.AddComponent<MeshFilter>().sharedMesh = mf.sharedMesh;
+            temp.AddComponent<MeshRenderer>().sharedMaterials = mr.sharedMaterials;
+            var asset = PrefabUtility.SaveAsPrefabAsset(temp, ruta);
+            Object.DestroyImmediate(temp);
+            return asset;
         }
 
         // Unico punto de entrada para plantar un arbusto: SIEMPRE via TerrainData.detailPrototypes
