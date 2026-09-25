@@ -101,7 +101,7 @@ namespace SP.Tutorial
 
         IEnumerator GestoCorrerReal() { yield return Mantener(1.8f, Key.LeftShift, Key.W); }
 
-        IEnumerator GestoAgacharseReal() { yield return Mantener(0.9f, Key.LeftCtrl); }
+        IEnumerator GestoAgacharseReal() { yield return Mantener(0.2f, Key.LeftCtrl); yield return new WaitForSeconds(0.5f); yield return Mantener(0.2f, Key.LeftCtrl); }
 
         IEnumerator GestoDispararReal(PlayerInputDriver d)
         {
