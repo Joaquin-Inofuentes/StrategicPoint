@@ -366,9 +366,13 @@ namespace SP.Mision
             // viejas cubrian) pero dispersas al azar con separacion minima, mismo criterio que ya
             // usa PosicionesDispersas para las oleadas (que tuvo este mismo problema y se arreglo
             // asi -- ver su comentario mas abajo).
+            // Pedido explicito: "aleja los 2 enemigos iniciales q aparescan detras de la muralla" --
+            // se corren ambas franjas ~20 m mas adentro del predio (antes 52-66 y 84-92) para que
+            // no queden a la vista/alcance desde el arranque de la mision ni durante los primeros
+            // compases de la cinematica de apertura.
             int nc = Escalar(5), np = Escalar(4);
-            var campo = PosicionesEnFranja(-34f, 46f, 52f, 66f, nc, 7f);
-            var paso = PosicionesEnFranja(-32f, 34f, 84f, 92f, np, 7f);
+            var campo = PosicionesEnFranja(-34f, 46f, 72f, 86f, nc, 7f);
+            var paso = PosicionesEnFranja(-32f, 34f, 104f, 112f, np, 7f);
             for (int i = 0; i < nc; i++)
             {
                 var s = CrearEnemigo($"Enemigo_LineaA_{i + 1}", campo[i]);
@@ -408,23 +412,23 @@ namespace SP.Mision
             GameLog.Line($"Mision: oleada {indice + 1} ({n} enemigos)");
         }
 
-        // Refuerzos al salir con el civil: dos grupos entre el centro y la base.
+        // Refuerzos al salir con el civil: pedido explicito "q vayan apareciendo desde el bosque
+        // cuando estes llendo al helicoptero, osea son 2 zonas de re aparicion de enemigos" -- junto
+        // con LanzarLineasEnemigas() (movida mas adentro del predio), esta es la segunda zona. En vez
+        // de aparecer en campo abierto entre la plaza y la base, salen de la linea de arboles del
+        // borde oeste (X ~ -46, mismo lado que el Helipuerto) a lo largo del tramo de vuelta.
         void LanzarRefuerzos()
         {
             refuerzosLanzados = true;
             int n = Escalar(5);
-            // Centro entre la plaza y la base: antes dos franjas de Z angostas con X libre (columnas
-            // paralelas). Ahora un arco amplio con radio variable para que corten el camino de vuelta
-            // desde angulos distintos, no todos en la misma franja.
-            var centro = new Vector3(5f, 0f, 67f);
-            var puntos = PosicionesDispersas(centro, n, 20f, 340f, 18f, 42f, 6f);
+            var puntos = PosicionesEnFranja(-48f, -42f, 15f, 95f, n, 8f);
             for (int i = 0; i < n; i++)
             {
-                var s = CrearEnemigo($"Enemigo_Refuerzo_{i + 1}", puntos[i]);
+                var s = CrearEnemigo($"Enemigo_Bosque_{i + 1}", puntos[i], 90f);
                 if (s != null) Patrullar(s, 6f, 4f);
             }
             // Pedido explicito: quitar el aviso "REFUERZOS ENEMIGOS EN EL CAMINO DE VUELTA" -- molesta.
-            GameLog.Line($"Mision: refuerzos ({n})");
+            GameLog.Line($"Mision: refuerzos desde el bosque ({n})");
         }
 
         // La horda que persigue al jugador al acercarse al helicoptero.

@@ -356,8 +356,17 @@ namespace SP.Ai
         {
             float vision = EffectiveVisionRange;
             var equipo = self.Team;
+            // BUG REAL ("perdes porque murio el rehen sin haber hecho nada raro"): el civil (Role ==
+            // Civilian) es un no-combatiente Pasivo -- no ve enemigos ni devuelve fuego (ver
+            // Pasivo mas arriba) -- pero antes de este chequeo SI calificaba como blanco valido para
+            // cualquier enemigo que lo viera, igual que un soldado mas. Como queda visible desde el
+            // arranque de la mision (SpawnCivilOculto en MisionDirector.Start), bastaba que un
+            // enemigo de patrulla le tuviera linea de vision en cualquier momento de Infiltrar o
+            // Resistir para matarlo sin que el jugador pudiera hacer nada -- y TickRescatar/
+            // TickEscapar pierden la mision apenas Civil.Health.IsAlive da false. Un rehen indefenso
+            // no deberia ser un objetivo militar prioritario: se lo excluye del sensado de enemigos.
             SpatialGrid.QueryInRange(self.transform.position, vision * AlcanceExtendido, candidatos,
-                s => s.Health != null && s.Health.IsAlive && s.Team != equipo);
+                s => s.Health != null && s.Health.IsAlive && s.Team != equipo && s.Role != RoleType.Civilian);
 
             Soldier mejor = null;
             float mejorPuntaje = float.MaxValue;

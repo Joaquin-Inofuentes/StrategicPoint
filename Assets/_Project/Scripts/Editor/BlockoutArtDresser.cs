@@ -372,8 +372,27 @@ namespace SP.EditorTools
         // Menu aparte para poder re-generar colision despues de pintar arboles A MANO con la
         // herramienta "Paint Trees" del Inspector (esa herramienta no pasa por este script, asi que
         // sus arboles nuevos no tienen collider hasta que se corre esto).
+        //
+        // BUG REAL: esto NO guardaba -- crear GameObjects por script no alcanza para que Unity
+        // marque la escena como "dirty" de forma confiable, asi que un "File/Save" manual DESPUES
+        // de correr este menu no encontraba nada nuevo que guardar y el archivo .unity en disco se
+        // quedaba sin ArbolesColliders (confirmado: 0 arboles con collider real en la escena
+        // guardada, pese a que el log decia "577 generados"). Efecto real en juego: sin collider,
+        // NavService.HayLineaDeTiro (Physics.Raycast con mascara ~0, ve cualquier collider) dejaba
+        // de considerar a los arboles un obstaculo -- ni bloqueaban tiros ni linea de vision, todo
+        // el mapa quedaba mas expuesto de lo que se ve. Ahora este metodo marca dirty y guarda el.
         [MenuItem("Strategic Point/Arte/11. Generar colliders de arboles (segun Terrain actual)")]
-        public static void GenerarCollidersDeArbolMenu() => GenerarCollidersDeArbol(Terrain.activeTerrain);
+        public static void GenerarCollidersDeArbolMenu()
+        {
+            var terreno = Terrain.activeTerrain;
+            GenerarCollidersDeArbol(terreno);
+            if (terreno != null)
+            {
+                var escena = terreno.gameObject.scene;
+                EditorSceneManager.MarkSceneDirty(escena);
+                EditorSceneManager.SaveScene(escena);
+            }
+        }
 
         // Un arbol de Terrain no es un GameObject (ver comentario en PrepararPrototiposDeArbol), asi
         // que no hay nada para el fisico choque contra. Esto arma la colision a mano: un GameObject
