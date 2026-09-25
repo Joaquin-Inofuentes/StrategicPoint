@@ -27,6 +27,7 @@ namespace SP.Presentation
         GameObject defeatPanel;
         Text victoryStats;
         Text defeatStats;
+        Text defeatReason;
         bool shown;
 
         // Cuanto duro la partida. Las bajas (propias y del enemigo) se
@@ -81,6 +82,11 @@ namespace SP.Presentation
             {
                 var t = defeatPanel.transform.Find("Stats");
                 if (t != null) defeatStats = t.GetComponent<Text>();
+            }
+            if (defeatReason == null && defeatPanel != null)
+            {
+                var t = defeatPanel.transform.Find("Reason");
+                if (t != null) defeatReason = t.GetComponent<Text>();
             }
 
             // Mismo motivo que en MainMenuController/PauseController: los
@@ -158,12 +164,17 @@ namespace SP.Presentation
             GameLog.Line("Pantalla de ganar activa");
         }
 
-        public void ShowDefeat()
+        // "motivo" es el mismo texto legible que ya se empujaba como toast de 3 s (AlertQueue) --
+        // pedido explicito: "cuando muere el civil me dice que perdi pero no me dice por que". El
+        // toast se perdia porque Time.timeScale pasa a 0 casi en el mismo instante; ahora el motivo
+        // queda fijo en la propia pantalla de derrota, no solo en un aviso que dura 3 s.
+        public void ShowDefeat(string motivo = null)
         {
             if (defeatPanel == null || shown) return;
             shown = true;
             Time.timeScale = 0f;
             ReleaseCursor();
+            if (defeatReason != null) defeatReason.text = string.IsNullOrEmpty(motivo) ? "" : motivo;
             if (defeatStats != null) defeatStats.text = BuildStatsText();
             defeatPanel.SetActive(true);
             FocusRetryButton(defeatPanel);

@@ -106,7 +106,7 @@ namespace SP.UI
             new[] { "SUBIR TODOS", "BAJAR TODOS", "TANQUE ALLI", "SUBIRME YO", "BAJARME YO" },
             new[] { "SOLDADO {1}", "SOLDADO {2}", "SOLDADO {3}", "SIGUIENTE", "POSEER A ESTE" },
             new[] { "ASALTO DEMUELE", "YO DEMUELO", "CANCELAR" },
-            new[] { "USAR LA TORRETA", "SALIR DE LA TORRETA" },
+            new[] { "USAR LA TORRETA", "SALIR DE LA TORRETA", "QUE LO MONTEN" },
         };
 
         static readonly Color[] Acentos =
@@ -120,8 +120,12 @@ namespace SP.UI
         static readonly Color Dorado = new Color(1f, 0.82f, 0.18f);
         static readonly Color DoradoOscuro = new Color(0.32f, 0.25f, 0.03f, 0.95f);
 
-        // Item 10: letra mas grande (13 -> 15) y anillos mas translucidos, para leer las opciones y ver el mundo detras.
-        public const int TamanoLetra = 15;
+        // Pedido explicito: "para el radial, para todas las opciones, quiero
+        // texto chico e iconos grandes, descriptivos y claros" -- el texto
+        // baja (15 -> 11, ahora que cada porcion ya tiene un icono grande
+        // que dice de que se trata) y el icono de categoria ocupa la mayor
+        // parte de la porcion (ver TamanoIconoCategoria en Construir()).
+        public const int TamanoLetra = 11;
         public const float OpacidadDeFondo = 0.78f;
         const float RadioInterior = 175f;     // borde exterior del anillo de categorias
         const float RadioExterior = 310f;     // borde exterior del abanico de opciones
@@ -133,6 +137,7 @@ namespace SP.UI
         CanvasGroup group;
         Text lista;
         Image[] rebanadas;
+        Image[] iconosCategoria;
         Text[] etiquetas;
         Image[] opciones;
         Text[] etiquetasOpcion;
@@ -417,11 +422,23 @@ namespace SP.UI
                 }
                 rebanadas[i].rectTransform.localScale = Vector3.one * (sel ? 1.04f : ctx ? 1.02f : 1f);
 
+                // Pedido explicito: "iconos grandes descriptivos y claros,
+                // texto chico" -- el icono ocupa el centro de la porcion (mas
+                // cerca del medio del anillo) y el texto pasa a ser una
+                // etiqueta chica de UNA sola linea, mas afuera, que ya no
+                // necesita repetir el nombre completo porque el icono ya lo dice.
+                var colorTexto = sel ? new Color(0.05f, 0.06f, 0.08f) : ctx ? new Color(1f, 0.9f, 0.45f) : Color.white;
                 float rad = centro * Mathf.Deg2Rad;
-                etiquetas[i].rectTransform.anchoredPosition = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * (RadioInterior * 0.68f);
-                string marca = cat == PistaCategoria && !sel ? "<size=12>▶ ELEGI ESTA</size>" : ctx ? "<size=11>★ AQUI</size>" : "<size=11>" + (i + 1) + "</size>";
-                etiquetas[i].text = marca + "\n" + Porciones[cat];
-                etiquetas[i].color = sel ? new Color(0.05f, 0.06f, 0.08f) : ctx ? new Color(1f, 0.9f, 0.45f) : Color.white;
+                var dir = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad));
+                if (iconosCategoria != null && iconosCategoria[i] != null)
+                {
+                    iconosCategoria[i].rectTransform.anchoredPosition = dir * (RadioInterior * 0.44f);
+                    iconosCategoria[i].color = colorTexto;
+                }
+                etiquetas[i].rectTransform.anchoredPosition = dir * (RadioInterior * 0.88f);
+                string marca = cat == PistaCategoria && !sel ? "▶" : ctx ? "★" : (i + 1).ToString();
+                etiquetas[i].text = "<size=9>" + marca + "</size> " + Porciones[cat].Replace("\n", " ");
+                etiquetas[i].color = colorTexto;
             }
 
             // Abanico de opciones de la categoria resaltada.
@@ -532,6 +549,20 @@ namespace SP.UI
             return t;
         }
 
+        static Image NuevoIcono(Transform padre, string nombre, Sprite sprite, float lado)
+        {
+            var g = new GameObject(nombre, typeof(RectTransform), typeof(Image));
+            g.transform.SetParent(padre, false);
+            var img = g.GetComponent<Image>();
+            img.sprite = sprite;
+            img.raycastTarget = false;
+            img.preserveAspect = true;
+            var rt = img.rectTransform;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(lado, lado);
+            return img;
+        }
+
         static Image NuevaRebanada(Transform padre, string nombre, Sprite sprite, float radio, float fill)
         {
             var sGO = new GameObject(nombre, typeof(RectTransform), typeof(Image));
@@ -568,16 +599,19 @@ namespace SP.UI
             menu.RegistrarActivo();   // en Edit mode (suite, builders) no corre OnEnable
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             menu.rebanadas = new Image[CantidadDePorciones];
+            menu.iconosCategoria = new Image[CantidadDePorciones];
             menu.etiquetas = new Text[CantidadDePorciones];
             float fill = 120f / 360f - 0.006f;
             var interior = Dona(0.36f);
+            const float TamanoIconoCategoria = 58f;
 
             for (int i = 0; i < CantidadDePorciones; i++)
             {
                 var img = NuevaRebanada(go.transform, "Categoria" + (i + 1), interior, RadioInterior, fill);
                 menu.rebanadas[i] = img;
-                var t = NuevoTexto(go.transform, "TextoCategoria" + (i + 1), font, TamanoLetra, new Vector2(132f, 66f));
-                t.text = $"<size=10>{i + 1}</size>\n{Porciones[i]}";
+                menu.iconosCategoria[i] = NuevoIcono(go.transform, "IconoCategoria" + (i + 1), RadialIconFactory.ForCategoria(i), TamanoIconoCategoria);
+                var t = NuevoTexto(go.transform, "TextoCategoria" + (i + 1), font, TamanoLetra, new Vector2(150f, 22f));
+                t.text = $"<size=9>{i + 1}</size> {Porciones[i].Replace("\n", " ")}";
                 menu.etiquetas[i] = t;
             }
 
@@ -589,7 +623,7 @@ namespace SP.UI
             for (int j = 0; j < MaxOpcionesPorCategoria; j++)
             {
                 menu.opciones[j] = NuevaRebanada(go.transform, "Opcion" + (j + 1), exterior, RadioExterior, fillOp);
-                menu.etiquetasOpcion[j] = NuevoTexto(go.transform, "TextoOpcion" + (j + 1), font, TamanoLetra, new Vector2(132f, 58f));
+                menu.etiquetasOpcion[j] = NuevoTexto(go.transform, "TextoOpcion" + (j + 1), font, TamanoLetra, new Vector2(118f, 40f));
                 menu.opciones[j].gameObject.SetActive(false);
                 menu.etiquetasOpcion[j].gameObject.SetActive(false);
             }

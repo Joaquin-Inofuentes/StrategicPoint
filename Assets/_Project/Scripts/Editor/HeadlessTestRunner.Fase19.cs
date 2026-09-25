@@ -115,7 +115,12 @@ namespace SP.EditorTools
             Check("El desvanecimiento es gradual", TutorialBeacon.AlfaSegunDistanciaAMira(100f) > TutorialBeacon.AlfaMinimo && TutorialBeacon.AlfaSegunDistanciaAMira(100f) < 1f);
 
             // --- Radial (10) ---
-            Check("El radial usa letra de 15 o mas", MenuDeOrdenes.TamanoLetra >= 15);
+            // Pedido explicito (ronda nueva): "para el radial, para todas
+            // las opciones, quiero texto chico e iconos grandes,
+            // descriptivos y claros" -- esto invierte a proposito el chequeo
+            // anterior (que pedia letra grande, de cuando el radial no tenia
+            // ningun icono y el texto era la unica forma de leer la opcion).
+            Check("El radial usa letra chica (ahora que tiene iconos grandes)", MenuDeOrdenes.TamanoLetra <= 12);
             Check("El radial es mas translucido (fondo <= 80 %)", MenuDeOrdenes.OpacidadDeFondo <= 0.8f);
 
             // --- Menu principal y pausa: mismo tamano de boton (24) ---

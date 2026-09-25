@@ -523,6 +523,122 @@ namespace SP.Player
             }
         }
 
+        // ------------------------------------------------------------------
+        // AMETRALLADORA FIJA (mudado desde PlayerInputDriver.cs: mismo tipo
+        // de metodo que OrdenDeTanque/OrdenDeCuracion/OrdenDeDemolicion de
+        // aca arriba, y ese archivo ya pasaba el limite de lineas)
+        // ------------------------------------------------------------------
+        public bool UsarTorreta(TorretaFija t)
+        {
+            if (t == null || Brain == null || Brain.Current == null) return false;
+            if (currentSeat.HasValue) { RejectOrder("BAJATE DEL TANQUE PRIMERO"); return false; }
+            if (torretaActual == t) return true;
+            if (!t.Libre) { RejectOrder("LA TORRETA YA ESTA OCUPADA"); return false; }
+            var yo = Brain.Current;
+            var horizontal = t.transform.position - yo.transform.position; horizontal.y = 0f;
+            float d = horizontal.magnitude;
+            if (d > TorretaFija.AlcanceDeUso)
+            {
+                // Lejos: camina solo hasta ella y la ocupa al llegar.
+                torretaPendiente = t;
+                destinoAuto = t.transform.position;
+                Avisar("VOY A LA TORRETA...");
+                return true;
+            }
+            string motivo;
+            if (!t.Ocupar(yo, out motivo)) { RejectOrder(motivo ?? "NO SE PUEDE"); return false; }
+            torretaActual = t;
+            torretaPendiente = null;
+            Rig.ResetPitch();
+            Feedback.Accion(SfxKind.SeatChange, "EN LA AMETRALLADORA FIJA", t.transform.position, Feedback.Ok, aviso: false, pulso: true, volumen: 0.5f);
+            if (ModeToast != null) ModeToast.Show("AMETRALLADORA FIJA: apunta, dispara · [E] salir", 2.5f);
+            return true;
+        }
+
+        public void SalirDeTorreta()
+        {
+            torretaPendiente = null;
+            var t = torretaActual;
+            torretaActual = null;
+            if (t == null) return;
+            t.Liberar();
+            Avisar("SALISTE DE LA TORRETA");
+        }
+
+        static float HorizontalA(Vector3 a, Vector3 b) { var v = b - a; v.y = 0f; return v.magnitude; }
+
+        bool OrdenDeTorreta(int sub, AimResult aim)
+        {
+            if (sub == 1)
+            {
+                if (torretaActual == null) { RejectOrder("NO ESTAS EN UNA TORRETA"); return false; }
+                SalirDeTorreta();
+                return true;
+            }
+            var t = aim.Type == AimTargetType.Torreta ? aim.Torreta : TorretaFija.MasCercana(Brain.Current.transform.position, TorretaFija.AlcanceDeUso * 3f);
+            if (t == null) { RejectOrder("APUNTA A UNA TORRETA FIJA"); return false; }
+
+            // Pedido explicito: "en torreta falta en Q la orden de que lo
+            // monten" -- antes la unica opcion del radial montaba al
+            // JUGADOR; no habia forma de mandar a un aliado a ocupar una
+            // torreta sin poseerlo primero a mano. Elige al aliado libre mas
+            // cercano a la torreta, lo manda caminando y la ocupa solo en
+            // cuanto llega (misma logica que "TANQUE ALLI", pero como esto
+            // no es un Vehicle no hay mountTarget de IA generico para
+            // reusar -- se resuelve con una corrutina corta que sondea la
+            // distancia).
+            if (sub == 2)
+            {
+                if (!t.Libre) { RejectOrder("LA TORRETA YA ESTA OCUPADA"); return false; }
+                Soldier candidato = null; float mejorD = float.MaxValue;
+                foreach (var s in DestinatariosDeOrden())
+                {
+                    if (s == null || s.Health == null || !s.Health.IsAlive) continue;
+                    float d = (s.transform.position - t.transform.position).sqrMagnitude;
+                    if (d < mejorD) { mejorD = d; candidato = s; }
+                }
+                if (candidato == null) { RejectOrder("NADIE PARA MANDAR"); return false; }
+                OrderService.IssueMoveOrder(candidato, t.transform.position);
+                StartCoroutine(EsperarYMontarTorreta(candidato, t));
+                Avisar(candidato.DisplayName.ToUpperInvariant() + " VA A LA TORRETA");
+                return true;
+            }
+            return UsarTorreta(t);
+        }
+
+        IEnumerator EsperarYMontarTorreta(Soldier s, TorretaFija t)
+        {
+            float limite = Time.time + 20f;
+            while (Time.time < limite)
+            {
+                if (s == null || s.Health == null || !s.Health.IsAlive) yield break;
+                if (t == null || !t.isActiveAndEnabled || !t.Libre) yield break;
+                if (Vector3.Distance(s.transform.position, t.transform.position) <= TorretaFija.AlcanceDeUso)
+                {
+                    t.Ocupar(s, out _);
+                    yield break;
+                }
+                yield return null;
+            }
+        }
+
+        // Cada frame en FPS: sincroniza el estado con la torreta (murio, la sacaron, llego a ella).
+        void ActualizarTorretaFija()
+        {
+            if (torretaActual != null && (Brain.Current == null || torretaActual.Ocupante != Brain.Current)) { torretaActual = null; }
+            if (torretaPendiente != null)
+            {
+                if (!destinoAuto.HasValue) torretaPendiente = null;   // WASD lo cancelo
+                else if (Brain.Current != null && HorizontalA(Brain.Current.transform.position, torretaPendiente.transform.position) <= TorretaFija.AlcanceDeUso * 0.6f)
+                {
+                    var t = torretaPendiente;
+                    destinoAuto = null;
+                    torretaPendiente = null;
+                    UsarTorreta(t);
+                }
+            }
+        }
+
         bool OrdenDeDemolicion(int sub, AimResult aim)
         {
             var yo = Brain != null ? Brain.Current : null;

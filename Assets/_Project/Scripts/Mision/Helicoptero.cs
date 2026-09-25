@@ -77,6 +77,16 @@ namespace SP.Mision
         // el loop no chasquee).
         void ArmarSonido()
         {
+            // Pedido explicito: "hay un sonido que ya no deberia estar del
+            // antiguo efecto de helices, eliminalo el viejo, deja solo el
+            // nuevo". Si el GameObject ya trae un AudioSource guardado en la
+            // escena (de una version anterior, de antes de que este metodo
+            // armara el suyo por codigo), sonarian DOS rotores a la vez -- el
+            // viejo con su clip de esa epoca y el nuevo de aca abajo. Se
+            // destruye cualquier AudioSource previo antes de crear el propio,
+            // asi solo queda uno sonando.
+            foreach (var viejo in GetComponents<AudioSource>()) Destroy(viejo);
+
             var clip = SP.Core.RecursosCache.Cargar<AudioClip>("Audio/Heli/RotorReal_Freesound_qubodup");
             if (clip == null) clip = GenerarRotor();
             sonido = gameObject.AddComponent<AudioSource>();

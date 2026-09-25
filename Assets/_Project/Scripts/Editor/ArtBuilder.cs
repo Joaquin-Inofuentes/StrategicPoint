@@ -373,9 +373,12 @@ namespace SP.EditorTools
 
         static readonly PropDef[] Definiciones =
         {
-            new PropDef { fbx = SpArte + "/M_Arbol 1.fbx",   prefab = "P_Arte_Arbol1",    volumen = Volumen.Capsula, fraccionAncho = 0.30f },
-            new PropDef { fbx = SpArte + "/M_Arbol 2.fbx",   prefab = "P_Arte_Arbol2",    volumen = Volumen.Capsula, fraccionAncho = 0.30f },
-            new PropDef { fbx = SpArte + "/M_Arbol 3.fbx",   prefab = "P_Arte_Arbol3",    volumen = Volumen.Capsula, fraccionAncho = 0.16f },
+            // Pedido explicito: "los colliders de los arboles son demasiado
+            // grandes" -- bajaron a casi la mitad (el tronco real es bastante
+            // mas angosto que lo que el collider dejaba pasar antes).
+            new PropDef { fbx = SpArte + "/M_Arbol 1.fbx",   prefab = "P_Arte_Arbol1",    volumen = Volumen.Capsula, fraccionAncho = 0.14f },
+            new PropDef { fbx = SpArte + "/M_Arbol 2.fbx",   prefab = "P_Arte_Arbol2",    volumen = Volumen.Capsula, fraccionAncho = 0.14f },
+            new PropDef { fbx = SpArte + "/M_Arbol 3.fbx",   prefab = "P_Arte_Arbol3",    volumen = Volumen.Capsula, fraccionAncho = 0.08f },
             new PropDef { fbx = SpArte + "/M_Barricada.fbx", prefab = "P_Arte_Barricada", volumen = Volumen.Caja,    fraccionAncho = 1f },
             new PropDef { fbx = SpArte + "/M_Barril 1.fbx",  prefab = "P_Arte_Barril",    volumen = Volumen.Capsula, fraccionAncho = 1f },
             new PropDef { fbx = SpArte + "/M_Soldado.fbx",   prefab = "P_Arte_Soldado",   volumen = Volumen.Caja,    fraccionAncho = 0.55f },

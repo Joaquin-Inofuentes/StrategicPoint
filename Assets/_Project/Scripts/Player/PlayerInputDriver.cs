@@ -1989,7 +1989,7 @@ namespace SP.Player
             return n;
         }
 
-        void ActualizarPanelDeTeclas()
+        void ActualizarPanelDeTeclas(bool mantenerTab)
         {
             if (Vehicle == null) return;
             if (panelDeTeclas == null)
@@ -2000,6 +2000,9 @@ namespace SP.Player
             if (panelDeTeclas == null) return;
             // Mirando por la mira del canon / la metralleta el panel tapa la optica: se esconde.
             panelDeTeclas.SetVisible(!(Rig != null && Rig.AdsBlend > 0.3f));
+            // Pedido explicito: colapsado por defecto (solo tecla TAB + "GUIA"), se
+            // despliega con la lista completa de ordenes mientras se sostiene [TAB].
+            panelDeTeclas.SetExpandido(mantenerTab);
             panelDeTeclas.Actualizar(Vehicle, currentSeat, AliadosEnCaminoAlVehiculo(Vehicle));
         }
 
@@ -2585,81 +2588,14 @@ namespace SP.Player
             if (Rig != null) Rig.MostrarRutas(tecla);
         }
 
-        // ------------------------------------------------------------------
-        // AMETRALLADORA FIJA
-        // ------------------------------------------------------------------
+        // AMETRALLADORA FIJA: UsarTorreta/SalirDeTorreta/OrdenDeTorreta/
+        // ActualizarTorretaFija se mudaron a PlayerInputDriver.Radial.cs
+        // (junto a OrdenDeTanque/OrdenDeCuracion/OrdenDeDemolicion, el mismo
+        // tipo de metodo) para no seguir engordando este archivo -- ya
+        // supera el limite de lineas que la propia suite vigila.
         public bool EnTorretaFija => torretaActual != null;
         public TorretaFija TorretaActual => torretaActual;
         TorretaFija torretaPendiente;
-
-        public bool UsarTorreta(TorretaFija t)
-        {
-            if (t == null || Brain == null || Brain.Current == null) return false;
-            if (currentSeat.HasValue) { RejectOrder("BAJATE DEL TANQUE PRIMERO"); return false; }
-            if (torretaActual == t) return true;
-            if (!t.Libre) { RejectOrder("LA TORRETA YA ESTA OCUPADA"); return false; }
-            var yo = Brain.Current;
-            var horizontal = t.transform.position - yo.transform.position; horizontal.y = 0f;
-            float d = horizontal.magnitude;
-            if (d > TorretaFija.AlcanceDeUso)
-            {
-                // Lejos: camina solo hasta ella y la ocupa al llegar.
-                torretaPendiente = t;
-                destinoAuto = t.transform.position;
-                Avisar("VOY A LA TORRETA...");
-                return true;
-            }
-            string motivo;
-            if (!t.Ocupar(yo, out motivo)) { RejectOrder(motivo ?? "NO SE PUEDE"); return false; }
-            torretaActual = t;
-            torretaPendiente = null;
-            Rig.ResetPitch();
-            Feedback.Accion(SfxKind.SeatChange, "EN LA AMETRALLADORA FIJA", t.transform.position, Feedback.Ok, aviso: false, pulso: true, volumen: 0.5f);
-            if (ModeToast != null) ModeToast.Show("AMETRALLADORA FIJA: apunta, dispara · [E] salir", 2.5f);
-            return true;
-        }
-
-        public void SalirDeTorreta()
-        {
-            torretaPendiente = null;
-            var t = torretaActual;
-            torretaActual = null;
-            if (t == null) return;
-            t.Liberar();
-            Avisar("SALISTE DE LA TORRETA");
-        }
-
-        static float HorizontalA(Vector3 a, Vector3 b) { var v = b - a; v.y = 0f; return v.magnitude; }
-
-        bool OrdenDeTorreta(int sub, AimResult aim)
-        {
-            if (sub == 1)
-            {
-                if (torretaActual == null) { RejectOrder("NO ESTAS EN UNA TORRETA"); return false; }
-                SalirDeTorreta();
-                return true;
-            }
-            var t = aim.Type == AimTargetType.Torreta ? aim.Torreta : TorretaFija.MasCercana(Brain.Current.transform.position, TorretaFija.AlcanceDeUso * 3f);
-            if (t == null) { RejectOrder("APUNTA A UNA TORRETA FIJA"); return false; }
-            return UsarTorreta(t);
-        }
-
-        // Cada frame en FPS: sincroniza el estado con la torreta (murio, la sacaron, llego a ella).
-        void ActualizarTorretaFija()
-        {
-            if (torretaActual != null && (Brain.Current == null || torretaActual.Ocupante != Brain.Current)) { torretaActual = null; }
-            if (torretaPendiente != null)
-            {
-                if (!destinoAuto.HasValue) torretaPendiente = null;   // WASD lo cancelo
-                else if (Brain.Current != null && HorizontalA(Brain.Current.transform.position, torretaPendiente.transform.position) <= TorretaFija.AlcanceDeUso * 0.6f)
-                {
-                    var t = torretaPendiente;
-                    destinoAuto = null;
-                    torretaPendiente = null;
-                    UsarTorreta(t);
-                }
-            }
-        }
 
         // ------------------------------------------------------------------
         // Contexto del radial: solo lo que se puede hacer con lo que se apunta
@@ -2767,7 +2703,7 @@ namespace SP.Player
                     if (aim.Torreta != null)
                     {
                         apunta = aim.Torreta.Libre ? "Ametralladora fija" : "Ametralladora fija (ocupada)";
-                        if (aim.Torreta.Libre) c.Mostrar(MenuDeOrdenes.Torreta, true, 0);
+                        if (aim.Torreta.Libre) c.Mostrar(MenuDeOrdenes.Torreta, true, 0, 2);
                     }
                     break;
             }
@@ -2795,6 +2731,26 @@ namespace SP.Player
 
             if (curar.Count > 0) c.Mostrar(MenuDeOrdenes.Curar, true, curar.ToArray());
             if (tanque.Count > 0) c.Mostrar(MenuDeOrdenes.Tanque, true, tanque.ToArray());
+
+            // Pedido explicito: "para la funcion de Q, si estoy con ese
+            // soldado quiero que sea null, o sea que no se pueda
+            // seleccionar" -- si POSEER queda visible con sus opciones
+            // numeradas por soldado (SOLDADO 1/2/3), la que corresponde al
+            // que ya estas controlando no se ofrece como opcion elegible:
+            // se saca del abanico en vez de dejar que se la elija y recien
+            // ahi rechazarla con un cartel.
+            if (c.Visible[MenuDeOrdenes.Poseer])
+            {
+                var visibles = new List<int>();
+                for (int o = 0; o < MenuDeOrdenes.OpcionesDe[MenuDeOrdenes.Poseer].Length; o++)
+                {
+                    if (!c.OpcionVisible[MenuDeOrdenes.Poseer][o]) continue;
+                    if (o < 3 && SoldadoDeEscuadra(o) == yo) continue;
+                    visibles.Add(o);
+                }
+                if (visibles.Count > 0) c.Mostrar(MenuDeOrdenes.Poseer, c.Contextual[MenuDeOrdenes.Poseer], visibles.ToArray());
+            }
+
             c.Apuntando = apunta;
             return c;
         }

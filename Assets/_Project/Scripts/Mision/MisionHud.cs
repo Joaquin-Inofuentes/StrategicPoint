@@ -124,10 +124,15 @@ namespace SP.Mision
                     break;
                 }
                 case FaseDeMision.Rescatar:
+                {
                     titulo.text = "OBJETIVO 3/4 · RESCATAR AL CIVIL";
-                    detalle.text = $"Acercate al civil y quedate junto a el · {Mathf.RoundToInt(d)} m";
-                    SetBarra(0f, amarillo);
+                    float prog = director.ProgresoRescate;
+                    detalle.text = prog > 0f
+                        ? $"LIBERANDO... {Mathf.RoundToInt(prog * 100f)}%"
+                        : $"Acercate al civil y quedate junto a el · {Mathf.RoundToInt(d)} m";
+                    SetBarra(prog, amarillo);
                     break;
+                }
                 default:
                 {
                     titulo.text = "OBJETIVO 4/4 · ESCAPAR EN EL HELICOPTERO";

@@ -221,15 +221,29 @@ namespace SP.Presentation
             if (!IsCollapsed) Collapse();
         }
 
+        // Pedido explicito: "algunos objetos pequeños dejan muchos escombros
+        // grandes, que sea proporcional". Antes count/tamaño de escombro eran
+        // fijos sin importar si el obstaculo era un barril chico o una
+        // barricada entera -- un barril dejaba la misma nube de trozos
+        // "grandes" que una pared. 2 m (mas o menos un barril/soldado) es la
+        // referencia neutra: por debajo se achica, por arriba se agranda,
+        // acotado para que un obstaculo minusculo no quede sin nada y uno
+        // gigante no reviente el presupuesto del pool de un solo golpe.
+        const float TamanoDeReferencia = 2f;
+
         void SpawnDebris(int count, float speed)
         {
             var origin = transform.position + Vector3.up * baseScale.y * 0.4f;
             Color debrisColor = rend != null ? CubeFxReactor.ReadTint(rend) : baseColor;
-            for (int i = 0; i < count; i++)
+            float tamanoRelativo = Mathf.Clamp((baseScale.x + baseScale.y + baseScale.z) / 3f / TamanoDeReferencia, 0.35f, 1.6f);
+            int countEscalado = Mathf.Max(1, Mathf.RoundToInt(count * tamanoRelativo));
+            float minSize = 0.12f * tamanoRelativo;
+            float maxSize = 0.28f * tamanoRelativo;
+            for (int i = 0; i < countEscalado; i++)
             {
                 var dir = (Random.insideUnitSphere + Vector3.up * 1.2f).normalized;
                 DebrisPool.Spawn(origin + Random.insideUnitSphere * 0.4f, dir * speed * Random.Range(0.6f, 1.3f),
-                    debrisColor, Random.Range(0.12f, 0.28f));
+                    debrisColor, Random.Range(minSize, maxSize));
             }
         }
     }

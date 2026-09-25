@@ -102,7 +102,7 @@ namespace SP.Mision
             Perdio = true;
             if (MisionDirector.Activo) { MisionDirector.Instancia.Perder("TODA LA ESCUADRA CAYO"); return; }
             if (outcomeSuelto == null) outcomeSuelto = GameOutcomeController.Activo;
-            if (outcomeSuelto != null) { GameLog.Line("Perdiste (escuadra completa caida)"); outcomeSuelto.ShowDefeat(); }
+            if (outcomeSuelto != null) { GameLog.Line("Perdiste (escuadra completa caida)"); outcomeSuelto.ShowDefeat("TODA LA ESCUADRA CAYO"); }
         }
     }
 }

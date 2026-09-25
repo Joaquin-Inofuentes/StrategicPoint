@@ -34,6 +34,7 @@ namespace SP.Mision
         [SerializeField] GameObject enemigoPrefab;
         [SerializeField] GameObject civilPrefab;
         [SerializeField] GameObject heliPrefab;
+        [SerializeField] CinematicaIntroPath rutaDeIntro;
 
         public Vector3 Plaza = new Vector3(4f, 0f, 119f);
         public Vector3 Helipuerto = new Vector3(-26f, 0f, -8f);
@@ -43,6 +44,11 @@ namespace SP.Mision
         public float RadioExtraccion = 13f;
         public float RadioDeAlertaDelHeli = 85f;
         public float SegundosDeResistencia = 60f;
+        // Pedido explicito: "aparecera una barra de carga de liberando que
+        // dura 10 segundos y luego te seguira" -- antes eran 1.2 s sin
+        // ninguna barra visible (ver TickRescatar).
+        public const float DuracionRescate = 10f;
+        public float ProgresoRescate => Mathf.Clamp01(tRescate / DuracionRescate);
 
         public FaseDeMision Fase { get; private set; } = FaseDeMision.Infiltrar;
         public float Restante { get; private set; }
@@ -110,6 +116,18 @@ namespace SP.Mision
             SP.Presentation.ObjectiveDiamondMarker.Crear(PuntoObjetivoActual);
             GameLog.Line($"Mision iniciada (dificultad {Dificultad.PerfilActual.Nombre})");
             CambioDeFase?.Invoke(Fase);
+
+            // Pedido explicito: "el rehen este visible siempre, solo que se
+            // lo vera agachado" -- para que la cinematica de apertura pueda
+            // mostrarlo tiene que existir DESDE el arranque, no recien al
+            // terminar Resistir (ver SpawnCivilOculto/AparecerCivil).
+            SpawnCivilOculto();
+
+            if (Application.isPlaying && rutaDeIntro != null)
+            {
+                var cine = gameObject.AddComponent<CinematicaDeIntro>();
+                cine.Iniciar(driver, rutaDeIntro, null);
+            }
         }
 
         // ---------------- utilidades ----------------
@@ -398,7 +416,14 @@ namespace SP.Mision
         }
 
         // ---------------- civil ----------------
-        void AparecerCivil()
+        // Pedido explicito ("el rehen este visible siempre... se lo vera
+        // agachado"): nace ESCONDIDO y AGACHADO desde Start(), pasivo (no
+        // reacciona a nada, no tiene marcador ni suena su aviso de
+        // proximidad todavia) -- eso es obra de AparecerCivil(), que sigue
+        // llamandose en el mismo momento narrativo de siempre (al terminar
+        // Resistir). Separar "existir" de "revelarse" es lo unico que hace
+        // falta para que la cinematica de apertura pueda filmarlo.
+        void SpawnCivilOculto()
         {
             if (civilPrefab == null || Civil != null) return;
             var go = Instantiate(civilPrefab, new Vector3(RefugioDelCivil.x, 0.8f, RefugioDelCivil.z), Quaternion.Euler(0f, 180f, 0f));
@@ -406,6 +431,13 @@ namespace SP.Mision
             Civil = go.GetComponent<Soldier>();
             Civil.Configure("Civil", TeamId.Player, RoleType.Civilian, 150);
             if (Civil.Brain != null) Civil.Brain.Pasivo = true;
+            if (Civil.Motor != null) Civil.Motor.SetCrouching(true);
+        }
+
+        void AparecerCivil()
+        {
+            if (Civil == null) { SpawnCivilOculto(); if (Civil == null) return; }
+            if (Civil.Motor != null) Civil.Motor.SetCrouching(false);
             Civil.gameObject.AddComponent<Rehen>();   // tinte propio, marcador flotante y aviso sonoro al acercarse
             // Pedido explicito: "el cartel de civil rescatado mas delgado...
             // y sea en la base de abajo" -- columna mas fina (0.35 en vez de
@@ -525,7 +557,7 @@ namespace SP.Mision
             if (Civil == null || !Civil.Health.IsAlive) { Perder("EL CIVIL MURIO"); return; }
             float d = Plano(PosicionDelJugador(), Civil.transform.position);
             if (d <= 4.5f) tRescate += dt; else tRescate = Mathf.Max(0f, tRescate - dt);
-            if (tRescate < 1.2f) return;
+            if (tRescate < DuracionRescate) return;
 
             CivilRescatado = true;
             if (balizaCivil != null) { balizaCivil.Quitar(); balizaCivil = null; }
@@ -537,6 +569,12 @@ namespace SP.Mision
             // AlertQueue de abajo. Estallido blanco-verdoso ("a salvo") en
             // el punto del civil.
             SparkleBurstFx.Spawn(Civil.transform.position + Vector3.up * 1f, new Color(0.55f, 1f, 0.65f), 1f, 2.6f, 30, 3f);
+            // Pedido explicito: "que aparezca como otro mas... quiero ver su
+            // vida e icono abajo a la izquierda porque es nuevo" -- el
+            // roster solo se arma al activarse (RosterView.OnEnable), asi
+            // que sin este empujon el civil rescatado no aparecia ahi hasta
+            // la proxima vez que se recargara esa vista.
+            if (SP.UI.RosterView.Activo != null) SP.UI.RosterView.Activo.Rebuild();
             LanzarRefuerzos();
             CambiarFase(FaseDeMision.Escapar);
             AlertQueue.Push("¡CIVIL RESCATADO! LLEVALO AL HELICOPTERO (PUNTO DE ORIGEN)", AlertPriority.Alta, 4f);
@@ -616,7 +654,7 @@ namespace SP.Mision
             GameLog.Line("Mision fallida: " + motivo);
             AlertQueue.Push(motivo, AlertPriority.Alta, 3f);
             if (Heli != null) { Heli.Alerta(false); Heli.DisparaCobertura = false; }
-            if (outcome != null) outcome.ShowDefeat();
+            if (outcome != null) outcome.ShowDefeat(motivo);
         }
 
         // Para las pruebas: salta a una fase (reposiciona lo necesario).

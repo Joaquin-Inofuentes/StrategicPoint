@@ -371,7 +371,7 @@ namespace SP.Vehicles
 
             var brain = soldier.Brain;
             bool esJugador = brain != null && brain.IsPossessedByPlayer;
-            if (brain != null) brain.enabled = false;
+            if (brain != null) { brain.enabled = false; brain.MontadoEnVehiculo = true; }
 
             // Pedido explicito: un log legible de quien ocupa que asiento
             // de que vehiculo -- distinto segun sea el jugador (cambia de
@@ -610,7 +610,22 @@ namespace SP.Vehicles
             var destinoBajada = transform.position + DismountOffsetFor(foundRole.Value);
             // Ronda 13 (punto 11): la tripulacion que sale de un tanque tiene que caer sobre la malla de navegacion (si no, queda
             // dentro de un muro/roca y su cerebro no puede moverse ni apuntar) y con el cerebro reiniciado para que combata.
-            if (UnityEngine.AI.NavMesh.SamplePosition(destinoBajada, out var golpeNav, 4f, UnityEngine.AI.NavMesh.AllAreas)) destinoBajada = golpeNav.position;
+            //
+            // BUG REAL ("al salir del tanque quedas enterrado"): antes se
+            // adoptaba tambien la ALTURA que devuelve SamplePosition -- pero
+            // esa altura es la del nodo de malla horneado mas cercano en un
+            // radio de 4 m, que con un chasis grande de por medio puede ser
+            // un nodo de OTRO lado (una rampa, un pozo, un techo) a una
+            // altura totalmente distinta a la del piso real bajo el tanque.
+            // Con el soldado ya teletransportado ahi abajo, ApoyoEnElPiso
+            // (que tira el rayo HACIA ABAJO desde su propia cabeza) nunca
+            // podia encontrar el piso real si este quedaba POR ARRIBA del
+            // punto de partida -- de ahi "enterrado" sin forma de corregirse
+            // solo. La altura del VEHICULO es la referencia confiable (esta
+            // parado sobre el terreno real ahora mismo): solo se toma X/Z
+            // del muestreo de malla, para no bajar dentro de una roca/pared.
+            if (UnityEngine.AI.NavMesh.SamplePosition(destinoBajada, out var golpeNav, 4f, UnityEngine.AI.NavMesh.AllAreas))
+                destinoBajada = new Vector3(golpeNav.position.x, transform.position.y, golpeNav.position.z);
             soldier.transform.position = destinoBajada;
             soldier.transform.rotation = transform.rotation;
             // El muestreo del NavMesh da una posicion aproximada (la malla
@@ -624,7 +639,7 @@ namespace SP.Vehicles
             if (soldier.Brain != null) soldier.Brain.ReactivarNavegacion();
 
             var brain = soldier.Brain;
-            if (brain != null) brain.enabled = true;
+            if (brain != null) { brain.enabled = true; brain.MontadoEnVehiculo = false; }
             RefreshOccupancyColor();
             return true;
         }
@@ -675,15 +690,32 @@ namespace SP.Vehicles
         // izquierda, artillero a la derecha, pasajeros atras a cada lado
         // -- para que cuatro ocupantes bajando a la vez no terminen los
         // cuatro en el mismo punto ni adentro del chasis.
+        //
+        // BUG REAL: los 2.5/2 m de antes eran fijos, tuneados para un
+        // vehiculo mas chico que el tanque -- con un chasis real mas ancho
+        // que eso, el punto de bajada caia DENTRO del propio collider solido
+        // del vehiculo, y todo lo que viene despues (muestreo de NavMesh,
+        // apoyo al piso) arranca de un punto ya invalido. Igual que
+        // ClosestBoardingPoint (para SUBIR), la mitad real del casco +
+        // el mismo margen de abordaje garantiza que el punto de BAJADA
+        // tambien quede afuera del casco, sea cual sea su tamaño.
         Vector3 DismountOffsetFor(VehicleSeatRole role)
         {
+            float mitadAncho = 2.5f, mitadLargo = 2f;
+            var col = ColliderPrincipal();
+            if (col != null)
+            {
+                var ext = col.bounds.extents;
+                mitadAncho = ext.x + margenAbordaje;
+                mitadLargo = ext.z + margenAbordaje;
+            }
             switch (role)
             {
-                case VehicleSeatRole.Driver: return -transform.right * 2.5f;
-                case VehicleSeatRole.Gunner: return transform.right * 2.5f;
-                case VehicleSeatRole.Passenger1: return -transform.right * 2.5f - transform.forward * 2f;
-                case VehicleSeatRole.Passenger2: return transform.right * 2.5f - transform.forward * 2f;
-                default: return transform.right * 2.5f;
+                case VehicleSeatRole.Driver: return -transform.right * mitadAncho;
+                case VehicleSeatRole.Gunner: return transform.right * mitadAncho;
+                case VehicleSeatRole.Passenger1: return -transform.right * mitadAncho - transform.forward * mitadLargo;
+                case VehicleSeatRole.Passenger2: return transform.right * mitadAncho - transform.forward * mitadLargo;
+                default: return transform.right * mitadAncho;
             }
         }
 

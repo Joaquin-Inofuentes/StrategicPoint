@@ -67,6 +67,35 @@ namespace SP.Mision
             titulo.text = "MISION CUMPLIDA";
         }
 
+        // Pedido explicito: "la toma de camara esta obstruida por arboles,
+        // mejora las tomas". Antes las posiciones de camara eran fijas a
+        // mano sin mirar que hubiera en el medio -- cualquier arbol del
+        // perimetro del helipuerto que cayera justo entre la mira y la
+        // posicion calculada tapaba el plano entero. Un raycast desde la
+        // mira hacia la posicion deseada acerca la camara hasta justo antes
+        // del primer solido (mismo criterio que Projectile.LaExplosionAlcanza:
+        // NavService.BlocksMovement distingue geometria solida de triggers/
+        // actores) en vez de dejarla del otro lado de un tronco.
+        static readonly RaycastHit[] bufferCinematica = new RaycastHit[8];
+
+        static Vector3 EvitarObstruccion(Vector3 mira, Vector3 posDeseada)
+        {
+            var delta = posDeseada - mira;
+            float dist = delta.magnitude;
+            if (dist < 0.5f) return posDeseada;
+            var dir = delta / dist;
+            int n = Physics.RaycastNonAlloc(mira, dir, bufferCinematica, dist, ~0, QueryTriggerInteraction.Ignore);
+            float masCercano = dist;
+            for (int i = 0; i < n; i++)
+            {
+                var c = bufferCinematica[i].collider;
+                if (c == null || !SP.Core.NavService.BlocksMovement(c)) continue;
+                if (bufferCinematica[i].distance < masCercano) masCercano = bufferCinematica[i].distance;
+            }
+            if (masCercano >= dist - 0.05f) return posDeseada;
+            return mira + dir * Mathf.Max(2f, masCercano - 0.4f);
+        }
+
         static Image Rect(Transform padre, string nombre, Vector2 aMin, Vector2 aMax, Color color)
         {
             var g = new GameObject(nombre, typeof(RectTransform), typeof(Image));
@@ -226,15 +255,32 @@ namespace SP.Mision
                     {
                         Plano = "1 · helipuerto";
                         float u = t / 4.8f;
-                        pos = pad + new Vector3(14f - 3f * u, 2.4f + 0.8f * u, -13f + 2f * u);
+                        // Pedido explicito: "la toma de camara esta obstruida
+                        // por arboles, mejora las tomas" -- ademas de
+                        // EvitarObstruccion() (que aparta la camara de
+                        // cualquier solido entre ella y la mira, sea cual sea
+                        // el arbol de turno), esta toma se alejo y se subio
+                        // un poco (14->17 de distancia, 2,4->3,6 de altura)
+                        // para despejar la copa tipica de los arboles del
+                        // perimetro del helipuerto.
+                        pos = pad + new Vector3(17f - 3f * u, 3.6f + 0.8f * u, -16f + 2f * u);
                         mira = pad + new Vector3(-2f, 3.2f, 6f);
                     }
                     else if (t < 10.5f)
                     {
                         Plano = "2 · despegue";
                         var hp = heli.transform.position;
-                        pos = hp + new Vector3(12f, 3f, -16f) + Vector3.up * Mathf.Min(6f, (t - 4.8f) * 1.2f);
-                        mira = Vector3.Lerp(hp, pad + new Vector3(0f, 1f, 9f), 0.25f);
+                        pos = hp + new Vector3(12f, 4f, -18f) + Vector3.up * Mathf.Min(6f, (t - 4.8f) * 1.2f);
+                        // BUG REAL reportado: "en la mitad se corta y no se ve
+                        // el helicoptero" -- con solo 25% de peso hacia el
+                        // helicoptero de verdad (75% clavado cerca de "pad"),
+                        // en cuanto el despegue avanzaba el helicoptero se
+                        // salia del cuadro porque la mira casi no lo seguia.
+                        // Ahora el peso se invierte, y crece con el tiempo:
+                        // arranca mirando sobre todo al helicoptero real y
+                        // termina siguiendolo casi del todo.
+                        float u2 = Mathf.Clamp01((t - 4.8f) / 5.7f);
+                        mira = Vector3.Lerp(hp, pad + new Vector3(0f, 1f, 9f), Mathf.Lerp(0.15f, 0.35f, u2));
                     }
                     else
                     {
@@ -249,6 +295,7 @@ namespace SP.Mision
                         pos = pad + new Vector3(-6f + u * 10f, 2.1f + vaivenY, 5f - u * 2f);
                         mira = Vector3.Lerp(heli.transform.position, pad + new Vector3(2f, 3f, 9f), 0.3f) + new Vector3(vaivenX, 0f, 0f);
                     }
+                    pos = EvitarObstruccion(mira, pos);
                     cam.transform.position = Vector3.Lerp(cam.transform.position, pos, t < 0.05f ? 1f : Mathf.Clamp01(dt * 6f));
                     var rotDeseada = Quaternion.LookRotation((mira - cam.transform.position).normalized);
                     cam.transform.rotation = Quaternion.Slerp(cam.transform.rotation, rotDeseada, t < 0.05f ? 1f : Mathf.Clamp01(dt * 5f));

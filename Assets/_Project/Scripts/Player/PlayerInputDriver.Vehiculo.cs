@@ -232,7 +232,7 @@ namespace SP.Player
             // [G] todos suben, [I] todos bajan (menos vos): funcionan desde
             // cualquier asiento y desde la vista RTS del tanque. El panel de
             // teclas los muestra junto a los asientos.
-            ActualizarPanelDeTeclas();
+            ActualizarPanelDeTeclas(kb != null && kb.tabKey.isPressed);
             if (AtajosDeTecladoHeredados && kb.gKey.wasPressedThisFrame) SubirATodos(Vehicle);
             if (AtajosDeTecladoHeredados && kb.iKey.wasPressedThisFrame) BajarATodos(Vehicle);
             if (panelDeTeclas != null)

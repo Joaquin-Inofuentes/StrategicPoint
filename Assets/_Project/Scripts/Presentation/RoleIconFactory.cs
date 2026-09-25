@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using SP.Combat;
 
@@ -14,19 +15,63 @@ namespace SP.Presentation
     {
         const int Size = 64;
 
-        static Texture2D cruz, mira, flecha, generico;
-        static Sprite spriteCruz, spriteMira, spriteFlecha, spriteGenerico;
+        static Texture2D cruz, mira, flecha, civil, generico;
+        static Sprite spriteCruz, spriteMira, spriteFlecha, spriteCivil, spriteGenerico;
 
         public static Sprite For(RoleType role) => role switch
         {
             RoleType.Medic => spriteCruz ??= AsSprite(cruz ??= BuildCruz()),
             RoleType.Sniper => spriteMira ??= AsSprite(mira ??= BuildMira()),
             RoleType.Assault => spriteFlecha ??= AsSprite(flecha ??= BuildFlecha()),
+            // Pedido explicito: "que aparezca... con icono de civil" -- antes
+            // un civil caia en el mismo circulo generico que cualquier rol
+            // sin icono propio (Flanker, etc.), sin distinguirse de un rol
+            // "sin clasificar". Silueta simple de cabeza + torso, propia.
+            RoleType.Civilian => spriteCivil ??= AsSprite(civil ??= BuildCivil()),
             _ => spriteGenerico ??= AsSprite(generico ??= BuildGenerico()),
         };
 
         static Sprite AsSprite(Texture2D tex)
             => Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+
+        // Pedido explicito: "los rombos dentro de los aliados tengan iconos
+        // segun su especialidad, y lo mismo para enemigos". Estos iconos son
+        // Alpha8 (sin color propio, ver el comentario de arriba): perfectos
+        // para un Image de UI (que los usa como mascara tenida por
+        // Image.color) pero un material Unlit de mundo sobre una malla NO
+        // hace ese tratamiento especial -- leeria RGB=0 y el icono saldria
+        // negro/invisible sin importar el tinte del material. Esta variante
+        // vuelca la MISMA mascara de alpha a una textura RGBA32 blanca real,
+        // que un material comun si puede tenir como corresponde (mismo
+        // truco que TexturaEngranaje en DiamondGizmo).
+        static readonly Dictionary<RoleType, Texture2D> worldIconCache = new Dictionary<RoleType, Texture2D>();
+
+        public static Texture2D WorldIconTexture(RoleType role)
+        {
+            if (worldIconCache.TryGetValue(role, out var cached) && cached != null) return cached;
+            var origen = For(role).texture;
+            int w = origen.width, h = origen.height;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { name = "WorldIcon_" + role, hideFlags = HideFlags.HideAndDontSave };
+            var pix = new Color32[w * h];
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                byte a = (byte)(origen.GetPixel(x, y).a * 255f);
+                pix[y * w + x] = new Color32(255, 255, 255, a);
+            }
+            tex.SetPixels32(pix);
+            tex.Apply(false, false);
+            worldIconCache[role] = tex;
+            return tex;
+        }
+
+        // Los enemigos no traen un RoleType propio por especialidad (todos
+        // comparten TeamId.Enemy) -- la variedad real esta en el arma que
+        // llevan (SoldierClasses.Enemigos). Se aproxima el icono al arma:
+        // mira de francotirador para Sniper, flecha para el resto (fusil,
+        // pesada, metralleta).
+        public static Texture2D WorldIconTextureForWeapon(WeaponKind kind)
+            => WorldIconTexture(kind == WeaponKind.Sniper ? RoleType.Sniper : RoleType.Assault);
 
         static Texture2D NuevaTextura() => new Texture2D(Size, Size, TextureFormat.Alpha8, false) { name = "RoleIcon", hideFlags = HideFlags.HideAndDontSave };
 
@@ -90,7 +135,34 @@ namespace SP.Presentation
             return tex;
         }
 
-        // Fallback (civil / rol sin icono propio): circulo simple.
+        // Civil: silueta simple de cabeza (circulo) + torso (trapecio), para
+        // distinguirse de un rol de combate sin necesitar ningun asset externo.
+        static Texture2D BuildCivil()
+        {
+            var tex = NuevaTextura();
+            const float radioCabeza = 0.30f, centroCabezaY = 0.42f;
+            const float anchoHombros = 0.7f, anchoCintura = 0.42f, topeTorsoY = 0.12f, baseTorsoY = -0.85f;
+            for (int y = 0; y < Size; y++)
+            for (int x = 0; x < Size; x++)
+            {
+                float nx = (x + 0.5f) / Size * 2f - 1f;
+                float ny = (y + 0.5f) / Size * 2f - 1f;
+                float dCabeza = Mathf.Sqrt(nx * nx + (ny - centroCabezaY) * (ny - centroCabezaY));
+                bool cabeza = dCabeza <= radioCabeza;
+                bool torso = false;
+                if (ny <= topeTorsoY && ny >= baseTorsoY)
+                {
+                    float t = Mathf.InverseLerp(topeTorsoY, baseTorsoY, ny);
+                    float anchoEn = Mathf.Lerp(anchoHombros, anchoCintura, t) * 0.5f;
+                    torso = Mathf.Abs(nx) <= anchoEn;
+                }
+                tex.SetPixel(x, y, new Color(0f, 0f, 0f, (cabeza || torso) ? 1f : 0f));
+            }
+            tex.Apply();
+            return tex;
+        }
+
+        // Fallback (rol sin icono propio): circulo simple.
         static Texture2D BuildGenerico()
         {
             var tex = NuevaTextura();

@@ -161,6 +161,16 @@ namespace SP.Presentation
                 else DestroyImmediate(gameObject);
                 return false;
             }
+            // BUG REAL reportado jugando: "al eliminar al enemigo no
+            // desaparece del minimapa". El cuerpo del soldado muerto sigue
+            // en la escena (no se destruye), asi que Target nunca pasaba a
+            // null y el icono seguia seguido al cadaver para siempre.
+            if (soldierDetectado != null && soldierDetectado.Health != null && !soldierDetectado.Health.IsAlive)
+            {
+                if (Application.isPlaying) Destroy(gameObject);
+                else DestroyImmediate(gameObject);
+                return false;
+            }
             transform.position = new Vector3(Target.position.x, height, Target.position.z);
             if (esTriangulo || esDobleTriangulo || directionMarker != null)
                 transform.rotation = Quaternion.Euler(0f, Target.eulerAngles.y, 0f);

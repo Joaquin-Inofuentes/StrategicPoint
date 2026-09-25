@@ -162,7 +162,12 @@ namespace SP.Presentation
             rend.mesh = ParticleMaterialFactory.MallaEsfera();
             rend.material = ParticleMaterialFactory.CreateTransparent(Color.white);
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            rend.receiveShadows = false;
+            // Pedido explicito: "los rayos de objetivo... no reciben
+            // sombras" -- estan pegados al piso, asi que un arbol o un
+            // soldado tapando la luz encima tiene que oscurecerlos como a
+            // cualquier otra cosa del suelo, o se leen como flotando/pegados
+            // encima de la escena en vez de parte de ella.
+            rend.receiveShadows = true;
 
             var fx = go.AddComponent<OrderMarkerFx>();
             fx.particulas = ps;
@@ -568,7 +573,10 @@ namespace SP.Presentation
                 else DestroyImmediate(col);
             }
             pip.transform.SetParent(transform, false);
-            pip.GetComponent<MeshRenderer>().sharedMaterial = SharedMaterial;
+            var pipRend = pip.GetComponent<MeshRenderer>();
+            pipRend.sharedMaterial = SharedMaterial;
+            pipRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            pipRend.receiveShadows = true;
             pip.SetActive(false);
         }
 

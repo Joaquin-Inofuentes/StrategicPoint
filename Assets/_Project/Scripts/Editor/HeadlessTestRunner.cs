@@ -4069,6 +4069,25 @@ namespace SP.EditorTools
             titleRt.anchorMin = titleRt.anchorMax = new Vector2(0.5f, 0.6f);
             titleRt.sizeDelta = new Vector2(900f, 120f);
 
+            // Pedido explicito: "cuando muere el civil me dice que perdi pero no me dice por que" --
+            // subtitulo con el motivo textual (MisionDirector.Perder(motivo) / EstadoDePartida), solo
+            // en el panel de derrota. Va entre el titulo y las estadisticas.
+            if (name == "DefeatPanel")
+            {
+                var reasonGO = new GameObject("Reason", typeof(Text));
+                reasonGO.transform.SetParent(go.transform, false);
+                var reasonTxt = reasonGO.GetComponent<Text>();
+                reasonTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                reasonTxt.alignment = TextAnchor.MiddleCenter;
+                reasonTxt.color = new Color(1f, 0.85f, 0.55f);
+                reasonTxt.fontSize = FontSubtitulo;
+                reasonTxt.fontStyle = FontStyle.Bold;
+                var reasonRt = reasonGO.GetComponent<RectTransform>();
+                reasonRt.anchorMin = reasonRt.anchorMax = new Vector2(0.5f, 0.6f);
+                reasonRt.anchoredPosition = new Vector2(0f, -70f);
+                reasonRt.sizeDelta = new Vector2(900f, 40f);
+            }
+
             // Estadisticas de la partida: sin esto la pantalla de fin solo
             // decia si ganaste o perdiste, sin dato alguno de como fue.
             var statsGO = new GameObject("Stats", typeof(Text));
@@ -4080,7 +4099,7 @@ namespace SP.EditorTools
             statsTxt.fontSize = FontSubtitulo;
             var statsRt = statsGO.GetComponent<RectTransform>();
             statsRt.anchorMin = statsRt.anchorMax = new Vector2(0.5f, 0.6f);
-            statsRt.anchoredPosition = new Vector2(0f, -70f);
+            statsRt.anchoredPosition = new Vector2(0f, name == "DefeatPanel" ? -110f : -70f);
             statsRt.sizeDelta = new Vector2(700f, 40f);
             if (name == "VictoryPanel") victoryStatsRef = statsTxt; else defeatStatsRef = statsTxt;
 

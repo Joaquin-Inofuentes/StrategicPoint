@@ -34,6 +34,7 @@ namespace SP.EditorTools
             { "Core/Loc.cs", 1 },                      // pasada de traduccion de los Text (sin registro de Text)
             { "Presentation/FuentesBelicas.cs", 2 },   // pasada de fuentes sobre Text/TextMesh (sin registro)
             { "Mision/CinematicaDeVictoria.cs", 2 },   // una vez al empezar y una al terminar la cinematica
+            { "Mision/CinematicaDeIntro.cs", 3 },      // mismo patron que CinematicaDeVictoria: al empezar, al terminar y en Saltar() (atajo de prueba)
             { "Mision/MisionDirector.cs", 1 },         // Casas(): cachea el resultado (nunca uno vacio) y solo se llama al crear un enemigo, no por frame
             { "UI/MenuDeOrdenes.cs", 1 },              // AsegurarEnEscena: una vez al arrancar, busca el canvas del HUD
             { "UI/AjustesDeJuego.cs", 1 },             // AplicarEscala: al cambiar la escala de interfaz

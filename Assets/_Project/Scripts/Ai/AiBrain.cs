@@ -238,6 +238,20 @@ namespace SP.Ai
 
         public AiState State { get; private set; } = AiState.Patrol;
 
+        // Pedido explicito: "quiero que se suba y quede inmovil arriba. Quedo
+        // asociado pero no deberia poder moverse estando arriba" -- BUG REAL:
+        // Vehicle.Mount ya apagaba brain.enabled, pero WorldSimulationDriver.
+        // Step llama a Brain.Tick() para todo soldado activo SIN mirar
+        // enabled (solo activeInHierarchy) -- para los asientos ocultos daba
+        // igual porque el GameObject queda desactivado, pero el artillero de
+        // la metralleta (Passenger1) queda de pie y VISIBLE, con su
+        // GameObject activo, asi que su IA seguia corriendo completa: seguia
+        // "caminando" hacia su vieja orden mientras estaba parado sobre el
+        // "carrito" del tanque, deslizandose/temblando en vez de quedarse
+        // quieto montado. Este flag lo pone/saca Vehicle.Mount/Dismount y
+        // Tick() lo respeta de entrada, para cualquier asiento.
+        public bool MontadoEnVehiculo { get; set; }
+
         bool isPossessedByPlayer;
         public bool IsPossessedByPlayer
         {
@@ -713,6 +727,7 @@ namespace SP.Ai
         {
             if (!bootstrapped) Bootstrap();
             if (IsPossessedByPlayer || self == null) return;
+            if (MontadoEnVehiculo) return;
             if (!self.gameObject.activeInHierarchy) return;
 
             SincronizarAgente();
@@ -765,6 +780,7 @@ namespace SP.Ai
             TickRetarget(dt);
             if (enCobertura) self.Motor.SetCrouching(true);
             if (TickGranadas(dt)) return;   // huyendo de una granada viva: este tick no hace nada mas
+            if (TickAtaqueAVehiculo(dt)) return;   // sin blanco de carne y hueso: le tira a un vehiculo hostil ocupado cerca
 
             // BUG REAL: solo se chequeaba IsAlive. Un soldado que sube a un
             // vehiculo sigue vivo pero Vehicle.Mount lo desactiva

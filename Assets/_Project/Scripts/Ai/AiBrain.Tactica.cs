@@ -242,9 +242,23 @@ namespace SP.Ai
                 return;
             }
 
-            bool libre = (State == AiState.Idle || State == AiState.Patrol) && target == null && !hasOrder && mountTarget == null;
+            // Pedido explicito: "si me alejo mucho no importa si estan
+            // atacando o siendo atacados, vuelven a seguirme si no estan
+            // fijados o sobre algo". Antes "libre" exigia Idle/Patrol Y
+            // target==null: un soldado que estaba peleando (o que se fue
+            // solo a una cobertura de tiro lejana persiguiendo a un enemigo
+            // que ve de lejos, como el francotirador) nunca calificaba para
+            // el llamado automatico, sin importar cuanto se alejara. Ahora
+            // Chase/Attack SIN orden explicita de ataque tambien cuentan
+            // como "libre": si el jugador se aleja lo suficiente el soldado
+            // corta lo que esta haciendo y vuelve. Lo que SI lo "fija" y
+            // sigue respetandose: una orden explicita (hasOrder/orderIsAttack),
+            // estar montando un vehiculo, o una cobertura pedida a mano
+            // (coberturaPorOrden) -- eso solo se suelta con otra orden.
+            bool enCombateSinOrden = (State == AiState.Chase || State == AiState.Attack) && !orderIsAttack;
+            bool libre = (State == AiState.Idle || State == AiState.Patrol || enCombateSinOrden) && !hasOrder && mountTarget == null;
             if (!libre || yendoACobertura) return;
-            if (enCobertura && !AjustesDeEscuadra.SeguirDesdeCobertura) return;
+            if (enCobertura && (coberturaPorOrden || !AjustesDeEscuadra.SeguirDesdeCobertura)) return;
             if (dist <= AjustesDeEscuadra.DistanciaParaSeguir) return;
 
             ComenzarSeguirAlJugador(lider);

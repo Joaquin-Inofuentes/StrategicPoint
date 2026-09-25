@@ -142,16 +142,17 @@ namespace SP.UI
 
             if (label != null)
             {
-                // Pedido explicito: "intenta evitar textos" -- se cae el
-                // nombre del arma (ya lo dice el icono), la tecla [N] y la
-                // palabra "RECARGANDO"/"SIN MUNICION" (la barra de abajo y
-                // el reloj de arena ya avisan de eso sin palabras). Quedan
-                // solo los numeros: cargador/reserva.
-                // Sin espacios alrededor del punto: con el panel angosto y
-                // el texto agrandado (fontSize 22), "8/8 · 24" con espacios
-                // se salia del panel por la derecha.
-                string reserva = weapon.UsaReservas ? $"·{weapon.ReservaActual}" : "";
-                label.text = $"{weapon.CurrentAmmo}/{weapon.MagazineSize}{reserva}";
+                // Pedido explicito: "la UI de abajo a la derecha es
+                // confusa. Que simplemente diga cantidad de balas que tengo
+                // y las totales, en vez de cantidad actual/maximo - totales"
+                // -- antes mostraba TRES numeros (cargador actual, capacidad
+                // del cargador Y reserva por separado, ej. "8/8·24"), que
+                // obligaba a restar mentalmente cuanto quedaba de verdad.
+                // Ahora son dos: balas listas para disparar (el cargador) y
+                // el total que le queda al arma contando la reserva.
+                string texto = weapon.CurrentAmmo.ToString();
+                if (weapon.UsaReservas) texto += $"/{weapon.CurrentAmmo + weapon.ReservaActual}";
+                label.text = texto;
 
                 // El contador quedaba blanco fijo hasta llegar a cero, sin
                 // ningun aviso previo de que se estaba por acabar. Rojo

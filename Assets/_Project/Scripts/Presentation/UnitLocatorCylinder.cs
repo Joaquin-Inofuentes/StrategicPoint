@@ -29,6 +29,7 @@ namespace SP.Presentation
         Soldier soldier;
         GameObject marcador;   // raiz billboardeada (rombo blanco + rombo de color)
         Material materialInterior;
+        Material materialIcono;
         TeamId equipoPintado;
 
         const string MarkerName = "LocatorRombo";
@@ -95,10 +96,18 @@ namespace SP.Presentation
 
         void OnDestroy()
         {
-            if (materialInterior == null) return;
-            if (Application.isPlaying) Destroy(materialInterior);
-            else DestroyImmediate(materialInterior);
-            materialInterior = null;
+            if (materialInterior != null)
+            {
+                if (Application.isPlaying) Destroy(materialInterior);
+                else DestroyImmediate(materialInterior);
+                materialInterior = null;
+            }
+            if (materialIcono != null)
+            {
+                if (Application.isPlaying) Destroy(materialIcono);
+                else DestroyImmediate(materialIcono);
+                materialIcono = null;
+            }
         }
 
         void Construir()
@@ -118,6 +127,21 @@ namespace SP.Presentation
             // Un pelo hacia la camara para que nunca compita en Z con el
             // borde (evita z-fighting entre los dos rombos coplanares).
             interior.transform.localPosition = new Vector3(0f, 0f, -0.02f);
+
+            // Pedido explicito: "los rombos dentro de los aliados tengan
+            // iconos segun su especialidad, y lo mismo para enemigos" -- un
+            // tercer rombo, mas chico y blanco, encima del relleno de color,
+            // con la silueta de la especialidad (medico/francotirador/
+            // asalto/civil para aliados; el arma que lleva para enemigos,
+            // que ya tienen variedad real via SoldierClasses.Enemigos).
+            var iconoTex = equipoPintado == TeamId.Enemy
+                ? RoleIconFactory.WorldIconTextureForWeapon(SP.Actors.SoldierClasses.Para(soldier).Loadout is { Length: > 0 } lo ? lo[0] : WeaponKind.Rifle)
+                : RoleIconFactory.WorldIconTexture(soldier.Role);
+            materialIcono = DiamondGizmo.NuevoMaterial(Color.white);
+            materialIcono.mainTexture = iconoTex;
+            if (materialIcono.HasProperty("_BaseMap")) materialIcono.SetTexture("_BaseMap", iconoTex);
+            var icono = DiamondGizmo.CrearCara("Icono", marcador.transform, TamanoInterior * 0.72f, materialIcono);
+            icono.transform.localPosition = new Vector3(0f, 0f, -0.03f);
 
             marcador.SetActive(false);
 
@@ -164,6 +188,17 @@ namespace SP.Presentation
                 if (!soldier.Health.IsAlive) { dead = true; marcador.SetActive(false); return; }
                 // El propio poseido no necesita ubicarse a si mismo.
                 if (soldier.Brain != null && soldier.Brain.IsPossessedByPlayer) { marcador.SetActive(false); return; }
+
+                // Pedido explicito: "una vez que me subo al tanque el rombo de
+                // arriba no se va". Para los asientos ocultos (conductor,
+                // cañon, pasajero de atras) esto ya pasaba solo -- Vehicle.
+                // Mount desactiva el GameObject entero y Update() ni corre --
+                // pero el artillero de la metralleta queda de pie, VISIBLE y
+                // con su GameObject activo (a proposito: se lo ve asomando
+                // por la escotilla), asi que sin este chequeo seguia flotando
+                // un rombo sobre su cabeza mientras viaja pegado al chasis.
+                foreach (var v in SP.Vehicles.Vehicle.Todos)
+                    if (v != null && v.RoleOf(soldier) != null) { marcador.SetActive(false); return; }
 
                 // BUG REAL encontrado jugando: el civil (y cualquier otro
                 // soldado cuyo equipo se fija DESPUES de Instantiate, via

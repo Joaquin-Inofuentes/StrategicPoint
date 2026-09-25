@@ -49,15 +49,29 @@ namespace SP.UI
             if (rowPrefab == null) return;
             var driver = PlayerInputDriver.Activo;
             var squad = driver != null ? driver.Squad : null;
-            if (squad == null) return;
 
             int index = 1;
-            foreach (var soldier in squad)
+            if (squad != null)
+                foreach (var soldier in squad)
+                {
+                    if (soldier == null) continue;
+                    var row = Instantiate(rowPrefab, transform);
+                    row.Bind(soldier, index);
+                    index++;
+                }
+
+            // Pedido explicito: "al rescatar al civil que aparezca como otro
+            // mas... quiero ver su vida e icono abajo a la izquierda porque
+            // es nuevo". El civil no se suma al Squad real (evitando que
+            // ordenes de formacion/posesion lo traten como un soldado de
+            // combate mas -- no tiene arma), pero una vez rescatado SI se le
+            // arma su propia fila de roster, igual que cualquier aliado.
+            var m = SP.Mision.MisionDirector.Instancia;
+            var civil = m != null ? m.Civil : null;
+            if (civil != null && m.CivilRescatado && civil.Health != null && civil.Health.IsAlive && civil.gameObject.activeInHierarchy)
             {
-                if (soldier == null) continue;
                 var row = Instantiate(rowPrefab, transform);
-                row.Bind(soldier, index);
-                index++;
+                row.Bind(civil, index);
             }
         }
     }
