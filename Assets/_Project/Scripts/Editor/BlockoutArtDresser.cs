@@ -30,6 +30,16 @@ namespace SP.EditorTools
 
         static readonly Dictionary<string, GameObject> cache = new Dictionary<string, GameObject>();
 
+        // Arboles: SOLO via Terrain (TerrainData.treeInstances), nunca como GameObject -- pedido
+        // explicito ("quiero q quites los arboles y los arboles solo sean implantados via terrain
+        // si o si"). Se acumulan aca durante Repartir()/Perimetro() y se escriben una unica vez al
+        // final en VestirEscenaAbierta(), porque SetTreeInstances reemplaza la lista completa cada
+        // vez que se llama (llamarlo por arbol seria carisimo y pisaria los anteriores).
+        static readonly List<TreeInstance> arbolesTerrain = new List<TreeInstance>();
+        static readonly List<Vector3> arbolesTerrainMundo = new List<Vector3>(); // copia en XZ de mundo, para separacion
+        static Terrain terrenoDeArboles;
+        static int prototipoArbolA = -1, prototipoArbolB = -1;
+
         static GameObject P(string nombre)
         {
             if (!cache.TryGetValue(nombre, out var g) || g == null)
@@ -44,6 +54,10 @@ namespace SP.EditorTools
         public static void VestirEscenaAbierta()
         {
             cache.Clear();
+            arbolesTerrain.Clear();
+            arbolesTerrainMundo.Clear();
+            terrenoDeArboles = null;
+            prototipoArbolA = prototipoArbolB = -1;
             var escena = SceneManager.GetActiveScene();
             int vestidos = 0, modulos = 0;
 
@@ -73,6 +87,19 @@ namespace SP.EditorTools
 
             // 3) ambiente
             int props = Repartir();
+
+            // 4) arboles: se juntaron en arbolesTerrain durante Repartir()/Perimetro() (nunca como
+            // GameObject); se escriben todos juntos aca porque SetTreeInstances reemplaza la lista
+            // entera cada vez que se llama.
+            if (terrenoDeArboles != null)
+            {
+                terrenoDeArboles.terrainData.SetTreeInstances(arbolesTerrain.ToArray(), true);
+                Debug.Log($"[BlockoutArtDresser] {arbolesTerrain.Count} arboles plantados via Terrain (0 GameObjects).");
+            }
+            else if (arbolesTerrain.Count > 0)
+            {
+                Debug.LogWarning("[BlockoutArtDresser] Se calcularon posiciones de arbol pero no hay Terrain activo: no se plantó ninguno.");
+            }
 
             EditorSceneManager.MarkSceneDirty(escena);
             EditorSceneManager.SaveScene(escena);
@@ -276,6 +303,76 @@ namespace SP.EditorTools
             return res;
         }
 
+        // Registra P_Env_ArbolA/B como TreePrototype del Terrain (una vez por corrida). Sin esto,
+        // TreeInstance.prototypeIndex no tiene a que prefab apuntar.
+        static void PrepararPrototiposDeArbol(Terrain terreno)
+        {
+            if (terreno == null) return;
+            var protos = new List<TreePrototype>();
+            var a = P("P_Env_ArbolA");
+            var b = P("P_Env_ArbolB");
+            if (a != null) { prototipoArbolA = protos.Count; protos.Add(new TreePrototype { prefab = a }); }
+            if (b != null) { prototipoArbolB = protos.Count; protos.Add(new TreePrototype { prefab = b }); }
+            terreno.terrainData.treePrototypes = protos.ToArray();
+            terrenoDeArboles = terreno;
+        }
+
+        // Unico punto de entrada para plantar un arbol: SIEMPRE via TerrainData.treeInstances,
+        // nunca PrefabUtility.InstantiatePrefab (pedido explicito, ver arbolesTerrain arriba).
+        // "position" de un TreeInstance es normalizada 0..1 dentro del Terrain; snapToHeightmap=true
+        // en SetTreeInstances se encarga de la altura real, asi que aca no hace falta samplear el
+        // terreno como si fuera un GameObject.
+        static void AgregarArbolTerreno(Vector3 posMundoXZ, int prototipo, float escala, System.Random rnd)
+        {
+            if (terrenoDeArboles == null || prototipo < 0) return;
+            var td = terrenoDeArboles.terrainData;
+            var origen = terrenoDeArboles.transform.position;
+            var size = td.size;
+            float nx = (posMundoXZ.x - origen.x) / size.x, nz = (posMundoXZ.z - origen.z) / size.z;
+            if (nx < 0f || nx > 1f || nz < 0f || nz > 1f) return; // fuera del terreno: no hay donde plantarlo
+            arbolesTerrain.Add(new TreeInstance
+            {
+                position = new Vector3(nx, 0f, nz),
+                prototypeIndex = prototipo,
+                widthScale = escala,
+                heightScale = escala,
+                rotation = (float)(rnd.NextDouble() * Mathf.PI * 2.0),
+                color = Color.white,
+                lightmapColor = Color.white,
+            });
+            arbolesTerrainMundo.Add(new Vector3(posMundoXZ.x, 0f, posMundoXZ.z));
+        }
+
+        // Mismo criterio de dispersion con reintentos que tenian ArbolA/ArbolB en la lista de
+        // Repartir() (mismas cantidades base, mismo "lejos de la ruta"), pero escribiendo a
+        // arbolesTerrain en vez de instanciar un prefab.
+        static void EsparcirArbolesInterior(float x0, float x1, float z0, float z1, float ejeX, float factorArea, System.Random rnd)
+        {
+            var tipos = new (int prototipo, int cantidadBase)[] { (prototipoArbolA, 46), (prototipoArbolB, 38) };
+            const float separacionMinima = 2.2f; // copas de ~2-2.5 m de radio: que no se pisen entre si
+            foreach (var (prototipo, cantidadBase) in tipos)
+            {
+                if (prototipo < 0) continue;
+                int meta = Mathf.Max(3, Mathf.RoundToInt(cantidadBase * factorArea));
+                int puestos = 0, intentos = 0;
+                while (puestos < meta && intentos++ < meta * 40)
+                {
+                    float x = Mathf.Lerp(x0, x1, (float)rnd.NextDouble()), z = Mathf.Lerp(z0, z1, (float)rnd.NextDouble());
+                    if (Mathf.Abs(x - ejeX) < 11f) continue; // mismo "lejosDeRuta" que tenian en la lista original
+                    bool libre = true;
+                    foreach (var c in Physics.OverlapSphere(new Vector3(x, 2f, z), 3.2f))
+                        if (!(c is TerrainCollider) && c.name != "Ground") { libre = false; break; }
+                    if (libre)
+                        foreach (var p in arbolesTerrainMundo)
+                            if ((p.x - x) * (p.x - x) + (p.z - z) * (p.z - z) < separacionMinima * separacionMinima) { libre = false; break; }
+                    if (!libre) continue;
+
+                    AgregarArbolTerreno(new Vector3(x, 0f, z), prototipo, Mathf.Lerp(0.9f, 1.4f, (float)rnd.NextDouble()), rnd);
+                    puestos++;
+                }
+            }
+        }
+
         // ------------------------------------------------------------------
         // Ambiente: vegetacion, barriles, faroles, crateres y escombros.
         // ------------------------------------------------------------------
@@ -292,6 +389,7 @@ namespace SP.EditorTools
             Physics.SyncTransforms();
             var terreno = Terrain.activeTerrain;
             var rnd = new System.Random(4242);
+            PrepararPrototiposDeArbol(terreno);
 
             // Rectangulo jugable: se toma del terreno (o de los cubos si no hay).
             float x0 = -50f, x1 = 58f, z0 = -18f, z1 = 292f;
@@ -305,13 +403,17 @@ namespace SP.EditorTools
             // (70 x 210) no puede tener la misma densidad de arboles que el nivel completo (117 x 320).
             float factorArea = Mathf.Clamp(((x1 - x0) * (z1 - z0)) / 33000f, 0.25f, 1f);
 
+            // Arboles interiores: SOLO via Terrain, antes de repartir el resto -- asi el chequeo de
+            // "libre" de la lista de abajo ya conoce sus posiciones (arbolesTerrainMundo) y no pone
+            // un barril/arbusto encima de un tronco.
+            EsparcirArbolesInterior(x0, x1, z0, z1, ejeX, factorArea, rnd);
+
             // esDestructible: bushes/barriles/neumaticos/palets/escombros reaccionan a
             // disparos y explosiones (lanzacohetes, cañon del tanque) como cualquier
             // obstaculo de LevelBlockoutBuilder -- antes eran puro decorado sin collider
             // ni vida, asi que ni bloqueaban ni se podian destruir.
             var lista = new (string prefab, int cantidad, bool lejosDeRuta, float escalaMin, float escalaMax, bool esDestructible, int vida)[]
             {
-                ("P_Env_ArbolA", 46, true, 0.9f, 1.4f, false, 0), ("P_Env_ArbolB", 38, true, 0.9f, 1.4f, false, 0),
                 ("P_Env_Arbusto_Grande", 34, true, 0.9f, 1.3f, true, 60), ("P_Env_Arbusto_Medio", 44, true, 0.9f, 1.4f, true, 40),
                 ("P_Env_Barril", 10, false, 0.5f, 0.6f, true, 40), ("P_Env_Neumaticos", 8, false, 0.9f, 1.1f, true, 80),
                 ("P_Env_Palet", 8, false, 1f, 1.2f, true, 70), ("P_Env_Escombro_Pila_A", 10, false, 0.9f, 1.3f, true, 100),
@@ -336,6 +438,11 @@ namespace SP.EditorTools
                     bool libre = true;
                     foreach (var c in Physics.OverlapSphere(new Vector3(x, y + 1.5f, z), 3.2f))
                         if (!(c is TerrainCollider) && c.name != "Ground") { libre = false; break; }
+                    // Los arboles de Terrain no tienen collider (ver AgregarArbolTerreno): sin este
+                    // chequeo, un barril/arbusto podia caer justo encima de un tronco.
+                    if (libre)
+                        foreach (var pa in arbolesTerrainMundo)
+                            if ((pa.x - x) * (pa.x - x) + (pa.z - z) * (pa.z - z) < 2f * 2f) { libre = false; break; }
                     if (!libre) continue;
 
                     var inst = (GameObject)PrefabUtility.InstantiatePrefab(g, ambiente.transform);
@@ -499,6 +606,17 @@ namespace SP.EditorTools
 
                 bool esObstaculo = i % 9 == 4;
                 string prefab = esObstaculo ? obstaculo : props[(i + (int)(rnd.NextDouble() * props.Length)) % props.Length];
+                // Arboles: SOLO via Terrain, incluso aca (pedido explicito) -- pierden el rol de
+                // "cierre fisico" que tenian los demas de esta fila (bushes/auto quemado SI
+                // conservan su collider), pero el Muro invisible de arriba ya cierra el rectangulo
+                // entero por su cuenta, asi que no queda ningun hueco real.
+                if (prefab == "P_Env_ArbolA" || prefab == "P_Env_ArbolB")
+                {
+                    int proto = prefab == "P_Env_ArbolA" ? prototipoArbolA : prototipoArbolB;
+                    AgregarArbolTerreno(new Vector3(pos.x, 0f, pos.z), proto, Mathf.Lerp(1f, 1.3f, (float)rnd.NextDouble()), rnd);
+                    total++;
+                    continue;
+                }
                 var g = P(prefab);
                 if (g == null) continue;
                 var inst = (GameObject)PrefabUtility.InstantiatePrefab(g, visual);
@@ -513,7 +631,7 @@ namespace SP.EditorTools
             // Segunda fila, mas afuera (5 a 9 m del borde) y solo arboles (sin autos quemados ni
             // arbustos chicos): tapa la profundidad que la primera fila sola no alcanza a cubrir
             // -- de costado, entre dos arboles de la fila 1 todavia se veia el vacio del fondo.
-            var arboles = new[] { "P_Env_ArbolA", "P_Env_ArbolB" };
+            // 100% via Terrain (pedido explicito), sin GameObject.
             const float paso2 = 3.4f;
             int cantidad2 = Mathf.RoundToInt(perimetroLargo / paso2);
             for (int i = 0; i < cantidad2; i++)
@@ -522,14 +640,9 @@ namespace SP.EditorTools
                 float jitter = (float)(5f + rnd.NextDouble() * 4f);
                 var dirFuera = Quaternion.Euler(0f, yawAfuera, 0f) * Vector3.forward;
                 var pos = new Vector3(p.x, 0f, p.z) + dirFuera * jitter;
-                float suelo = terreno != null ? terreno.SampleHeight(pos) + terreno.transform.position.y : 0f;
 
-                var g = P(arboles[(int)(rnd.NextDouble() * arboles.Length) % arboles.Length]);
-                if (g == null) continue;
-                var inst = (GameObject)PrefabUtility.InstantiatePrefab(g, visual);
-                inst.transform.position = new Vector3(pos.x, suelo, pos.z);
-                inst.transform.rotation = Quaternion.Euler(0f, (float)rnd.NextDouble() * 360f, 0f);
-                inst.transform.localScale = Vector3.one * Mathf.Lerp(1.2f, 1.6f, (float)rnd.NextDouble());
+                int proto = rnd.NextDouble() < 0.5 ? prototipoArbolA : prototipoArbolB;
+                AgregarArbolTerreno(new Vector3(pos.x, 0f, pos.z), proto, Mathf.Lerp(1.2f, 1.6f, (float)rnd.NextDouble()), rnd);
                 total++;
             }
 

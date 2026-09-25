@@ -661,11 +661,12 @@ namespace SP.EditorTools
         // despues los mismos props repartidos por el mapa haciendo de
         // cobertura de verdad -- con collider, o sea que ahora tapan el
         // paso igual que el Muro.
+        // Arbol1/2/3 sacados de aca (pedido explicito: "los arboles solo sean implantados via
+        // terrain si o si") -- BlockoutArtDresser.Repartir()/Perimetro() ya cubren toda esta zona
+        // con arboles de Terrain (P_Env_ArbolA/B); mantener ademas estos como GameObject hubiera
+        // violado esa regla.
         static readonly Plantado[] Exhibicion =
         {
-            new Plantado { prefab = "P_Arte_Arbol1",    pos = new Vector3(-6f, 0f, -12f), giro = 0f,   nombre = "Muestra_Arbol1" },
-            new Plantado { prefab = "P_Arte_Arbol2",    pos = new Vector3(-1f, 0f, -12f), giro = 25f,  nombre = "Muestra_Arbol2" },
-            new Plantado { prefab = "P_Arte_Arbol3",    pos = new Vector3( 4f, 0f, -12f), giro = 0f,   nombre = "Muestra_Arbol3" },
             new Plantado { prefab = "P_Arte_Barricada", pos = new Vector3( 9f, 0f, -12f), giro = 0f,   nombre = "Muestra_Barricada" },
             new Plantado { prefab = "P_Arte_Barril",    pos = new Vector3(12f, 0f, -12f), giro = 0f,   nombre = "Muestra_Barril" },
             new Plantado { prefab = "P_Arte_Soldado",   pos = new Vector3(15f, 0f, -12f), giro = 180f, nombre = "Muestra_Soldado" },
@@ -673,16 +674,6 @@ namespace SP.EditorTools
 
         static readonly Plantado[] Ambiente =
         {
-            // Arboleda del borde oeste
-            new Plantado { prefab = "P_Arte_Arbol3", pos = new Vector3(-14f, 0f,  6f),  giro = 15f },
-            new Plantado { prefab = "P_Arte_Arbol1", pos = new Vector3(-17f, 0f, 13f),  giro = 200f },
-            new Plantado { prefab = "P_Arte_Arbol2", pos = new Vector3(-12f, 0f, 19f),  giro = 90f },
-            new Plantado { prefab = "P_Arte_Arbol3", pos = new Vector3(-18f, 0f, 26f),  giro = 130f },
-            new Plantado { prefab = "P_Arte_Arbol1", pos = new Vector3(-11f, 0f, 33f),  giro = 40f },
-            // Arboleda del borde este
-            new Plantado { prefab = "P_Arte_Arbol1", pos = new Vector3( 30f, 0f, 12f),  giro = 60f },
-            new Plantado { prefab = "P_Arte_Arbol3", pos = new Vector3( 28f, 0f, 30f),  giro = 210f },
-            new Plantado { prefab = "P_Arte_Arbol2", pos = new Vector3( 31f, 0f, 22f),  giro = 300f },
             // Barricadas: cobertura sobre la linea de avance
             new Plantado { prefab = "P_Arte_Barricada", pos = new Vector3(  8f, 0f, 14f), giro = 0f },
             new Plantado { prefab = "P_Arte_Barricada", pos = new Vector3( 13f, 0f, 18f), giro = 35f },
