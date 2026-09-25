@@ -40,6 +40,19 @@ namespace SP.EditorTools
         static Terrain terrenoDeArboles;
         static int prototipoArbolA = -1, prototipoArbolB = -1;
 
+        // Arbustos: mismo criterio que los arboles de arriba, pero via el sistema de DETALLES del
+        // Terrain (TerrainData.detailPrototypes/SetDetailLayer -- la "herramienta de pintar
+        // terreno" para objetos chicos/densos) en vez del de arboles. Pedido explicito: "busca los
+        // arbustos y eliminalos a todos... quiero q ahora uses la herramienta de pintar terreno".
+        // Bajada de nivel importante: los arbustos eran destructibles (ObstacleMarker, reaccionaban
+        // a disparos/explosiones) porque tenian collider real; un detalle de Terrain NO tiene
+        // collider ni componentes -- pierden esa interactividad a cambio de ser 100% terreno.
+        static readonly Dictionary<int, List<Vector2Int>> celdasArbusto = new Dictionary<int, List<Vector2Int>>();
+        static readonly List<Vector3> arbustosTerrainMundo = new List<Vector3>();
+        static Terrain terrenoDeArbustos;
+        static int capaArbustoGrande = -1, capaArbustoMedio = -1;
+        const int DetailResolution = 256;
+
         static GameObject P(string nombre)
         {
             if (!cache.TryGetValue(nombre, out var g) || g == null)
@@ -58,6 +71,10 @@ namespace SP.EditorTools
             arbolesTerrainMundo.Clear();
             terrenoDeArboles = null;
             prototipoArbolA = prototipoArbolB = -1;
+            celdasArbusto.Clear();
+            arbustosTerrainMundo.Clear();
+            terrenoDeArbustos = null;
+            capaArbustoGrande = capaArbustoMedio = -1;
             var escena = SceneManager.GetActiveScene();
             int vestidos = 0, modulos = 0;
 
@@ -99,6 +116,26 @@ namespace SP.EditorTools
             else if (arbolesTerrain.Count > 0)
             {
                 Debug.LogWarning("[BlockoutArtDresser] Se calcularon posiciones de arbol pero no hay Terrain activo: no se plantó ninguno.");
+            }
+
+            // 5) arbustos: mismo criterio, pero via detalles de Terrain (ver comentario junto a
+            // celdasArbusto). Un int[,] por capa, del tamano completo del mapa de detalle.
+            if (terrenoDeArbustos != null)
+            {
+                var td = terrenoDeArbustos.terrainData;
+                int totalArbustos = 0;
+                foreach (var kv in celdasArbusto)
+                {
+                    var mapa = new int[td.detailHeight, td.detailWidth];
+                    foreach (var c in kv.Value) mapa[c.y, c.x] = 10;
+                    td.SetDetailLayer(0, 0, kv.Key, mapa);
+                    totalArbustos += kv.Value.Count;
+                }
+                Debug.Log($"[BlockoutArtDresser] {totalArbustos} arbustos plantados via Terrain (0 GameObjects, ya no son destructibles).");
+            }
+            else if (celdasArbusto.Count > 0)
+            {
+                Debug.LogWarning("[BlockoutArtDresser] Se calcularon posiciones de arbusto pero no hay Terrain activo: no se plantó ninguno.");
             }
 
             EditorSceneManager.MarkSceneDirty(escena);
@@ -373,6 +410,87 @@ namespace SP.EditorTools
             }
         }
 
+        // Registra P_Env_Arbusto_Grande/Medio como DetailPrototype (mesh, no textura de pasto) del
+        // Terrain. usePrototypeMesh=true + VertexLit: se dibuja el prefab real, no un billboard de
+        // pasto. useInstancing=true para que el costo de cientos de instancias sea barato.
+        static void PrepararPrototiposDeArbusto(Terrain terreno)
+        {
+            if (terreno == null) return;
+            var td = terreno.terrainData;
+            if (td.detailWidth <= 0) td.SetDetailResolution(DetailResolution, 32);
+            var protos = new List<DetailPrototype>();
+            var grande = P("P_Env_Arbusto_Grande");
+            var medio = P("P_Env_Arbusto_Medio");
+            DetailPrototype Proto(GameObject prefab, float escMin, float escMax) => new DetailPrototype
+            {
+                prototype = prefab,
+                usePrototypeMesh = true,
+                renderMode = DetailRenderMode.VertexLit,
+                useInstancing = true,
+                minWidth = escMin, maxWidth = escMax, minHeight = escMin, maxHeight = escMax,
+                density = 1f,
+                targetCoverage = 1f,
+                positionJitter = 0.6f,
+                healthyColor = Color.white,
+                dryColor = Color.white,
+            };
+            if (grande != null) { capaArbustoGrande = protos.Count; protos.Add(Proto(grande, 0.9f, 1.3f)); }
+            if (medio != null) { capaArbustoMedio = protos.Count; protos.Add(Proto(medio, 0.9f, 1.4f)); }
+            td.detailPrototypes = protos.ToArray();
+            terrenoDeArbustos = terreno;
+        }
+
+        // Unico punto de entrada para plantar un arbusto: SIEMPRE via TerrainData.detailPrototypes
+        // (pedido explicito: "usa la herramienta de pintar terreno"), nunca PrefabUtility. A
+        // diferencia de un arbol (posicion libre en TreeInstance), un detalle vive en una GRILLA de
+        // celdas -- se redondea la posicion a la celda mas cercana del mapa de detalle.
+        static void AgregarArbustoTerreno(Vector3 posMundoXZ, int capa)
+        {
+            if (terrenoDeArbustos == null || capa < 0) return;
+            var td = terrenoDeArbustos.terrainData;
+            var origen = terrenoDeArbustos.transform.position;
+            float nx = (posMundoXZ.x - origen.x) / td.size.x, nz = (posMundoXZ.z - origen.z) / td.size.z;
+            if (nx < 0f || nx > 1f || nz < 0f || nz > 1f) return;
+            int cx = Mathf.Clamp(Mathf.RoundToInt(nx * td.detailWidth), 0, td.detailWidth - 1);
+            int cz = Mathf.Clamp(Mathf.RoundToInt(nz * td.detailHeight), 0, td.detailHeight - 1);
+            if (!celdasArbusto.TryGetValue(capa, out var lista)) { lista = new List<Vector2Int>(); celdasArbusto[capa] = lista; }
+            lista.Add(new Vector2Int(cx, cz));
+            arbustosTerrainMundo.Add(new Vector3(posMundoXZ.x, 0f, posMundoXZ.z));
+        }
+
+        // Mismo criterio de dispersion con reintentos que tenian Arbusto_Grande/Medio en la lista de
+        // Repartir(), pero pintando el detalle del Terrain en vez de instanciar un prefab. Evita
+        // pisar arboles Y otros arbustos (arbolesTerrainMundo + arbustosTerrainMundo).
+        static void EsparcirArbustosInterior(float x0, float x1, float z0, float z1, float ejeX, float factorArea, System.Random rnd)
+        {
+            var tipos = new (int capa, int cantidadBase)[] { (capaArbustoGrande, 34), (capaArbustoMedio, 44) };
+            const float separacionMinima = 1.6f;
+            foreach (var (capa, cantidadBase) in tipos)
+            {
+                if (capa < 0) continue;
+                int meta = Mathf.Max(3, Mathf.RoundToInt(cantidadBase * factorArea));
+                int puestos = 0, intentos = 0;
+                while (puestos < meta && intentos++ < meta * 40)
+                {
+                    float x = Mathf.Lerp(x0, x1, (float)rnd.NextDouble()), z = Mathf.Lerp(z0, z1, (float)rnd.NextDouble());
+                    if (Mathf.Abs(x - ejeX) < 11f) continue; // mismo "lejosDeRuta" que tenian en la lista original
+                    bool libre = true;
+                    foreach (var c in Physics.OverlapSphere(new Vector3(x, 2f, z), 2f))
+                        if (!(c is TerrainCollider) && c.name != "Ground") { libre = false; break; }
+                    if (libre)
+                        foreach (var p in arbolesTerrainMundo)
+                            if ((p.x - x) * (p.x - x) + (p.z - z) * (p.z - z) < 2f * 2f) { libre = false; break; }
+                    if (libre)
+                        foreach (var p in arbustosTerrainMundo)
+                            if ((p.x - x) * (p.x - x) + (p.z - z) * (p.z - z) < separacionMinima * separacionMinima) { libre = false; break; }
+                    if (!libre) continue;
+
+                    AgregarArbustoTerreno(new Vector3(x, 0f, z), capa);
+                    puestos++;
+                }
+            }
+        }
+
         // ------------------------------------------------------------------
         // Ambiente: vegetacion, barriles, faroles, crateres y escombros.
         // ------------------------------------------------------------------
@@ -390,6 +508,7 @@ namespace SP.EditorTools
             var terreno = Terrain.activeTerrain;
             var rnd = new System.Random(4242);
             PrepararPrototiposDeArbol(terreno);
+            PrepararPrototiposDeArbusto(terreno);
 
             // Rectangulo jugable: se toma del terreno (o de los cubos si no hay).
             float x0 = -50f, x1 = 58f, z0 = -18f, z1 = 292f;
@@ -403,18 +522,18 @@ namespace SP.EditorTools
             // (70 x 210) no puede tener la misma densidad de arboles que el nivel completo (117 x 320).
             float factorArea = Mathf.Clamp(((x1 - x0) * (z1 - z0)) / 33000f, 0.25f, 1f);
 
-            // Arboles interiores: SOLO via Terrain, antes de repartir el resto -- asi el chequeo de
-            // "libre" de la lista de abajo ya conoce sus posiciones (arbolesTerrainMundo) y no pone
-            // un barril/arbusto encima de un tronco.
+            // Arboles y arbustos interiores: SOLO via Terrain, antes de repartir el resto -- asi el
+            // chequeo de "libre" de la lista de abajo ya conoce sus posiciones y no pone un barril
+            // encima de un tronco o una mata.
             EsparcirArbolesInterior(x0, x1, z0, z1, ejeX, factorArea, rnd);
+            EsparcirArbustosInterior(x0, x1, z0, z1, ejeX, factorArea, rnd);
 
-            // esDestructible: bushes/barriles/neumaticos/palets/escombros reaccionan a
-            // disparos y explosiones (lanzacohetes, cañon del tanque) como cualquier
-            // obstaculo de LevelBlockoutBuilder -- antes eran puro decorado sin collider
-            // ni vida, asi que ni bloqueaban ni se podian destruir.
+            // esDestructible: barriles/neumaticos/palets/escombros reaccionan a disparos y
+            // explosiones (lanzacohetes, cañon del tanque) como cualquier obstaculo de
+            // LevelBlockoutBuilder. Los arbustos YA NO estan aca (van por Terrain, ver arriba):
+            // pierden esa destructibilidad a cambio de no ser GameObject (pedido explicito).
             var lista = new (string prefab, int cantidad, bool lejosDeRuta, float escalaMin, float escalaMax, bool esDestructible, int vida)[]
             {
-                ("P_Env_Arbusto_Grande", 34, true, 0.9f, 1.3f, true, 60), ("P_Env_Arbusto_Medio", 44, true, 0.9f, 1.4f, true, 40),
                 ("P_Env_Barril", 10, false, 0.5f, 0.6f, true, 40), ("P_Env_Neumaticos", 8, false, 0.9f, 1.1f, true, 80),
                 ("P_Env_Palet", 8, false, 1f, 1.2f, true, 70), ("P_Env_Escombro_Pila_A", 10, false, 0.9f, 1.3f, true, 100),
                 ("P_Env_Crater", 12, false, 0.8f, 1.5f, false, 0), ("P_Env_Poste_Caido", 4, true, 1f, 1f, false, 0),
@@ -438,11 +557,14 @@ namespace SP.EditorTools
                     bool libre = true;
                     foreach (var c in Physics.OverlapSphere(new Vector3(x, y + 1.5f, z), 3.2f))
                         if (!(c is TerrainCollider) && c.name != "Ground") { libre = false; break; }
-                    // Los arboles de Terrain no tienen collider (ver AgregarArbolTerreno): sin este
-                    // chequeo, un barril/arbusto podia caer justo encima de un tronco.
+                    // Los arboles/arbustos de Terrain no tienen collider (ver AgregarArbolTerreno /
+                    // AgregarArbustoTerreno): sin este chequeo, un barril podia caer encima de uno.
                     if (libre)
                         foreach (var pa in arbolesTerrainMundo)
                             if ((pa.x - x) * (pa.x - x) + (pa.z - z) * (pa.z - z) < 2f * 2f) { libre = false; break; }
+                    if (libre)
+                        foreach (var pa in arbustosTerrainMundo)
+                            if ((pa.x - x) * (pa.x - x) + (pa.z - z) * (pa.z - z) < 1.4f * 1.4f) { libre = false; break; }
                     if (!libre) continue;
 
                     var inst = (GameObject)PrefabUtility.InstantiatePrefab(g, ambiente.transform);
@@ -606,14 +728,21 @@ namespace SP.EditorTools
 
                 bool esObstaculo = i % 9 == 4;
                 string prefab = esObstaculo ? obstaculo : props[(i + (int)(rnd.NextDouble() * props.Length)) % props.Length];
-                // Arboles: SOLO via Terrain, incluso aca (pedido explicito) -- pierden el rol de
-                // "cierre fisico" que tenian los demas de esta fila (bushes/auto quemado SI
-                // conservan su collider), pero el Muro invisible de arriba ya cierra el rectangulo
-                // entero por su cuenta, asi que no queda ningun hueco real.
+                // Arboles y arbustos: SOLO via Terrain, incluso aca (pedido explicito) -- pierden el
+                // rol de "cierre fisico" que tenia esta fila (el auto quemado SI conserva su
+                // collider), pero el Muro invisible de arriba ya cierra el rectangulo entero por su
+                // cuenta, asi que no queda ningun hueco real.
                 if (prefab == "P_Env_ArbolA" || prefab == "P_Env_ArbolB")
                 {
                     int proto = prefab == "P_Env_ArbolA" ? prototipoArbolA : prototipoArbolB;
                     AgregarArbolTerreno(new Vector3(pos.x, 0f, pos.z), proto, Mathf.Lerp(1f, 1.3f, (float)rnd.NextDouble()), rnd);
+                    total++;
+                    continue;
+                }
+                if (prefab == "P_Env_Arbusto_Grande" || prefab == "P_Env_Arbusto_Medio")
+                {
+                    int capa = prefab == "P_Env_Arbusto_Grande" ? capaArbustoGrande : capaArbustoMedio;
+                    AgregarArbustoTerreno(new Vector3(pos.x, 0f, pos.z), capa);
                     total++;
                     continue;
                 }
