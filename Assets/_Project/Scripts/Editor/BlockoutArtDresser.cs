@@ -355,6 +355,7 @@ namespace SP.EditorTools
             // sean siempre luces duras" -- P_Env_Farol era solo el mastil (sin luz real); cada
             // instancia se cuelga ahora una Light de verdad en la punta.
             var farol = P("P_Env_Farol");
+            int indiceFarol = 0;
             if (farol != null)
                 for (float z = z0 + 10f; z < z1 - 6f; z += 15f)
                     foreach (var lado in new[] { -9f, 17f })
@@ -369,7 +370,15 @@ namespace SP.EditorTools
                         foreach (var c in inst.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
                         inst.transform.position = new Vector3(x, y, z);
                         inst.transform.rotation = Quaternion.Euler(0f, lado < 0f ? 90f : -90f, 0f);
-                        AgregarLuzDeFarol(inst.transform);
+                        // BUG REAL (consola): "Reduced additional punctual light shadows resolution...
+                        // to make 102 shadow maps fit in the 2048x2048 shadow atlas" -- con un farol
+                        // real cada 15 m a cada lado de TODA la ruta, la camara de la cinematica de
+                        // apertura (que sobrevuela el mapa entero) los ve a todos a la vez y el atlas
+                        // no da abasto. Solo 1 de cada 3 proyecta sombra dura de verdad; el resto sigue
+                        // iluminando igual (mismo color/intensidad/rango) pero sin sombra dinamica --
+                        // mismo criterio de costo/beneficio que ya usa NightLightingBuilder.CrearFarol.
+                        AgregarLuzDeFarol(inst.transform, conSombra: indiceFarol % 3 == 0);
+                        indiceFarol++;
                         AgregarColliderYDestruccion(inst, esDestructible: false, vida: 0, esBarril: false);
                         total++;
                     }
@@ -419,9 +428,11 @@ namespace SP.EditorTools
             so.ApplyModifiedPropertiesWithoutUndo();
         }
 
-        // Luz calida de lampara: siempre dura (pedido explicito), rango corto -- ilumina el
-        // charco de piso alrededor del farol, no satura la escena.
-        static void AgregarLuzDeFarol(Transform farolRaiz)
+        // Luz calida de lampara, rango corto -- ilumina el charco de piso alrededor del farol, no
+        // satura la escena. "conSombra" decide si esta instancia en particular proyecta sombra
+        // dura de verdad (pedido explicito original) o no: ver el comentario en el llamador sobre
+        // por que no TODAS pueden a la vez sin saturar el atlas de sombras.
+        static void AgregarLuzDeFarol(Transform farolRaiz, bool conSombra)
         {
             var luzGo = new GameObject("Luz");
             luzGo.transform.SetParent(farolRaiz, false);
@@ -431,7 +442,7 @@ namespace SP.EditorTools
             luz.color = new Color(1f, 0.78f, 0.45f);
             luz.intensity = 2.2f;
             luz.range = 11f;
-            luz.shadows = LightShadows.Hard;
+            luz.shadows = conSombra ? LightShadows.Hard : LightShadows.None;
         }
 
         // Cierra el rectangulo jugable con un muro FISICO invisible (BoxCollider + ObstacleMarker,
@@ -558,7 +569,10 @@ namespace SP.EditorTools
                 cerro.transform.localScale = new Vector3(ancho, alto, ancho);
                 var mr = cerro.GetComponent<MeshRenderer>();
                 var tono = Mathf.Lerp(0.8f, 1.15f, (float)rnd.NextDouble());
-                mr.sharedMaterial = SafeMaterial.Create(colorBase * tono);
+                // SafeMaterial.Create es HideAndDontSave (no sobrevive guardar+reabrir la escena):
+                // el SafeMaterialTint reaplica el color al cargar (ver su comentario), igual que
+                // ya hace PatrolRouteLine con sus esferas de waypoint.
+                cerro.AddComponent<SP.Presentation.SafeMaterialTint>().SetColor(colorBase * tono);
                 mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 total++;
             }

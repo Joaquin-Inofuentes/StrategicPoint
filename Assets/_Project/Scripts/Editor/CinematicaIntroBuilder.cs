@@ -53,8 +53,13 @@ namespace SP.EditorTools
             var w3 = CrearWaypoint(raiz.transform, "3_Rehen",
                 refugioCivil + new Vector3(4f, 2.2f, 4f), refugioCivil,
                 2.5f, 2.2f, "");
+            // Offset alto y alejado del cluster de arboles del perimetro (pedido explicito: "en la
+            // toma final esta obstruido por arboles"): el offset anterior (10,5,-12) quedaba a
+            // 7-9 m de varios SM_Env_ArbolA/B, casi a la altura de su copa (~y=3.2-4.0) -- la
+            // camara terminaba metida entre las copas. Este offset verificado en vivo no tiene
+            // ningun arbol a menos de 9 m de la camara.
             var w4 = CrearWaypoint(raiz.transform, "4_Helicoptero",
-                helipuerto + new Vector3(10f, 5f, -12f), helipuerto,
+                helipuerto + new Vector3(12f, 14f, 4f), helipuerto,
                 3f, 2f, "");
 
             path.Waypoints = new[] { w1, w2, w3, w4 };

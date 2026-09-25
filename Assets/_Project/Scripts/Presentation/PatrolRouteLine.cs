@@ -10,6 +10,11 @@ namespace SP.Presentation
     // principal (ver CameraRig.ShowWaypointsOnMainCamera): pedido
     // explicito, el jugador tiene que poder verlas para confirmar que un
     // enemigo sigue su ronda.
+    // ExecuteAlways: sin esto, Awake (mas abajo) solo reaplicaba el material al entrar a Play o al
+    // cargar en build -- reabrir la escena guardada en Edit Mode no lo disparaba, y las esferas de
+    // waypoint (p.ej. "Waypoint_1") se veian con material null/roto hasta apretar Play. Ver el
+    // comentario de ReaplicarMaterial para el detalle del porque el material no sobrevive guardar.
+    [ExecuteAlways]
     public class PatrolRouteLine : MonoBehaviour
     {
         public const string LayerName = "Waypoints";

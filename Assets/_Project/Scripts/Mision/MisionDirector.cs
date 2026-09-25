@@ -71,6 +71,7 @@ namespace SP.Mision
         readonly List<bool> oleadaHecha = new List<bool> { false, false, false };
         Transform raizEnemigos;
         Transform raizDeRutas;
+        Transform raizPuntosDeAparicion;
         ProjectilePool pool;
         int contadorNombres;
 
@@ -100,6 +101,11 @@ namespace SP.Mision
             if (enemigos == null) SP.Core.GameLog.Line("[MisionDirector] no hay una raiz 'Enemies' en la escena: los enemigos nacen bajo la mision");
             raizEnemigos = enemigos != null ? enemigos.transform : transform;
             raizDeRutas = SP.Core.RaicesDeEscena.Buscar("Waypoints")?.transform;
+            // Creado directo (sin Find): pedido explicito "quiero q en la escena se vean los puntos
+            // de aparicion para los enemigos ... quiero ver esos emptys" -- un empty por enemigo,
+            // en el instante exacto en que aparece (ver CrearMarcadorDeAparicion).
+            raizPuntosDeAparicion = new GameObject("PuntosDeAparicion").transform;
+            raizPuntosDeAparicion.SetParent(raizEnemigos, false);
 
             if (heliPrefab != null)
             {
@@ -246,7 +252,18 @@ namespace SP.Mision
             if (s.Weapon != null && pool != null) s.Weapon.SetPool(pool);
             Dificultad.AjustarVida(s);
             SoldadosGenerados++;
+            CrearMarcadorDeAparicion(nombre, pos);
             return s;
+        }
+
+        // Ver MarcadorDeAparicion: solo Gizmos (sin Renderer/Collider), cero costo en juego. No usa
+        // Find -- la raiz ya quedo cacheada en Start().
+        void CrearMarcadorDeAparicion(string nombre, Vector3 pos)
+        {
+            var m = new GameObject("Aparicion_" + nombre);
+            m.transform.SetParent(raizPuntosDeAparicion, false);
+            m.transform.position = new Vector3(pos.x, 0f, pos.z);
+            m.AddComponent<MarcadorDeAparicion>().Grupo = nombre;
         }
 
         void Patrullar(Soldier s, float mediaX, float mediaZ)

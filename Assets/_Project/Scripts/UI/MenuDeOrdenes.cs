@@ -129,6 +129,8 @@ namespace SP.UI
         public const float OpacidadDeFondo = 0.78f;
         const float RadioInterior = 175f;     // borde exterior del anillo de categorias
         const float RadioExterior = 310f;     // borde exterior del abanico de opciones
+        const float RadioIconoCategoria = RadioInterior * 0.44f;
+        const float TamanoIconoCategoria = 58f; // lado maximo del icono; Refrescar() lo achica si no entra
         const float RadioMaximoCursor = 300f; // alcance del cursor virtual
         const float ZonaMuerta = 34f;         // por debajo no se elige nada
         const float PasoDeAbanico = 32f;      // grados entre opciones del abanico
@@ -398,6 +400,13 @@ namespace SP.UI
         {
             if (rebanadas == null) return;
             float relleno = paso / 360f - 0.006f;
+            // BUG REAL (reportado: "en el radial los iconos... estan solapados"): el icono medía
+            // siempre TamanoIconoCategoria (58 px) sin importar cuantas categorias hubiera activas.
+            // La distancia real entre dos iconos vecinos es la cuerda del circulo que forman
+            // (2 * radio * sin(paso/2)); con 8-9 categorias esa cuerda da ~53-59 px, MENOR que el
+            // icono de 58 px -> se pisan. Se achica el icono para que siempre quede holgado.
+            float cuerda = 2f * RadioIconoCategoria * Mathf.Sin(paso * 0.5f * Mathf.Deg2Rad);
+            float tamanoIcono = Mathf.Clamp(cuerda * 0.8f, 34f, TamanoIconoCategoria);
             for (int i = 0; i < rebanadas.Length; i++)
             {
                 bool activa = i < ids.Count;
@@ -432,7 +441,8 @@ namespace SP.UI
                 var dir = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad));
                 if (iconosCategoria != null && iconosCategoria[i] != null)
                 {
-                    iconosCategoria[i].rectTransform.anchoredPosition = dir * (RadioInterior * 0.44f);
+                    iconosCategoria[i].rectTransform.anchoredPosition = dir * RadioIconoCategoria;
+                    iconosCategoria[i].rectTransform.sizeDelta = new Vector2(tamanoIcono, tamanoIcono);
                     iconosCategoria[i].color = colorTexto;
                 }
                 etiquetas[i].rectTransform.anchoredPosition = dir * (RadioInterior * 0.88f);
@@ -603,7 +613,6 @@ namespace SP.UI
             menu.etiquetas = new Text[CantidadDePorciones];
             float fill = 120f / 360f - 0.006f;
             var interior = Dona(0.36f);
-            const float TamanoIconoCategoria = 58f;
 
             for (int i = 0; i < CantidadDePorciones; i++)
             {
