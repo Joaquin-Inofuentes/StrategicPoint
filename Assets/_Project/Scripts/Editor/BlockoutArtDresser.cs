@@ -342,14 +342,21 @@ namespace SP.EditorTools
 
         // Registra P_Env_ArbolA/B como TreePrototype del Terrain (una vez por corrida). Sin esto,
         // TreeInstance.prototypeIndex no tiene a que prefab apuntar.
+        //
+        // Igual que con los arbustos: P_Env_ArbolA/B tienen un CapsuleCollider en la raiz y el mesh
+        // en un hijo (SM_Env_ArbolA/B), herencia de cuando tambien eran props con collider propio.
+        // El runtime tolera esto (los arboles se ven bien via SetTreeInstances), pero la validacion
+        // de la herramienta "Paint Trees" del Inspector de Terrain SI lo rechaza -- de ahi el
+        // warning "the prefab contains no valid mesh renderer" y que el pincel de pintar arboles no
+        // responda al click en el Editor. Se usa el mismo prototipo "solo visual" que los arbustos.
         static void PrepararPrototiposDeArbol(Terrain terreno)
         {
             if (terreno == null) return;
             var protos = new List<TreePrototype>();
             var a = P("P_Env_ArbolA");
             var b = P("P_Env_ArbolB");
-            if (a != null) { prototipoArbolA = protos.Count; protos.Add(new TreePrototype { prefab = a }); }
-            if (b != null) { prototipoArbolB = protos.Count; protos.Add(new TreePrototype { prefab = b }); }
+            if (a != null) { prototipoArbolA = protos.Count; protos.Add(new TreePrototype { prefab = PrototipoVisualLimpio(a) }); }
+            if (b != null) { prototipoArbolB = protos.Count; protos.Add(new TreePrototype { prefab = PrototipoVisualLimpio(b) }); }
             terreno.terrainData.treePrototypes = protos.ToArray();
             terrenoDeArboles = terreno;
         }
@@ -448,13 +455,15 @@ namespace SP.EditorTools
 
         const string DirDetalle = "Assets/_Project/Prefabs/ArteMundo/TerrainDetail/";
 
-        // El renderer de detalles de Terrain instancia el prototipo a partir de su mesh; si la raiz
-        // del prefab tiene un Collider (como P_Env_Arbusto_Grande/Medio, que eran obstaculos
-        // destructibles con CapsuleCollider), Unity 6 produce geometria corrupta -- confirmado a
-        // ojo contra el Terrain vivo: en vez del arbusto aparecia un pico delgado y deforme, y
-        // ComputeDetailCoverage() medía 0% de cobertura real pese a tener celdas pintadas.
+        // Usado por arboles (TreePrototype) y arbustos (DetailPrototype). Ambos prefabs de origen
+        // tienen un Collider en la raiz y el mesh en un hijo (herencia de cuando eran props/
+        // obstaculos con su propio collider). El renderer de Terrain de Unity 6 no tolera eso bien:
+        // para arbustos con mesh propio produce geometria corrupta (confirmado a ojo: un pico
+        // delgado y deforme) y ComputeDetailCoverage() mide 0% pese a tener celdas pintadas; para
+        // arboles simplemente rechaza el prefab ("no valid mesh renderer"), lo que ademas rompe la
+        // herramienta interactiva "Paint Trees" del Inspector (el pincel no responde al click).
         // Se genera (una vez por corrida, sobrescribiendo) un prefab "solo visual": mismo mesh y
-        // material, sin collider ni scripts, y ESE es el que se usa como DetailPrototype.prototype.
+        // material, sin collider ni scripts, y ESE es el que se usa como prototipo del Terrain.
         static GameObject PrototipoVisualLimpio(GameObject origen)
         {
             var mf = origen.GetComponentInChildren<MeshFilter>();
