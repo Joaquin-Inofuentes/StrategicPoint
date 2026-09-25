@@ -112,6 +112,7 @@ namespace SP.EditorTools
             {
                 terrenoDeArboles.terrainData.SetTreeInstances(arbolesTerrain.ToArray(), true);
                 Debug.Log($"[BlockoutArtDresser] {arbolesTerrain.Count} arboles plantados via Terrain (0 GameObjects).");
+                GenerarCollidersDeArbol(terrenoDeArboles);
             }
             else if (arbolesTerrain.Count > 0)
             {
@@ -348,17 +349,77 @@ namespace SP.EditorTools
         // El runtime tolera esto (los arboles se ven bien via SetTreeInstances), pero la validacion
         // de la herramienta "Paint Trees" del Inspector de Terrain SI lo rechaza -- de ahi el
         // warning "the prefab contains no valid mesh renderer" y que el pincel de pintar arboles no
-        // responda al click en el Editor. Se usa el mismo prototipo "solo visual" que los arbustos.
+        // responda al click en el Editor. Se usa el prototipo "limpio" (mesh en la raiz).
+        //
+        // OJO: un arbol de Terrain (TreePrototype/TreeInstance) NUNCA es un GameObject real -- ni
+        // siquiera los mas cercanos a la camara (confirmado a mano: Physics.OverlapSphere() no
+        // encuentra nada junto a un arbol, y Terrain.transform.childCount da 0). El CapsuleCollider
+        // que se copia aca al prototipo es solo para que el prefab se vea "completo" en el Project;
+        // no da colision. La colision real la arma GenerarCollidersDeArbol() mas abajo, con un
+        // GameObject liviano (solo collider, sin mesh) por cada TreeInstance actual del Terrain.
         static void PrepararPrototiposDeArbol(Terrain terreno)
         {
             if (terreno == null) return;
             var protos = new List<TreePrototype>();
             var a = P("P_Env_ArbolA");
             var b = P("P_Env_ArbolB");
-            if (a != null) { prototipoArbolA = protos.Count; protos.Add(new TreePrototype { prefab = PrototipoVisualLimpio(a) }); }
-            if (b != null) { prototipoArbolB = protos.Count; protos.Add(new TreePrototype { prefab = PrototipoVisualLimpio(b) }); }
+            if (a != null) { prototipoArbolA = protos.Count; protos.Add(new TreePrototype { prefab = PrototipoVisualLimpio(a, conCollider: true) }); }
+            if (b != null) { prototipoArbolB = protos.Count; protos.Add(new TreePrototype { prefab = PrototipoVisualLimpio(b, conCollider: true) }); }
             terreno.terrainData.treePrototypes = protos.ToArray();
             terrenoDeArboles = terreno;
+        }
+
+        // Menu aparte para poder re-generar colision despues de pintar arboles A MANO con la
+        // herramienta "Paint Trees" del Inspector (esa herramienta no pasa por este script, asi que
+        // sus arboles nuevos no tienen collider hasta que se corre esto).
+        [MenuItem("Strategic Point/Arte/11. Generar colliders de arboles (segun Terrain actual)")]
+        public static void GenerarCollidersDeArbolMenu() => GenerarCollidersDeArbol(Terrain.activeTerrain);
+
+        // Un arbol de Terrain no es un GameObject (ver comentario en PrepararPrototiposDeArbol), asi
+        // que no hay nada para el fisico choque contra. Esto arma la colision a mano: un GameObject
+        // liviano (solo CapsuleCollider, sin mesh/renderer) por cada TreeInstance ACTUAL del Terrain
+        // -- lea el array que sea en ese momento, tanto si vino del algoritmo de Repartir() como si
+        // el usuario pinto arboles de mas a mano. El radio/alto de cada capsula sale del mismo
+        // CapsuleCollider que ya se copio al prototipo, escalado por widthScale/heightScale de esa
+        // instancia puntual. Idempotente: se destruye y arma de nuevo el contenedor cada vez.
+        static void GenerarCollidersDeArbol(Terrain terreno)
+        {
+            if (terreno == null) return;
+            var arteMundo = GameObject.Find("ArteMundo");
+            if (arteMundo == null) { arteMundo = new GameObject("ArteMundo"); }
+            var anterior = arteMundo.transform.Find("ArbolesColliders");
+            if (anterior != null) Object.DestroyImmediate(anterior.gameObject);
+            var raiz = new GameObject("ArbolesColliders").transform;
+            raiz.SetParent(arteMundo.transform, false);
+
+            var td = terreno.terrainData;
+            var origenTerreno = terreno.transform.position;
+            var size = td.size;
+            var protos = td.treePrototypes;
+            var capsulas = new CapsuleCollider[protos.Length];
+            for (int i = 0; i < protos.Length; i++)
+                capsulas[i] = protos[i].prefab != null ? protos[i].prefab.GetComponent<CapsuleCollider>() : null;
+
+            int creados = 0;
+            foreach (var inst in td.treeInstances)
+            {
+                if (inst.prototypeIndex < 0 || inst.prototypeIndex >= capsulas.Length) continue;
+                var cc0 = capsulas[inst.prototypeIndex];
+                if (cc0 == null) continue;
+                var posMundo = Vector3.Scale(inst.position, size) + origenTerreno;
+                posMundo.y = terreno.SampleHeight(posMundo) + origenTerreno.y;
+                var go = new GameObject("ArbolCollider");
+                go.transform.SetParent(raiz, false);
+                go.transform.position = posMundo;
+                go.transform.rotation = Quaternion.Euler(0f, inst.rotation * Mathf.Rad2Deg, 0f);
+                var cc = go.AddComponent<CapsuleCollider>();
+                cc.center = cc0.center * inst.heightScale;
+                cc.radius = cc0.radius * inst.widthScale;
+                cc.height = cc0.height * inst.heightScale;
+                cc.direction = cc0.direction;
+                creados++;
+            }
+            Debug.Log($"[BlockoutArtDresser] {creados} colliders de arbol generados en ArteMundo/ArbolesColliders (segun {td.treeInstanceCount} TreeInstance actuales).");
         }
 
         // Unico punto de entrada para plantar un arbol: SIEMPRE via TerrainData.treeInstances,
@@ -463,8 +524,13 @@ namespace SP.EditorTools
         // arboles simplemente rechaza el prefab ("no valid mesh renderer"), lo que ademas rompe la
         // herramienta interactiva "Paint Trees" del Inspector (el pincel no responde al click).
         // Se genera (una vez por corrida, sobrescribiendo) un prefab "solo visual": mismo mesh y
-        // material, sin collider ni scripts, y ESE es el que se usa como prototipo del Terrain.
-        static GameObject PrototipoVisualLimpio(GameObject origen)
+        // material, sin scripts, y ESE es el que se usa como prototipo del Terrain. conCollider=true
+        // (arboles) copia el CapsuleCollider original a la raiz -- ver comentario en
+        // PrepararPrototiposDeArbol sobre por que eso SI le da colision real a los arboles cercanos.
+        // Los arbustos (conCollider=false) no lo necesitan: un detalle de Terrain nunca se instancia
+        // como GameObject, asi que un collider ahi no haria nada (y ya se confirmo que un Collider en
+        // la raiz de un DetailPrototype corrompe su geometria).
+        static GameObject PrototipoVisualLimpio(GameObject origen, bool conCollider = false)
         {
             var mf = origen.GetComponentInChildren<MeshFilter>();
             var mr = origen.GetComponentInChildren<MeshRenderer>();
@@ -475,6 +541,18 @@ namespace SP.EditorTools
             var temp = new GameObject(origen.name + "_DetailProto");
             temp.AddComponent<MeshFilter>().sharedMesh = mf.sharedMesh;
             temp.AddComponent<MeshRenderer>().sharedMaterials = mr.sharedMaterials;
+            if (conCollider)
+            {
+                var origenCC = origen.GetComponent<CapsuleCollider>();
+                if (origenCC != null)
+                {
+                    var cc = temp.AddComponent<CapsuleCollider>();
+                    cc.center = origenCC.center;
+                    cc.radius = origenCC.radius;
+                    cc.height = origenCC.height;
+                    cc.direction = origenCC.direction;
+                }
+            }
             var asset = PrefabUtility.SaveAsPrefabAsset(temp, ruta);
             Object.DestroyImmediate(temp);
             return asset;
