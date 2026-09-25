@@ -75,6 +75,13 @@ namespace SP.Ai
         // Civil: no reacciona al combate (ni ve enemigos ni devuelve fuego), solo sigue ordenes.
         public bool Pasivo { get; set; }
 
+        // Freeze global de IA (ambos equipos): pedido explicito "mientras este reproduciendose la
+        // cinematica inicial no se muevan ni enemigos ni aliados ni dispare". A diferencia de
+        // Pasivo (por-instancia, solo bloquea reaccion a combate), esto corta el Tick() entero
+        // -- ni sensado, ni movimiento, ni disparo -- para TODOS los AiBrain a la vez. Lo
+        // prende/apaga CinematicaDeIntro.
+        public static bool IAPausada;
+
         void NuevaOrden()
         {
             LiberarCobertura();

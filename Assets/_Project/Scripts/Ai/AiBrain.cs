@@ -727,6 +727,7 @@ namespace SP.Ai
         {
             if (!bootstrapped) Bootstrap();
             if (IsPossessedByPlayer || self == null) return;
+            if (IAPausada) return; // cinematica de apertura en curso: nadie se mueve, sensa ni dispara
             if (MontadoEnVehiculo) return;
             if (!self.gameObject.activeInHierarchy) return;
 

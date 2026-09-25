@@ -129,6 +129,20 @@ namespace SP.Mision
             // terminar Resistir (ver SpawnCivilOculto/AparecerCivil).
             SpawnCivilOculto();
 
+            // Pedido explicito: "desde el comienzo no arranque a atacar, q me sigan primero y no
+            // vayan de golpe los aliados a atacar" -- la escuadra arranca con una orden de
+            // "seguirme" ya dada (mismo llamado que el atajo [Y]), en vez de quedar en Patrol/Idle
+            // esperando el primer sensado y saliendo cada uno por su lado. Los soldados YA quedan
+            // congelados junto con todo el resto mientras dura la cinematica (AiBrain.IAPausada);
+            // no se los pone ademas en Pasivo=true aca -- probado a mano y es CONTRAPRODUCENTE:
+            // Pasivo tambien les apaga la defensa propia (no ven ni devuelven fuego), y la mision
+            // arranca "infiltrando ENTRE lineas enemigas" -- con enemigos ya cerca del punto de
+            // aparicion, dejar a la escuadra indefensa nada mas terminar la cinematica los mataba
+            // en segundos sin que pudieran responder. Sin Pasivo, en cuanto un enemigo los sensa
+            // reaccionan como corresponde (Follow -> Chase, igual que siempre).
+            if (driver != null && driver.Squad != null && driver.Brain != null && driver.Brain.Current != null)
+                OrderService.IssueFollowOrderForSelection(driver.Squad, driver.Brain.Current);
+
             if (Application.isPlaying && rutaDeIntro != null)
             {
                 var cine = gameObject.AddComponent<CinematicaDeIntro>();

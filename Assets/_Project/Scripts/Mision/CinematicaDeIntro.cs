@@ -43,6 +43,7 @@ namespace SP.Mision
         {
             if (!EnCurso) return;
             StopAllCoroutines();
+            SP.Ai.AiBrain.IAPausada = false;
             RomboVisibilidad.Suprimidos = false;
             foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
                 if (cv != null && (lienzo == null || cv.gameObject != lienzo) && cv.renderMode != RenderMode.WorldSpace) cv.enabled = true;
@@ -111,6 +112,7 @@ namespace SP.Mision
         IEnumerator Rutina(PlayerInputDriver driver, CinematicaIntroPath ruta, System.Action alTerminar)
         {
             EnCurso = true;
+            SP.Ai.AiBrain.IAPausada = true;
             RomboVisibilidad.Suprimidos = true;
             ArmarLienzo();
 
@@ -237,6 +239,7 @@ namespace SP.Mision
                 yield return null;
             }
 
+            SP.Ai.AiBrain.IAPausada = false;
             RomboVisibilidad.Suprimidos = false;
             foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
                 if (cv != null && cv.gameObject != lienzo && cv.renderMode != RenderMode.WorldSpace) cv.enabled = true;

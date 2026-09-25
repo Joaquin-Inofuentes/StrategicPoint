@@ -95,6 +95,7 @@ namespace SP.Vehicles
         public void Tick(float dt)
         {
             if (!bootstrapped) Bootstrap();
+            if (SP.Ai.AiBrain.IAPausada) return; // cinematica de apertura en curso: ver AiBrain.Tick()
             if (turret == null) return;
 
             // BUG REAL: esto disparaba solo, sin nadie a bordo -- un

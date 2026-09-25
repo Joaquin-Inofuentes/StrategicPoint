@@ -196,6 +196,7 @@ namespace SP.Vehicles
         public void Tick(float dt)
         {
             if (!bootstrapped) Bootstrap();
+            if (SP.Ai.AiBrain.IAPausada) return; // cinematica de apertura en curso: ver AiBrain.Tick()
             if (motor == null) return;
             // Igual que TurretWeapon: Tick() se llama directo desde
             // WorldSimulationDriver, "enabled=false" no alcanza para
