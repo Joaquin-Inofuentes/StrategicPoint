@@ -38,10 +38,12 @@ namespace SP.EditorTools
             Fase23_RtsControls(inputDriver, vega);
             Fase23_ReviveEnCalma(vega, kes);
             Fase23_ZoomCentrado();
+            Fase23_Headshot();
             Fase23_RegenNueveSegundos(kes);
             Fase23_FTeclas();
             Fase23_EscapeCamioneta();
             Fase23_Motos();
+            Fase23_CoheteVsTanque(pool);
         }
 
         static void Fase23_CClicCobertura()
@@ -75,6 +77,70 @@ namespace SP.EditorTools
             TestLog.Start("Fase23_CLineas");
             TestLog.Check(true, "Placeholder", "ok");
             TestLog.End();
+        }
+
+        static void Fase23_Headshot()
+        {
+            TestLog.Step("Probando Fase23_Headshot: Daño doble y HeadshotEvent si y > base + (crouching ? 0.95 : 1.45)");
+
+            var go = new UnityEngine.GameObject("Soldier");
+            var col = go.AddComponent<UnityEngine.CapsuleCollider>();
+            col.height = 2f;
+            col.center = new UnityEngine.Vector3(0, 1f, 0);
+
+            var s = go.AddComponent<SP.Actors.Soldier>();
+            s.Id = 88;
+            s.Team = SP.Combat.TeamId.Enemy;
+            s.Motor = go.AddComponent<SP.Actors.SoldierMotor>();
+            s.Health = go.AddComponent<SP.Combat.Health>();
+            s.Health.Initialize(s.Id, 100);
+            
+            var r = go.AddComponent<UnityEngine.MeshRenderer>();
+            r.bounds = new UnityEngine.Bounds(new UnityEngine.Vector3(0, 1f, 0), new UnityEngine.Vector3(1, 2, 1));
+
+            SP.Core.ActorRegistry.Register(s);
+            SP.Core.SpatialGrid.Rebuild();
+            
+            bool headshotFired = false;
+            var sub = SP.Core.EventBus.Instance.Subscribe<SP.Core.HeadshotEvent>(e => { if (e.TargetId == s.Id) headshotFired = true; });
+
+            var poolObj = new UnityEngine.GameObject("Pool");
+            var pool = poolObj.AddComponent<SP.Combat.ProjectilePool>();
+            pool.Prefab = new UnityEngine.GameObject("Bala");
+            pool.Prefab.AddComponent<UnityEngine.MeshRenderer>();
+            var p = pool.Get();
+            p.Configure(pool, new UnityEngine.Vector3(0, 1.0f, -2f), UnityEngine.Vector3.forward, 99, SP.Combat.TeamId.Player, 10);
+            p.OnSpawn();
+            p.Tick(0.1f);
+
+            Check("Disparo al pecho: daño normal 10", s.Health.Current == 90);
+            Check("No se emitio HeadshotEvent en el pecho", !headshotFired);
+
+            s.Health.Initialize(s.Id, 100);
+            var p2 = pool.Get();
+            p2.Configure(pool, new UnityEngine.Vector3(0, 1.5f, -2f), UnityEngine.Vector3.forward, 99, SP.Combat.TeamId.Player, 10);
+            p2.OnSpawn();
+            p2.Tick(0.1f);
+
+            Check("Disparo a y=1.5 de pie: daño doble 20", s.Health.Current == 80);
+            Check("Se emitio HeadshotEvent", headshotFired);
+
+            headshotFired = false;
+            typeof(SP.Actors.SoldierMotor).GetProperty("IsCrouching").SetValue(s.Motor, true);
+            s.Health.Initialize(s.Id, 100);
+            var p3 = pool.Get();
+            p3.Configure(pool, new UnityEngine.Vector3(0, 1.0f, -2f), UnityEngine.Vector3.forward, 99, SP.Combat.TeamId.Player, 10);
+            p3.OnSpawn();
+            p3.Tick(0.1f);
+
+            Check("Disparo a y=1.0 agachado: daño doble 20", s.Health.Current == 80);
+            Check("Se emitio HeadshotEvent agachado", headshotFired);
+
+            sub.Dispose();
+            SP.Core.ActorRegistry.Unregister(s);
+            UnityEngine.Object.DestroyImmediate(go);
+            UnityEngine.Object.DestroyImmediate(poolObj);
+            UnityEngine.Object.DestroyImmediate(pool.Prefab);
         }
 
         static void Fase23_Cadaveres()

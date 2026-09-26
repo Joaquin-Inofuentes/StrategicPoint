@@ -306,6 +306,7 @@ namespace SP.Core
             { "PISTA: ", "HINT: " },
             { "[F8] SALTAR PASO", "[F8] SKIP STEP" },
             { "[ESPACIO / CLIC] SIGUIENTE", "[SPACE / CLICK] NEXT" },
+            { "[ESPACIO] DESATAR", "[SPACE] UNTIE" },
             { "Paso completo", "Step complete" },
             { "justo ENFRENTE ^", "right AHEAD ^" },
             { "a tu ESPALDA (gira) vv", "BEHIND you (turn) vv" },

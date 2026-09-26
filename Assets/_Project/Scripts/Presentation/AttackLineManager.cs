@@ -112,7 +112,11 @@ namespace SP.Presentation
                 if (s == null || s.Team == TeamId.Player || s.Health == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
                 if (lidx >= 16) break;
 
-                bool visible = false; // Could check visibility
+                bool visible = false;
+                if (CameraRig.Instance != null && CameraRig.Instance.Cam != null) {
+                    var vp = CameraRig.Instance.Cam.WorldToViewportPoint(s.transform.position + Vector3.up);
+                    visible = vp.z > 0 && vp.x > 0 && vp.x < 1 && vp.y > 0 && vp.y < 1;
+                }
                 bool recent = recentEnemies.TryGetValue(s.Id, out float t) && (Time.time - t) <= 6f;
                 if (recent || visible)
                 {
@@ -187,3 +191,4 @@ namespace SP.Presentation
         }
     }
 }
+

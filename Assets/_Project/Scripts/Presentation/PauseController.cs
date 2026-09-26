@@ -142,7 +142,7 @@ namespace SP.Presentation
                 // que aca no hace falta una constante Pref* nueva.
                 WireChannelSlider(settingsPanel, "General", SfxChannel.Ambient);
                 WireChannelSlider(settingsPanel, "VFX", SfxChannel.Sfx);
-                WireChannelSlider(settingsPanel, "Voces", SfxChannel.Voice);
+                WireChannelSlider(settingsPanel, "Voces", SfxChannel.Voice, SfxChannel.Ui);
 
                 var sensValueTxt = settingsPanel.transform.Find("Sensibilidad de mouse_Value")?.GetComponent<Text>();
                 var sensSlider = settingsPanel.transform.Find("Sensibilidad de mouse_Slider")?.GetComponent<Slider>();
@@ -245,19 +245,19 @@ namespace SP.Presentation
         // Mismo patron que el slider de Volumen de arriba (Find por nombre
         // + SetValueWithoutNotify + onValueChanged), pero generico por
         // canal de AudioDirector en vez de tocar AudioListener.volume.
-        static void WireChannelSlider(GameObject panel, string label, SfxChannel channel)
+        static void WireChannelSlider(GameObject panel, string label, params SfxChannel[] channels)
         {
-            if (panel == null) return;
+            if (panel == null || channels.Length == 0) return;
             var valueTxt = panel.transform.Find(label + "_Value")?.GetComponent<Text>();
             var slider = panel.transform.Find(label + "_Slider")?.GetComponent<Slider>();
             if (slider == null) return;
 
-            float saved = AudioDirector.GainFor(channel);
+            float saved = AudioDirector.BaseGainFor(channels[0]);
             slider.SetValueWithoutNotify(saved);
             if (valueTxt != null) valueTxt.text = saved.ToString("0.00");
             slider.onValueChanged.AddListener(v =>
             {
-                AudioDirector.SetGain(channel, v);
+                foreach (var c in channels) AudioDirector.SetGain(c, v);
                 if (valueTxt != null) valueTxt.text = v.ToString("0.00");
             });
         }
