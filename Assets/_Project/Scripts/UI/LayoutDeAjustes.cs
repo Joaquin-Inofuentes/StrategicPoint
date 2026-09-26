@@ -62,7 +62,7 @@ namespace SP.UI
         {
             if (panel == null) return;
             var extra = panel.Find("AjustesExtra");
-            if (extra != null) PanelAjustesExtra.Refrescar(extra);
+            if (extra != null) { PanelAjustesExtra.RefrescarTextos(extra); PanelAjustesExtra.RefrescarValores(extra); }
             firma = int.MinValue;
         }
 
@@ -152,12 +152,19 @@ namespace SP.UI
             }
 
             // Primero se mide el alto total para poder poner las filas de arriba hacia abajo respecto del centro.
+
+            // Task requirement: REMOVE Quality section, daltonism toggle, HUD minimum from menu, subtitle sound option
+            string[] aRemover = { "Calidad_Slider", "Calidad_Label", "Calidad_Value", "Calidad_Toggle", "Daltonismo_Toggle", "Daltonismo_Label", "HudMinimo_Toggle", "HudMinimo_Label", "Subtitulos_Toggle", "Subtitulos_Label" };
+            foreach (var n in aRemover) {
+                var t = panel.Find(n);
+                if (t != null) t.gameObject.SetActive(false);
+            }
             var sliders = new List<string>();
-            foreach (var n in OrdenDeSliders) if (panel.Find(n + "_Slider") != null) sliders.Add(n);
+            foreach (var n in OrdenDeSliders) { var s = panel.Find(n + "_Slider"); if (s != null && s.gameObject.activeSelf) sliders.Add(n); }
             foreach (Transform h in panel.transform)
-                if (h.name.EndsWith("_Slider") && !sliders.Contains(h.name.Substring(0, h.name.Length - 7))) sliders.Add(h.name.Substring(0, h.name.Length - 7));
+                if (h.gameObject.activeSelf && h.name.EndsWith("_Slider") && !sliders.Contains(h.name.Substring(0, h.name.Length - 7))) sliders.Add(h.name.Substring(0, h.name.Length - 7));
             var toggles = new List<string>();
-            foreach (Transform h in panel.transform) if (h.name.EndsWith("_Toggle")) toggles.Add(h.name.Substring(0, h.name.Length - 7));
+            foreach (Transform h in panel.transform) if (h.gameObject.activeSelf && h.name.EndsWith("_Toggle")) toggles.Add(h.name.Substring(0, h.name.Length - 7));
 
             float alturaLinea = 26f;
             foreach (var n in sliders) alturaLinea = Mathf.Max(alturaLinea, LineaDe(panel.Find(n + "_Label")));

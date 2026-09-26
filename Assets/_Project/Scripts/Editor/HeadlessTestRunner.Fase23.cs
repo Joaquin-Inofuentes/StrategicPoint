@@ -30,6 +30,7 @@ namespace SP.EditorTools
             Fase23_RomboTanque();
             Fase23_RomboSinOclusion();
             Fase23_AgachadoContagio();
+            Fase23_CursorPorObjetivo();
             Fase23_FormacionLateral(vega, kes, doc);
             Fase23_MedicoAutomatico();
             Fase23_TimerGranada();
@@ -39,6 +40,8 @@ namespace SP.EditorTools
             Fase23_ZoomCentrado();
             Fase23_RegenNueveSegundos(kes);
             Fase23_FTeclas();
+            Fase23_EscapeCamioneta();
+            Fase23_Motos();
         }
 
         static void Fase23_CClicCobertura()
@@ -46,6 +49,25 @@ namespace SP.EditorTools
             TestLog.Start("Fase23_CClicCobertura");
             TestLog.Check(true, "Placeholder", "ok");
             TestLog.End();
+        }
+
+        static void Fase23_EscapeCamioneta()
+        {
+            TestLog.Step("Probando Fase23_EscapeCamioneta: Camioneta y MisionDirector");
+            var camGo = new GameObject("Camioneta");
+            var camioneta = camGo.AddComponent<SP.Mision.Camioneta>();
+            camioneta.IniciarEscape();
+            Check("Camioneta en ruta", camioneta.EnRuta);
+            Object.DestroyImmediate(camGo);
+        }
+
+        static void Fase23_Motos()
+        {
+            TestLog.Step("Probando Fase23_Motos: MotoEnemiga");
+            var motoGo = new GameObject("MotoEnemiga");
+            var moto = motoGo.AddComponent<SP.Vehicles.MotoEnemiga>();
+            Check("Moto tiene vehículo", moto.Vehiculo != null);
+            Object.DestroyImmediate(motoGo);
         }
 
         static void Fase23_CLineas()
@@ -1080,6 +1102,42 @@ namespace SP.EditorTools
             SP.Core.ActorRegistry.Unregister(asalto);
             UnityEngine.Object.DestroyImmediate(medGo);
             UnityEngine.Object.DestroyImmediate(asaltoGo);
+        }
+
+        static void Fase23_CursorPorObjetivo()
+        {
+            TestLog.Step("Probando Fase23_CursorPorObjetivo: el cursor RTS y mira FPS cambian de color/forma segun el objetivo apuntado");
+            
+            // Check UI mapping first
+            var uiGo = new GameObject("TestAimUI");
+            var canvasRoot = new GameObject("Canvas");
+            uiGo.transform.SetParent(canvasRoot.transform);
+            var ui = uiGo.AddComponent<SP.UI.AimUI>();
+            var text = uiGo.AddComponent<UnityEngine.UI.Text>();
+            var image = uiGo.AddComponent<UnityEngine.UI.Image>();
+            ui.Bind(text, image);
+
+            var result = new SP.Player.AimResult { Type = SP.Player.AimTargetType.Recoger };
+            ui.UpdateFromAimResult(result);
+            Check("Mira FPS Recoger -> Verde", image.color == SP.Presentation.CursorContextual.ColorRecoger);
+
+            result.Type = SP.Player.AimTargetType.Ally;
+            ui.UpdateFromAimResult(result);
+            Check("Mira FPS Aliado -> Azul", image.color == SP.Presentation.CursorContextual.ColorSeguir);
+
+            result.Type = SP.Player.AimTargetType.Enemy;
+            ui.UpdateFromAimResult(result);
+            Check("Mira FPS Enemigo -> Rojo", image.color == SP.Presentation.CursorContextual.ColorAtacar);
+
+            result.Type = SP.Player.AimTargetType.Cubrirse;
+            ui.UpdateFromAimResult(result);
+            Check("Mira FPS Cobertura -> Cyan", image.color == SP.Presentation.CursorContextual.ColorCubrirse);
+
+            result.Type = SP.Player.AimTargetType.Torreta;
+            ui.UpdateFromAimResult(result);
+            Check("Mira FPS Torreta -> Naranja", image.color == SP.Presentation.CursorContextual.ColorMontar);
+
+            Object.DestroyImmediate(canvasRoot);
         }
     }
 }

@@ -333,7 +333,8 @@ namespace SP.Core
             { "2 · despegue", "2 · takeoff" },
             { "3 · la horda", "3 · the horde" },
             { "MUERTO", "DEAD" },
-            { "VUELVE AL OBJETIVO", "RETURN TO OBJECTIVE" }
+            { "VUELVE AL OBJETIVO", "RETURN TO OBJECTIVE" },
+            { "¡TIRO A LA CABEZA!", "HEADSHOT!" }
         };
     }
 }

@@ -129,7 +129,8 @@ namespace SP.UI
             var rt = (RectTransform)settingsPanel.transform;
             var extra = settingsPanel.transform.Find(Nombre);
             if (extra == null) extra = Construir(rt);
-            Refrescar(extra);
+            RefrescarTextos(extra);
+            RefrescarValores(extra);
             // Ronda 13 (punto 6): el reacomodo ya no es un calculo de una sola vez al abrir: LayoutDeAjustes lo repite cada vez
             // que cambia el area del canvas (resolucion / tamano de interfaz), el idioma o algun texto del panel.
             var layout = LayoutDeAjustes.Asegurar(settingsPanel);
@@ -149,10 +150,10 @@ namespace SP.UI
             go.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.09f, 0.97f);
 
             Texto(go.transform, font, "PANTALLA Y ACCESIBILIDAD", new Vector2(0f, 245f), 22, TextAnchor.MiddleCenter, FontStyle.Bold);
-            Boton(go.transform, font, "Pantalla", "PANTALLA", new Vector2(0f, 130f), () => { AjustesDeJuego.AlternarPantallaCompleta(); Refrescar(go.transform); });
+            Boton(go.transform, font, "Pantalla", "PANTALLA", new Vector2(0f, 130f), () => { AjustesDeJuego.AlternarPantallaCompleta(); RefrescarValores(go.transform); });
             CrearDropdown(go.transform, font, "Resolucion", "RESOLUCION", new Vector2(0f, 70f));
-            Boton(go.transform, font, "Escala", "TAMANO DE INTERFAZ", new Vector2(0f, 10f), () => { AjustesDeJuego.SiguienteEscala(); Refrescar(go.transform); });
-            Boton(go.transform, font, "Idioma", "IDIOMA / LANGUAGE", new Vector2(0f, -50f), () => { SP.Core.Loc.Alternar(); Refrescar(go.transform); });
+            Boton(go.transform, font, "Escala", "TAMANO DE INTERFAZ", new Vector2(0f, 10f), () => { AjustesDeJuego.SiguienteEscala(); RefrescarValores(go.transform); });
+            Boton(go.transform, font, "Idioma", "IDIOMA / LANGUAGE", new Vector2(0f, -50f), () => { SP.Core.Loc.Alternar(); RefrescarValores(go.transform); });
             Texto(go.transform, font, "Mando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.", new Vector2(0f, -150f), 14, TextAnchor.MiddleCenter, FontStyle.Normal, new Vector2(400f, 100f));
             return go.transform;
         }
@@ -173,7 +174,6 @@ namespace SP.UI
             d.value = AjustesDeJuego.IndiceResolucion();
             d.onValueChanged.AddListener(v => {
                 PlayerPrefs.SetInt("sp_resolucion", v); PlayerPrefs.Save();
-                AjustesDeJuego.AplicarPantalla();
             });
             var t = go.GetComponentInChildren<Text>();
             if (t != null) { t.font = font; t.fontSize = 20; t.color = Color.black; }
@@ -211,7 +211,19 @@ namespace SP.UI
             ltx.font = font; ltx.fontSize = 20; ltx.alignment = TextAnchor.MiddleRight; ltx.color = Color.white; ltx.text = titulo;
         }
 
-        public static void Refrescar(Transform extra)
+        public static void RefrescarTextos(Transform extra)
+        {
+            if (extra == null) return;
+            var t1 = extra.Find("Texto")?.GetComponent<Text>(); if (t1 != null) t1.text = SP.Core.Loc.T("PANTALLA Y ACCESIBILIDAD");
+            var l1 = extra.Find("Pantalla/Label")?.GetComponent<Text>(); if (l1 != null) l1.text = SP.Core.Loc.T("PANTALLA");
+            var l2 = extra.Find("Resolucion/Label")?.GetComponent<Text>(); if (l2 != null) l2.text = SP.Core.Loc.T("RESOLUCION");
+            var l3 = extra.Find("Escala/Label")?.GetComponent<Text>(); if (l3 != null) l3.text = SP.Core.Loc.T("TAMANO DE INTERFAZ");
+            var l4 = extra.Find("Idioma/Label")?.GetComponent<Text>(); if (l4 != null) l4.text = "IDIOMA / LANGUAGE";
+            var btnA = extra.Find("Aplicar/Label")?.GetComponent<Text>(); if (btnA != null) btnA.text = SP.Core.Loc.T("APLICAR");
+            var t2 = extra.Find("Texto (1)")?.GetComponent<Text>(); if (t2 != null) t2.text = SP.Core.Loc.T("Mando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.");
+        }
+
+        public static void RefrescarValores(Transform extra)
         {
             if (extra == null) return;
             Poner(extra, "Pantalla", SP.Core.Loc.T(AjustesDeJuego.PantallaCompleta ? "COMPLETA" : "VENTANA"));

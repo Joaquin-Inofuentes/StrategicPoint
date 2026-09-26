@@ -8,6 +8,7 @@ namespace SP.Mision
     public class MotoEnemigaDirector : MonoBehaviour
     {
         public static MotoEnemigaDirector Instancia { get; private set; }
+        public static void ReiniciarActivo() => Instancia = null;
         
         float proximaOleada = 0f;
         bool activo = false;

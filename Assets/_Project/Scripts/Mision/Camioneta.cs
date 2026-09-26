@@ -10,6 +10,7 @@ namespace SP.Mision
     public class Camioneta : MonoBehaviour
     {
         public static Camioneta Instancia { get; private set; }
+        public static void ReiniciarActivo() => Instancia = null;
         public Vehicle Vehiculo { get; private set; }
         public VehicleBrain Cerebro { get; private set; }
         

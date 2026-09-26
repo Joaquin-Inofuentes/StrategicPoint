@@ -35,6 +35,8 @@ namespace SP.Core
             SP.UI.ModoDiosView.ReiniciarActivo();
             SP.UI.MenuDeOrdenes.ReiniciarActivo();
             SP.Tutorial.CatalogoDelTutorial.ReiniciarActivo();
+            SP.Mision.Camioneta.ReiniciarActivo();
+            if (SP.Mision.MotoEnemigaDirector.Instancia != null) SP.Mision.MotoEnemigaDirector.ReiniciarActivo();
         }
     }
 }

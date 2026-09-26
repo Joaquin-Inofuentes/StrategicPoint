@@ -74,6 +74,8 @@ namespace SP.Presentation
         static readonly float?[] gainCache = new float?[4];
         static float? masterGainCache;
 
+        public const string PrefVolume = "sp_volume";
+
         static string PrefKeyFor(SfxChannel c)
         {
             switch (c)
@@ -85,13 +87,18 @@ namespace SP.Presentation
             }
         }
 
+        public static float BaseGainFor(SfxChannel c)
+        {
+            int i = (int)c;
+            if (i < 0 || i >= gainCache.Length) return 1f;
+            if (gainCache[i] == null) gainCache[i] = Mathf.Clamp01(PlayerPrefs.GetFloat(PrefKeyFor(c), 1f));
+            return gainCache[i].Value;
+        }
+
         public static float GainFor(SfxChannel c)
         {
             if (masterGainCache == null) masterGainCache = Mathf.Clamp01(PlayerPrefs.GetFloat(PrefVolume, 1f));
-            int i = (int)c;
-            if (i < 0 || i >= gainCache.Length) return masterGainCache.Value;
-            if (gainCache[i] == null) gainCache[i] = Mathf.Clamp01(PlayerPrefs.GetFloat(PrefKeyFor(c), 1f));
-            return gainCache[i].Value * masterGainCache.Value;
+            return BaseGainFor(c) * masterGainCache.Value;
         }
 
         public static void SetGain(SfxChannel c, float v)

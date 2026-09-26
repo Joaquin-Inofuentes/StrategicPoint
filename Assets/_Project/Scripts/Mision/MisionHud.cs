@@ -132,7 +132,6 @@ namespace SP.Mision
                     SetBarra(0f, amarillo);
                     break;
                 }
-                }
                 case FaseDeMision.Escapar:
                 case FaseDeMision.Victoria:
                 {
