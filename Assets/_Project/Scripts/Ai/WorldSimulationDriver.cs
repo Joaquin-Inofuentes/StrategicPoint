@@ -122,6 +122,21 @@ namespace SP.Ai
                 }
                 s.Brain?.Tick(dtSoldado);
                 if (s.Weapon != null) s.Weapon.Tick(dtSoldado);
+                // BUG REAL (R14): la caida/salto (SoldierMotor.TickVertical)
+                // vivia SOLO en el Update() propio de SoldierMotor, el unico
+                // sistema de movimiento que no pasaba por aca. Andaba bien
+                // en Play mode real (Update() corre todos los frames), pero
+                // la suite headless nunca lo tickeaba -- y ahora Move()
+                // puede arrancar una caida sola (RevisarBorde, agregado hoy:
+                // cualquier movimiento normal, incluido el ciclo nuevo de
+                // asomarse en cobertura, puede detectar un borde y disparar
+                // IsJumping). Sin nadie que resuelva esa caida fuera de
+                // Play mode, el soldado se quedaba con IsJumping trabado
+                // para siempre, flotando o hundido segun donde lo agarro.
+                // Mismo camino de simulacion que Brain/Weapon/Health por el
+                // mismo motivo: que la suite ejercite EXACTAMENTE lo que
+                // corre el juego real.
+                s.Motor?.TickVertical(dtSoldado);
                 // Pedido explicito: a los 3 s sin recibir daño, regenera
                 // solo. Mismo camino de simulacion que Brain/Weapon, para
                 // que la suite headless (SimStep) lo ejercite igual que el

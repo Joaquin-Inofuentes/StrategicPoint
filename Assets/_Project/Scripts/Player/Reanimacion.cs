@@ -20,7 +20,7 @@ namespace SP.Player
             if (caido == null || caido.Health == null || caido.Health.IsAlive) return false;
 
             int vida = Mathf.Max(1, Mathf.RoundToInt(caido.Health.MaxHealth * Mathf.Clamp01(fraccionDeVida)));
-            caido.Health.Initialize(caido.Id, vida);
+            caido.Health.Initialize(caido.Id, caido.Health.MaxHealth, vida);
             caido.Motor.ResetMotionState();
             caido.SetBodyVisible(true);
 

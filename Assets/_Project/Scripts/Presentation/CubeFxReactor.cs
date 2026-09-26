@@ -94,8 +94,21 @@ namespace SP.Presentation
         // revivido quedaba invisible. Se deshace todo lo que dejo OnDeath y se corta la corutina que lo iba a ocultar.
         void AlRevivir()
         {
-            if (!Application.isPlaying || soldier == null) return;
+            if (soldier == null) return;
+
+            // BUG REAL (R14): esto vivia atras del "if (!Application.isPlaying...)"
+            // de mas abajo, pensado para las corutinas/audio de esta misma
+            // funcion. Pero sacar al cadaver de la cola (y asegurar el GO
+            // activo) es contabilidad de gameplay, no un efecto visual --
+            // la suite headless revive soldados con Health.Initialize() SIN
+            // poner Application.isPlaying en true, asi que el cadaver nunca
+            // "escapaba" de la cola en los tests y un muerto nuevo lo volvia
+            // a ocultar como si nunca hubiera revivido.
             cadaveres.Remove(gameObject);
+            if (!gameObject.activeSelf) gameObject.SetActive(true);
+
+            if (!Application.isPlaying) return;
+
             StopAllCoroutines();
             transform.localScale = baseScale;
             WriteTint(rend, baseColor);
@@ -104,7 +117,6 @@ namespace SP.Presentation
             if (gameObject.activeInHierarchy && animator != null) animator.SetBool(SP.Presentation.SoldierAnimatorDriver.ParamMuerto, false);
             soldier.SetBodyVisible(true);
             if (animator == null) transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
-            if (!gameObject.activeSelf) gameObject.SetActive(true);
         }
 
         void OnDestroy()
@@ -177,7 +189,30 @@ namespace SP.Presentation
 
         void OnDeath(EntityDiedEvent evt)
         {
-            if (!Application.isPlaying || !IsMe(evt.ActorId) || !gameObject.activeInHierarchy) return;
+            if (!IsMe(evt.ActorId) || !gameObject.activeInHierarchy) return;
+
+            // BUG REAL (R14): la cola de cadaveres (D12, cupo de 24 cuerpos
+            // visibles) se agrego aca abajo, atras del guard de
+            // Application.isPlaying que ya existia para el audio/particulas/
+            // corutinas de esta funcion. Eso esta bien para lo visual, pero
+            // esconder al mas viejo cuando se pasa de 24 es contabilidad de
+            // gameplay: tiene que valer igual en Edit mode, que es como
+            // corre la suite headless (mata soldados con Application.isPlaying
+            // en false). Con el bloque atras del guard, el pool nunca hacia
+            // nada en los tests aunque la logica en si estuviera bien escrita.
+            if (!cadaveres.Contains(gameObject)) cadaveres.Add(gameObject);
+            while (cadaveres.Count > 24)
+            {
+                var viejo = cadaveres[0];
+                cadaveres.RemoveAt(0);
+                if (viejo != null)
+                {
+                    viejo.SetActive(false);
+                }
+            }
+
+            if (!Application.isPlaying) return;
+
             // Prioridad la mas alta de las tres: una muerte pasa UNA vez
             // por soldado, un disparo pasa varias veces por segundo. Si el
             // pool esta saturado, lo que tiene que sobrevivir es esto.
@@ -203,17 +238,6 @@ namespace SP.Presentation
                 // Estallido naranja/rojo a la altura del pecho -- lectura de
                 // impacto/energia liberada, sin sangre (tono del proyecto).
                 SparkleBurstFx.Spawn(transform.position + Vector3.up * 0.9f, new Color(0.95f, 0.4f, 0.15f), 0.7f, 3f, 30, 3.5f);
-            }
-            
-            if (!cadaveres.Contains(gameObject)) cadaveres.Add(gameObject);
-            while (cadaveres.Count > 24)
-            {
-                var viejo = cadaveres[0];
-                cadaveres.RemoveAt(0);
-                if (viejo != null)
-                {
-                    viejo.SetActive(false);
-                }
             }
 
             // Con arte real y Animator, la muerte es una animacion de

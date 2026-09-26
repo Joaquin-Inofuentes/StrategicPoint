@@ -18,15 +18,30 @@ namespace SP.Mision
         int waypointIdx = 0;
         Vector3[] ruta;
 
+        // BUG REAL (crash de la suite + hubiera afectado tambien al juego real): armar
+        // Vehicle/VehicleMotor/VehicleBrain con AddComponent DESDE DENTRO del propio
+        // Awake() de Camioneta es un AddComponent anidado -- Vehicle.OnEnable crea a su
+        // vez el rombo del vehiculo (otro GameObject + componentes) como efecto
+        // secundario de ESE AddComponent. Unity no sostiene ese anidamiento a dos
+        // niveles de forma confiable: gameObject.AddComponent<Vehicle>() devolvia null
+        // en silencio (sin excepcion, sin log) y Vehiculo/Cerebro quedaban sin asignar
+        // -- confirmado reproduciendolo aislado. SubirATodos/IniciarEscape reventaban
+        // con NullReferenceException apenas se los llamaba. Se separa en Inicializar(),
+        // llamado por quien crea la Camioneta (MisionDirector) ya con el GameObject
+        // resuelto y fuera de la cadena de Awake anidada.
         void Awake()
         {
             Instancia = this;
+        }
+
+        public void Inicializar()
+        {
             ConstruirBloqueoVisual();
-            
+
             Vehiculo = gameObject.AddComponent<Vehicle>();
             gameObject.AddComponent<VehicleMotor>();
             Cerebro = gameObject.AddComponent<VehicleBrain>();
-            
+
             Vehiculo.AsignarBando(TeamId.Player, new Color(0.2f, 0.4f, 0.2f));
         }
 

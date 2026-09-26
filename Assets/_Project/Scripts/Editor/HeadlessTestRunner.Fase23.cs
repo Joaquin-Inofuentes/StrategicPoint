@@ -66,6 +66,7 @@ namespace SP.EditorTools
             TestLog.Step("Probando Fase23_EscapeCamioneta: Camioneta y MisionDirector");
             var camGo = new GameObject("Camioneta");
             var camioneta = camGo.AddComponent<SP.Mision.Camioneta>();
+            camioneta.Inicializar();
             camioneta.IniciarEscape();
             Check("Camioneta en ruta", camioneta.EnRuta);
             Object.DestroyImmediate(camGo);
@@ -76,6 +77,7 @@ namespace SP.EditorTools
             TestLog.Step("Probando Fase23_Motos: MotoEnemiga");
             var motoGo = new GameObject("MotoEnemiga");
             var moto = motoGo.AddComponent<SP.Vehicles.MotoEnemiga>();
+            moto.Inicializar();
             Check("Moto tiene vehÃ­culo", moto.Vehiculo != null);
             Object.DestroyImmediate(motoGo);
         }
@@ -165,34 +167,45 @@ namespace SP.EditorTools
                 var r = go.AddComponent<SP.Presentation.CubeFxReactor>();
                 r.Bootstrap();
                 corpses.Add(go);
-                
-                // Matamos al soldado
-                SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(s.Id, 0, 100, 0));
-                SP.Core.EventBus.Instance.Publish(new SP.Core.EntityDiedEvent(s.Id));
+
+                // Matamos al soldado de verdad (TakeDamage, no publicar los
+                // eventos DamageTakenEvent/EntityDiedEvent a mano): si
+                // Health.Current no baja de verdad a 0 aca, mas abajo
+                // "revivir" con Initialize() nunca dispara Revivido (que
+                // exige haber estado vivo Y estar en 0 ahora), y el tramo
+                // de revivir/escapar-de-la-queue queda sin probar de verdad.
+                s.Health.TakeDamage(100, 0);
             }
-            
+
             Check("Despues de 26 muertes, Corpse0 y Corpse1 deberian estar inactivos", !corpses[0].activeSelf && !corpses[1].activeSelf);
             Check("Corpse2 a Corpse25 deberian estar activos", corpses[2].activeSelf && corpses[25].activeSelf);
-            
-            // Revivir el mÃ¡s viejo de los activos (Corpse2)
+
+            // Revivir el mas viejo de los activos (Corpse2)
             var h2 = corpses[2].GetComponent<SP.Combat.Health>();
             h2.Initialize(h2.ActorId, 100); // Trigger Revivido
-            
+
             Check("Despues de revivir, el soldado sale de la queue y el GO se asegura de estar activo", corpses[2].activeSelf);
-            
-            // Matar a uno nuevo para ver si Corpse3 se oculta
-            var goNew = new UnityEngine.GameObject("Corpse26");
-            goNew.AddComponent<SP.Combat.Health>();
-            var sNew = goNew.AddComponent<SP.Actors.Soldier>();
-            sNew.Configure("Corpse26", SP.Combat.TeamId.Enemy, SP.Combat.RoleType.Assault, 100);
-            var rNew = goNew.AddComponent<SP.Presentation.CubeFxReactor>();
-            rNew.Bootstrap();
-            corpses.Add(goNew);
-            
-            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(sNew.Id, 0, 100, 0));
-            SP.Core.EventBus.Instance.Publish(new SP.Core.EntityDiedEvent(sNew.Id));
-            
-            Check("Al morir otro, Corpse3 se oculta (Corpse2 escapÃ³ de la queue al revivir)", !corpses[3].activeSelf);
+
+            // Matar a DOS mas para ver si Corpse3 se oculta. Uno solo no
+            // alcanza: al revivir, Corpse2 dejo la cola en 23 (no en 24), asi
+            // que el primer muerto nuevo solo la vuelve a poner en 24 -- todavia
+            // dentro del cupo, sin desalojar a nadie. Recien el segundo la
+            // hace superar 24 de nuevo, y ahi el mas viejo ya no es Corpse2
+            // (que escapo de la cola al revivir) sino Corpse3.
+            for (int i = 26; i <= 27; i++)
+            {
+                var goNew = new UnityEngine.GameObject("Corpse" + i);
+                goNew.AddComponent<SP.Combat.Health>();
+                var sNew = goNew.AddComponent<SP.Actors.Soldier>();
+                sNew.Configure("Corpse" + i, SP.Combat.TeamId.Enemy, SP.Combat.RoleType.Assault, 100);
+                var rNew = goNew.AddComponent<SP.Presentation.CubeFxReactor>();
+                rNew.Bootstrap();
+                corpses.Add(goNew);
+
+                sNew.Health.TakeDamage(100, 0);
+            }
+
+            Check("Al morir dos mas, Corpse3 se oculta (Corpse2 escapo de la queue al revivir)", !corpses[3].activeSelf);
             
             foreach (var c in corpses)
             {
@@ -331,7 +344,17 @@ namespace SP.EditorTools
             vehGo.SetActive(false);
             var veh = vehGo.AddComponent<SP.Vehicles.Vehicle>();
             vehGo.SetActive(true);
-            
+
+            // BUG REAL (por que "RomboTanque existe" fallaba): el rombo de Vehicle se crea en
+            // OnEnable, y en Edit mode (esta suite) OnEnable no corre de forma confiable solo con
+            // el AddComponent+SetActive de arriba -- mismo problema, ya documentado en este
+            // proyecto, que resolvieron a mano TorretaFija.Instalar (llamando Registrar() el
+            // mismo) y Fase23_CoheteVsTanque (llamando WorldSystemsRegistry.Register(vehicle) el
+            // mismo) unas lineas mas abajo en este archivo. Aca se empuja OnEnable por reflexion
+            // en vez de asumir que el SetActive lo dispara solo.
+            var onEnableMethod = typeof(SP.Vehicles.Vehicle).GetMethod("OnEnable", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (onEnableMethod != null) onEnableMethod.Invoke(veh, null);
+
             var mr = vehGo.transform.Find("RomboTanque");
             Material mat = null;
             if (mr != null) mat = mr.GetComponent<MeshRenderer>().sharedMaterial;
@@ -726,6 +749,10 @@ namespace SP.EditorTools
             var soldierGo = new GameObject("TestSoldier");
             soldierGo.AddComponent<SP.Combat.Health>();
             var w = soldierGo.AddComponent<SP.Combat.WeaponHolder>();
+            // BUG REAL (crash de la suite): TorretaFija.Ocupar llama a s.Motor.SetCrouching/SetRunning
+            // sin chequeo de null (todo soldado real del juego tiene SoldierMotor) -- a este soldado de
+            // prueba le faltaba el componente y Ocupar reventaba con NullReferenceException.
+            soldierGo.AddComponent<SP.Actors.SoldierMotor>();
             var soldier = soldierGo.AddComponent<SP.Actors.Soldier>();
             soldier.Configure("TestSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
             w.Bootstrap();
@@ -929,38 +956,50 @@ namespace SP.EditorTools
         {
             TestLog.Step("Probando T-41 PartÃ­culas de polvo");
 
-            var mainCam = new GameObject("MainCamera").AddComponent<Camera>();
-            mainCam.tag = "MainCamera";
+            // BUG REAL (por que el test no veia el polvo): DustEmitter cachea Camera.main en un
+            // campo static que vive para TODA la corrida de la suite (nunca se resetea entre
+            // fases) y su chequeo de LOD descarta cualquier Emit() a mas de 50 m de esa camara.
+            // Crear ACA una segunda camara con tag "MainCamera" no sirve de nada: ya existe la
+            // del rig de pruebas (creada al arrancar la suite en HeadlessTestRunner.cs, siguiendo
+            // a "vega") y es esa la que Camera.main/DustEmitter ya tienen cacheada para cuando
+            // esta fase (la 23 de 23) corre -- la camara nueva de esta prueba queda sin usar. El
+            // soldado/tanque se creaban en el origen del mundo sin importar donde haya quedado
+            // esa camara real tras 22 fases previas de pruebas, asi que el polvo se descartaba en
+            // silencio por LOD y ParticleCount nunca subia de 0. Se los ubica junto a la camara
+            // que de verdad se va a consultar, en vez de una camara redundante que nadie lee.
+            var camActual = Camera.main;
+            var origenPrueba = camActual != null ? camActual.transform.position : Vector3.zero;
 
             var sGo = new GameObject("Soldado");
+            sGo.transform.position = origenPrueba;
             var sCol = sGo.AddComponent<BoxCollider>();
             var sMotor = sGo.AddComponent<SP.Actors.SoldierMotor>();
             sMotor.SetRunning(true);
             sMotor.SpeedMultiplier = 1f;
-            
-            // Forzar carga sin physics loop
-            var step = Vector3.forward * 1.5f; 
-            sMotor.Move(step, 1f); 
 
-            Check("Soldado corriendo emitiÃ³ polvo", SP.Presentation.DustEmitter.ParticleCount > 0);
+            // Forzar carga sin physics loop
+            var step = Vector3.forward * 1.5f;
+            sMotor.Move(step, 1f);
+
+            Check("Soldado corriendo emitió polvo", SP.Presentation.DustEmitter.ParticleCount > 0);
 
             var vGo = new GameObject("Tanque");
+            vGo.transform.position = origenPrueba;
             var vCol = vGo.AddComponent<BoxCollider>();
             vCol.size = new Vector3(3.6f, 1f, 2.2f); // Large collider
             var vMotor = vGo.AddComponent<SP.Vehicles.VehicleMotor>();
-            
+
             vMotor.Drive(1f, 0f, 1f); // Accel
-            
+
             // Advance by enough distance manually to trigger dust if Drive isn't enough distance
             // Well Drive just adds speed, so next frame it moves.
-            vMotor.Drive(1f, 0f, 1f); 
-            // Wait, VehicleMotor needs speed. 
+            vMotor.Drive(1f, 0f, 1f);
+            // Wait, VehicleMotor needs speed.
             // If it doesn't emit, we can call Avanzar using reflection if needed, but Drive calls Avanzar.
             // 2 seconds of accel: speed = 1 * 8 = 8m/s -> distance is 8m.
-            
-            Check("VehÃ­culo emitiÃ³ polvo", SP.Presentation.DustEmitter.ParticleCount > 1);
 
-            Object.DestroyImmediate(mainCam.gameObject);
+            Check("Vehículo emitió polvo", SP.Presentation.DustEmitter.ParticleCount > 1);
+
             Object.DestroyImmediate(sGo);
             Object.DestroyImmediate(vGo);
         }
@@ -1120,12 +1159,25 @@ namespace SP.EditorTools
         {
             TestLog.Step("Probando Fase23_MedicoAutomatico: medico cura automaticamente y se cancela con dano");
 
+            // BUG REAL (crash de la suite): a estos dos soldados de prueba les faltaba
+            // Health -- Soldier.Bootstrap lo busca con GetComponent, no lo encuentra,
+            // loguea el error "no tiene un componente Health adjunto" y deja
+            // Soldier.Health en null; asalto.Health.TakeDamage reventaba con
+            // NullReferenceException. SoldierMotor y WeaponHolder se agregan tambien
+            // porque AiBrain.Tick (el metodo completo, no solo la curacion) los toca
+            // igual que cualquier soldado real del juego.
             var medGo = new GameObject("TestMedic");
+            medGo.AddComponent<SP.Combat.Health>();
+            medGo.AddComponent<SP.Actors.SoldierMotor>();
+            medGo.AddComponent<SP.Combat.WeaponHolder>();
             var medico = medGo.AddComponent<SP.Actors.Soldier>();
             medico.Configure("Medico", SP.Combat.TeamId.Player, SP.Combat.RoleType.Medic, 100);
             var medBrain = medGo.AddComponent<SP.Ai.AiBrain>();
-            
+
             var asaltoGo = new GameObject("TestAsalto");
+            asaltoGo.AddComponent<SP.Combat.Health>();
+            asaltoGo.AddComponent<SP.Actors.SoldierMotor>();
+            asaltoGo.AddComponent<SP.Combat.WeaponHolder>();
             var asalto = asaltoGo.AddComponent<SP.Actors.Soldier>();
             asalto.Configure("Asalto", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
             
@@ -1163,12 +1215,22 @@ namespace SP.EditorTools
             TestLog.Step("Probando Fase23_CursorPorObjetivo: el cursor RTS y mira FPS cambian de color/forma segun el objetivo apuntado");
             
             // Check UI mapping first
-            var uiGo = new GameObject("TestAimUI");
+            // BUG REAL (crash de la suite): Text e Image son las dos Graphic -- Unity
+            // rechaza en silencio ("A GameObject can only contain one 'Graphic'
+            // component") agregar la segunda al mismo GameObject, asi que "image"
+            // quedaba null y image.color reventaba con NullReferenceException. Van en
+            // GameObjects separados, como los busca AimUI.OnEnable (PromptText/
+            // Crosshair son HERMANOS del objeto de AimUI bajo el Canvas, no hijos).
             var canvasRoot = new GameObject("Canvas");
+            var uiGo = new GameObject("TestAimUI");
             uiGo.transform.SetParent(canvasRoot.transform);
             var ui = uiGo.AddComponent<SP.UI.AimUI>();
-            var text = uiGo.AddComponent<UnityEngine.UI.Text>();
-            var image = uiGo.AddComponent<UnityEngine.UI.Image>();
+            var textGo = new GameObject("PromptText");
+            textGo.transform.SetParent(canvasRoot.transform);
+            var text = textGo.AddComponent<UnityEngine.UI.Text>();
+            var imageGo = new GameObject("Crosshair");
+            imageGo.transform.SetParent(canvasRoot.transform);
+            var image = imageGo.AddComponent<UnityEngine.UI.Image>();
             ui.Bind(text, image);
 
             var result = new SP.Player.AimResult { Type = SP.Player.AimTargetType.Recoger };

@@ -54,12 +54,22 @@ namespace SP.Combat
         public event System.Action Revivido;
         bool estuvoVivo;
 
-        public void Initialize(int actorId, int max)
+        // currentOverride: BUG REAL ("Revive con la mitad de la vida" daba 25 en vez de
+        // 50 sobre 100 -- Reanimacion.Ejecutar llamaba Initialize(id, vida) pasando la
+        // FRACCION ya calculada como si fuera el "max", asi que ademas de dejar a medio
+        // vivir tambien le RECORTABA PERMANENTEMENTE el maximo de vida al soldado (a la
+        // mitad, para siempre, hasta la proxima muerte). Como el unico llamador que
+        // pedia una fraccion (EstadoDePartida.RevivirEscuadra, "revive a la mitad tras
+        // la escuadra caida") pasaba 0.5, nunca se habia notado con reanimaciones a vida
+        // completa (max*1.0 = max, un no-op). Ahora max siempre es el tope real del
+        // soldado y currentOverride (opcional) es la vida CON la que arranca, sin tocar
+        // ese tope -- todos los llamadores existentes (con 2 argumentos) siguen iguales.
+        public void Initialize(int actorId, int max, int? currentOverride = null)
         {
             bool revive = estuvoVivo && Current <= 0 && max > 0;
             ActorId = actorId;
             maxHealth = max;
-            Current = max;
+            Current = currentOverride.HasValue ? Mathf.Clamp(currentOverride.Value, 0, max) : max;
             // Revivir (HeadlessTestRunner y AutoDemoRunner llaman Initialize()
             // para esto) tiene que borrar tambien quien te mato la vez
             // anterior: si no, un soldado recien revivido queda con

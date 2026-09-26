@@ -463,8 +463,26 @@ namespace SP.EditorTools
                 malos = 0; primeros.Clear();
                 for (int i = 0; i < 200; i++)
                 {
+                    // BUG REAL (crash de la suite): "Resolucion" paso a ser una fila contenedora
+                    // (label + Dropdown + boton "Aplicar", ver AjustesDeJuego.CrearDropdown) en vez de
+                    // un Button suelto como el resto de "botones" -- b.GetComponent<Button>() daba null
+                    // y el .onClick de ahi reventaba con NullReferenceException. Ademas "Calidad",
+                    // "Daltonismo", "HudMinimo" y "Subtitulos" ya no existen (item removido del panel
+                    // por pedido explicito, ver LayoutDeAjustes.AcomodarPrincipal): b da null y el
+                    // click se saltea, como ya hacia este mismo chequeo.
                     var b = extra.Find(botones[rnd.Next(botones.Length)]);
-                    if (b != null) { b.GetComponent<Button>().onClick.Invoke(); clics++; }
+                    if (b != null)
+                    {
+                        var boton = b.GetComponent<Button>();
+                        if (boton != null) { boton.onClick.Invoke(); clics++; }
+                        else
+                        {
+                            var dropdown = b.GetComponentInChildren<Dropdown>();
+                            if (dropdown != null && dropdown.options.Count > 0) { dropdown.value = rnd.Next(dropdown.options.Count); clics++; }
+                            var aplicar = b.Find("Aplicar")?.GetComponent<Button>();
+                            if (aplicar != null) { aplicar.onClick.Invoke(); clics++; }
+                        }
+                    }
                     if (rnd.Next(4) == 0) { Loc.Alternar(); cambiosDeIdioma++; }
                     var r = resoluciones[rnd.Next(resoluciones.Length)];
                     var area = AreaCanvas(r, SP.UI.AjustesDeJuego.Escala);

@@ -158,13 +158,39 @@ namespace SP.UI
             return go.transform;
         }
 
+        // BUG REAL ("'Pantalla' se pisa con 'Aplicar'", detectado por LayoutDeAjustes.Diagnosticar y
+        // por el crash de Fase21_Ajustes al invocar Button.onClick sobre lo que ya es un Dropdown):
+        // esta fila creaba el dropdown, "Aplicar" y su label como HIJOS SUELTOS de "AjustesExtra", con
+        // una posicion absoluta puesta una sola vez aca. LayoutDeAjustes.AcomodarExtra solo reacomoda
+        // lo que figura en OrdenDeBotonesExtra por nombre directo ("Resolucion" entre ellos), y como
+        // "Resolucion" ERA el propio GameObject del dropdown, Colocar() lo movia a el a la fila que le
+        // tocara en la pila -- pero "Aplicar" y el label de al lado, al no estar en esa lista, se
+        // quedaban clavados en su lugar original y terminaban pisando la fila de arriba ("Pantalla")
+        // en cuanto el panel se reacomodaba a otra resolucion, escala de interfaz o idioma.
+        // Ahora "Resolucion" es una FILA contenedora (como devuelve RefrescarTextos al buscar
+        // "Resolucion/Label" y "Resolucion/Aplicar/Label", que ya esperaban esta forma) con el label,
+        // el dropdown y "Aplicar" adentro, ubicados con anclas relativas al ancho de la fila: cuando
+        // Colocar() la reposiciona entera, los tres se mueven juntos.
         static void CrearDropdown(Transform padre, Font font, string nombre, string titulo, Vector2 pos)
         {
+            var fila = new GameObject(nombre, typeof(RectTransform));
+            fila.transform.SetParent(padre, false);
+            var filaRt = (RectTransform)fila.transform;
+            filaRt.anchoredPosition = pos; filaRt.sizeDelta = new Vector2(400f, 48f);
+
+            var lblGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            lblGo.transform.SetParent(filaRt, false);
+            var lrt = (RectTransform)lblGo.transform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one; lrt.offsetMin = new Vector2(10f, 0f); lrt.offsetMax = new Vector2(-260f, 0f);
+            var ltx = lblGo.GetComponent<Text>();
+            ltx.font = font; ltx.fontSize = 18; ltx.alignment = TextAnchor.MiddleLeft; ltx.color = Color.white; ltx.raycastTarget = false; ltx.text = titulo;
+
             var go = UnityEngine.UI.DefaultControls.CreateDropdown(new UnityEngine.UI.DefaultControls.Resources());
-            go.name = nombre;
-            go.transform.SetParent(padre, false);
+            go.name = "Dropdown";
+            go.transform.SetParent(filaRt, false);
             var rt = (RectTransform)go.transform;
-            rt.anchoredPosition = pos; rt.sizeDelta = new Vector2(280f, 48f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 0.5f); rt.pivot = new Vector2(0f, 0.5f);
+            rt.anchoredPosition = new Vector2(150f, 0f); rt.sizeDelta = new Vector2(140f, 48f);
             var d = go.GetComponent<Dropdown>();
             d.ClearOptions();
             var l = AjustesDeJuego.Resoluciones();
@@ -176,18 +202,15 @@ namespace SP.UI
                 PlayerPrefs.SetInt("sp_resolucion", v); PlayerPrefs.Save();
             });
             var t = go.GetComponentInChildren<Text>();
-            if (t != null) { t.font = font; t.fontSize = 20; t.color = Color.black; }
+            if (t != null) { t.font = font; t.fontSize = 16; t.color = Color.black; }
             var t2 = go.transform.Find("Template/Viewport/Content/Item/Item Label")?.GetComponent<Text>();
-            if (t2 != null) { t2.font = font; t2.fontSize = 20; t2.color = Color.black; }
+            if (t2 != null) { t2.font = font; t2.fontSize = 16; t2.color = Color.black; }
 
-            // Apply button next to it? No need, it applies immediately onValueChanged now. 
-            // The task said "applied on confirm", maybe meaning when selected? 
-            // If explicit button is needed:
             var btnGo = new GameObject("Aplicar", typeof(RectTransform), typeof(Image), typeof(Button));
-            btnGo.transform.SetParent(padre, false);
+            btnGo.transform.SetParent(filaRt, false);
             var brt = (RectTransform)btnGo.transform;
-            brt.anchoredPosition = new Vector2(160f, pos.y);
-            brt.sizeDelta = new Vector2(100f, 48f);
+            brt.anchorMin = brt.anchorMax = new Vector2(1f, 0.5f); brt.pivot = new Vector2(1f, 0.5f);
+            brt.anchoredPosition = Vector2.zero; brt.sizeDelta = new Vector2(90f, 48f);
             btnGo.GetComponent<Image>().color = new Color(0.22f, 0.32f, 0.45f, 1f);
             var btn = btnGo.GetComponent<Button>();
             btn.onClick.AddListener(() => AjustesDeJuego.AplicarPantalla());
@@ -197,18 +220,7 @@ namespace SP.UI
             var btrt = (RectTransform)btnTxt.transform;
             btrt.anchorMin = Vector2.zero; btrt.anchorMax = Vector2.one; btrt.offsetMin = btrt.offsetMax = Vector2.zero;
             var btx = btnTxt.GetComponent<Text>();
-            btx.font = font; btx.fontSize = 18; btx.alignment = TextAnchor.MiddleCenter; btx.color = Color.white; btx.text = "APLICAR";
-            
-            // Re-center Dropdown to not overlap
-            rt.anchoredPosition = new Vector2(-60f, pos.y);
-            
-            // Fixed Label
-            var lblGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
-            lblGo.transform.SetParent(padre, false);
-            var lrt = (RectTransform)lblGo.transform;
-            lrt.anchoredPosition = new Vector2(-280f, pos.y); lrt.sizeDelta = new Vector2(150f, 48f);
-            var ltx = lblGo.GetComponent<Text>();
-            ltx.font = font; ltx.fontSize = 20; ltx.alignment = TextAnchor.MiddleRight; ltx.color = Color.white; ltx.text = titulo;
+            btx.font = font; btx.fontSize = 16; btx.alignment = TextAnchor.MiddleCenter; btx.color = Color.white; btx.text = "APLICAR";
         }
 
         public static void RefrescarTextos(Transform extra)
@@ -219,7 +231,7 @@ namespace SP.UI
             var l2 = extra.Find("Resolucion/Label")?.GetComponent<Text>(); if (l2 != null) l2.text = SP.Core.Loc.T("RESOLUCION");
             var l3 = extra.Find("Escala/Label")?.GetComponent<Text>(); if (l3 != null) l3.text = SP.Core.Loc.T("TAMANO DE INTERFAZ");
             var l4 = extra.Find("Idioma/Label")?.GetComponent<Text>(); if (l4 != null) l4.text = "IDIOMA / LANGUAGE";
-            var btnA = extra.Find("Aplicar/Label")?.GetComponent<Text>(); if (btnA != null) btnA.text = SP.Core.Loc.T("APLICAR");
+            var btnA = extra.Find("Resolucion/Aplicar/Label")?.GetComponent<Text>(); if (btnA != null) btnA.text = SP.Core.Loc.T("APLICAR");
             var t2 = extra.Find("Texto (1)")?.GetComponent<Text>(); if (t2 != null) t2.text = SP.Core.Loc.T("Mando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.");
         }
 

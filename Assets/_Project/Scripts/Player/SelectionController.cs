@@ -12,18 +12,30 @@ namespace SP.Player
     {
         readonly List<Soldier> selected = new List<Soldier>();
         public IReadOnlyList<Soldier> Selected => selected;
-        
+
+        // BUG REAL (busqueda global nueva, "Las busquedas globales de escena no crecen"
+        // fallando 2 de 0): RosterRowView.OnPointerClick (nuevo hoy) hacia
+        // FindAnyObjectByType<SelectionController>() en CADA click en vez de agarrar la
+        // unica instancia real de la escena -- ademas de ser un barrido caro, en la
+        // suite (que arma y destruye varios GameObjects de prueba por fase) esa busqueda
+        // podia devolver una instancia vieja/equivocada en vez de la que de verdad usa
+        // PlayerInputDriver, dejando el clic sin efecto. Mismo patron ya establecido acá
+        // (CameraRig.Instance, PlayerBrain.Activo, Camioneta.Instancia).
+        public static SelectionController Instance { get; private set; }
+
         System.IDisposable deathSub;
         // Ronda 13 (punto 1): quien estaba seleccionado al morir vuelve a la seleccion al ser revivido. Antes salia y no
         // volvia a entrar: las ordenes de RTS a "la seleccion" no llegaban al companero revivido.
         readonly HashSet<Soldier> seleccionadosAlMorir = new HashSet<Soldier>();
         void OnEnable()
         {
+            Instance = this;
             deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
             Reanimacion.Revivido += OnRevivido;
         }
         void OnDisable()
         {
+            if (Instance == this) Instance = null;
             deathSub?.Dispose();
             Reanimacion.Revivido -= OnRevivido;
         }

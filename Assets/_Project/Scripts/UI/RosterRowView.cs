@@ -275,7 +275,7 @@ namespace SP.UI
             }
             else
             {
-                var sc = FindAnyObjectByType<SelectionController>();
+                var sc = SelectionController.Instance;
                 if (sc != null) sc.SelectSingle(Soldier);
 
                 if (CameraRig.Instance != null && CameraRig.Instance.Mode == ControlMode.Rts)

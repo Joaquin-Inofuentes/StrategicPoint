@@ -42,7 +42,8 @@ namespace SP.Mision
             {
                 var go = new GameObject("MotoEnemiga_" + i);
                 go.transform.position = Camioneta.Instancia.transform.position + new Vector3(Random.Range(-10f, 10f), 0, Random.Range(25f, 40f));
-                go.AddComponent<MotoEnemiga>();
+                var motoNueva = go.AddComponent<MotoEnemiga>();
+                motoNueva.Inicializar();
                 // Spawn enemies to ride it (2 seats)
                 if (MisionDirector.Instancia != null)
                 {

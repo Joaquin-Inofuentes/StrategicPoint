@@ -10,13 +10,23 @@ namespace SP.Vehicles
         public Vehicle Vehiculo { get; private set; }
         public VehicleBrain Cerebro { get; private set; }
         
+        // BUG REAL (ver mismo problema en SP.Mision.Camioneta): armar Vehicle desde
+        // dentro del propio Awake() es un AddComponent anidado -- Vehicle.OnEnable crea
+        // ademas el rombo del vehiculo como efecto secundario de ESE AddComponent, y
+        // Unity no sostiene esa doble anidacion de forma confiable (gameObject.
+        // AddComponent<Vehicle>() devolvia null en silencio). Se separa en
+        // Inicializar(), llamado por quien crea la moto (MotoEnemigaDirector).
         void Awake()
+        {
+        }
+
+        public void Inicializar()
         {
             ConstruirBloqueoVisual();
             Vehiculo = gameObject.AddComponent<Vehicle>();
             gameObject.AddComponent<VehicleMotor>();
             Cerebro = gameObject.AddComponent<VehicleBrain>();
-            
+
             Vehiculo.AsignarBando(TeamId.Enemy, Color.red);
         }
         

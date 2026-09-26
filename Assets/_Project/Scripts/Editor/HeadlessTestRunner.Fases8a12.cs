@@ -1338,7 +1338,16 @@ namespace SP.EditorTools
             Check($"El rifle queda como el de mayor dps sostenido (rifle {dpsRifle:0.0} > pesada {dpsPesada:0.0} > pistola {dpsPistola:0.0})",
                 dpsRifle > dpsPesada && dpsPesada > dpsPistola);
 
-            TestLog.Phase("FASE 11 - Tarea: autocuracion 3 s despues del ultimo golpe");
+            // BUG DE TEST (no de produccion): el umbral de autocuracion paso de 3 a 9
+            // segundos hoy (Health.SegundosSinDanoParaRegenerar, ahora publico para que
+            // AiBrain.Revivir/TeamCombatState lo compartan como "calma" del equipo) --
+            // cambio deliberado del balance, no una regresion. Este test seguia con los
+            // "3 s"/"2 s"/"1,5 s" de antes hardcodeados, asi que a los 3,5 s reales
+            // (contra un umbral real de 9) todavia no habia arrancado a regenerar. Se
+            // referencia la constante en vez de repetir el numero, para que una futura
+            // vuelta a tocar el balance no rompa este test de nuevo en silencio.
+            float umbralRegen = SP.Combat.Health.SegundosSinDanoParaRegenerar;
+            TestLog.Phase($"FASE 11 - Tarea: autocuracion {umbralRegen:0} s despues del ultimo golpe");
 
             vega.gameObject.SetActive(true);
             vega.Brain.CancelOrder();
@@ -1349,12 +1358,12 @@ namespace SP.EditorTools
             Check($"Recien golpeado (100 -> {vega.Health.Current}), todavia no regenera ({vega.Health.IsRegenerating})",
                 vega.Health.Current == 60 && !vega.Health.IsRegenerating);
 
-            SimulateSeconds(2f);
-            Check($"A los 2 s de gracia AUN no subio ({vega.Health.Current} == 60, regenerando={vega.Health.IsRegenerating})",
+            SimulateSeconds(umbralRegen - 1f);
+            Check($"A los {umbralRegen - 1f:0} s de gracia AUN no subio ({vega.Health.Current} == 60, regenerando={vega.Health.IsRegenerating})",
                 vega.Health.Current == 60 && !vega.Health.IsRegenerating);
 
-            SimulateSeconds(1.5f); // total 3.5 s: ya cruzo el umbral de 3 s
-            Check($"Pasados los 3 s, esta regenerando y ya subio de 60 ({vega.Health.Current} > 60, regenerando={vega.Health.IsRegenerating})",
+            SimulateSeconds(1.5f); // total umbral + 0.5 s: ya cruzo el umbral
+            Check($"Pasados los {umbralRegen:0} s, esta regenerando y ya subio de 60 ({vega.Health.Current} > 60, regenerando={vega.Health.IsRegenerating})",
                 vega.Health.Current > 60 && vega.Health.IsRegenerating);
 
             int vidaAlRegolpear = vega.Health.Current;
@@ -1362,7 +1371,7 @@ namespace SP.EditorTools
             Check($"Un golpe nuevo apaga la regeneracion al instante ({vega.Health.IsRegenerating})",
                 !vega.Health.IsRegenerating);
             SimulateSeconds(1f);
-            Check($"Y no vuelve a subir antes de esperar los 3 s de nuevo ({vega.Health.Current} <= {vidaAlRegolpear - 5})",
+            Check($"Y no vuelve a subir antes de esperar los {umbralRegen:0} s de nuevo ({vega.Health.Current} <= {vidaAlRegolpear - 5})",
                 vega.Health.Current <= vidaAlRegolpear - 5);
 
             bool llegoAFull = SimulateUntil(() => vega.Health.Current >= vega.Health.MaxHealth, 20f);

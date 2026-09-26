@@ -250,11 +250,14 @@ namespace SP.Vehicles
                 torreta.posLocalOriginal.Add(c.localPosition);
                 torreta.rotLocalOriginal.Add(c.localRotation);
             }
-            if (Application.isPlaying)
-            {
-                var rombo = InteractableDiamond.Agregar(go.transform, Vector3.up * 2f, DiamondGizmo.ColorTorreta);
-                rombo.Condicion = () => torreta.Ocupante == null;
-            }
+            // BUG REAL (crash de la suite + "Torreta vacia tiene rombo" fallando): a diferencia de
+            // MunicionPickup.Crear/CajaDeSuministros.Crear (agregan su InteractableDiamond siempre),
+            // aca quedo detras de un "if (Application.isPlaying)" que le impedia existir en Edit mode
+            // -- la suite headless corre entera en Edit mode, asi que el rombo de la torreta nunca se
+            // creaba y Fase23_RombosInteractuables reventaba con NullReferenceException al leer
+            // romboTorreta.Condicion sobre null.
+            var rombo = InteractableDiamond.Agregar(go.transform, Vector3.up * 2f, DiamondGizmo.ColorTorreta);
+            rombo.Condicion = () => torreta.Ocupante == null;
             return torreta;
         }
     }

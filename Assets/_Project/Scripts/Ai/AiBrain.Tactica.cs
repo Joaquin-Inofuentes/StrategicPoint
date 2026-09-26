@@ -155,7 +155,12 @@ namespace SP.Ai
             {
                 if (subStateCobertura == CoverSubState.Hidden)
                 {
-                    if (isReloading || isMagazineEmpty)
+                    // BUG REAL ("Y SE QUEDA ahi" fallaba: un aliado en cobertura de borde se
+                    // corria ~0,6 m solo, sin ningun enemigo cerca): el ciclo asomarse/ocultarse
+                    // corria a puro reloj, sin mirar si hay un target sensado. Asomarse sin nadie
+                    // a quien tirarle no tiene sentido tactico y ademas rompe "quedate quieto en
+                    // cobertura" -- ahora solo se asoma si target != null (un enemigo real).
+                    if (isReloading || isMagazineEmpty || target == null)
                     {
                         relojSubStateCobertura = 0.1f;
                     }
@@ -385,6 +390,30 @@ namespace SP.Ai
             }
         }
 
+        // Fila (2 por fila) y lado alternado segun cuantos OTROS ya siguen a ESTE lider: el
+        // primero en pedirlo va a la derecha, el segundo a la izquierda, el tercero mas atras
+        // a la derecha, etc. Extraido de ComenzarSeguirAlJugador para que IssueFollowOrder (la
+        // orden generica de "segui a X", ver AiBrain.cs) forme la MISMA cuña -- antes solo el
+        // auto-seguimiento al jugador poseido la aplicaba; una orden explicita de "seguirme"
+        // (radial, [Y], o la que dispara esta funcion en la suite) dejaba a todos con offset
+        // cero, amontonados encima del lider en vez de en formacion (BUG REAL: "Uno esta a la
+        // derecha y otro a la izquierda" fallaba porque los dos seguidores terminaban en la
+        // misma columna, x=0, detras del lider).
+        Vector3 CalcularOffsetDeFormacion(Soldier lider)
+        {
+            int idx = 0;
+            foreach (var s in SP.Core.ActorRegistry.All)
+            {
+                if (s == self) continue;
+                if (s.Brain != null && s.Brain.FollowTarget == lider) idx++;
+            }
+            int row = (idx / 2) + 1;
+            float sign = (idx % 2 == 0) ? 1f : -1f;
+            float px = sign * row * AjustesDeEscuadra.DistanciaLateralFormacion;
+            float pz = -row * AjustesDeEscuadra.DistanciaAtrasFormacion;
+            return new Vector3(px, 0f, pz);
+        }
+
         void ComenzarSeguirAlJugador(Soldier lider)
         {
             LiberarCobertura();
@@ -396,18 +425,7 @@ namespace SP.Ai
             orderDestination = self.transform.position;   // si el combate lo desvia, no vuelve a un punto viejo
             ClearPath();
             followTarget = lider;
-
-            int idx = 0;
-            foreach (var s in SP.Core.ActorRegistry.All)
-            {
-                if (s == self) continue;
-                if (s.Brain != null && s.Brain.FollowTarget == lider) idx++;
-            }
-            int row = (idx / 2) + 1;
-            float sign = (idx % 2 == 0) ? 1f : -1f;
-            float px = sign * row * AjustesDeEscuadra.DistanciaLateralFormacion;
-            float pz = -row * AjustesDeEscuadra.DistanciaAtrasFormacion;
-            followOffsetLocal = new Vector3(px, 0f, pz);
+            followOffsetLocal = CalcularOffsetDeFormacion(lider);
 
             seguirAuto = true;
             SetState(AiState.Follow);

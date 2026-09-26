@@ -82,6 +82,16 @@ namespace SP.Ai
             float mejorDist = SP.Player.PedidoDeCuracion.AlcanceDeCuracion;
             foreach (var a in SP.Core.ActorRegistry.All)
             {
+                // BUG REAL (crash de la suite headless en Fase 8, T-24 "medico
+                // auto"): ActorRegistry.All puede traer una referencia "fake-null"
+                // de Unity (un Soldier cuyo GameObject ya fue destruido pero el
+                // registro todavia no lo saco -- ver Register/Unregister). El
+                // resto de los consumidores de ActorRegistry (CountAlive,
+                // FindNearest, y esta misma funcion mas abajo con
+                // targetCuracion == null) ya se cuidan de esto; a este bucle le
+                // faltaba el chequeo antes de tocar a.gameObject, que revienta
+                // con MissingReferenceException en vez de devolver false.
+                if (a == null) continue;
                 if (a == self || a.Team != self.Team) continue;
                 if (!a.gameObject.activeInHierarchy) continue;
                 if (!EsHeridoOCaidoLocal(a)) continue;

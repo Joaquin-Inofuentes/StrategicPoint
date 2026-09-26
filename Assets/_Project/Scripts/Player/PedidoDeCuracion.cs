@@ -41,18 +41,32 @@ namespace SP.Player
         static Soldier medicoPasivo;
         public static float ProgresoDeReanimar => Reanimando ? Mathf.Clamp01(acumulado / SegundosDeReanimar) : 0f;
 
+        // BUG REAL ("El medico llega, se queda junto a el y lo levanta" fallaba: nunca
+        // llegaba nadie -- el aliado que de verdad se despachaba se quedaba trabado
+        // lejos): en calma, el filtro de rol se salteaba entero (!isCalm && rol!=Medic
+        // -> false, pasa cualquiera) y el primero vivo del equipo en ActorRegistry.All
+        // ganaba por orden de registro, casi siempre un Asalto y NUNCA el Medic real
+        // aunque estuviera ahi mismo disponible. Ahora se prueba primero SOLO entre los
+        // Medic (igual que en combate); solo si no hay ninguno vivo se cae al resto del
+        // equipo, que es la intencion real de "en calma, cualquiera puede ayudar".
         public static Soldier MedicoDisponible(Soldier excluir = null)
         {
-            Soldier mejor = null;
             bool isCalm = HayCalma(Vector3.zero);
+            var soloMedico = BuscarDisponible(excluir, soloMedic: true);
+            if (soloMedico != null || !isCalm) return soloMedico;
+            return BuscarDisponible(excluir, soloMedic: false);
+        }
+
+        static Soldier BuscarDisponible(Soldier excluir, bool soloMedic)
+        {
             foreach (var a in ActorRegistry.All)
             {
                 if (a == null || a == excluir || a.Team != TeamId.Player) continue;
-                if (!isCalm && a.Role != RoleType.Medic) continue;
+                if (soloMedic && a.Role != RoleType.Medic) continue;
                 if (a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy) continue;
-                mejor = a; break;
+                return a;
             }
-            return mejor;
+            return null;
         }
 
         // medicoManual: el medico es el propio jugador (tiene que acercarse el mismo).

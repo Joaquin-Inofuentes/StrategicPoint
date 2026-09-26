@@ -116,7 +116,8 @@ namespace SP.Mision
             goC.transform.position = Helipuerto;
             goC.transform.rotation = Quaternion.Euler(0f, 270f, 0f);
             CamionetaObj = goC.AddComponent<Camioneta>();
-            
+            CamionetaObj.Inicializar();
+
             var goM = new GameObject("MotoEnemigaDirector");
             goM.AddComponent<MotoEnemigaDirector>();
 

@@ -187,10 +187,24 @@ namespace SP.Actors
             pideCorrer = false;
         }
 
+        // BUG REAL (R14): esto tickeaba TickVertical() por su cuenta ademas
+        // de resolver Vaulting. Health, WeaponHolder y AiBrain YA se
+        // tickean desde WorldSimulationDriver.Step (justamente para que la
+        // suite headless, que simula ese mismo paso a mano y JAMAS corre un
+        // Update() de verdad, ejercite lo mismo que el juego real). Mientras
+        // nada disparaba una caida durante el movimiento normal esto no se
+        // notaba, pero ahora Move() puede meter a cualquiera en "cayendo"
+        // via RevisarBorde() (soldado que camina fuera de un cajon al que
+        // trepo). Si el unico que resuelve esa caida es este Update(), un
+        // soldado que cae durante la suite (Edit mode) se queda con
+        // IsJumping trabado para siempre -- nunca vuelve a tocar el piso --
+        // y Fase23_PiesEnElPiso lo agarra flotando/hundido varios tests
+        // despues. TickVertical se movio a WorldSimulationDriver.Step junto
+        // al resto; Vaulting se queda aca porque Fase19 ya lo tickea a mano
+        // por reflexion para probarlo en Edit mode.
         void Update()
         {
-            if (Vaulting) { TickTrepa(); return; }
-            TickVertical(Time.deltaTime);
+            if (Vaulting) TickTrepa();
         }
 
         // ---- Caida (item 51): un soldado que camina hasta un borde (por ejemplo, bajando de un cajon al que trepo) ya no

@@ -65,14 +65,16 @@ namespace SP.Player
             caja.basePos = raiz.transform.position;
             // Pedido explicito: "los interactuables en el piso resalten con
             // un cilindro... solamente al apuntarle".
-            if (Application.isPlaying)
-            {
-                var resaltado = PisoInteractableHighlight.Agregar(raiz.transform, 1.3f, -0.45f);
-                resaltado.CondicionExtra = () => caja.Disponible;
+            // BUG REAL (misma clase que TorretaFija.Instalar): esto quedaba detras de un
+            // "if (Application.isPlaying)" que le impedia existir en Edit mode -- la suite
+            // headless corre entera en Edit mode, asi que el rombo de la caja nunca se creaba y
+            // "CajaDeSuministros tiene rombo" daba null. MunicionPickup.Crear (mismo espiritu de
+            // pickup en el piso) agrega su InteractableDiamond siempre, sin este guard.
+            var resaltado = PisoInteractableHighlight.Agregar(raiz.transform, 1.3f, -0.45f);
+            resaltado.CondicionExtra = () => caja.Disponible;
 
-                var rombo = InteractableDiamond.Agregar(raiz.transform, Vector3.up * 1.5f, DiamondGizmo.ColorBotiquin);
-                rombo.Condicion = () => caja.Disponible;
-            }
+            var rombo = InteractableDiamond.Agregar(raiz.transform, Vector3.up * 1.5f, DiamondGizmo.ColorBotiquin);
+            rombo.Condicion = () => caja.Disponible;
             return caja;
         }
 
