@@ -122,7 +122,15 @@ namespace SP.Mision
                 if (driver.Rig != null) driver.Rig.enabled = false;
             }
             foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
-                if (cv != null && cv.gameObject != lienzo && cv.renderMode != RenderMode.WorldSpace) cv.enabled = false;
+            {
+                if (cv != null && cv.gameObject != lienzo && cv.renderMode != RenderMode.WorldSpace)
+                {
+                    bool isMenu = SP.UI.CapasDeHud.Instancia != null && 
+                                  SP.UI.CapasDeHud.Instancia.Hud_Menu != null && 
+                                  cv.transform.IsChildOf(SP.UI.CapasDeHud.Instancia.Hud_Menu.transform);
+                    if (!isMenu) cv.enabled = false;
+                }
+            }
             AlertQueue.Clear();
 
             var cam = SP.Core.CamaraPrincipal.Actual != null ? SP.Core.CamaraPrincipal.Actual : (driver != null && driver.Rig != null ? driver.Rig.Cam : null);
@@ -222,7 +230,8 @@ namespace SP.Mision
             {
                 var kb = Keyboard.current;
                 var ms = Mouse.current;
-                if ((kb != null && kb.anyKey.wasPressedThisFrame) || (ms != null && ms.leftButton.wasPressedThisFrame)) break;
+                bool escPressed = kb != null && kb.escapeKey.wasPressedThisFrame;
+                if ((kb != null && kb.anyKey.wasPressedThisFrame && !escPressed) || (ms != null && ms.leftButton.wasPressedThisFrame)) break;
                 float parpadeo = 0.65f + 0.35f * Mathf.Sin(Time.time * 4f);
                 cartelFinal.color = new Color(1f, 1f, 1f, parpadeo);
                 yield return null;

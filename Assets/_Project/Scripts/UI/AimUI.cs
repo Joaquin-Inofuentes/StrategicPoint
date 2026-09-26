@@ -259,6 +259,8 @@ namespace SP.UI
                 if (soldierInfoPanel != null) soldierInfoPanel.SetActive(false);
                 if (vehicleInfoPanel != null) vehicleInfoPanel.SetActive(false);
                 if (ammoWarningText != null) ammoWarningText.gameObject.SetActive(false);
+                circuloRecarga?.SetVisible(false);
+                circuloVidaEnemigo?.SetVisible(false);
                 CurrentPrompt = "";
             }
         }

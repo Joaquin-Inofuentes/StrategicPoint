@@ -389,6 +389,8 @@ namespace SP.CameraSystem
             // con su FOV de reposo, y el lerp de LateUpdate (solo en FPS)
             // se encarga de la mirilla desde ahi.
             if (cam != null) cam.fieldOfView = normalFov;
+            
+            SP.UI.CapasDeHud.ActivarModo(mode);
 
             // BUG REAL encontrado jugando: el [TAB] normal (el 99% de las
             // veces que se entra a RTS) llama ToggleMode()/SetMode(mode) SIN
