@@ -83,6 +83,8 @@ namespace SP.Presentation
         const float LodCheckInterval = 0.15f;
         float lodTimer;
         bool dead;
+        float vibrateTime;
+        Vector3 baseLocalPosition = new Vector3(0f, Altura, 0f);
 
         void OnEnable()
         {
@@ -90,9 +92,22 @@ namespace SP.Presentation
             if (soldier == null) soldier = GetComponent<Soldier>();
             if (soldier == null) { enabled = false; return; }
             if (marcador == null) Construir();
+            SP.Core.EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFired);
         }
 
-        void OnDisable() { if (marcador != null) marcador.SetActive(false); }
+        void OnShotFired(ShotFiredEvent evt)
+        {
+            if (evt.SoldierId == soldier.Id && marcador != null && marcador.activeInHierarchy)
+            {
+                vibrateTime = 0.2f; // 200ms of vibration
+            }
+        }
+
+        void OnDisable() 
+        { 
+            if (marcador != null) marcador.SetActive(false); 
+            SP.Core.EventBus.Instance.Unsubscribe<ShotFiredEvent>(OnShotFired);
+        }
 
         void OnDestroy()
         {
@@ -241,7 +256,23 @@ namespace SP.Presentation
             // visible (no solo en el tick de LOD de arriba), si no el giro
             // se nota a los tirones cada 0.15 s en vez de verse fijo mirando
             // a camara mientras el jugador se mueve alrededor.
-            if (marcador.activeSelf) marcador.transform.rotation = cam.transform.rotation;
+            if (marcador.activeSelf) 
+            {
+                marcador.transform.rotation = cam.transform.rotation;
+                
+                if (vibrateTime > 0f)
+                {
+                    vibrateTime -= Time.deltaTime;
+                    marcador.transform.localPosition = baseLocalPosition + new Vector3(
+                        Random.Range(-0.1f, 0.1f), 
+                        Random.Range(-0.1f, 0.1f), 
+                        0f);
+                }
+                else
+                {
+                    marcador.transform.localPosition = baseLocalPosition;
+                }
+            }
         }
     }
 }

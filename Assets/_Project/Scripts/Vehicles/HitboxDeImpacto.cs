@@ -11,5 +11,12 @@ namespace SP.Vehicles
     // agranda la zona que puede recibir dano (Projectile.ChocoContraElMundo
     // resuelve el dueño via GetComponentInParent<Vehicle>(), sin pasar por
     // BlocksMovement).
-    public class HitboxDeImpacto : MonoBehaviour { }
+    public class HitboxDeImpacto : MonoBehaviour 
+    {
+        void Awake()
+        {
+            var r = GetComponent<Renderer>();
+            if (r != null) r.enabled = false;
+        }
+    }
 }

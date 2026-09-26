@@ -75,25 +75,10 @@ namespace SP.Tutorial
 
         void Armar(string texto, float alto, float alturaEtiqueta, float escalaTexto)
         {
-            var mat = CoverHologram.NuevoTransparente(new Color(color.r, color.g, color.b, 0.22f));
-            columna = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            Destroy(columna.GetComponent<Collider>());
-            columna.transform.SetParent(transform, false);
-            columna.transform.localScale = new Vector3(Radio * 0.9f, alto * 0.5f, Radio * 0.9f);
-            columna.transform.localPosition = new Vector3(0f, alto * 0.5f, 0f);
-            var r = columna.GetComponent<MeshRenderer>();
-            r.sharedMaterial = mat;
-            r.shadowCastingMode = ShadowCastingMode.Off;
-
-            var matAnillo = CoverHologram.NuevoTransparente(new Color(color.r, color.g, color.b, 0.55f));
-            anillo = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            Destroy(anillo.GetComponent<Collider>());
-            anillo.transform.SetParent(transform, false);
-            anillo.transform.localPosition = new Vector3(0f, 0.05f, 0f);
-            anillo.transform.localScale = new Vector3(Radio * 2f, 0.02f, Radio * 2f);
-            var ra = anillo.GetComponent<MeshRenderer>();
-            ra.sharedMaterial = matAnillo;
-            ra.shadowCastingMode = ShadowCastingMode.Off;
+            var marcador = ShapeMarkerFx.CrearMarcador(color, Radio, 1f, alto * 0.8f);
+            marcador.transform.SetParent(transform, false);
+            columna = marcador.transform.Find("Flecha").gameObject;
+            anillo = marcador.transform.Find("Quad").gameObject;
 
             if (fuente == null) fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             etiqueta = new GameObject("Etiqueta");
@@ -140,7 +125,7 @@ namespace SP.Tutorial
             if (anillo != null)
             {
                 float k = Radio * 2f * (1f + Mathf.Sin(t * 4f) * 0.08f);
-                anillo.transform.localScale = new Vector3(k, 0.02f, k);
+                anillo.transform.localScale = new Vector3(k, k, 1f);
             }
             var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam != null && etiqueta != null)

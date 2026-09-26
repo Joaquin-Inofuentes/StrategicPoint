@@ -98,7 +98,15 @@ namespace SP.Vehicles
         // elegir un tanque enemigo como blanco).
         public static readonly List<Vehicle> Todos = new List<Vehicle>();
 
-        void OnEnable() { SP.Core.WorldSystemsRegistry.Register(this); if (!Todos.Contains(this)) Todos.Add(this); }
+        void OnEnable() 
+        { 
+            SP.Core.WorldSystemsRegistry.Register(this); 
+            if (!Todos.Contains(this)) Todos.Add(this); 
+            foreach (var r in GetComponentsInChildren<MeshRenderer>(true))
+            {
+                if (r.name.Contains("Sphere") || r.GetComponent<SphereCollider>() != null) r.enabled = false;
+            }
+        }
         void OnDisable() { SP.Core.WorldSystemsRegistry.Unregister(this); Todos.Remove(this); }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
