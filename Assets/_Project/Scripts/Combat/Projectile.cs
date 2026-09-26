@@ -118,9 +118,12 @@ namespace SP.Combat
         // que no lo pasan). El cañon del tanque pide 2f para que su
         // proyectil viaje al doble de la velocidad base sin tocar el
         // campo serializado que comparte el resto del pool.
-        public void Configure(ProjectilePool owningPool, Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int dmg, Color? color = null, float explosionRadiusValue = 0f, float gravityValue = 0f, SP.Vehicles.Vehicle sourceVehicle = null, float speedMultiplier = 1f)
+        float vehicleDamageMultiplier = 1f;
+
+        public void Configure(ProjectilePool owningPool, Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int dmg, Color? color = null, float explosionRadiusValue = 0f, float gravityValue = 0f, SP.Vehicles.Vehicle sourceVehicle = null, float speedMultiplier = 1f, float multiplicadorVsVehiculo = 1f)
         {
             gravity = gravityValue;
+            vehicleDamageMultiplier = multiplicadorVsVehiculo;
             ignoreVehicle = sourceVehicle;
             pool = owningPool;
             transform.position = position;
@@ -396,7 +399,7 @@ namespace SP.Combat
             var vehiculo = impacto.collider.GetComponentInParent<SP.Vehicles.Vehicle>();
             if (vehiculo != null)
             {
-                vehiculo.TakeDamage(damage, ownerId);
+                vehiculo.TakeDamage(Mathf.RoundToInt(damage * vehicleDamageMultiplier), ownerId);
                 EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, impacto.point));
                 PlayImpactSfx(EnvironmentHitKind.Vehicle, impacto.point, 0.55f);
                 ImpactFx.SpawnArmorSparks(impacto.point, impacto.normal);
@@ -617,7 +620,7 @@ namespace SP.Combat
             }
         }
 
-        void Explode(Vector3 point) => ExplodeAt(point, explosionRadius, damage, ownerId, ownerTeam, ignoreVehicle);
+        void Explode(Vector3 point) => ExplodeAt(point, explosionRadius, damage, ownerId, ownerTeam, ignoreVehicle, vehicleDamageMultiplier);
 
         // G1: el barril explosivo (ObstacleMarker.Estallar) necesita la
         // MISMA explosión con caída de daño, línea de vista y feedback
@@ -650,7 +653,7 @@ namespace SP.Combat
             }
         }
 
-        public static void ExplodeAt(Vector3 point, float radius, int damage, int ownerId, TeamId? spareTeam, SP.Vehicles.Vehicle ignoreVehicle = null)
+        public static void ExplodeAt(Vector3 point, float radius, int damage, int ownerId, TeamId? spareTeam, SP.Vehicles.Vehicle ignoreVehicle = null, float vehicleDamageMultiplier = 1f)
         {
             DanarObstaculos(point, radius, damage);
             foreach (var s in ActorRegistry.All)
@@ -715,7 +718,7 @@ namespace SP.Combat
                 if (distV > radius) continue;
                 if (!LaExplosionAlcanza(point, vehicle.transform.position)) continue;
                 float cercaniaV = 1f - Mathf.Clamp01(distV / radius);
-                vehicle.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * Mathf.Lerp(DanoMinimoEnElBorde, 1f, cercaniaV))), ownerId);
+                vehicle.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * vehicleDamageMultiplier * Mathf.Lerp(DanoMinimoEnElBorde, 1f, cercaniaV))), ownerId);
             }
 
             EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, point));
@@ -816,34 +819,7 @@ namespace SP.Combat
             var cercano = cuerpo.ClosestPoint(punto);
             if ((cercano - punto).sqrMagnitude > RadioDeBala * RadioDeBala) return false;
 
-            // BUG REAL: Collider.bounds es el AABB que cachea PhysX, y ese
-            // cache solo se refresca cuando corre un paso de fisica de
-            // verdad (Physics.Simulate / un FixedUpdate en Play mode). La
-            // suite headless mueve soldados con transform.position a mano
-            // en Edit mode, sin ningun paso de fisica -- Collider.bounds
-            // se quedaba con el AABB de donde el soldado nacio (spawneado
-            // en el origen antes de reposicionarlo), desfasado de su
-            // posicion real. ClosestPoint() arriba SI recalcula contra la
-            // geometria real (por eso el chequeo de radio funcionaba), pero
-            // el umbral de cabeza que le seguia usaba ese mismo bounds
-            // viejo: la "cabeza" quedaba a una altura que no tenia nada que
-            // ver con donde estaba el soldado de verdad, y CUALQUIER tiro
-            // (aunque apuntara al pecho) podia caer del lado de arriba del
-            // umbral corrido. Medido: en Fase 1, un tiro de nivel al pecho
-            // de un enemigo a la misma altura que quien dispara se
-            // registraba como headshot el 100% de las veces -- instakill
-            // en el primer impacto, sin que la IA llegara nunca a Attack.
-            //
-            // Renderer.bounds NO tiene este problema: se recalcula del
-            // transform real cada vez que se lo consulta, sin depender de
-            // ningun paso de fisica. Es la misma caja que se ve en
-            // pantalla, asi que sigue siendo la mejor aproximacion
-            // disponible para "donde esta la cabeza".
-            var renderer = victima.GetComponent<Renderer>();
-            Bounds cuerpoBounds = renderer != null ? renderer.bounds : cuerpo.bounds;
-
-            float alturaCabeza = cuerpoBounds.max.y - cuerpoBounds.size.y * FraccionSuperiorCabeza;
-            ultimoImpactoFueCabeza = punto.y >= alturaCabeza;
+            ultimoImpactoFueCabeza = punto.y > victima.transform.position.y + (victima.Motor.IsCrouching ? 0.95f : 1.45f);
             return true;
         }
 

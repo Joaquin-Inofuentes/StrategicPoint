@@ -764,51 +764,40 @@ namespace SP.Player
                     if (role != null) EnterPossessedVehicleSeat(role.Value);
                 }
 
-                if (Rig.Mode == ControlMode.Rts)
-                {
-                    Vector3 focus = currentSeat.HasValue ? Vehicle.transform.position
-                        : Brain.Current != null ? Brain.Current.transform.position : Vector3.zero;
-                    // Restaura el paneo/zoom que el jugador dejo la ultima
-                    // vez que estuvo en RTS, en vez de recentrar siempre
-                    // en el poseido -- si no hay vista guardada (primera
-                    // vez), cae a centrar en foco como antes.
-                    Rig.RestoreOrSetRtsView(focus);
-                }
-
-                if (ModeToast != null) ModeToast.Show(Rig.Mode == ControlMode.Rts ? "VISTA RTS" : "VISTA FPS");
-                // 184: el salto entre vista FPS y RTS era un corte
-                // seco. Un destello gris muy corto lo lee como una
-                // transicion. No va dentro de CameraRig.SetMode: eso
-                // tambien lo llama la secuencia de muerte, donde un
-                // flash encima de la camara de muerte seria un
-                // accidente visual.
-                SP.UI.ScreenFlashView.ModeChange();
-            }
-
-            if (handlingDeath) return;
-
-            if (currentSeat.HasValue)
+            if (Rig.Mode == ControlMode.Rts)
             {
-                // El radial tambien se abre desde el asiento (bajar, mandar el tanque, poseer...).
-                ActualizarMenuDeOrdenes();
-                if (currentSeat.HasValue) UpdateInVehicle(kb, Mouse.current);
-                return;
+                Vector3 focus = currentSeat.HasValue ? Vehicle.transform.position
+                    : Brain.Current != null ? Brain.Current.transform.position : Vector3.zero;
+                Rig.RestoreOrSetRtsView(focus);
             }
 
-            // [F1]/[F2]/[F3]: poseen en FPS o seleccionan en RTS (funciona en vehículos también).
-            if (Rig.Mode == ControlMode.Fps)
+            if (ModeToast != null) ModeToast.Show(Rig.Mode == ControlMode.Rts ? "VISTA RTS" : "VISTA FPS");
+            SP.UI.ScreenFlashView.ModeChange();
+        }
+
+        // [F1]/[F2]/[F3]: poseen en FPS o seleccionan en RTS (funciona en vehículos, torretas, durante la muerte, etc).
+        if (Rig.Mode == ControlMode.Fps)
+        {
+            if (AtajosDeTecladoHeredados)
             {
-                if (AtajosDeTecladoHeredados)
-                {
-                    if (kb.f1Key.wasPressedThisFrame) PossessSquadIndex(0);
-                    if (kb.f2Key.wasPressedThisFrame) PossessSquadIndex(1);
-                    if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
-                }
+                if (kb.f1Key.wasPressedThisFrame) PossessSquadIndex(0);
+                if (kb.f2Key.wasPressedThisFrame) PossessSquadIndex(1);
+                if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
             }
-            else
-            {
-                SeleccionarConFuncion(kb);
-            }
+        }
+        else
+        {
+            SeleccionarConFuncion(kb);
+        }
+
+        if (handlingDeath) return;
+
+        if (currentSeat.HasValue)
+        {
+            ActualizarMenuDeOrdenes();
+            if (currentSeat.HasValue) UpdateInVehicle(kb, Mouse.current);
+            return;
+        }
             // [Q] cicla entre vivos y [C] posee al mas cercano: ambas caen
             // bajo la mano izquierda sin soltar WASD, a diferencia de F1/F2/F3.
             // El ciclado ya NO se dispara al apretar sino al SOLTAR rapido:
@@ -1247,10 +1236,14 @@ namespace SP.Player
             // vive solo adentro de UpdateFps.
             if ((kb.spaceKey.wasPressedThisFrame || MandoFps.Saltar) && !TorretaFijaActiva)
             {
-                bool yaSaltaba = Brain.Current.Motor.IsJumping;
-                Brain.Current.Motor.Jump();
-                if (!yaSaltaba && Brain.Current.Motor.IsJumping)
-                    Feedback.Accion(SfxKind.Jump, null, Brain.Current.transform.position, Feedback.Info, aviso: false, pulso: false, volumen: 0.6f);
+                bool rescueRadius = SP.Mision.MisionDirector.Activo && SP.Mision.MisionDirector.Instancia.Fase == SP.Mision.FaseDeMision.Rescatar && SP.Mision.MisionDirector.Instancia.Civil != null && Vector3.Distance(Vector3.ProjectOnPlane(Brain.Current.transform.position, Vector3.up), Vector3.ProjectOnPlane(SP.Mision.MisionDirector.Instancia.Civil.transform.position, Vector3.up)) <= 4.5f;
+                if (!rescueRadius)
+                {
+                    bool yaSaltaba = Brain.Current.Motor.IsJumping;
+                    Brain.Current.Motor.Jump();
+                    if (!yaSaltaba && Brain.Current.Motor.IsJumping)
+                        Feedback.Accion(SfxKind.Jump, null, Brain.Current.transform.position, Feedback.Info, aviso: false, pulso: false, volumen: 0.6f);
+                }
             }
             // Aterrizaje: golpe sordo y un sacudon leve de camara al volver a apoyar los pies.
             bool enElAire = Brain.Current.Motor.IsJumping;
@@ -1333,7 +1326,15 @@ namespace SP.Player
             // clickear una vez por bala incluso con un rifle. Ahora
             // mantener el boton dispara a la cadencia real del arma
             // (fireCooldown), que ya es distinta por WeaponKind.
-            if ((mouse != null && mouse.leftButton.isPressed) || MandoFps.Disparar)
+            bool cHeld = KeyBindings.IsPressed(KeyBindings.VerTactico) || (OrdenesMenu != null && OrdenesMenu.Abierto && OrdenesMenu.Seleccion == MenuDeOrdenes.Cubrirse);
+            if (cHeld && mouse != null && mouse.leftButton.wasPressedThisFrame)
+            {
+                if (TryResolverCobertura(result, out var puntoCobertura, out var duenoCobertura))
+                {
+                    IssueCoverOrderC(puntoCobertura, duenoCobertura);
+                }
+            }
+            else if (!cHeld && ((mouse != null && mouse.leftButton.isPressed) || MandoFps.Disparar))
             {
                 bool emptyBeforeFire = Brain.Current.Weapon.CurrentAmmo <= 0 && !Brain.Current.Weapon.IsReloading;
                 // El mismo punto que ya muestra la mira (result.Point): si
@@ -1904,6 +1905,49 @@ namespace SP.Player
         // [T] sobre una cobertura: el aliado libre mas cercano va, se agacha
         // y se queda. Dos [T] seguidos reparten al SIGUIENTE aliado a la
         // SIGUIENTE cobertura. Publico para poder probarlo sin teclado.
+        float ultimoCCoberturaTiempo;
+        Soldier ultimoAliadoC;
+        Vector3 ultimoPuntoC;
+
+        public bool IssueCoverOrderC(Vector3 punto, Collider dueno)
+        {
+            bool repique = Time.unscaledTime - ultimoCCoberturaTiempo < VentanaDobleT;
+            ultimoCCoberturaTiempo = Time.unscaledTime;
+            
+            Soldier elegido = null;
+            if (Selection.Selected.Count > 0)
+            {
+                float minD = float.MaxValue;
+                foreach (var s in Selection.Selected) {
+                    if (s == null || s == ultimoAliadoC || s.Health == null || !s.Health.IsAlive) continue;
+                    float d = (s.transform.position - punto).sqrMagnitude;
+                    if (d < minD) { minD = d; elegido = s; }
+                }
+                if (elegido == null) {
+                   foreach (var s in Selection.Selected) {
+                       if (s != null && s.Health != null && s.Health.IsAlive) { elegido = s; break; }
+                   }
+                }
+            }
+            else elegido = AliadoLibreMasCercano(punto, repique ? ultimoAliadoC : null);
+
+            if (elegido == null) { RejectOrder("NO HAY ALIADOS LIBRES PARA CUBRIRSE"); return false; }
+
+            if (repique && ultimoAliadoC != null)
+            {
+                var indices = Coberturas.IndicesCercanos(ultimoPuntoC, 2, 8f);
+                if (indices.Count > 1)
+                {
+                    punto = Coberturas.Puntos[indices[1]];
+                    dueno = Coberturas.Duenos[indices[1]];
+                }
+            }
+
+            bool ok = OrdenesDeEscuadra.CoberturaManual(elegido, punto, dueno);
+            if (ok) { ultimoAliadoC = elegido; ultimoPuntoC = punto; }
+            return ok;
+        }
+
         public bool IssueCoverOrderT(Vector3 punto, Collider dueno)
         {
             bool repique = Time.unscaledTime - ultimoTCoberturaTiempo < VentanaDobleT;
@@ -3625,3 +3669,4 @@ namespace SP.Player
         }
     }
 }
+

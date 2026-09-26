@@ -127,21 +127,20 @@ namespace SP.Mision
                 }
                 case FaseDeMision.Rescatar:
                 {
-                    titulo.text = "OBJETIVO 3/4 · RESCATAR AL CIVIL";
-                    float prog = director.ProgresoRescate;
-                    detalle.text = prog > 0f
-                        ? $"LIBERANDO... {Mathf.RoundToInt(prog * 100f)}%"
-                        : $"Acercate al civil y quedate junto a el · {Mathf.RoundToInt(d)} m";
-                    SetBarra(prog, amarillo);
+                    titulo.text = "OBJETIVO 3/4 - RESCATAR AL CIVIL";
+                    detalle.text = $"Acercate al civil y liberalo - {Mathf.RoundToInt(d)} m";
+                    SetBarra(0f, amarillo);
                     break;
                 }
-                default:
+                }
+                case FaseDeMision.Escapar:
+                case FaseDeMision.Victoria:
                 {
-                    titulo.text = "OBJETIVO 4/4 · ESCAPAR EN EL HELICOPTERO";
+                    titulo.text = "OBJETIVO 4/4 · ESCAPAR EN LA CAMIONETA";
                     string civil = director.Civil != null && director.Civil.Health != null
                         ? $" · civil {director.Civil.Health.Current}/{director.Civil.Health.MaxHealth}" : "";
                     bool cerca = d <= director.RadioDeAlertaDelHeli;
-                    detalle.text = (cerca ? "¡LLEGANDO! " : "Lleva al civil al helicoptero (punto de origen) · ") + Mathf.RoundToInt(d) + " m" + civil;
+                    detalle.text = (cerca ? "¡LLEGANDO! " : "Lleva al civil a la camioneta (punto de origen) · ") + Mathf.RoundToInt(d) + " m" + civil;
                     SetBarra(cerca ? 1f - Mathf.Clamp01(d / director.RadioDeAlertaDelHeli) : 0f, cerca ? new Color(1f, 0.3f, 0.25f) : new Color(0.35f, 1f, 0.5f));
                     detalle.color = cerca ? new Color(1f, 0.45f, 0.35f) : Color.white;
                     break;

@@ -55,6 +55,7 @@ namespace SP.Mision
         public Soldier Civil { get; private set; }
         public bool CivilRescatado { get; private set; }
         public Helicoptero Heli { get; private set; }
+        public Camioneta CamionetaObj { get; private set; }
         public int OleadasLanzadas { get; private set; }
         public int SoldadosGenerados { get; private set; }
         public bool TensionSonando => tension != null && tension.isPlaying && tension.volume > 0.05f;
@@ -107,12 +108,14 @@ namespace SP.Mision
             raizPuntosDeAparicion = new GameObject("PuntosDeAparicion").transform;
             raizPuntosDeAparicion.SetParent(raizEnemigos, false);
 
-            if (heliPrefab != null)
-            {
-                var go = Instantiate(heliPrefab, Helipuerto, Quaternion.Euler(0f, 270f, 0f));
-                go.name = "Helicoptero_Extraccion";
-                Heli = go.AddComponent<Helicoptero>();
-            }
+            var goC = new GameObject("Camioneta_Extraccion");
+            goC.transform.position = Helipuerto;
+            goC.transform.rotation = Quaternion.Euler(0f, 270f, 0f);
+            CamionetaObj = goC.AddComponent<Camioneta>();
+            
+            var goM = new GameObject("MotoEnemigaDirector");
+            goM.AddComponent<MotoEnemigaDirector>();
+
 
             LanzarLineasEnemigas();
             hud = MisionHud.Crear(this);
@@ -447,7 +450,7 @@ namespace SP.Mision
                 var s = CrearEnemigo($"Enemigo_Horda_{i + 1}", puntos[i], 180f);
                 if (s != null) s.Brain.IssueMoveOrder(Helipuerto + new Vector3(Random.Range(-8f, 8f), 0f, Random.Range(6f, 14f)));
             }
-            AlertQueue.Push("¡UNA HORDA TE PERSIGUE! ¡AL HELICOPTERO!", AlertPriority.Alta, 3f);
+            AlertQueue.Push("¡UNA HORDA TE PERSIGUE! ¡A LA CAMIONETA!", AlertPriority.Alta, 3f);
             GameLog.Line($"Mision: horda ({n})");
         }
 
@@ -599,7 +602,7 @@ namespace SP.Mision
             CivilRescatado = true;
             if (balizaCivil != null) { balizaCivil.Quitar(); balizaCivil = null; }
             if (baliza != null) { baliza.Quitar(); baliza = null; }
-            baliza = TutorialBeacon.Crear("HELICOPTERO", new Color(0.35f, 1f, 0.5f), Helipuerto + Vector3.right * 6f, null, 3.2f, 26f);
+            baliza = TutorialBeacon.Crear("CAMIONETA", new Color(0.35f, 1f, 0.5f), Helipuerto + Vector3.right * 6f, null, 3.2f, 26f);
             // Pedido explicito (ronda nueva): "al llegar al objetivo [del]
             // civil q tambien tenga su sistema de particulas" -- antes este
             // momento no tenia ningun efecto visual, solo el texto de
@@ -614,7 +617,7 @@ namespace SP.Mision
             if (SP.UI.RosterView.Activo != null) SP.UI.RosterView.Activo.Rebuild();
             LanzarRefuerzos();
             CambiarFase(FaseDeMision.Escapar);
-            AlertQueue.Push("¡CIVIL RESCATADO! LLEVALO AL HELICOPTERO (PUNTO DE ORIGEN)", AlertPriority.Alta, 4f);
+            AlertQueue.Push("¡CIVIL RESCATADO! LLEVALO A LA CAMIONETA (PUNTO DE ORIGEN)", AlertPriority.Alta, 4f);
             if (Heli != null) Heli.Alerta(false);
             proximoSeguir = 0f;
         }
@@ -642,17 +645,18 @@ namespace SP.Mision
             }
             else avisoAtras = 0f;
 
-            // Llegando al helicoptero: helices a fondo, fuego de cobertura, musica tensa y horda.
+            // Llegando a la base: abordar la camioneta y escapar.
             bool cerca = dHeli <= RadioDeAlertaDelHeli;
-            if (Heli != null)
-            {
-                Heli.Alerta(cerca);
-                Heli.DisparaCobertura = cerca;
-            }
             SonarTension(cerca);
             if (cerca && !hordaLanzada) LanzarHorda();
 
-            if (dHeli <= RadioExtraccion && dCivil <= RadioExtraccion + 3f) Ganar();
+            if (dHeli <= RadioExtraccion && dCivil <= RadioExtraccion + 3f && !Camioneta.Instancia.EnRuta)
+            {
+                if (baliza != null) { baliza.Quitar(); baliza = null; }
+                Camioneta.Instancia.IniciarEscape();
+                GameLog.Line("Mision: abordando la camioneta para escapar");
+                AlertQueue.Push("¡TODOS A BORDO! PROTEGE LA CAMIONETA", AlertPriority.Alta, 4f);
+            }
         }
 
         // ---------------- musica tensa ----------------
@@ -675,7 +679,7 @@ namespace SP.Mision
         }
 
         // ---------------- final ----------------
-        void Ganar()
+        public void GanarEnCamioneta()
         {
             CambiarFase(FaseDeMision.Victoria);
             GameLog.Line("Mision: llegaron al helicoptero con el civil");
@@ -711,7 +715,7 @@ namespace SP.Mision
                 case FaseDeMision.Escapar:
                     AparecerCivil(); CivilRescatado = true; if (!refuerzosLanzados) LanzarRefuerzos();
                     if (baliza != null) baliza.Quitar();
-                    baliza = TutorialBeacon.Crear("HELICOPTERO", new Color(0.35f, 1f, 0.5f), Helipuerto + Vector3.right * 6f, null, 3.2f, 26f);
+                    baliza = TutorialBeacon.Crear("CAMIONETA", new Color(0.35f, 1f, 0.5f), Helipuerto + Vector3.right * 6f, null, 3.2f, 26f);
                     CambiarFase(f); break;
                 default: CambiarFase(f); break;
             }

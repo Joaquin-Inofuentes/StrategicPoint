@@ -70,6 +70,8 @@ namespace SP.Ai
         {
             if (s == null || s.Health == null) return false;
             if (!s.Health.IsAlive) return true;
+            bool isCalm = SP.Combat.TeamCombatState.SegundosSinAccion >= SP.Combat.Health.SegundosSinDanoParaRegenerar;
+            if (self.Role != RoleType.Medic && isCalm) return false;
             return s.Health.Current < s.Health.MaxHealth;
         }
 
@@ -99,7 +101,8 @@ namespace SP.Ai
 
         void TickCuracionLocal(float dt)
         {
-            if (self.Role != RoleType.Medic) return;
+            bool isCalm = SP.Combat.TeamCombatState.SegundosSinAccion >= SP.Combat.Health.SegundosSinDanoParaRegenerar;
+            if (self.Role != RoleType.Medic && !isCalm) return;
 
             if (Pasivo || MontadoEnVehiculo || State == AiState.Chase || State == AiState.Attack || State == AiState.MovingToAttackOrder || target != null) 
             {

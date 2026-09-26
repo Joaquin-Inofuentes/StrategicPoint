@@ -16,7 +16,7 @@ namespace SP.Combat
         public bool IsAlive => Current > 0;
         public int ActorId { get; private set; }
 
-        // Pedido explicito del usuario: "pasado 3 segundos despues de
+        // Pedido explicito del usuario: "pasado 9 segundos despues de
         // accion se empieza a curar automaticamente". "Accion" = el ultimo
         // golpe recibido -- el mismo gatillo que ya usa LastAttackerId.
         // Curarse a full de un tiro no es el objetivo (eso ya lo hace
@@ -34,7 +34,7 @@ namespace SP.Combat
         const float VidaPorSegundoRegenerando = 12f;
 
         // Arranca ya "afuera de combate": un soldado recien creado o recien
-        // revivido no tiene por que esperar 3 s de gracia si por algun
+        // revivido no tiene por que esperar 9 s de gracia si por algun
         // motivo nace sin la vida llena.
         float segundosSinDano = SegundosSinDanoParaRegenerar;
         float regenAcumulada;

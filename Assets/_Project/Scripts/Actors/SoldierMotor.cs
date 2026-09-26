@@ -336,21 +336,36 @@ namespace SP.Actors
             soldierCacheado.EyeAnchor.localPosition = new Vector3(p.x, y, p.z);
         }
 
+        float dustDist;
         public void Move(Vector3 worldDirection, float dt)
         {
             if (Vaulting) return;
             if (worldDirection.sqrMagnitude > 1f) worldDirection.Normalize();
-            transform.position += Resolve(worldDirection * MoveSpeed * dt);
+            var step = worldDirection * MoveSpeed * dt;
+            var real = Resolve(step);
+            transform.position += real;
+            
+            if (Corriendo && !IsJumping && real.sqrMagnitude > 0.0001f)
+            {
+                dustDist += real.magnitude;
+                if (dustDist >= 0.9f)
+                {
+                    dustDist -= 0.9f;
+                    SP.Presentation.DustEmitter.Emit(transform.position);
+                }
+            }
             RevisarBorde();
         }
 
         public void RotateYaw(float yawDeltaDegrees)
         {
+            if (Atado) return;
             transform.Rotate(Vector3.up, yawDeltaDegrees, Space.World);
         }
 
         public void LookTowards(Vector3 worldPoint, float dt)
         {
+            if (Atado) return;
             Vector3 dir = worldPoint - transform.position;
             dir.y = 0f;
             if (dir.sqrMagnitude < 0.0001f) return;

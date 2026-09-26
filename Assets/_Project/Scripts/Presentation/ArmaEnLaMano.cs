@@ -147,12 +147,15 @@ namespace SP.Presentation
         // se colgo el arma (Colgar() no corrio) no hace nada: Colgar()
         // llama esto solo por su cuenta apenas cuelga, con el arma que
         // este equipada en ese momento.
+        Vector3 baseLocalPosition;
+
         public void Reposicionar(WeaponKind kind)
         {
             if (!colgada || arma == null) return;
             float largoNatural = WeaponModels.NaturalLength(kind);
             float adelanto = Mathf.Max(0f, largoNatural * 0.5f - MargenCulataDetrasDelPuno);
-            arma.localPosition = dirAdelanteLocal * adelanto + dirArribaLocal * AlturaSobreLaMano;
+            baseLocalPosition = dirAdelanteLocal * adelanto + dirArribaLocal * AlturaSobreLaMano;
+            arma.localPosition = baseLocalPosition;
         }
 
         // Solo el soldado que el jugador esta manejando tiene un pitch de
@@ -165,10 +168,28 @@ namespace SP.Presentation
         void LateUpdate()
         {
             if (!colgada || arma == null) return;
+            
             float pitch = 0f;
+            float ads = 0f;
             if (aiBrain != null && aiBrain.IsPossessedByPlayer && CameraRig.Instance != null)
+            {
                 pitch = CameraRig.Instance.Pitch;
+                ads = CameraRig.Instance.AdsBlendSuave;
+            }
+
             arma.localRotation = baseLocalRotation * Quaternion.Euler(-pitch, 0f, 0f);
+            arma.localPosition = baseLocalPosition;
+
+            if (ads > 0.001f && CameraRig.Instance != null && CameraRig.Instance.Cam != null)
+            {
+                Transform cam = CameraRig.Instance.Cam.transform;
+                // Movemos ligeramente hacia adelante para evitar near plane clipping y centramos
+                Vector3 adsPos = cam.position + cam.forward * 0.4f - cam.up * 0.1f;
+                Quaternion adsRot = cam.rotation;
+
+                arma.position = Vector3.Lerp(arma.position, adsPos, ads);
+                arma.rotation = Quaternion.Slerp(arma.rotation, adsRot, ads);
+            }
         }
     }
 }

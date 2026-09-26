@@ -654,15 +654,15 @@ namespace SP.Combat
             {
                 // Escopeta: un cono de perdigones por disparo.
                 for (int p = 0; p < espec.Pellets; p++)
-                    pool.Spawn(spawnPos, ApplySpread(spreadDir, espec.PelletSpreadDeg), owner.Id, owner.Team, damage, projectileColor);
+                    pool.Spawn(spawnPos, ApplySpread(spreadDir, espec.PelletSpreadDeg), owner.Id, owner.Team, damage, projectileColor, 0f, 0f, null, 1f, espec.MultiplicadorVsVehiculo);
             }
             else if (espec.ExplosionRadius > 0f)
             {
                 // Lanzacohetes: proyectil lento con explosion de area.
-                pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor, espec.ExplosionRadius, espec.ProjectileGravity, null, espec.ProjectileSpeed);
+                pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor, espec.ExplosionRadius, espec.ProjectileGravity, null, espec.ProjectileSpeed, espec.MultiplicadorVsVehiculo);
             }
             else
-                pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor);
+                pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor, 0f, 0f, null, 1f, espec.MultiplicadorVsVehiculo);
             cooldownTimer = fireCooldown;
             CurrentAmmo--;
             if (CurrentAmmo <= 0 && !SinMunicionTotal) StartReload();

@@ -167,6 +167,9 @@ namespace SP.EditorTools
             var col = go.AddComponent<BoxCollider>();
             col.size = new Vector3(0.5f, 0.5f, 0.5f);
 
+            var sphere = go.AddComponent<SphereCollider>();
+            sphere.radius = 0.4f;
+
             var luminaria = go.AddComponent<SP.Presentation.Luminaria>();
         }
 

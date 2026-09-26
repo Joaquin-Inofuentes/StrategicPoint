@@ -405,9 +405,9 @@ namespace SP.UI
         // puntería sobre algo (no el flash de "le pegué", que es aparte):
         // así el jugador sabe qué tiene bajo la mira sin tener que leer el
         // cartel de texto. Vuelve al color base apenas deja de apuntarle.
-        static readonly Color AllyTint = new Color(0.4f, 0.85f, 1f);
-        static readonly Color EnemyTint = new Color(1f, 0.45f, 0.4f);
-        static readonly Color VehicleTint = new Color(0.5f, 0.7f, 1f);
+        static readonly Color AllyTint = SP.Presentation.CursorContextual.ColorSeguir;
+        static readonly Color EnemyTint = SP.Presentation.CursorContextual.ColorAtacar;
+        static readonly Color VehicleTint = SP.Presentation.CursorContextual.ColorMontar;
         static readonly Color ObstacleTint = new Color(0.85f, 0.85f, 0.85f);
         // B5: un obstaculo con ObstacleMarker aguanta disparos y se puede
         // derrumbar (F1-F3, G1) -- uno sin ese componente (un Muro, por
@@ -592,6 +592,23 @@ namespace SP.UI
                         && result.HitTransform.GetComponent<SP.Presentation.ObstacleMarker>() != null;
                     CurrentPrompt = "";
                     currentAimTint = esDestructible ? DestructibleTint : ObstacleTint;
+                    break;
+                case AimTargetType.Recoger:
+                    CurrentPrompt = "";
+                    currentAimTint = SP.Presentation.CursorContextual.ColorRecoger;
+                    break;
+                case AimTargetType.Cubrirse:
+                    CurrentPrompt = "";
+                    currentAimTint = SP.Presentation.CursorContextual.ColorCubrirse;
+                    break;
+                case AimTargetType.Torreta:
+                    CurrentPrompt = "";
+                    currentAimTint = SP.Presentation.CursorContextual.ColorMontar;
+                    break;
+                case AimTargetType.Interactuar:
+                case AimTargetType.Caido:
+                    CurrentPrompt = "";
+                    currentAimTint = SP.Presentation.CursorContextual.ColorInteractuar;
                     break;
                 case AimTargetType.Ground:
                     // Pedido explicito: "q se vea solo cuando apunto a algo.

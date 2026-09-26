@@ -87,6 +87,7 @@ namespace SP.Vehicles
         // 0,02s.
         const float ImpactoDecelPerSec = 35f;
 
+        float dustLeft, dustRight;
         void Avanzar(float distancia, float dt)
         {
             EnsureCuerpo();
@@ -98,6 +99,23 @@ namespace SP.Vehicles
             var pedido = transform.forward * distancia;
             var real = Deslizador.Resolver(transform, cuerpo, pedido, radio);
             transform.position += real;
+
+            float m = real.magnitude;
+            if (m > 0.001f)
+            {
+                dustLeft += m;
+                dustRight += m;
+                if (dustLeft >= 0.5f)
+                {
+                    dustLeft -= 0.5f;
+                    SP.Presentation.DustEmitter.Emit(transform.position - transform.right * 1.1f);
+                }
+                if (dustRight >= 0.5f)
+                {
+                    dustRight -= 0.5f;
+                    SP.Presentation.DustEmitter.Emit(transform.position + transform.right * 1.1f);
+                }
+            }
 
             // Si el choque se comio casi todo el avance, la velocidad se
             // corta. Sin esto el tanque queda apoyado contra la pared con

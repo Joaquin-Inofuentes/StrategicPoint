@@ -22,6 +22,7 @@ namespace SP.Core
             SP.Player.PlayerInputDriver.ReiniciarActivo();
             SP.Player.PlayerBrain.ReiniciarActivo();
             SP.Combat.ProjectilePool.ReiniciarActivo();
+            SP.Presentation.CubeFxReactor.ReiniciarActivo();
             SP.Presentation.GameOutcomeController.ReiniciarActivo();
             SP.Presentation.GameplaySceneBootstrap.ReiniciarActivo();
             SP.Presentation.AnuncioDeZonas.ReiniciarActivo();

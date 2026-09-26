@@ -87,7 +87,7 @@ namespace SP.Presentation
         }
 
         // Decisión D12: Bodies stay visible. Cap at 24 visible corpses (oldest hides).
-        static readonly System.Collections.Generic.List<Soldier> cadaveres = new System.Collections.Generic.List<Soldier>();
+        static readonly System.Collections.Generic.List<GameObject> cadaveres = new System.Collections.Generic.List<GameObject>();
         public static void ReiniciarActivo() => cadaveres.Clear();
 
         // Ronda 12: revivir (medico o [E]) solo reponia la vida: el cuerpo ya se habia ocultado 2 s despues de morir y el aliado
@@ -95,7 +95,7 @@ namespace SP.Presentation
         void AlRevivir()
         {
             if (!Application.isPlaying || soldier == null) return;
-            cadaveres.Remove(soldier);
+            cadaveres.Remove(gameObject);
             StopAllCoroutines();
             transform.localScale = baseScale;
             WriteTint(rend, baseColor);
@@ -104,12 +104,13 @@ namespace SP.Presentation
             if (gameObject.activeInHierarchy && animator != null) animator.SetBool(SP.Presentation.SoldierAnimatorDriver.ParamMuerto, false);
             soldier.SetBodyVisible(true);
             if (animator == null) transform.rotation = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+            if (!gameObject.activeSelf) gameObject.SetActive(true);
         }
 
         void OnDestroy()
         {
             if (soldier != null && soldier.Health != null) soldier.Health.Revivido -= AlRevivir;
-            if (soldier != null) cadaveres.Remove(soldier);
+            cadaveres.Remove(gameObject);
             damageSub?.Dispose();
             deathSub?.Dispose();
             shotSub?.Dispose();
@@ -204,15 +205,14 @@ namespace SP.Presentation
                 SparkleBurstFx.Spawn(transform.position + Vector3.up * 0.9f, new Color(0.95f, 0.4f, 0.15f), 0.7f, 3f, 30, 3.5f);
             }
             
-            if (soldier != null)
+            if (!cadaveres.Contains(gameObject)) cadaveres.Add(gameObject);
+            while (cadaveres.Count > 24)
             {
-                if (!cadaveres.Contains(soldier)) cadaveres.Add(soldier);
-                while (cadaveres.Count > 24)
+                var viejo = cadaveres[0];
+                cadaveres.RemoveAt(0);
+                if (viejo != null)
                 {
-                    var viejo = cadaveres[0];
-                    cadaveres.RemoveAt(0);
-                    if (viejo != null && viejo.Health != null && !viejo.Health.IsAlive)
-                        viejo.SetBodyVisible(false);
+                    viejo.SetActive(false);
                 }
             }
 

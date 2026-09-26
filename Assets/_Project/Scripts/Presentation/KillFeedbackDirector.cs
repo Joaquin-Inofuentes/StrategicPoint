@@ -16,7 +16,7 @@ namespace SP.Presentation
     {
         public static KillFeedbackDirector Instance { get; private set; }
 
-        IDisposable diedSub, damageSub;
+        IDisposable diedSub, damageSub, headshotSub;
 
         // --- 168 agrupacion de bajas proximas en el tiempo ---
         const float GroupWindow = 1.5f;
@@ -44,14 +44,17 @@ namespace SP.Presentation
             Instance = this;
             diedSub?.Dispose();
             damageSub?.Dispose();
+            headshotSub?.Dispose();
             diedSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnDied);
             damageSub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnDamage);
+            headshotSub = EventBus.Instance.Subscribe<HeadshotEvent>(OnHeadshot);
         }
 
         void OnDisable()
         {
             diedSub?.Dispose();
             damageSub?.Dispose();
+            headshotSub?.Dispose();
             // El disparador de la camara lenta es "murio el ultimo
             // enemigo", o sea justo cuando la pantalla de victoria puede
             // desactivar esto a mitad de la corrutina. Sin este cierre,
@@ -60,7 +63,17 @@ namespace SP.Presentation
             if (Instance == this) Instance = null;
         }
 
-        // La racha se corta al recibir daño, no solo por tiempo: es lo que
+        void OnHeadshot(HeadshotEvent evt)
+        {
+            bool byPlayer = Brain != null && Brain.Current != null && evt.ShooterId == Brain.Current.Id;
+            if (byPlayer)
+            {
+                WorldTag.Spawn(evt.Position + Vector3.up * 0.5f, Loc.T("¡TIRO A LA CABEZA!"), new Color(1f, 0.4f, 0.1f));
+                AudioDirector.PlayAt(SfxKind.Headshot, evt.Position, 1f, 1f);
+            }
+        }
+
+        // La racha se corta al recibir dao, no solo por tiempo: es lo que
         // le da tension (podes perderla) en vez de ser un contador que solo
         // sube.
         void OnDamage(DamageTakenEvent evt)

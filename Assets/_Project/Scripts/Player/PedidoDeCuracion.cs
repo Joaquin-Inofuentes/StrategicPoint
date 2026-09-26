@@ -44,9 +44,11 @@ namespace SP.Player
         public static Soldier MedicoDisponible(Soldier excluir = null)
         {
             Soldier mejor = null;
+            bool isCalm = HayCalma(Vector3.zero);
             foreach (var a in ActorRegistry.All)
             {
-                if (a == null || a == excluir || a.Team != TeamId.Player || a.Role != RoleType.Medic) continue;
+                if (a == null || a == excluir || a.Team != TeamId.Player) continue;
+                if (!isCalm && a.Role != RoleType.Medic) continue;
                 if (a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy) continue;
                 mejor = a; break;
             }
@@ -209,7 +211,7 @@ namespace SP.Player
         public static bool ReanimacionEsAutomatica => Reanimando && reanimacionAutomatica;
 
         public static bool HayCalma(Vector3 punto) =>
-            ActorRegistry.FindNearestEnemyInRange(punto, TeamId.Player, RadioDeCalma) == null;
+            TeamCombatState.SegundosSinAccion >= Health.SegundosSinDanoParaRegenerar;
 
         static Soldier CaidoParaReanimar(Soldier medico)
         {
@@ -232,13 +234,15 @@ namespace SP.Player
             if (proximoEscaneo > 0f) return;
             proximoEscaneo = 1.5f;
 
+            bool isCalm = HayCalma(Vector3.zero);
             foreach (var medico in ActorRegistry.All)
             {
-                if (medico == null || medico.Role != RoleType.Medic || medico.Team != TeamId.Player) continue;
+                if (medico == null || medico.Team != TeamId.Player) continue;
+                if (!isCalm && medico.Role != RoleType.Medic) continue;
                 if (medico.Health == null || !medico.Health.IsAlive || OrderService.LoManejaElJugador(medico)) continue;
                 if (medico.Brain != null && medico.Brain.CurrentTarget != null) continue;
 
-                if (ReanimarEnCalma && HayCalma(medico.transform.position))
+                if (ReanimarEnCalma && isCalm)
                 {
                     var caido = CaidoParaReanimar(medico);
                     if (caido != null && SolicitarReanimar(caido) && Enfermero == medico)
@@ -248,6 +252,8 @@ namespace SP.Player
                         return;
                     }
                 }
+
+                if (medico.Role != RoleType.Medic) continue;
 
                 Soldier peor = null; float peorFrac = FraccionHerido;
                 foreach (var a in ActorRegistry.All)

@@ -131,6 +131,7 @@ namespace SP.UI
             new ControlEntry("F", "cuchillo: tajo rápido, sin balas (arco brillante y golpe sordo si conecta)", ControlContext.FpsAPie, SP.Player.KeyBindings.AtaqueCuchillo),
             new ControlEntry("G", "granada: mantener para ver la curva y el radio, soltar para lanzar (clic der. o Esc la guardan)", ControlContext.FpsAPie, SP.Player.KeyBindings.Granada),
             new ControlEntry("1/2/3", "cambiar de arma según tu clase", ControlContext.FpsAPie),
+            new ControlEntry("Espacio", "desatar al civil (repetir)", ControlContext.FpsAPie, SP.Player.KeyBindings.Desatar),
 
             new ControlEntry("E", "tocar: subir al tanque, usar la ametralladora fija o equipar el arma del piso; mantener 5 s junto a un caído: reanimarlo", ControlContext.FpsAPie, SP.Player.KeyBindings.Interactuar),
             new ControlEntry("E", "mantener (medio segundo): habilidad de clase (el médico cura y reanima, el asalto y el francotirador afinan la puntería)", ControlContext.FpsAPie, SP.Player.KeyBindings.Interactuar),

@@ -525,6 +525,7 @@ namespace SP.Ai
             // Me dispararon a mí: reacciono aunque esté fuera de mi rango de visión normal.
             if (evt.TargetId == self.Id)
             {
+                CancelarCuracionLocal();
                 ultimoAtacanteId = attacker.Id;
                 tiempoUltimoAtaque = Time.time;
                 if (State == AiState.Idle || State == AiState.Patrol || State == AiState.MovingToOrder || State == AiState.Follow)
@@ -721,6 +722,7 @@ namespace SP.Ai
 
             SincronizarAgente();
             ActualizarCarrera();
+            TickCuracionLocal(dt);
 
             // BUG REAL: Tick() no tenia ningun case Dead ni ninguna
             // transicion de SALIDA de Dead -- una vez que IsAlive pasaba a

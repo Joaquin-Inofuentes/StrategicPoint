@@ -57,11 +57,20 @@ namespace SP.Player
         // Ronda 11 (punto 16): cursor contextual en RTS con soldados seleccionados.
         void ActualizarCursorRts(AimResult r)
         {
-            var tipo = CursorTipo.Normal;
+            var tipo = CursorTipo.Default;
             if (Selection != null && Selection.Selected.Count > 0 && !PunteroSobreUiInteractiva(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero))
             {
-                if (r.Type == AimTargetType.Enemy) tipo = CursorTipo.Atacar;
-                else if (r.Type == AimTargetType.Vehicle || r.Type == AimTargetType.Torreta || r.Type == AimTargetType.Caido) tipo = CursorTipo.Interactuable;
+                switch (r.Type)
+                {
+                    case AimTargetType.Enemy: tipo = CursorTipo.Atacar; break;
+                    case AimTargetType.Ally: tipo = CursorTipo.Seguir; break;
+                    case AimTargetType.Vehicle: tipo = (r.Vehicle != null && r.Vehicle.IsDestroyed) ? CursorTipo.Default : CursorTipo.Montar; break;
+                    case AimTargetType.Torreta: tipo = CursorTipo.Montar; break;
+                    case AimTargetType.Recoger: tipo = CursorTipo.Recoger; break;
+                    case AimTargetType.Cubrirse: tipo = CursorTipo.Cubrirse; break;
+                    case AimTargetType.Interactuar: 
+                    case AimTargetType.Caido: tipo = CursorTipo.Interactuar; break;
+                }
             }
             CursorContextual.Aplicar(tipo);
         }
@@ -71,9 +80,9 @@ namespace SP.Player
         {
             if (OrdenesMenu != null && OrdenesMenu.Abierto) return;
             bool sumar = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
-            if (kb.f1Key.wasPressedThisFrame) SeleccionarSoldadoDeEscuadra(0, sumar);
-            if (kb.f2Key.wasPressedThisFrame) SeleccionarSoldadoDeEscuadra(1, sumar);
-            if (kb.f3Key.wasPressedThisFrame) SeleccionarSoldadoDeEscuadra(2, sumar);
+            if (kb.f1Key.wasPressedThisFrame && SeleccionarSoldadoDeEscuadra(0, sumar)) Rig.RecenterOn(Squad[0].transform.position);
+            if (kb.f2Key.wasPressedThisFrame && SeleccionarSoldadoDeEscuadra(1, sumar)) Rig.RecenterOn(Squad[1].transform.position);
+            if (kb.f3Key.wasPressedThisFrame && SeleccionarSoldadoDeEscuadra(2, sumar)) Rig.RecenterOn(Squad[2].transform.position);
         }
 
         public bool SeleccionarSoldadoDeEscuadra(int indice, bool sumar)

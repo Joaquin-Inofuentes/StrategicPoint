@@ -204,4 +204,23 @@ namespace SP.Core
             Point = point;
         }
     }
+
+    public readonly struct LuminariaRotaEvent
+    {
+        public readonly Vector3 Position;
+        public LuminariaRotaEvent(Vector3 position) => Position = position;
+    }
+
+    public readonly struct HeadshotEvent
+    {
+        public readonly int ShooterId;
+        public readonly int TargetId;
+        public readonly Vector3 Position;
+        public HeadshotEvent(int shooterId, int targetId, Vector3 position)
+        {
+            ShooterId = shooterId;
+            TargetId = targetId;
+            Position = position;
+        }
+    }
 }

@@ -4,53 +4,73 @@ using SP.Core;
 using SP.Actors;
 using SP.Ai;
 using SP.CameraSystem;
+using SP.Player;
 
 namespace SP.Presentation
 {
-    // Línea roja entre un soldado y el enemigo al que le está disparando
-    // mientras está en estado Attack. Revisa a todo el mundo cada frame
-    // (son pocos soldados) y crea/reposiciona/borra las líneas solas.
     public class AttackLineManager : MonoBehaviour
     {
         static readonly Color LineColor = new Color(0.9f, 0.15f, 0.12f);
+        static readonly Color TacBlue = new Color(0.12f, 0.45f, 0.9f);
+        static readonly Color TacRed = new Color(0.9f, 0.15f, 0.12f);
 
         readonly Dictionary<int, LineRenderer> lines = new Dictionary<int, LineRenderer>();
+        
+        LineRenderer[] tacLines = new LineRenderer[16];
+        Dictionary<int, float> recentEnemies = new Dictionary<int, float>();
+        System.IDisposable damageSub;
+
+        void OnEnable()
+        {
+            damageSub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnDamageTaken);
+        }
+
+        void OnDisable()
+        {
+            damageSub?.Dispose();
+        }
+
+        void OnDamageTaken(DamageTakenEvent e)
+        {
+            Soldier p = GetPlayer();
+            if (p != null && (e.TargetId == p.Id || e.AttackerId == p.Id))
+            {
+                int enemyId = e.TargetId == p.Id ? e.AttackerId : e.TargetId;
+                var s = ActorRegistry.Get(enemyId);
+                if (s != null && s.Team != TeamId.Player) recentEnemies[enemyId] = Time.time;
+            }
+        }
+
+        Soldier GetPlayer()
+        {
+            foreach (var s in ActorRegistry.All)
+                if (s != null && s.Brain != null && s.Brain.IsPossessedByPlayer) return s;
+            return null;
+        }
 
         void Update()
         {
-            // H2: en FPS esta linea nace a centimetros de la camara (el
-            // soldado que la dispara puede ser el propio poseido, o uno
-            // pegado a el) y el ancho del LineRenderer se orienta DE CARA
-            // A LA CAMARA en cada punto (alignment View, el default) --
-            // de cerca y en un angulo rasante eso proyecta como un
-            // triangulo enorme y oscuro tapando media pantalla, no como
-            // la lineita fina que se ve bien desde arriba en RTS. Antes
-            // esto leia cam.orthographic como marca de "estamos en RTS"
-            // (CameraRig.SetMode la ponia en true solo ahi); con la RTS
-            // ahora en perspectiva (pedido explicito de que no sea
-            // ortogonal) esa marca ya no existe, asi que se consulta
-            // directamente el modo del rig.
             var rig = CameraRig.Instance;
-            if (rig == null || rig.Mode != ControlMode.Rts)
+            if (rig != null && rig.Mode == ControlMode.Rts)
             {
-                if (lines.Count > 0) RemoveAllLines();
+                ClearTacLines();
+                UpdateAttackLines();
                 return;
             }
 
+            if (lines.Count > 0) RemoveAllLines();
+
+            bool cHeld = KeyBindings.IsPressed(KeyBindings.VerTactico);
+            if (cHeld) UpdateTacLines();
+            else ClearTacLines();
+        }
+
+        void UpdateAttackLines()
+        {
             foreach (var soldier in ActorRegistry.All)
             {
                 if (soldier == null) continue;
-                // soldier.Brain en vez de GetComponent<AiBrain>(): esto
-                // corre en Update() para cada soldado, cada frame -- con
-                // el registro ya cacheado en Soldier no hace falta pagar
-                // GetComponent otra vez para lo mismo.
                 var brain = soldier.Brain;
-                // Pedido explicito: la linea roja tiene que verse en cuanto
-                // el soldado TIENE un enemigo trabado (Chase/MovingToAttackOrder
-                // ya persiguen a un target concreto, no solo Attack cuando ya
-                // esta disparando) -- antes solo se dibujaba con el gatillo
-                // apretado, y para entonces el jugador ya no llegaba a ver
-                // "a quien" estaba mirando el soldado un instante antes.
                 bool hasEnemyLocked = brain != null && brain.CurrentTarget != null &&
                     (brain.State == AiState.Attack || brain.State == AiState.Chase || brain.State == AiState.MovingToAttackOrder) &&
                     soldier.gameObject.activeInHierarchy;
@@ -63,12 +83,66 @@ namespace SP.Presentation
 
                 if (!lines.TryGetValue(soldier.Id, out var lr) || lr == null)
                 {
-                    lr = CreateLine();
+                    lr = CreateLine(LineColor);
                     lines[soldier.Id] = lr;
                 }
 
                 lr.SetPosition(0, soldier.transform.position + Vector3.up * 0.5f);
                 lr.SetPosition(1, brain.CurrentTarget.transform.position + Vector3.up * 0.5f);
+            }
+        }
+
+        void UpdateTacLines()
+        {
+            var p = GetPlayer();
+            if (p == null) { ClearTacLines(); return; }
+
+            int lidx = 0;
+            // Allies
+            foreach (var s in ActorRegistry.All)
+            {
+                if (s == p || s == null || s.Team != TeamId.Player || s.Health == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                if (lidx >= 16) break;
+                DrawTac(lidx++, p.transform.position, s.transform.position, TacBlue);
+            }
+            
+            // Enemies
+            foreach (var s in ActorRegistry.All)
+            {
+                if (s == null || s.Team == TeamId.Player || s.Health == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                if (lidx >= 16) break;
+
+                bool visible = false; // Could check visibility
+                bool recent = recentEnemies.TryGetValue(s.Id, out float t) && (Time.time - t) <= 6f;
+                if (recent || visible)
+                {
+                    DrawTac(lidx++, p.transform.position, s.transform.position, TacRed);
+                }
+            }
+
+            for (int i = lidx; i < 16; i++)
+            {
+                if (tacLines[i] != null) tacLines[i].gameObject.SetActive(false);
+            }
+        }
+
+        void DrawTac(int idx, Vector3 a, Vector3 b, Color c)
+        {
+            if (tacLines[idx] == null) {
+                tacLines[idx] = CreateLine(c);
+            }
+            var lr = tacLines[idx];
+            lr.gameObject.SetActive(true);
+            lr.startColor = c; lr.endColor = c;
+            lr.material.color = c;
+            lr.SetPosition(0, a + Vector3.up * 0.5f);
+            lr.SetPosition(1, b + Vector3.up * 0.5f);
+        }
+
+        void ClearTacLines()
+        {
+            for (int i=0; i<16; i++) {
+                if (tacLines[i] != null) tacLines[i].gameObject.SetActive(false);
             }
         }
 
@@ -83,43 +157,31 @@ namespace SP.Presentation
             lines.Remove(actorId);
             if (lr == null) return;
             
-            var mat = Application.isPlaying ? lr.material : lr.sharedMaterial;   // .material en Edit instancia y filtra un material
-            if (Application.isPlaying)
-            {
-                if (mat != null) Destroy(mat);
-                Destroy(lr.gameObject);
-            }
-            else
-            {
-                if (mat != null) DestroyImmediate(mat);
-                DestroyImmediate(lr.gameObject);
-            }
+            var mat = Application.isPlaying ? lr.material : lr.sharedMaterial;
+            if (Application.isPlaying) { if (mat != null) Destroy(mat); Destroy(lr.gameObject); }
+            else { if (mat != null) DestroyImmediate(mat); DestroyImmediate(lr.gameObject); }
         }
 
-        static LineRenderer CreateLine()
+        static LineRenderer CreateLine(Color c)
         {
             var go = new GameObject("AttackLine");
             var lr = go.AddComponent<LineRenderer>();
             lr.positionCount = 2;
             lr.widthMultiplier = 0.05f;
             lr.useWorldSpace = true;
-            lr.material = SafeMaterial.Create(LineColor);
-            lr.startColor = LineColor;
-            lr.endColor = LineColor;
+            lr.material = SafeMaterial.Create(c);
+            lr.startColor = c;
+            lr.endColor = c;
             return lr;
         }
 
-        // Si esta línea se crea por primera vez recién en medio del combate
-        // (Play mode), Unity compila esa variante de shader ahí mismo y el
-        // frame se traba (a veces sale una captura negra). Se precalienta
-        // una, lejos y chiquita, al armar el nivel en el editor.
         public static void Prewarm()
         {
-            var lr = CreateLine();
+            var lr = CreateLine(LineColor);
             lr.transform.position = new Vector3(0f, -500f, 0f);
             lr.SetPosition(0, lr.transform.position);
             lr.SetPosition(1, lr.transform.position + Vector3.right * 0.01f);
-            var mat = Application.isPlaying ? lr.material : lr.sharedMaterial;   // .material en Edit instancia y filtra un material
+            var mat = Application.isPlaying ? lr.material : lr.sharedMaterial;
             if (Application.isPlaying) { if (mat != null) Destroy(mat); Object.Destroy(lr.gameObject); }
             else { if (mat != null) DestroyImmediate(mat); Object.DestroyImmediate(lr.gameObject); }
         }

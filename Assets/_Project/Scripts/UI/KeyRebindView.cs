@@ -133,6 +133,7 @@ namespace SP.UI
         {
             { KeyBindings.Recargar, "Recargar" },
             { KeyBindings.Interactuar, "Interactuar" },
+            { KeyBindings.Desatar, "Desatar al civil" },
             { KeyBindings.SubirBajarVehiculo, "Subir/bajar del vehiculo" },
             { KeyBindings.Poseer, "Poseer" },
             { KeyBindings.CiclarPosesion, "Ciclar posesion" },

@@ -38,6 +38,8 @@ namespace SP.Combat
         TeamId duenoBando;
         Transform duenoTf;
         Transform luz;
+        Transform timerRing;
+        Light timerLight;
 
         // ------------------------------------------------------------------
         // Simulacion (compartida con la vista previa)
@@ -174,6 +176,26 @@ namespace SP.Combat
             tr.startColor = new Color(1f, 0.8f, 0.4f, 0.9f);
             tr.endColor = new Color(1f, 0.5f, 0.1f, 0f);
             tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            // Anillo de timer
+            var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            Destroy(quad.GetComponent<Collider>());
+            quad.name = "TimerRing";
+            quad.transform.SetParent(transform, false);
+            var mr = quad.GetComponent<MeshRenderer>();
+            mr.sharedMaterial = SP.Presentation.ShapeMarkerFx.MatCirculo(new Color(1f, 0.2f, 0f, 0.8f));
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            timerRing = quad.transform;
+
+            // Luz de timer
+            var pl = new GameObject("TimerLight");
+            pl.transform.SetParent(transform, false);
+            var lightComp = pl.AddComponent<Light>();
+            lightComp.type = LightType.Point;
+            lightComp.color = new Color(1f, 0.15f, 0.1f);
+            lightComp.range = 3f;
+            lightComp.intensity = 0f;
+            timerLight = lightComp;
         }
 
         // ------------------------------------------------------------------
@@ -199,6 +221,19 @@ namespace SP.Combat
             {
                 float f = Mathf.Lerp(3f, 16f, edad / Fusible);
                 luz.localScale = Vector3.one * (Mathf.Sin(edad * f * Mathf.PI) > 0f ? 0.1f : 0.045f);
+            }
+            if (timerRing != null)
+            {
+                timerRing.rotation = Quaternion.Euler(90f, 0f, 0f);
+                float remaining = Mathf.Clamp01(1f - (edad / Fusible));
+                float r = RadioDeExplosion * 2f * remaining;
+                timerRing.localScale = new Vector3(r, r, 1f);
+                timerRing.position = transform.position - new Vector3(0f, RadioFisico - 0.02f, 0f);
+            }
+            if (timerLight != null)
+            {
+                float f = Mathf.Lerp(3f, 16f, edad / Fusible);
+                timerLight.intensity = Mathf.Sin(edad * f * Mathf.PI) > 0f ? 2f : 0f;
             }
 
             if (edad >= Fusible) Detonar();
@@ -243,5 +278,13 @@ namespace SP.Combat
         }
 
         void OnDestroy() => Activas.Remove(this);
+
+        void OnDrawGizmos()
+        {
+            float remaining = Mathf.Clamp01(1f - (edad / Fusible));
+            float r = RadioDeExplosion * remaining;
+            Gizmos.color = new Color(1f, 0.2f, 0f, 0.5f);
+            Gizmos.DrawWireSphere(transform.position, r);
+        }
     }
 }

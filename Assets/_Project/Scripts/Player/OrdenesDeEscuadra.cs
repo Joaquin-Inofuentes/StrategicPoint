@@ -92,6 +92,12 @@ namespace SP.Player
 
         // TODOS QUIETOS: cancelan lo que hacian, se plantan donde estan y dejan de seguir al
         // jugador. Siguen disparando a lo que entre en su alcance (postura defensiva).
+        public static bool CoberturaManual(Soldier elegido, Vector3 punto, Collider dueno)
+        {
+            if (elegido == null) return false;
+            return OrderService.IssueCoverOrder(elegido, punto, dueno);
+        }
+
         public static int Quietos(IEnumerable<Soldier> soldados)
         {
             int n = 0;
@@ -106,3 +112,4 @@ namespace SP.Player
         }
     }
 }
+

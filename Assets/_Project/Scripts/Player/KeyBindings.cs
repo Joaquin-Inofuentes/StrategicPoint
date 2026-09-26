@@ -60,11 +60,13 @@ namespace SP.Player
         public const string MinimapCiclarTamano = "minimap_ciclar_tamano";
         public const string FocalizarRts = "focalizar_rts";
         public const string RotarCamaraRts = "rotar_camara_rts";
+        public const string Desatar = "desatar";
 
         // Valores de fabrica. Son EXACTAMENTE los que el juego ya usaba, de
         // modo que sin tocar nada el remapeo es invisible.
         static readonly Dictionary<string, Key> defaults = new Dictionary<string, Key>
         {
+            { Desatar, Key.Space },
             { Recargar, Key.R },
             { Interactuar, Key.E },
             // BUG REAL: SubirBajarVehiculo y CancelarOrden (mas abajo)
