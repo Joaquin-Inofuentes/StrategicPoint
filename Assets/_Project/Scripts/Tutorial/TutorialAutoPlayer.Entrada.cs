@@ -194,6 +194,6 @@ namespace SP.Tutorial
             yield return CaminarHasta(d, caja.transform.position, 0.6f, 9f);
         }
 
-        IEnumerator GestoVistaTacticaReal() { yield return Mantener(0.9f, Key.C); }
+        IEnumerator GestoVistaTacticaReal() { yield return Mantener(0.9f, Key.Tab); }
     }
 }

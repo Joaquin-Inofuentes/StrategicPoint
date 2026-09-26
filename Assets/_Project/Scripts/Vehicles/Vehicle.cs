@@ -644,6 +644,20 @@ namespace SP.Vehicles
             return true;
         }
 
+        void LateUpdate()
+        {
+            if (carritoDeParado != null)
+            {
+                var standPoint = transform.Find("TurretMount/TurretPivot/MetralletaStandPoint");
+                if (standPoint == null) standPoint = transform.Find("MetralletaStandPoint");
+                if (standPoint != null)
+                {
+                    carritoDeParado.position = standPoint.position;
+                    carritoDeParado.rotation = standPoint.rotation;
+                }
+            }
+        }
+
         // Intercambia los asientos de DOS ocupantes (el jugador que pide un
         // asiento ocupado por un aliado, y el aliado que pasa al asiento que
         // el jugador libero). Los baja a los dos y los vuelve a montar cada

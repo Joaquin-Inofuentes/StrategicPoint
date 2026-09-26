@@ -601,20 +601,7 @@ namespace SP.Ai
                 return;
             }
 
-            // Attack-move: pedido explicito ("que se mueva pero no deje de
-            // atacar"). Si ya esta trabado con un objetivo vivo, esta orden
-            // NO lo suelta -- solo le dice hacia donde caminar mientras
-            // sigue disparando. Encolar (Shift) durante combate no aplica:
-            // no hay "combate en curso" que encolar detras, se ignora el
-            // flag y se redirige igual.
-            if (target != null && target.Health.IsAlive &&
-                (State == AiState.Chase || State == AiState.Attack || State == AiState.MovingToAttackOrder))
-            {
-                attackMoveDestination = point;
-                PlanPathTo(point);
-                GameLog.Line($"{self.DisplayName} avanza a {point} sin dejar de atacar a {target.DisplayName}");
-                return;
-            }
+            target = null;
 
             target = null;
             hasOrder = true;
@@ -852,7 +839,7 @@ namespace SP.Ai
             // simple, pero no una orden de ataque ni una de subir a un
             // vehículo ya en curso: esas son deliberadas.
             bool onProtectedOrder = State == AiState.MovingToAttackOrder ||
-                (State == AiState.MovingToOrder && mountTarget != null);
+                State == AiState.MovingToOrder || State == AiState.Follow;
             if (State != AiState.Chase && State != AiState.Attack && !onProtectedOrder)
             {
                 // Misma guarda de sensado de siempre; lo unico que cambia es

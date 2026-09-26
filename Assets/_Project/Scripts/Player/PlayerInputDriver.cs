@@ -2982,7 +2982,7 @@ namespace SP.Player
                 // cursor cayera justo sobre el PISO. Con el cursor sobre un aliado, un cuerpo caido, una torreta,
                 // un techo o un muro (o sobre nada), no pasaba absolutamente nada y no se avisaba. Ahora el
                 // destino es el piso que queda bajo el cursor, salvo enemigos y vehiculos (que tienen su propia orden).
-                if (!esCobertura && result.Type != AimTargetType.Ground && result.Type != AimTargetType.Enemy && result.Type != AimTargetType.Vehicle
+                if (!esCobertura && result.Type != AimTargetType.Ground && result.Type != AimTargetType.Enemy && result.Type != AimTargetType.Vehicle && result.Type != AimTargetType.Torreta
                     && AimTargeting.PisoBajoRayo(screenRay, out var pisoBajoCursor))
                     result = new AimResult { Type = AimTargetType.Ground, Point = pisoBajoCursor };
 
@@ -2997,6 +2997,23 @@ namespace SP.Player
                     int cubiertos = IssueCoverOrderForSelection(Selection.Selected, result.Point,
                         result.Type == AimTargetType.Obstacle ? result.HitTransform : null);
                     if (cubiertos == 0) RejectOrder("NO HAY COBERTURA LIBRE AHI");
+                }
+                else if (result.Type == AimTargetType.Torreta)
+                {
+                    if (result.Torreta != null && !result.Torreta.Libre) { RejectOrder("TORRETA OCUPADA"); }
+                    else if (result.Torreta != null)
+                    {
+                        var boardable = new List<Soldier>();
+                        foreach (var s in Selection.Selected)
+                            if (s != null && s.Health.IsAlive && s.gameObject.activeInHierarchy && result.Torreta.Ocupante != s)
+                                boardable.Add(s);
+                        if (boardable.Count > 0)
+                        {
+                            StartCoroutine(EsperarYMontarTorreta(boardable[0], result.Torreta));
+                            Avisar(boardable[0].DisplayName.ToUpperInvariant() + " VA A LA TORRETA");
+                        }
+                        else RejectOrder("NO HAY MAS ALIADOS PARA SUBIR");
+                    }
                 }
                 else if (result.Type == AimTargetType.Ground)
                 {
