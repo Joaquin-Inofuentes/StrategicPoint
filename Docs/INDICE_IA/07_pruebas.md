@@ -7,19 +7,20 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 `Strategic Point > Run All Tests Headless` o
 `-executeMethod SP.EditorTools.HeadlessTestRunner.RunAll`.
 
-**647 aserciones (`Check`) en 9 archivos.**
+**761 aserciones (`Check`) en 10 archivos.**
 
 | Archivo | Lineas | Fases | Checks | Algunas fases |
 |---|---|---|---|---|
-| `HeadlessTestRunner.BusquedasGlobales.cs` | 158 | 0 | 5 | — |
+| `HeadlessTestRunner.BusquedasGlobales.cs` | 159 | 0 | 5 | — |
 | `HeadlessTestRunner.Fase18.cs` | 132 | 1 | 35 | RunPhase18 |
-| `HeadlessTestRunner.Fase19.cs` | 419 | 1 | 92 | RunPhase19 |
+| `HeadlessTestRunner.Fase19.cs` | 424 | 1 | 92 | RunPhase19 |
 | `HeadlessTestRunner.Fase20.cs` | 207 | 2 | 32 | RunPhase20, RunPhase20Ronda12 |
 | `HeadlessTestRunner.Fase21.cs` | 529 | 11 | 70 | Fase21_Acciones, Fase21_Agachado, Fase21_Ajustes, Fase21_ApuntarPreciso, Fase21_BarraDeVidaDelTanque, Fase21_MedicoEnCalma |
 | `HeadlessTestRunner.Fase22.cs` | 51 | 1 | 10 | RunPhase22 |
+| `HeadlessTestRunner.Fase23.cs` | 1281 | 41 | 114 | Fase23_AgachadoContagio, Fase23_AnilloAtacante, Fase23_BordeRojoImpacto, Fase23_CClicCobertura, Fase23_CLineas, Fase23_Cadaveres |
 | `HeadlessTestRunner.Fases13a17.cs` | 691 | 5 | 134 | RunPhase13, RunPhase14, RunPhase15, RunPhase16, RunPhase17 |
-| `HeadlessTestRunner.Fases8a12.cs` | 1551 | 2 | 148 | RunPhase8, RunPhase9 |
-| `HeadlessTestRunner.cs` | 4249 | 7 | 121 | RunPhase1, RunPhase2, RunPhase3, RunPhase4, RunPhase5, RunPhase6 |
+| `HeadlessTestRunner.Fases8a12.cs` | 1554 | 2 | 148 | RunPhase8, RunPhase9 |
+| `HeadlessTestRunner.cs` | 4278 | 7 | 121 | RunPhase1, RunPhase2, RunPhase3, RunPhase4, RunPhase5, RunPhase6 |
 
 ## Otras entradas de prueba
 
@@ -40,7 +41,7 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 | `Tools/Qa/qa_total.bat` | Corrida completa: suite + build + metricas + capturas en 7 resoluciones + tutorial automatico + todos los logs. |
 | `Tools/Autoplay/autoplay.sh` | Solo el tutorial automatico, desde git-bash. |
 
-## Archivos de logica sin una sola asercion (92)
+## Archivos de logica sin una sola asercion (103)
 
 > Un archivo de `Ai`, `Combat`, `Player`, `Vehicles`, `Core`, `Actors` o `Mision` sin ningun `Check`
 > puede estar cubierto desde otro archivo — pero vale mirarlo.
@@ -55,6 +56,7 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 - `Assets/_Project/Scripts/Ai/AiBrain.Revivir.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Sentidos.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Tactica.cs`
+- `Assets/_Project/Scripts/Ai/AiBrain.Vehiculos.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.cs`
 - `Assets/_Project/Scripts/Ai/AiState.cs`
 - `Assets/_Project/Scripts/Ai/AjustesDeEscuadra.cs`
@@ -66,6 +68,7 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 - `Assets/_Project/Scripts/Combat/Projectile.cs`
 - `Assets/_Project/Scripts/Combat/ProjectilePool.cs`
 - `Assets/_Project/Scripts/Combat/RoleType.cs`
+- `Assets/_Project/Scripts/Combat/TeamCombatState.cs`
 - `Assets/_Project/Scripts/Combat/TeamId.cs`
 - `Assets/_Project/Scripts/Combat/WeaponCatalog.cs`
 - `Assets/_Project/Scripts/Combat/WeaponHolder.cs`
@@ -83,6 +86,4 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 - `Assets/_Project/Scripts/Core/Events.cs`
 - `Assets/_Project/Scripts/Core/FlowField.cs`
 - `Assets/_Project/Scripts/Core/GameLog.cs`
-- `Assets/_Project/Scripts/Core/Loc.cs`
-- `Assets/_Project/Scripts/Core/LocTextos.cs`
-- …y 52 mas
+- …y 63 mas

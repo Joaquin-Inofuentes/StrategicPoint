@@ -65,6 +65,7 @@ flowchart LR
     Presentation --> Camera
     Presentation --> Combat
     Presentation --> Core
+    Presentation --> Mision
     Presentation --> Player
     Presentation --> UI
     Presentation --> Vehicles
@@ -78,8 +79,10 @@ flowchart LR
     Tutorial --> Vehicles
     UI --> Actors
     UI --> Ai
+    UI --> Camera
     UI --> Combat
     UI --> Core
+    UI --> Mision
     UI --> Player
     UI --> Presentation
     UI --> Vehicles
@@ -87,6 +90,7 @@ flowchart LR
     Vehicles --> Ai
     Vehicles --> Combat
     Vehicles --> Core
+    Vehicles --> Presentation
 ```
 
 ## Cuanto pesa cambiar cada subsistema
@@ -95,18 +99,18 @@ flowchart LR
 |---|---|---|---|
 | Actors | 3 | 12 | Ai, Combat, Core |
 | Ai | 6 | 9 | Actors, Combat, Core, Presentation, UI, Vehicles |
-| Camera | 2 | 5 | Actors, Presentation |
+| Camera | 2 | 6 | Actors, Presentation |
 | Combat | 4 | 11 | Actors, Core, Presentation, Vehicles |
 | Core | 3 | 11 | Actors, Combat, Vehicles |
 | Demo | 7 | 0 | Actors, Ai, Camera, Combat, Core, Player, Vehicles |
 | Editor | 11 | 0 | Actors, Ai, Camera, Combat, Core, Mision, Player, Presentation, Tutorial, UI, Vehicles |
 | Interaction | 1 | 1 | Player |
-| Mision | 9 | 1 | Actors, Ai, Combat, Core, Player, Presentation, Tutorial, UI, Vehicles |
+| Mision | 9 | 3 | Actors, Ai, Combat, Core, Player, Presentation, Tutorial, UI, Vehicles |
 | Player | 9 | 7 | Actors, Ai, Camera, Combat, Core, Interaction, Presentation, UI, Vehicles |
-| Presentation | 8 | 8 | Actors, Ai, Camera, Combat, Core, Player, UI, Vehicles |
+| Presentation | 9 | 9 | Actors, Ai, Camera, Combat, Core, Mision, Player, UI, Vehicles |
 | Tutorial | 8 | 2 | Actors, Ai, Camera, Combat, Core, Player, Presentation, Vehicles |
-| UI | 7 | 5 | Actors, Ai, Combat, Core, Player, Presentation, Vehicles |
-| Vehicles | 4 | 10 | Actors, Ai, Combat, Core |
+| UI | 9 | 5 | Actors, Ai, Camera, Combat, Core, Mision, Player, Presentation, Vehicles |
+| Vehicles | 5 | 10 | Actors, Ai, Combat, Core, Presentation |
 
 ## Como leerlo
 

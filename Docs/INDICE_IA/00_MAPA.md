@@ -1,9 +1,9 @@
 # Mapa del proyecto — indice para IA
 
-> Generado por `Tools/Indice/indexar_ia.py` el 2026-09-22 14:57 UTC.
+> Generado por `Tools/Indice/indexar_ia.py` el 2026-09-26 21:35 UTC.
 > No editar a mano: se regenera. Si algo esta mal, esta mal el generador.
 
-**254 scripts · 64,121 lineas · 6 escenas · 133 prefabs**
+**295 scripts · 72,835 lineas · 17 escenas · 137 prefabs**
 
 ## Como leer este indice
 
@@ -39,18 +39,18 @@ que la IA y que las pruebas.
 
 | Subsistema | Scripts | Lineas | Que hace |
 |---|---|---|---|
-| **Presentation** | 61 | 12346 | Todo lo que se ve y se oye en el mundo: VFX, audio, marcadores, pools visuales. |
-| **UI** | 43 | 7638 | HUD y pantallas: mira, roster, minimapa, radial, menus, ajustes. |
-| **Editor** | 40 | 16198 | Herramientas de Editor: suite headless, constructores de escena, pipelines de arte. |
-| **Core** | 25 | 3741 | Servicios sin escena: bus de eventos, registros, grilla espacial, navegacion, pools, idioma, dificultad. |
-| **Player** | 24 | 8174 | Traduccion de intencion a ordenes: input, posesion, seleccion, ordenes. |
-| **Tutorial** | 13 | 4564 | Modulo de ensenanza y su reproductor automatico. |
-| **Combat** | 12 | 2490 | Vida, dano, armas, proyectiles y catalogo. |
-| **Ai** | 11 | 2893 | Cerebro de una unidad no poseida y el driver que avanza la simulacion. |
-| **Vehicles** | 11 | 2472 | Tanque, asientos, torretas y ametralladoras fijas. |
-| **Mision** | 5 | 1309 | La partida: objetivos, oleadas, rehen, helicoptero, cinematica final. |
-| **Actors** | 4 | 682 | El soldado: identidad, piezas, motor de movimiento y aspecto. |
-| **Camera** | 2 | 896 | Rig de camara: hombro, RTS, transiciones, sacudidas, zoom. |
+| **Presentation** | 78 | 14966 | Todo lo que se ve y se oye en el mundo: VFX, audio, marcadores, pools visuales. |
+| **Editor** | 49 | 18858 | Herramientas de Editor: suite headless, constructores de escena, pipelines de arte. |
+| **UI** | 47 | 8662 | HUD y pantallas: mira, roster, minimapa, radial, menus, ajustes. |
+| **Core** | 26 | 3881 | Servicios sin escena: bus de eventos, registros, grilla espacial, navegacion, pools, idioma, dificultad. |
+| **Player** | 24 | 8536 | Traduccion de intencion a ordenes: input, posesion, seleccion, ordenes. |
+| **Combat** | 13 | 2570 | Vida, dano, armas, proyectiles y catalogo. |
+| **Tutorial** | 13 | 4565 | Modulo de ensenanza y su reproductor automatico. |
+| **Ai** | 12 | 3264 | Cerebro de una unidad no poseida y el driver que avanza la simulacion. |
+| **Mision** | 12 | 2470 | La partida: objetivos, oleadas, rehen, helicoptero, cinematica final. |
+| **Vehicles** | 12 | 2703 | Tanque, asientos, torretas y ametralladoras fijas. |
+| **Actors** | 4 | 699 | El soldado: identidad, piezas, motor de movimiento y aspecto. |
+| **Camera** | 2 | 943 | Rig de camara: hombro, RTS, transiciones, sacudidas, zoom. |
 | **Otros** | 1 | 17 |  |
 | **Demo** | 1 | 669 | Corredor de demo automatica. |
 | **Interaction** | 1 | 32 | Contrato de lo interactuable. |
@@ -59,18 +59,18 @@ que la IA y que las pruebas.
 
 | Archivo | Lineas | Subsistema | Que hace |
 |---|---|---|---|
-| `Assets/_Project/Scripts/Editor/HeadlessTestRunner.cs` | 4249 | Editor | Construye el entorno de prueba (suelo, obstáculos, prefabs, 3 soldados, cámara, UI, pool d… |
-| `Assets/_Project/Scripts/Player/PlayerInputDriver.cs` | 3498 | Player | Traduce teclado/ratón reales a los mismos métodos que usa el test automático. No decide na… |
+| `Assets/_Project/Scripts/Editor/HeadlessTestRunner.cs` | 4278 | Editor | Construye el entorno de prueba (suelo, obstáculos, prefabs, 3 soldados, cámara, UI, pool d… |
+| `Assets/_Project/Scripts/Player/PlayerInputDriver.cs` | 3673 | Player | Traduce teclado/ratÃ³n reales a los mismos mÃ©todos que usa el test automÃ¡tico. No decide… |
 | `Assets/_Project/Scripts/Tutorial/TutorialManager.cs` | 1905 | Tutorial | Modulo de tutorial. Recorre 35 pasos en orden; cada paso tiene sub-pasos y cada sub-paso u… |
-| `Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases8a12.cs` | 1551 | Editor | HeadlessTestRunner (parte): fases 8 a 12 de la suite. |
-| `Assets/_Project/Scripts/Ai/AiBrain.cs` | 1242 | Ai | Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las … |
+| `Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases8a12.cs` | 1554 | Editor | HeadlessTestRunner (parte): fases 8 a 12 de la suite. |
+| `Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase23.cs` | 1281 | Editor | Matamos al soldado |
+| `Assets/_Project/Scripts/Ai/AiBrain.cs` | 1259 | Ai | Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las … |
 | `Assets/_Project/Scripts/Editor/ArtSetup.cs` | 1012 | Editor | Pipeline de importacion del arte de Assets/ARTS. Es una herramienta y no un README con pas… |
-| `Assets/_Project/Scripts/Editor/WorldArtPipeline.cs` | 865 | Editor | Pipeline del pack de arte nuevo (Assets/ARTS/SP_Arte/_FBX_Export): ~90 mallas modulares/am… |
-| `Assets/_Project/Scripts/Camera/CameraRig.cs` | 850 | Camera | Posee la cámara y delega su posición en el modo activo (FPS u RTS). |
-| `Assets/_Project/Scripts/Combat/Projectile.cs` | 839 | Combat | Viaja, comprueba su propio impacto por distancia (sin física) y se devuelve solo al pool. … |
-| `Assets/_Project/Scripts/Editor/ArtBuilder.cs` | 818 | Editor | Segunda mitad del pipeline de arte: con los FBX ya importados y materializados por ArtSetu… |
-| `Assets/_Project/Scripts/Combat/WeaponHolder.cs` | 768 | Combat | Un solo evento para "este soldado tiene otra arma puesta", sin importar el camino (recogid… |
-| `Assets/_Project/Scripts/UI/AimUI.cs` | 711 | UI | Retículo + prompt contextual: "F: Poseer a X" o "T: Ir aquí". También resalta el retículo … |
+| `Assets/_Project/Scripts/Editor/BlockoutArtDresser.cs` | 983 | Editor | "Implementa arte en todo": viste el BLOCKOUT (cubos grises) con los prefabs de arte de Ass… |
+| `Assets/_Project/Scripts/Editor/WorldArtPipeline.cs` | 915 | Editor | Pipeline del pack de arte nuevo (Assets/ARTS/SP_Arte/_FBX_Export): ~90 mallas modulares/am… |
+| `Assets/_Project/Scripts/Camera/CameraRig.cs` | 897 | Camera | Posee la cámara y delega su posición en el modo activo (FPS u RTS). |
+| `Assets/_Project/Scripts/Combat/Projectile.cs` | 835 | Combat | Viaja, comprueba su propio impacto por distancia (sin física) y se devuelve solo al pool. … |
+| `Assets/_Project/Scripts/Editor/ArtBuilder.cs` | 812 | Editor | Segunda mitad del pipeline de arte: con los FBX ya importados y materializados por ArtSetu… |
 
 ## Documentos de contexto que NO genera este indice
 

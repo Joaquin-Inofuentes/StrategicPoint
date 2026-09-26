@@ -5,10 +5,10 @@
 > restablezca es una fuga de estado entre corridas — y la causa de los falsos fallos mas dificiles de
 > encontrar.
 
-**185 estaticos mutables fuera de `Editor/`:
-19 cubiertos por `ReinicioDeEstaticos`,
-40 en archivos con hook propio (hay que mirar si el hook cubre ESE campo),
-y 126 sin nada.**
+**209 estaticos mutables fuera de `Editor/`:
+28 cubiertos por `ReinicioDeEstaticos`,
+43 en archivos con hook propio (hay que mirar si el hook cubre ESE campo),
+y 138 sin nada.**
 
 | Campo | Tipo | Donde | Quien lo restablece |
 |---|---|---|---|
@@ -16,23 +16,27 @@ y 126 sin nada.**
 | `matCivil` | `Material` | `SoldierLook.cs:53` | **nada** |
 | `Humanizada` | `bool` | `AiBrain.Disparo.cs:31` | **nada** |
 | `proximoAvisoRadio` | `float` | `AiBrain.Granadas.cs:25` | **nada** |
-| `ultimoAvisoDeteccion` | `float` | `AiBrain.Tactica.cs:87` | **nada** |
-| `ultimoAvisoDeSeguir` | `float` | `AiBrain.Tactica.cs:219` | **nada** |
-| `DistanciaParaSeguir` | `float` | `AjustesDeEscuadra.cs:31` | `ReinicioDeEstaticos` |
-| `DistanciaParaDetenerse` | `float` | `AjustesDeEscuadra.cs:32` | `ReinicioDeEstaticos` |
-| `SeguirDesdeCobertura` | `bool` | `AjustesDeEscuadra.cs:33` | `ReinicioDeEstaticos` |
-| `Lider` | `Soldier` | `AjustesDeEscuadra.cs:37` | `ReinicioDeEstaticos` |
-| `Correr` | `bool` | `AjustesDeEscuadra.cs:41` | `ReinicioDeEstaticos` |
+| `IAPausada` | `bool` | `AiBrain.Tactica.cs:83` | **nada** |
+| `ultimoAvisoDeteccion` | `float` | `AiBrain.Tactica.cs:94` | **nada** |
+| `ultimoAvisoDeSeguir` | `float` | `AiBrain.Tactica.cs:320` | **nada** |
+| `DistanciaParaSeguir` | `float` | `AjustesDeEscuadra.cs:33` | `ReinicioDeEstaticos` |
+| `DistanciaParaDetenerse` | `float` | `AjustesDeEscuadra.cs:34` | `ReinicioDeEstaticos` |
+| `SeguirDesdeCobertura` | `bool` | `AjustesDeEscuadra.cs:35` | `ReinicioDeEstaticos` |
+| `DistanciaLateralFormacion` | `float` | `AjustesDeEscuadra.cs:36` | `ReinicioDeEstaticos` |
+| `DistanciaAtrasFormacion` | `float` | `AjustesDeEscuadra.cs:37` | `ReinicioDeEstaticos` |
+| `Lider` | `Soldier` | `AjustesDeEscuadra.cs:41` | `ReinicioDeEstaticos` |
+| `Correr` | `bool` | `AjustesDeEscuadra.cs:45` | `ReinicioDeEstaticos` |
 | `LodPorDistancia` | `bool` | `WorldSimulationDriver.cs:54` | **nada** |
 | `tickNumero` | `int` | `WorldSimulationDriver.cs:56` | **nada** |
 | `cached` | `bool?` | `CameraFxSettings.cs:23` | **nada** |
 | `RegeneracionPermitida` | `bool` | `Health.cs:33` | `ReinicioDeEstaticos` |
 | `nextInstanceId` | `int` | `Projectile.cs:40` | `ReinicioDeEstaticos` |
+| `damageSub` | `System.IDisposable` | `TeamCombatState.cs:9` | `ReinicioDeEstaticos` |
 | `ReservasActivas` | `bool` | `WeaponHolder.cs:161` | `ReinicioDeEstaticos` |
 | `metralletaVehiculo` | `GameObject` | `WeaponModels.cs:127` | **nada** |
 | `metralletaVehiculoCargada` | `bool` | `WeaponModels.cs:128` | **nada** |
-| `All` | `IReadOnlyList<Soldier>` | `ActorRegistry.cs:42` | **nada** |
-| `proximoBarrido` | `float` | `ActorRegistry.cs:49` | **nada** |
+| `All` | `IReadOnlyList<Soldier>` | `ActorRegistry.cs:60` | **nada** |
+| `proximoBarrido` | `float` | `ActorRegistry.cs:67` | **nada** |
 | `guardada` | `Camera` | `CamaraPrincipal.cs:9` | **nada** |
 | `Puntos` | `IReadOnlyList<Vector3>` | `Coberturas.cs:34` | **nada** |
 | `Duenos` | `IReadOnlyList<Collider>` | `Coberturas.cs:35` | **nada** |
@@ -44,7 +48,8 @@ y 126 sin nada.**
 | `FuegoAmigoExplosivo` | `bool` | `Dificultad.cs:36` | hook propio *(revisar si cubre este campo)* |
 | `PerfilActual` | `Perfil` | `Dificultad.cs:69` | hook propio *(revisar si cubre este campo)* |
 | `FilePath` | `string` | `GameLog.cs:29` | **nada** |
-| `NombreDelIdioma` | `string` | `Loc.cs:99` | hook propio *(revisar si cubre este campo)* |
+| `subDano` | `IDisposable` | `InteligenciaDeEnemigos.cs:26` | hook propio *(revisar si cubre este campo)* |
+| `NombreDelIdioma` | `string` | `Loc.cs:99` | `ReinicioDeEstaticos` |
 | `rutaCaptura` | `string` | `MetricasDeBuild.cs:35` | hook propio *(revisar si cubre este campo)* |
 | `superCaptura` | `int` | `MetricasDeBuild.cs:37` | hook propio *(revisar si cubre este campo)* |
 | `dirty` | `bool` | `NavService.cs:52` | hook propio *(revisar si cubre este campo)* |
@@ -61,12 +66,12 @@ y 126 sin nada.**
 | `Vehicles` | `IReadOnlyList<Vehicle>` | `WorldSystemsRegistry.cs:30` | **nada** |
 | `Obstacles` | `IReadOnlyList<SP.Presentation.ObstacleMarker>` | `WorldSystemsRegistry.cs:31` | **nada** |
 | `populated` | `bool` | `WorldSystemsRegistry.cs:54` | **nada** |
-| `avisoDeCuenta` | `bool` | `EstadoDePartida.cs:28` | `ReinicioDeEstaticos` |
-| `outcomeSuelto` | `GameOutcomeController` | `EstadoDePartida.cs:30` | `ReinicioDeEstaticos` |
+| `avisoDeCuenta` | `bool` | `EstadoDePartida.cs:37` | `ReinicioDeEstaticos` |
+| `outcomeSuelto` | `GameOutcomeController` | `EstadoDePartida.cs:39` | `ReinicioDeEstaticos` |
 | `Activo` | `bool` | `MisionDirector.cs:32` | `ReinicioDeEstaticos` |
 | `Segundos` | `float` | `Demolicion.cs:17` | `ReinicioDeEstaticos` |
 | `Todos` | `IReadOnlyList<DemoledorAsalto>` | `Demolicion.cs:101` | `ReinicioDeEstaticos` |
-| `AllActions` | `IEnumerable<string>` | `KeyBindings.cs:164` | **nada** |
+| `AllActions` | `IEnumerable<string>` | `KeyBindings.cs:170` | **nada** |
 | `Pad` | `Gamepad` | `MandoFps.cs:16` | **nada** |
 | `Conectado` | `bool` | `MandoFps.cs:17` | **nada** |
 | `Mover` | `Vector2` | `MandoFps.cs:27` | **nada** |
@@ -86,16 +91,16 @@ y 126 sin nada.**
 | `Activo` | `bool` | `PedidoDeCuracion.cs:36` | `ReinicioDeEstaticos` |
 | `medicoPasivo` | `Soldier` | `PedidoDeCuracion.cs:41` | **nada** |
 | `ProgresoDeReanimar` | `float` | `PedidoDeCuracion.cs:42` | **nada** |
-| `restante` | `float` | `PedidoDeCuracion.cs:81` | **nada** |
-| `acumulado` | `float` | `PedidoDeCuracion.cs:83` | **nada** |
-| `atendiendo` | `bool` | `PedidoDeCuracion.cs:86` | **nada** |
-| `proximoNumero` | `float` | `PedidoDeCuracion.cs:87` | **nada** |
-| `BotiquinActivo` | `bool` | `PedidoDeCuracion.cs:142` | **nada** |
-| `proximoEscaneo` | `float` | `PedidoDeCuracion.cs:197` | **nada** |
-| `AtencionAutomatica` | `bool` | `PedidoDeCuracion.cs:200` | **nada** |
-| `ReanimarEnCalma` | `bool` | `PedidoDeCuracion.cs:205` | **nada** |
-| `reanimacionAutomatica` | `bool` | `PedidoDeCuracion.cs:208` | **nada** |
-| `ReanimacionEsAutomatica` | `bool` | `PedidoDeCuracion.cs:209` | **nada** |
+| `restante` | `float` | `PedidoDeCuracion.cs:83` | **nada** |
+| `acumulado` | `float` | `PedidoDeCuracion.cs:85` | **nada** |
+| `atendiendo` | `bool` | `PedidoDeCuracion.cs:88` | **nada** |
+| `proximoNumero` | `float` | `PedidoDeCuracion.cs:89` | **nada** |
+| `BotiquinActivo` | `bool` | `PedidoDeCuracion.cs:144` | **nada** |
+| `proximoEscaneo` | `float` | `PedidoDeCuracion.cs:199` | **nada** |
+| `AtencionAutomatica` | `bool` | `PedidoDeCuracion.cs:202` | **nada** |
+| `ReanimarEnCalma` | `bool` | `PedidoDeCuracion.cs:207` | **nada** |
+| `reanimacionAutomatica` | `bool` | `PedidoDeCuracion.cs:210` | **nada** |
+| `ReanimacionEsAutomatica` | `bool` | `PedidoDeCuracion.cs:211` | **nada** |
 | `Activo` | `bool` | `RescateAutomatico.cs:32` | `ReinicioDeEstaticos` |
 | `restante` | `float` | `RescateAutomatico.cs:33` | **nada** |
 | `canalizado` | `float` | `RescateAutomatico.cs:35` | **nada** |
@@ -104,9 +109,10 @@ y 126 sin nada.**
 | `Cantidad` | `int` | `TrazadoDeCamino.cs:37` | **nada** |
 | `HayTrazado` | `bool` | `TrazadoDeCamino.cs:38` | **nada** |
 | `instancia` | `AccionesEnCursoView` | `AccionesEnCursoView.cs:35` | hook propio *(revisar si cubre este campo)* |
-| `Instancia` | `AccionesEnCursoView` | `AccionesEnCursoView.cs:37` | hook propio *(revisar si cubre este campo)* |
+| `Instancia` | `AccionesEnCursoView` | `AccionesEnCursoView.cs:37` | `ReinicioDeEstaticos` |
 | `NombreActual` | `string` | `AnuncioDeZonas.cs:43` | `ReinicioDeEstaticos` |
-| `Now` | `float` | `AudioDirector.cs:372` | **nada** |
+| `masterGainCache` | `float?` | `AudioDirector.cs:75` | **nada** |
+| `Now` | `float` | `AudioDirector.cs:386` | **nada** |
 | `instance` | `AudioDucking` | `AudioDucking.cs:23` | **nada** |
 | `active` | `Coroutine` | `AudioDucking.cs:25` | **nada** |
 | `UserVolumeCeiling` | `float` | `AudioDucking.cs:27` | **nada** |
@@ -115,11 +121,18 @@ y 126 sin nada.**
 | `Visible` | `bool` | `CoverHologram.cs:21` | **nada** |
 | `PuntoActual` | `Vector3` | `CoverHologram.cs:22` | **nada** |
 | `ModeloActual` | `Soldier` | `CoverHologram.cs:23` | **nada** |
-| `tintBlock` | `MaterialPropertyBlock` | `CubeFxReactor.cs:224` | **nada** |
+| `tintBlock` | `MaterialPropertyBlock` | `CubeFxReactor.cs:243` | `ReinicioDeEstaticos` |
 | `root` | `Transform` | `DebrisPool.cs:20` | **nada** |
 | `ActiveCount` | `int` | `DebrisPool.cs:22` | **nada** |
 | `TotalCount` | `int` | `DebrisPool.cs:23` | **nada** |
 | `root` | `Transform` | `DecalPool.cs:20` | **nada** |
+| `caraCompartida` | `Mesh` | `DiamondGizmo.cs:29` | **nada** |
+| `shaderUnlit` | `Shader` | `DiamondGizmo.cs:100` | **nada** |
+| `texturaEngranaje` | `Texture2D` | `DiamondGizmo.cs:146` | **nada** |
+| `sys` | `ParticleSystem` | `DustEmitter.cs:8` | `ReinicioDeEstaticos` |
+| `root` | `Transform` | `DustEmitter.cs:9` | **nada** |
+| `mainCam` | `Camera` | `DustEmitter.cs:10` | **nada** |
+| `ParticleCount` | `int` | `DustEmitter.cs:43` | **nada** |
 | `sharedMaterial` | `Material` | `EntityStateDebugView.cs:36` | hook propio *(revisar si cubre este campo)* |
 | `propertyBlock` | `MaterialPropertyBlock` | `EntityStateDebugView.cs:38` | hook propio *(revisar si cubre este campo)* |
 | `SharedMaterial` | `Material` | `EntityStateDebugView.cs:41` | hook propio *(revisar si cubre este campo)* |
@@ -137,30 +150,38 @@ y 126 sin nada.**
 | `sharedMaterial` | `Material` | `ImpactFx.cs:58` | **nada** |
 | `propertyBlock` | `MaterialPropertyBlock` | `ImpactFx.cs:73` | **nada** |
 | `shaderWarmed` | `bool` | `ImpactFx.cs:189` | **nada** |
+| `instancia` | `InteractGearMarker` | `InteractGearMarker.cs:19` | hook propio *(revisar si cubre este campo)* |
 | `Budget` | `int` | `KillCylinderFx.cs:23` | **nada** |
 | `root` | `Transform` | `KillCylinderFx.cs:30` | **nada** |
 | `sharedMaterial` | `Material` | `KillCylinderFx.cs:31` | **nada** |
 | `propertyBlock` | `MaterialPropertyBlock` | `KillCylinderFx.cs:78` | **nada** |
 | `enganchado` | `bool` | `LimpiezaDeEscena.cs:27` | hook propio *(revisar si cubre este campo)* |
 | `actual` | `MenuAmbiente` | `MenuAmbiente.cs:16` | hook propio *(revisar si cubre este campo)* |
-| `mallaTriangulo` | `Mesh` | `MinimapIcon.cs:143` | **nada** |
-| `mallaCuadrado` | `Mesh` | `MinimapIcon.cs:201` | **nada** |
+| `mallaTriangulo` | `Mesh` | `MinimapIcon.cs:253` | **nada** |
+| `mallaCirculo` | `Mesh` | `MinimapIcon.cs:314` | **nada** |
+| `mallaRombo` | `Mesh` | `MinimapIcon.cs:357` | **nada** |
+| `mallaCuadrado` | `Mesh` | `MinimapIcon.cs:396` | **nada** |
 | `estrategiaSource` | `AudioSource` | `MusicDirector.cs:57` | hook propio *(revisar si cubre este campo)* |
 | `luchaSource` | `AudioSource` | `MusicDirector.cs:59` | hook propio *(revisar si cubre este campo)* |
 | `fuentesListas` | `bool` | `MusicDirector.cs:60` | hook propio *(revisar si cubre este campo)* |
 | `root` | `Transform` | `MuzzleLightPool.cs:19` | **nada** |
 | `TotalCount` | `int` | `MuzzleLightPool.cs:21` | **nada** |
-| `Budget` | `int` | `OrderMarkerFx.cs:38` | **nada** |
-| `root` | `Transform` | `OrderMarkerFx.cs:58` | **nada** |
-| `sharedMaterial` | `Material` | `OrderMarkerFx.cs:226` | **nada** |
-| `propertyBlock` | `MaterialPropertyBlock` | `OrderMarkerFx.cs:241` | **nada** |
-| `shaderWarmed` | `bool` | `OrderMarkerFx.cs:398` | **nada** |
+| `Budget` | `int` | `OrderMarkerFx.cs:41` | **nada** |
+| `root` | `Transform` | `OrderMarkerFx.cs:61` | **nada** |
+| `sharedMaterial` | `Material` | `OrderMarkerFx.cs:265` | **nada** |
+| `propertyBlock` | `MaterialPropertyBlock` | `OrderMarkerFx.cs:280` | **nada** |
+| `shaderWarmed` | `bool` | `OrderMarkerFx.cs:437` | **nada** |
+| `shaderCache` | `Shader` | `ParticleMaterialFactory.cs:23` | **nada** |
 | `template` | `Material` | `SafeMaterial.cs:19` | **nada** |
 | `sharedMaterial` | `Material` | `SelectionRingFx.cs:30` | **nada** |
 | `propertyBlock` | `MaterialPropertyBlock` | `SelectionRingFx.cs:32` | **nada** |
+| `matCirculo` | `Material` | `ShapeMarkerFx.cs:8` | **nada** |
+| `meshFlecha` | `Mesh` | `ShapeMarkerFx.cs:9` | **nada** |
+| `root` | `Transform` | `SparkleBurstFx.cs:20` | **nada** |
 | `root` | `Transform` | `SpriteFx.cs:34` | hook propio *(revisar si cubre este campo)* |
 | `apuntado` | `Soldier` | `SquadStateIndicatorView.cs:49` | **nada** |
 | `apuntadoHasta` | `float` | `SquadStateIndicatorView.cs:50` | **nada** |
+| `materialBordeCompartido` | `Material` | `UnitLocatorCylinder.cs:67` | `ReinicioDeEstaticos` |
 | `RegisteredCount` | `int` | `WorldUiDirector.cs:65` | hook propio *(revisar si cubre este campo)* |
 | `active` | `WorldUiDirector` | `WorldUiDirector.cs:101` | hook propio *(revisar si cubre este campo)* |
 | `populated` | `bool` | `WorldUiDirector.cs:316` | hook propio *(revisar si cubre este campo)* |
@@ -172,7 +193,7 @@ y 126 sin nada.**
 | `RutaArchivo` | `string` | `TutorialLog.cs:19` | **nada** |
 | `PasoGuardado` | `int` | `TutorialManager.cs:1794` | `ReinicioDeEstaticos` |
 | `anilloCache` | `Sprite` | `AimUI.cs:99` | **nada** |
-| `PantallaCompleta` | `bool` | `AjustesDeJuego.cs:68` | hook propio *(revisar si cubre este campo)* |
+| `PantallaCompleta` | `bool` | `AjustesDeJuego.cs:67` | hook propio *(revisar si cubre este campo)* |
 | `count` | `int` | `AlertQueue.cs:60` | hook propio *(revisar si cubre este campo)* |
 | `currentPriority` | `AlertPriority` | `AlertQueue.cs:65` | hook propio *(revisar si cubre este campo)* |
 | `currentUntil` | `float` | `AlertQueue.cs:66` | hook propio *(revisar si cubre este campo)* |
@@ -180,22 +201,25 @@ y 126 sin nada.**
 | `IsBusy` | `bool` | `AlertQueue.cs:69` | hook propio *(revisar si cubre este campo)* |
 | `CurrentPriority` | `AlertPriority` | `AlertQueue.cs:70` | hook propio *(revisar si cubre este campo)* |
 | `instancia` | `AliadosSinEstorbo` | `AliadosSinEstorbo.cs:16` | **nada** |
-| `Instancia` | `AliadosSinEstorbo` | `AliadosSinEstorbo.cs:22` | **nada** |
+| `Instancia` | `AliadosSinEstorbo` | `AliadosSinEstorbo.cs:22` | `ReinicioDeEstaticos` |
 | `discoCache` | `Sprite` | `CirculoDeProgreso.cs:26` | **nada** |
 | `cachedWedgeTexture` | `Texture2D` | `DamageDirectionView.cs:19` | **nada** |
-| `cachedTexture` | `Texture2D` | `DamageVignetteView.cs:20` | **nada** |
+| `cachedTexture` | `Texture2D` | `DamageVignetteView.cs:21` | **nada** |
 | `instancia` | `HudPulido` | `HudPulido.cs:13` | hook propio *(revisar si cubre este campo)* |
 | `cachedTexture` | `Texture2D` | `LowHealthPulseView.cs:50` | **nada** |
 | `cachedSprite` | `Sprite` | `LowHealthPulseView.cs:52` | **nada** |
-| `PistaCategoria` | `int` | `MenuDeOrdenes.cs:151` | `ReinicioDeEstaticos` |
+| `PistaCategoria` | `int` | `MenuDeOrdenes.cs:160` | `ReinicioDeEstaticos` |
 | `sharedSprite` | `Sprite` | `MilitaryButtonSkin.cs:24` | **nada** |
 | `sprites` | `Sprite[]` | `MirillaView.cs:27` | **nada** |
 | `mascara` | `Sprite` | `MirillaView.cs:29` | **nada** |
 | `mascaraPeriscopio` | `Sprite` | `MirillaView.cs:204` | **nada** |
 | `cuatro` | `Vector2[]` | `MirillaView.cs:339` | **nada** |
+| `raiz` | `GameObject` | `RespawnPromptView.cs:17` | hook propio *(revisar si cubre este campo)* |
+| `caja` | `RectTransform` | `RespawnPromptView.cs:18` | hook propio *(revisar si cubre este campo)* |
+| `pulso` | `float` | `RespawnPromptView.cs:19` | hook propio *(revisar si cubre este campo)* |
 | `cache` | `Sprite` | `SpriteBlanco.cs:26` | **nada** |
 | `cache` | `Sprite` | `SpriteDeTriangulo.cs:10` | **nada** |
-| `Todas` | `IReadOnlyList<TorretaFija>` | `TorretaFija.cs:30` | hook propio *(revisar si cubre este campo)* |
+| `Todas` | `IReadOnlyList<TorretaFija>` | `TorretaFija.cs:31` | hook propio *(revisar si cubre este campo)* |
 | `cachedLoopClip` | `AudioClip` | `VehicleAudioFeedback.cs:15` | **nada** |
 
 ## Las dos formas validas de restablecer
