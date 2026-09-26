@@ -795,13 +795,19 @@ namespace SP.Player
                 return;
             }
 
-            // [F1]/[F2]/[F3]: posee directamente al soldado 1/2/3 del
-            // escuadrón, sin tener que apuntarle primero.
-            if (AtajosDeTecladoHeredados)
+            // [F1]/[F2]/[F3]: poseen en FPS o seleccionan en RTS (funciona en vehículos también).
+            if (Rig.Mode == ControlMode.Fps)
             {
-                if (kb.f1Key.wasPressedThisFrame) PossessSquadIndex(0);
-                if (kb.f2Key.wasPressedThisFrame) PossessSquadIndex(1);
-                if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
+                if (AtajosDeTecladoHeredados)
+                {
+                    if (kb.f1Key.wasPressedThisFrame) PossessSquadIndex(0);
+                    if (kb.f2Key.wasPressedThisFrame) PossessSquadIndex(1);
+                    if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
+                }
+            }
+            else
+            {
+                SeleccionarConFuncion(kb);
             }
             // [Q] cicla entre vivos y [C] posee al mas cercano: ambas caen
             // bajo la mano izquierda sin soltar WASD, a diferencia de F1/F2/F3.
@@ -2890,13 +2896,43 @@ namespace SP.Player
             {
                 bool shiftHeld = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
                 float velocidad = rtsPanSpeed * (shiftHeld ? RtsPanShiftMultiplier : 1f);
-                Rig.Pan(pan.normalized * velocidad * Time.deltaTime);
+                Rig.Pan(Quaternion.Euler(0f, Rig.rtsYaw, 0f) * pan.normalized * velocidad * Time.deltaTime);
             }
 
+            if (KeyBindings.WasPressed(KeyBindings.FocalizarRts))
+            {
+                Vector3 focusPos = Vector3.zero;
+                bool doFocus = false;
+                if (Selection.SelectedVehicle != null)
+                {
+                    focusPos = Selection.SelectedVehicle.transform.position;
+                    doFocus = true;
+                }
+                else if (Selection.Selected.Count > 0)
+                {
+                    focusPos = Selection.Selected[0].transform.position;
+                    doFocus = true;
+                }
+                else if (Poseido != null)
+                {
+                    focusPos = Poseido.transform.position;
+                    doFocus = true;
+                }
+
+                if (doFocus) Rig.RecenterOn(focusPos);
+            }
+
+            bool orbitando = false;
             if (mouse != null)
             {
+                if (KeyBindings.IsPressed(KeyBindings.RotarCamaraRts))
+                {
+                    orbitando = true;
+                    Rig.rtsYaw += mouse.delta.ReadValue().x * rtsLookSens * 0.5f * Time.deltaTime;
+                }
+
                 float scroll = mouse.scroll.ReadValue().y;
-                if (Mathf.Abs(scroll) > 0.01f) Rig.ZoomHaciaCursor(scroll * rtsZoomSpeed * Time.deltaTime, mouse.position.ReadValue());
+                if (Mathf.Abs(scroll) > 0.01f) Rig.ZoomHaciaCursor(scroll * rtsZoomSpeed * 3f * Time.deltaTime, mouse.position.ReadValue());
             }
 
             string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
@@ -3184,7 +3220,6 @@ namespace SP.Player
             }
 
             UpdateControlGroups(kb);
-            SeleccionarConFuncion(kb);
             UpdateFormationPreview(mouse, screenRay);
 
             // [Espacio] recentra la camara en el centroide de la escuadra

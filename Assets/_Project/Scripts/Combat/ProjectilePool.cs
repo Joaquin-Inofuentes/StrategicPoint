@@ -98,7 +98,7 @@ namespace SP.Combat
             return recommended < MinimumPrewarm ? MinimumPrewarm : recommended;
         }
 
-        public Projectile Spawn(Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int damage, Color? color = null, float explosionRadius = 0f, float gravity = 0f, SP.Vehicles.Vehicle sourceVehicle = null, float speedMultiplier = 1f)
+        public Projectile Spawn(Vector3 position, Vector3 direction, int shooterId, TeamId shooterTeam, int damage, Color? color = null, float explosionRadius = 0f, float gravity = 0f, SP.Vehicles.Vehicle sourceVehicle = null, float speedMultiplier = 1f, float multiplicadorVsVehiculo = 1f)
         {
             if (pool == null) Bootstrap();
             if (pool == null) return null; // Bootstrap() ya logueo el motivo (prefab sin asignar)
@@ -109,7 +109,7 @@ namespace SP.Combat
             if (pool.FreeCount == 0) ExhaustedCount++;
             var p = pool.Get();
             p.PoolGeneration = generation;
-            p.Configure(this, position, direction, shooterId, shooterTeam, damage, color, explosionRadius, gravity, sourceVehicle, speedMultiplier);
+            p.Configure(this, position, direction, shooterId, shooterTeam, damage, color, explosionRadius, gravity, sourceVehicle, speedMultiplier, multiplicadorVsVehiculo);
             return p;
         }
 

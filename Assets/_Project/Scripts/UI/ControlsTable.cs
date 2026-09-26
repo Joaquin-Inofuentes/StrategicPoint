@@ -150,7 +150,9 @@ namespace SP.UI
             new ControlEntry("Ctrl+A", "seleccionar a toda la escuadra viva", ControlContext.Rts),
             new ControlEntry("X", "cancelar la orden de la selección y volver a patrullar", ControlContext.Rts),
             new ControlEntry("Espacio", "recentrar la cámara en la escuadra", ControlContext.Rts, SP.Player.KeyBindings.Recentrar),
+            new ControlEntry("F", "focalizar en el seleccionado o poseído", ControlContext.Rts, SP.Player.KeyBindings.FocalizarRts),
             new ControlEntry("Rueda", "acercar y alejar la cámara hacia donde está el cursor", VistasRts),
+            new ControlEntry("`", "mantener: rotar la cámara con el mouse", VistasRts, SP.Player.KeyBindings.RotarCamaraRts),
 
             new ControlEntry("1 / 2 / 3", "seleccionar al soldado 1, 2 o 3 de la escuadra (también F1 / F2 / F3; Shift suma; doble toque lleva la cámara)", ControlContext.Rts),
             new ControlEntry("Ctrl+4..9", "guardar la selección como grupo de control", ControlContext.Rts),

@@ -153,6 +153,7 @@ namespace SP.EditorTools
         static void CrearFarol(Transform padre, Vector3 puntoDelCamino)
         {
             var go = new GameObject("Farol");
+            go.layer = LayerMask.NameToLayer("Obstacle");
             go.transform.SetParent(padre, false);
             go.transform.position = new Vector3(puntoDelCamino.x, puntoDelCamino.y + AlturaLuces, puntoDelCamino.z);
 
@@ -162,6 +163,11 @@ namespace SP.EditorTools
             luz.intensity = 3.5f;
             luz.range = 14f;
             luz.shadows = LightShadows.None; // un farol por luz dinamica con sombras cada 18 m es caro y no se nota a esa escala
+
+            var col = go.AddComponent<BoxCollider>();
+            col.size = new Vector3(0.5f, 0.5f, 0.5f);
+
+            var luminaria = go.AddComponent<SP.Presentation.Luminaria>();
         }
 
         // Pedido explicito: "quita las vallas" -- las barandas de madera que

@@ -96,6 +96,14 @@ namespace SP.UI
         void OnDisable() { if (Activo == this) Activo = null; }
         void OnEnable()
         {
+            var rt = transform as RectTransform;
+            if (rt != null)
+            {
+                rt.anchorMin = new Vector2(0f, 0f);
+                rt.anchorMax = new Vector2(0f, 0f);
+                rt.pivot = new Vector2(0f, 0f);
+            }
+
             RegistrarActivo();
             if (label == null) label = GetComponentInChildren<Text>(true);
             // BUG REAL encontrado esta ronda: esto antes solo hacia
@@ -151,7 +159,7 @@ namespace SP.UI
                 // Ahora son dos: balas listas para disparar (el cargador) y
                 // el total que le queda al arma contando la reserva.
                 string texto = weapon.CurrentAmmo.ToString();
-                if (weapon.UsaReservas) texto += $"/{weapon.CurrentAmmo + weapon.ReservaActual}";
+                if (weapon.UsaReservas) texto += $" / {weapon.ReservaActual}";
                 label.text = texto;
 
                 // El contador quedaba blanco fijo hasta llegar a cero, sin

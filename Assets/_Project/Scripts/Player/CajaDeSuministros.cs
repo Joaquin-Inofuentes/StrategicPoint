@@ -69,6 +69,9 @@ namespace SP.Player
             {
                 var resaltado = PisoInteractableHighlight.Agregar(raiz.transform, 1.3f, -0.45f);
                 resaltado.CondicionExtra = () => caja.Disponible;
+
+                var rombo = InteractableDiamond.Agregar(raiz.transform, Vector3.up * 1.5f, DiamondGizmo.ColorBotiquin);
+                rombo.Condicion = () => caja.Disponible;
             }
             return caja;
         }

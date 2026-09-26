@@ -16,6 +16,7 @@ namespace SP.Core
             SP.Combat.Health.RegeneracionPermitida = true;
             SP.Player.Demolicion.Segundos = SP.Player.Demolicion.SegundosNormales;
             SP.Combat.WeaponHolder.ReservasActivas = false;
+            SP.Combat.TeamCombatState.Init();
             SP.Mision.EstadoDePartida.Reiniciar();
             SP.Player.AccionesEnCurso.Limpiar();
             SP.Player.PlayerInputDriver.ReiniciarActivo();
@@ -27,6 +28,8 @@ namespace SP.Core
             SP.Ai.AjustesDeEscuadra.ReiniciarActivo();
             SP.UI.RosterView.ReiniciarActivo();
             SP.UI.MinimapFollow.ReiniciarActivo();
+            SP.Presentation.MinimapAttackerRings.ReiniciarActivo();
+            SP.Presentation.UnitLocatorCylinder.ReiniciarActivo();
             SP.UI.WeaponStatusView.ReiniciarActivo();
             SP.UI.ModoDiosView.ReiniciarActivo();
             SP.UI.MenuDeOrdenes.ReiniciarActivo();

@@ -29,8 +29,18 @@ namespace SP.UI
 
         void OnEnable()
         {
+            var rt = transform as RectTransform;
+            if (rt != null)
+            {
+                rt.anchorMin = new Vector2(0f, 0f);
+                rt.anchorMax = new Vector2(0f, 0f);
+                rt.pivot = new Vector2(0f, 0f);
+            }
+
             if (label == null) label = transform.Find("Text")?.GetComponent<Text>();
             if (fill == null) fill = transform.Find("BarBG/BarFill")?.GetComponent<Image>();
+            
+            if (label != null) label.gameObject.SetActive(false);
         }
 
         // Verde bien saturado y mas claro que HighColor: tiene que leerse
@@ -49,10 +59,7 @@ namespace SP.UI
             // ademas cambia de a poco, un punto entero por vez) no se nota
             // en medio de un tiroteo. La flecha y el "+" en el texto se ven
             // sin tener que hacer cuentas con el numero de antes.
-            if (label != null)
-                label.text = health.IsRegenerating
-                    ? $"VIDA   {health.Current}/{health.MaxHealth}  ▲+"
-                    : $"VIDA   {health.Current}/{health.MaxHealth}";
+            // (Desactivado en T-10: solo barra)
 
             if (fill == null) return;
             fill.fillAmount = frac;

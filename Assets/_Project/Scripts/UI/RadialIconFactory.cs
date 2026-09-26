@@ -14,8 +14,10 @@ namespace SP.UI
     {
         const int Size = 64;
 
-        static Texture2D irAlli, cubrirse, atacar, posicion, curar, tanque, poseer, demoler, torreta;
-        static Sprite spriteIrAlli, spriteCubrirse, spriteAtacar, spritePosicion, spriteCurar, spriteTanque, spritePoseer, spriteDemoler, spriteTorreta;
+        static Texture2D irAlli, cubrirse, atacar, posicion, curar, tanque, poseer, demoler, torreta, calavera;
+        static Sprite spriteIrAlli, spriteCubrirse, spriteAtacar, spritePosicion, spriteCurar, spriteTanque, spritePoseer, spriteDemoler, spriteTorreta, spriteCalavera;
+
+        public static Sprite Calavera() => spriteCalavera ??= AsSprite(calavera ??= BuildCalavera());
 
         // Mismo orden que MenuDeOrdenes.Porciones / los ids IrAlli..Torreta.
         public static Sprite ForCategoria(int categoria) => categoria switch
@@ -197,6 +199,31 @@ namespace SP.UI
                 bool cuerpo = (nx * nx) / (0.5f * 0.5f) + (ny * ny) / (0.42f * 0.42f) <= 1f && ny >= -0.4f;
                 bool cañon = nx >= 0f && nx <= 0.85f && Mathf.Abs(ny - 0.08f) <= 0.09f;
                 return base_ || cuerpo || cañon;
+            });
+            return tex;
+        }
+
+        static Texture2D BuildCalavera()
+        {
+            var tex = NuevaTextura();
+            Rellenar(tex, (nx, ny) =>
+            {
+                float r = nx * nx + (ny - 0.2f) * (ny - 0.2f);
+                bool cabeza = r <= 0.6f * 0.6f;
+                bool mandibula = Mathf.Abs(nx) <= 0.35f && ny >= -0.6f && ny <= 0.2f;
+                if (!(cabeza || mandibula)) return false;
+
+                float ojoI = (nx + 0.25f) * (nx + 0.25f) + (ny - 0.1f) * (ny - 0.1f);
+                float ojoD = (nx - 0.25f) * (nx - 0.25f) + (ny - 0.1f) * (ny - 0.1f);
+                if (ojoI <= 0.18f * 0.18f || ojoD <= 0.18f * 0.18f) return false;
+
+                bool nariz = EnTriangulo(nx, ny, 0f, -0.1f, -0.1f, -0.28f, 0.1f, -0.28f);
+                if (nariz) return false;
+
+                bool dientes = ny >= -0.6f && ny <= -0.3f && (Mathf.Abs(Mathf.Repeat(nx + 0.05f, 0.2f) - 0.1f) < 0.04f);
+                if (dientes) return false;
+
+                return true;
             });
             return tex;
         }

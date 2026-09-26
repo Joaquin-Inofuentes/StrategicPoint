@@ -7,7 +7,7 @@ using SP.Presentation;
 
 namespace SP.Player
 {
-    public enum AimTargetType { None, Ally, Enemy, Vehicle, Ground, Obstacle, Torreta, Caido }
+    public enum AimTargetType { None, Ally, Enemy, Vehicle, Ground, Obstacle, Torreta, Caido, Recoger, Interactuar, Cubrirse }
 
     public struct AimResult
     {
@@ -39,7 +39,7 @@ namespace SP.Player
         {
             Physics.SyncTransforms();
 
-            bool golpeo = Physics.Raycast(ray, out var hit, maxDistance);
+            bool golpeo = Physics.Raycast(ray, out var hit, maxDistance, ~0, QueryTriggerInteraction.Collide);
 
             // Los aliados CAIDOS no tienen collider (se apaga al morir): se los apunta por cercania al rayo.
             var caido = CaidoBajoRayo(ray, excludeSelf, golpeo ? hit.distance : maxDistance, out var puntoCaido);
@@ -48,6 +48,17 @@ namespace SP.Player
 
             if (golpeo)
             {
+                var interactable = hit.collider.GetComponentInParent<SP.Interaction.IInteractable>();
+                if (interactable != null && interactable.CanInteract(PlayerInputDriver.Activo))
+                    return new AimResult { Type = AimTargetType.Interactuar, Point = hit.point, HitTransform = (interactable as MonoBehaviour)?.transform };
+
+                var wp = hit.collider.GetComponentInParent<WeaponPickup>();
+                if (wp != null) return new AimResult { Type = AimTargetType.Recoger, Point = hit.point, HitTransform = wp.transform };
+                var mp = hit.collider.GetComponentInParent<MunicionPickup>();
+                if (mp != null) return new AimResult { Type = AimTargetType.Recoger, Point = hit.point, HitTransform = mp.transform };
+                var cs = hit.collider.GetComponentInParent<CajaDeSuministros>();
+                if (cs != null && cs.Disponible) return new AimResult { Type = AimTargetType.Recoger, Point = hit.point, HitTransform = cs.transform };
+
                 var soldier = hit.collider.GetComponentInParent<Soldier>();
                 if (soldier != null && soldier != excludeSelf && soldier.Health.IsAlive)
                 {
@@ -77,7 +88,11 @@ namespace SP.Player
 
                 var obstaculo = hit.collider.GetComponentInParent<ObstacleMarker>();
                 if (obstaculo != null)
+                {
+                    if (Coberturas.TryPuntoApuntado(hit.point, obstaculo.transform, 1.5f, out var puntoCob, out _))
+                        return new AimResult { Type = AimTargetType.Cubrirse, Point = puntoCob, HitTransform = obstaculo.transform };
                     return new AimResult { Type = AimTargetType.Obstacle, Point = hit.point, HitTransform = obstaculo.transform };
+                }
 
                 if (hit.collider.gameObject.name.StartsWith("Ground"))
                     return new AimResult { Type = AimTargetType.Ground, Point = hit.point };
@@ -95,7 +110,11 @@ namespace SP.Player
                 // punto de impacto: si no, el destino quedaria a un metro
                 // de altura arriba de la barricada.
                 if (TryPuntoEnElPiso(ray, out var puntoPiso))
+                {
+                    if (Coberturas.TryPuntoApuntado(puntoPiso, null, 1.5f, out var puntoCob, out var duenoCob))
+                        return new AimResult { Type = AimTargetType.Cubrirse, Point = puntoCob, HitTransform = duenoCob != null ? duenoCob.transform : null };
                     return new AimResult { Type = AimTargetType.Ground, Point = puntoPiso };
+                }
 
                 return new AimResult { Type = AimTargetType.None };
             }

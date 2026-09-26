@@ -28,7 +28,7 @@ namespace SP.Combat
         // WeaponHolder (cooldownTimer, reloadTimer) usan este patron para
         // poder simularse a mano en la suite headless (SimStep/SimulateSeconds),
         // que corre en Edit mode con Time.time congelado.
-        const float SegundosSinDanoParaRegenerar = 3f;
+        public const float SegundosSinDanoParaRegenerar = 9f;
         // El tutorial de CURAR la apaga: si el herido se regenera solo, el medico no tiene nada que hacer.
         public static bool RegeneracionPermitida = true;
         const float VidaPorSegundoRegenerando = 12f;

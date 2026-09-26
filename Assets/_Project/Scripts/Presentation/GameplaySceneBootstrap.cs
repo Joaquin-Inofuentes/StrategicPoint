@@ -93,6 +93,9 @@ namespace SP.Presentation
             int obstaculosEnMinimapa = MinimapIcon.RegistrarObstaculos(MinimapIcon.ObstacleMinimapColor);
             if (obstaculosEnMinimapa > 0) GameLog.Line($"Se agregaron {obstaculosEnMinimapa} obstaculos al minimapa");
 
+            int vehiculosLibres = MinimapIcon.RegistrarVehiculosLibres();
+            if (vehiculosLibres > 0) GameLog.Line($"Se agregaron {vehiculosLibres} vehiculos libres al minimapa");
+
             // El minimapa siempre arranca en MINI (MinimapFollow.tamanoMini),
             // desde el primer frame.
             var minimapFollow = SP.UI.MinimapFollow.Activo;

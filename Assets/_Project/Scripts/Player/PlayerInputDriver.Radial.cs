@@ -47,6 +47,16 @@ namespace SP.Player
         // rama del toque corto no tenia forma de probarse.
         public void ResolverGestoDeQ(bool toque, bool sostenido, bool sigueApretada)
         {
+            if (Rig != null && Rig.Mode == ControlMode.Rts)
+            {
+                if (OrdenesMenu != null && OrdenesMenu.Abierto)
+                {
+                    OrdenesMenu.Cerrar();
+                    aimCongelado = null;
+                }
+                return;
+            }
+
             if (OrdenesMenu == null)
             {
                 // Antes: si no habia interactuable, el toque de Q ciclaba de aliado como
@@ -125,7 +135,8 @@ namespace SP.Player
         void AbrirRadial()
         {
             string Clase(int i) => Squad != null && i < Squad.Count && Squad[i] != null ? Squad[i].ClassNameTitulo : null;
-            OrdenesMenu.PonerSoldados(Clase(0), Clase(1), Clase(2));
+            bool Muerto(int i) => Squad != null && i < Squad.Count && Squad[i] != null && Squad[i].Health != null && !Squad[i].Health.IsAlive;
+            OrdenesMenu.PonerSoldados(Clase(0), Clase(1), Clase(2), Muerto(0), Muerto(1), Muerto(2));
             aimCongelado = ultimoResultadoDeMira;
             OrdenesMenu.Abrir(ConstruirContextoRadial(aimCongelado.Value));
         }

@@ -305,6 +305,7 @@ namespace SP.Core
             { "Muy bien. Sigamos...", "Well done. Let us go on..." },
             { "PISTA: ", "HINT: " },
             { "[F8] SALTAR PASO", "[F8] SKIP STEP" },
+            { "[ESPACIO / CLIC] SIGUIENTE", "[SPACE / CLICK] NEXT" },
             { "Paso completo", "Step complete" },
             { "justo ENFRENTE ^", "right AHEAD ^" },
             { "a tu ESPALDA (gira) vv", "BEHIND you (turn) vv" },
@@ -318,6 +319,7 @@ namespace SP.Core
             { "¡CIVIL RESCATADO! LLEVALO AL HELICOPTERO (PUNTO DE ORIGEN)", "CIVILIAN RESCUED! TAKE HIM TO THE HELICOPTER (STARTING POINT)" },
             { "EL CIVIL SE QUEDO ATRAS: VOLVE POR EL", "THE CIVILIAN WAS LEFT BEHIND: GO BACK FOR HIM" },
             { "PERDISTE AL CIVIL", "YOU LOST THE CIVILIAN" },
+            { "TODA LA ESCUADRA CAYO", "THE ENTIRE SQUAD FELL" },
             { "OBJETIVO 1/4 · INFILTRAR", "OBJECTIVE 1/4 · INFILTRATE" },
             { "OBJETIVO 2/4 · RESISTIR EN EL CENTRO", "OBJECTIVE 2/4 · HOLD THE CENTER" },
             { "VOLVE AL CENTRO: el temporizador esta detenido", "Go back to the center: the timer is stopped" },
@@ -329,7 +331,9 @@ namespace SP.Core
             { "MISION CUMPLIDA", "MISSION ACCOMPLISHED" },
             { "1 · helipuerto", "1 · helipad" },
             { "2 · despegue", "2 · takeoff" },
-            { "3 · la horda", "3 · the horde" }
+            { "3 · la horda", "3 · the horde" },
+            { "MUERTO", "DEAD" },
+            { "VUELVE AL OBJETIVO", "RETURN TO OBJECTIVE" }
         };
     }
 }

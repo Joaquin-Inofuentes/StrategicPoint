@@ -62,6 +62,8 @@ namespace SP.Ai
 
         public static void Step(float dt)
         {
+            SP.Combat.TeamCombatState.Tick(dt);
+
             // Reparte a los soldados vivos en celdas ANTES de que nadie
             // pregunte "hay un enemigo cerca" este tick -- una sola vez
             // por Update, no una vez por soldado que sensa.

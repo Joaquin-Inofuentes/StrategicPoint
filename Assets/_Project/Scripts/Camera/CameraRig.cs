@@ -50,8 +50,9 @@ namespace SP.CameraSystem
         // pero el terreno y los soldados muestran volumen de verdad).
         [SerializeField, Range(0f, 60f)]
         public float rtsInclinacionAdelante = 20f;
+        public float rtsYaw = 0f;
 
-        Vector3 RtsLookEuler => new Vector3(90f - rtsInclinacionAdelante, 0f, 0f);
+        Vector3 RtsLookEuler => new Vector3(90f - rtsInclinacionAdelante, rtsYaw, 0f);
 
         // Punto del SUELO que la camara de RTS esta mirando. En ortografico
         // alcanzaba con la posicion XZ de la camara (miraba derecho hacia
@@ -367,6 +368,7 @@ namespace SP.CameraSystem
         // observacion de otra zona del mapa.
         Vector3? savedRtsFocus;
         float savedRtsHeight = -1f;
+        float savedRtsYaw = 0f;
 
         public void SetMode(ControlMode mode, Vector3? rtsFallbackCenter = null)
         {
@@ -381,6 +383,7 @@ namespace SP.CameraSystem
             {
                 savedRtsFocus = rtsFocusPoint;
                 savedRtsHeight = rtsCurrentHeight;
+                savedRtsYaw = rtsYaw;
             }
 
             Mode = mode;
@@ -422,6 +425,7 @@ namespace SP.CameraSystem
                 rtsFocusPoint = savedRtsFocus.Value;
                 rtsCurrentHeight = savedRtsHeight;
                 rtsTargetHeight = savedRtsHeight;
+                rtsYaw = savedRtsYaw;
                 transform.rotation = Quaternion.Euler(RtsLookEuler);
                 transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
                 // El objetivo de paneo suavizado debe re-sincronizarse con

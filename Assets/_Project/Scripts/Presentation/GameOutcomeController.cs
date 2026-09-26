@@ -86,7 +86,24 @@ namespace SP.Presentation
             if (defeatReason == null && defeatPanel != null)
             {
                 var t = defeatPanel.transform.Find("Reason");
-                if (t != null) defeatReason = t.GetComponent<Text>();
+                if (t == null)
+                {
+                    var go = new GameObject("Reason");
+                    t = go.transform;
+                    t.SetParent(defeatPanel.transform, false);
+                    defeatReason = go.AddComponent<Text>();
+                    defeatReason.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                    defeatReason.fontSize = 20;
+                    defeatReason.alignment = TextAnchor.MiddleCenter;
+                    defeatReason.color = Color.white;
+                    var rt = go.GetComponent<RectTransform>();
+                    rt.sizeDelta = new Vector2(600f, 40f);
+                }
+                else
+                {
+                    defeatReason = t.GetComponent<Text>();
+                }
+                if (defeatReason != null) SP.UI.FondoOpaco.Poner(defeatReason);
             }
 
             // Mismo motivo que en MainMenuController/PauseController: los
@@ -174,7 +191,7 @@ namespace SP.Presentation
             shown = true;
             Time.timeScale = 0f;
             ReleaseCursor();
-            if (defeatReason != null) defeatReason.text = string.IsNullOrEmpty(motivo) ? "" : motivo;
+            if (defeatReason != null) defeatReason.text = string.IsNullOrEmpty(motivo) ? "" : SP.Core.Loc.Tr(motivo);
             if (defeatStats != null) defeatStats.text = BuildStatsText();
             defeatPanel.SetActive(true);
             FocusRetryButton(defeatPanel);

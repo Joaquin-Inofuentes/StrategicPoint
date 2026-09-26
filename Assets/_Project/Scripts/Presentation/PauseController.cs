@@ -123,15 +123,13 @@ namespace SP.Presentation
                 // exactamente lo que hace Reintentar) y habia que
                 // reconfigurar en cada intento.
                 float savedVolume = PlayerPrefs.GetFloat(PrefVolume, 1f);
-                AudioListener.volume = savedVolume;
                 if (volumeSlider != null)
                 {
                     volumeSlider.SetValueWithoutNotify(savedVolume);
                     if (volumeValueTxt != null) volumeValueTxt.text = savedVolume.ToString("0.00");
                     volumeSlider.onValueChanged.AddListener(v =>
                     {
-                        AudioListener.volume = v;
-                        PlayerPrefs.SetFloat(PrefVolume, v);
+                        AudioDirector.SetMasterGain(v);
                         if (volumeValueTxt != null) volumeValueTxt.text = v.ToString("0.00");
                     });
                 }

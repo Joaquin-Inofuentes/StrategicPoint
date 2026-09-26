@@ -150,6 +150,8 @@ namespace SP.UI
             { KeyBindings.CiclarFormacion, "Ciclar formacion" },
             { KeyBindings.SeleccionarHeridos, "Seleccionar heridos" },
             { KeyBindings.SeleccionarMismoTipo, "Seleccionar mismo tipo" },
+            { KeyBindings.FocalizarRts, "Focalizar seleccion (RTS)" },
+            { KeyBindings.RotarCamaraRts, "Rotar camara (RTS)" },
         };
 
         public static string NameOf(string actionId) =>

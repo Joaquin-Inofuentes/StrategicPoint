@@ -29,7 +29,7 @@ namespace SP.UI
         };
         static readonly string[] OrdenDeBotonesExtra =
         {
-            "Pantalla", "Resolucion", "Calidad", "Daltonismo", "HudMinimo", "Escala", "Idioma", "Subtitulos",
+            "Pantalla", "Resolucion", "Escala", "Idioma",
         };
 
         public struct Resultado
@@ -171,6 +171,16 @@ namespace SP.UI
                 var etiqueta = panel.Find(n + "_Label") as RectTransform;
                 var valor = panel.Find(n + "_Value") as RectTransform;
                 var slider = panel.Find(n + "_Slider") as RectTransform;
+                if (slider != null)
+                {
+                    var img = slider.Find("Fill Area/Fill")?.GetComponent<Image>();
+                    if (img != null)
+                    {
+                        if (n.StartsWith("Sensibilidad")) img.color = new Color(0.7f, 0.3f, 0.8f);
+                        else if (n == "Volumen" || n == "General" || n == "VFX" || n == "Voces") img.color = new Color(0.2f, 0.7f, 0.9f);
+                        else img.color = new Color(0.3f, 0.8f, 0.4f);
+                    }
+                }
                 Colocar(etiqueta, -AnchoContenido * 0.5f + 150f, y, 300f, alturaLinea, alto, TextAnchor.MiddleLeft);
                 Colocar(valor, AnchoContenido * 0.5f - 50f, y, 100f, alturaLinea, alto, TextAnchor.MiddleRight);
                 Colocar(slider, 0f, y + alturaLinea + 2f, AnchoContenido, 20f, alto, null);

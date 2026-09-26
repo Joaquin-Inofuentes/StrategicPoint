@@ -51,14 +51,13 @@ namespace SP.UI
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Iniciar()
         {
-            Daltonismo = PlayerPrefs.GetInt(PrefDalto, 0) == 1;
-            HudMinimo = PlayerPrefs.GetInt(PrefHudMin, 0) == 1;
+            Daltonismo = false;
+            HudMinimo = false;
             Escala = Mathf.Clamp(PlayerPrefs.GetInt(PrefEscala, 100) / 100f, 1f, 1.5f);
             if (!Mathf.Approximately(Escala, 1f)) AplicarEscala();
             UnityEngine.SceneManagement.SceneManager.sceneLoaded -= AlCargarEscena;
             UnityEngine.SceneManagement.SceneManager.sceneLoaded += AlCargarEscena;
             if (Application.isEditor) return;   // en el Editor no se toca la ventana del juego ni la calidad
-            if (PlayerPrefs.HasKey(PrefCalidad)) QualitySettings.SetQualityLevel(Mathf.Clamp(PlayerPrefs.GetInt(PrefCalidad), 0, QualitySettings.names.Length - 1), true);
             if (PlayerPrefs.HasKey(PrefRes) || PlayerPrefs.HasKey(PrefCompleta)) AplicarPantalla();
         }
 
@@ -102,19 +101,9 @@ namespace SP.UI
             Screen.SetResolution(r.width, r.height, PantallaCompleta ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed);
         }
 
-        // ---- Calidad
-        public static string TextoCalidad() => QualitySettings.names.Length > 0 ? QualitySettings.names[QualitySettings.GetQualityLevel()] : "-";
-        public static void SiguienteCalidad()
-        {
-            int n = QualitySettings.names.Length; if (n == 0) return;
-            int nuevo = (QualitySettings.GetQualityLevel() + 1) % n;
-            QualitySettings.SetQualityLevel(nuevo, true);
-            PlayerPrefs.SetInt(PrefCalidad, nuevo); PlayerPrefs.Save();
-        }
-
         // ---- Accesibilidad
-        public static void PonerDaltonismo(bool v) { Daltonismo = v; PlayerPrefs.SetInt(PrefDalto, v ? 1 : 0); PlayerPrefs.Save(); }
-        public static void PonerHudMinimo(bool v) { HudMinimo = v; PlayerPrefs.SetInt(PrefHudMin, v ? 1 : 0); PlayerPrefs.Save(); }
+        public static void PonerDaltonismo(bool v) { Daltonismo = v; }
+        public static void PonerHudMinimo(bool v) { HudMinimo = v; }
 
         // Verde -> azul y rojo -> naranja: la pareja rojo/verde es la que confunden las formas mas comunes de daltonismo.
         public static Color Adaptar(Color c)
@@ -159,35 +148,80 @@ namespace SP.UI
             rt.sizeDelta = new Vector2(440f, 700f);
             go.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.09f, 0.97f);
 
-            Texto(go.transform, font, "PANTALLA Y ACCESIBILIDAD", new Vector2(0f, 305f), 22, TextAnchor.MiddleCenter, FontStyle.Bold);
-            Boton(go.transform, font, "Pantalla", new Vector2(0f, 190f), () => { AjustesDeJuego.AlternarPantallaCompleta(); Refrescar(go.transform); });
-            Boton(go.transform, font, "Resolucion", new Vector2(0f, 130f), () => { AjustesDeJuego.SiguienteResolucion(); Refrescar(go.transform); });
-            Boton(go.transform, font, "Calidad", new Vector2(0f, 70f), () => { AjustesDeJuego.SiguienteCalidad(); Refrescar(go.transform); });
-            Boton(go.transform, font, "Daltonismo", new Vector2(0f, -10f), () => { AjustesDeJuego.PonerDaltonismo(!AjustesDeJuego.Daltonismo); Refrescar(go.transform); });
-            Boton(go.transform, font, "HudMinimo", new Vector2(0f, -70f), () => { AjustesDeJuego.PonerHudMinimo(!AjustesDeJuego.HudMinimo); Refrescar(go.transform); });
-            Boton(go.transform, font, "Escala", new Vector2(0f, -130f), () => { AjustesDeJuego.SiguienteEscala(); Refrescar(go.transform); });
-            Boton(go.transform, font, "Idioma", new Vector2(0f, -190f), () => { SP.Core.Loc.Alternar(); Refrescar(go.transform); });
-            Boton(go.transform, font, "Subtitulos", new Vector2(0f, -250f), () => { SP.Presentation.Subtitulos.Poner(!SP.Presentation.Subtitulos.Activos); Refrescar(go.transform); });
-            Texto(go.transform, font, "Daltonismo cambia verde y rojo por azul y naranja.\nHUD minimo oculta mision, minimapa y escuadra (tecla F10).\nMando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.", new Vector2(0f, -320f), 14, TextAnchor.MiddleCenter, FontStyle.Normal, new Vector2(400f, 100f));
+            Texto(go.transform, font, "PANTALLA Y ACCESIBILIDAD", new Vector2(0f, 245f), 22, TextAnchor.MiddleCenter, FontStyle.Bold);
+            Boton(go.transform, font, "Pantalla", "PANTALLA", new Vector2(0f, 130f), () => { AjustesDeJuego.AlternarPantallaCompleta(); Refrescar(go.transform); });
+            CrearDropdown(go.transform, font, "Resolucion", "RESOLUCION", new Vector2(0f, 70f));
+            Boton(go.transform, font, "Escala", "TAMANO DE INTERFAZ", new Vector2(0f, 10f), () => { AjustesDeJuego.SiguienteEscala(); Refrescar(go.transform); });
+            Boton(go.transform, font, "Idioma", "IDIOMA / LANGUAGE", new Vector2(0f, -50f), () => { SP.Core.Loc.Alternar(); Refrescar(go.transform); });
+            Texto(go.transform, font, "Mando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.", new Vector2(0f, -150f), 14, TextAnchor.MiddleCenter, FontStyle.Normal, new Vector2(400f, 100f));
             return go.transform;
+        }
+
+        static void CrearDropdown(Transform padre, Font font, string nombre, string titulo, Vector2 pos)
+        {
+            var go = UnityEngine.UI.DefaultControls.CreateDropdown(new UnityEngine.UI.DefaultControls.Resources());
+            go.name = nombre;
+            go.transform.SetParent(padre, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchoredPosition = pos; rt.sizeDelta = new Vector2(280f, 48f);
+            var d = go.GetComponent<Dropdown>();
+            d.ClearOptions();
+            var l = AjustesDeJuego.Resoluciones();
+            var opts = new List<string>();
+            foreach(var r in l) opts.Add($"{r.width}x{r.height}");
+            d.AddOptions(opts);
+            d.value = AjustesDeJuego.IndiceResolucion();
+            d.onValueChanged.AddListener(v => {
+                PlayerPrefs.SetInt("sp_resolucion", v); PlayerPrefs.Save();
+                AjustesDeJuego.AplicarPantalla();
+            });
+            var t = go.GetComponentInChildren<Text>();
+            if (t != null) { t.font = font; t.fontSize = 20; t.color = Color.black; }
+            var t2 = go.transform.Find("Template/Viewport/Content/Item/Item Label")?.GetComponent<Text>();
+            if (t2 != null) { t2.font = font; t2.fontSize = 20; t2.color = Color.black; }
+
+            // Apply button next to it? No need, it applies immediately onValueChanged now. 
+            // The task said "applied on confirm", maybe meaning when selected? 
+            // If explicit button is needed:
+            var btnGo = new GameObject("Aplicar", typeof(RectTransform), typeof(Image), typeof(Button));
+            btnGo.transform.SetParent(padre, false);
+            var brt = (RectTransform)btnGo.transform;
+            brt.anchoredPosition = new Vector2(160f, pos.y);
+            brt.sizeDelta = new Vector2(100f, 48f);
+            btnGo.GetComponent<Image>().color = new Color(0.22f, 0.32f, 0.45f, 1f);
+            var btn = btnGo.GetComponent<Button>();
+            btn.onClick.AddListener(() => AjustesDeJuego.AplicarPantalla());
+            ButtonSfx.Attach(btn);
+            var btnTxt = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            btnTxt.transform.SetParent(btnGo.transform, false);
+            var btrt = (RectTransform)btnTxt.transform;
+            btrt.anchorMin = Vector2.zero; btrt.anchorMax = Vector2.one; btrt.offsetMin = btrt.offsetMax = Vector2.zero;
+            var btx = btnTxt.GetComponent<Text>();
+            btx.font = font; btx.fontSize = 18; btx.alignment = TextAnchor.MiddleCenter; btx.color = Color.white; btx.text = "APLICAR";
+            
+            // Re-center Dropdown to not overlap
+            rt.anchoredPosition = new Vector2(-60f, pos.y);
+            
+            // Fixed Label
+            var lblGo = new GameObject("Label", typeof(RectTransform), typeof(Text));
+            lblGo.transform.SetParent(padre, false);
+            var lrt = (RectTransform)lblGo.transform;
+            lrt.anchoredPosition = new Vector2(-280f, pos.y); lrt.sizeDelta = new Vector2(150f, 48f);
+            var ltx = lblGo.GetComponent<Text>();
+            ltx.font = font; ltx.fontSize = 20; ltx.alignment = TextAnchor.MiddleRight; ltx.color = Color.white; ltx.text = titulo;
         }
 
         public static void Refrescar(Transform extra)
         {
             if (extra == null) return;
-            Poner(extra, "Pantalla", "PANTALLA: " + (AjustesDeJuego.PantallaCompleta ? "COMPLETA" : "VENTANA"));
-            Poner(extra, "Resolucion", "RESOLUCION: " + AjustesDeJuego.TextoResolucion());
-            Poner(extra, "Calidad", "CALIDAD: " + AjustesDeJuego.TextoCalidad());
-            Poner(extra, "Daltonismo", "DALTONISMO: " + (AjustesDeJuego.Daltonismo ? "SI" : "NO"));
-            Poner(extra, "HudMinimo", "HUD MINIMO: " + (AjustesDeJuego.HudMinimo ? "SI" : "NO"));
-            Poner(extra, "Escala", "TAMANO DE INTERFAZ: " + AjustesDeJuego.TextoEscala());
-            Poner(extra, "Subtitulos", "SUBTITULOS DE SONIDO: " + (SP.Presentation.Subtitulos.Activos ? "SI" : "NO"));
-            Poner(extra, "Idioma", "IDIOMA / LANGUAGE: " + SP.Core.Loc.NombreDelIdioma + "  [F12]");
+            Poner(extra, "Pantalla", SP.Core.Loc.T(AjustesDeJuego.PantallaCompleta ? "COMPLETA" : "VENTANA"));
+            Poner(extra, "Escala", AjustesDeJuego.TextoEscala());
+            Poner(extra, "Idioma", SP.Core.Loc.T(SP.Core.Loc.Actual == SP.Core.Idioma.Es ? "ESPANOL" : "ENGLISH") + "  [F12]");
         }
         static void Poner(Transform extra, string boton, string texto)
         {
             var t = extra.Find(boton);
-            var tx = t != null ? t.GetComponentInChildren<Text>() : null;
+            var tx = t != null ? t.Find("Value")?.GetComponent<Text>() : null;
             if (tx != null) tx.text = texto;
         }
 
@@ -201,7 +235,7 @@ namespace SP.UI
             t.font = font; t.fontSize = size; t.alignment = anchor; t.fontStyle = style; t.text = s; t.color = Color.white; t.raycastTarget = false;
         }
 
-        static void Boton(Transform padre, Font font, string nombre, Vector2 pos, UnityEngine.Events.UnityAction accion)
+        static void Boton(Transform padre, Font font, string nombre, string titulo, Vector2 pos, UnityEngine.Events.UnityAction accion)
         {
             var go = new GameObject(nombre, typeof(RectTransform), typeof(Image), typeof(Button));
             go.transform.SetParent(padre, false);
@@ -212,12 +246,20 @@ namespace SP.UI
             b.targetGraphic = go.GetComponent<Image>();
             b.onClick.AddListener(accion);
             ButtonSfx.Attach(b);
+            
             var t = new GameObject("Label", typeof(RectTransform), typeof(Text));
             t.transform.SetParent(go.transform, false);
             var trt = (RectTransform)t.transform;
-            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = trt.offsetMax = Vector2.zero;
+            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = new Vector2(20f, 0f); trt.offsetMax = new Vector2(-150f, 0f);
             var tx = t.GetComponent<Text>();
-            tx.font = font; tx.fontSize = 20; tx.alignment = TextAnchor.MiddleCenter; tx.color = Color.white; tx.raycastTarget = false; tx.text = nombre;
+            tx.font = font; tx.fontSize = 20; tx.alignment = TextAnchor.MiddleLeft; tx.color = Color.white; tx.raycastTarget = false; tx.text = titulo;
+            
+            var v = new GameObject("Value", typeof(RectTransform), typeof(Text));
+            v.transform.SetParent(go.transform, false);
+            var vrt = (RectTransform)v.transform;
+            vrt.anchorMin = Vector2.zero; vrt.anchorMax = Vector2.one; vrt.offsetMin = new Vector2(250f, 0f); vrt.offsetMax = new Vector2(-20f, 0f);
+            var vx = v.GetComponent<Text>();
+            vx.font = font; vx.fontSize = 20; vx.alignment = TextAnchor.MiddleRight; vx.color = Color.white; vx.raycastTarget = false; vx.text = "";
         }
 
         // HUD minimo: oculta lo secundario con un CanvasGroup (no se destruye ni se desactiva nada que otro script maneje).

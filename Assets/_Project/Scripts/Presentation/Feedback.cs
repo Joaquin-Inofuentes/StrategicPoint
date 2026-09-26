@@ -61,9 +61,9 @@ namespace SP.Presentation
                 if (enMundo.HasValue) AudioDirector.PlayAt(sonido, enMundo.Value, volumen, 0.7f);
                 else AudioDirector.PlayUi2D(sonido, volumen, 0.7f);
 
-                if (enMundo.HasValue && conTexto)
+                if (enMundo.HasValue)
                 {
-                    WorldTag.Spawn(enMundo.Value + Vector3.up * 2.3f, texto, c);
+                    if (conTexto) WorldTag.Spawn(enMundo.Value + Vector3.up * 2.3f, texto, c);
                     if (pulso) OrderMarkerFx.Spawn(enMundo.Value, c, 0.9f);
                 }
                 if (aviso && conTexto) AlertQueue.Push(texto, AlertPriority.Media, 1.3f);

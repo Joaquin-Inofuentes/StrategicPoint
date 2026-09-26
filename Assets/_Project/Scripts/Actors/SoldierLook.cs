@@ -57,7 +57,7 @@ namespace SP.Actors
             if (matCivil != null) return matCivil;
             if (matAliado == null) return null;
             matCivil = new Material(matAliado) { name = "MAT_Civil" };
-            var tinte = new Color(1f, 0.86f, 0.45f);
+            var tinte = new Color(0.2f, 0.6f, 1.0f); // Azul claro para distinguirlo
             if (matCivil.HasProperty("_BaseColor")) matCivil.SetColor("_BaseColor", tinte);
             if (matCivil.HasProperty("_Color")) matCivil.SetColor("_Color", tinte);
             return matCivil;

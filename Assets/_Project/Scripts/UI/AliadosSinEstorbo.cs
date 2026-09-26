@@ -42,7 +42,7 @@ namespace SP.UI
             for (int i = 0; i < todos.Count; i++)
             {
                 var s = todos[i];
-                if (s == null || s == poseido || s.Team != TeamId.Player) continue;
+                if (s == null || s == poseido || s.Team != TeamId.Player || s.Role == RoleType.Civilian) continue;
                 var p = s.transform.position + Vector3.up * 0.8f;
                 if ((p - camPos).sqrMagnitude > d2) continue;
                 foreach (var r in s.GetComponentsInChildren<Renderer>(false))

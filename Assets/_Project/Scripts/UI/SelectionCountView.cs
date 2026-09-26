@@ -29,6 +29,7 @@ namespace SP.UI
             if (background == null) background = GetComponent<Image>();
             sub?.Dispose();
             sub = EventBus.Instance.Subscribe<SelectionChangedEvent>(OnSelectionChanged);
+            Diagramador.AcomodarSelectionCount(gameObject);
             Refresh();
         }
 

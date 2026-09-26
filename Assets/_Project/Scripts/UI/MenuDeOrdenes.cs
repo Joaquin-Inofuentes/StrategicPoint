@@ -143,9 +143,11 @@ namespace SP.UI
         Text[] etiquetas;
         Image[] opciones;
         Text[] etiquetasOpcion;
+        Image[] iconosOpcion;
         Image cursor;
         Vector2 virtualPos;
         readonly string[] soldados = { "1", "2", "3" };
+        readonly bool[] soldadosMuertos = new bool[3];
         static Sprite donaInterior, donaExterior;
 
         // Distribucion actual: ids de categoria en orden de pantalla (las contextuales primero).
@@ -202,11 +204,14 @@ namespace SP.UI
         }
 
         // "Solo Asalto", "Solo Flanqueador"...: el driver pasa la clase de cada soldado.
-        public void PonerSoldados(string s1, string s2, string s3)
+        public void PonerSoldados(string s1, string s2, string s3, bool m1 = false, bool m2 = false, bool m3 = false)
         {
             soldados[0] = string.IsNullOrEmpty(s1) ? "1" : s1;
             soldados[1] = string.IsNullOrEmpty(s2) ? "2" : s2;
             soldados[2] = string.IsNullOrEmpty(s3) ? "3" : s3;
+            soldadosMuertos[0] = m1;
+            soldadosMuertos[1] = m2;
+            soldadosMuertos[2] = m3;
         }
 
         string Texto(string plantilla)
@@ -363,6 +368,7 @@ namespace SP.UI
                 float pos = d / PasoDeAbanico + (n - 1) * 0.5f;
                 int idx = Mathf.RoundToInt(pos);
                 Sub = idx >= 0 && idx < n && Mathf.Abs(pos - idx) * PasoDeAbanico <= AnchoDeOpcion * 0.5f + 2f ? opcionesActuales[idx] : -1;
+                if (Sub >= 0 && Seleccion == Poseer && Sub < 3 && soldadosMuertos[Sub]) Sub = -1;
             }
             Refrescar();
             SonarHover();
@@ -384,10 +390,19 @@ namespace SP.UI
             else
             {
                 Sub = sub;
-                int n = opcionesActuales.Count;
-                int idx = opcionesActuales.IndexOf(sub);
-                float rad = (a + (idx - (n - 1) * 0.5f) * PasoDeAbanico) * Mathf.Deg2Rad;
-                virtualPos = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * 245f;
+                if (Sub >= 0 && Seleccion == Poseer && Sub < 3 && soldadosMuertos[Sub])
+                {
+                    Sub = -1;
+                    float rad = a * Mathf.Deg2Rad;
+                    virtualPos = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * 120f;
+                }
+                else
+                {
+                    int n = opcionesActuales.Count;
+                    int idx = opcionesActuales.IndexOf(sub);
+                    float rad = (a + (idx - (n - 1) * 0.5f) * PasoDeAbanico) * Mathf.Deg2Rad;
+                    virtualPos = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * 245f;
+                }
             }
             Refrescar();
             SonarHover();
@@ -459,23 +474,47 @@ namespace SP.UI
                 bool visible = j < n;
                 opciones[j].gameObject.SetActive(visible);
                 etiquetasOpcion[j].gameObject.SetActive(visible);
+                if (iconosOpcion != null && iconosOpcion[j] != null) iconosOpcion[j].gameObject.SetActive(false);
                 if (!visible) continue;
                 float centro = AnguloDeSlot(slotSel) + (j - (n - 1) * 0.5f) * PasoDeAbanico;
                 bool ctx = EsContextual(Seleccion);
                 var c = ctx ? Dorado : Acentos[Seleccion];
+                int sub = opcionesActuales[j];
+                bool esMuerto = Seleccion == Poseer && sub >= 0 && sub < 3 && soldadosMuertos[sub];
                 bool elegida = opcionesActuales[j] == Sub;
+                
                 opciones[j].rectTransform.localRotation = Quaternion.Euler(0f, 0f, -(centro - AnchoDeOpcion * 0.5f));
-                opciones[j].color = elegida ? new Color(c.r, c.g, c.b, 0.97f) : ctx ? DoradoOscuro : new Color(0.09f, 0.12f, 0.17f, OpacidadDeFondo + 0.02f);
-                if (!elegida && Seleccion == PistaCategoria && opcionesActuales[j] == PistaOpcion)
+                
+                if (esMuerto)
                 {
-                    float latido = (Mathf.Sin(Time.unscaledTime * 6f) + 1f) * 0.5f;
-                    opciones[j].color = Color.Lerp(new Color(0.05f, 0.3f, 0.42f, 0.95f), new Color(0.25f, 0.85f, 1f, 0.97f), latido);
+                    opciones[j].color = new Color(0.12f, 0.12f, 0.12f, OpacidadDeFondo);
+                    opciones[j].rectTransform.localScale = Vector3.one;
+                    float rad = centro * Mathf.Deg2Rad;
+                    var dir = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad));
+                    if (iconosOpcion != null && iconosOpcion[j] != null)
+                    {
+                        iconosOpcion[j].gameObject.SetActive(true);
+                        iconosOpcion[j].color = new Color(0.5f, 0.5f, 0.5f);
+                        iconosOpcion[j].rectTransform.anchoredPosition = dir * (RadioExterior * 0.72f);
+                    }
+                    etiquetasOpcion[j].rectTransform.anchoredPosition = dir * (RadioExterior * 0.86f);
+                    etiquetasOpcion[j].text = $"<size=9>{sub + 1}</size>\n{SP.Core.Loc.T("MUERTO")}";
+                    etiquetasOpcion[j].color = new Color(0.5f, 0.5f, 0.5f);
                 }
-                opciones[j].rectTransform.localScale = Vector3.one * (elegida ? 1.03f : 1f);
-                float rad = centro * Mathf.Deg2Rad;
-                etiquetasOpcion[j].rectTransform.anchoredPosition = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * (RadioExterior * 0.78f);
-                etiquetasOpcion[j].text = Texto(OpcionesDe[Seleccion][opcionesActuales[j]]).Replace(" · ", "\n");
-                etiquetasOpcion[j].color = elegida ? new Color(0.05f, 0.06f, 0.08f) : ctx ? new Color(1f, 0.9f, 0.45f) : Color.white;
+                else
+                {
+                    opciones[j].color = elegida ? new Color(c.r, c.g, c.b, 0.97f) : ctx ? DoradoOscuro : new Color(0.09f, 0.12f, 0.17f, OpacidadDeFondo + 0.02f);
+                    if (!elegida && Seleccion == PistaCategoria && opcionesActuales[j] == PistaOpcion)
+                    {
+                        float latido = (Mathf.Sin(Time.unscaledTime * 6f) + 1f) * 0.5f;
+                        opciones[j].color = Color.Lerp(new Color(0.05f, 0.3f, 0.42f, 0.95f), new Color(0.25f, 0.85f, 1f, 0.97f), latido);
+                    }
+                    opciones[j].rectTransform.localScale = Vector3.one * (elegida ? 1.03f : 1f);
+                    float rad = centro * Mathf.Deg2Rad;
+                    etiquetasOpcion[j].rectTransform.anchoredPosition = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * (RadioExterior * 0.78f);
+                    etiquetasOpcion[j].text = Texto(OpcionesDe[Seleccion][sub]).Replace(" · ", "\n");
+                    etiquetasOpcion[j].color = elegida ? new Color(0.05f, 0.06f, 0.08f) : ctx ? new Color(1f, 0.9f, 0.45f) : Color.white;
+                }
             }
 
             if (cursor != null) cursor.rectTransform.anchoredPosition = virtualPos;
@@ -627,13 +666,16 @@ namespace SP.UI
             // Anillo exterior: un abanico reutilizable de hasta 5 opciones.
             menu.opciones = new Image[MaxOpcionesPorCategoria];
             menu.etiquetasOpcion = new Text[MaxOpcionesPorCategoria];
+            menu.iconosOpcion = new Image[MaxOpcionesPorCategoria];
             var exterior = Dona(0.6f);
             float fillOp = AnchoDeOpcion / 360f;
             for (int j = 0; j < MaxOpcionesPorCategoria; j++)
             {
                 menu.opciones[j] = NuevaRebanada(go.transform, "Opcion" + (j + 1), exterior, RadioExterior, fillOp);
+                menu.iconosOpcion[j] = NuevoIcono(go.transform, "IconoOpcion" + (j + 1), RadialIconFactory.Calavera(), 34f);
                 menu.etiquetasOpcion[j] = NuevoTexto(go.transform, "TextoOpcion" + (j + 1), font, TamanoLetra, new Vector2(118f, 40f));
                 menu.opciones[j].gameObject.SetActive(false);
+                menu.iconosOpcion[j].gameObject.SetActive(false);
                 menu.etiquetasOpcion[j].gameObject.SetActive(false);
             }
 

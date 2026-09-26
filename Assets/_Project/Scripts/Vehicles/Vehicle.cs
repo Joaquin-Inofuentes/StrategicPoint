@@ -98,6 +98,9 @@ namespace SP.Vehicles
         // elegir un tanque enemigo como blanco).
         public static readonly List<Vehicle> Todos = new List<Vehicle>();
 
+        GameObject diamondMarker;
+        Material diamondMaterial;
+
         void OnEnable() 
         { 
             SP.Core.WorldSystemsRegistry.Register(this); 
@@ -106,6 +109,13 @@ namespace SP.Vehicles
             {
                 if (r.name.Contains("Sphere") || r.GetComponent<SphereCollider>() != null) r.enabled = false;
             }
+            if (diamondMarker == null)
+            {
+                diamondMaterial = SP.Presentation.DiamondGizmo.NuevoMaterial(SP.Presentation.DiamondGizmo.ColorVacio);
+                diamondMarker = SP.Presentation.DiamondGizmo.CrearCara("RomboTanque", transform, 1.8f, diamondMaterial);
+                diamondMarker.transform.localPosition = new Vector3(0f, 4.5f, 0f);
+            }
+            RefreshOccupancyColor();
         }
         void OnDisable() { SP.Core.WorldSystemsRegistry.Unregister(this); Todos.Remove(this); }
 
@@ -227,9 +237,33 @@ namespace SP.Vehicles
         public void RefreshOccupancyColor()
         {
             CacheColorIfNeeded();
-            if (chassisRenderers == null || chassisRenderers.Length == 0) return;
-            Color target = seats.Count > 0 ? Color.Lerp(baseColor, Color.black, 0.28f) : baseColor;
-            foreach (var r in chassisRenderers) r.sharedMaterial.color = target;
+            if (chassisRenderers != null && chassisRenderers.Length > 0)
+            {
+                Color target = seats.Count > 0 ? Color.Lerp(baseColor, Color.black, 0.28f) : baseColor;
+                foreach (var r in chassisRenderers) r.sharedMaterial.color = target;
+            }
+
+            if (diamondMaterial != null)
+            {
+                Color diamondTarget = SP.Presentation.DiamondGizmo.ColorVacio;
+                if (seats.Count > 0)
+                {
+                    bool hasAllied = false;
+                    bool hasEnemy = false;
+                    foreach (var s in seats.Values)
+                    {
+                        if (s.Team == SP.Combat.TeamId.Player) hasAllied = true;
+                        if (s.Team == SP.Combat.TeamId.Enemy) hasEnemy = true;
+                    }
+                    if (hasAllied && hasEnemy) diamondTarget = SP.Presentation.DiamondGizmo.ColorMixto;
+                    else if (hasAllied) diamondTarget = SP.Presentation.DiamondGizmo.ColorAliado;
+                    else if (hasEnemy) diamondTarget = SP.Presentation.DiamondGizmo.ColorEnemigo;
+                }
+                diamondMaterial.color = diamondTarget;
+                if (diamondMaterial.HasProperty("_BaseColor")) diamondMaterial.SetColor("_BaseColor", diamondTarget);
+            }
+            var minimapIcon = GetComponentInChildren<SP.Presentation.MinimapIcon>();
+            if (minimapIcon != null) minimapIcon.RepintarPorEquipo(true);
         }
 
         // Lo pone/saca PlayerInputDriver al entrar/salir de un asiento
@@ -663,6 +697,12 @@ namespace SP.Vehicles
                     carritoDeParado.position = standPoint.position;
                     carritoDeParado.rotation = standPoint.rotation;
                 }
+            }
+            if (diamondMarker != null)
+            {
+                var cam = SP.Core.CamaraPrincipal.Actual;
+                if (cam != null) diamondMarker.transform.rotation = cam.transform.rotation;
+                diamondMarker.SetActive(!IsDestroyed);
             }
         }
 

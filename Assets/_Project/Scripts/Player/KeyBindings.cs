@@ -58,6 +58,8 @@ namespace SP.Player
         // sola tecla dispare dos acciones sin relacion (elegir unidades
         // del mismo tipo Y ciclar el minimapa) en el mismo frame.
         public const string MinimapCiclarTamano = "minimap_ciclar_tamano";
+        public const string FocalizarRts = "focalizar_rts";
+        public const string RotarCamaraRts = "rotar_camara_rts";
 
         // Valores de fabrica. Son EXACTAMENTE los que el juego ya usaba, de
         // modo que sin tocar nada el remapeo es invisible.
@@ -100,6 +102,8 @@ namespace SP.Player
             { SeleccionarMismoTipo, Key.N },
             { MinimapAgrandar, Key.M },
             { MinimapCiclarTamano, Key.L },
+            { FocalizarRts, Key.F },
+            { RotarCamaraRts, Key.Backquote },
         };
 
         static Dictionary<string, Key> current;

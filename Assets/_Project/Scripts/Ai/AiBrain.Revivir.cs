@@ -52,5 +52,105 @@ namespace SP.Ai
 
             if (!IsPossessedByPlayer && gameObject.activeInHierarchy) ReactivarNavegacion();
         }
+
+        Soldier targetCuracion;
+        float progresoCuracion;
+
+        public void CancelarCuracionLocal()
+        {
+            if (targetCuracion != null)
+            {
+                SP.Player.AccionesEnCurso.Terminar(self);
+                targetCuracion = null;
+            }
+            progresoCuracion = 0f;
+        }
+
+        bool EsHeridoOCaidoLocal(Soldier s)
+        {
+            if (s == null || s.Health == null) return false;
+            if (!s.Health.IsAlive) return true;
+            return s.Health.Current < s.Health.MaxHealth;
+        }
+
+        void BuscarTargetCuracionLocal()
+        {
+            CancelarCuracionLocal();
+            Soldier mejor = null;
+            float mejorDist = SP.Player.PedidoDeCuracion.AlcanceDeCuracion;
+            foreach (var a in SP.Core.ActorRegistry.All)
+            {
+                if (a == self || a.Team != self.Team) continue;
+                if (!a.gameObject.activeInHierarchy) continue;
+                if (!EsHeridoOCaidoLocal(a)) continue;
+
+                float d = Vector3.Distance(transform.position, a.transform.position);
+                if (d <= mejorDist)
+                {
+                    mejor = a;
+                    mejorDist = d;
+                }
+            }
+            if (mejor != null)
+            {
+                targetCuracion = mejor;
+            }
+        }
+
+        void TickCuracionLocal(float dt)
+        {
+            if (self.Role != RoleType.Medic) return;
+
+            if (Pasivo || MontadoEnVehiculo || State == AiState.Chase || State == AiState.Attack || State == AiState.MovingToAttackOrder || target != null) 
+            {
+                CancelarCuracionLocal();
+                return;
+            }
+
+            if (targetCuracion == null || !targetCuracion.gameObject.activeInHierarchy || (!EsHeridoOCaidoLocal(targetCuracion)))
+            {
+                BuscarTargetCuracionLocal();
+            }
+
+            if (targetCuracion != null)
+            {
+                float dist = Vector3.Distance(transform.position, targetCuracion.transform.position);
+                if (dist > SP.Player.PedidoDeCuracion.AlcanceDeCuracion)
+                {
+                    CancelarCuracionLocal();
+                    return;
+                }
+
+                if (!targetCuracion.Health.IsAlive)
+                {
+                    progresoCuracion += dt;
+                    SP.Player.AccionesEnCurso.Reportar(self, "REVIVIENDO", targetCuracion.transform.position, progresoCuracion / SP.Player.PedidoDeCuracion.SegundosDeReanimar, SP.Player.PedidoDeCuracion.SegundosDeReanimar - progresoCuracion, targetCuracion.transform);
+                    if (progresoCuracion >= SP.Player.PedidoDeCuracion.SegundosDeReanimar)
+                    {
+                        SP.Player.Reanimacion.Ejecutar(targetCuracion);
+                        SP.Presentation.Feedback.Accion(SP.Core.SfxKind.Revive, "¡" + targetCuracion.DisplayName.ToUpperInvariant() + " DE VUELTA!", targetCuracion.transform.position, SP.Presentation.Feedback.Ok, aviso: true, pulso: true, volumen: 0.9f);
+                        CancelarCuracionLocal();
+                    }
+                }
+                else
+                {
+                    progresoCuracion += SP.Player.PedidoDeCuracion.CuracionPorSegundo * dt;
+                    int curacion = Mathf.FloorToInt(progresoCuracion);
+                    if (curacion > 0)
+                    {
+                        progresoCuracion -= curacion;
+                        targetCuracion.Health.Heal(curacion);
+                    }
+                    float rest = targetCuracion.Health.MaxHealth - targetCuracion.Health.Current;
+                    SP.Player.AccionesEnCurso.Reportar(self, "CURANDO", targetCuracion.transform.position, (float)targetCuracion.Health.Current / targetCuracion.Health.MaxHealth, rest / (float)SP.Player.PedidoDeCuracion.CuracionPorSegundo, targetCuracion.transform);
+                    
+                    if (targetCuracion.Health.Current >= targetCuracion.Health.MaxHealth)
+                    {
+                        SP.Presentation.Feedback.Accion(SP.Core.SfxKind.HealDone, "¡" + targetCuracion.DisplayName.ToUpperInvariant() + " CURADO!", targetCuracion.transform.position, SP.Presentation.Feedback.Ok, aviso: true, pulso: true, volumen: 0.8f);
+                        CancelarCuracionLocal();
+                    }
+                }
+            }
+        }
     }
 }

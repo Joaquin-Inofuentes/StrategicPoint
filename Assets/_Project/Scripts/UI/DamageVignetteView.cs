@@ -14,6 +14,7 @@ namespace SP.UI
     public class DamageVignetteView : MonoBehaviour
     {
         Image image;
+        Image redImage;
         PlayerBrain brain;
         IDisposable sub;
         Coroutine routine;
@@ -31,6 +32,30 @@ namespace SP.UI
         void OnEnable()
         {
             if (image == null) image = GetComponent<Image>();
+            
+            if (redImage == null)
+            {
+                var child = transform.Find("RedImpact");
+                if (child != null)
+                {
+                    redImage = child.GetComponent<Image>();
+                }
+                else
+                {
+                    var go = new GameObject("RedImpact");
+                    go.transform.SetParent(transform, false);
+                    redImage = go.AddComponent<Image>();
+                    redImage.raycastTarget = false;
+                    
+                    var rt = redImage.rectTransform;
+                    rt.anchorMin = Vector2.zero;
+                    rt.anchorMax = Vector2.one;
+                    rt.sizeDelta = Vector2.zero;
+                }
+                redImage.sprite = Sprite.Create(GetOrBuildTexture(), new Rect(0, 0, 128, 128), new Vector2(0.5f, 0.5f));
+                redImage.color = new Color(0.85f, 0.05f, 0.05f, 0f);
+            }
+
             // `brain` no sobrevive al domain reload al entrar en Play mode
             // (se construyó en editor, vía Bind()): el campo queda null y
             // OnDamage nunca encuentra a quién le pertenece el golpe. Se
@@ -40,22 +65,44 @@ namespace SP.UI
             sub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnDamage);
         }
 
-        void OnDisable() => sub?.Dispose();
+        void OnDisable()
+        {
+            sub?.Dispose();
+            if (redImage != null) redImage.color = new Color(0.85f, 0.05f, 0.05f, 0f);
+        }
+
+        float currentRedAlpha = 0f;
 
         void OnDamage(DamageTakenEvent evt)
         {
-            if (!Application.isPlaying || image == null || brain == null) return;
+            if (image == null || brain == null || redImage == null) return;
             if (brain.Current == null || evt.TargetId != brain.Current.Id) return;
 
-            if (routine != null) StopCoroutine(routine);
-            // El mismo golpe se sentia identico con la vida llena o al
-            // borde de morir. La intensidad ahora escala con lo que
-            // queda: RemainingHealth ya viaja en el evento, no hace
-            // falta re-consultar Health.
-            float maxHealth = brain.Current.Health.MaxHealth;
-            float remainingFrac = maxHealth > 0 ? Mathf.Clamp01((float)evt.RemainingHealth / maxHealth) : 1f;
-            routine = StartCoroutine(FlashAndFade(remainingFrac));
+            if (!SP.CameraSystem.CameraFxSettings.Enabled) return;
 
+            if (routine != null) StopCoroutine(routine);
+
+            float maxHealth = brain.Current.Health.MaxHealth;
+            // Intensity proportional to damage amount
+            float damageFrac = maxHealth > 0 ? (float)evt.Amount / maxHealth : 0.5f;
+            
+            // Proportional to damage amount, with a cap so it doesn't fully obscure
+            float targetPeak = Mathf.Clamp(damageFrac * 1.5f, 0.15f, 0.7f);
+            
+            // Must not stack beyond a maximum intensity
+            float peak = Mathf.Min(currentRedAlpha + targetPeak, 0.85f);
+
+            if (!Application.isPlaying)
+            {
+                currentRedAlpha = peak;
+                redImage.color = new Color(0.85f, 0.05f, 0.05f, peak);
+            }
+            else
+            {
+                routine = StartCoroutine(FlashAndFadeRed(peak));
+            }
+
+            float remainingFrac = maxHealth > 0 ? Mathf.Clamp01((float)evt.RemainingHealth / maxHealth) : 1f;
             // 176: aberracion cromatica proporcional al daño, mas fuerte
             // cuanto menos vida queda. Es una segunda capa sobre la misma
             // señal que ya da el vignette, pero actua sobre la IMAGEN del
@@ -78,32 +125,55 @@ namespace SP.UI
                 : 0f;
             // Si no hay un flash de daño en curso, el piso se aplica ya
             // mismo; si lo hay, la corrutina lo va a respetar al terminar.
-            if (routine == null && image != null)
+            if (image != null)
                 image.color = new Color(0f, 0f, 0f, baselineAlpha);
         }
 
         public float CurrentAlpha => image != null ? image.color.a : 0f;
+        public float CurrentRedAlpha => redImage != null ? redImage.color.a : 0f;
 
-        IEnumerator FlashAndFade(float remainingHealthFrac01)
+        IEnumerator FlashAndFadeRed(float targetAlpha)
         {
-            // Con la vida llena, el pico apenas se nota (0.35); al borde
-            // de morir, casi opaco (0.9). El mismo golpe pega mas fuerte
-            // en pantalla cuanto mas cerca estas de caer.
-            float peakAlpha = Mathf.Lerp(0.9f, 0.35f, remainingHealthFrac01);
-            const float fadeTime = 0.55f;
-
-            image.color = new Color(0f, 0f, 0f, peakAlpha);
             float t = 0f;
-            while (t < fadeTime)
+            // lasts 0.35s
+            const float duration = 0.35f;
+            
+            // With overshoot animation (slightly exceeds target then settles)
+            float overshootAlpha = Mathf.Min(targetAlpha * 1.25f, 0.95f);
+            
+            // Ensure first frame is strictly > 0 for immediate feedback and tests
+            currentRedAlpha = Mathf.Max(currentRedAlpha, overshootAlpha * 0.1f);
+            if (redImage != null) redImage.color = new Color(0.85f, 0.05f, 0.05f, currentRedAlpha);
+
+            while (t < duration)
             {
                 t += Time.unscaledDeltaTime;
-                // Interpola hacia el piso de velocidad, no hacia 0: si no,
-                // recibir un tiro manejando rapido apagaba la viñeta de
-                // velocidad hasta el proximo cambio de velocidad.
-                image.color = new Color(0f, 0f, 0f, Mathf.Lerp(peakAlpha, baselineAlpha, t / fadeTime));
+                float frac = t / duration;
+                
+                float a;
+                // Pop to overshoot (0 to 15%)
+                if (frac < 0.15f)
+                {
+                    a = Mathf.Lerp(currentRedAlpha, overshootAlpha, frac / 0.15f);
+                }
+                // Settle to target (15% to 35%)
+                else if (frac < 0.35f)
+                {
+                    a = Mathf.Lerp(overshootAlpha, targetAlpha, (frac - 0.15f) / 0.2f);
+                }
+                // Fade to 0
+                else
+                {
+                    a = Mathf.Lerp(targetAlpha, 0f, (frac - 0.35f) / 0.65f);
+                }
+                
+                currentRedAlpha = a;
+                redImage.color = new Color(0.85f, 0.05f, 0.05f, a);
                 yield return null;
             }
-            image.color = new Color(0f, 0f, 0f, baselineAlpha);
+            
+            currentRedAlpha = 0f;
+            redImage.color = new Color(0.85f, 0.05f, 0.05f, 0f);
             routine = null;
         }
 
@@ -144,3 +214,4 @@ namespace SP.UI
         }
     }
 }
+

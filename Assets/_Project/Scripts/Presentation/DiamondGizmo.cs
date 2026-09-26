@@ -20,6 +20,13 @@ namespace SP.Presentation
         public static readonly Color ColorAliado = new Color(0.1f, 0.45f, 1f, 1f);
         public static readonly Color ColorObjetivo = new Color(1f, 0.85f, 0.05f, 1f);
 
+        // Paleta D13
+        public static readonly Color ColorVacio = Color.gray;
+        public static readonly Color ColorMixto = new Color(0.5f, 0f, 0.8f, 1f); // violeta
+        public static readonly Color ColorTorreta = new Color(1f, 0.5f, 0f, 1f); // naranja
+        public static readonly Color ColorBotiquin = Color.green;
+        public static readonly Color ColorMunicion = Color.cyan; // azul claro
+
         static Mesh caraCompartida;
 
         // Malla de un rombo unidad en el plano XY (vertices arriba/derecha/
@@ -104,7 +111,7 @@ namespace SP.Presentation
         // Material SOLIDO, sin luces: pedido explicito de "mucho contraste
         // con el ambiente", y estos rombos tienen que leerse igual de bien
         // en el modo noche/niebla del nivel que a pleno dia.
-        public static Material NuevoMaterial(Color color)
+        public static Material NuevoMaterial(Color color, bool zTestAlways = false)
         {
             var shader = ResolverShaderUnlit();
             Material mat;
@@ -125,6 +132,7 @@ namespace SP.Presentation
             // billboard quede mirando de canto por un frame en vez de
             // desaparecer o duplicar geometria.
             if (mat.HasProperty("_Cull")) mat.SetInt("_Cull", (int)CullMode.Off);
+            if (zTestAlways && mat.HasProperty("_ZTest")) mat.SetInt("_ZTest", (int)CompareFunction.Always);
             return mat;
         }
 

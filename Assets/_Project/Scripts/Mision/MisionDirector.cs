@@ -252,10 +252,11 @@ namespace SP.Mision
         {
             if (enemigoPrefab == null) return null;
             pos = EmpujarFueraDeCasas(pos);
-            var go = Instantiate(enemigoPrefab, new Vector3(pos.x, 0.8f, pos.z), Quaternion.Euler(0f, yaw, 0f), raizEnemigos);
+            var go = Instantiate(enemigoPrefab, new Vector3(pos.x, 0f, pos.z), Quaternion.Euler(0f, yaw, 0f), raizEnemigos);
             go.name = nombre;
             var s = go.GetComponent<Soldier>();
             if (s == null) { Destroy(go); return null; }
+            SP.Core.ApoyoEnElPiso.Apoyar(go.transform);
             // Mismos numeros que los enemigos del nivel: 180 de vida, ven a 22 m y disparan a 13 m.
             s.Configure(nombre, TeamId.Enemy, RoleType.Enemy, 180);
             if (s.Brain != null) s.Brain.ConfigurarAlcances(22f, 13f);
@@ -461,9 +462,10 @@ namespace SP.Mision
         void SpawnCivilOculto()
         {
             if (civilPrefab == null || Civil != null) return;
-            var go = Instantiate(civilPrefab, new Vector3(RefugioDelCivil.x, 0.8f, RefugioDelCivil.z), Quaternion.Euler(0f, 180f, 0f));
+            var go = Instantiate(civilPrefab, new Vector3(RefugioDelCivil.x, 0f, RefugioDelCivil.z), Quaternion.Euler(0f, 180f, 0f));
             go.name = "Civil";
             Civil = go.GetComponent<Soldier>();
+            SP.Core.ApoyoEnElPiso.Apoyar(go.transform);
             Civil.Configure("Civil", TeamId.Player, RoleType.Civilian, 150);
             if (Civil.Brain != null) Civil.Brain.Pasivo = true;
             if (Civil.Motor != null) Civil.Motor.SetCrouching(true);
@@ -686,6 +688,13 @@ namespace SP.Mision
         {
             if (Fase == FaseDeMision.Derrota || Fase == FaseDeMision.Victoria) return;
             CambiarFase(FaseDeMision.Derrota);
+            
+            var causa = CausaDeDerrota.Ninguna;
+            if (motivo.Contains("CIVIL")) causa = CausaDeDerrota.CivilMuerto;
+            else if (motivo.Contains("ESCUADRA")) causa = CausaDeDerrota.EscuadraCaida;
+            else if (motivo.Contains("TIEMPO")) causa = CausaDeDerrota.TiempoAgotado;
+            EstadoDePartida.RegistrarDerrotaExterna(causa);
+
             GameLog.Line("Mision fallida: " + motivo);
             AlertQueue.Push(motivo, AlertPriority.Alta, 3f);
             if (Heli != null) { Heli.Alerta(false); Heli.DisparaCobertura = false; }

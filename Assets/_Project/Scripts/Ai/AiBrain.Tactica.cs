@@ -114,6 +114,98 @@ namespace SP.Ai
             if (estaba && self != null && self.Motor != null) self.Motor.SetCrouching(false);
         }
 
+        public enum CoverSubState { Hidden, Peeking }
+        CoverSubState subStateCobertura;
+        float relojSubStateCobertura;
+        bool esCoberturaDeBorde;
+        Vector3 lateralOffset;
+
+        void EntrarEnCoberturaBase()
+        {
+            subStateCobertura = CoverSubState.Hidden;
+            relojSubStateCobertura = UnityEngine.Random.Range(1.2f, 2.0f);
+            esCoberturaDeBorde = false;
+            lateralOffset = Vector3.zero;
+
+            if (coberturaDueno != null)
+            {
+                if (coberturaDueno.bounds.size.y >= 1.4f)
+                {
+                    esCoberturaDeBorde = true;
+                }
+            }
+        }
+
+        void TickCicloCobertura(float dt)
+        {
+            if (!enCobertura) return;
+
+            bool isReloading = self.Weapon != null && self.Weapon.IsReloading;
+            bool isMagazineEmpty = self.Weapon != null && self.Weapon.CurrentAmmo <= 0;
+
+            relojSubStateCobertura -= dt;
+
+            if (subStateCobertura == CoverSubState.Peeking && isMagazineEmpty)
+            {
+                subStateCobertura = CoverSubState.Hidden;
+                if (self.Weapon != null) self.Weapon.Reload();
+                relojSubStateCobertura = (self.Weapon != null && self.Weapon.ReloadRemaining > 0f) ? self.Weapon.ReloadRemaining : 1.5f;
+            }
+            else if (relojSubStateCobertura <= 0f)
+            {
+                if (subStateCobertura == CoverSubState.Hidden)
+                {
+                    if (isReloading || isMagazineEmpty)
+                    {
+                        relojSubStateCobertura = 0.1f;
+                    }
+                    else
+                    {
+                        subStateCobertura = CoverSubState.Peeking;
+                        relojSubStateCobertura = UnityEngine.Random.Range(0.8f, 1.4f);
+                        
+                        if (esCoberturaDeBorde)
+                        {
+                            Vector3 frente = Coberturas.FrenteDe(coberturaPunto, coberturaDueno);
+                            Vector3 derecha = Vector3.Cross(Vector3.up, frente).normalized;
+                            if (target != null)
+                            {
+                                Vector3 toTarget = target.transform.position - coberturaPunto;
+                                if (Vector3.Dot(toTarget, derecha) < 0) derecha = -derecha;
+                            }
+                            lateralOffset = derecha * 0.6f;
+                        }
+                    }
+                }
+                else
+                {
+                    subStateCobertura = CoverSubState.Hidden;
+                    relojSubStateCobertura = UnityEngine.Random.Range(1.2f, 2.0f);
+                }
+            }
+
+            Vector3 targetPos = coberturaPunto;
+            if (subStateCobertura == CoverSubState.Peeking && esCoberturaDeBorde)
+            {
+                targetPos = coberturaPunto + lateralOffset;
+            }
+
+            Vector3 disp = targetPos - self.transform.position;
+            disp.y = 0f;
+            if (disp.sqrMagnitude > 0.01f)
+            {
+                self.Motor.Move(disp.normalized, dt);
+            }
+
+            if (State != AiState.Attack)
+            {
+                if (subStateCobertura == CoverSubState.Hidden)
+                    self.Motor.SetCrouching(true);
+                else
+                    self.Motor.SetCrouching(esCoberturaDeBorde);
+            }
+        }
+
         // Llegada a la cobertura ordenada.
         void EntrarEnCobertura()
         {
@@ -131,7 +223,7 @@ namespace SP.Ai
                 f.y = 0f;
                 if (f.sqrMagnitude > 0.01f) self.Motor.LookTowards(coberturaPunto + f.normalized * 5f, 10f);
             }
-            Feedback.Accion(SfxKind.CoverTake, $"{self.DisplayName.ToUpperInvariant()} EN COBERTURA",
+            Feedback.Accion(SfxKind.CoverTake, null,
                 self.transform.position, Feedback.Cover, aviso: false, pulso: true, volumen: 0.5f);
         }
 
@@ -271,6 +363,26 @@ namespace SP.Ai
             ComenzarSeguirAlJugador(lider);
         }
 
+        void TickAgachadoContagio()
+        {
+            if (self.Team != TeamId.Player) return;
+            var playerBrain = SP.Player.PlayerBrain.Activo;
+            if (playerBrain == null || playerBrain.Current == null) return;
+            
+            var possessed = playerBrain.Current;
+            if (possessed == self) return;
+
+            if (State != AiState.Follow || followTarget != possessed) return;
+
+            float dist = Vector3.Distance(transform.position, possessed.transform.position);
+            if (dist <= 8f)
+            {
+                bool crouch = possessed.Motor.IsCrouching;
+                if (!crouch && enCobertura) return;
+                self.Motor.SetCrouching(crouch);
+            }
+        }
+
         void ComenzarSeguirAlJugador(Soldier lider)
         {
             LiberarCobertura();
@@ -282,8 +394,19 @@ namespace SP.Ai
             orderDestination = self.transform.position;   // si el combate lo desvia, no vuelve a un punto viejo
             ClearPath();
             followTarget = lider;
-            // Ranura detras del lider, repartida por Id para que no se apilen.
-            followOffsetLocal = new Vector3(((self.Id % 3) - 1) * 1.1f, 0f, -1.25f - (self.Id % 2) * 0.75f);   // ronda 13: mitad de la ranura anterior (2,2 / 2,5 / 1,5)
+
+            int idx = 0;
+            foreach (var s in SP.Core.ActorRegistry.All)
+            {
+                if (s == self) continue;
+                if (s.Brain != null && s.Brain.FollowTarget == lider) idx++;
+            }
+            int row = (idx / 2) + 1;
+            float sign = (idx % 2 == 0) ? 1f : -1f;
+            float px = sign * row * AjustesDeEscuadra.DistanciaLateralFormacion;
+            float pz = -row * AjustesDeEscuadra.DistanciaAtrasFormacion;
+            followOffsetLocal = new Vector3(px, 0f, pz);
+
             seguirAuto = true;
             SetState(AiState.Follow);
             forceSense = true;
@@ -330,77 +453,4 @@ namespace SP.Ai
         float tiempoUltimoAtaque = -99f;
         float relojRetarget;
 
-        public float PuntajeDeObjetivo(Soldier s)
-        {
-            if (s == null || self == null) return float.MaxValue;
-            var pos = self.transform.position;
-            float dist = Vector3.Distance(pos, s.transform.position);
-            bool linea = TieneLineaDeTiro(s);
-            float p = dist;
-            if (!linea) p += 12f;
-            if (s.Id == ultimoAtacanteId && Time.time - tiempoUltimoAtaque < 4f) p -= 10f;
-            if (s.Health != null && s.Health.MaxHealth > 0 && s.Health.Current < s.Health.MaxHealth * 0.4f) p -= 3f;
-            if (s == target) p -= 5f;
-            return p;
-        }
-
-        bool EnElCono(Soldier s)
-        {
-            var d = s.transform.position - self.transform.position;
-            d.y = 0f;
-            if (d.sqrMagnitude < 0.0001f) return true;
-            return Vector3.Angle(self.transform.forward, d) <= SemiconoDeVision;
-        }
-
-        Soldier MejorObjetivoVisible()
-        {
-            float vision = EffectiveVisionRange;
-            var equipo = self.Team;
-            // BUG REAL ("perdes porque murio el rehen sin haber hecho nada raro"): el civil (Role ==
-            // Civilian) es un no-combatiente Pasivo -- no ve enemigos ni devuelve fuego (ver
-            // Pasivo mas arriba) -- pero antes de este chequeo SI calificaba como blanco valido para
-            // cualquier enemigo que lo viera, igual que un soldado mas. Como queda visible desde el
-            // arranque de la mision (SpawnCivilOculto en MisionDirector.Start), bastaba que un
-            // enemigo de patrulla le tuviera linea de vision en cualquier momento de Infiltrar o
-            // Resistir para matarlo sin que el jugador pudiera hacer nada -- y TickRescatar/
-            // TickEscapar pierden la mision apenas Civil.Health.IsAlive da false. Un rehen indefenso
-            // no deberia ser un objetivo militar prioritario: se lo excluye del sensado de enemigos.
-            SpatialGrid.QueryInRange(self.transform.position, vision * AlcanceExtendido, candidatos,
-                s => s.Health != null && s.Health.IsAlive && s.Team != equipo && s.Role != RoleType.Civilian);
-
-            Soldier mejor = null;
-            float mejorPuntaje = float.MaxValue;
-            for (int i = 0; i < candidatos.Count; i++)
-            {
-                var s = candidatos[i];
-                float dist = Vector3.Distance(self.transform.position, s.transform.position);
-                if (dist > vision)
-                {
-                    // Vision extendida: cono + linea de tiro.
-                    if (!EnElCono(s) || !TieneLineaDeTiro(s)) continue;
-                }
-                float p = PuntajeDeObjetivo(s);
-                if (p < mejorPuntaje) { mejorPuntaje = p; mejor = s; }
-            }
-            return mejor;
-        }
-
-        // En pleno combate: cada 0.5 s se revisa si aparecio un blanco
-        // claramente mejor que el actual (una orden de atacar explicita no se
-        // cambia).
-        void TickRetarget(float dt)
-        {
-            if (orderIsAttack || target == null) return;
-            if (State != AiState.Chase && State != AiState.Attack) return;
-            relojRetarget += dt;
-            if (relojRetarget < 0.5f) return;
-            relojRetarget = 0f;
-
-            var mejor = MejorObjetivoVisible();
-            if (mejor == null || mejor == target) return;
-            if (PuntajeDeObjetivo(mejor) + 4f >= PuntajeDeObjetivo(target)) return;
-            target = mejor;
-            segundosSinLineaDeTiro = 0f;
-        }
-    }
-}
+        public float PuntajeDeObjetivo(Sol

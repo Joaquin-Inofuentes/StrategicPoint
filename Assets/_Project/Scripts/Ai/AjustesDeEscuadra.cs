@@ -27,10 +27,14 @@ namespace SP.Ai
         public float distanciaParaSeguir = 12.5f;
         public float distanciaParaDetenerse = 4f;
         public bool seguirDesdeCobertura = true;
+        public float distanciaLateralFormacion = 2.5f;
+        public float distanciaAtrasFormacion = 1.5f;
 
         public static float DistanciaParaSeguir = 12.5f;
         public static float DistanciaParaDetenerse = 4f;
         public static bool SeguirDesdeCobertura = true;
+        public static float DistanciaLateralFormacion = 2.5f;
+        public static float DistanciaAtrasFormacion = 1.5f;
 
         // El soldado que maneja el jugador en primera persona (null en RTS o
         // sin nadie): PlayerInputDriver lo actualiza cada frame.
@@ -53,6 +57,8 @@ namespace SP.Ai
             DistanciaParaSeguir = Mathf.Max(2f, distanciaParaSeguir);
             DistanciaParaDetenerse = Mathf.Clamp(distanciaParaDetenerse, 1f, DistanciaParaSeguir - 1f);
             SeguirDesdeCobertura = seguirDesdeCobertura;
+            DistanciaLateralFormacion = Mathf.Max(0f, distanciaLateralFormacion);
+            DistanciaAtrasFormacion = Mathf.Max(0f, distanciaAtrasFormacion);
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

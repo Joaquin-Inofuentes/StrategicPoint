@@ -23,7 +23,7 @@ namespace SP.Presentation
         public Transform Target
         {
             get => target;
-            set { target = value; if (Application.isPlaying) DetectarSoldado(); }
+            set { target = value; if (Application.isPlaying) DetectarTarget(); }
         }
         [SerializeField] float height = 55f;
         // El icono es un circulo chato: rotarlo no cambia nada visible.
@@ -80,42 +80,65 @@ namespace SP.Presentation
         TeamId equipoPintadoMinimapa;
         bool autoColoreado;
 
-        void DetectarSoldado()
+        Vehicle vehiculoDetectado;
+        void DetectarTarget()
         {
             if (Target == null) return;
             soldierDetectado = Target.GetComponent<Soldier>();
-            if (soldierDetectado == null) return;
-            equipoPintadoMinimapa = soldierDetectado.Team;
-            var color = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
-            ConvertirEnTrianguloAnidado(color);
-            autoColoreado = true;
+            vehiculoDetectado = Target.GetComponent<SP.Vehicles.Vehicle>();
+
+            if (soldierDetectado != null)
+            {
+                equipoPintadoMinimapa = soldierDetectado.Team;
+                var color = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
+                if (equipoPintadoMinimapa == TeamId.Enemy) ConvertirEnTriangulo();
+                else ConvertirEnCirculo();
+                
+                EnsureRenderer();
+                if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(color);
+                autoColoreado = true;
+                return;
+            }
+
+            if (vehiculoDetectado != null)
+            {
+                ConvertirEnCuadrado();
+                Color color = Color.gray;
+                if (vehiculoDetectado.Occupants.Count > 0)
+                {
+                    color = vehiculoDetectado.Bando == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
+                }
+                EnsureRenderer();
+                if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(color);
+                return;
+            }
         }
 
-        // Pedido explicito: "el enemigo no se ve claro... fondo blanco y
-        // relleno variante (rojo/amarillo/azul segun los rombos)". Antes
-        // esto pintaba el UNICO renderer del icono (el triangulo entero)
-        // del color de equipo -- ahora ese renderer es SIEMPRE blanco (el
-        // "fondo"/borde del triangulo anidado) y lo que cambia de color es
-        // el triangulo hijo mas chico (interior).
-        void RepintarPorEquipo(bool forzar = false)
+        public void RepintarPorEquipo(bool forzar = false)
         {
+            if (Target == null) return;
+            var vehicle = Target.GetComponent<SP.Vehicles.Vehicle>();
+            if (vehicle != null)
+            {
+                Color color = Color.gray;
+                if (vehicle.Occupants.Count > 0)
+                    color = vehicle.Bando == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
+                EnsureRenderer();
+                if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(color);
+                return;
+            }
+
             if (soldierDetectado == null) return;
             if (!forzar && soldierDetectado.Team == equipoPintadoMinimapa) return;
             equipoPintadoMinimapa = soldierDetectado.Team;
-            var color = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
-            PintarInterior(color);
+            var colorSoldier = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
+            if (equipoPintadoMinimapa == TeamId.Enemy) ConvertirEnTriangulo();
+            else ConvertirEnCirculo();
+            
+            EnsureRenderer();
+            if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(colorSoldier);
         }
 
-        void PintarInterior(Color color)
-        {
-            if (materialInterior == null) return;
-            materialInterior.color = color;
-            if (materialInterior.HasProperty("_BaseColor")) materialInterior.SetColor("_BaseColor", color);
-        }
-
-        // selfRenderer es un campo privado comun: NO sobrevive al domain
-        // reload al entrar en Play. OnEnable si vuelve a correr ahi, asi
-        // que la referencia se recompone sola.
         void EnsureRenderer()
         {
             if (selfRenderer == null) selfRenderer = GetComponent<MeshRenderer>();
@@ -125,12 +148,16 @@ namespace SP.Presentation
         // que SP.Core.WorldSystemsRegistry.
         void OnEnable()
         {
+            int expectedLayer = LayerMask.NameToLayer("Minimap");
+            if (expectedLayer < 0) expectedLayer = 8;
+            gameObject.layer = expectedLayer;
+
             EnsureRenderer();
             // Se arregla la escena en vivo y no solo la construccion nueva:
             // los iconos de SC_Gameplay estan serializados con la cuña, y
             // reconstruirlos a mano seria un diff de escena por soldado.
             if (Application.isPlaying && (esTriangulo || directionMarker != null)) ConvertirEnTriangulo();
-            if (Application.isPlaying) DetectarSoldado();
+            if (Application.isPlaying) DetectarTarget();
             WorldUiDirector.Register(this);
         }
 
@@ -273,35 +300,36 @@ namespace SP.Presentation
         // unidad (igual que el triangulo simple) y la otra, mas chica, hacia
         // atras, para que el blip se note incluso a los zooms mas alejados
         // del minimapa.
-        [SerializeField] bool esDobleTriangulo;
-
-        static Mesh mallaDobleTriangulo;
-
-        static Mesh MallaDobleTriangulo()
+        static Mesh mallaCirculo;
+        static Mesh MallaCirculo()
         {
-            if (mallaDobleTriangulo != null) return mallaDobleTriangulo;
-            var m = new Mesh { name = "MinimapDobleTriangulo", hideFlags = HideFlags.HideAndDontSave };
-            m.vertices = new[]
+            if (mallaCirculo != null) return mallaCirculo;
+            var m = new Mesh { name = "MinimapCirculo" };
+            int segments = 16;
+            var v = new Vector3[segments + 1];
+            v[0] = Vector3.zero;
+            for (int i = 0; i < segments; i++)
             {
-                new Vector3(0f, 0f, 0.55f),      // 0 punta delantera
-                new Vector3(-0.42f, 0f, -0.08f),  // 1
-                new Vector3(0.42f, 0f, -0.08f),   // 2
-                new Vector3(0f, 0f, -0.55f),      // 3 punta trasera (mas chica de base)
-                new Vector3(-0.28f, 0f, 0.08f),   // 4
-                new Vector3(0.28f, 0f, 0.08f),    // 5
-            };
-            // Dos triangulos, cada uno con sus dos vueltas (visible desde
-            // arriba y desde abajo, mismo motivo que el resto de las mallas
-            // de este archivo).
-            m.triangles = new[] { 0, 1, 2, 0, 2, 1, 3, 4, 5, 3, 5, 4 };
-            m.normals = new[] { Vector3.up, Vector3.up, Vector3.up, Vector3.up, Vector3.up, Vector3.up };
+                float angle = i * Mathf.PI * 2f / segments;
+                v[i + 1] = new Vector3(Mathf.Cos(angle) * 0.5f, 0f, Mathf.Sin(angle) * 0.5f);
+            }
+            m.vertices = v;
+            var t = new int[segments * 6];
+            for (int i = 0; i < segments; i++)
+            {
+                int next = i + 1 < segments ? i + 2 : 1;
+                t[i * 6] = 0; t[i * 6 + 1] = i + 1; t[i * 6 + 2] = next;
+                t[i * 6 + 3] = 0; t[i * 6 + 4] = next; t[i * 6 + 5] = i + 1;
+            }
+            m.triangles = t;
+            m.RecalculateNormals();
             m.RecalculateBounds();
             m.hideFlags = HideFlags.HideAndDontSave;
-            mallaDobleTriangulo = m;
+            mallaCirculo = m;
             return m;
         }
 
-        public bool ConvertirEnDobleTriangulo()
+        public bool ConvertirEnCirculo()
         {
             if (directionMarker != null)
             {
@@ -311,46 +339,33 @@ namespace SP.Presentation
             }
             var filtro = GetComponent<MeshFilter>();
             if (filtro == null) return false;
-            filtro.sharedMesh = MallaDobleTriangulo();
+            filtro.sharedMesh = MallaCirculo();
             esTriangulo = false;
-            esDobleTriangulo = true;
             return true;
         }
 
-        // Pedido explicito: "los jugadores sean 2 triangulos uno dentro de
-        // otro, fondo blanco y relleno variante (rojo/amarillo/azul)".
-        // Reusa la MISMA malla de MallaTriangulo() para el triangulo GRANDE
-        // (el icono propio, siempre blanco -- el "fondo"/marco) y agrega un
-        // hijo "Interior" con un triangulo mas chico (mismo mesh, escalado)
-        // que lleva el color de equipo/rol -- mismo patron de dos caras
-        // anidadas que ya usa DiamondGizmo (Borde+Interior) para los rombos
-        // de mundo, aplicado aca al minimapa.
-        Renderer interior;
-        Material materialInterior;
-
-        static Mesh mallaTrianguloInterior;
-        static Mesh MallaTrianguloInterior()
+        static Mesh mallaRombo;
+        static Mesh MallaRombo()
         {
-            if (mallaTrianguloInterior != null) return mallaTrianguloInterior;
-            var m = new Mesh { name = "MinimapTrianguloInterior", hideFlags = HideFlags.HideAndDontSave };
-            // Mismas proporciones que MallaTriangulo(), a 60% -- deja un
-            // marco blanco parejo alrededor visible en los cuatro lados.
-            const float k = 0.6f;
+            if (mallaRombo != null) return mallaRombo;
+            var m = new Mesh { name = "MinimapRombo" };
+            const float r = 0.5f;
             m.vertices = new[]
             {
-                new Vector3(0f, 0f, 0.55f * k),
-                new Vector3(-0.45f * k, 0f, -0.40f * k),
-                new Vector3(0.45f * k, 0f, -0.40f * k),
+                new Vector3(0f, 0f, r),
+                new Vector3(r, 0f, 0f),
+                new Vector3(0f, 0f, -r),
+                new Vector3(-r, 0f, 0f),
             };
-            m.triangles = new[] { 0, 1, 2, 0, 2, 1 };
-            m.normals = new[] { Vector3.up, Vector3.up, Vector3.up };
+            m.triangles = new[] { 0, 1, 2, 0, 2, 3, 0, 2, 1, 0, 3, 2 };
+            m.normals = new[] { Vector3.up, Vector3.up, Vector3.up, Vector3.up };
             m.RecalculateBounds();
             m.hideFlags = HideFlags.HideAndDontSave;
-            mallaTrianguloInterior = m;
+            mallaRombo = m;
             return m;
         }
 
-        public bool ConvertirEnTrianguloAnidado(Color colorRelleno)
+        public bool ConvertirEnRombo()
         {
             if (directionMarker != null)
             {
@@ -360,50 +375,11 @@ namespace SP.Presentation
             }
             var filtro = GetComponent<MeshFilter>();
             if (filtro == null) return false;
-            filtro.sharedMesh = MallaTriangulo();
-            esTriangulo = true;
-            esDobleTriangulo = false;
-
-            EnsureRenderer();
-            if (selfRenderer != null)
-            {
-                var matBorde = selfRenderer.material;
-                if (matBorde != null)
-                {
-                    matBorde.color = Color.white;
-                    if (matBorde.HasProperty("_BaseColor")) matBorde.SetColor("_BaseColor", Color.white);
-                }
-            }
-
-            if (interior == null)
-            {
-                var existente = transform.Find("Interior");
-                GameObject go;
-                if (existente != null) go = existente.gameObject;
-                else
-                {
-                    go = new GameObject("Interior", typeof(MeshFilter), typeof(MeshRenderer));
-                    go.layer = gameObject.layer;
-                    go.transform.SetParent(transform, false);
-                    // Un pelo hacia arriba en Y local para no competir en
-                    // profundidad con el triangulo grande (mismo motivo que
-                    // el offset de -0.02 entre Borde/Interior en DiamondGizmo).
-                    go.transform.localPosition = new Vector3(0f, 0.01f, 0f);
-                }
-                go.GetComponent<MeshFilter>().sharedMesh = MallaTrianguloInterior();
-                interior = go.GetComponent<MeshRenderer>();
-                interior.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                interior.receiveShadows = false;
-                materialInterior = DiamondGizmo.NuevoMaterial(Color.white);
-                interior.sharedMaterial = materialInterior;
-            }
-            PintarInterior(colorRelleno);
+            filtro.sharedMesh = MallaRombo();
+            esTriangulo = false;
             return true;
         }
 
-        // C2: la forma distingue la categoria (unidad vs interactuable),
-        // el color distingue el bando. Mismo patron que esTriangulo/
-        // MallaTriangulo, para un cuadrado en vez de una cuña.
         [SerializeField] bool esCuadrado;
         public bool EsCuadrado => esCuadrado;
 
@@ -461,6 +437,27 @@ namespace SP.Presentation
         // minimapa no decia nada del terreno hasta acercarse. Idempotente
         // por destruir-y-rearmar (mismo patron que
         // SP.Core.Coberturas.Registrar): llamarlo de nuevo no duplica.
+        public static int RegistrarVehiculosLibres()
+        {
+            int count = 0;
+            int layer = LayerMask.NameToLayer("Minimap");
+            if (layer < 0) layer = 8;
+            var root = SP.Core.RaicesDeEscena.Buscar("VehiculosIconosRoot");
+            if (root == null) root = new GameObject("VehiculosIconosRoot").transform;
+
+            foreach (var v in SP.Vehicles.Vehicle.Todos)
+            {
+                if (v.GetComponentInChildren<MinimapIcon>() == null)
+                {
+                    var icon = Spawn(v.transform, Color.gray, layer, 2.0f);
+                    icon.transform.SetParent(root, true);
+                    icon.ConvertirEnCuadrado();
+                    count++;
+                }
+            }
+            return count;
+        }
+
         public static int RegistrarObstaculos(Color color, float radius = 1.4f)
         {
             var previo = SP.Core.RaicesDeEscena.Buscar(ObstaclesRootName);

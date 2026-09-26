@@ -86,11 +86,16 @@ namespace SP.Presentation
             if (soldier != null && soldier.Health != null) soldier.Health.Revivido += AlRevivir;
         }
 
+        // Decisión D12: Bodies stay visible. Cap at 24 visible corpses (oldest hides).
+        static readonly System.Collections.Generic.List<Soldier> cadaveres = new System.Collections.Generic.List<Soldier>();
+        public static void ReiniciarActivo() => cadaveres.Clear();
+
         // Ronda 12: revivir (medico o [E]) solo reponia la vida: el cuerpo ya se habia ocultado 2 s despues de morir y el aliado
         // revivido quedaba invisible. Se deshace todo lo que dejo OnDeath y se corta la corutina que lo iba a ocultar.
         void AlRevivir()
         {
             if (!Application.isPlaying || soldier == null) return;
+            cadaveres.Remove(soldier);
             StopAllCoroutines();
             transform.localScale = baseScale;
             WriteTint(rend, baseColor);
@@ -104,6 +109,7 @@ namespace SP.Presentation
         void OnDestroy()
         {
             if (soldier != null && soldier.Health != null) soldier.Health.Revivido -= AlRevivir;
+            if (soldier != null) cadaveres.Remove(soldier);
             damageSub?.Dispose();
             deathSub?.Dispose();
             shotSub?.Dispose();
@@ -197,6 +203,18 @@ namespace SP.Presentation
                 // impacto/energia liberada, sin sangre (tono del proyecto).
                 SparkleBurstFx.Spawn(transform.position + Vector3.up * 0.9f, new Color(0.95f, 0.4f, 0.15f), 0.7f, 3f, 30, 3.5f);
             }
+            
+            if (soldier != null)
+            {
+                if (!cadaveres.Contains(soldier)) cadaveres.Add(soldier);
+                while (cadaveres.Count > 24)
+                {
+                    var viejo = cadaveres[0];
+                    cadaveres.RemoveAt(0);
+                    if (viejo != null && viejo.Health != null && !viejo.Health.IsAlive)
+                        viejo.SetBodyVisible(false);
+                }
+            }
 
             // Con arte real y Animator, la muerte es una animacion de
             // verdad (una de las 6 del pack, sorteada) y no el volteo de
@@ -207,20 +225,14 @@ namespace SP.Presentation
             else StartCoroutine(FallOver());
         }
 
-        // Pedido explicito: reproducir la animacion de morir y, pasados 2
-        // segundos, desaparecer -- SetBodyVisible(false) y no
-        // gameObject.SetActive(false), para no cortar de golpe ningun otro
-        // componente (barra de vida, marcador de kill feed) que todavia
-        // tenga una referencia viva a este soldado en el mismo frame.
+        // Decisión D12: Bodies stay visible.
         IEnumerator MorirAnimado()
         {
             animator.SetInteger(SP.Presentation.SoldierAnimatorDriver.ParamMuerteVariante,
                 UnityEngine.Random.Range(0, SP.Presentation.SoldierAnimatorDriver.CantidadDeMuertes));
             animator.SetBool(SP.Presentation.SoldierAnimatorDriver.ParamMuerto, true);
 
-            yield return new WaitForSeconds(SegundosHastaDesaparecer);
-            if (soldier.Health != null && soldier.Health.IsAlive) yield break;
-            soldier.SetBodyVisible(false);
+            yield break;
         }
 
 

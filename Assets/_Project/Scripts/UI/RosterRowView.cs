@@ -1,12 +1,14 @@
 using System;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using SP.Actors;
 using SP.Ai;
 using SP.Combat;
 using SP.Core;
 using SP.Player;
 using SP.Presentation;
+using SP.CameraSystem;
 
 namespace SP.UI
 {
@@ -19,7 +21,7 @@ namespace SP.UI
     // ("Row_<Nombre>") y refrescaba TODAS por LateUpdate cada frame; ahora
     // cada fila tiene su propio Soldier (asignado una vez en Bind) y
     // reacciona sola, por evento, solo cuando ESE soldado cambia.
-    public class RosterRowView : MonoBehaviour
+    public class RosterRowView : MonoBehaviour, IPointerClickHandler
     {
         [SerializeField] Image background;
         [SerializeField] Text label;
@@ -248,5 +250,39 @@ namespace SP.UI
         }
 
         public bool IsHighlighted => possessed || selected;
+
+        float lastClickTime;
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (Soldier == null || !alive || eventData.button != PointerEventData.InputButton.Left) return;
+
+            float clickTime = Time.unscaledTime;
+            bool isDouble = (clickTime - lastClickTime) <= 0.3f;
+            lastClickTime = clickTime;
+
+            if (isDouble)
+            {
+                var brain = PlayerBrain.Activo;
+                if (brain != null && brain.Current != Soldier)
+                {
+                    PossessionService.Swap(brain, Soldier);
+                }
+                if (CameraRig.Instance != null && CameraRig.Instance.Mode != ControlMode.Fps)
+                {
+                    CameraRig.Instance.SetMode(ControlMode.Fps);
+                }
+            }
+            else
+            {
+                var sc = FindAnyObjectByType<SelectionController>();
+                if (sc != null) sc.SelectSingle(Soldier);
+
+                if (CameraRig.Instance != null && CameraRig.Instance.Mode == ControlMode.Rts)
+                {
+                    CameraRig.Instance.RecenterOn(Soldier.transform.position);
+                }
+            }
+        }
     }
 }

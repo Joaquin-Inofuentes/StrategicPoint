@@ -249,6 +249,11 @@ namespace SP.Vehicles
                 torreta.posLocalOriginal.Add(c.localPosition);
                 torreta.rotLocalOriginal.Add(c.localRotation);
             }
+            if (Application.isPlaying)
+            {
+                var rombo = InteractableDiamond.Agregar(go.transform, Vector3.up * 2f, DiamondGizmo.ColorTorreta);
+                rombo.Condicion = () => torreta.Ocupante == null;
+            }
             return torreta;
         }
     }

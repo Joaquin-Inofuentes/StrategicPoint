@@ -24,7 +24,7 @@ namespace SP.Mision
 
         GameObject lienzo;
         Image barraArriba, barraAbajo, fondoSubtitulo;
-        Text subtitulo, cartelFinal;
+        Text subtitulo, cartelFinal, cartelSiguiente;
         PlayerInputDriver driverRef;
         System.Action alTerminarRef;
 
@@ -98,6 +98,18 @@ namespace SP.Mision
             var finRt = cartelFinal.rectTransform; finRt.anchorMin = finRt.anchorMax = new Vector2(0.5f, 0.5f);
             finRt.sizeDelta = new Vector2(1500f, 160f);
             cartelFinal.text = "PRESIONA UNA TECLA O HACE CLICK PARA COMENZAR";
+
+            var sigGO = new GameObject("CartelSiguiente", typeof(RectTransform), typeof(Text), typeof(Shadow));
+            sigGO.transform.SetParent(lienzo.transform, false);
+            cartelSiguiente = sigGO.GetComponent<Text>();
+            cartelSiguiente.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            cartelSiguiente.fontSize = 28; cartelSiguiente.fontStyle = FontStyle.Bold; cartelSiguiente.alignment = TextAnchor.LowerRight;
+            cartelSiguiente.color = new Color(1f, 1f, 1f, 0f); cartelSiguiente.raycastTarget = false;
+            var sigRt = cartelSiguiente.rectTransform; sigRt.anchorMin = sigRt.anchorMax = new Vector2(1f, 0f);
+            sigRt.pivot = new Vector2(1f, 0f);
+            sigRt.anchoredPosition = new Vector2(-40f, 40f);
+            sigRt.sizeDelta = new Vector2(600f, 60f);
+            cartelSiguiente.text = "[ESPACIO / CLIC] SIGUIENTE";
         }
 
         static Image Rect(Transform padre, string nombre, Vector2 aMin, Vector2 aMax, Color color)
@@ -166,8 +178,19 @@ namespace SP.Mision
 
                 float duracion = Mathf.Max(0.05f, wp.segundosParaLlegar);
                 float t = 0f;
+                bool skipping = false;
+                
+                cartelSiguiente.color = new Color(1f, 1f, 1f, 0.6f);
+
                 while (t < duracion)
                 {
+                    bool skipPressed = (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame);
+                    if (skipPressed)
+                    {
+                        skipping = true;
+                        break;
+                    }
+                    
                     t += Time.deltaTime;
                     float k = Mathf.Clamp01(t / duracion);
                     float suave = k * k * (3f - 2f * k);   // smoothstep: sin el arranque/frenado brusco de un lerp lineal
@@ -175,17 +198,43 @@ namespace SP.Mision
                     cam.transform.rotation = Quaternion.Slerp(desdeRot, hastaRot, suave);
                     yield return null;
                 }
+
+                if (skipping)
+                {
+                    cartelSiguiente.color = new Color(1f, 1f, 1f, 0f);
+                    Vector3 skipDesdePos = cam.transform.position;
+                    Quaternion skipDesdeRot = cam.transform.rotation;
+                    float skipDur = 0.5f;
+                    float skipT = 0f;
+                    while (skipT < skipDur)
+                    {
+                        skipT += Time.deltaTime;
+                        float k = Mathf.Clamp01(skipT / skipDur);
+                        float suave = k * k * (3f - 2f * k);
+                        cam.transform.position = Vector3.Lerp(skipDesdePos, hastaPos, suave);
+                        cam.transform.rotation = Quaternion.Slerp(skipDesdeRot, hastaRot, suave);
+                        yield return null;
+                    }
+                }
+
                 cam.transform.position = hastaPos;
                 cam.transform.rotation = hastaRot;
 
                 bool conSubtitulo = !string.IsNullOrEmpty(wp.subtitulo);
-                if (conSubtitulo) yield return MostrarSubtitulo(wp.subtitulo);
+                if (conSubtitulo && !skipping) yield return MostrarSubtitulo(wp.subtitulo);
 
                 float espera = Mathf.Max(0f, wp.segundosDeEspera - (conSubtitulo ? 0.4f : 0f));
                 float te = 0f;
-                while (te < espera) { te += Time.deltaTime; yield return null; }
+                while (te < espera && !skipping)
+                {
+                    bool skipPressed = (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame);
+                    if (skipPressed) { skipping = true; break; }
+                    te += Time.deltaTime;
+                    yield return null;
+                }
 
-                if (conSubtitulo) yield return OcultarSubtitulo();
+                if (conSubtitulo) { subtitulo.color = new Color(1f, 1f, 1f, 0f); fondoSubtitulo.color = new Color(0f, 0f, 0f, 0f); }
+                cartelSiguiente.color = new Color(1f, 1f, 1f, 0f);
             }
 
             yield return EsperarTeclaYCerrar(driver, alTerminar);

@@ -60,7 +60,9 @@ namespace SP.Actors
         // Ronda 13 (punto 7): agachado se camina a la mitad. Antes se iba a la misma velocidad que de pie y los clips de
         // "walk crouching" (ciclo de ~1,5 m/s) patinaban sobre el piso.
         public const float FactorDeVelocidadAgachado = 0.5f;
-        public float MoveSpeed => moveSpeed * (Corriendo ? FactorDeCarrera : (IsCrouching ? FactorDeVelocidadAgachado : 1f));
+        public float SpeedMultiplier = 1f;
+        public bool Atado { get; set; }
+        public float MoveSpeed => Atado ? 0f : moveSpeed * SpeedMultiplier * (Corriendo ? FactorDeCarrera : (IsCrouching ? FactorDeVelocidadAgachado : 1f));
 
         // [Shift]: correr. El jugador lo pide a pie y los aliados libres corren con el
         // (AjustesDeEscuadra.Correr). No se corre agachado ni en el aire.

@@ -366,6 +366,13 @@ namespace SP.EditorTools
             if (a != null) { prototipoArbolA = protos.Count; protos.Add(new TreePrototype { prefab = PrototipoVisualLimpio(a, conCollider: true) }); }
             if (b != null) { prototipoArbolB = protos.Count; protos.Add(new TreePrototype { prefab = PrototipoVisualLimpio(b, conCollider: true) }); }
             terreno.terrainData.treePrototypes = protos.ToArray();
+            
+            // Fix LOD: distance was too short, trees looked cut or like edges
+            terreno.treeDistance = 1500f;
+            terreno.treeBillboardDistance = 300f;
+            terreno.treeCrossFadeLength = 20f;
+            terreno.treeMaximumFullLODCount = 250;
+
             terrenoDeArboles = terreno;
         }
 

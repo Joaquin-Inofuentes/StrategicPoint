@@ -264,15 +264,11 @@ namespace SP.Combat
                 if (explosionRadius > 0f) Explode(puntoDeImpacto);
                 else
                 {
-                    // HEADSHOT: instakill SOLO cuando jugador/aliados (ownerTeam ==
-                    // Player) le pegan en la cabeza a un enemigo. Al reves (un enemigo
-                    // pegandole en la cabeza al jugador/aliado) sigue siendo dano
-                    // normal -- ultimoEsCabeza ya sale en false en ese caso porque no
-                    // se evalua nada especial del lado del que dispara, solo importa
-                    // a quien se le pega.
-                    bool headshot = ultimoImpactoFueCabeza && ownerTeam == TeamId.Player && hit.Team == TeamId.Enemy;
-                    hit.Health.TakeDamage(damage, ownerId, headshot);
-                    ImpactCubes.Spawn(puntoDeImpacto, -transform.forward, ImpactSurface.Soldier, damage);
+                    bool headshot = ultimoImpactoFueCabeza;
+                    int finalDamage = headshot ? damage * 2 : damage;
+                    if (headshot) EventBus.Instance.Publish(new HeadshotEvent(ownerId, hit.Id, puntoDeImpacto));
+                    hit.Health.TakeDamage(finalDamage, ownerId, false);
+                    ImpactCubes.Spawn(puntoDeImpacto, -transform.forward, ImpactSurface.Soldier, finalDamage);
                 }
                 Expire();
                 return;
@@ -363,12 +359,18 @@ namespace SP.Combat
                 // radio de impacto propio.
                 bool esPared = SP.Core.NavService.BlocksMovement(h.collider);
                 bool esVehiculo = false;
+                bool esLuminaria = false;
                 if (!esPared && !h.collider.isTrigger)
                 {
                     var v = h.collider.GetComponentInParent<SP.Vehicles.Vehicle>();
                     esVehiculo = v != null && v != ignoreVehicle;
+                    if (!esVehiculo)
+                    {
+                        var lum = h.collider.GetComponentInParent<SP.Presentation.Luminaria>();
+                        esLuminaria = lum != null;
+                    }
                 }
-                if (!esPared && !esVehiculo) continue;
+                if (!esPared && !esVehiculo && !esLuminaria) continue;
                 if (h.distance >= mejor) continue;
                 mejor = h.distance;
                 impacto = h;
@@ -407,6 +409,15 @@ namespace SP.Combat
             // ORIGEN del obstaculo, que con una barricada de casi 6 metros
             // de largo significaba que solo le pegabas cerca del pivote.
             var marca = impacto.collider.GetComponentInParent<SP.Presentation.ObstacleMarker>();
+            var luminaria = impacto.collider.GetComponentInParent<SP.Presentation.Luminaria>();
+            
+            if (luminaria != null)
+            {
+                luminaria.TakeDamage(damage, impacto.point);
+                Expire();
+                return true;
+            }
+
             var clase = marca != null ? EnvironmentHitKind.Obstacle : EnvironmentHitKind.Ground;
             if (marca != null) marca.TakeDamage(damage, impacto.point);
 

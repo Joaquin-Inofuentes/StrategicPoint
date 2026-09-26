@@ -22,54 +22,26 @@ namespace SP.Player
         // mision larga terminaria lleno de cajitas de balas de cada baja.
         public const float VidaMaxima = 45f;
 
-        Renderer rend;
         PlayerInputDriver driver;
         float edad;
 
-        public const string PrefabMoneda = "Pickups/P_MunicionMoneda";
         float alturaBase;
 
         public static MunicionPickup Crear(Vector3 pos)
         {
-            // Ronda 12: moneda 3D con una bala en relieve que gira y flota (prefab generado por MonedaMunicionBuilder).
-            // Si el prefab no esta (build sin la carpeta), queda el cubito de siempre.
-            var prefab = SP.Core.RecursosCache.Cargar<GameObject>(PrefabMoneda);
-            if (prefab != null)
-            {
-                var moneda = Instantiate(prefab);
-                moneda.name = "MunicionPickup";
-                moneda.transform.position = pos + Vector3.up * 0.8f;
-                moneda.transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
-                moneda.transform.localScale = Vector3.one * 0.55f;
-                var mp = moneda.AddComponent<MunicionPickup>();
-                mp.alturaBase = moneda.transform.position.y;
-                return mp;
-            }
+            var raiz = new GameObject("MunicionPickup");
+            raiz.transform.position = pos;
 
-            // Ronda 13 (punto 5): el respaldo ya no es un cubo (se leia como "un cubo que aparece al matar"): es una moneda plana.
-            var raiz = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            raiz.name = "MunicionPickup";
-            raiz.transform.position = pos + Vector3.up * 0.3f;
-            raiz.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-            raiz.transform.localScale = new Vector3(0.4f, 0.04f, 0.4f);
-
-            var colViejo = raiz.GetComponent<Collider>();
-            if (colViejo != null) Destroy(colViejo);
             var col = raiz.AddComponent<SphereCollider>();
             col.isTrigger = true;
-
-            var rendMoneda = raiz.GetComponent<Renderer>();
-            rendMoneda.sharedMaterial = SafeMaterial.Create(ColorMoneda); // distinto del verde de CajaDeSuministros
-            rendMoneda.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // pedido explicito: cilindros sin sombra
+            col.radius = 0.5f;
 
             var pk = raiz.AddComponent<MunicionPickup>();
-            pk.alturaBase = raiz.transform.position.y;
-            return pk;
-        }
+            pk.alturaBase = pos.y;
 
-        void Awake()
-        {
-            rend = GetComponent<Renderer>();
+            InteractableDiamond.Agregar(raiz.transform, Vector3.up * 0.8f, DiamondGizmo.ColorMunicion);
+
+            return pk;
         }
 
         void Update()
@@ -77,8 +49,7 @@ namespace SP.Player
             edad += Time.deltaTime;
             if (edad >= VidaMaxima) { Destroy(gameObject); return; }
 
-            // Gira sobre su eje vertical y flota un poco, como una moneda de plataformas.
-            transform.Rotate(0f, 200f * Time.deltaTime, 0f, Space.World);
+            // Flota un poco
             var p = transform.position;
             p.y = alturaBase + Mathf.Sin(edad * 3.2f) * 0.07f;
             transform.position = p;

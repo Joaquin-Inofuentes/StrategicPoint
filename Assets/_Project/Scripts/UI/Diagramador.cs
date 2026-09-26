@@ -73,9 +73,12 @@ namespace SP.UI
             var reintentar = Buscar(panel, "RetryButton");
             var salir = Buscar(panel, "ExitButton");
 
+            var reason = Buscar(panel, "Reason");
+
             // De arriba hacia abajo y sin que dos cajas compartan franja:
             // titulo, estadisticas, y recien despues los botones.
             if (titulo != null) titulo.anchoredPosition = new Vector2(0f, 150f);
+            if (reason != null) reason.anchoredPosition = new Vector2(0f, 100f);
             if (stats != null) stats.anchoredPosition = new Vector2(0f, 50f);
 
             if (reintentar != null)
@@ -88,6 +91,23 @@ namespace SP.UI
                 salir.sizeDelta = new Vector2(AnchoGrande, AltoGrande);
                 salir.anchoredPosition = new Vector2(0f, -60f - AltoGrande - Aire);
             }
+        }
+
+        public static void AcomodarSelectionCount(GameObject countPanel)
+        {
+            if (countPanel == null) return;
+            var rt = countPanel.GetComponent<RectTransform>();
+            if (rt == null) return;
+
+            // Anclado abajo al centro para respetar el escalado (100/125/150%)
+            rt.anchorMin = new Vector2(0.5f, 0f);
+            rt.anchorMax = new Vector2(0.5f, 0f);
+            rt.pivot = new Vector2(0.5f, 0f);
+
+            // InstructionBannerView mide 78 de alto y va en el fondo.
+            // Se apila este cartel justo por encima sin solaparse.
+            float altoBanner = 78f;
+            rt.anchoredPosition = new Vector2(0f, altoBanner + Aire);
         }
 
         // Cuantos pares de cajas se pisan. Es la medida del defecto y el
