@@ -214,6 +214,7 @@ namespace SP.Ai
             hasOrder = false;
             ClearPath();
             SetState(AiState.Idle);
+            EntrarEnCoberturaBase();
             self.Motor.SetCrouching(true);
             // Mira hacia afuera del obstaculo (hacia donde vendria el enemigo).
             if (coberturaDueno != null)
@@ -308,6 +309,7 @@ namespace SP.Ai
         {
             enCobertura = true;
             yendoACobertura = false;
+            EntrarEnCoberturaBase();
             self.Motor.SetCrouching(true);
         }
 
@@ -453,4 +455,77 @@ namespace SP.Ai
         float tiempoUltimoAtaque = -99f;
         float relojRetarget;
 
-        public float PuntajeDeObjetivo(Sol
+        public float PuntajeDeObjetivo(Soldier s)
+        {
+            if (s == null || self == null) return float.MaxValue;
+            var pos = self.transform.position;
+            float dist = Vector3.Distance(pos, s.transform.position);
+            bool linea = TieneLineaDeTiro(s);
+            float p = dist;
+            if (!linea) p += 12f;
+            if (s.Id == ultimoAtacanteId && Time.time - tiempoUltimoAtaque < 4f) p -= 10f;
+            if (s.Health != null && s.Health.MaxHealth > 0 && s.Health.Current < s.Health.MaxHealth * 0.4f) p -= 3f;
+            if (s == target) p -= 5f;
+            return p;
+        }
+
+        bool EnElCono(Soldier s)
+        {
+            var d = s.transform.position - self.transform.position;
+            d.y = 0f;
+            if (d.sqrMagnitude < 0.0001f) return true;
+            return Vector3.Angle(self.transform.forward, d) <= SemiconoDeVision;
+        }
+
+        Soldier MejorObjetivoVisible()
+        {
+            float vision = EffectiveVisionRange;
+            var equipo = self.Team;
+            // BUG REAL ("perdes porque murio el rehen sin haber hecho nada raro"): el civil (Role ==
+            // Civilian) es un no-combatiente Pasivo -- no ve enemigos ni devuelve fuego (ver
+            // Pasivo mas arriba) -- pero antes de este chequeo SI calificaba como blanco valido para
+            // cualquier enemigo que lo viera, igual que un soldado mas. Como queda visible desde el
+            // arranque de la mision (SpawnCivilOculto en MisionDirector.Start), bastaba que un
+            // enemigo de patrulla le tuviera linea de vision en cualquier momento de Infiltrar o
+            // Resistir para matarlo sin que el jugador pudiera hacer nada -- y TickRescatar/
+            // TickEscapar pierden la mision apenas Civil.Health.IsAlive da false. Un rehen indefenso
+            // no deberia ser un objetivo militar prioritario: se lo excluye del sensado de enemigos.
+            SpatialGrid.QueryInRange(self.transform.position, vision * AlcanceExtendido, candidatos,
+                s => s.Health != null && s.Health.IsAlive && s.Team != equipo && s.Role != RoleType.Civilian);
+
+            Soldier mejor = null;
+            float mejorPuntaje = float.MaxValue;
+            for (int i = 0; i < candidatos.Count; i++)
+            {
+                var s = candidatos[i];
+                float dist = Vector3.Distance(self.transform.position, s.transform.position);
+                if (dist > vision)
+                {
+                    // Vision extendida: cono + linea de tiro.
+                    if (!EnElCono(s) || !TieneLineaDeTiro(s)) continue;
+                }
+                float p = PuntajeDeObjetivo(s);
+                if (p < mejorPuntaje) { mejorPuntaje = p; mejor = s; }
+            }
+            return mejor;
+        }
+
+        // En pleno combate: cada 0.5 s se revisa si aparecio un blanco
+        // claramente mejor que el actual (una orden de atacar explicita no se
+        // cambia).
+        void TickRetarget(float dt)
+        {
+            if (orderIsAttack || target == null) return;
+            if (State != AiState.Chase && State != AiState.Attack) return;
+            relojRetarget += dt;
+            if (relojRetarget < 0.5f) return;
+            relojRetarget = 0f;
+
+            var mejor = MejorObjetivoVisible();
+            if (mejor == null || mejor == target) return;
+            if (PuntajeDeObjetivo(mejor) + 4f >= PuntajeDeObjetivo(target)) return;
+            target = mejor;
+            segundosSinLineaDeTiro = 0f;
+        }
+    }
+}
