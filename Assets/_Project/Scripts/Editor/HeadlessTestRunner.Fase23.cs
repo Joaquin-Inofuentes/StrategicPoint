@@ -24,6 +24,8 @@ namespace SP.EditorTools
             Fase23_RombosInteractuables();
             Fase23_AnilloAtacante();
             Fase23_PolvoMovimiento();
+            Fase23_CivilQuieto();
+            Fase23_Nudos();
             Fase23_RadialMuerto(inputDriver);
             Fase23_RosterClics(inputDriver, doc);
             Fase23_CinematicaSaltoRapido();
@@ -44,6 +46,7 @@ namespace SP.EditorTools
             Fase23_EscapeCamioneta();
             Fase23_Motos();
             Fase23_CoheteVsTanque(pool);
+            Fase23_MinimapaRegistro();
         }
 
         static void Fase23_CClicCobertura()
@@ -1205,9 +1208,89 @@ namespace SP.EditorTools
 
             Object.DestroyImmediate(canvasRoot);
         }
+
+        static void Fase23_CoheteVsTanque(SP.Combat.ProjectilePool pool)
+        {
+            TestLog.Step("Probando Fase23_CoheteVsTanque: lanzacohetes destroza tanques (multiplicador x2.5)");
+
+            var goVehicle = new UnityEngine.GameObject("TestVehicle");
+            var vehicle = goVehicle.AddComponent<SP.Vehicles.Vehicle>();
+            var h = vehicle.Health; 
+            SP.Core.WorldSystemsRegistry.Register(vehicle);
+
+            int hpInitial = h.Current;
+            Check("Tanque empieza con la vida esperada", hpInitial == 260);
+
+            // Simulamos el impacto llamando ExplodeAt directo
+            SP.Combat.Projectile.ExplodeAt(vehicle.transform.position, 5f, 95, -1, SP.Combat.TeamId.Player, null, 2.5f);
+            
+            int hpAfter1 = h.Current;
+            Check("Un cohetazo saca 238 de vida al tanque", hpAfter1 == 260 - 238);
+            
+            SP.Combat.Projectile.ExplodeAt(vehicle.transform.position, 5f, 95, -1, SP.Combat.TeamId.Player, null, 2.5f);
+            
+            int hpAfter2 = h.Current;
+            Check("Dos cohetazos destruyen al tanque", hpAfter2 <= 0 && h.IsAlive == false);
+
+            SP.Core.WorldSystemsRegistry.Unregister(vehicle);
+            UnityEngine.Object.DestroyImmediate(goVehicle);
+        }
+
+        static void Fase23_MinimapaRegistro()
+        {
+            TestLog.Start("Fase23_MinimapaRegistro");
+
+            var goSoldier = new UnityEngine.GameObject("Soldier");
+            var soldier = goSoldier.AddComponent<SP.Actors.Soldier>();
+            soldier.Team = SP.Combat.TeamId.Player;
+
+            var goEnemy = new UnityEngine.GameObject("Enemy");
+            var enemy = goEnemy.AddComponent<SP.Actors.Soldier>();
+            enemy.Team = SP.Combat.TeamId.Enemy;
+
+            var goVehicle = new UnityEngine.GameObject("Vehicle");
+            var vehicle = goVehicle.AddComponent<SP.Vehicles.Vehicle>();
+
+            var iconAlly = SP.Presentation.MinimapIcon.Spawn(soldier.transform, UnityEngine.Color.white, 8, 1f);
+            Check("Ally es circulo", !iconAlly.EsCuadrado && iconAlly.GetComponent<UnityEngine.MeshFilter>().sharedMesh.name == "MinimapCirculo");
+            
+            var iconEnemy = SP.Presentation.MinimapIcon.Spawn(enemy.transform, UnityEngine.Color.white, 8, 1f);
+            Check("Enemy es triangulo", !iconEnemy.EsCuadrado && iconEnemy.GetComponent<UnityEngine.MeshFilter>().sharedMesh.name == "MinimapTriangulo");
+
+            var iconVehicle = SP.Presentation.MinimapIcon.Spawn(vehicle.transform, UnityEngine.Color.white, 8, 1f);
+            Check("Vehicle es cuadrado", iconVehicle.EsCuadrado);
+            Check("Vehicle es gris sin tripulacion", iconVehicle.GetComponent<UnityEngine.MeshRenderer>().sharedMaterial.color == UnityEngine.Color.gray);
+
+            UnityEngine.Object.DestroyImmediate(iconAlly.gameObject);
+            UnityEngine.Object.DestroyImmediate(iconEnemy.gameObject);
+            UnityEngine.Object.DestroyImmediate(iconVehicle.gameObject);
+            UnityEngine.Object.DestroyImmediate(goSoldier);
+            UnityEngine.Object.DestroyImmediate(goEnemy);
+            UnityEngine.Object.DestroyImmediate(goVehicle);
+        }
+        static void Fase23_CivilQuieto()
+        {
+            TestLog.Step("Probando T-30 Civil quieto y atado");
+            var d = new GameObject("Dir").AddComponent<SP.Mision.MisionDirector>();
+            d.SaltarAFase(SP.Mision.FaseDeMision.Rescatar);
+            if (d.Civil == null) TestLog.Fail("No hay civil");
+            if (!d.Civil.Motor.Atado) TestLog.Fail("El civil no esta atado al aparecer");
+            if (d.Civil.Motor.MoveSpeed > 0.001f) TestLog.Fail("La velocidad del civil no es 0 estando atado");
+            
+            d.SaltarAFase(SP.Mision.FaseDeMision.Escapar);
+            if (d.Civil.Motor.Atado) TestLog.Fail("El civil sigue atado en Escapar");
+            
+            GameObject.DestroyImmediate(d.gameObject);
+        }
+
+        static void Fase23_Nudos()
+        {
+            TestLog.Step("Probando T-31 Nudos");
+            var d = new GameObject("Dir").AddComponent<SP.Mision.MisionDirector>();
+            d.SaltarAFase(SP.Mision.FaseDeMision.Rescatar);
+            if (d.NudosDesatados != 0) TestLog.Fail("Los nudos iniciales no son 0");
+            
+            GameObject.DestroyImmediate(d.gameObject);
+        }
     }
 }
-
-
-
-

@@ -110,16 +110,24 @@ namespace SP.Presentation
                 }
                 EnsureRenderer();
                 if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(color);
+                autoColoreado = true;
                 return;
             }
         }
 
+        int lastOccupantCount = -1;
+        TeamId lastVehicleTeam = TeamId.Player;
+
         public void RepintarPorEquipo(bool forzar = false)
         {
             if (Target == null) return;
-            var vehicle = Target.GetComponent<SP.Vehicles.Vehicle>();
+            var vehicle = vehiculoDetectado;
             if (vehicle != null)
             {
+                if (!forzar && vehicle.Occupants.Count == lastOccupantCount && vehicle.Bando == lastVehicleTeam) return;
+                lastOccupantCount = vehicle.Occupants.Count;
+                lastVehicleTeam = vehicle.Bando;
+
                 Color color = Color.gray;
                 if (vehicle.Occupants.Count > 0)
                     color = vehicle.Bando == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;

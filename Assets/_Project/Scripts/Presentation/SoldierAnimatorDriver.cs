@@ -84,6 +84,13 @@ namespace SP.Presentation
         public const int CantidadDeMuertes = 6;
         public const int CapaDisparo = 1;
 
+        // T-40: triggers de acciones de torso (melee, granada, recarga).
+        // Se usan como Trigger del Animator; la capa de disparo sube a 1
+        // durante la accion y las piernas siguen con su ciclo normal.
+        public const string ParamMelee = "Melee";
+        public const string ParamGranada = "Granada";
+        public const string ParamRecarga = "Recarga";
+
         Soldier soldier;
         Vector3 posicionPrevia;
         Vector3 ultimaDireccion = Vector3.forward;
@@ -93,7 +100,13 @@ namespace SP.Presentation
         float mezclaAgachado;
         public float PesoCapaDisparoActual => animator != null && animator.layerCount > CapaDisparo ? animator.GetLayerWeight(CapaDisparo) : 0f;
         IDisposable shotSub;
+        IDisposable meleeSub;
+        IDisposable grenadeSub;
         bool arrancado;
+        float restanteMelee;
+        float restanteGranada;
+        float restanteRecarga;
+        bool estabaRecargando;
         // Ronda 11 (punto 6): los clips de costado bajan la cadera y los pies quedan hasta 4 cm bajo el piso (medido: 0,089 contra 0,129
         // en reposo). Se mide la altura del pie mas bajo respecto de la raiz mientras esta quieto y en el suelo, y despues se sube el
         // modelo lo que falte, con suavizado.
@@ -144,6 +157,8 @@ namespace SP.Presentation
         void OnEnable()
         {
             shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShot);
+            meleeSub = EventBus.Instance.Subscribe<MeleeAttackEvent>(OnMelee);
+            grenadeSub = EventBus.Instance.Subscribe<GrenadeThrownEvent>(OnGrenade);
             posicionPrevia = transform.position;
             ultimaDireccion = transform.forward;
             arrancado = false;
@@ -153,12 +168,30 @@ namespace SP.Presentation
         {
             shotSub?.Dispose();
             shotSub = null;
+            meleeSub?.Dispose();
+            meleeSub = null;
+            grenadeSub?.Dispose();
+            grenadeSub = null;
         }
 
         void OnShot(ShotFiredEvent evt)
         {
             if (soldier == null || evt.ShooterId != soldier.Id) return;
             restanteDeDisparo = sostenidoDeDisparo;
+        }
+
+        void OnMelee(MeleeAttackEvent evt)
+        {
+            if (soldier == null || evt.AttackerId != soldier.Id) return;
+            restanteMelee = 0.6f;
+            if (animator != null) animator.SetTrigger(ParamMelee);
+        }
+
+        void OnGrenade(GrenadeThrownEvent evt)
+        {
+            if (soldier == null || evt.ThrowerId != soldier.Id) return;
+            restanteGranada = 0.8f;
+            if (animator != null) animator.SetTrigger(ParamGranada);
         }
 
         void Update()
@@ -220,7 +253,22 @@ namespace SP.Presentation
             }
 
             restanteDeDisparo = Mathf.Max(0f, restanteDeDisparo - dt);
-            float objetivo = restanteDeDisparo > 0f ? 1f : 0f;
+            restanteMelee = Mathf.Max(0f, restanteMelee - dt);
+            restanteGranada = Mathf.Max(0f, restanteGranada - dt);
+            restanteRecarga = Mathf.Max(0f, restanteRecarga - dt);
+
+            // Detectar inicio de recarga
+            bool recargando = soldier != null && soldier.Weapon != null && soldier.Weapon.IsReloading;
+            if (recargando && !estabaRecargando)
+            {
+                restanteRecarga = 1.5f; // tiempo visual de la animacion de recarga
+                if (animator != null) animator.SetTrigger(ParamRecarga);
+            }
+            estabaRecargando = recargando;
+
+            // El peso de la capa de torso es el max de todas las acciones
+            float objetivoAccion = restanteDeDisparo > 0f || restanteMelee > 0f || restanteGranada > 0f || restanteRecarga > 0f ? 1f : 0f;
+            float objetivo = Mathf.Max(objetivoAccion, restanteDeDisparo > 0f ? 1f : 0f);
             pesoDisparo = Mathf.MoveTowards(pesoDisparo, objetivo, velocidadDeMezcla * dt);
             // Ronda 13 (punto 7): la capa de disparo es la pose de "firing rifle" DE PIE sobre la mitad de arriba: agachado
             // dejaba el torso parado sobre unas piernas en cuclillas. "idle crouching aiming" ya apunta el arma, asi que agachado

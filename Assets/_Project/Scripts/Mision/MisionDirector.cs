@@ -47,8 +47,12 @@ namespace SP.Mision
         // Pedido explicito: "aparecera una barra de carga de liberando que
         // dura 10 segundos y luego te seguira" -- antes eran 1.2 s sin
         // ninguna barra visible (ver TickRescatar).
-        public const float DuracionRescate = 10f;
-        public float ProgresoRescate => Mathf.Clamp01(tRescate / DuracionRescate);
+        public const int NudosParaLiberar = 12;
+        public int NudosDesatados { get; private set; } = 0;
+        public float ProgresoRescate => Mathf.Clamp01((float)NudosDesatados / NudosParaLiberar);
+        float tiempoUltimoNudo = 0f;
+        float tiempoPerdidaNudo = 0f;
+        BarraNudos barraNudos;
 
         public FaseDeMision Fase { get; private set; } = FaseDeMision.Infiltrar;
         public float Restante { get; private set; }
@@ -477,7 +481,7 @@ namespace SP.Mision
         void AparecerCivil()
         {
             if (Civil == null) { SpawnCivilOculto(); if (Civil == null) return; }
-            if (Civil.Motor != null) Civil.Motor.SetCrouching(false);
+            if (Civil.Motor != null) Civil.Motor.Atado = true;
             Civil.gameObject.AddComponent<Rehen>();   // tinte propio, marcador flotante y aviso sonoro al acercarse
             // Pedido explicito: "el cartel de civil rescatado mas delgado...
             // y sea en la base de abajo" -- columna mas fina (0.35 en vez de
@@ -595,11 +599,34 @@ namespace SP.Mision
         void TickRescatar(float dt)
         {
             if (Civil == null || !Civil.Health.IsAlive) { Perder("EL CIVIL MURIO"); return; }
-            float d = Plano(PosicionDelJugador(), Civil.transform.position);
-            if (d <= 4.5f) tRescate += dt; else tRescate = Mathf.Max(0f, tRescate - dt);
-            if (tRescate < DuracionRescate) return;
+            if (barraNudos == null) barraNudos = BarraNudos.Crear(this);
 
+            float d = Plano(PosicionDelJugador(), Civil.transform.position);
+            if (d <= 4.5f)
+            {
+                if (SP.Player.KeyBindings.WasPressed(SP.Player.KeyBindings.Desatar))
+                {
+                    NudosDesatados++;
+                    tiempoUltimoNudo = Time.time;
+                    tiempoPerdidaNudo = Time.time;
+                }
+            }
+
+            if (Time.time - tiempoUltimoNudo > 2f)
+            {
+                if (Time.time - tiempoPerdidaNudo >= 0.5f)
+                {
+                    if (NudosDesatados > 0) NudosDesatados--;
+                    tiempoPerdidaNudo = Time.time;
+                }
+            }
+
+            if (NudosDesatados < NudosParaLiberar) return;
+
+            Civil.Motor.Atado = false;
+            Civil.Motor.SetCrouching(false);
             CivilRescatado = true;
+            if (barraNudos != null) { Destroy(barraNudos.gameObject); barraNudos = null; }
             if (balizaCivil != null) { balizaCivil.Quitar(); balizaCivil = null; }
             if (baliza != null) { baliza.Quitar(); baliza = null; }
             baliza = TutorialBeacon.Crear("CAMIONETA", new Color(0.35f, 1f, 0.5f), Helipuerto + Vector3.right * 6f, null, 3.2f, 26f);
