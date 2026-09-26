@@ -189,7 +189,7 @@ namespace SP.Presentation
 
         void OnGrenade(GrenadeThrownEvent evt)
         {
-            if (soldier == null || evt.ThrowerId != soldier.Id) return;
+            if (soldier == null || evt.OwnerId != soldier.Id) return;
             restanteGranada = 0.8f;
             if (animator != null) animator.SetTrigger(ParamGranada);
         }

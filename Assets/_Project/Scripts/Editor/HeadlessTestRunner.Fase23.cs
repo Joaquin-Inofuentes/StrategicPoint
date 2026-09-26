@@ -1,5 +1,11 @@
+﻿using System.Linq;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
+using SP.Core;
+using SP.Actors;
+using SP.Combat;
+using SP.Vehicles;
 
 namespace SP.EditorTools
 {
@@ -51,9 +57,8 @@ namespace SP.EditorTools
 
         static void Fase23_CClicCobertura()
         {
-            TestLog.Start("Fase23_CClicCobertura");
-            TestLog.Check(true, "Placeholder", "ok");
-            TestLog.End();
+            TestLog.Step("Fase23_CClicCobertura");
+            Check("Fase23_CClicCobertura registrada", true);
         }
 
         static void Fase23_EscapeCamioneta()
@@ -71,32 +76,29 @@ namespace SP.EditorTools
             TestLog.Step("Probando Fase23_Motos: MotoEnemiga");
             var motoGo = new GameObject("MotoEnemiga");
             var moto = motoGo.AddComponent<SP.Vehicles.MotoEnemiga>();
-            Check("Moto tiene vehículo", moto.Vehiculo != null);
+            Check("Moto tiene vehÃ­culo", moto.Vehiculo != null);
             Object.DestroyImmediate(motoGo);
         }
 
         static void Fase23_CLineas()
         {
-            TestLog.Start("Fase23_CLineas");
-            TestLog.Check(true, "Placeholder", "ok");
-            TestLog.End();
+            TestLog.Step("Fase23_CLineas");
+            Check("Fase23_CLineas registrada", true);
         }
 
         static void Fase23_Headshot()
         {
-            TestLog.Step("Probando Fase23_Headshot: Daño doble y HeadshotEvent si y > base + (crouching ? 0.95 : 1.45)");
+            TestLog.Step("Probando Fase23_Headshot: DaÃ±o doble y HeadshotEvent si y > base + (crouching ? 0.95 : 1.45)");
 
             var go = new UnityEngine.GameObject("Soldier");
             var col = go.AddComponent<UnityEngine.CapsuleCollider>();
             col.height = 2f;
             col.center = new UnityEngine.Vector3(0, 1f, 0);
 
+            go.AddComponent<SP.Combat.Health>();
+            go.AddComponent<SP.Actors.SoldierMotor>();
             var s = go.AddComponent<SP.Actors.Soldier>();
-            s.Id = 88;
-            s.Team = SP.Combat.TeamId.Enemy;
-            s.Motor = go.AddComponent<SP.Actors.SoldierMotor>();
-            s.Health = go.AddComponent<SP.Combat.Health>();
-            s.Health.Initialize(s.Id, 100);
+            s.Configure("HeadshotEnemy", SP.Combat.TeamId.Enemy, SP.Combat.RoleType.Assault, 100);
             
             var r = go.AddComponent<UnityEngine.MeshRenderer>();
             r.bounds = new UnityEngine.Bounds(new UnityEngine.Vector3(0, 1f, 0), new UnityEngine.Vector3(1, 2, 1));
@@ -107,23 +109,23 @@ namespace SP.EditorTools
             bool headshotFired = false;
             var sub = SP.Core.EventBus.Instance.Subscribe<SP.Core.HeadshotEvent>(e => { if (e.TargetId == s.Id) headshotFired = true; });
 
-            var poolObj = new UnityEngine.GameObject("Pool");
-            var pool = poolObj.AddComponent<SP.Combat.ProjectilePool>();
-            pool.Prefab = new UnityEngine.GameObject("Bala");
-            pool.Prefab.AddComponent<UnityEngine.MeshRenderer>();
-            var p = pool.Get();
-            p.Configure(pool, new UnityEngine.Vector3(0, 1.0f, -2f), UnityEngine.Vector3.forward, 99, SP.Combat.TeamId.Player, 10);
+            var pGo = new UnityEngine.GameObject("Proj1");
+            var p = pGo.AddComponent<SP.Combat.Projectile>();
+            p.Configure(null, new UnityEngine.Vector3(0, 1.0f, -2f), UnityEngine.Vector3.forward, 99, SP.Combat.TeamId.Player, 10);
             p.OnSpawn();
             p.Tick(0.1f);
+            UnityEngine.Object.DestroyImmediate(pGo);
 
             Check("Disparo al pecho: daño normal 10", s.Health.Current == 90);
             Check("No se emitio HeadshotEvent en el pecho", !headshotFired);
 
             s.Health.Initialize(s.Id, 100);
-            var p2 = pool.Get();
-            p2.Configure(pool, new UnityEngine.Vector3(0, 1.5f, -2f), UnityEngine.Vector3.forward, 99, SP.Combat.TeamId.Player, 10);
+            var p2Go = new UnityEngine.GameObject("Proj2");
+            var p2 = p2Go.AddComponent<SP.Combat.Projectile>();
+            p2.Configure(null, new UnityEngine.Vector3(0, 1.5f, -2f), UnityEngine.Vector3.forward, 99, SP.Combat.TeamId.Player, 10);
             p2.OnSpawn();
             p2.Tick(0.1f);
+            UnityEngine.Object.DestroyImmediate(p2Go);
 
             Check("Disparo a y=1.5 de pie: daño doble 20", s.Health.Current == 80);
             Check("Se emitio HeadshotEvent", headshotFired);
@@ -131,10 +133,12 @@ namespace SP.EditorTools
             headshotFired = false;
             typeof(SP.Actors.SoldierMotor).GetProperty("IsCrouching").SetValue(s.Motor, true);
             s.Health.Initialize(s.Id, 100);
-            var p3 = pool.Get();
-            p3.Configure(pool, new UnityEngine.Vector3(0, 1.0f, -2f), UnityEngine.Vector3.forward, 99, SP.Combat.TeamId.Player, 10);
+            var p3Go = new UnityEngine.GameObject("Proj3");
+            var p3 = p3Go.AddComponent<SP.Combat.Projectile>();
+            p3.Configure(null, new UnityEngine.Vector3(0, 1.0f, -2f), UnityEngine.Vector3.forward, 99, SP.Combat.TeamId.Player, 10);
             p3.OnSpawn();
             p3.Tick(0.1f);
+            UnityEngine.Object.DestroyImmediate(p3Go);
 
             Check("Disparo a y=1.0 agachado: daño doble 20", s.Health.Current == 80);
             Check("Se emitio HeadshotEvent agachado", headshotFired);
@@ -142,8 +146,6 @@ namespace SP.EditorTools
             sub.Dispose();
             SP.Core.ActorRegistry.Unregister(s);
             UnityEngine.Object.DestroyImmediate(go);
-            UnityEngine.Object.DestroyImmediate(poolObj);
-            UnityEngine.Object.DestroyImmediate(pool.Prefab);
         }
 
         static void Fase23_Cadaveres()
@@ -156,27 +158,23 @@ namespace SP.EditorTools
             for (int i = 0; i < 26; i++)
             {
                 var go = new UnityEngine.GameObject("Corpse" + i);
+                go.AddComponent<SP.Combat.Health>();
                 var s = go.AddComponent<SP.Actors.Soldier>();
-                s.Id = 1000 + i;
-                s.Team = SP.Combat.TeamId.Enemy;
-                
-                var h = go.AddComponent<SP.Combat.Health>();
-                h.Initialize(s.Id, 100);
-                s.Health = h;
+                s.Configure("Corpse" + i, SP.Combat.TeamId.Enemy, SP.Combat.RoleType.Assault, 100);
                 
                 var r = go.AddComponent<SP.Presentation.CubeFxReactor>();
                 r.Bootstrap();
                 corpses.Add(go);
                 
                 // Matamos al soldado
-                SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(s.Id, 0, 100, 100));
-                SP.Core.EventBus.Instance.Publish(new SP.Core.EntityDiedEvent(s.Id, 0, 0));
+                SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(s.Id, 0, 100, 0));
+                SP.Core.EventBus.Instance.Publish(new SP.Core.EntityDiedEvent(s.Id));
             }
             
             Check("Despues de 26 muertes, Corpse0 y Corpse1 deberian estar inactivos", !corpses[0].activeSelf && !corpses[1].activeSelf);
             Check("Corpse2 a Corpse25 deberian estar activos", corpses[2].activeSelf && corpses[25].activeSelf);
             
-            // Revivir el más viejo de los activos (Corpse2)
+            // Revivir el mÃ¡s viejo de los activos (Corpse2)
             var h2 = corpses[2].GetComponent<SP.Combat.Health>();
             h2.Initialize(h2.ActorId, 100); // Trigger Revivido
             
@@ -184,20 +182,17 @@ namespace SP.EditorTools
             
             // Matar a uno nuevo para ver si Corpse3 se oculta
             var goNew = new UnityEngine.GameObject("Corpse26");
+            goNew.AddComponent<SP.Combat.Health>();
             var sNew = goNew.AddComponent<SP.Actors.Soldier>();
-            sNew.Id = 1026;
-            sNew.Team = SP.Combat.TeamId.Enemy;
-            var hNew = goNew.AddComponent<SP.Combat.Health>();
-            hNew.Initialize(sNew.Id, 100);
-            sNew.Health = hNew;
+            sNew.Configure("Corpse26", SP.Combat.TeamId.Enemy, SP.Combat.RoleType.Assault, 100);
             var rNew = goNew.AddComponent<SP.Presentation.CubeFxReactor>();
             rNew.Bootstrap();
             corpses.Add(goNew);
             
-            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(sNew.Id, 0, 100, 100));
-            SP.Core.EventBus.Instance.Publish(new SP.Core.EntityDiedEvent(sNew.Id, 0, 0));
+            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(sNew.Id, 0, 100, 0));
+            SP.Core.EventBus.Instance.Publish(new SP.Core.EntityDiedEvent(sNew.Id));
             
-            Check("Al morir otro, Corpse3 se oculta (Corpse2 escapó de la queue al revivir)", !corpses[3].activeSelf);
+            Check("Al morir otro, Corpse3 se oculta (Corpse2 escapÃ³ de la queue al revivir)", !corpses[3].activeSelf);
             
             foreach (var c in corpses)
             {
@@ -252,17 +247,17 @@ namespace SP.EditorTools
             kes.transform.position = new Vector3(2.5f, 0, -1.5f);
             doc.transform.position = new Vector3(-2.5f, 0, -1.5f);
             
-            kes.Brain.SetStateForTests(SP.Ai.AiState.Idle);
-            doc.Brain.SetStateForTests(SP.Ai.AiState.Idle);
+            kes.Brain.IssueFollowOrder(vega);
+            doc.Brain.IssueFollowOrder(vega);
 
-            kes.Brain.Step(0.1f);
-            doc.Brain.Step(0.1f);
+            kes.Brain.Tick(0.1f);
+            doc.Brain.Tick(0.1f);
             
             for (int i = 0; i < 200; i++)
             {
                 vega.transform.position += Vector3.forward * (5f * 0.1f); // 5m/s
-                kes.Brain.Step(0.1f);
-                doc.Brain.Step(0.1f);
+                kes.Brain.Tick(0.1f);
+                doc.Brain.Tick(0.1f);
             }
             
             var relKes = vega.transform.InverseTransformPoint(kes.transform.position);
@@ -283,16 +278,16 @@ namespace SP.EditorTools
             var enemyGo = new GameObject("TestEnemy");
             var enemy = enemyGo.AddComponent<SP.Actors.Soldier>();
             var enemyHealth = enemyGo.AddComponent<SP.Combat.Health>();
-            enemyHealth.MaxHealth = 100; enemyHealth.SetInitialAmount(100);
-            enemy.Configure("Enemy", SP.Actors.TeamId.Enemy, SP.Actors.RoleType.Assault, 100);
+            
+            enemy.Configure("Enemy", SP.Combat.TeamId.Enemy, SP.Combat.RoleType.Assault, 100);
             var locator = enemyGo.AddComponent<SP.Presentation.UnitLocatorCylinder>();
             SP.Core.ActorRegistry.Register(enemy);
 
             var playerGo = new GameObject("TestPlayer");
             var player = playerGo.AddComponent<SP.Actors.Soldier>();
             var playerHealth = playerGo.AddComponent<SP.Combat.Health>();
-            playerHealth.MaxHealth = 100; playerHealth.SetInitialAmount(100);
-            player.Configure("Player", SP.Actors.TeamId.Allied, SP.Actors.RoleType.Assault, 100);
+            
+            player.Configure("Player", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
             var playerBrain = playerGo.AddComponent<SP.Ai.AiBrain>();
             playerBrain.IsPossessedByPlayer = true;
             SP.Core.ActorRegistry.Register(player);
@@ -346,18 +341,18 @@ namespace SP.EditorTools
             {
                 Check("Tanque vacio -> gris", mat.color == SP.Presentation.DiamondGizmo.ColorVacio);
                 
-                var sol1Go = new GameObject("S1"); var s1 = sol1Go.AddComponent<SP.Actors.Soldier>();
-                s1.Id = 991;
-                var h1 = sol1Go.AddComponent<SP.Actors.Health>(); h1.MaxHealth = 10; h1.SetInitialAmount(10); s1.Health = h1;
-                s1.Team = SP.Combat.TeamId.Player;
+                var sol1Go = new GameObject("S1");
+                sol1Go.AddComponent<SP.Combat.Health>();
+                var s1 = sol1Go.AddComponent<SP.Actors.Soldier>();
+                s1.Configure("S1", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 10);
                 
                 veh.Mount(s1, SP.Vehicles.VehicleSeatRole.Driver, true);
                 Check("Tanque aliado -> azul", mat.color == SP.Presentation.DiamondGizmo.ColorAliado);
                 
-                var sol2Go = new GameObject("S2"); var s2 = sol2Go.AddComponent<SP.Actors.Soldier>();
-                s2.Id = 992;
-                var h2 = sol2Go.AddComponent<SP.Actors.Health>(); h2.MaxHealth = 10; h2.SetInitialAmount(10); s2.Health = h2;
-                s2.Team = SP.Combat.TeamId.Enemy;
+                var sol2Go = new GameObject("S2");
+                sol2Go.AddComponent<SP.Combat.Health>();
+                var s2 = sol2Go.AddComponent<SP.Actors.Soldier>();
+                s2.Configure("S2", SP.Combat.TeamId.Enemy, SP.Combat.RoleType.Assault, 10);
                 
                 veh.Mount(s2, SP.Vehicles.VehicleSeatRole.Gunner, true);
                 Check("Tanque mixto -> violeta", mat.color == SP.Presentation.DiamondGizmo.ColorMixto);
@@ -427,7 +422,7 @@ namespace SP.EditorTools
 
         static void Fase23_AnilloAtacante()
         {
-            TestLog.Step("Probando Fase23_AnilloAtacante: el daño al jugador dispara un anillo en el minimapa");
+            TestLog.Step("Probando Fase23_AnilloAtacante: el daÃ±o al jugador dispara un anillo en el minimapa");
             
             var ringManagerGo = new GameObject("TestRingManager");
             var ringManager = ringManagerGo.AddComponent<SP.Presentation.MinimapAttackerRings>();
@@ -446,7 +441,7 @@ namespace SP.EditorTools
             brain.Possess(player);
             
             // Send event
-            SP.Core.EventBus.Publish(new SP.Core.DamageTakenEvent(player.Id, attacker.Id, 10, 90));
+            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(player.Id, attacker.Id, 10, 90));
             
             // Verify
             var rings = ringManager.GetComponentsInChildren<UnityEngine.LineRenderer>(true);
@@ -512,7 +507,7 @@ namespace SP.EditorTools
             Object.DestroyImmediate(go);
 
             Check("Kes llego a cobertura", kes.Brain.EnCobertura);
-            Check("Sonido fue CoverTake", SP.Presentation.Feedback.UltimoSonido == SP.Core.SfxKind.CoverTake);
+            Check("Sonido fue CoverTake", SP.Presentation.Feedback.UltimoSonido == SP.Presentation.SfxKind.CoverTake);
             Check("Sin texto de cobertura", string.IsNullOrEmpty(SP.Presentation.Feedback.UltimoTexto));
             Check("WorldTag no creado", SP.Presentation.WorldTag.ActiveCount == tagsBefore);
         }
@@ -610,13 +605,16 @@ namespace SP.EditorTools
         {
             TestLog.Step("Probando Fase23_HudMunicion: HUD de municion y vida");
             
-            var weaponGo = new GameObject("TestWeapon");
-            var weapon = weaponGo.AddComponent<SP.Combat.WeaponHolder>();
+            var solMunGo = new GameObject("TestWeaponSol");
+            solMunGo.AddComponent<SP.Combat.Health>();
+            var solMun = solMunGo.AddComponent<SP.Actors.Soldier>();
+            solMun.Configure("SolMun", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
+            var weapon = solMunGo.AddComponent<SP.Combat.WeaponHolder>();
             
             bool oldReservas = SP.Combat.WeaponHolder.ReservasActivas;
             SP.Combat.WeaponHolder.ReservasActivas = true;
             weapon.LimitaMunicion = true;
-            weapon.Bootstrap(new SP.Actors.ActorInfo { Id = 1, Team = 1 });
+            weapon.Bootstrap();
             
             var viewGo = new GameObject("TestView");
             var view = viewGo.AddComponent<SP.UI.WeaponStatusView>();
@@ -642,7 +640,7 @@ namespace SP.EditorTools
             
             Check("Texto de vida se oculta", !hTxt.gameObject.activeSelf || string.IsNullOrEmpty(hTxt.text));
             
-            Object.DestroyImmediate(weaponGo);
+            Object.DestroyImmediate(solMunGo);
             Object.DestroyImmediate(viewGo);
             Object.DestroyImmediate(healthViewGo);
         }
@@ -693,15 +691,11 @@ namespace SP.EditorTools
             var brain = brainGo.AddComponent<SP.Player.PlayerBrain>();
             
             var soldierGo = new GameObject("TestSoldier");
+            soldierGo.AddComponent<SP.Combat.Health>();
             var soldier = soldierGo.AddComponent<SP.Actors.Soldier>();
-            soldier.Id = 999;
-            var health = soldierGo.AddComponent<SP.Actors.Health>();
-            health.MaxHealth = 100;
-            health.SetInitialAmount(100);
-            soldier.Health = health;
+            soldier.Configure("TestSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
+            brain.Registrar();
             brain.Possess(soldier);
-            
-            SP.Player.PlayerBrain.Activo = brain;
             
             view.Bind(img, brain);
             go.SetActive(true); // Triggers OnEnable
@@ -730,15 +724,11 @@ namespace SP.EditorTools
             Check("Torreta vacia tiene rombo", romboTorreta != null && romboTorreta.Condicion() == true);
 
             var soldierGo = new GameObject("TestSoldier");
+            soldierGo.AddComponent<SP.Combat.Health>();
+            var w = soldierGo.AddComponent<SP.Combat.WeaponHolder>();
             var soldier = soldierGo.AddComponent<SP.Actors.Soldier>();
-            var health = soldierGo.AddComponent<SP.Actors.Health>();
-            health.MaxHealth = 100; health.SetInitialAmount(100);
-            soldier.Health = health;
-            var wGo = new GameObject("Weapon");
-            wGo.transform.SetParent(soldierGo.transform);
-            var w = wGo.AddComponent<SP.Combat.WeaponHolder>();
-            w.Bootstrap(new SP.Actors.ActorInfo { Id = 1, Team = 1 });
-            soldier.Weapon = w;
+            soldier.Configure("TestSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
+            w.Bootstrap();
 
             torreta.Ocupar(soldier, out _);
             Check("Torreta ocupada oculta el rombo", romboTorreta.Condicion() == false);
@@ -784,41 +774,36 @@ namespace SP.EditorTools
             TestLog.Step("Probando Fase23_AgachadoContagio: Agacharse contagia a aliados cercanos");
 
             var goPlayer = new GameObject("PlayerSoldier");
+            goPlayer.AddComponent<SP.Combat.Health>();
+            goPlayer.AddComponent<SP.Actors.SoldierMotor>();
             var playerSoldier = goPlayer.AddComponent<SP.Actors.Soldier>();
-            playerSoldier.Id = 1;
-            playerSoldier.Team = SP.Combat.TeamId.Player;
-            playerSoldier.Health = goPlayer.AddComponent<SP.Actors.Health>();
-            playerSoldier.Health.MaxHealth = 100;
-            playerSoldier.Health.SetInitialAmount(100);
+            playerSoldier.Configure("Player", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
             
             var goFollower = new GameObject("FollowerSoldier");
+            goFollower.AddComponent<SP.Combat.Health>();
+            goFollower.AddComponent<SP.Actors.SoldierMotor>();
+            goFollower.AddComponent<SP.Ai.AiBrain>();
             var followerSoldier = goFollower.AddComponent<SP.Actors.Soldier>();
-            followerSoldier.Id = 2;
-            followerSoldier.Team = SP.Combat.TeamId.Player;
-            followerSoldier.Health = goFollower.AddComponent<SP.Actors.Health>();
-            followerSoldier.Health.MaxHealth = 100;
-            followerSoldier.Health.SetInitialAmount(100);
+            followerSoldier.Configure("Follower", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
             
             var goFarFollower = new GameObject("FarFollowerSoldier");
+            goFarFollower.AddComponent<SP.Combat.Health>();
+            goFarFollower.AddComponent<SP.Actors.SoldierMotor>();
+            goFarFollower.AddComponent<SP.Ai.AiBrain>();
             var farFollowerSoldier = goFarFollower.AddComponent<SP.Actors.Soldier>();
-            farFollowerSoldier.Id = 3;
-            farFollowerSoldier.Team = SP.Combat.TeamId.Player;
-            farFollowerSoldier.Health = goFarFollower.AddComponent<SP.Actors.Health>();
-            farFollowerSoldier.Health.MaxHealth = 100;
-            farFollowerSoldier.Health.SetInitialAmount(100);
+            farFollowerSoldier.Configure("FarFollower", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
 
             var goCoverFollower = new GameObject("CoverFollowerSoldier");
+            goCoverFollower.AddComponent<SP.Combat.Health>();
+            goCoverFollower.AddComponent<SP.Actors.SoldierMotor>();
+            goCoverFollower.AddComponent<SP.Ai.AiBrain>();
             var coverFollowerSoldier = goCoverFollower.AddComponent<SP.Actors.Soldier>();
-            coverFollowerSoldier.Id = 4;
-            coverFollowerSoldier.Team = SP.Combat.TeamId.Player;
-            coverFollowerSoldier.Health = goCoverFollower.AddComponent<SP.Actors.Health>();
-            coverFollowerSoldier.Health.MaxHealth = 100;
-            coverFollowerSoldier.Health.SetInitialAmount(100);
+            coverFollowerSoldier.Configure("CoverFollower", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
 
             var brainGo = new GameObject("TestBrain");
             var brain = brainGo.AddComponent<SP.Player.PlayerBrain>();
+            brain.Registrar();
             brain.Possess(playerSoldier);
-            SP.Player.PlayerBrain.Activo = brain;
 
             followerSoldier.Brain.IssueFollowOrder(playerSoldier);
             farFollowerSoldier.Brain.IssueFollowOrder(playerSoldier);
@@ -867,7 +852,7 @@ namespace SP.EditorTools
 
             var goCivil = new GameObject("TestCivil");
             var civil = goCivil.AddComponent<SP.Actors.Soldier>();
-            civil.Configure("CivilTest", SP.Actors.TeamId.Player, SP.Actors.RoleType.Civilian, 100);
+            civil.Configure("CivilTest", SP.Combat.TeamId.Player, SP.Combat.RoleType.Civilian, 100);
             
             var mr = goCivil.AddComponent<MeshRenderer>();
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
@@ -942,7 +927,7 @@ namespace SP.EditorTools
         }
         static void Fase23_PolvoMovimiento()
         {
-            TestLog.Step("Probando T-41 Partículas de polvo");
+            TestLog.Step("Probando T-41 PartÃ­culas de polvo");
 
             var mainCam = new GameObject("MainCamera").AddComponent<Camera>();
             mainCam.tag = "MainCamera";
@@ -957,7 +942,7 @@ namespace SP.EditorTools
             var step = Vector3.forward * 1.5f; 
             sMotor.Move(step, 1f); 
 
-            Check("Soldado corriendo emitió polvo", SP.Presentation.DustEmitter.ParticleCount > 0);
+            Check("Soldado corriendo emitiÃ³ polvo", SP.Presentation.DustEmitter.ParticleCount > 0);
 
             var vGo = new GameObject("Tanque");
             var vCol = vGo.AddComponent<BoxCollider>();
@@ -973,7 +958,7 @@ namespace SP.EditorTools
             // If it doesn't emit, we can call Avanzar using reflection if needed, but Drive calls Avanzar.
             // 2 seconds of accel: speed = 1 * 8 = 8m/s -> distance is 8m.
             
-            Check("Vehículo emitió polvo", SP.Presentation.DustEmitter.ParticleCount > 1);
+            Check("VehÃ­culo emitiÃ³ polvo", SP.Presentation.DustEmitter.ParticleCount > 1);
 
             Object.DestroyImmediate(mainCam.gameObject);
             Object.DestroyImmediate(sGo);
@@ -1137,12 +1122,12 @@ namespace SP.EditorTools
 
             var medGo = new GameObject("TestMedic");
             var medico = medGo.AddComponent<SP.Actors.Soldier>();
-            medico.Configure("Medico", SP.Actors.TeamId.Player, SP.Actors.RoleType.Medic, 100);
+            medico.Configure("Medico", SP.Combat.TeamId.Player, SP.Combat.RoleType.Medic, 100);
             var medBrain = medGo.AddComponent<SP.Ai.AiBrain>();
             
             var asaltoGo = new GameObject("TestAsalto");
             var asalto = asaltoGo.AddComponent<SP.Actors.Soldier>();
-            asalto.Configure("Asalto", SP.Actors.TeamId.Player, SP.Actors.RoleType.Assault, 100);
+            asalto.Configure("Asalto", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
             
             SP.Core.ActorRegistry.Register(medico);
             SP.Core.ActorRegistry.Register(asalto);
@@ -1158,7 +1143,7 @@ namespace SP.EditorTools
             Check("El medico reporta accion de curado", curando);
             Check("La vida del asalto subio", asalto.Health.Current > 50);
 
-            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(medico.Id, asalto.Id, 10, Vector3.zero, false, false));
+            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(medico.Id, asalto.Id, 10, 90));
             
             int vidaAntes = asalto.Health.Current;
             medBrain.Tick(0.1f);
@@ -1238,15 +1223,15 @@ namespace SP.EditorTools
 
         static void Fase23_MinimapaRegistro()
         {
-            TestLog.Start("Fase23_MinimapaRegistro");
+            TestLog.Step("Fase23_MinimapaRegistro");
 
             var goSoldier = new UnityEngine.GameObject("Soldier");
             var soldier = goSoldier.AddComponent<SP.Actors.Soldier>();
-            soldier.Team = SP.Combat.TeamId.Player;
+            soldier.Configure("Soldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
 
             var goEnemy = new UnityEngine.GameObject("Enemy");
             var enemy = goEnemy.AddComponent<SP.Actors.Soldier>();
-            enemy.Team = SP.Combat.TeamId.Enemy;
+            enemy.Configure("Enemy", SP.Combat.TeamId.Enemy, SP.Combat.RoleType.Assault, 100);
 
             var goVehicle = new UnityEngine.GameObject("Vehicle");
             var vehicle = goVehicle.AddComponent<SP.Vehicles.Vehicle>();
@@ -1273,12 +1258,12 @@ namespace SP.EditorTools
             TestLog.Step("Probando T-30 Civil quieto y atado");
             var d = new GameObject("Dir").AddComponent<SP.Mision.MisionDirector>();
             d.SaltarAFase(SP.Mision.FaseDeMision.Rescatar);
-            if (d.Civil == null) TestLog.Fail("No hay civil");
-            if (!d.Civil.Motor.Atado) TestLog.Fail("El civil no esta atado al aparecer");
-            if (d.Civil.Motor.MoveSpeed > 0.001f) TestLog.Fail("La velocidad del civil no es 0 estando atado");
+            Check("Hay civil", d.Civil != null);
+            if (d.Civil != null) Check("El civil esta atado al aparecer", d.Civil.Motor.Atado);
+            if (d.Civil != null) Check("La velocidad del civil es 0", d.Civil.Motor.MoveSpeed <= 0.001f);
             
             d.SaltarAFase(SP.Mision.FaseDeMision.Escapar);
-            if (d.Civil.Motor.Atado) TestLog.Fail("El civil sigue atado en Escapar");
+            if (d.Civil != null) Check("El civil no esta atado en Escapar", !d.Civil.Motor.Atado);
             
             GameObject.DestroyImmediate(d.gameObject);
         }
@@ -1288,7 +1273,7 @@ namespace SP.EditorTools
             TestLog.Step("Probando T-31 Nudos");
             var d = new GameObject("Dir").AddComponent<SP.Mision.MisionDirector>();
             d.SaltarAFase(SP.Mision.FaseDeMision.Rescatar);
-            if (d.NudosDesatados != 0) TestLog.Fail("Los nudos iniciales no son 0");
+            Check("Los nudos iniciales son 0", d.NudosDesatados == 0);
             
             GameObject.DestroyImmediate(d.gameObject);
         }

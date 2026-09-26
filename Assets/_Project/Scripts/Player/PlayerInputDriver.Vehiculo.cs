@@ -82,7 +82,7 @@ namespace SP.Player
         // montado -- sea porque acaba de subir (EnterVehicle) o porque ya
         // estaba adentro y el jugador recién ahora vuelve a esa vista con
         // [TAB] o [F] desde RTS. No llama a Vehicle.Mount: eso ya pasó.
-        void EnterPossessedVehicleSeat(VehicleSeatRole role)
+        public void EnterPossessedVehicleSeat(VehicleSeatRole role)
         {
             currentSeat = role;
             Vehicle.PlayerAboard = true;

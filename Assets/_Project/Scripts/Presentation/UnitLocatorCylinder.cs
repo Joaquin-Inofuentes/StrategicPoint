@@ -1,6 +1,7 @@
 using UnityEngine;
 using SP.Actors;
 using SP.Combat;
+using SP.Core;
 
 namespace SP.Presentation
 {
@@ -71,6 +72,7 @@ namespace SP.Presentation
         // referenciado como "fake null" si algo lo destruyo entre medio.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetearMaterialCompartido() => materialBordeCompartido = null;
+        public static void ReiniciarActivo() => ResetearMaterialCompartido();
 
         static Material MaterialBorde()
         {
@@ -85,6 +87,10 @@ namespace SP.Presentation
         bool dead;
         float vibrateTime;
         Vector3 baseLocalPosition = new Vector3(0f, Altura, 0f);
+        System.IDisposable shotSub;
+        System.IDisposable damageSub;
+        public bool IgnorarOclusion => oclusionTimer > 0f;
+        float oclusionTimer;
 
         void OnEnable()
         {
@@ -92,12 +98,25 @@ namespace SP.Presentation
             if (soldier == null) soldier = GetComponent<Soldier>();
             if (soldier == null) { enabled = false; return; }
             if (marcador == null) Construir();
-            SP.Core.EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFired);
+            shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFired);
+            damageSub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnDamage);
+        }
+
+        void OnDamage(DamageTakenEvent evt)
+        {
+            if (soldier != null && evt.TargetId == soldier.Id)
+            {
+                var p = SP.Player.PlayerBrain.Activo != null ? SP.Player.PlayerBrain.Activo.Current : null;
+                if (p != null && evt.AttackerId == p.Id)
+                {
+                    oclusionTimer = 4f;
+                }
+            }
         }
 
         void OnShotFired(ShotFiredEvent evt)
         {
-            if (evt.SoldierId == soldier.Id && marcador != null && marcador.activeInHierarchy)
+            if (evt.ShooterId == soldier.Id && marcador != null && marcador.activeInHierarchy)
             {
                 vibrateTime = 0.2f; // 200ms of vibration
             }
@@ -106,7 +125,10 @@ namespace SP.Presentation
         void OnDisable() 
         { 
             if (marcador != null) marcador.SetActive(false); 
-            SP.Core.EventBus.Instance.Unsubscribe<ShotFiredEvent>(OnShotFired);
+            shotSub?.Dispose();
+            shotSub = null;
+            damageSub?.Dispose();
+            damageSub = null;
         }
 
         void OnDestroy()
@@ -194,6 +216,8 @@ namespace SP.Presentation
 
             var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam == null) { marcador.SetActive(false); return; }
+
+            if (oclusionTimer > 0f) oclusionTimer = Mathf.Max(0f, oclusionTimer - Time.deltaTime);
 
             lodTimer -= Time.deltaTime;
             if (lodTimer <= 0f)

@@ -64,7 +64,8 @@ namespace SP.Mision
                 Vehiculo.Mount(s, esJugador ? VehicleSeatRole.Gunner : (VehicleSeatRole?)null, instantaneo: true);
                 if (esJugador && driver != null)
                 {
-                    driver.SwitchToVehicle(Vehiculo, VehicleSeatRole.Gunner);
+                    driver.Vehicle = Vehiculo;
+                    driver.EnterPossessedVehicleSeat(VehicleSeatRole.Gunner);
                 }
             }
         }

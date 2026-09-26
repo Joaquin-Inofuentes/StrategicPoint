@@ -2,6 +2,7 @@ using UnityEngine;
 using SP.Actors;
 using SP.Core;
 using SP.Combat;
+using SP.Vehicles;
 
 namespace SP.Presentation
 {
@@ -207,7 +208,7 @@ namespace SP.Presentation
                 return false;
             }
             transform.position = new Vector3(Target.position.x, height, Target.position.z);
-            if (esTriangulo || esDobleTriangulo || directionMarker != null)
+            if (esTriangulo || directionMarker != null)
                 transform.rotation = Quaternion.Euler(0f, Target.eulerAngles.y, 0f);
             if (autoColoreado) RepintarPorEquipo();
             return true;
@@ -301,6 +302,8 @@ namespace SP.Presentation
             esTriangulo = true;
             return true;
         }
+
+        public bool ConvertirEnTrianguloAnidado(Color? color = null) => ConvertirEnTriangulo();
 
         // Pedido explicito: "doble triangulo" -- un icono con mas superficie
         // y mas contraste que la flecha fina de un solo triangulo, leyendose
@@ -450,8 +453,8 @@ namespace SP.Presentation
             int count = 0;
             int layer = LayerMask.NameToLayer("Minimap");
             if (layer < 0) layer = 8;
-            var root = SP.Core.RaicesDeEscena.Buscar("VehiculosIconosRoot");
-            if (root == null) root = new GameObject("VehiculosIconosRoot").transform;
+            var rootGo = SP.Core.RaicesDeEscena.Buscar("VehiculosIconosRoot");
+            var root = rootGo != null ? rootGo.transform : new GameObject("VehiculosIconosRoot").transform;
 
             foreach (var v in SP.Vehicles.Vehicle.Todos)
             {

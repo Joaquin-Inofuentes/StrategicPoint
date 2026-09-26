@@ -128,6 +128,7 @@ namespace SP.Core
 
         // Traduce un texto en espanol (clave). Sin entrada devuelve el mismo texto.
         public static string T(string textoEs) => Actual == Idioma.En ? Traducir(textoEs, true) : textoEs;
+        public static string Tr(string textoEs) => T(textoEs);
         public static bool TieneEntrada(string textoEs) => textoEs != null && enNorm.ContainsKey(Norm(textoEs.Trim()));
         public static string Ingles(string textoEs) => Traducir(textoEs, true);
 

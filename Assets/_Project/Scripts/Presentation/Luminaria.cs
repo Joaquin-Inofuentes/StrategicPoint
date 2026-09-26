@@ -36,7 +36,7 @@ namespace SP.Presentation
             }
 
             ImpactFx.SpawnArmorSparks(hitPoint, Vector3.up);
-            SP.Presentation.AudioDirector.PlayAt(SP.Core.SfxKind.ImpactMetal, hitPoint, 0.5f, 0.4f);
+            AudioDirector.PlayAt(SfxKind.ImpactMetal, hitPoint, 0.5f, 0.4f);
         }
     }
 }

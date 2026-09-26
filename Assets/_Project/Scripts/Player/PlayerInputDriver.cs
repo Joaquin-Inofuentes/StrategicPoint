@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -16,9 +16,9 @@ using SP.Presentation;
 
 namespace SP.Player
 {
-    // Traduce teclado/ratón reales a los mismos métodos que usa el test
-    // automático. No decide nada nuevo: es el "pegamento" de Play mode.
-    // Solo corre cuando el juego está en Play (Application.isPlaying).
+    // Traduce teclado/ratÃ³n reales a los mismos mÃ©todos que usa el test
+    // automÃ¡tico. No decide nada nuevo: es el "pegamento" de Play mode.
+    // Solo corre cuando el juego estÃ¡ en Play (Application.isPlaying).
     [DefaultExecutionOrder(-200)]
     public partial class PlayerInputDriver : MonoBehaviour
     {
@@ -57,13 +57,13 @@ namespace SP.Player
 
         [SerializeField] float lookSensitivity = 0.15f;
         // El slider de "Sensibilidad de mouse" en Configuraciones antes
-        // no hacía nada de verdad (solo se veía, no afectaba el juego) --
+        // no hacÃ­a nada de verdad (solo se veÃ­a, no afectaba el juego) --
         // esta propiedad es lo que lo conecta a algo real.
         public float LookSensitivity { get => lookSensitivity; set => lookSensitivity = value; }
 
         // Antes la torreta usaba la misma sensibilidad que mirar a pie:
         // son dos gestos de escala muy distinta (mirar con el cuerpo vs.
-        // girar un cañon), ajustar uno arruinaba el otro.
+        // girar un caÃ±on), ajustar uno arruinaba el otro.
         [SerializeField] float turretSensitivity = 0.15f;
         public float TurretSensitivity { get => turretSensitivity; set => turretSensitivity = value; }
 
@@ -102,8 +102,8 @@ namespace SP.Player
         // UI: en ese caso soltar no debe emitir una orden al mundo.
         bool rightPressStartedOverUi;
 
-        // Resaltado de a qué le estoy apuntando (aliado o vehículo): se
-        // guarda el renderer y su color original para poder devolvérselo
+        // Resaltado de a quÃ© le estoy apuntando (aliado o vehÃ­culo): se
+        // guarda el renderer y su color original para poder devolvÃ©rselo
         // apenas dejo de apuntarle.
         Renderer highlightedRenderer;
         Color highlightedOriginalColor;
@@ -117,9 +117,9 @@ namespace SP.Player
         SelectionRingFx aimRing;
         static readonly Color AimRingColor = new Color(0.85f, 0.88f, 0.95f);
 
-        // Cubo pegado a la cámara (no al cuerpo): así se ve en primera
-        // persona el arma equipada apuntando siempre hacia donde mirás,
-        // con su propia forma/color según qué arma tenés en mano.
+        // Cubo pegado a la cÃ¡mara (no al cuerpo): asÃ­ se ve en primera
+        // persona el arma equipada apuntando siempre hacia donde mirÃ¡s,
+        // con su propia forma/color segÃºn quÃ© arma tenÃ©s en mano.
         GameObject weaponViewmodel;
         Renderer weaponViewmodelRenderer;
 
@@ -142,7 +142,7 @@ namespace SP.Player
             // igual que ya varia el retroceso del viewmodel via
             // WeaponCatalog.
             var spec = WeaponCatalog.Get(Brain.Current.Weapon.CurrentWeaponKind);
-            // El daño ya varia por arma en el catalogo (Heavy pega mas
+            // El daÃ±o ya varia por arma en el catalogo (Heavy pega mas
             // fuerte que Pistol): un proxy razonable de "cuanto empuja"
             // sin sumar un campo de recoil nuevo al catalogo.
             float kickDeg = Mathf.Clamp(spec.Damage * 0.025f, 0.6f, 3f);
@@ -162,20 +162,20 @@ namespace SP.Player
                 var col = weaponViewmodel.GetComponent<Collider>();
                 if (col != null) { if (Application.isPlaying) Destroy(col); else DestroyImmediate(col); }
                 weaponViewmodel.transform.SetParent(Rig.Cam.transform, false);
-                // Un poco más lejos y más grande que el cubo del cuerpo: tan
-                // cerca de la cámara y tan fino, casi no se veía (se perdía
+                // Un poco mÃ¡s lejos y mÃ¡s grande que el cubo del cuerpo: tan
+                // cerca de la cÃ¡mara y tan fino, casi no se veÃ­a (se perdÃ­a
                 // contra el cielo, muy parecido de color). Corrido del
-                // rincón inferior derecho, que es donde vive el HUD del
+                // rincÃ³n inferior derecho, que es donde vive el HUD del
                 // arma (le tapaba el viewmodel por encima).
                 weaponViewmodel.transform.localPosition = new Vector3(0.28f, -0.22f, 0.65f);
                 weaponViewmodel.transform.localRotation = Quaternion.identity;
                 weaponViewmodelRenderer = weaponViewmodel.GetComponent<MeshRenderer>();
-                // Unlit a propósito: con el shader Lit, bajo la luz plana de
-                // la escena, un color como el del Rifle (celeste grisáceo)
-                // queda casi idéntico al cielo de fondo y el cubo desaparece
-                // a simple vista aunque esté perfectamente ubicado y activo.
+                // Unlit a propÃ³sito: con el shader Lit, bajo la luz plana de
+                // la escena, un color como el del Rifle (celeste grisÃ¡ceo)
+                // queda casi idÃ©ntico al cielo de fondo y el cubo desaparece
+                // a simple vista aunque estÃ© perfectamente ubicado y activo.
                 // Unlit + oscurecido garantiza contraste sin depender de la
-                // iluminación de la escena.
+                // iluminaciÃ³n de la escena.
                 weaponViewmodelRenderer.sharedMaterial = SP.Presentation.SafeMaterial.Create(Color.white);
 
                 // Del plan del usuario: "Al hacer zoom debe poner el arma
@@ -235,20 +235,20 @@ namespace SP.Player
             if (weaponViewmodelRenderer != null) weaponViewmodelRenderer.enabled = false;
             var spec = WeaponCatalog.Get(weapon.CurrentWeaponKind);
             // OJO: escalar spec.VisualScale (pensado para el cuerpo, con
-            // el largo del cañón en Z) de golpe x2/x4 y ubicarlo a solo
-            // 0.55-0.7 de la cámara hacía que la mitad del cubo en Z
-            // quedara DETRÁS del punto focal de la cámara (near clip
+            // el largo del caÃ±Ã³n en Z) de golpe x2/x4 y ubicarlo a solo
+            // 0.55-0.7 de la cÃ¡mara hacÃ­a que la mitad del cubo en Z
+            // quedara DETRÃS del punto focal de la cÃ¡mara (near clip
             // 0.3), y ese cruce lo dejaba totalmente fuera del frustum:
-            // por eso no se veía pese a estar activo, bien coloreado y
-            // "dentro de cámara" según todo diagnóstico salvo la
+            // por eso no se veÃ­a pese a estar activo, bien coloreado y
+            // "dentro de cÃ¡mara" segÃºn todo diagnÃ³stico salvo la
             // profundidad real. Ancho/alto escalan con el arma pero la
             // profundidad se cablea fija y chica, y la distancia a la
-            // cámara se aleja lo suficiente como para dejar margen real
+            // cÃ¡mara se aleja lo suficiente como para dejar margen real
             // delante del near clip.
-            // Primer intento (0.18-0.35 de ancho) resultó gigante: tapaba
+            // Primer intento (0.18-0.35 de ancho) resultÃ³ gigante: tapaba
             // media pantalla en las capturas reales del demo. Un arma en
             // primera persona debe leerse como un detalle en la esquina,
-            // no como una pared — bajado a un rango bien chico.
+            // no como una pared â€” bajado a un rango bien chico.
             float widthHeight = Mathf.Clamp(spec.VisualScale.x * 1.1f, 0.08f, 0.15f);
             const float depth = 0.22f;
             weaponViewmodel.transform.localScale = new Vector3(widthHeight, widthHeight, depth);
@@ -373,7 +373,7 @@ namespace SP.Player
                     return;
                 }
                 granadaApuntando = true;
-                Feedback.Accion(SfxKind.GrenadePin, "GRANADA LISTA · SOLTA [G] PARA LANZAR", yo.transform.position, Feedback.Warn, aviso: true, pulso: true, volumen: 0.8f);
+                Feedback.Accion(SfxKind.GrenadePin, "GRANADA LISTA Â· SOLTA [G] PARA LANZAR", yo.transform.position, Feedback.Warn, aviso: true, pulso: true, volumen: 0.8f);
             }
             if (!granadaApuntando) return;
 
@@ -395,7 +395,7 @@ namespace SP.Player
             if (!yo.Weapon.ConsumirGranada()) return;
             Granada.Lanzar(origen, v, yo);
             GranadasLanzadasPorElJugador++;
-            Feedback.Visual($"GRANADA · QUEDAN {yo.Weapon.Granadas}", yo.transform.position, Feedback.Warn, aviso: true, pulso: false);
+            Feedback.Visual($"GRANADA Â· QUEDAN {yo.Weapon.Granadas}", yo.transform.position, Feedback.Warn, aviso: true, pulso: false);
             Rig.KickDirectional(-yo.transform.forward, 0.06f);
         }
 
@@ -427,7 +427,7 @@ namespace SP.Player
         float apuntadoVisual;
         public float ApuntadoVisual => apuntadoVisual;
 
-        // Estado de "estoy adentro de un vehículo".
+        // Estado de "estoy adentro de un vehÃ­culo".
         VehicleSeatRole? currentSeat;
 
         // Vestigial: la vista de vehiculo es siempre 3ra persona ahora (ver
@@ -471,8 +471,8 @@ namespace SP.Player
         public void ToggleVehicleCameraView() { }
 
         // Mensaje de tutorial que pisa temporalmente el texto contextual
-        // normal (usado por el nivel tutorial / demo automática para narrar
-        // paso a paso qué está pasando, en vez del prompt de "qué apretar").
+        // normal (usado por el nivel tutorial / demo automÃ¡tica para narrar
+        // paso a paso quÃ© estÃ¡ pasando, en vez del prompt de "quÃ© apretar").
         float tutorialUntil = -1f;
         string tutorialText = "";
         bool TutorialActive => Time.time < tutorialUntil;
@@ -504,7 +504,7 @@ namespace SP.Player
         }
 
         // PlayerBrain.Current no se serializa con la escena (es estado de
-        // runtime, no de diseño). Al entrar en Play desde cero hay que
+        // runtime, no de diseÃ±o). Al entrar en Play desde cero hay que
         // poseer al primer soldado de la escuadra a mano.
         void Start()
         {
@@ -616,9 +616,9 @@ namespace SP.Player
             }
         }
 
-        // Solo avisa si el que reventó es el vehículo donde está el
+        // Solo avisa si el que reventÃ³ es el vehÃ­culo donde estÃ¡ el
         // jugador ahora mismo -- un tanque enemigo o aliado destruido en
-        // otra punta del mapa no debería interrumpir con un aviso.
+        // otra punta del mapa no deberÃ­a interrumpir con un aviso.
         void OnVehicleDestroyed(VehicleDestroyedEvent evt)
         {
             if (currentSeat.HasValue && Vehicle != null && Vehicle == evt.Vehicle)
@@ -661,10 +661,10 @@ namespace SP.Player
             AjustesDeEscuadra.Lider = Rig.Mode == ControlMode.Fps && !currentSeat.HasValue ? Brain.Current : null;
             if (!currentSeat.HasValue && panelDeTeclas != null && panelDeTeclas.Visible) panelDeTeclas.SetVisible(false);
 
-            // Pausa/menú de victoria-derrota tienen Time.timeScale=0, pero
+            // Pausa/menÃº de victoria-derrota tienen Time.timeScale=0, pero
             // Update() no se frena solo por eso: sin este corte, mientras
-            // el panel de pausa está en pantalla el jugador podía seguir
-            // moviéndose, disparando y girando la cámara por detrás.
+            // el panel de pausa estÃ¡ en pantalla el jugador podÃ­a seguir
+            // moviÃ©ndose, disparando y girando la cÃ¡mara por detrÃ¡s.
             if (PauseRef != null && PauseRef.IsPaused) return;
 
             // [H] consulta los controles sin pausar el juego -- sigue
@@ -676,8 +676,8 @@ namespace SP.Player
             // actores, proyectiles y voces de audio. Solo lectura.
             if (kb.pKey.wasPressedThisFrame && PerfHud != null) PerfHud.Toggle();
 
-            // D2/D3: tamaño del minimapa. [M] alterna grande/original,
-            // [L] cicla entre 3 tamaños fijos que se recuerdan entre
+            // D2/D3: tamaÃ±o del minimapa. [M] alterna grande/original,
+            // [L] cicla entre 3 tamaÃ±os fijos que se recuerdan entre
             // partidas -- las dos formas de agrandarlo, pedidas por
             // separado en el plan, conviven sobre el mismo RectTransform.
             if (MinimapRef != null)
@@ -710,17 +710,17 @@ namespace SP.Player
                 MinimapRef.Target = currentSeat.HasValue ? Vehicle.transform : (Brain.Current != null ? Brain.Current.transform : null);
 
             // El [TAB] se procesa ANTES del corte por "estoy adentro de un
-            // vehículo": antes, estando adentro, Tab no hacía nada (el
-            // return de UpdateInVehicle lo comía entero) -- ahora alterna
+            // vehÃ­culo": antes, estando adentro, Tab no hacÃ­a nada (el
+            // return de UpdateInVehicle lo comÃ­a entero) -- ahora alterna
             // entre manejar en primera persona y ver el auto desde arriba
             // en RTS, sin bajarse ni perder el asiento.
             if (KeyBindings.WasPressed(KeyBindings.AlternarVista) && !handlingDeath)
             {
                 // Si Tab te saca de RTS a mitad de un arrastre de
-                // selección, el cuadrito quedaba prendido en pantalla
-                // para siempre (nada lo apagaba hasta el próximo drag
-                // completo en RTS, y para entonces ya no tenía sentido
-                // dónde estaba dibujado).
+                // selecciÃ³n, el cuadrito quedaba prendido en pantalla
+                // para siempre (nada lo apagaba hasta el prÃ³ximo drag
+                // completo en RTS, y para entonces ya no tenÃ­a sentido
+                // dÃ³nde estaba dibujado).
                 if (dragging)
                 {
                     dragging = false;
@@ -775,7 +775,7 @@ namespace SP.Player
             SP.UI.ScreenFlashView.ModeChange();
         }
 
-        // [F1]/[F2]/[F3]: poseen en FPS o seleccionan en RTS (funciona en vehículos, torretas, durante la muerte, etc).
+        // [F1]/[F2]/[F3]: poseen en FPS o seleccionan en RTS (funciona en vehÃ­culos, torretas, durante la muerte, etc).
         if (Rig.Mode == ControlMode.Fps)
         {
             if (AtajosDeTecladoHeredados)
@@ -836,8 +836,8 @@ namespace SP.Player
         }
 
         // -----------------------------------------------------------
-        // Muerte del soldado poseído: la cámara se aleja mirando el
-        // cadáver, espera un momento, y pasa sola al aliado vivo más
+        // Muerte del soldado poseÃ­do: la cÃ¡mara se aleja mirando el
+        // cadÃ¡ver, espera un momento, y pasa sola al aliado vivo mÃ¡s
         // cercano -- o a vista RTS si no queda ninguno.
         // -----------------------------------------------------------
         bool handlingDeath;
@@ -847,9 +847,9 @@ namespace SP.Player
         // el numero.
         public const float EsperaMaximaTrasMorir = 5f;
         // Para que PauseController no abra la pausa a mitad de la
-        // cámara de muerte -- técnicamente no rompía nada (se congela
+        // cÃ¡mara de muerte -- tÃ©cnicamente no rompÃ­a nada (se congela
         // bien y sigue al continuar), pero pausar en medio de esa
-        // escena breve se siente como una interrupción rara, no
+        // escena breve se siente como una interrupciÃ³n rara, no
         // intencional.
         public bool IsHandlingDeath => handlingDeath;
 
@@ -877,10 +877,10 @@ namespace SP.Player
                 return;
             }
 
-            // Antes, si moría un aliado que NO estabas manejando, no te
+            // Antes, si morÃ­a un aliado que NO estabas manejando, no te
             // enterabas de nada hasta que intentabas poseerlo con
-            // F1/F2/F3 (ahí sí salía "está muerto"). Ahora también avisa
-            // en el momento, aunque estés mirando para otro lado.
+            // F1/F2/F3 (ahÃ­ sÃ­ salÃ­a "estÃ¡ muerto"). Ahora tambiÃ©n avisa
+            // en el momento, aunque estÃ©s mirando para otro lado.
             if (Squad == null || DeadNotice == null) return;
             foreach (var s in Squad)
             {
@@ -936,9 +936,9 @@ namespace SP.Player
                     if (DeadNotice != null) DeadNotice.Show($"Te mato {killer.DisplayName}");
                 }
 
-                // Punto de cámara "detrás y arriba" del cadáver, mirándolo --
+                // Punto de cÃ¡mara "detrÃ¡s y arriba" del cadÃ¡ver, mirÃ¡ndolo --
                 // un GameObject temporal porque BeginTransition necesita un
-                // Transform de destino, no una posición suelta.
+                // Transform de destino, no una posiciÃ³n suelta.
                 deathPullBackGO = new GameObject("DeathCamPullback");
                 Vector3 back = -deadSoldier.transform.forward * 4f + Vector3.up * 2.2f;
                 deathPullBackGO.transform.position = deadSoldier.transform.position + back;
@@ -1077,10 +1077,10 @@ namespace SP.Player
         // El cursor arranca libre (para poder clickear la UI/el juego). Al
         // primer click adentro se bloquea y esconde, como cualquier FPS; con
         // Escape se libera de nuevo. En vista RTS lo dejamos libre siempre,
-        // porque ahí el mouse selecciona y arrastra en vez de mirar.
+        // porque ahÃ­ el mouse selecciona y arrastra en vez de mirar.
         void UpdateCursorLock(Keyboard kb)
         {
-            // Antes también se bloqueaba con solo currentSeat.HasValue,
+            // Antes tambiÃ©n se bloqueaba con solo currentSeat.HasValue,
             // sin mirar el modo -- si estabas manejando un vehiculo y
             // pasabas a vista RTS con [TAB] (sin bajarte), el cursor
             // seguia preso e invisible, aunque esa vista es igual de
@@ -1128,10 +1128,10 @@ namespace SP.Player
         // -----------------------------------------------------------
         // A pie (FPS)
         // -----------------------------------------------------------
-        // A quién se le ocultó el cuerpo por estar poseído en FPS (la
-        // cámara vive a centímetros de su propio EyeAnchor, y sin esto
+        // A quiÃ©n se le ocultÃ³ el cuerpo por estar poseÃ­do en FPS (la
+        // cÃ¡mara vive a centÃ­metros de su propio EyeAnchor, y sin esto
         // su propia malla tapa la pantalla). Se restaura apenas deja de
-        // ser el poseído o se sale de FPS.
+        // ser el poseÃ­do o se sale de FPS.
         Soldier bodyHiddenFor;
         // Ametralladora fija: en cuanto se implementa se conecta (ver TorretaFija).
         bool TorretaFijaActiva => torretaActual != null;
@@ -1148,8 +1148,8 @@ namespace SP.Player
                 AimUiRef.SetVisible(true);
                 AimUiRef.SetWatchedShooter(Brain.Current.Id);
                 AimUiRef.SetSpread01(Brain.Current.Weapon.SpreadFraction01);
-                // Pedido explicito (segunda vuelta): "el tamaño de la lupa
-                // que sea 4 veces mas tamaño que el actual" -- el doble
+                // Pedido explicito (segunda vuelta): "el tamaÃ±o de la lupa
+                // que sea 4 veces mas tamaÃ±o que el actual" -- el doble
                 // pedido antes se quedaba corto. El blur de fondo mientras
                 // se apunta (PostFxDirector) ya lee Rig.EstaConZoom por su
                 // cuenta.
@@ -1504,8 +1504,8 @@ namespace SP.Player
             if (TorretaFijaActiva)
             {
                 if (eToque || KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo))
-                { if (!BloqueaAtajo("USA EL RADIAL: [Q] → TORRETA FIJA → SALIR")) SalirDeTorreta(); }
-                else SetInstructionText("[Mouse] apuntar (arco limitado) · [Click] disparar · [Click der.] mirar por la mira · [R] recargar · [E] salir de la torreta · [TAB] vista RTS");
+                { if (!BloqueaAtajo("USA EL RADIAL: [Q] â†’ TORRETA FIJA â†’ SALIR")) SalirDeTorreta(); }
+                else SetInstructionText("[Mouse] apuntar (arco limitado) Â· [Click] disparar Â· [Click der.] mirar por la mira Â· [R] recargar Â· [E] salir de la torreta Â· [TAB] vista RTS");
                 if (TorretaFijaActiva) return;
             }
             else if (eToque)
@@ -1513,13 +1513,13 @@ namespace SP.Player
                 var t = result.Type == AimTargetType.Torreta ? result.Torreta : TorretaFija.MasCercana(Brain.Current.transform.position, TorretaFija.AlcanceDeUso);
                 if (t != null && FindNearestPickup(Brain.Current.transform.position) == null && !(Vehicle != null && Vector3.Distance(Brain.Current.transform.position, Vehicle.transform.position) <= interactRadius))
                 {
-                    if (BloqueaAtajo("USA EL RADIAL: [Q] → TORRETA FIJA → USAR")) return;
+                    if (BloqueaAtajo("USA EL RADIAL: [Q] â†’ TORRETA FIJA â†’ USAR")) return;
                     UsarTorreta(t); return;
                 }
             }
 
             // A4: revivir a un caido tiene prioridad sobre subir al vehiculo
-            // o equipar un arma -- si hay un compañero caido al alcance,
+            // o equipar un arma -- si hay un compaÃ±ero caido al alcance,
             // sostener [E] es lo unico que [E] hace ese frame.
             var caidoCercano = FindNearestDownedAlly();
             if (caidoCercano != null)
@@ -1529,7 +1529,7 @@ namespace SP.Player
             }
             if (circuloRevivir != null && !DemolicionEnCurso) circuloRevivir.SetVisible(false);
 
-            // Interacción por cercanía (no por puntería): subir al vehículo
+            // InteracciÃ³n por cercanÃ­a (no por punterÃ­a): subir al vehÃ­culo
             // o equipar un arma tirada en el piso.
             var nearVehicle = Vehicle != null && !Vehicle.IsDestroyed && Vector3.Distance(Brain.Current.transform.position, Vehicle.transform.position) <= interactRadius
                 ? Vehicle : null;
@@ -1543,12 +1543,12 @@ namespace SP.Player
             // romper la memoria muscular de golpe.
             if (KeyBindings.WasPressed(KeyBindings.SubirBajarVehiculo) && nearVehicle != null)
             {
-                if (!BloqueaAtajo("USA EL RADIAL: [Q] → TANQUE → SUBIRME YO")) EnterVehicle(nearVehicle);
+                if (!BloqueaAtajo("USA EL RADIAL: [Q] â†’ TANQUE â†’ SUBIRME YO")) EnterVehicle(nearVehicle);
             }
             else if (eToque)
             {
                 if (nearPickup != null) nearPickup.EquipOn(Brain.Current.Weapon, Brain.Current.Id);
-                else if (nearVehicle != null && !BloqueaAtajo("USA EL RADIAL: [Q] → TANQUE → SUBIRME YO")) EnterVehicle(nearVehicle);
+                else if (nearVehicle != null && !BloqueaAtajo("USA EL RADIAL: [Q] â†’ TANQUE â†’ SUBIRME YO")) EnterVehicle(nearVehicle);
             }
 
             var torretaCerca = TorretaFija.MasCercana(Brain.Current.transform.position, TorretaFija.AlcanceDeUso);
@@ -1557,10 +1557,10 @@ namespace SP.Player
             // asi que el jugador tiene que poder leer ANTES de tocar la tecla que hay
             // algo interactuable y que hace.
             var promptInteraccion = PromptDeInteraccion();
-            SetInstructionText(promptInteraccion != null ? promptInteraccion + "  ·  [Q] mantener: radial de ordenes"
-                : nearVehicle != null ? "[E] Subir al vehiculo  ·  [Q] mantener: radial de ordenes"
+            SetInstructionText(promptInteraccion != null ? promptInteraccion + "  Â·  [Q] mantener: radial de ordenes"
+                : nearVehicle != null ? "[E] Subir al vehiculo  Â·  [Q] mantener: radial de ordenes"
                 : nearPickup != null ? $"[E] Equipar {nearPickup.Kind}"
-                : torretaCerca != null && torretaCerca.Libre ? "[E] Usar la ametralladora fija  ·  [Q] mantener: radial de ordenes"
+                : torretaCerca != null && torretaCerca.Libre ? "[E] Usar la ametralladora fija  Â·  [Q] mantener: radial de ordenes"
                 : BuildFpsInstruction(result));
         }
 
@@ -1802,7 +1802,7 @@ namespace SP.Player
             circuloEnfoque.SetProgreso(progreso01);
         }
 
-        // Resalta (aclara el color) el aliado o vehículo al que se le está
+        // Resalta (aclara el color) el aliado o vehÃ­culo al que se le estÃ¡
         // apuntando, y le devuelve su color original apenas se deja de
         // apuntarle o se apunta a otra cosa.
         // Para poseer a un aliado hay que apuntarle con precision, sin
@@ -2133,7 +2133,7 @@ namespace SP.Player
 
             // MaterialPropertyBlock y NO sharedMaterial.color: desde el item
             // 230 los soldados de un mismo equipo COMPARTEN material, asi
-            // que escribirle el color aca teñiria a todo el equipo de
+            // que escribirle el color aca teÃ±iria a todo el equipo de
             // blanco al apuntarle a uno solo.
             if (highlightedRenderer != null)
                 SP.Presentation.CubeFxReactor.WriteTint(highlightedRenderer, highlightedOriginalColor);
@@ -2189,27 +2189,27 @@ namespace SP.Player
                 : AimRingColor);
         }
 
-        // [G] apuntando a un vehículo: sube UN aliado por apretada, al
-        // mismo criterio que [U] (el más cercano que todavía no esté
+        // [G] apuntando a un vehÃ­culo: sube UN aliado por apretada, al
+        // mismo criterio que [U] (el mÃ¡s cercano que todavÃ­a no estÃ©
         // adentro ni ya en camino a subir) -- para poder llenar los
         // asientos de a uno, apretando varias veces seguidas, sin mandar
         // dos veces al mismo. [I] es la tecla dedicada para bajarlos a
-        // todos; [G] no hace doble función.
+        // todos; [G] no hace doble funciÃ³n.
         //
-        // BUG REAL: antes, con el vehículo ya ocupado, [G] los bajaba a
-        // TODOS en vez de sumar uno más -- y encima usaba
-        // FindNearestFreeAlly, que no descarta a quien ya está adentro
-        // (Mount() solo lo desactiva, no lo saca del registro), así que
-        // apretar [G] dos veces con alguien ya montado le repetía la
+        // BUG REAL: antes, con el vehÃ­culo ya ocupado, [G] los bajaba a
+        // TODOS en vez de sumar uno mÃ¡s -- y encima usaba
+        // FindNearestFreeAlly, que no descarta a quien ya estÃ¡ adentro
+        // (Mount() solo lo desactiva, no lo saca del registro), asÃ­ que
+        // apretar [G] dos veces con alguien ya montado le repetÃ­a la
         // orden a ESE MISMO en vez de sumar al siguiente. FindNextSquadmateToBoard
-        // (la función de [U]) sí filtra correctamente a los ya montados y
-        // a los que ya están en camino.
+        // (la funciÃ³n de [U]) sÃ­ filtra correctamente a los ya montados y
+        // a los que ya estÃ¡n en camino.
         public void GOrderOnVehicle(Vehicle vehicle)
         {
             // Ordenar subir a una carcasa destruida antes mandaba al
-            // aliado a caminar hasta ahí para nada: Vehicle.Mount() ya
+            // aliado a caminar hasta ahÃ­ para nada: Vehicle.Mount() ya
             // rechaza el intento al llegar, pero eso no se sabe hasta
-            // que llega -- una caminata entera sin ningún resultado ni
+            // que llega -- una caminata entera sin ningÃºn resultado ni
             // aviso.
             if (vehicle.IsDestroyed) return;
             if (!vehicle.PuedeAbordar(Brain.Current, out var motivoNoAbordable)) { RejectOrder(motivoNoAbordable); return; }   // ronda 13 (punto 12)
@@ -2226,8 +2226,8 @@ namespace SP.Player
             GameLog.Line("Se dio la orden de que salgan del auto");
         }
 
-        // Flecha (cilindro+cono) sobre el vehículo apuntado, más una línea
-        // por cada aliado libre y cercano que subiría solo si se le ordena.
+        // Flecha (cilindro+cono) sobre el vehÃ­culo apuntado, mÃ¡s una lÃ­nea
+        // por cada aliado libre y cercano que subirÃ­a solo si se le ordena.
         void UpdateVehicleMountIndicator(AimResult result)
         {
             if (result.Type != AimTargetType.Vehicle)
@@ -2246,7 +2246,7 @@ namespace SP.Player
                 foreach (var s in Squad)
                 {
                     if (s == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
-                    if (result.Vehicle.RoleOf(s) != null) continue; // ya está adentro
+                    if (result.Vehicle.RoleOf(s) != null) continue; // ya estÃ¡ adentro
                     if (Vector3.Distance(s.transform.position, result.Vehicle.transform.position) <= autoMountRadius)
                         incoming.Add(s);
                 }
@@ -2491,10 +2491,10 @@ namespace SP.Player
             EquipWeaponHotkey(w.Loadout[slot]);
         }
 
-        // La rueda del mouse cicla la MISMA lista pública que expone
-        // WeaponHolder.Loadout -- antes esto tenía su propio array fijo en
-        // paralelo (WeaponCycle) que por construcción no podía divergir del
-        // catálogo 1/2/3, pero eran dos fuentes de la "verdad" separadas.
+        // La rueda del mouse cicla la MISMA lista pÃºblica que expone
+        // WeaponHolder.Loadout -- antes esto tenÃ­a su propio array fijo en
+        // paralelo (WeaponCycle) que por construcciÃ³n no podÃ­a divergir del
+        // catÃ¡logo 1/2/3, pero eran dos fuentes de la "verdad" separadas.
         // Ahora hay una sola.
         void CycleWeapon(int direction)
         {
@@ -2503,11 +2503,11 @@ namespace SP.Player
             else Brain.Current.Weapon.CyclePrevious();
         }
 
-        // Público para que la demo/tutorial automáticos puedan probar los
-        // atajos 1/2/3 sin depender de que haya un teclado físico. Pasa por
+        // PÃºblico para que la demo/tutorial automÃ¡ticos puedan probar los
+        // atajos 1/2/3 sin depender de que haya un teclado fÃ­sico. Pasa por
         // EquipFromLoadout (no EquipWeapon directo) para que CurrentLoadoutIndex
-        // quede sincronizado -- si no, elegir "2" con la tecla y después
-        // seguir con la rueda arrancaría el ciclo desde el índice viejo.
+        // quede sincronizado -- si no, elegir "2" con la tecla y despuÃ©s
+        // seguir con la rueda arrancarÃ­a el ciclo desde el Ã­ndice viejo.
         public void EquipWeaponHotkey(WeaponKind kind)
         {
             if (Brain.Current == null || Brain.Current.Weapon == null) return;
@@ -2524,13 +2524,13 @@ namespace SP.Player
             Brain.Current.Weapon.EquipWeapon(kind, spec.Damage, spec.Cooldown, spec.Color);
         }
 
-        // Única puerta de entrada para "mandar la camioneta sola a un
+        // Ãšnica puerta de entrada para "mandar la camioneta sola a un
         // punto": solo funciona si hay un aliado tuyo sentado de conductor
         // (si no hay nadie manejando, no tiene sentido que se mueva sola).
-        // Pública y reusada por el FPS, por el artillero y por los tests.
+        // PÃºblica y reusada por el FPS, por el artillero y por los tests.
         // Debajo de esta distancia, un click nuevo se considera "el mismo
         // pedido de siempre" y se ignora: sin esto, clickear cerca del
-        // destino (o de donde ya está la camioneta) dispara una orden nueva
+        // destino (o de donde ya estÃ¡ la camioneta) dispara una orden nueva
         // por frame y termina tirando marcadores repetidos sin parar.
         const float RedundantOrderDistance = 2f;
 
@@ -2576,21 +2576,21 @@ namespace SP.Player
             switch (result.Type)
             {
                 case AimTargetType.Ally:
-                    return $"{result.Soldier.DisplayName}   ·   [Q] mantener: radial (poseer, ordenes)   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return $"{result.Soldier.DisplayName}   Â·   [Q] mantener: radial (poseer, ordenes)   Â·   [Click] disparar   Â·   [TAB] vista RTS";
                 case AimTargetType.Enemy:
-                    return $"Enemigo: {result.Soldier.DisplayName}   ·   [Q] mantener: radial → ATACAR   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return $"Enemigo: {result.Soldier.DisplayName}   Â·   [Q] mantener: radial â†’ ATACAR   Â·   [Click] disparar   Â·   [TAB] vista RTS";
                 case AimTargetType.Vehicle:
-                    return "[Q] mantener: radial → TANQUE (subir / bajar / ir)   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return "[Q] mantener: radial â†’ TANQUE (subir / bajar / ir)   Â·   [Click] disparar   Â·   [TAB] vista RTS";
                 case AimTargetType.Obstacle:
-                    return "Obstáculo   ·   [Q] mantener: radial → CUBRIRSE / DEMOLER   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return "ObstÃ¡culo   Â·   [Q] mantener: radial â†’ CUBRIRSE / DEMOLER   Â·   [Click] disparar   Â·   [TAB] vista RTS";
                 case AimTargetType.Ground:
-                    return "[Q] mantener: radial → IR ALLI   ·   [Click der.] mandar el tanque aquí (si hay conductor)   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return "[Q] mantener: radial â†’ IR ALLI   Â·   [Click der.] mandar el tanque aquÃ­ (si hay conductor)   Â·   [Click] disparar   Â·   [TAB] vista RTS";
                 case AimTargetType.Torreta:
-                    return "[E] usar la ametralladora fija   ·   [Q] mantener: radial   ·   [TAB] vista RTS";
+                    return "[E] usar la ametralladora fija   Â·   [Q] mantener: radial   Â·   [TAB] vista RTS";
                 case AimTargetType.Caido:
-                    return "Aliado caido   ·   [Q] mantener: radial → REANIMAR (si queda un medico)   ·   [E] mantener 5 s: reanimarlo vos   ·   [TAB] vista RTS";
+                    return "Aliado caido   Â·   [Q] mantener: radial â†’ REANIMAR (si queda un medico)   Â·   [E] mantener 5 s: reanimarlo vos   Â·   [TAB] vista RTS";
                 default:
-                    return "[WASD] moverse   ·   [Shift] correr   ·   [Ctrl] agacharse   ·   [E] tocar: interactuar · mantener: habilidad de clase   ·   [F] cuchillo   ·   [G] granada   ·   [Click] disparar   ·   [Click der.] mantener: mirar por la mira   ·   [Q] mantener: radial   ·   [C] mantener: coberturas   ·   [TAB] vista RTS   ·   [F4] modo dios";
+                    return "[WASD] moverse   Â·   [Shift] correr   Â·   [Ctrl] agacharse   Â·   [E] tocar: interactuar Â· mantener: habilidad de clase   Â·   [F] cuchillo   Â·   [G] granada   Â·   [Click] disparar   Â·   [Click der.] mantener: mirar por la mira   Â·   [Q] mantener: radial   Â·   [C] mantener: coberturas   Â·   [TAB] vista RTS   Â·   [F4] modo dios";
             }
         }
 
@@ -2625,7 +2625,7 @@ namespace SP.Player
             bool on = ModoDios.Alternar();
             Feedback.Accion(on ? SfxKind.Swap : SfxKind.EmptyClick, null, null, on ? Feedback.Ok : Feedback.Warn, aviso: false, pulso: false, volumen: 0.5f);
             if (ModeToast != null)
-                ModeToast.Show(on ? "MODO DIOS: NADIE DE TU BANDO RECIBE DAÑO  ·  [F4] PARA APAGAR" : "MODO DIOS APAGADO", 2.2f);
+                ModeToast.Show(on ? "MODO DIOS: NADIE DE TU BANDO RECIBE DAÃ‘O  Â·  [F4] PARA APAGAR" : "MODO DIOS APAGADO", 2.2f);
         }
 
         // Coberturas del piso y rutas de patrulla enemigas: NO estan siempre a la vista. Se ven mientras
@@ -2957,9 +2957,9 @@ namespace SP.Player
                     focusPos = Selection.Selected[0].transform.position;
                     doFocus = true;
                 }
-                else if (Poseido != null)
+                else if (Brain != null && Brain.Current != null)
                 {
-                    focusPos = Poseido.transform.position;
+                    focusPos = Brain.Current.transform.position;
                     doFocus = true;
                 }
 
@@ -2972,7 +2972,7 @@ namespace SP.Player
                 if (KeyBindings.IsPressed(KeyBindings.RotarCamaraRts))
                 {
                     orbitando = true;
-                    Rig.rtsYaw += mouse.delta.ReadValue().x * rtsLookSens * 0.5f * Time.deltaTime;
+                    Rig.rtsYaw += mouse.delta.ReadValue().x * lookSensitivity * 40f * Time.deltaTime;
                 }
 
                 float scroll = mouse.scroll.ReadValue().y;
@@ -2980,7 +2980,7 @@ namespace SP.Player
             }
 
             string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
-            SetInstructionText($"[Arrastrar] seleccionar · [Shift+Click] sumar · [Click der.] mover la selección · [Ctrl+Click der.] trazar recorrido · [Q] mantener: radial · [C] mantener: coberturas y rutas · [WASD] panear · [Shift] panear rápido · [Rueda] zoom al cursor · [TAB] vista FPS · {selectionLabel}");
+            SetInstructionText($"[Arrastrar] seleccionar Â· [Shift+Click] sumar Â· [Click der.] mover la selecciÃ³n Â· [Ctrl+Click der.] trazar recorrido Â· [Q] mantener: radial Â· [C] mantener: coberturas y rutas Â· [WASD] panear Â· [Shift] panear rÃ¡pido Â· [Rueda] zoom al cursor Â· [TAB] vista FPS Â· {selectionLabel}");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -3022,10 +3022,10 @@ namespace SP.Player
             }
             UpdateCoverPreviewRts(kb, screenRay);
 
-            // [T] o click derecho: mover a todos los seleccionados ahí --
-            // o al vehículo, si es él quien está seleccionado (requiere
+            // [T] o click derecho: mover a todos los seleccionados ahÃ­ --
+            // o al vehÃ­culo, si es Ã©l quien estÃ¡ seleccionado (requiere
             // conductor propio adentro, como en FPS). "!dragging" es el
-            // recuadro de selección por click IZQUIERDO, no el derecho.
+            // recuadro de selecciÃ³n por click IZQUIERDO, no el derecho.
             bool pidioOrden = (AtajosDeTecladoHeredados && kb.tKey.wasPressedThisFrame) || (rightClickOrder && !dragging);
 
             // Con Ctrl apretado el mismo gesto NO ordena: marca un punto
@@ -3042,7 +3042,7 @@ namespace SP.Player
                     RejectOrder(TrazadoDeCamino.Cantidad >= TrazadoDeCamino.MaximoDePuntos
                         ? "RECORRIDO LLENO" : "PUNTO NO VALIDO");
                 else if (ModeToast != null)
-                    ModeToast.Show($"PUNTO {TrazadoDeCamino.Cantidad}  ·  [ESPACIO] ARRANCA", 1.0f);
+                    ModeToast.Show($"PUNTO {TrazadoDeCamino.Cantidad}  Â·  [ESPACIO] ARRANCA", 1.0f);
             }
 
             if (pidioOrden)
@@ -3165,10 +3165,10 @@ namespace SP.Player
             {
                 var result = Aim.Evaluate(screenRay, null);
                 if (result.Type == AimTargetType.Ally) TryPossess(result.Soldier);
-                // Apuntando al vehículo con la escuadra (o parte de ella)
+                // Apuntando al vehÃ­culo con la escuadra (o parte de ella)
                 // ya adentro: [F] toma control de manejo en vez de
                 // requerir que primero le apuntes a un soldado -- los
-                // ocupantes están inactivos/ocultos, no se les puede
+                // ocupantes estÃ¡n inactivos/ocultos, no se les puede
                 // apuntar directamente.
                 else if (result.Type == AimTargetType.Vehicle && result.Vehicle.OccupantCount > 0 && result.Vehicle.Bando != TeamId.Enemy)
                 {
@@ -3294,10 +3294,10 @@ namespace SP.Player
             }
         }
 
-        // Anillo de selección para el vehículo (mismo look que el de los
+        // Anillo de selecciÃ³n para el vehÃ­culo (mismo look que el de los
         // soldados, SelectionRingFx, solo que esto no pasa por
         // SelectionRingManager porque ese escucha SelectionChangedEvent,
-        // que es pura selección de soldados).
+        // que es pura selecciÃ³n de soldados).
         Vehicle ringedVehicle;
         SelectionRingFx vehicleSelectionRing;
         static readonly Color VehicleSelectionRingColor = new Color(0.3f, 0.75f, 0.95f);
@@ -3492,10 +3492,10 @@ namespace SP.Player
             if (Selection.SelectedVehicle == ringedVehicle) return;
             ringedVehicle = Selection.SelectedVehicle;
             if (vehicleSelectionRing != null) Destroy(vehicleSelectionRing.gameObject);
-            // Radio bien más grande que el de un soldado: el anillo por
-            // defecto (pensado para una cápsula chica) quedaba adentro de
+            // Radio bien mÃ¡s grande que el de un soldado: el anillo por
+            // defecto (pensado para una cÃ¡psula chica) quedaba adentro de
             // la sombra del propio chasis del tanque -- invisible, tapado
-            // por el mismo vehículo.
+            // por el mismo vehÃ­culo.
             vehicleSelectionRing = ringedVehicle != null ? SelectionRingFx.Spawn(ringedVehicle.transform, VehicleSelectionRingColor, 2.6f) : null;
         }
 
@@ -3578,8 +3578,8 @@ namespace SP.Player
                     else if (result.Type == AimTargetType.Vehicle)
                     {
                         // El tanque se selecciona solo (no se combina con
-                        // tropa vía Shift+Click: son dos tipos de
-                        // selección mutuamente excluyentes).
+                        // tropa vÃ­a Shift+Click: son dos tipos de
+                        // selecciÃ³n mutuamente excluyentes).
                         Selection.SelectVehicle(result.Vehicle);
                     }
                     else if (!shift)
@@ -3594,11 +3594,11 @@ namespace SP.Player
             }
         }
 
-        // El cuadro de selección vive en un Canvas con CanvasScaler
+        // El cuadro de selecciÃ³n vive en un Canvas con CanvasScaler
         // ScaleWithScreenSize: 1 unidad de Canvas ya NO es 1 pixel de
-        // pantalla, así que asignar coordenadas de mouse (pixeles reales)
-        // directo a anchoredPosition queda desfasado de la posición real
-        // apenas la resolución no es exactamente la de referencia. Hay que
+        // pantalla, asÃ­ que asignar coordenadas de mouse (pixeles reales)
+        // directo a anchoredPosition queda desfasado de la posiciÃ³n real
+        // apenas la resoluciÃ³n no es exactamente la de referencia. Hay que
         // convertir pixel de pantalla -> espacio local del Canvas.
         Vector2 ScreenToCanvasLocal(Vector2 screenPoint)
         {

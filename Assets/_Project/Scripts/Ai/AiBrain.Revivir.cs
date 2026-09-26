@@ -131,7 +131,7 @@ namespace SP.Ai
                     if (progresoCuracion >= SP.Player.PedidoDeCuracion.SegundosDeReanimar)
                     {
                         SP.Player.Reanimacion.Ejecutar(targetCuracion);
-                        SP.Presentation.Feedback.Accion(SP.Core.SfxKind.Revive, "¡" + targetCuracion.DisplayName.ToUpperInvariant() + " DE VUELTA!", targetCuracion.transform.position, SP.Presentation.Feedback.Ok, aviso: true, pulso: true, volumen: 0.9f);
+                        SP.Presentation.Feedback.Accion(SP.Presentation.SfxKind.Revive, "¡" + targetCuracion.DisplayName.ToUpperInvariant() + " DE VUELTA!", targetCuracion.transform.position, SP.Presentation.Feedback.Ok, aviso: true, pulso: true, volumen: 0.9f);
                         CancelarCuracionLocal();
                     }
                 }
@@ -149,7 +149,7 @@ namespace SP.Ai
                     
                     if (targetCuracion.Health.Current >= targetCuracion.Health.MaxHealth)
                     {
-                        SP.Presentation.Feedback.Accion(SP.Core.SfxKind.HealDone, "¡" + targetCuracion.DisplayName.ToUpperInvariant() + " CURADO!", targetCuracion.transform.position, SP.Presentation.Feedback.Ok, aviso: true, pulso: true, volumen: 0.8f);
+                        SP.Presentation.Feedback.Accion(SP.Presentation.SfxKind.HealDone, "¡" + targetCuracion.DisplayName.ToUpperInvariant() + " CURADO!", targetCuracion.transform.position, SP.Presentation.Feedback.Ok, aviso: true, pulso: true, volumen: 0.8f);
                         CancelarCuracionLocal();
                     }
                 }

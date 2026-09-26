@@ -21,6 +21,7 @@ namespace SP.Player
         // Se cae sola si nadie la recoge en un rato: si no, el piso de una
         // mision larga terminaria lleno de cajitas de balas de cada baja.
         public const float VidaMaxima = 45f;
+        public const string PrefabMoneda = "Pickups/MonedaMunicion";
 
         PlayerInputDriver driver;
         float edad;

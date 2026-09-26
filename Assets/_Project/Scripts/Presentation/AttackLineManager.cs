@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using SP.Core;
 using SP.Actors;
+using SP.Combat;
 using SP.Ai;
 using SP.CameraSystem;
 using SP.Player;
@@ -36,7 +37,7 @@ namespace SP.Presentation
             if (p != null && (e.TargetId == p.Id || e.AttackerId == p.Id))
             {
                 int enemyId = e.TargetId == p.Id ? e.AttackerId : e.TargetId;
-                var s = ActorRegistry.Get(enemyId);
+                var s = ActorRegistry.FindById(enemyId);
                 if (s != null && s.Team != TeamId.Player) recentEnemies[enemyId] = Time.time;
             }
         }
