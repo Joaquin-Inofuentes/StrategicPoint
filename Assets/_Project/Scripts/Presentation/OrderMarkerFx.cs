@@ -483,43 +483,26 @@ namespace SP.Presentation
             set => particulasCache = value;
         }
 
-        GameObject customShape;
-
-        void EnsureCustomShape(Color color, float scale)
-        {
-            if (customShape == null)
-            {
-                customShape = ShapeMarkerFx.CrearMarcador(color, scale, scale * 0.7f, 1f);
-                customShape.transform.SetParent(transform, false);
-                customShape.transform.localPosition = Vector3.zero;
-            }
-            else
-            {
-                // Update color
-                var quad = customShape.transform.Find("Quad");
-                if (quad != null) quad.GetComponent<MeshRenderer>().sharedMaterial = ShapeMarkerFx.MatCirculo(color);
-                var arrow = customShape.transform.Find("Flecha");
-                if (arrow != null) arrow.GetComponent<MeshRenderer>().sharedMaterial = CoverHologram.NuevoTransparente(color);
-                
-                // Update scale
-                if (quad != null) quad.transform.localScale = new Vector3(scale * 2f, scale * 2f, 1f);
-                if (arrow != null) arrow.transform.localScale = new Vector3(scale * 0.7f, scale * 0.7f, scale * 0.7f);
-            }
-            customShape.SetActive(true);
-        }
-
         void LaunchFading(Vector3 position, Color color, float durationSeconds)
         {
             gameObject.name = "OrderMarker";
             gameObject.SetActive(true);
+            // Siempre a nivel del piso, sin importar la altura del punto de
+            // origen (un ataque usa la posicion del pecho del enemigo, subir
+            // usa el centro del vehiculo -- ninguno es "el suelo").
             transform.position = new Vector3(position.x, 0.05f, position.z);
 
-            EnsureCustomShape(color, 1.3f);
+            var shape = particulas.shape;
+            shape.radius = 1.3f;
+            var main = particulas.main;
+            main.startColor = color;
             SetPipCount(0, color);
-            
-            // Apagar particulas heredadas
+
+            // Estallido unico ("poof") al dar la orden: nada de emision
+            // continua, es un pulso que se apaga solo.
             particulas.Clear(true);
-            particulas.Stop(true);
+            particulas.Play(true);
+            particulas.Emit(18);
 
             duration = Mathf.Max(0.01f, durationSeconds);
             age = 0f;
@@ -536,11 +519,18 @@ namespace SP.Presentation
             proximoChequeo = Time.time + 0.3f;
             transform.position = new Vector3(position.x, 0.05f, position.z);
 
-            EnsureCustomShape(color, 0.9f);
+            var shape = particulas.shape;
+            shape.radius = 0.9f;
+            var main = particulas.main;
+            main.startColor = color;
             SetPipCount(Mathf.Min(orderIndex, MaxPips), color);
 
+            // Orden en cola: goteo sostenido y suave mientras siga pendiente
+            // (Update()/HayOrdenPendienteEn decide cuando apagarlo).
             particulas.Clear(true);
-            particulas.Stop(true);
+            var emission = particulas.emission;
+            emission.rateOverTime = 5f;
+            particulas.Play(true);
 
             age = 0f;
             fading = false;
