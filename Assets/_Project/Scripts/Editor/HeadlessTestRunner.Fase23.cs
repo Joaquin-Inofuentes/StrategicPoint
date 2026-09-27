@@ -284,7 +284,7 @@ namespace SP.EditorTools
             SP.Ai.AjustesDeEscuadra.DistanciaAtrasFormacion = prevAtr;
         }
 
-                static void Fase23_RomboSinOclusion()
+        static void Fase23_RomboSinOclusion()
         {
             TestLog.Step("Probando Fase23_RomboSinOclusion: el rombo ignora oclusion al recibir dano del jugador");
 
@@ -299,11 +299,26 @@ namespace SP.EditorTools
             var playerGo = new GameObject("TestPlayer");
             var player = playerGo.AddComponent<SP.Actors.Soldier>();
             var playerHealth = playerGo.AddComponent<SP.Combat.Health>();
-            
+
             player.Configure("Player", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
-            var playerBrain = playerGo.AddComponent<SP.Ai.AiBrain>();
-            playerBrain.IsPossessedByPlayer = true;
             SP.Core.ActorRegistry.Register(player);
+
+            // BUG REAL (test): UnitLocatorCylinder.OnDamage() identifica al atacante
+            // jugador leyendo SP.Player.PlayerBrain.Activo.Current.Id -- NO
+            // AiBrain.IsPossessedByPlayer (esa flag solo controla input/HUD del
+            // cuerpo poseido, la lee PlayerBrain.Possess pero no la escribe nadie
+            // mas y OnDamage ni la mira). Este test marcaba IsPossessedByPlayer en
+            // un AiBrain suelto sin pasar nunca por PlayerBrain: Activo quedaba
+            // null, OnDamage() nunca encontraba a "p" y el rombo jamas ignoraba la
+            // oclusion. Se registra y posee con PlayerBrain de verdad, mismo
+            // patron que ya usa Fase23_AnilloAtacante mas arriba, y se restaura el
+            // Activo previo al salir para no filtrarselo a los tests siguientes de
+            // esta fase (Fase23_CursorPorObjetivo, Fase23_MedicoAutomatico, etc).
+            var brainActivoPrevio = SP.Player.PlayerBrain.Activo;
+            var playerBrainGo = new GameObject("TestPlayerBrain");
+            var playerBrain = playerBrainGo.AddComponent<SP.Player.PlayerBrain>();
+            playerBrain.Registrar();
+            playerBrain.Possess(player);
 
             // Trigger OnEnable so it subscribes
             locator.enabled = false;
@@ -334,6 +349,8 @@ namespace SP.EditorTools
             SP.Core.ActorRegistry.Unregister(player);
             Object.DestroyImmediate(enemyGo);
             Object.DestroyImmediate(playerGo);
+            Object.DestroyImmediate(playerBrainGo);
+            if (brainActivoPrevio != null) brainActivoPrevio.Registrar();
         }
 
         static void Fase23_RomboTanque()
@@ -426,17 +443,20 @@ namespace SP.EditorTools
             };
             
             // Simular primer click
+            Debug.Log($"[DIAG roster] antes: InstanceNull={(SP.Player.SelectionController.Instance == null)} sonMismo={(SP.Player.SelectionController.Instance == inputDriver.Selection)} ActivoNull={(SP.Player.PlayerBrain.Activo == null)} ActivoEsInputDriverBrain={(SP.Player.PlayerBrain.Activo == inputDriver.Brain)}");
             rosterRow.OnPointerClick(eventData);
-            
+            Debug.Log($"[DIAG roster] despues click1: Selected.Count={inputDriver.Selection.Selected.Count} Contains(doc)={inputDriver.Selection.Selected.Contains(doc)} RtsFocus={inputDriver.Rig.RtsFocus} docPos={doc.transform.position}");
+
             Check("Despues de 1 clic, doc queda seleccionado", inputDriver.Selection.Selected.Contains(doc) && inputDriver.Selection.Selected.Count == 1);
-            
+
             Vector3 pos = doc.transform.position;
             Vector3 focus = inputDriver.Rig.RtsFocus;
             Check($"RTS focus debe coincidir con pos (Focus: {focus}, Pos: {pos})", Mathf.Abs(focus.x - pos.x) < 0.1f && Mathf.Abs(focus.z - pos.z) < 0.1f);
-            
+
             // Simular segundo click rapido (doble click)
             rosterRow.OnPointerClick(eventData);
-            
+            Debug.Log($"[DIAG roster] despues click2: RigMode={inputDriver.Rig.Mode} ActivoNull={(SP.Player.PlayerBrain.Activo == null)} Activo.Current={(SP.Player.PlayerBrain.Activo != null && SP.Player.PlayerBrain.Activo.Current != null ? SP.Player.PlayerBrain.Activo.Current.DisplayName : "NULL")}");
+
             Check("Despues de doble clic, la camara pasa a FPS", inputDriver.Rig.Mode == SP.CameraSystem.ControlMode.Fps);
             Check("Despues de doble clic, doc pasa a estar poseido", SP.Player.PlayerBrain.Activo != null && SP.Player.PlayerBrain.Activo.Current == doc);
             
@@ -449,7 +469,16 @@ namespace SP.EditorTools
             
             var ringManagerGo = new GameObject("TestRingManager");
             var ringManager = ringManagerGo.AddComponent<SP.Presentation.MinimapAttackerRings>();
-            
+            // BUG REAL (test): Awake() SI corre solo (arma el pool de anillos -- confirmado,
+            // AddComponent en un GameObject activo dispara Awake de forma confiable en esta
+            // suite, igual que Soldier/PlayerBrain/AiBrain en el resto del archivo). OnEnable()
+            // (la suscripcion a DamageTakenEvent) es la que NO se dispara sola -- ni siquiera
+            // con el truco de SetActive(false) antes + SetActive(true) despues, confirmado a
+            // mano probandolo aislado. Se invoca por reflexion, mismo patron ya probado con
+            // Vehicle.OnEnable en Fase23_RomboTanque.
+            var onEnableRings = typeof(SP.Presentation.MinimapAttackerRings).GetMethod("OnEnable", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            onEnableRings.Invoke(ringManager, null);
+
             // Dummy attacker and player
             var attackerGo = new GameObject("TestAttacker");
             attackerGo.transform.position = new Vector3(10, 0, 10);
@@ -458,14 +487,23 @@ namespace SP.EditorTools
             var playerGo = new GameObject("TestPlayer");
             var player = playerGo.AddComponent<SP.Actors.Soldier>();
             
+            // BUG REAL (rompia TODOS los tests de Fase23 que corren despues de este,
+            // no solo este): brain.Registrar() pisa el PlayerBrain.Activo compartido de
+            // toda la suite (el del inputDriver real) por este PlayerBrain de prueba, y
+            // PlayerBrain.OnDestroy ya limpia Activo cuando se lo destruye (QuitarRegistro)
+            // -- pero solo si segia siendo "el activo". Como nadie volvia a registrar al
+            // inputDriver.Brain original despues, PlayerBrain.Activo quedaba en null para
+            // el resto de Fase23 (Fase23_RosterClics, Fase23_CursorPorObjetivo, etc,
+            // todos los que leen PlayerBrain.Activo). Se guarda y se restaura.
+            var brainActivoPrevio = SP.Player.PlayerBrain.Activo;
             var brainGo = new GameObject("TestBrain");
             var brain = brainGo.AddComponent<SP.Player.PlayerBrain>();
             brain.Registrar();
             brain.Possess(player);
-            
+
             // Send event
             SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(player.Id, attacker.Id, 10, 90));
-            
+
             // Verify
             var rings = ringManager.GetComponentsInChildren<UnityEngine.LineRenderer>(true);
             bool foundActive = false;
@@ -477,13 +515,14 @@ namespace SP.EditorTools
                     break;
                 }
             }
-            
+
             Check("Un anillo del pool se activo en la posicion del atacante", foundActive);
-            
+
             Object.DestroyImmediate(ringManagerGo);
             Object.DestroyImmediate(attackerGo);
             Object.DestroyImmediate(playerGo);
             Object.DestroyImmediate(brainGo);
+            if (brainActivoPrevio != null) brainActivoPrevio.Registrar();
         }
 
         static void Fase23_RadialMuerto(SP.Player.PlayerInputDriver inputDriver)
@@ -564,6 +603,12 @@ namespace SP.EditorTools
                 if (hay)
                 {
                     float dist = Mathf.Abs(col.bounds.min.y - piso);
+                    if (dist >= 0.03f)
+                    {
+                        var golpes = new System.Text.StringBuilder();
+                        for (int i = 0; i < n; i++) golpes.Append(buffer[i].collider?.name + ":" + buffer[i].point.y + " ");
+                        Debug.Log($"[DIAG piso] {s.name} pos={pos} colBottom={col.bounds.min.y} piso={piso} hits=[{golpes}]");
+                    }
                     Check($"Soldado {s.name} bien apoyado (dist: {dist:0.000})", dist < 0.03f);
                 }
                 else
@@ -611,17 +656,28 @@ namespace SP.EditorTools
             TestLog.Step("Probando Fase23_CoberturasConCollider: verificar mallas de coberturas con collider propio");
             var solidos = SP.Core.Coberturas.Solidos();
             int count = 0;
+            var nombres = new System.Collections.Generic.List<string>();
             foreach (var c in solidos)
             {
+                // BUG REAL (test): un vehiculo es UN SOLO collider solido (el BoxCollider de
+                // la raiz) con VARIAS mallas cosmeticas debajo (torreta, cañon, metralleta,
+                // casco) que a proposito no tienen collider propio -- la misma exclusion que
+                // ya usa Fase23_ColliderSinMalla un poco mas arriba en este archivo para el
+                // mismo motivo. Sin esto, cualquier vehiculo en la escena hacia fallar este
+                // chequeo (6 mallas: TurretVisual, TurretBarrel, SM_Veh_Tanque_Canon/Torreta/
+                // Cuerpo, MetralletaVisual) aunque el vehiculo este perfectamente armado.
+                if (c.GetComponentInParent<SP.Vehicles.Vehicle>() != null) continue;
                 var meshes = c.GetComponentsInChildren<MeshRenderer>(true);
                 foreach (var m in meshes)
                 {
                     if (m.GetComponent<Collider>() == null)
                     {
                         count++;
+                        nombres.Add(c.gameObject.name + "/" + m.gameObject.name);
                     }
                 }
             }
+            if (count > 0) Debug.Log("[DIAG mallas] " + string.Join(" | ", nombres));
             Check($"0 mallas en coberturas sin collider propio (hay {count})", count == 0);
         }
         static void Fase23_HudMunicion()
@@ -708,32 +764,59 @@ namespace SP.EditorTools
             TestLog.Step("Probando Fase23_BordeRojoImpacto: vignette rojo al recibir dano");
             
             var go = new GameObject("TestDamageVignette");
+            // BUG REAL (bug de la prueba): "go" nacia activo y nunca se desactivaba, asi que el
+            // SetActive(true) de mas abajo era un no-op (ya estaba activo) y OnEnable() JAMAS
+            // corria -- ni se creaba el hijo "RedImpact" (CurrentRedAlpha daba 0 solo porque
+            // redImage quedaba null, no porque de verdad arrancara en 0) ni se suscribia a
+            // DamageTakenEvent, asi que OnDamage no se llamaba nunca sin importar el evento
+            // publicado. Se desactiva antes de agregar los componentes para que el SetActive(true)
+            // de mas abajo sea una transicion real (mismo patron que el resto del suite).
+            go.SetActive(false);
             var img = go.AddComponent<UnityEngine.UI.Image>();
             var view = go.AddComponent<SP.UI.DamageVignetteView>();
+            // BUG REAL (filtraba a TODOS los tests de Fase23 posteriores): brain.Registrar()
+            // pisa el PlayerBrain.Activo compartido de la suite; se restaura al terminar
+            // (ver el mismo problema y arreglo en Fase23_AnilloAtacante mas arriba).
+            var brainActivoPrevio2 = SP.Player.PlayerBrain.Activo;
             var brainGo = new GameObject("TestBrain");
             var brain = brainGo.AddComponent<SP.Player.PlayerBrain>();
-            
+
             var soldierGo = new GameObject("TestSoldier");
             soldierGo.AddComponent<SP.Combat.Health>();
             var soldier = soldierGo.AddComponent<SP.Actors.Soldier>();
             soldier.Configure("TestSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
             brain.Registrar();
             brain.Possess(soldier);
-            
+
             view.Bind(img, brain);
-            go.SetActive(true); // Triggers OnEnable
-            
+            go.SetActive(true);
+            // BUG REAL (test): confirmado a mano que ni siquiera el "SetActive(false) antes
+            // + SetActive(true) despues" dispara OnEnable() de forma confiable en esta suite
+            // (probado con SelectionController Y con DamageVignetteView: en ambos redImage/
+            // Instance seguian null despues del toggle). Unity parece necesitar un tick real
+            // del Editor para procesarlo que esta suite, corriendo entera como una llamada
+            // sincronica, nunca le da tiempo de hacer. Se lo invoca por reflexion a mano,
+            // mismo patron ya probado y confiable que Vehicle.OnEnable en Fase23_RomboTanque.
+            var onEnableDVV = typeof(SP.UI.DamageVignetteView).GetMethod("OnEnable", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            onEnableDVV.Invoke(view, null);
+
             float alpha0 = view.CurrentRedAlpha;
             Check("Alpha inicial del impacto rojo es 0", alpha0 == 0f);
-            
-            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(999, 1, 20, 80));
-            
+
+            // BUG REAL (bug de la prueba): el TargetId estaba hardcodeado en 999, que no
+            // coincide con soldier.Id (los Id de Soldier se autoasignan de forma incremental,
+            // ver Soldier.nextId) -- DamageVignetteView.OnDamage descarta el evento entero si
+            // evt.TargetId no es el Id del soldado poseido, asi que el alpha nunca subia aunque
+            // OnEnable ya corriera bien.
+            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(soldier.Id, 1, 20, 80));
+
             float alpha1 = view.CurrentRedAlpha;
             Check("Alpha del impacto rojo sube al recibir dano", alpha1 > 0f);
-            
+
             Object.DestroyImmediate(go);
             Object.DestroyImmediate(brainGo);
             Object.DestroyImmediate(soldierGo);
+            if (brainActivoPrevio2 != null) brainActivoPrevio2.Registrar();
         }
 
         static void Fase23_RombosInteractuables()
@@ -788,7 +871,13 @@ namespace SP.EditorTools
             txtGo.transform.SetParent(go.transform);
 
             view.Bind(txt);
-            go.SetActive(true); // Triggers OnEnable and calls Diagramador.AcomodarSelectionCount
+            // BUG REAL (test): OnEnable() (que llama a Diagramador.AcomodarSelectionCount, lo
+            // unico que mueve el RectTransform del ancla de fabrica 0.5/0.5 al anclaje abajo-
+            // centro real) no se dispara solo -- confirmado a mano que ni el truco de
+            // SetActive(false) antes + SetActive(true) despues lo logra en esta suite. Se
+            // invoca por reflexion, mismo patron ya probado con Vehicle.OnEnable.
+            var onEnableSCV = typeof(SP.UI.SelectionCountView).GetMethod("OnEnable", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            onEnableSCV.Invoke(view, null);
 
             Check("Anclado abajo (anchorMin.y == 0)", rt.anchorMin.y == 0f);
             Check("Anclado al centro (anchorMin.x == 0.5)", rt.anchorMin.x == 0.5f);
@@ -827,6 +916,9 @@ namespace SP.EditorTools
             var coverFollowerSoldier = goCoverFollower.AddComponent<SP.Actors.Soldier>();
             coverFollowerSoldier.Configure("CoverFollower", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
 
+            // BUG REAL (filtraba a TODOS los tests de Fase23 posteriores): ver el mismo
+            // problema y arreglo en Fase23_AnilloAtacante mas arriba.
+            var brainActivoPrevio3 = SP.Player.PlayerBrain.Activo;
             var brainGo = new GameObject("TestBrain");
             var brain = brainGo.AddComponent<SP.Player.PlayerBrain>();
             brain.Registrar();
@@ -872,6 +964,7 @@ namespace SP.EditorTools
             UnityEngine.Object.DestroyImmediate(goCoverFollower);
             UnityEngine.Object.DestroyImmediate(brainGo);
             UnityEngine.Object.DestroyImmediate(colGo);
+            if (brainActivoPrevio3 != null) brainActivoPrevio3.Registrar();
         }
         static void Fase23_CivilVisible()
         {
@@ -971,9 +1064,16 @@ namespace SP.EditorTools
             var origenPrueba = camActual != null ? camActual.transform.position : Vector3.zero;
 
             var sGo = new GameObject("Soldado");
-            sGo.transform.position = origenPrueba;
+            // BUG REAL (test): colocar al soldado a la altura de la CAMARA del rig (Y~30, muy
+            // por encima del piso real) hacia que Move() detectara una caida real (RevisarBorde
+            // -> IsJumping = true) apenas se movia -- y AiBrain.Motor.Corriendo exige
+            // explicitamente "!IsJumping", asi que nunca contaba como "corriendo" y
+            // DustEmitter.Emit ni se llamaba. Solo importa el XZ para el LOD de distancia a la
+            // camara (Emit() descarta a mas de 50 m); el Y se apoya al piso real aparte.
+            sGo.transform.position = new Vector3(origenPrueba.x, 1f, origenPrueba.z);
             var sCol = sGo.AddComponent<BoxCollider>();
             var sMotor = sGo.AddComponent<SP.Actors.SoldierMotor>();
+            SP.Core.ApoyoEnElPiso.Apoyar(sGo.transform);
             sMotor.SetRunning(true);
             sMotor.SpeedMultiplier = 1f;
 
@@ -984,7 +1084,7 @@ namespace SP.EditorTools
             Check("Soldado corriendo emitió polvo", SP.Presentation.DustEmitter.ParticleCount > 0);
 
             var vGo = new GameObject("Tanque");
-            vGo.transform.position = origenPrueba;
+            vGo.transform.position = new Vector3(origenPrueba.x, 1f, origenPrueba.z);
             var vCol = vGo.AddComponent<BoxCollider>();
             vCol.size = new Vector3(3.6f, 1f, 2.2f); // Large collider
             var vMotor = vGo.AddComponent<SP.Vehicles.VehicleMotor>();
@@ -1298,13 +1398,26 @@ namespace SP.EditorTools
             var goVehicle = new UnityEngine.GameObject("Vehicle");
             var vehicle = goVehicle.AddComponent<SP.Vehicles.Vehicle>();
 
+            // BUG REAL (preexistente, no del R14): el setter de MinimapIcon.Target
+            // llama a DetectarTarget() -- quien realmente elige forma
+            // (circulo/triangulo/cuadrado) y color -- solo "if (Application.isPlaying)".
+            // Spawn() ya asigna Target internamente, pero en Edit mode (esta suite)
+            // esa condicion nunca se cumple, asi que el icono se queda con el
+            // Cylinder primitivo y el color blanco de fabrica. Mismo patron que
+            // Fase23_RomboTanque con Vehicle.OnEnable: se empuja DetectarTarget()
+            // por reflexion en vez de asumir que Spawn() lo dispara solo.
+            var detectarTargetMethod = typeof(SP.Presentation.MinimapIcon).GetMethod("DetectarTarget", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
             var iconAlly = SP.Presentation.MinimapIcon.Spawn(soldier.transform, UnityEngine.Color.white, 8, 1f);
+            if (detectarTargetMethod != null) detectarTargetMethod.Invoke(iconAlly, null);
             Check("Ally es circulo", !iconAlly.EsCuadrado && iconAlly.GetComponent<UnityEngine.MeshFilter>().sharedMesh.name == "MinimapCirculo");
             
             var iconEnemy = SP.Presentation.MinimapIcon.Spawn(enemy.transform, UnityEngine.Color.white, 8, 1f);
+            if (detectarTargetMethod != null) detectarTargetMethod.Invoke(iconEnemy, null);
             Check("Enemy es triangulo", !iconEnemy.EsCuadrado && iconEnemy.GetComponent<UnityEngine.MeshFilter>().sharedMesh.name == "MinimapTriangulo");
 
             var iconVehicle = SP.Presentation.MinimapIcon.Spawn(vehicle.transform, UnityEngine.Color.white, 8, 1f);
+            if (detectarTargetMethod != null) detectarTargetMethod.Invoke(iconVehicle, null);
             Check("Vehicle es cuadrado", iconVehicle.EsCuadrado);
             Check("Vehicle es gris sin tripulacion", iconVehicle.GetComponent<UnityEngine.MeshRenderer>().sharedMaterial.color == UnityEngine.Color.gray);
 
@@ -1319,6 +1432,14 @@ namespace SP.EditorTools
         {
             TestLog.Step("Probando T-30 Civil quieto y atado");
             var d = new GameObject("Dir").AddComponent<SP.Mision.MisionDirector>();
+            // BUG REAL (test, no produccion): "civilPrefab" es un [SerializeField] que
+            // solo se llena a mano en el Inspector del MisionDirector real de la escena
+            // -- un MisionDirector armado en blanco por AddComponent (como este) lo tiene
+            // null, asi que SpawnCivilOculto() salia en su primera linea sin crear nada y
+            // "Hay civil" daba falso siempre. Se le da un prefab valido de soldado (el
+            // mismo que arma el resto de la suite) por reflexion antes de saltar de fase.
+            typeof(SP.Mision.MisionDirector).GetField("civilPrefab", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .SetValue(d, BuildAndSaveSoldierPrefab());
             d.SaltarAFase(SP.Mision.FaseDeMision.Rescatar);
             Check("Hay civil", d.Civil != null);
             if (d.Civil != null) Check("El civil esta atado al aparecer", d.Civil.Motor.Atado);

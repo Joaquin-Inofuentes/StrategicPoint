@@ -145,12 +145,21 @@ namespace SP.Combat
                     if (mayor > 0.0001f) modelo.transform.localScale *= 0.22f / mayor;
                     modelo.transform.localPosition = transform.InverseTransformPoint(transform.position + (transform.position - b.center));
                 }
-                foreach (var col in modelo.GetComponentsInChildren<Collider>()) Destroy(col);
+                // BUG REAL ("obstaculos solidos" contaba 6 en vez de 5, "0 mallas en
+                // coberturas sin collider propio" daba 6): Destroy() en Edit mode no borra
+                // el collider en el mismo frame que esta llamada -- la suite headless corre
+                // entera como una sola invocacion sincronica sin volver al loop normal del
+                // Editor, asi que el collider de cualquier granada tirada en una fase
+                // anterior seguia vivo y contando como "solido" cuando otra fase mas
+                // adelante barria la escena. DestroyImmediate en Edit mode, igual que en
+                // el resto del proyecto (ver Fragmentador.cs/SparkleBurstFx.cs/etc).
+                foreach (var col in modelo.GetComponentsInChildren<Collider>())
+                    if (Application.isPlaying) Destroy(col); else DestroyImmediate(col);
             }
             else
             {
                 modelo = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                Destroy(modelo.GetComponent<Collider>());
+                if (Application.isPlaying) Destroy(modelo.GetComponent<Collider>()); else DestroyImmediate(modelo.GetComponent<Collider>());
                 modelo.transform.SetParent(transform, false);
                 modelo.transform.localScale = Vector3.one * 0.2f;
                 modelo.GetComponent<Renderer>().sharedMaterial = SafeMaterial.Create(new Color(0.22f, 0.3f, 0.18f));
@@ -159,7 +168,7 @@ namespace SP.Combat
 
             // Luz roja de fusible: parpadea cada vez mas rapido.
             var l = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            Destroy(l.GetComponent<Collider>());
+            if (Application.isPlaying) Destroy(l.GetComponent<Collider>()); else DestroyImmediate(l.GetComponent<Collider>());
             l.name = "LuzDeFusible";
             l.transform.SetParent(transform, false);
             l.transform.localPosition = new Vector3(0f, 0.12f, 0f);
@@ -179,7 +188,7 @@ namespace SP.Combat
 
             // Anillo de timer
             var quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            Destroy(quad.GetComponent<Collider>());
+            if (Application.isPlaying) Destroy(quad.GetComponent<Collider>()); else DestroyImmediate(quad.GetComponent<Collider>());
             quad.name = "TimerRing";
             quad.transform.SetParent(transform, false);
             var mr = quad.GetComponent<MeshRenderer>();

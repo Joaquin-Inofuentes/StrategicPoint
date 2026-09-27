@@ -251,7 +251,13 @@ namespace SP.UI
 
         public bool IsHighlighted => possessed || selected;
 
-        float lastClickTime;
+        // BUG REAL (afecta produccion, no solo el test): un float sin inicializar arranca
+        // en 0, igual que Time.unscaledTime recien empezada la escena (y SIEMPRE en Edit
+        // mode, donde el reloj de Unity no corre -- por eso "Despues de 1 clic, doc queda
+        // seleccionado" daba falso: el primerisimo clic ya se leia como doble por pura
+        // coincidencia de 0-0). Arrancar en un pasado bien lejano garantiza que el primer
+        // clic de verdad SIEMPRE cuenta como simple, sin importar cuando ocurra.
+        float lastClickTime = float.NegativeInfinity;
 
         public void OnPointerClick(PointerEventData eventData)
         {

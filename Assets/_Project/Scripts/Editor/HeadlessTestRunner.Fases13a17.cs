@@ -528,7 +528,10 @@ namespace SP.EditorTools
             bool llego = SimulateUntil(() => kes.Brain.EnCobertura, 12f);
             Check($"El aliado llega, entra en cobertura ({kes.Brain.State}) y queda AGACHADO", llego && kes.Motor.IsCrouching);
             var posLlegada = kes.transform.position;
+            var targetField = typeof(SP.Ai.AiBrain).GetField("target", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Debug.Log($"[DIAG cobertura] target antes={(targetField.GetValue(kes.Brain) as Soldier)?.DisplayName ?? "null"} coberturaDueno.size={duenoCob.bounds.size}");
             SimulateSeconds(2.5f);
+            Debug.Log($"[DIAG cobertura] target despues={(targetField.GetValue(kes.Brain) as Soldier)?.DisplayName ?? "null"}");
             Check($"Y SE QUEDA ahi (se movio {(kes.transform.position - posLlegada).magnitude:0.00} m en 2,5 s)",
                 kes.Brain.EnCobertura && kes.Motor.IsCrouching && (kes.transform.position - posLlegada).magnitude < 0.5f);
             Check($"Dio feedback al tomar la cobertura ({SP.Presentation.Feedback.UltimoTexto} / {SP.Presentation.Feedback.UltimoSonido})",

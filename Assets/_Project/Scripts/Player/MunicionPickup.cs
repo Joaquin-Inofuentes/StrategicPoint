@@ -21,7 +21,10 @@ namespace SP.Player
         // Se cae sola si nadie la recoge en un rato: si no, el piso de una
         // mision larga terminaria lleno de cajitas de balas de cada baja.
         public const float VidaMaxima = 45f;
-        public const string PrefabMoneda = "Pickups/MonedaMunicion";
+        // BUG REAL (R14): apuntaba a "Pickups/MonedaMunicion", pero el prefab que arma
+        // MonedaMunicionBuilder (y el que existe de verdad en Resources/Pickups) se llama
+        // "P_MunicionMoneda" -- el nombre viejo nunca resolvia nada por RecursosCache/Resources.
+        public const string PrefabMoneda = "Pickups/P_MunicionMoneda";
 
         PlayerInputDriver driver;
         float edad;

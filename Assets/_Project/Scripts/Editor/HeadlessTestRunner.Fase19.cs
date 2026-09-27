@@ -411,8 +411,13 @@ namespace SP.EditorTools
             Check("Loc traduce un texto largo del tutorial con tildes y flechas", SP.Core.Loc.Ingles("Q → POSICIÓN → SÍGANME") == "Q → POSITION → FOLLOW ME");
             {
                 // Sin deriva: cada clave de la tabla del tutorial tiene que seguir existiendo en el codigo del tutorial o la mision.
+                // BUG REAL (R14): la ronda 14 sumo textos nuevos a LocTextos.Tutorial (agachado en cadena, escuadra
+                // caida, cartel de volver, tiro a la cabeza, saltar cinematica, desatar rehenes) pero los escribio en
+                // archivos nuevos que este barrido no leia -- quedaban "huerfanos" para el check aunque su codigo
+                // los usa de verdad. Se suman esos archivos a la lista en vez de recortar la cobertura del check.
                 string codigoTexto = "";
-                foreach (var f in new[] { "Tutorial/TutorialManager.cs", "Mision/MisionDirector.cs", "Mision/MisionHud.cs", "Tutorial/VictoriaTutorial.cs", "Mision/CinematicaDeVictoria.cs" })
+                foreach (var f in new[] { "Tutorial/TutorialManager.cs", "Mision/MisionDirector.cs", "Mision/MisionHud.cs", "Tutorial/VictoriaTutorial.cs", "Mision/CinematicaDeVictoria.cs",
+                    "Mision/BarraNudos.cs", "Mision/CinematicaDeIntro.cs", "Mision/EstadoDePartida.cs", "UI/MenuDeOrdenes.cs", "UI/CartelVolverView.cs", "Presentation/KillFeedbackDirector.cs" })
                     codigoTexto += System.IO.File.ReadAllText("Assets/_Project/Scripts/" + f);
                 int sinUso = 0;
                 foreach (var kv in SP.Core.LocTextos.Tutorial) if (!codigoTexto.Contains(kv.Key.Replace("\\", "\\\\"))) sinUso++;

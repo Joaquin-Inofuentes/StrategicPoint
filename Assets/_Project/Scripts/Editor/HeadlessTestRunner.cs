@@ -176,6 +176,17 @@ namespace SP.EditorTools
             SP.Player.Demolicion.Segundos = SP.Player.Demolicion.SegundosNormales;
             SP.Player.PedidoDeCuracion.AtencionAutomatica = true;
             SP.Core.Dificultad.Activa = false;   // la partida principal la deja activa y cambia el dano de todos
+            // BUG REAL ("Alpha del impacto rojo sube al recibir dano" fallaba pese a que el
+            // test estaba bien armado): CameraFxSettings.Enabled se guarda en PlayerPrefs a
+            // proposito (ver su propio comentario) para sobrevivir domain reloads -- pero eso
+            // significa que TAMBIEN sobrevive entre corridas de la suite y hasta entre
+            // sesiones enteras del Editor. Si quedo en false por cualquier partida o prueba
+            // anterior (en esta maquina, no en este proceso), DamageVignetteView.OnDamage
+            // (y LowHealthPulseView/ScreenFlashView/CameraRig) se apagan solos sin que el
+            // codigo de la suite tenga ningun bug. Se fuerza a "on" y se invalida el cache
+            // para no arrastrar un valor cacheado de antes de este metodo.
+            SP.CameraSystem.CameraFxSettings.Enabled = true;
+            SP.CameraSystem.CameraFxSettings.InvalidateCache();
         }
 
         [MenuItem("Strategic Point/Run All Tests Headless")]
@@ -912,7 +923,7 @@ namespace SP.EditorTools
                 RunPhase19(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
                 RunPhase20(inputDriver, vehicle, vega, kes, doc);
                 RunPhase21(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
-                RunPhase22();
+                RunPhase22(inputDriver, pool);
                 RunPhase23(inputDriver, vehicle, vega, kes, doc, soldierPrefab, colorEnemy, pool);
 
                 // El cartel de "Felicidades, completaste la Fase N" se

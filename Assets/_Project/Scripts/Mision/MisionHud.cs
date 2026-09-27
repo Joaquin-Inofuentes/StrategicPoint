@@ -128,7 +128,9 @@ namespace SP.Mision
                 }
                 case FaseDeMision.Rescatar:
                 {
-                    titulo.text = "OBJETIVO 3/4 - RESCATAR AL CIVIL";
+                    // BUG REAL (R14): el guion "-" reemplazo el separador "·" que usan los demas titulos de objetivo,
+                    // rompiendo el enganche con la clave de LocTextos ("OBJETIVO 3/4 · RESCATAR AL CIVIL").
+                    titulo.text = "OBJETIVO 3/4 · RESCATAR AL CIVIL";
                     detalle.text = $"Acercate al civil y liberalo - {Mathf.RoundToInt(d)} m";
                     SetBarra(0f, amarillo);
                     break;

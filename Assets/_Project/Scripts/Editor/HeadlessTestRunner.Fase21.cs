@@ -283,6 +283,13 @@ namespace SP.EditorTools
             vega.transform.position = new Vector3(-60f, 0.8f, -60f);
             kes.transform.position = vega.transform.position + new Vector3(6f, 0f, 3f);
             doc.transform.position = vega.transform.position + new Vector3(-4f, 0f, 3f);
+            // BUG REAL (test): mismo teleport con y=0.8 fijo sin reapoyar -- el offset de
+            // doc (-4,0,3) cae sobre un desnivel, y como nada vuelve a mover a doc en las
+            // fases siguientes, este es el ultimo teleport "de verdad" que sufre antes de
+            // Fase23_PiesEnElPiso (RunPhase22 no lo toca).
+            SP.Core.ApoyoEnElPiso.Apoyar(vega.transform);
+            SP.Core.ApoyoEnElPiso.Apoyar(kes.transform);
+            SP.Core.ApoyoEnElPiso.Apoyar(doc.transform);
             AjustesDeEscuadra.Lider = vega;
             doc.Brain.CancelOrder();
             Check("Hay calma en el lugar de la prueba", PedidoDeCuracion.HayCalma(kes.transform.position) && PedidoDeCuracion.HayCalma(doc.transform.position));
@@ -352,6 +359,11 @@ namespace SP.EditorTools
             vehicle.transform.position = new Vector3(-60f, 0.4f, -20f);
             vega.transform.position = new Vector3(-60f, 0.8f, -14f);
             kes.transform.position = vega.transform.position + new Vector3(2f, 0f, 0f);
+            // BUG REAL (test): teleport con y=0.8 fijo (calibrado para piso plano) sin
+            // reapoyar -- este rincon (junto al tanque de prueba) no esta a nivel, asi
+            // que vega/kes quedaban flotando y llegaban asi hasta Fase23_PiesEnElPiso.
+            SP.Core.ApoyoEnElPiso.Apoyar(vega.transform);
+            SP.Core.ApoyoEnElPiso.Apoyar(kes.transform);
             inputDriver.Brain.Possess(vega);
             ModoDios.Poner(true);
 

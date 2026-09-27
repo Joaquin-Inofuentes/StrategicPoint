@@ -89,7 +89,9 @@ namespace SP.Mision
                 return;
             }
 
-            if (cam == null) cam = CamaraPrincipal.Actual ?? Camera.main;
+            // BUG REAL (R14): usaba "?? Camera.main" de respaldo, saltandose la cache de CamaraPrincipal
+            // (busqueda por tag directa, justo lo que el check "sin Camera.main directo" prohibe).
+            if (cam == null) cam = CamaraPrincipal.Actual;
 
             // Posicionar sobre la cabeza del civil
             Vector3 targetPos = director.Civil.transform.position + Vector3.up * 2.1f;

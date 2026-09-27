@@ -765,6 +765,25 @@ namespace SP.Combat
         // velocidad. Devuelve tambien DONDE se lo alcanzo, para que el
         // efecto de impacto (y el centro de una explosion) caigan en el
         // punto real y no al final del salto del frame.
+        //
+        // BUG REAL (headshot de pie invisible para la fase amplia):
+        // SpatialGrid.FindNearestInRange mide distancia 3D COMPLETA entre
+        // "muestra" y transform.position del actor (el pivote de
+        // SoldierMotor, a ras del piso mas PivoteSobrePiso). LeDioAlCuerpo
+        // exige mas de 1.45 m por encima de ese pivote para contar un
+        // headshot de pie -- pero aca se pasaba hitRadius (1 m) como rango
+        // de busqueda de la grilla. Cualquier muestra a la altura de la
+        // cabeza de pie queda a mas de 1 m del pivote, asi que la grilla
+        // ni siquiera devolvia al soldado como candidato: la bala nunca
+        // llegaba a LeDioAlCuerpo y el headshot era matematicamente
+        // imposible de registrar (el agachado, con umbral 0.95 m < hitRadius,
+        // colaba de pura casualidad). La grilla sigue siendo solo la fase
+        // AMPLIA ("hay alguien cerca"): agrandar su rango no afloja la
+        // puntería, porque LeDioAlCuerpo sigue exigiendo tocar el collider
+        // real con RadioDeBala. Alcanza con que el radio de busqueda cubra
+        // tambien la cabeza de un soldado de pie.
+        const float RadioDeBusquedaVertical = 2f;
+
         SP.Actors.Soldier BuscarBlancoEnElTramo(Vector3 desde, Vector3 hasta, ref Vector3 punto)
         {
             float largo = Vector3.Distance(desde, hasta);
@@ -772,7 +791,7 @@ namespace SP.Combat
             for (int i = 1; i <= pasos; i++)
             {
                 var muestra = Vector3.Lerp(desde, hasta, i / (float)pasos);
-                var s = SpatialGrid.FindNearestInRange(muestra, hitRadius, predicadoObjetivo);
+                var s = SpatialGrid.FindNearestInRange(muestra, RadioDeBusquedaVertical, predicadoObjetivo);
                 // La grilla es la fase AMPLIA: dice "hay alguien cerca".
                 // Quien decide si le dio es el cuerpo.
                 if (s != null && LeDioAlCuerpo(s, muestra)) { punto = muestra; return s; }

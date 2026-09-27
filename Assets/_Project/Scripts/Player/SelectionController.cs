@@ -27,6 +27,18 @@ namespace SP.Player
         // Ronda 13 (punto 1): quien estaba seleccionado al morir vuelve a la seleccion al ser revivido. Antes salia y no
         // volvia a entrar: las ordenes de RTS a "la seleccion" no llegaban al companero revivido.
         readonly HashSet<Soldier> seleccionadosAlMorir = new HashSet<Soldier>();
+        // BUG REAL (confirmado reproduciendo aislado): a diferencia de Awake() -- que
+        // Unity SI corre de forma sincronica y confiable apenas AddComponent<T>() se
+        // ejecuta sobre un GameObject activo -- OnEnable() en este entorno de pruebas en
+        // Edit mode no se dispara solo ni siquiera con el truco de SetActive(false) antes
+        // de AddComponent y SetActive(true) despues (se probo a mano: seguia en null).
+        // Parece necesitar un tick real del Editor que la suite, corriendo entera como
+        // una sola llamada sincronica, nunca le da tiempo de procesar. Por eso
+        // SelectionController.Instance quedaba siempre null en la suite -- y por lo tanto
+        // RosterRowView.OnPointerClick nunca encontraba a quien seleccionar. Awake() si es
+        // confiable, asi que Instance se fija ahi.
+        void Awake() { Instance = this; }
+
         void OnEnable()
         {
             Instance = this;

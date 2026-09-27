@@ -80,17 +80,15 @@ namespace SP.Presentation
 
             Vector3 attackerPos = Vector3.zero;
             bool found = false;
-            
-            // Buscar la posicion del atacante
-            var soldiers = Object.FindObjectsByType<Soldier>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-            foreach (var s in soldiers)
+
+            // BUG REAL (higiene): FindObjectsByType barre TODA la escena en cada disparo
+            // recibido -- ActorRegistry.FindById ya resuelve lo mismo en O(1) por el
+            // indice que mantiene Register/Unregister, sin barrer nada.
+            var atacante = SP.Core.ActorRegistry.FindById(evt.AttackerId);
+            if (atacante != null)
             {
-                if (s.Id == evt.AttackerId)
-                {
-                    attackerPos = s.transform.position;
-                    found = true;
-                    break;
-                }
+                attackerPos = atacante.transform.position;
+                found = true;
             }
 
             if (!found) return;

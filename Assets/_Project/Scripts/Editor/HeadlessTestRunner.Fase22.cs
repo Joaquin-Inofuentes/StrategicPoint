@@ -8,7 +8,7 @@ namespace SP.EditorTools
     // serializado, y cada estatico nuevo se limpia con ReinicioDeEstaticos.
     public static partial class HeadlessTestRunner
     {
-        static void RunPhase22()
+        static void RunPhase22(SP.Player.PlayerInputDriver inputDriver, SP.Combat.ProjectilePool pool)
         {
             TestLog.Phase("FASE 22 - Sin Find de runtime: catalogo del tutorial, servicios Activo, reinicio de estaticos");
 
@@ -42,6 +42,16 @@ namespace SP.EditorTools
             Check("El catalogo se registra como Activo", CatalogoDelTutorial.Activo == probe);
             ReinicioDeEstaticos.Restablecer();
             Check("Reiniciar estaticos limpia el catalogo Activo", CatalogoDelTutorial.Activo == null);
+            // BUG REAL (rompia TODAS las fases posteriores de la suite, no solo esta):
+            // ReinicioDeEstaticos.Restablecer() no es un simulacro -- limpia de verdad
+            // PlayerInputDriver.Activo, PlayerBrain.Activo y ProjectilePool.Activo (entre
+            // otros) de la escena principal armada por BuildAndRun. Este test los deja
+            // vacios a proposito para probar que el reinicio funciona, pero nunca los
+            // volvia a registrar: Fase23 entera (RosterClics, RomboSinOclusion,
+            // MinimapaRegistro, CoheteVsTanque...) corria despues con estos tres en null.
+            inputDriver.Registrar();
+            inputDriver.Brain.Registrar();
+            pool.Registrar();
             Object.DestroyImmediate(probe.gameObject);
             Check("Sin catalogo, la lista de faltantes de uno vacio los enumera todos", new GameObject("CatalogoVacio").AddComponent<CatalogoDelTutorial>().CamposVacios().Count == 6);
             foreach (var o in Object.FindObjectsByType<CatalogoDelTutorial>(FindObjectsInactive.Include)) Object.DestroyImmediate(o.gameObject);

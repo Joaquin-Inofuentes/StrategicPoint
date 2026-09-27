@@ -741,7 +741,15 @@ namespace SP.Mision
                 case FaseDeMision.Resistir: Restante = SegundosDeResistencia; CambiarFase(f); break;
                 case FaseDeMision.Rescatar: AparecerCivil(); Restante = 0f; CambiarFase(f); break;
                 case FaseDeMision.Escapar:
-                    AparecerCivil(); CivilRescatado = true; if (!refuerzosLanzados) LanzarRefuerzos();
+                    // BUG REAL (test "El civil no esta atado en Escapar" fallando):
+                    // AparecerCivil() siempre ata al civil (Atado = true) porque asume que
+                    // recien sale de su refugio -- correcto para SaltarAFase(Rescatar), pero
+                    // saltar directo a Escapar simula haber COMPLETADO el rescate (por eso
+                    // ya pone CivilRescatado = true), y el desatado normal solo pasa al
+                    // completar los nudos en TickRescatar. Sin esto el civil quedaba
+                    // atado para siempre si se saltaba Rescatar.
+                    AparecerCivil(); CivilRescatado = true; if (Civil != null && Civil.Motor != null) Civil.Motor.Atado = false;
+                    if (!refuerzosLanzados) LanzarRefuerzos();
                     if (baliza != null) baliza.Quitar();
                     baliza = TutorialBeacon.Crear("CAMIONETA", new Color(0.35f, 1f, 0.5f), Helipuerto + Vector3.right * 6f, null, 3.2f, 26f);
                     CambiarFase(f); break;

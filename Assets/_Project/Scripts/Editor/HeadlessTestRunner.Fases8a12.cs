@@ -282,6 +282,7 @@ namespace SP.EditorTools
             // de cobertura como cualquier otro. Antes daba 4 porque el
             // vehiculo estaba explicitamente excluido de "esto es pared".
             var solidos = SP.Core.Coberturas.Solidos();
+            if (solidos.Count != 5) Debug.Log("[DIAG solidos] " + string.Join(" | ", solidos.ConvertAll(c => c.gameObject.name + ":" + c.GetType().Name)));
             Check($"Los obstaculos solidos de la escena son los 4 Obstaculo_N + el vehiculo, ni el piso ni las armas tiradas ({solidos.Count})",
                 solidos.Count == 5);
 

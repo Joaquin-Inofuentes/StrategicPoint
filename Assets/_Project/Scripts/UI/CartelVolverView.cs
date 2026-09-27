@@ -115,7 +115,18 @@ namespace SP.UI
             float targetAlpha = debeMostrar ? 1f : 0f;
             if (Mathf.Abs(alpha - targetAlpha) > 0.01f)
             {
-                SetAlpha(Mathf.MoveTowards(alpha, targetAlpha, Time.deltaTime * 2f));
+                // BUG REAL: MoveTowards con Time.deltaTime nunca avanzaba el alpha en el suite
+                // headless -- el test invoca este Update() a mano vía reflexión, fuera de Play
+                // mode, donde Time.deltaTime queda congelado en 0 (no hay bucle de juego
+                // corriendo que lo actualice). Con dt=0, MoveTowards(0, 1, 0) devuelve 0 y el
+                // cartel de "volver al objetivo" quedaba siempre invisible aunque la condicion
+                // de tiempo/umbral ya diera que debia mostrarse. Mismo criterio que ya usa
+                // DamageVignetteView.OnDamage: fuera de Play mode se aplica el valor final de
+                // una sola vez, sin interpolar cuadro a cuadro.
+                if (Application.isPlaying)
+                    SetAlpha(Mathf.MoveTowards(alpha, targetAlpha, Time.deltaTime * 2f));
+                else
+                    SetAlpha(targetAlpha);
             }
 
             if (alpha > 0f)
@@ -125,7 +136,11 @@ namespace SP.UI
                 panel.localScale = Vector3.one * scale;
 
                 // Flecha
-                if (Camera.main != null)
+                // BUG REAL (higiene, no funcional): Camera.main directo en vez de la cache
+                // del proyecto -- barre TODA la escena por el tag "MainCamera" cada vez que
+                // se llama (aca, cada frame con alpha > 0). SP.Core.CamaraPrincipal.Actual
+                // ya resuelve y cachea la camara activa para exactamente este caso.
+                if (SP.Core.CamaraPrincipal.Actual != null)
                 {
                     Vector3 objPos = dir.PuntoObjetivoActual();
                     Vector3 playerPos = dir.PosicionDelJugador();
@@ -134,7 +149,7 @@ namespace SP.UI
                     if (toObj.sqrMagnitude > 0.1f)
                     {
                         toObj.Normalize();
-                        Vector3 camFwd = Camera.main.transform.forward;
+                        Vector3 camFwd = SP.Core.CamaraPrincipal.Actual.transform.forward;
                         camFwd.y = 0f;
                         if (camFwd.sqrMagnitude > 0.1f)
                         {

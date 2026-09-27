@@ -224,7 +224,21 @@ namespace SP.Vehicles
         {
             if (colorCached) return;
             colorCached = true;
-            chassisRenderers = GetComponentsInChildren<Renderer>();
+            // BUG REAL (R14): GetComponentsInChildren<Renderer>() tambien agarraba
+            // el MeshRenderer del rombo de ocupacion (RomboTanque, ya creado por
+            // OnEnable antes de esta primera llamada) y lo trataba como si fuera
+            // chasis: el clon de mas abajo (r.sharedMaterial = new Material(...))
+            // le pisaba el material al renderer del rombo, dejando a diamondMaterial
+            // -- el objeto que RefreshOccupancyColor() sigue pintando -- huerfano,
+            // sin ningun renderer mostrandolo. Resultado: el rombo nunca cambiaba
+            // de color real al montar/desmontar tripulacion, aunque diamondMaterial
+            // si tuviera el color correcto adentro. Se excluye el renderer del
+            // rombo de este clonado de "casco".
+            var todosLosRenderers = GetComponentsInChildren<Renderer>();
+            var chasisSinRombo = new List<Renderer>(todosLosRenderers.Length);
+            foreach (var r in todosLosRenderers)
+                if (diamondMarker == null || r.gameObject != diamondMarker) chasisSinRombo.Add(r);
+            chassisRenderers = chasisSinRombo.ToArray();
             for (int i = 0; i < chassisRenderers.Length; i++)
             {
                 var r = chassisRenderers[i];
