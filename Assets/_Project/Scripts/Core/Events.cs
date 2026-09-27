@@ -188,7 +188,29 @@ namespace SP.Core
         public VehicleDestroyedEvent(SP.Vehicles.Vehicle vehicle) => Vehicle = vehicle;
     }
 
+    // Una luminaria (Luminaria.cs) se rompio de un disparo.
+    public readonly struct LuminariaRotaEvent
+    {
+        public readonly Vector3 Point;
+        public LuminariaRotaEvent(Vector3 point) => Point = point;
+    }
+
     public enum EnvironmentHitKind { Vehicle, Obstacle, Ground }
+
+    // Un impacto que conecto contra la cabeza del blanco (Projectile hace
+    // doble daño y publica esto ademas del daño normal).
+    public readonly struct HeadshotEvent
+    {
+        public readonly int ShooterId;
+        public readonly int TargetId;
+        public readonly Vector3 Point;
+        public HeadshotEvent(int shooterId, int targetId, Vector3 point)
+        {
+            ShooterId = shooterId;
+            TargetId = targetId;
+            Point = point;
+        }
+    }
 
     // Un proyectil le pegó a algo que no es un soldado (un vehículo o un
     // obstáculo): feedback distinto al de pegarle a un enemigo.

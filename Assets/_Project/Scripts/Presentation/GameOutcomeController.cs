@@ -191,7 +191,7 @@ namespace SP.Presentation
             shown = true;
             Time.timeScale = 0f;
             ReleaseCursor();
-            if (defeatReason != null) defeatReason.text = string.IsNullOrEmpty(motivo) ? "" : SP.Core.Loc.Tr(motivo);
+            if (defeatReason != null) defeatReason.text = string.IsNullOrEmpty(motivo) ? "" : SP.Core.Loc.T(motivo);
             if (defeatStats != null) defeatStats.text = BuildStatsText();
             defeatPanel.SetActive(true);
             FocusRetryButton(defeatPanel);

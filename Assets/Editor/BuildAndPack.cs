@@ -40,7 +40,7 @@ public static class BuildAndPack
 
                 ProcessStartInfo psi = new ProcessStartInfo();
                 psi.FileName = rarPath;
-                psi.Arguments = "a -ep1 -r "" + archive + "" "" + buildDir + "\*"";
+                psi.Arguments = $"a -ep1 -r \"{archive}\" \"{buildDir}\\*\"";
                 psi.UseShellExecute = false;
                 psi.CreateNoWindow = true;
                 

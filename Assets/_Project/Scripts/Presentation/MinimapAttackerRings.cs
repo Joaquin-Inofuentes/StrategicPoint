@@ -56,7 +56,7 @@ namespace SP.Presentation
 
         void OnEnable()
         {
-            damageSubscription = EventBus.Subscribe<DamageTakenEvent>(OnDamageTaken);
+            damageSubscription = EventBus.Instance.Subscribe<DamageTakenEvent>(OnDamageTaken);
         }
 
         void OnDisable()

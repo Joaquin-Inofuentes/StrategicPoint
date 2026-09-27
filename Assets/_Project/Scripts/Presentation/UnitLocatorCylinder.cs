@@ -1,6 +1,8 @@
+using System;
 using UnityEngine;
 using SP.Actors;
 using SP.Combat;
+using SP.Core;
 
 namespace SP.Presentation
 {
@@ -72,6 +74,10 @@ namespace SP.Presentation
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetearMaterialCompartido() => materialBordeCompartido = null;
 
+        // Llamado desde ReinicioDeEstaticos (mismo patron que el resto de
+        // los sistemas del proyecto): idempotente con ResetearMaterialCompartido.
+        public static void ReiniciarActivo() => materialBordeCompartido = null;
+
         static Material MaterialBorde()
         {
             if (materialBordeCompartido == null) materialBordeCompartido = DiamondGizmo.NuevoMaterial(ColorBorde);
@@ -85,6 +91,7 @@ namespace SP.Presentation
         bool dead;
         float vibrateTime;
         Vector3 baseLocalPosition = new Vector3(0f, Altura, 0f);
+        IDisposable shotSub;
 
         void OnEnable()
         {
@@ -92,21 +99,22 @@ namespace SP.Presentation
             if (soldier == null) soldier = GetComponent<Soldier>();
             if (soldier == null) { enabled = false; return; }
             if (marcador == null) Construir();
-            SP.Core.EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFired);
+            shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShotFired);
         }
 
         void OnShotFired(ShotFiredEvent evt)
         {
-            if (evt.SoldierId == soldier.Id && marcador != null && marcador.activeInHierarchy)
+            if (evt.ShooterId == soldier.Id && marcador != null && marcador.activeInHierarchy)
             {
                 vibrateTime = 0.2f; // 200ms of vibration
             }
         }
 
-        void OnDisable() 
-        { 
-            if (marcador != null) marcador.SetActive(false); 
-            SP.Core.EventBus.Instance.Unsubscribe<ShotFiredEvent>(OnShotFired);
+        void OnDisable()
+        {
+            if (marcador != null) marcador.SetActive(false);
+            shotSub?.Dispose();
+            shotSub = null;
         }
 
         void OnDestroy()
@@ -264,8 +272,8 @@ namespace SP.Presentation
                 {
                     vibrateTime -= Time.deltaTime;
                     marcador.transform.localPosition = baseLocalPosition + new Vector3(
-                        Random.Range(-0.1f, 0.1f), 
-                        Random.Range(-0.1f, 0.1f), 
+                        UnityEngine.Random.Range(-0.1f, 0.1f),
+                        UnityEngine.Random.Range(-0.1f, 0.1f),
                         0f);
                 }
                 else

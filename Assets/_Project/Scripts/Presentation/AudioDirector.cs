@@ -64,6 +64,7 @@ namespace SP.Presentation
         // ninguna clave ya persistida.
         const string PrefAmbient = "sp_volume_ambient";
         const string PrefVoice = "sp_volume_voice";
+        const string PrefVolume = "sp_volume";
 
         // Cache perezoso: PlayerPrefs.GetFloat es una lectura nativa y esto
         // se consulta en CADA sonido reproducido. Es float? y no float para

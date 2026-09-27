@@ -61,7 +61,7 @@ namespace SP.Player
             if (Selection != null && Selection.Selected.Count > 0 && !PunteroSobreUiInteractiva(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero))
             {
                 if (r.Type == AimTargetType.Enemy) tipo = CursorTipo.Atacar;
-                else if (r.Type == AimTargetType.Vehicle || r.Type == AimTargetType.Torreta || r.Type == AimTargetType.Caido) tipo = CursorTipo.Interactuable;
+                else if (r.Type == AimTargetType.Vehicle || r.Type == AimTargetType.Torreta || r.Type == AimTargetType.Caido) tipo = CursorTipo.Interactuar;
             }
             CursorContextual.Aplicar(tipo);
         }

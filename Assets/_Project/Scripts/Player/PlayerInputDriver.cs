@@ -71,6 +71,10 @@ namespace SP.Player
         // shooters: sin esto no habia forma de invertir el eje vertical.
         public bool InvertLookY { get; set; }
         [SerializeField] float rtsPanSpeed = 56f;   // pedido explicito: x2 de nuevo (antes 28, que ya era x2 de 14)
+        // Sensibilidad del orbit de camara en RTS (arrastrar con el boton de
+        // rotar): misma escala que lookSensitivity, propia porque orbitar la
+        // vista cenital es un gesto distinto a mirar a pie.
+        [SerializeField] float rtsLookSens = 0.15f;
         // Pedido explicito: "si mantengo shift WASD se desplaza mas rapido".
         const float RtsPanShiftMultiplier = 2.2f;
         // Ronda 11: 80 (era 40, y antes 20) y sin suavizado (ver CameraRig.AnimarZoom). Const y no [SerializeField]: un valor serializado en la escena pisaria el nuevo.
@@ -2913,9 +2917,9 @@ namespace SP.Player
                     focusPos = Selection.Selected[0].transform.position;
                     doFocus = true;
                 }
-                else if (Poseido != null)
+                else if (Brain != null && Brain.Current != null)
                 {
-                    focusPos = Poseido.transform.position;
+                    focusPos = Brain.Current.transform.position;
                     doFocus = true;
                 }
 

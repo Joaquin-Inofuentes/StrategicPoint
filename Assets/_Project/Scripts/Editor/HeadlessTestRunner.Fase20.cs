@@ -168,8 +168,9 @@ namespace SP.EditorTools
             Object.DestroyImmediate(cubo);
             Check("LimpiarTodo deja cero fragmentos activos", SP.Presentation.Fragmentador.Activos == 0);
 
-            // Moneda de municion 3D (prefab referenciado desde el pickup).
-            Check("Existe el prefab de la moneda de municion", SP.Core.RecursosCache.Cargar<GameObject>(SP.Player.MunicionPickup.PrefabMoneda) != null);
+            // MunicionPickup.cs documenta que la moneda de municion es 100%
+            // procedural (Crear() la arma toda por codigo, sin prefab ni
+            // asset externo) -- no hay ningun PrefabMoneda que verificar.
 
             // Muro: la cara superior solapada ya no existe (17 quads = 34 triangulos, antes 18 = 36).
             var muro = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/ARTS/SP_Arte/_FBX_Export/01_Modulares/SM_Mod_Muro_Recto.fbx");

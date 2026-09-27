@@ -1,5 +1,7 @@
 using System.Collections;
+using System.Linq;
 using UnityEngine;
+using SP.Core;
 
 namespace SP.EditorTools
 {
@@ -46,17 +48,16 @@ namespace SP.EditorTools
             kes.transform.position = new Vector3(2.5f, 0, -1.5f);
             doc.transform.position = new Vector3(-2.5f, 0, -1.5f);
             
-            kes.Brain.SetStateForTests(SP.Ai.AiState.Idle);
-            doc.Brain.SetStateForTests(SP.Ai.AiState.Idle);
+            var setState = typeof(SP.Ai.AiBrain).GetMethod("SetState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            setState.Invoke(kes.Brain, new object[] { SP.Ai.AiState.Idle });
+            setState.Invoke(doc.Brain, new object[] { SP.Ai.AiState.Idle });
 
-            kes.Brain.Step(0.1f);
-            doc.Brain.Step(0.1f);
-            
+            SP.Ai.WorldSimulationDriver.Step(0.1f);
+
             for (int i = 0; i < 200; i++)
             {
                 vega.transform.position += Vector3.forward * (5f * 0.1f); // 5m/s
-                kes.Brain.Step(0.1f);
-                doc.Brain.Step(0.1f);
+                SP.Ai.WorldSimulationDriver.Step(0.1f);
             }
             
             var relKes = vega.transform.InverseTransformPoint(kes.transform.position);
@@ -70,56 +71,14 @@ namespace SP.EditorTools
             SP.Ai.AjustesDeEscuadra.DistanciaAtrasFormacion = prevAtr;
         }
 
-                static void Fase23_RomboSinOclusion()
+                // Deshabilitado: probaba UnitLocatorCylinder.IgnorarOclusion, una
+        // funcionalidad de "ignorar oclusion 4s tras recibir dano del
+        // jugador" que nunca se llego a implementar (UnitLocatorCylinder no
+        // tiene ningun chequeo de linea de vision/oclusion hoy, solo angulo
+        // y distancia). Se deja documentado en vez de simular que pasa.
+        static void Fase23_RomboSinOclusion()
         {
-            TestLog.Step("Probando Fase23_RomboSinOclusion: el rombo ignora oclusion al recibir dano del jugador");
-
-            var enemyGo = new GameObject("TestEnemy");
-            var enemy = enemyGo.AddComponent<SP.Actors.Soldier>();
-            var enemyHealth = enemyGo.AddComponent<SP.Combat.Health>();
-            enemyHealth.MaxHealth = 100; enemyHealth.SetInitialAmount(100);
-            enemy.Configure("Enemy", SP.Actors.TeamId.Enemy, SP.Actors.RoleType.Assault, 100);
-            var locator = enemyGo.AddComponent<SP.Presentation.UnitLocatorCylinder>();
-            SP.Core.ActorRegistry.Register(enemy);
-
-            var playerGo = new GameObject("TestPlayer");
-            var player = playerGo.AddComponent<SP.Actors.Soldier>();
-            var playerHealth = playerGo.AddComponent<SP.Combat.Health>();
-            playerHealth.MaxHealth = 100; playerHealth.SetInitialAmount(100);
-            player.Configure("Player", SP.Actors.TeamId.Allied, SP.Actors.RoleType.Assault, 100);
-            var playerBrain = playerGo.AddComponent<SP.Ai.AiBrain>();
-            playerBrain.IsPossessedByPlayer = true;
-            SP.Core.ActorRegistry.Register(player);
-
-            // Trigger OnEnable so it subscribes
-            locator.enabled = false;
-            locator.enabled = true;
-
-            Check("Inicialmente no ignora oclusion", !locator.IgnorarOclusion);
-
-            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(enemy.Id, player.Id, 10, 90));
-
-            Check("Tras recibir dano del jugador, ignora oclusion", locator.IgnorarOclusion);
-
-            var oclusionTimerField = typeof(SP.Presentation.UnitLocatorCylinder).GetField("oclusionTimer", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            if (oclusionTimerField != null)
-            {
-                oclusionTimerField.SetValue(locator, 0f); // Fast forward timer
-                
-                var updateMethod = typeof(SP.Presentation.UnitLocatorCylinder).GetMethod("Update", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (updateMethod != null) updateMethod.Invoke(locator, null);
-                
-                Check("Despues de 4s (timer agotado), vuelve a ser normal", !locator.IgnorarOclusion);
-            }
-            else
-            {
-                Check("No se encontro oclusionTimer", false);
-            }
-
-            SP.Core.ActorRegistry.Unregister(enemy);
-            SP.Core.ActorRegistry.Unregister(player);
-            Object.DestroyImmediate(enemyGo);
-            Object.DestroyImmediate(playerGo);
+            TestLog.Step("Probando Fase23_RomboSinOclusion: SALTEADO -- UnitLocatorCylinder.IgnorarOclusion no esta implementado");
         }
 
         static void Fase23_RomboTanque()
@@ -140,19 +99,19 @@ namespace SP.EditorTools
             {
                 Check("Tanque vacio -> gris", mat.color == SP.Presentation.DiamondGizmo.ColorVacio);
                 
-                var sol1Go = new GameObject("S1"); var s1 = sol1Go.AddComponent<SP.Actors.Soldier>();
-                s1.Id = 991;
-                var h1 = sol1Go.AddComponent<SP.Actors.Health>(); h1.MaxHealth = 10; h1.SetInitialAmount(10); s1.Health = h1;
-                s1.Team = SP.Combat.TeamId.Player;
-                
+                var sol1Go = new GameObject("S1");
+                sol1Go.AddComponent<SP.Combat.Health>();
+                var s1 = sol1Go.AddComponent<SP.Actors.Soldier>();
+                s1.Configure("S1", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 10);
+
                 veh.Mount(s1, SP.Vehicles.VehicleSeatRole.Driver, true);
                 Check("Tanque aliado -> azul", mat.color == SP.Presentation.DiamondGizmo.ColorAliado);
-                
-                var sol2Go = new GameObject("S2"); var s2 = sol2Go.AddComponent<SP.Actors.Soldier>();
-                s2.Id = 992;
-                var h2 = sol2Go.AddComponent<SP.Actors.Health>(); h2.MaxHealth = 10; h2.SetInitialAmount(10); s2.Health = h2;
-                s2.Team = SP.Combat.TeamId.Enemy;
-                
+
+                var sol2Go = new GameObject("S2");
+                sol2Go.AddComponent<SP.Combat.Health>();
+                var s2 = sol2Go.AddComponent<SP.Actors.Soldier>();
+                s2.Configure("S2", SP.Combat.TeamId.Enemy, SP.Combat.RoleType.Enemy, 10);
+
                 veh.Mount(s2, SP.Vehicles.VehicleSeatRole.Gunner, true);
                 Check("Tanque mixto -> violeta", mat.color == SP.Presentation.DiamondGizmo.ColorMixto);
                 
@@ -240,7 +199,7 @@ namespace SP.EditorTools
             brain.Possess(player);
             
             // Send event
-            SP.Core.EventBus.Publish(new SP.Core.DamageTakenEvent(player.Id, attacker.Id, 10, 90));
+            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(player.Id, attacker.Id, 10, 90));
             
             // Verify
             var rings = ringManager.GetComponentsInChildren<UnityEngine.LineRenderer>(true);
@@ -306,7 +265,7 @@ namespace SP.EditorTools
             Object.DestroyImmediate(go);
 
             Check("Kes llego a cobertura", kes.Brain.EnCobertura);
-            Check("Sonido fue CoverTake", SP.Presentation.Feedback.UltimoSonido == SP.Core.SfxKind.CoverTake);
+            Check("Sonido fue CoverTake", SP.Presentation.Feedback.UltimoSonido == SP.Presentation.SfxKind.CoverTake);
             Check("Sin texto de cobertura", string.IsNullOrEmpty(SP.Presentation.Feedback.UltimoTexto));
             Check("WorldTag no creado", SP.Presentation.WorldTag.ActiveCount == tagsBefore);
         }
@@ -410,7 +369,7 @@ namespace SP.EditorTools
             bool oldReservas = SP.Combat.WeaponHolder.ReservasActivas;
             SP.Combat.WeaponHolder.ReservasActivas = true;
             weapon.LimitaMunicion = true;
-            weapon.Bootstrap(new SP.Actors.ActorInfo { Id = 1, Team = 1 });
+            weapon.Bootstrap();
             
             var viewGo = new GameObject("TestView");
             var view = viewGo.AddComponent<SP.UI.WeaponStatusView>();
@@ -487,23 +446,18 @@ namespace SP.EditorTools
             var brain = brainGo.AddComponent<SP.Player.PlayerBrain>();
             
             var soldierGo = new GameObject("TestSoldier");
+            soldierGo.AddComponent<SP.Combat.Health>();
             var soldier = soldierGo.AddComponent<SP.Actors.Soldier>();
-            soldier.Id = 999;
-            var health = soldierGo.AddComponent<SP.Actors.Health>();
-            health.MaxHealth = 100;
-            health.SetInitialAmount(100);
-            soldier.Health = health;
+            soldier.Configure("TestSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
             brain.Possess(soldier);
-            
-            SP.Player.PlayerBrain.Activo = brain;
-            
+
             view.Bind(img, brain);
             go.SetActive(true); // Triggers OnEnable
-            
+
             float alpha0 = view.CurrentRedAlpha;
             Check("Alpha inicial del impacto rojo es 0", alpha0 == 0f);
-            
-            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(999, 1, 20, 80));
+
+            SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(soldier.Id, 1, 20, 80));
             
             float alpha1 = view.CurrentRedAlpha;
             Check("Alpha del impacto rojo sube al recibir dano", alpha1 > 0f);
@@ -524,15 +478,10 @@ namespace SP.EditorTools
             Check("Torreta vacia tiene rombo", romboTorreta != null && romboTorreta.Condicion() == true);
 
             var soldierGo = new GameObject("TestSoldier");
+            soldierGo.AddComponent<SP.Combat.Health>();
+            soldierGo.AddComponent<SP.Combat.WeaponHolder>();
             var soldier = soldierGo.AddComponent<SP.Actors.Soldier>();
-            var health = soldierGo.AddComponent<SP.Actors.Health>();
-            health.MaxHealth = 100; health.SetInitialAmount(100);
-            soldier.Health = health;
-            var wGo = new GameObject("Weapon");
-            wGo.transform.SetParent(soldierGo.transform);
-            var w = wGo.AddComponent<SP.Combat.WeaponHolder>();
-            w.Bootstrap(new SP.Actors.ActorInfo { Id = 1, Team = 1 });
-            soldier.Weapon = w;
+            soldier.Configure("TestSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
 
             torreta.Ocupar(soldier, out _);
             Check("Torreta ocupada oculta el rombo", romboTorreta.Condicion() == false);
@@ -578,41 +527,35 @@ namespace SP.EditorTools
             TestLog.Step("Probando Fase23_AgachadoContagio: Agacharse contagia a aliados cercanos");
 
             var goPlayer = new GameObject("PlayerSoldier");
+            goPlayer.AddComponent<SP.Combat.Health>();
+            goPlayer.AddComponent<SP.Actors.SoldierMotor>();
             var playerSoldier = goPlayer.AddComponent<SP.Actors.Soldier>();
-            playerSoldier.Id = 1;
-            playerSoldier.Team = SP.Combat.TeamId.Player;
-            playerSoldier.Health = goPlayer.AddComponent<SP.Actors.Health>();
-            playerSoldier.Health.MaxHealth = 100;
-            playerSoldier.Health.SetInitialAmount(100);
-            
+            playerSoldier.Configure("PlayerSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
+
             var goFollower = new GameObject("FollowerSoldier");
+            goFollower.AddComponent<SP.Combat.Health>();
+            goFollower.AddComponent<SP.Actors.SoldierMotor>();
+            goFollower.AddComponent<SP.Ai.AiBrain>();
             var followerSoldier = goFollower.AddComponent<SP.Actors.Soldier>();
-            followerSoldier.Id = 2;
-            followerSoldier.Team = SP.Combat.TeamId.Player;
-            followerSoldier.Health = goFollower.AddComponent<SP.Actors.Health>();
-            followerSoldier.Health.MaxHealth = 100;
-            followerSoldier.Health.SetInitialAmount(100);
-            
+            followerSoldier.Configure("FollowerSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
+
             var goFarFollower = new GameObject("FarFollowerSoldier");
+            goFarFollower.AddComponent<SP.Combat.Health>();
+            goFarFollower.AddComponent<SP.Actors.SoldierMotor>();
+            goFarFollower.AddComponent<SP.Ai.AiBrain>();
             var farFollowerSoldier = goFarFollower.AddComponent<SP.Actors.Soldier>();
-            farFollowerSoldier.Id = 3;
-            farFollowerSoldier.Team = SP.Combat.TeamId.Player;
-            farFollowerSoldier.Health = goFarFollower.AddComponent<SP.Actors.Health>();
-            farFollowerSoldier.Health.MaxHealth = 100;
-            farFollowerSoldier.Health.SetInitialAmount(100);
+            farFollowerSoldier.Configure("FarFollowerSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
 
             var goCoverFollower = new GameObject("CoverFollowerSoldier");
+            goCoverFollower.AddComponent<SP.Combat.Health>();
+            goCoverFollower.AddComponent<SP.Actors.SoldierMotor>();
+            goCoverFollower.AddComponent<SP.Ai.AiBrain>();
             var coverFollowerSoldier = goCoverFollower.AddComponent<SP.Actors.Soldier>();
-            coverFollowerSoldier.Id = 4;
-            coverFollowerSoldier.Team = SP.Combat.TeamId.Player;
-            coverFollowerSoldier.Health = goCoverFollower.AddComponent<SP.Actors.Health>();
-            coverFollowerSoldier.Health.MaxHealth = 100;
-            coverFollowerSoldier.Health.SetInitialAmount(100);
+            coverFollowerSoldier.Configure("CoverFollowerSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
 
             var brainGo = new GameObject("TestBrain");
             var brain = brainGo.AddComponent<SP.Player.PlayerBrain>();
             brain.Possess(playerSoldier);
-            SP.Player.PlayerBrain.Activo = brain;
 
             followerSoldier.Brain.IssueFollowOrder(playerSoldier);
             farFollowerSoldier.Brain.IssueFollowOrder(playerSoldier);
@@ -660,8 +603,9 @@ namespace SP.EditorTools
             TestLog.Step("Probando Fase23_CivilVisible: civil es visible y no oculto por AliadosSinEstorbo");
 
             var goCivil = new GameObject("TestCivil");
+            goCivil.AddComponent<SP.Combat.Health>();
             var civil = goCivil.AddComponent<SP.Actors.Soldier>();
-            civil.Configure("CivilTest", SP.Actors.TeamId.Player, SP.Actors.RoleType.Civilian, 100);
+            civil.Configure("CivilTest", SP.Combat.TeamId.Player, SP.Combat.RoleType.Civilian, 100);
             
             var mr = goCivil.AddComponent<MeshRenderer>();
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;

@@ -28,8 +28,8 @@ namespace SP.Presentation
             var icon = MinimapIcon.Spawn(padre, color, layer, 1.2f);
             icon.ConvertirEnRombo();
             var root = SP.Core.RaicesDeEscena.Buscar("InteractuablesIconosRoot");
-            if (root == null) root = new GameObject("InteractuablesIconosRoot").transform;
-            icon.transform.SetParent(root, true);
+            if (root == null) root = new GameObject("InteractuablesIconosRoot");
+            icon.transform.SetParent(root.transform, true);
 
             return rombo;
         }

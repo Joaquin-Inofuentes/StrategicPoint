@@ -80,7 +80,7 @@ namespace SP.Presentation
         TeamId equipoPintadoMinimapa;
         bool autoColoreado;
 
-        Vehicle vehiculoDetectado;
+        SP.Vehicles.Vehicle vehiculoDetectado;
         void DetectarTarget()
         {
             if (Target == null) return;
@@ -239,6 +239,12 @@ namespace SP.Presentation
         // un enemigo, la mitad que antes, y el frente se lee de un vistazo.
         [SerializeField] bool esTriangulo;
 
+        // Bandera de un "doble triangulo"/bowtie que se documento (ver mas
+        // abajo) pero cuya malla nunca se llego a escribir: nada la pone en
+        // true todavia. Se declara igual porque TickFollow ya la consulta
+        // para decidir si el icono necesita rotar con la unidad.
+        bool esDobleTriangulo;
+
         // Compartida por todos los iconos: no tiene sentido una malla de
         // tres vertices por soldado.
         static Mesh mallaTriangulo;
@@ -290,6 +296,71 @@ namespace SP.Presentation
             var filtro = GetComponent<MeshFilter>();
             if (filtro == null) return false;
             filtro.sharedMesh = MallaTriangulo();
+            esTriangulo = true;
+            return true;
+        }
+
+        // Interior mas chico del "triangulo anidado" de abajo. Propio (no
+        // reusa directionMarker): ese campo lo destruye OnEnable en cuanto
+        // detecta uno serializado desde la escena horneada (limpieza de la
+        // cuña vieja, ver ConvertirEnTriangulo mas arriba) y se llevaria
+        // puesto el relleno de color apenas el icono se reactive.
+        Transform trianguloAnidadoInterior;
+
+        static Mesh mallaTrianguloChico;
+        static Mesh MallaTrianguloChico()
+        {
+            if (mallaTrianguloChico != null) return mallaTrianguloChico;
+            var m = new Mesh { name = "MinimapTrianguloChico" };
+            m.vertices = new[]
+            {
+                new Vector3(0f, 0f, 0.40f),
+                new Vector3(-0.32f, 0f, -0.30f),
+                new Vector3(0.32f, 0f, -0.30f),
+            };
+            m.triangles = new[] { 0, 1, 2, 0, 2, 1 };
+            m.normals = new[] { Vector3.up, Vector3.up, Vector3.up };
+            m.RecalculateBounds();
+            m.hideFlags = HideFlags.HideAndDontSave;
+            mallaTrianguloChico = m;
+            return m;
+        }
+
+        // Pedido explicito (ObjectiveDiamondMarker): "triangulo anidado" --
+        // blanco de fondo (mas grande, contorno) + relleno de color (mas
+        // chico, encima), mismo patron de capas que el rombo de mundo
+        // (DiamondGizmo) pero chato en XZ para verse desde la camara
+        // cenital del minimapa en vez de billboardeado a camara.
+        public bool ConvertirEnTrianguloAnidado(Color colorInterior)
+        {
+            var filtro = GetComponent<MeshFilter>();
+            if (filtro == null) return false;
+            filtro.sharedMesh = MallaTriangulo();
+            EnsureRenderer();
+            if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(Color.white);
+
+            if (trianguloAnidadoInterior == null)
+            {
+                var go = new GameObject("TrianguloInterior", typeof(MeshFilter), typeof(MeshRenderer));
+                go.transform.SetParent(transform, false);
+                go.layer = gameObject.layer;
+                // Un pelo mas arriba (no adelante, como en los rombos
+                // billboardeados) para no competir en Z contra el
+                // contorno: aca ambas piezas quedan chatas en el mismo
+                // plano XZ, vistas desde arriba.
+                go.transform.localPosition = new Vector3(0f, 0.01f, 0f);
+                trianguloAnidadoInterior = go.transform;
+            }
+            var mf = trianguloAnidadoInterior.GetComponent<MeshFilter>();
+            if (mf != null) mf.sharedMesh = MallaTrianguloChico();
+            var mr = trianguloAnidadoInterior.GetComponent<MeshRenderer>();
+            if (mr != null)
+            {
+                mr.sharedMaterial = DiamondGizmo.NuevoMaterial(colorInterior);
+                mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                mr.receiveShadows = false;
+            }
+
             esTriangulo = true;
             return true;
         }
@@ -443,14 +514,14 @@ namespace SP.Presentation
             int layer = LayerMask.NameToLayer("Minimap");
             if (layer < 0) layer = 8;
             var root = SP.Core.RaicesDeEscena.Buscar("VehiculosIconosRoot");
-            if (root == null) root = new GameObject("VehiculosIconosRoot").transform;
+            if (root == null) root = new GameObject("VehiculosIconosRoot");
 
             foreach (var v in SP.Vehicles.Vehicle.Todos)
             {
                 if (v.GetComponentInChildren<MinimapIcon>() == null)
                 {
                     var icon = Spawn(v.transform, Color.gray, layer, 2.0f);
-                    icon.transform.SetParent(root, true);
+                    icon.transform.SetParent(root.transform, true);
                     icon.ConvertirEnCuadrado();
                     count++;
                 }
