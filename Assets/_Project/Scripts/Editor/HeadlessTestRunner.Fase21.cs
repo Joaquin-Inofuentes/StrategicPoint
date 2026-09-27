@@ -195,7 +195,13 @@ namespace SP.EditorTools
             foreach (var verbo in new[] { "REVIVIENDO", "CURANDO", "DETONANDO", "AFINANDO PUNTERIA", "USANDO BOTIQUIN" })
                 Check($"'{verbo}' tiene traduccion", Loc.TieneEntrada(verbo));
 
-            string driver = System.IO.File.ReadAllText("Assets/_Project/Scripts/Player/PlayerInputDriver.cs");
+            // El driver es parcial (PlayerInputDriver*.cs): "REVIVIENDO"/"CURANDO"/
+            // "AFINANDO PUNTERIA" viven en PlayerInputDriver.Habilidades.cs desde que
+            // se separo de aca para no pasar el presupuesto de lineas del archivo
+            // principal (ver HeadlessTestRunner.BusquedasGlobales.cs).
+            var driverSb = new System.Text.StringBuilder();
+            foreach (var f in System.IO.Directory.GetFiles("Assets/_Project/Scripts/Player", "PlayerInputDriver*.cs")) driverSb.Append(System.IO.File.ReadAllText(f));
+            string driver = driverSb.ToString();
             string demol = System.IO.File.ReadAllText("Assets/_Project/Scripts/Player/Demolicion.cs");
             Check("Las cuatro habilidades reportan su accion (revivir [E], medico [Ctrl], enfoque de francotirador/asalto y detonar)",
                 driver.Contains("\"REVIVIENDO\"") && driver.Contains("\"CURANDO\"") && driver.Contains("\"AFINANDO PUNTERIA\"") && demol.Contains("\"DETONANDO\""));

@@ -320,9 +320,15 @@ namespace SP.EditorTools
             playerBrain.Registrar();
             playerBrain.Possess(player);
 
-            // Trigger OnEnable so it subscribes
-            locator.enabled = false;
-            locator.enabled = true;
+            // BUG REAL (test): el mismo hallazgo que en el resto de esta fase --
+            // el toggle enabled=false/true NO dispara OnEnable de forma
+            // confiable en este runner (confirmado antes con SelectionController
+            // y DamageVignetteView). Sin OnEnable, UnitLocatorCylinder nunca se
+            // suscribe a DamageTakenEvent y el rombo jamas ignoraba la oclusion,
+            // sin que el codigo de produccion tuviera ningun bug real. Se invoca
+            // OnEnable por reflexion, mismo patron ya usado en esta fase.
+            var onEnableLocator = typeof(SP.Presentation.UnitLocatorCylinder).GetMethod("OnEnable", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            onEnableLocator.Invoke(locator, null);
 
             Check("Inicialmente no ignora oclusion", !locator.IgnorarOclusion);
 
@@ -469,19 +475,34 @@ namespace SP.EditorTools
             
             var ringManagerGo = new GameObject("TestRingManager");
             var ringManager = ringManagerGo.AddComponent<SP.Presentation.MinimapAttackerRings>();
-            // BUG REAL (test): Awake() SI corre solo (arma el pool de anillos -- confirmado,
-            // AddComponent en un GameObject activo dispara Awake de forma confiable en esta
-            // suite, igual que Soldier/PlayerBrain/AiBrain en el resto del archivo). OnEnable()
-            // (la suscripcion a DamageTakenEvent) es la que NO se dispara sola -- ni siquiera
-            // con el truco de SetActive(false) antes + SetActive(true) despues, confirmado a
-            // mano probandolo aislado. Se invoca por reflexion, mismo patron ya probado con
-            // Vehicle.OnEnable en Fase23_RomboTanque.
+            // BUG REAL (test): a diferencia de Soldier/PlayerBrain/AiBrain (donde Awake() SI
+            // corre solo al hacer AddComponent, confirmado en el resto de este archivo), en
+            // MinimapAttackerRings ni Awake() NI OnEnable() se disparan solos -- confirmado
+            // aislado: sin invocar Awake() por reflexion, el campo "rings" queda null, y el
+            // pool nunca se arma. El sintoma no era un simple "no paso el check": el
+            // suscriptor de DamageTakenEvent tiraba NullReferenceException al iterar ese
+            // array null, y EventBus lo atrapaba y lo salteaba en silencio (por diseño, para
+            // que un suscriptor roto no tumbe a los demas) -- asi que el anillo nunca se
+            // activaba y no quedaba ningun error visible apuntando a la causa real. Se
+            // invocan las dos por reflexion, mismo patron ya usado con Vehicle.OnEnable en
+            // Fase23_RomboTanque.
+            var awakeRings = typeof(SP.Presentation.MinimapAttackerRings).GetMethod("Awake", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            awakeRings.Invoke(ringManager, null);
             var onEnableRings = typeof(SP.Presentation.MinimapAttackerRings).GetMethod("OnEnable", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             onEnableRings.Invoke(ringManager, null);
 
             // Dummy attacker and player
+            // BUG REAL (test): Soldier.Bootstrap() (que corre solo en Awake, al
+            // AddComponent) exige un Health YA puesto en el mismo GameObject --
+            // si no lo encuentra, loguea el error y vuelve SIN llamar a
+            // ActorRegistry.Register(this). Sin registrar, ActorRegistry.FindById
+            // (evt.AttackerId) de MinimapAttackerRings.OnDamageTaken nunca
+            // encuentra al atacante y el anillo jamas se activa. El Health tiene
+            // que existir ANTES del AddComponent<Soldier>, mismo orden que usa
+            // Fase23_RomboSinOclusion mas arriba.
             var attackerGo = new GameObject("TestAttacker");
             attackerGo.transform.position = new Vector3(10, 0, 10);
+            attackerGo.AddComponent<SP.Combat.Health>();
             var attacker = attackerGo.AddComponent<SP.Actors.Soldier>();
             
             var playerGo = new GameObject("TestPlayer");
@@ -577,6 +598,11 @@ namespace SP.EditorTools
         static void Fase23_PiesEnElPiso()
         {
             TestLog.Step("Probando Fase23_PiesEnElPiso: los soldados deberian estar en el piso y no flotar");
+            // Sin esto el collider mide contra la posicion VIEJA de cada
+            // soldado (ver el mismo comentario en ApoyoEnElPiso.Apoyar): la
+            // suite nunca llega a un paso de fisica real, asi que nadie mas
+            // sincroniza esto por su cuenta.
+            Physics.SyncTransforms();
             var soldados = Object.FindObjectsByType<SP.Actors.Soldier>(FindObjectsInactive.Include);
             var buffer = new RaycastHit[16];
             foreach (var s in soldados)

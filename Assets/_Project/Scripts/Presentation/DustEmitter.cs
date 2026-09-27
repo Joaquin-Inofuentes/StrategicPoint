@@ -7,7 +7,6 @@ namespace SP.Presentation
     {
         static ParticleSystem sys;
         static Transform root;
-        static Camera mainCam;
 
         public static void ResetIfStale()
         {
@@ -44,8 +43,8 @@ namespace SP.Presentation
 
         public static void Emit(Vector3 position)
         {
-            if (mainCam == null) mainCam = Camera.main;
-            
+            var mainCam = SP.Core.CamaraPrincipal.Actual;
+
             // Respect LOD distance
             if (mainCam != null && Vector3.SqrMagnitude(mainCam.transform.position - position) > 50f * 50f)
                 return;

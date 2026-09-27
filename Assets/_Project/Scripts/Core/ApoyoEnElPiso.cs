@@ -71,6 +71,16 @@ namespace SP.Core
             var col = cuerpo.GetComponent<Collider>();
             if (col == null) return false;
 
+            // BUG REAL: si algo movio este transform con una asignacion directa
+            // (transform.position = ...) en vez de por Rigidbody, el collider
+            // NO actualiza su bounds cacheado hasta el siguiente paso de fisica.
+            // Este runner (suite headless) corre todo en una sola llamada
+            // sincronica que jamas llega a ese paso, asi que sin este sync
+            // col.bounds/el raycast leen la posicion VIEJA del cuerpo -- y
+            // "corregir" en base a eso mueve al cuerpo en base a datos de otro
+            // momento, en vez de arreglarlo.
+            Physics.SyncTransforms();
+
             var pos = cuerpo.position;
             var desde = new Vector3(pos.x, col.bounds.max.y + AlturaDeSondeo, pos.z);
 
@@ -85,11 +95,15 @@ namespace SP.Core
                 var c = Buffer[i].collider;
                 if (c == null || c == col || c.transform.IsChildOf(cuerpo)) continue;
                 // El piso es el punto MAS ALTO por debajo suyo: si hay una
-                // caja abajo, se apoya sobre la caja y no la atraviesa
-                // hasta el terreno. El margen de 0,3 tolera al que ya
-                // estaba levemente hundido.
+                // caja abajo, se apoya sobre la caja y no la atraviesa hasta
+                // el terreno. Tomar el maximo ya alcanza eso solo -- filtrar
+                // ademas contra la posicion ACTUAL del collider (como se
+                // hacia antes, con un margen de 0,3) rechaza el piso real
+                // cuando el cuerpo aparece hundido mas de esos 0,3 m (p.ej.
+                // los enemigos de LineaA/LineaB y el civil, hundidos 0,8 m):
+                // el piso de verdad queda por ENCIMA del margen y se
+                // descartaba, dejando el cuerpo enterrado.
                 float y = Buffer[i].point.y;
-                if (y > col.bounds.min.y + 0.3f) continue;
                 if (y > piso) { piso = y; hay = true; }
             }
             if (!hay) return false;

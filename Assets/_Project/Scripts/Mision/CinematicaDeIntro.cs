@@ -184,7 +184,15 @@ namespace SP.Mision
 
                 while (t < duracion)
                 {
-                    bool skipPressed = (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame);
+                    // BUG REAL ("no me deja caminar"): solo Espacio/clic saltaban la
+                    // cinematica -- alguien que reacciona probando WASD (para
+                    // caminar) o Q (para el radial) se quedaba mirando la camara
+                    // viajar sin ninguna forma de avisarle que hay que esperar o
+                    // saltar. Mismo criterio "cualquier tecla" que ya usa el
+                    // cartel final (EsperarTeclaYCerrar) para no tener dos reglas
+                    // distintas de "que cuenta como saltar" en la misma cinematica.
+                    var kbSkip = Keyboard.current;
+                    bool skipPressed = (kbSkip != null && kbSkip.anyKey.wasPressedThisFrame && !kbSkip.escapeKey.wasPressedThisFrame) || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame);
                     if (skipPressed)
                     {
                         skipping = true;
@@ -227,7 +235,8 @@ namespace SP.Mision
                 float te = 0f;
                 while (te < espera && !skipping)
                 {
-                    bool skipPressed = (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame);
+                    var kbSkip2 = Keyboard.current;
+                    bool skipPressed = (kbSkip2 != null && kbSkip2.anyKey.wasPressedThisFrame && !kbSkip2.escapeKey.wasPressedThisFrame) || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame);
                     if (skipPressed) { skipping = true; break; }
                     te += Time.deltaTime;
                     yield return null;

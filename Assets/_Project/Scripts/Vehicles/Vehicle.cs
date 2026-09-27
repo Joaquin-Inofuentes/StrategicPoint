@@ -611,6 +611,7 @@ namespace SP.Vehicles
 
         const string NombreCarritoDeParado = "MetralletaStandCarrier";
         Transform carritoDeParado;
+        Transform standPointCacheado;
 
         // Carrito con escala uniforme (1,1,1) colgado del chasis en la
         // posicion/rotacion del punto de pie: ver el comentario en
@@ -618,6 +619,7 @@ namespace SP.Vehicles
         // Idempotente: se crea una sola vez y se reutiliza.
         Transform ObtenerOCrearCarritoDeParado(Transform standPoint)
         {
+            standPointCacheado = standPoint;
             if (carritoDeParado != null) return carritoDeParado;
             var existente = transform.Find(NombreCarritoDeParado);
             if (existente != null) { carritoDeParado = existente; return carritoDeParado; }
@@ -702,15 +704,10 @@ namespace SP.Vehicles
 
         void LateUpdate()
         {
-            if (carritoDeParado != null)
+            if (carritoDeParado != null && standPointCacheado != null)
             {
-                var standPoint = transform.Find("TurretMount/TurretPivot/MetralletaStandPoint");
-                if (standPoint == null) standPoint = transform.Find("MetralletaStandPoint");
-                if (standPoint != null)
-                {
-                    carritoDeParado.position = standPoint.position;
-                    carritoDeParado.rotation = standPoint.rotation;
-                }
+                carritoDeParado.position = standPointCacheado.position;
+                carritoDeParado.rotation = standPointCacheado.rotation;
             }
             if (diamondMarker != null)
             {
