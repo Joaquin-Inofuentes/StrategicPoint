@@ -708,7 +708,6 @@ namespace SP.Ai
             bool correr = self.Team == SP.Combat.TeamId.Player && AjustesDeEscuadra.Correr && !IsPossessedByPlayer
                 && (State == AiState.MovingToOrder || State == AiState.Follow);
             self.Motor.SetRunning(correr);
-            self.Motor.SpeedMultiplier = (!correr && State == AiState.Follow && self.Team == SP.Combat.TeamId.Player) ? 1.15f : 1f;
         }
 
         public void Tick(float dt)
@@ -766,9 +765,8 @@ namespace SP.Ai
             // revisar si hay un blanco mejor.
             TickCobertura(dt);
             TickSeguirAlJugador();
-            TickAgachadoContagio();
             TickRetarget(dt);
-            TickCicloCobertura(dt);
+            if (enCobertura) self.Motor.SetCrouching(true);
             if (TickGranadas(dt)) return;   // huyendo de una granada viva: este tick no hace nada mas
             if (TickAtaqueAVehiculo(dt)) return;   // sin blanco de carne y hueso: le tira a un vehiculo hostil ocupado cerca
 
@@ -961,15 +959,9 @@ namespace SP.Ai
                     // punto DISTINTO relativo al lider, expresado en su
                     // espacio local para que rote con el.
                     bool tieneRanura = followOffsetLocal.sqrMagnitude > 0.0001f;
-                    Vector3 puntoASeguir = followTarget.transform.position;
-                    if (tieneRanura)
-                    {
-                        puntoASeguir += followTarget.transform.TransformDirection(followOffsetLocal);
-                        if (SP.Core.NavService.IsReady && SP.Core.NavService.Graph.IsBlockedAt(puntoASeguir))
-                        {
-                            puntoASeguir = followTarget.transform.position + followTarget.transform.TransformDirection(new Vector3(0f, 0f, followOffsetLocal.z));
-                        }
-                    }
+                    Vector3 puntoASeguir = tieneRanura
+                        ? followTarget.transform.position + followTarget.transform.TransformDirection(followOffsetLocal)
+                        : followTarget.transform.position;
                     float umbralSeguimiento = tieneRanura ? Mathf.Max(arriveThreshold, 0.5f) : followStopDistance * FactorDeCercaniaAlSeguir;
                     SeguirHasta(puntoASeguir, umbralSeguimiento, dt);
                     break;
@@ -1080,10 +1072,7 @@ namespace SP.Ai
                     // lo llamaba nunca. Agachado TODO el tiempo que dura
                     // Attack, haya cobertura cerca o no: presentar menos
                     // blanco mientras se dispara vale hasta a cielo abierto.
-                    if (enCobertura && subStateCobertura == CoverSubState.Peeking && !esCoberturaDeBorde)
-                        self.Motor.SetCrouching(false);
-                    else
-                        self.Motor.SetCrouching(true);
+                    self.Motor.SetCrouching(true);
 
                     self.Motor.LookTowards(target.transform.position, dt);
                     self.Weapon.Tick(dt);
@@ -1115,7 +1104,7 @@ namespace SP.Ai
                     // En Libre StanceAllowsFire es true y el TryFire es el
                     // mismo de siempre. AltoElFuego encara y sigue al
                     // enemigo con la mira, pero no aprieta el gatillo.
-                    if (StanceAllowsFire && aimedAtTarget && (!enCobertura || subStateCobertura != CoverSubState.Hidden))
+                    if (StanceAllowsFire && aimedAtTarget)
                     {
                         // BUG REAL, mismo que ya se encontro y arreglo del
                         // lado del jugador (ver PlayerBrain.Fire): el

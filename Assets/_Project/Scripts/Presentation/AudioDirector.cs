@@ -72,7 +72,6 @@ namespace SP.Presentation
         // patron de este proyecto que sobrevive al domain reload sin que
         // nadie tenga que recablear una referencia (ver CameraFxSettings).
         static readonly float?[] gainCache = new float?[4];
-        static float? masterGainCache;
 
         static string PrefKeyFor(SfxChannel c)
         {
@@ -87,11 +86,10 @@ namespace SP.Presentation
 
         public static float GainFor(SfxChannel c)
         {
-            if (masterGainCache == null) masterGainCache = Mathf.Clamp01(PlayerPrefs.GetFloat(PrefVolume, 1f));
             int i = (int)c;
-            if (i < 0 || i >= gainCache.Length) return masterGainCache.Value;
+            if (i < 0 || i >= gainCache.Length) return 1f;
             if (gainCache[i] == null) gainCache[i] = Mathf.Clamp01(PlayerPrefs.GetFloat(PrefKeyFor(c), 1f));
-            return gainCache[i].Value * masterGainCache.Value;
+            return gainCache[i].Value;
         }
 
         public static void SetGain(SfxChannel c, float v)
@@ -103,17 +101,12 @@ namespace SP.Presentation
             PlayerPrefs.SetFloat(PrefKeyFor(c), v);
         }
 
-        public static void SetMasterGain(float v)
-        {
-            v = Mathf.Clamp01(v);
-            masterGainCache = v;
-            PlayerPrefs.SetFloat(PrefVolume, v);
-        }
-
+        // Solo para tests: obliga a releer PlayerPrefs en la proxima
+        // consulta, sin arrastrar el valor cacheado de una corrida previa
+        // (mismo servicio que CameraFxSettings.InvalidateCache).
         public static void InvalidateGainCache()
         {
             for (int i = 0; i < gainCache.Length; i++) gainCache[i] = null;
-            masterGainCache = null;
         }
 
         // ------------------------------------------------------------------

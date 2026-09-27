@@ -67,8 +67,6 @@ namespace SP.Mision
             var p = Dificultad.PerfilActual;
             h.dificultad.text = $"Dificultad: {p.Nombre}";   // el detalle (enemigos/aliados/vos) vive en Configuraciones, no en el HUD
             h.Refrescar();
-            
-            CartelVolverView.Crear();
             return h;
         }
 

@@ -14,14 +14,6 @@ namespace SP.Mision
     //   - con TODOS caidos y enemigos cerca (accion): derrota a los 2 s;
     //   - con TODOS caidos y calma (ningun enemigo vivo a menos de RadioDeAccion de un caido): cuenta de 4 s y reviven a mitad de vida.
     // Si la accion vuelve durante la cuenta, la cuenta se reinicia y rige la regla de derrota.
-    public enum CausaDeDerrota
-    {
-        Ninguna,
-        EscuadraCaida,
-        CivilMuerto,
-        TiempoAgotado
-    }
-
     public static class EstadoDePartida
     {
         public const float SegundosParaDerrota = 2f;
@@ -33,14 +25,13 @@ namespace SP.Mision
         public static float CalmaAcumulada { get; private set; }
         public static bool Revivio { get; private set; }
         public static bool Perdio { get; private set; }
-        public static CausaDeDerrota Causa { get; private set; }
 
         static bool avisoDeCuenta;
         static GameOutcomeController outcomeSuelto;
 
         public static void Reiniciar()
         {
-            SinVivos = 0f; CalmaAcumulada = 0f; Revivio = false; Perdio = false; avisoDeCuenta = false; outcomeSuelto = null; Causa = CausaDeDerrota.Ninguna;
+            SinVivos = 0f; CalmaAcumulada = 0f; Revivio = false; Perdio = false; avisoDeCuenta = false; outcomeSuelto = null;
         }
 
         static bool CuentaComoEscuadra(Soldier s) => s != null && s.Team == TeamId.Player && s.Role != RoleType.Civilian && s.Health != null;
@@ -106,16 +97,9 @@ namespace SP.Mision
             GameLog.Line("La escuadra revivio en calma (" + n + " soldados)");
         }
 
-        public static void RegistrarDerrotaExterna(CausaDeDerrota causa)
-        {
-            if (Perdio) return;
-            Causa = causa;
-            Perdio = true;
-        }
-
         static void Perder()
         {
-            RegistrarDerrotaExterna(CausaDeDerrota.EscuadraCaida);
+            Perdio = true;
             if (MisionDirector.Activo) { MisionDirector.Instancia.Perder("TODA LA ESCUADRA CAYO"); return; }
             if (outcomeSuelto == null) outcomeSuelto = GameOutcomeController.Activo;
             if (outcomeSuelto != null) { GameLog.Line("Perdiste (escuadra completa caida)"); outcomeSuelto.ShowDefeat("TODA LA ESCUADRA CAYO"); }
