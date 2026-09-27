@@ -92,7 +92,7 @@ namespace SP.Presentation
                     t = go.transform;
                     t.SetParent(defeatPanel.transform, false);
                     defeatReason = go.AddComponent<Text>();
-                    defeatReason.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                    defeatReason.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                     defeatReason.fontSize = 20;
                     defeatReason.alignment = TextAnchor.MiddleCenter;
                     defeatReason.color = Color.white;
