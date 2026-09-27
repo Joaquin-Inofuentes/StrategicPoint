@@ -71,6 +71,12 @@ namespace SP.Core
             var col = cuerpo.GetComponent<Collider>();
             if (col == null) return false;
 
+            // Sin esto, col.bounds queda con la posicion VIEJA si el cuerpo
+            // se acaba de mover con transform.position = ... en este mismo
+            // frame (por ejemplo, al spawnearlo): la medicion de abajo sale
+            // mal y el cuerpo queda hundido o flotando segun de donde vino.
+            Physics.SyncTransforms();
+
             var pos = cuerpo.position;
             var desde = new Vector3(pos.x, col.bounds.max.y + AlturaDeSondeo, pos.z);
 
@@ -86,10 +92,8 @@ namespace SP.Core
                 if (c == null || c == col || c.transform.IsChildOf(cuerpo)) continue;
                 // El piso es el punto MAS ALTO por debajo suyo: si hay una
                 // caja abajo, se apoya sobre la caja y no la atraviesa
-                // hasta el terreno. El margen de 0,3 tolera al que ya
-                // estaba levemente hundido.
+                // hasta el terreno.
                 float y = Buffer[i].point.y;
-                if (y > col.bounds.min.y + 0.3f) continue;
                 if (y > piso) { piso = y; hay = true; }
             }
             if (!hay) return false;
