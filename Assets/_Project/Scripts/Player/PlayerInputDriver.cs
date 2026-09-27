@@ -520,6 +520,17 @@ namespace SP.Player
                 Brain.Possess(inicial);
                 Rig.FollowOverShoulder(inicial.transform);
 
+                // CameraRig.Mode arranca en Fps por default en el codigo,
+                // pero eso nunca llegaba a CapasDeHud: nada llama a SetMode
+                // en un Play desde cero (todos los demas call sites son
+                // reactivos a TAB/vehiculo/muerte/roster). El HUD_FPS/HUD_RTS
+                // quedaban con el estado activo que la escena tuviera
+                // guardado, no el que el modo real de la camara dice. Un
+                // SetMode al mismo modo actual no cambia nada de la camara
+                // (misma logica que un TAB normal) y fuerza a CapasDeHud a
+                // sincronizarse.
+                if (Rig != null) Rig.SetMode(Rig.Mode);
+
                 // La posesion inicial no publica PossessionChangedEvent (ver
                 // el comentario en RosterView.Rebuild): sin este empujon, la
                 // fila del roster que arranca poseida podia quedar sin

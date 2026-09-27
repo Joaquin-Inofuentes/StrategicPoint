@@ -10,9 +10,14 @@ namespace SP.Player
     // Selección múltiple en vista RTS.
     public class SelectionController : MonoBehaviour
     {
+        // Unico de la escena: RosterRowView.OnPointerClick lo necesitaba y
+        // hacia FindAnyObjectByType en cada clic simple en vez de esto.
+        public static SelectionController Instance { get; private set; }
+        void Awake() => Instance = this;
+
         readonly List<Soldier> selected = new List<Soldier>();
         public IReadOnlyList<Soldier> Selected => selected;
-        
+
         System.IDisposable deathSub;
         // Ronda 13 (punto 1): quien estaba seleccionado al morir vuelve a la seleccion al ser revivido. Antes salia y no
         // volvia a entrar: las ordenes de RTS a "la seleccion" no llegaban al companero revivido.
@@ -26,6 +31,7 @@ namespace SP.Player
         {
             deathSub?.Dispose();
             Reanimacion.Revivido -= OnRevivido;
+            if (Instance == this) Instance = null;
         }
         void OnEntityDied(EntityDiedEvent evt)
         {
