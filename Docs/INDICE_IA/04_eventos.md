@@ -3,17 +3,19 @@
 > `EventBus.Instance.Publish<T>` / `Subscribe<T>`. Los emisores no conocen a los oyentes: este mapa es
 > la unica forma de ver la conexion completa.
 
-**22 tipos de evento.**
+**24 tipos de evento.**
 
 | Evento | Publica | Escucha | Quien lo publica | Quien lo escucha |
 |---|---|---|---|---|
 | `AiStateChangedEvent` | 1 | 3 | `AiBrain.cs` | `EnemyAlertIndicatorView.cs`, `SquadStateIndicatorView.cs`, `RosterRowView.cs` |
-| `DamageTakenEvent` | 1 | 9 | `Health.cs` | `AiBrain.cs`, `PlayerInputDriver.cs`, `CubeFxReactor.cs`, `FloatingDamageTextManager.cs`, `KillFeedbackDirector.cs`, `AimUI.cs` |
-| `EntityDiedEvent` | 1 | 9 | `Health.cs` | `MunicionPickup.cs`, `PlayerInputDriver.cs`, `SelectionController.cs`, `BattleManager.cs`, `CubeFxReactor.cs`, `KillFeedbackDirector.cs` |
+| `DamageTakenEvent` | 2 | 12 | `Health.cs`, `HeadlessTestRunner.Fase23.cs` | `AiBrain.cs`, `TeamCombatState.cs`, `InteligenciaDeEnemigos.cs`, `PlayerInputDriver.cs`, `CubeFxReactor.cs`, `FloatingDamageTextManager.cs` |
+| `EntityDiedEvent` | 1 | 8 | `Health.cs` | `MunicionPickup.cs`, `PlayerInputDriver.cs`, `SelectionController.cs`, `BattleManager.cs`, `CubeFxReactor.cs`, `KillFeedbackDirector.cs` |
 | `EnvironmentHitEvent` | 1 | 1 | `Projectile.cs` | `AimUI.cs` |
 | `GrenadeExplodedEvent` | 1 | 1 | `Granada.cs` | `TutorialManager.cs` |
 | `GrenadeThrownEvent` | 1 | 1 | `Granada.cs` | `TutorialManager.cs` |
+| `HeadshotEvent` | 1 | 0 | `Projectile.cs` | — ⚠ nadie lo escucha |
 | `HealedEvent` | 3 | 1 | `Health.cs`, `EstadoDePartida.cs`, `RescateAutomatico.cs` | `RosterRowView.cs` |
+| `LuminariaRotaEvent` | 1 | 0 | `Luminaria.cs` | — ⚠ nadie lo escucha |
 | `MeleeAttackEvent` | 1 | 1 | `WeaponHolder.cs` | `TutorialManager.cs` |
 | `MoveOrderIssuedEvent` | 1 | 1 | `OrderService.cs` | `TutorialManager.cs` |
 | `OrderAcknowledgedEvent` | 1 | 1 | `OrderService.cs` | `SelectionRingManager.cs` |
@@ -21,7 +23,7 @@
 | `PossessionChangedEvent` | 1 | 3 | `PossessionService.cs` | `PossessedMarkerView.cs`, `RosterRowView.cs`, `SelectedSoldierUI.cs` |
 | `ProjectileReturnedEvent` | 1 | 0 | `Projectile.cs` | — ⚠ nadie lo escucha |
 | `SelectionChangedEvent` | 1 | 4 | `SelectionController.cs` | `SelectionRingManager.cs`, `RosterRowView.cs`, `SelectedSoldierUI.cs`, `SelectionCountView.cs` |
-| `ShotFiredEvent` | 3 | 6 | `WeaponHolder.cs`, `HeadlessTestRunner.Fases8a12.cs`, `CinematicaDeVictoria.cs` | `AiBrain.cs`, `HeadlessTestRunner.Fase21.cs`, `PlayerInputDriver.cs`, `CubeFxReactor.cs`, `SoldierAnimatorDriver.cs`, `TutorialManager.cs` |
+| `ShotFiredEvent` | 3 | 7 | `WeaponHolder.cs`, `HeadlessTestRunner.Fases8a12.cs`, `CinematicaDeVictoria.cs` | `AiBrain.cs`, `HeadlessTestRunner.Fase21.cs`, `PlayerInputDriver.cs`, `CubeFxReactor.cs`, `SoldierAnimatorDriver.cs`, `UnitLocatorCylinder.cs` |
 | `SwapTargetClearedEvent` | 1 | 0 | `AimTargeting.cs` | — ⚠ nadie lo escucha |
 | `SwapTargetHighlightedEvent` | 1 | 0 | `AimTargeting.cs` | — ⚠ nadie lo escucha |
 | `TurretControlChangedEvent` | 1 | 1 | `TurretAI.cs` | `PlayerInputDriver.cs` |
@@ -30,8 +32,10 @@
 | `WeaponChangedEvent` | 1 | 1 | `WeaponHolder.cs` | `RosterRowView.cs` |
 | `WeaponPickedUpEvent` | 1 | 0 | `WeaponPickup.cs` | — ⚠ nadie lo escucha |
 
-## Eventos con un solo lado (5)
+## Eventos con un solo lado (7)
 
+- `HeadshotEvent`
+- `LuminariaRotaEvent`
 - `OrderCompletedEvent`
 - `ProjectileReturnedEvent`
 - `SwapTargetClearedEvent`

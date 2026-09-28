@@ -31,6 +31,8 @@
 | `SeleccionarMismoTipo` | `seleccionar_mismo_tipo` |
 | `MinimapAgrandar` | `minimap_agrandar` |
 | `MinimapCiclarTamano` | `minimap_ciclar_tamano` |
+| `FocalizarRts` | `focalizar_rts` |
+| `RotarCamaraRts` | `rotar_camara_rts` |
 
 ## Teclas leidas directamente, por archivo
 
@@ -44,9 +46,9 @@
 | `HeadlessTestRunner.Fase21.cs` | `name`, `text`, `transform` |
 | `HeadlessTestRunner.Fases13a17.cs` | `C`, `F`, `G`, `None` |
 | `HeadlessTestRunner.cs` | `U` |
-| `KeyBindings.cs` | `B`, `C`, `E`, `F`, `G`, `H`, `J`, `K`, `L`, `M`, `N`, `None`, `O`, `Q`, `R`, `Space`, `Tab`, `X` |
+| `KeyBindings.cs` | `B`, `Backquote`, `C`, `E`, `F`, `G`, `H`, `J`, `K`, `L`, `M`, `N`, `None`, `O`, `Q`, `R`, `Space`, `Tab` |
 | `PlayerInputDriver.cs` | `None` |
-| `TutorialAutoPlayer.Entrada.cs` | `A`, `C`, `D`, `Digit2`, `F`, `G`, `LeftCtrl`, `LeftShift`, `R`, `S`, `W` |
+| `TutorialAutoPlayer.Entrada.cs` | `A`, `D`, `Digit2`, `F`, `G`, `LeftCtrl`, `LeftShift`, `R`, `S`, `Tab`, `W` |
 | `TutorialAutoPlayer.Radial.cs` | `Digit2`, `Digit3`, `LeftCtrl`, `LeftShift` |
 | `AliadosSinEstorbo.cs` | `shadowCastingMode` |
 

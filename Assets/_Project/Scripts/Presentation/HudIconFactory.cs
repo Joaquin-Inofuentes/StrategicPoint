@@ -14,13 +14,17 @@ namespace SP.Presentation
         static Texture2D cuchillo, granada, reloj, escudo;
         static Sprite spriteCuchillo, spriteGranada, spriteReloj, spriteEscudo;
 
-        public static Sprite Cuchillo() => spriteCuchillo ??= AsSprite(cuchillo ??= BuildCuchillo());
-        public static Sprite Granada() => spriteGranada ??= AsSprite(granada ??= BuildGranada());
-        public static Sprite Reloj() => spriteReloj ??= AsSprite(reloj ??= BuildReloj());
-        public static Sprite Escudo() => spriteEscudo ??= AsSprite(escudo ??= BuildEscudo());
+        public static Sprite Cuchillo() => spriteCuchillo ??= AsSprite(cuchillo ??= BuildCuchillo(), "HudIcon_Cuchillo");
+        public static Sprite Granada() => spriteGranada ??= AsSprite(granada ??= BuildGranada(), "HudIcon_Granada");
+        public static Sprite Reloj() => spriteReloj ??= AsSprite(reloj ??= BuildReloj(), "HudIcon_Reloj");
+        public static Sprite Escudo() => spriteEscudo ??= AsSprite(escudo ??= BuildEscudo(), "HudIcon_Escudo");
 
-        static Sprite AsSprite(Texture2D tex)
-            => Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+        static Sprite AsSprite(Texture2D tex, string spriteName = "HudIcon")
+        {
+            var s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+            s.name = spriteName;
+            return s;
+        }
 
         static Texture2D NuevaTextura() => new Texture2D(Size, Size, TextureFormat.Alpha8, false) { name = "HudIcon", hideFlags = HideFlags.HideAndDontSave };
 

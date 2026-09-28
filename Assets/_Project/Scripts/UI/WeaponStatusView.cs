@@ -7,6 +7,7 @@ namespace SP.UI
 {
     // HUD fijo (no depende de apuntar a nada) con qué arma tenés, cuánta
     // munición te queda y una barra de recarga/enfriamiento.
+    [ExecuteAlways]
     public class WeaponStatusView : MonoBehaviour
     {
         // Unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
@@ -69,9 +70,21 @@ namespace SP.UI
 
         public Image EnsureIcon()
         {
-            if (icon != null) return icon;
+            if (icon != null)
+            {
+                if (icon.sprite == null) icon.sprite = IconFor(WeaponKind.Rifle);
+                return icon;
+            }
             var existing = transform.Find(IconName);
-            if (existing != null) { icon = existing.GetComponent<Image>(); if (icon != null) return icon; }
+            if (existing != null)
+            {
+                icon = existing.GetComponent<Image>();
+                if (icon != null)
+                {
+                    if (icon.sprite == null) icon.sprite = IconFor(WeaponKind.Rifle);
+                    return icon;
+                }
+            }
 
             var go = new GameObject(IconName, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             go.transform.SetParent(transform, false);
@@ -99,9 +112,11 @@ namespace SP.UI
             var rt = transform as RectTransform;
             if (rt != null)
             {
-                rt.anchorMin = new Vector2(0f, 0f);
-                rt.anchorMax = new Vector2(0f, 0f);
-                rt.pivot = new Vector2(0f, 0f);
+                rt.anchorMin = new Vector2(1f, 0f);
+                rt.anchorMax = new Vector2(1f, 0f);
+                rt.pivot = new Vector2(1f, 0f);
+                rt.sizeDelta = new Vector2(AnchoPanel, AltoPanel);
+                rt.anchoredPosition = new Vector2(-11.5f, 10.2f);
             }
 
             RegistrarActivo();
@@ -120,7 +135,33 @@ namespace SP.UI
                 var barFill = transform.Find("BarBG/BarFill");
                 if (barFill != null) fill = barFill.GetComponent<Image>();
             }
+            EnsureExtras();
+
+            if (!Application.isPlaying)
+            {
+                if (label != null && string.IsNullOrEmpty(label.text)) label.text = "30 / 90";
+                if (fill != null && fill.fillAmount < 0.001f) fill.fillAmount = 1f;
+            }
         }
+
+#if UNITY_EDITOR
+        void OnValidate()
+        {
+            UnityEditor.EditorApplication.delayCall += () =>
+            {
+                if (this == null) return;
+                var rt = transform as RectTransform;
+                if (rt != null)
+                {
+                    rt.anchorMin = new Vector2(1f, 0f);
+                    rt.anchorMax = new Vector2(1f, 0f);
+                    rt.pivot = new Vector2(1f, 0f);
+                    rt.sizeDelta = new Vector2(AnchoPanel, AltoPanel);
+                    rt.anchoredPosition = new Vector2(-11.5f, 10.2f);
+                }
+            };
+        }
+#endif
 
         public void UpdateFrom(WeaponHolder weapon)
         {
@@ -257,7 +298,8 @@ namespace SP.UI
         // numero de municion y la barra.
         Image extrasCuchillo, extrasGranada;
         Text extrasGranadaCount;
-        void ActualizarExtras(WeaponHolder weapon)
+
+        public void EnsureExtras()
         {
             if (extrasCuchillo == null)
             {
@@ -266,6 +308,11 @@ namespace SP.UI
                     : CrearIconoExtra(transform, "ExtrasCuchillo", HudIconFactory.Cuchillo(), new Vector2(78f, 54f));
                 if (transform.Find("ExtrasCuchilloLabel") == null) CrearEtiqueta(transform, "ExtrasCuchilloLabel", "F", new Vector2(60f, 58f));
             }
+            if (extrasCuchillo != null && extrasCuchillo.sprite == null)
+            {
+                extrasCuchillo.sprite = HudIconFactory.Cuchillo();
+            }
+
             if (extrasGranada == null)
             {
                 var t = transform.Find("ExtrasGranada");
@@ -273,6 +320,11 @@ namespace SP.UI
                     : CrearIconoExtra(transform, "ExtrasGranada", HudIconFactory.Granada(), new Vector2(78f, 18f));
                 if (transform.Find("ExtrasGranadaLabel") == null) CrearEtiqueta(transform, "ExtrasGranadaLabel", "G", new Vector2(60f, 22f));
             }
+            if (extrasGranada != null && extrasGranada.sprite == null)
+            {
+                extrasGranada.sprite = HudIconFactory.Granada();
+            }
+
             if (extrasGranadaCount == null)
             {
                 var t = transform.Find("ExtrasGranadaCount");
@@ -295,15 +347,25 @@ namespace SP.UI
                 }
                 extrasGranadaCount = t.GetComponent<Text>();
             }
+        }
 
-            bool cuchilloListo = weapon.KnifeCooldownRemaining <= 0f;
-            extrasCuchillo.color = cuchilloListo ? new Color(0.9f, 0.94f, 0.98f) : new Color(0.45f, 0.48f, 0.52f);
+        void ActualizarExtras(WeaponHolder weapon)
+        {
+            EnsureExtras();
+            if (extrasCuchillo != null)
+            {
+                bool cuchilloListo = weapon.KnifeCooldownRemaining <= 0f;
+                extrasCuchillo.color = cuchilloListo ? new Color(0.9f, 0.94f, 0.98f) : new Color(0.45f, 0.48f, 0.52f);
+            }
 
-            bool tieneGranadas = weapon.Granadas > 0;
-            var colorGranada = tieneGranadas ? new Color(1f, 0.79f, 0.29f) : new Color(0.45f, 0.48f, 0.52f);
-            extrasGranada.color = colorGranada;
-            extrasGranadaCount.color = colorGranada;
-            extrasGranadaCount.text = weapon.Granadas.ToString();
+            if (extrasGranada != null && extrasGranadaCount != null)
+            {
+                bool tieneGranadas = weapon.Granadas > 0;
+                var colorGranada = tieneGranadas ? new Color(1f, 0.79f, 0.29f) : new Color(0.45f, 0.48f, 0.52f);
+                extrasGranada.color = colorGranada;
+                extrasGranadaCount.color = colorGranada;
+                extrasGranadaCount.text = weapon.Granadas.ToString();
+            }
         }
     }
 }

@@ -51,19 +51,19 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `SetRunning` |  | `void` | `bool correr` | 70 |
-| `Jump` |  | `void` | — | 77 |
-| `TryVault` |  | `bool` | — | 100 |
-| `ResetMotionState` |  | `void` | — | 178 |
-| `DanioDeCaida` | static | `int` | `float metros` | 204 |
-| `TickVertical` |  | `void` | `float dt` | 221 |
-| `SetCrouching` |  | `void` | `bool agachado` | 320 |
-| `Move` |  | `void` | `Vector3 worldDirection, float dt` | 337 |
-| `RotateYaw` |  | `void` | `float yawDeltaDegrees` | 345 |
-| `LookTowards` |  | `void` | `Vector3 worldPoint, float dt` | 350 |
-| `MoveTowards` |  | `bool` | `Vector3 worldPoint, float arriveThreshold, float dt` | 360 |
+| `SetRunning` |  | `void` | `bool correr` | 72 |
+| `Jump` |  | `void` | — | 79 |
+| `TryVault` |  | `bool` | — | 102 |
+| `ResetMotionState` |  | `void` | — | 180 |
+| `DanioDeCaida` | static | `int` | `float metros` | 206 |
+| `TickVertical` |  | `void` | `float dt` | 223 |
+| `SetCrouching` |  | `void` | `bool agachado` | 322 |
+| `Move` |  | `void` | `Vector3 worldDirection, float dt` | 339 |
+| `RotateYaw` |  | `void` | `float yawDeltaDegrees` | 347 |
+| `LookTowards` |  | `void` | `Vector3 worldPoint, float dt` | 352 |
+| `MoveTowards` |  | `bool` | `Vector3 worldPoint, float arriveThreshold, float dt` | 362 |
 
-**Propiedades:** `IsJumping`, `MoveSpeed`, `Corriendo`, `Vaulting`, `UltimoMotivoDeTrepa`, `UltimaCaidaMetros`, `UltimoDanioDeCaida`, `IsCrouching`, `EyeHeightDrop`, `EyeHeightDropSuave`
+**Propiedades:** `IsJumping`, `Atado`, `MoveSpeed`, `Corriendo`, `Vaulting`, `UltimoMotivoDeTrepa`, `UltimaCaidaMetros`, `UltimoDanioDeCaida`, `IsCrouching`, `EyeHeightDrop`, `EyeHeightDropSuave`
 
 ## `Assets/_Project/Scripts/Ai/AiBrain.Disparo.cs`
 
@@ -101,6 +101,7 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `ResetearTrasRevivir` |  | `void` | `bool soltarPosesion` | 23 |
+| `CancelarCuracionLocal` |  | `void` | — | 59 |
 
 ## `Assets/_Project/Scripts/Ai/AiBrain.Sentidos.cs`
 
@@ -110,18 +111,18 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `TieneLineaDeTiro` |  | `bool` | `Soldier objetivo` | 36 |
+| `TieneLineaDeTiro` |  | `bool` | `Soldier objetivo` | 37 |
 
 ## `Assets/_Project/Scripts/Ai/AiBrain.Tactica.cs`
 
-**Tipos:** `class AiBrain`
+**Tipos:** `class AiBrain`, `enum CoverSubState`
 
 **Metodos publicos**
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `IssueCoverOrder` |  | `void` | `Vector3 punto, Collider dueno` | 39 |
-| `PuntajeDeObjetivo` |  | `float` | `Soldier s` | 311 |
+| `PuntajeDeObjetivo` |  | `float` | `Soldier s` | 458 |
 
 **Propiedades:** `MountTargetVehicle`, `EnCobertura`, `YendoACobertura`, `CoberturaPorOrden`, `CoberturaPunto`, `Quieto`, `Pasivo`, `SiguiendoAlJugador`
 
@@ -135,17 +136,17 @@
 |---|---|---|---|---|
 | `SetPatrolRoute` |  | `void` | `Vector3[] points` | 223 |
 | `SetPatrolWaypoints` |  | `void` | `Transform[] waypoints` | 232 |
-| `ReactivarNavegacion` |  | `void` | — | 306 |
-| `ConfigurarAlcances` |  | `void` | `float vision, float ataque` | 362 |
-| `Bootstrap` |  | `void` | — | 451 |
-| `IssueMoveOrder` |  | `void` | `Vector3 point, bool queued = false` | 579 |
-| `IssueMountOrder` |  | `void` | `Vehicle vehicle` | 627 |
-| `IssueFollowOrder` |  | `void` | `Soldier leader, Vector3 formationOffsetLocal = default` | 648 |
-| `IssueAttackOrder` |  | `void` | `Soldier enemy` | 665 |
-| `CancelOrder` |  | `void` | — | 685 |
-| `Tick` |  | `void` | `float dt` | 712 |
+| `ReactivarNavegacion` |  | `void` | — | 320 |
+| `ConfigurarAlcances` |  | `void` | `float vision, float ataque` | 376 |
+| `Bootstrap` |  | `void` | — | 465 |
+| `IssueMoveOrder` |  | `void` | `Vector3 point, bool queued = false` | 593 |
+| `IssueMountOrder` |  | `void` | `Vehicle vehicle` | 628 |
+| `IssueFollowOrder` |  | `void` | `Soldier leader, Vector3 formationOffsetLocal = default` | 649 |
+| `IssueAttackOrder` |  | `void` | `Soldier enemy` | 666 |
+| `CancelOrder` |  | `void` | — | 686 |
+| `Tick` |  | `void` | `float dt` | 714 |
 
-**Propiedades:** `QueuedOrderCount`, `QueuedDestinations`, `RemainingPathPoints`, `CurrentPath`, `State`, `IsPossessedByPlayer`, `CurrentTarget`, `Stance`, `HomePosition`, `EffectiveVisionRange`, `EffectiveAttackRange`, `SenseIntervalTicks`, `TicksSinceLastSense`, `LastSensedTarget`, `CurrentOrderDestination`, `PendingMoveDestination`, `FollowTarget`
+**Propiedades:** `QueuedOrderCount`, `QueuedDestinations`, `RemainingPathPoints`, `CurrentPath`, `State`, `MontadoEnVehiculo`, `IsPossessedByPlayer`, `CurrentTarget`, `Stance`, `HomePosition`, `EffectiveVisionRange`, `EffectiveAttackRange`, `SenseIntervalTicks`, `TicksSinceLastSense`, `LastSensedTarget`, `CurrentOrderDestination`, `PendingMoveDestination`, `FollowTarget`
 
 ## `Assets/_Project/Scripts/Ai/AjustesDeEscuadra.cs`
 
@@ -157,8 +158,8 @@
 |---|---|---|---|---|
 | `ReiniciarActivo` | static | `void` | — | 21 |
 | `RegistrarActivo` |  | `void` | — | 22 |
-| `Aplicar` |  | `void` | — | 51 |
-| `AsegurarEnEscena` | static | `AjustesDeEscuadra` | — | 63 |
+| `Aplicar` |  | `void` | — | 55 |
+| `AsegurarEnEscena` | static | `AjustesDeEscuadra` | — | 69 |
 
 **Propiedades:** `Activo`
 
@@ -209,32 +210,32 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `EnsureInstanceForTests` | static | `void` | `CameraRig rig` | 29 |
-| `SetCamera` |  | `void` | `Camera c` | 74 |
-| `MostrarRutas` |  | `void` | `bool visibles` | 96 |
-| `SetZoomed` |  | `void` | `bool value` | 112 |
-| `SetZoomFactor` |  | `void` | `float factor` | 141 |
-| `AddPitch` |  | `void` | `float delta` | 223 |
-| `ResetPitch` |  | `void` | — | 224 |
-| `KickRecoil` |  | `void` | `float degrees` | 240 |
-| `KickDirectional` |  | `void` | `Vector3 worldDirection, float magnitude` | 262 |
-| `AddFrameOffset` |  | `void` | `Vector3 offset` | 276 |
-| `SetWalking` |  | `void` | `bool value` | 298 |
-| `SetMode` |  | `void` | `ControlMode mode, Vector3? rtsFallbackCenter = null` | 343 |
-| `RestoreOrSetRtsView` |  | `void` | `Vector3 fallbackCenter` | 374 |
-| `ToggleMode` |  | `void` | `Vector3? rtsFallbackCenter = null` | 396 |
-| `BeginTransition` |  | `void` | `Transform target, float duration = 0.35f` | 417 |
-| `FollowFps` |  | `void` | `Soldier soldier` | 455 |
-| `BeginFollowBlend` |  | `void` | `float seconds` | 495 |
-| `FollowOverShoulder` |  | `void` | `Transform target, float distance = 4f, float height = 1.53f, float hei` | 573 |
-| `FollowAnchor` |  | `void` | `Transform anchor` | 608 |
-| `FollowThirdPerson` |  | `void` | `Transform target, float distance = 7f, float height = 3f` | 632 |
-| `FollowThirdPersonAimed` |  | `void` | `Vector3 pivotPos, Vector3 aimForward, float distance = 7f, float heigh` | 674 |
-| `SetRtsView` |  | `void` | `Vector3 center` | 700 |
-| `GetForwardRay` |  | `Ray` | — | 711 |
-| `Pan` |  | `void` | `Vector3 worldDelta` | 749 |
-| `RecenterOn` |  | `void` | `Vector3 point` | 761 |
-| `Zoom` |  | `void` | `float delta` | 778 |
-| `ZoomHaciaCursor` |  | `void` | `float delta, Vector2 pantalla` | 805 |
+| `SetCamera` |  | `void` | `Camera c` | 96 |
+| `MostrarRutas` |  | `void` | `bool visibles` | 118 |
+| `SetZoomed` |  | `void` | `bool value` | 134 |
+| `SetZoomFactor` |  | `void` | `float factor` | 169 |
+| `AddPitch` |  | `void` | `float delta` | 252 |
+| `ResetPitch` |  | `void` | — | 253 |
+| `KickRecoil` |  | `void` | `float degrees` | 269 |
+| `KickDirectional` |  | `void` | `Vector3 worldDirection, float magnitude` | 291 |
+| `AddFrameOffset` |  | `void` | `Vector3 offset` | 305 |
+| `SetWalking` |  | `void` | `bool value` | 327 |
+| `SetMode` |  | `void` | `ControlMode mode, Vector3? rtsFallbackCenter = null` | 373 |
+| `RestoreOrSetRtsView` |  | `void` | `Vector3 fallbackCenter` | 420 |
+| `ToggleMode` |  | `void` | `Vector3? rtsFallbackCenter = null` | 443 |
+| `BeginTransition` |  | `void` | `Transform target, float duration = 0.35f` | 464 |
+| `FollowFps` |  | `void` | `Soldier soldier` | 502 |
+| `BeginFollowBlend` |  | `void` | `float seconds` | 542 |
+| `FollowOverShoulder` |  | `void` | `Transform target, float distance = 4f, float height = 1.53f, float hei` | 620 |
+| `FollowAnchor` |  | `void` | `Transform anchor` | 655 |
+| `FollowThirdPerson` |  | `void` | `Transform target, float distance = 7f, float height = 3f` | 679 |
+| `FollowThirdPersonAimed` |  | `void` | `Vector3 pivotPos, Vector3 aimForward, float distance = 7f, float heigh` | 721 |
+| `SetRtsView` |  | `void` | `Vector3 center` | 747 |
+| `GetForwardRay` |  | `Ray` | — | 758 |
+| `Pan` |  | `void` | `Vector3 worldDelta` | 796 |
+| `RecenterOn` |  | `void` | `Vector3 point` | 808 |
+| `Zoom` |  | `void` | `float delta` | 825 |
+| `ZoomHaciaCursor` |  | `void` | `float delta, Vector2 pantalla` | 852 |
 
 **Propiedades:** `Instance`, `Mode`, `RutasVisibles`, `AdsBlend`, `AdsBlendSuave`, `Respiracion`, `ZoomFactor`, `EstaConZoom`, `FovDeZoom`, `FovObjetivo`, `Pitch`, `RecoilPitch`, `ShakeOffset`, `MaxShakeMagnitude`, `BobOffset`, `IsTransitioning`, `Cam`, `ZoomAtLimit`, `RtsTargetHeight`, `RtsHeight`, `RtsFocus`
 
@@ -277,11 +278,11 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Configure` |  | `void` | `ProjectilePool owningPool, Vector3 position, Vector3 direction, int sh` | 111 |
-| `OnSpawn` |  | `void` | — | 170 |
-| `OnDespawn` |  | `void` | — | 178 |
-| `Tick` |  | `void` | `float dt` | 194 |
-| `ExplodeAt` | static | `void` | `Vector3 point, float radius, int damage, int ownerId, TeamId? spareTea` | 630 |
+| `Configure` |  | `void` | `ProjectilePool owningPool, Vector3 position, Vector3 direction, int sh` | 122 |
+| `OnSpawn` |  | `void` | — | 185 |
+| `OnDespawn` |  | `void` | — | 193 |
+| `Tick` |  | `void` | `float dt` | 209 |
+| `ExplodeAt` | static | `void` | `Vector3 point, float radius, int damage, int ownerId, TeamId? spareTea` | 655 |
 
 **Propiedades:** `Gravity`, `Velocity`, `PoolGeneration`
 
@@ -303,6 +304,19 @@
 
 **Propiedades:** `Activo`, `ExhaustedCount`, `FreeCount`
 
+## `Assets/_Project/Scripts/Combat/TeamCombatState.cs`
+
+**Tipos:** `class TeamCombatState`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Init` | static | `void` | — | 11 |
+| `Tick` | static | `void` | `float dt` | 18 |
+
+**Propiedades:** `SegundosSinAccion`
+
 ## `Assets/_Project/Scripts/Combat/WeaponCatalog.cs`
 
 **Tipos:** `class WeaponCatalog`, `struct Spec`
@@ -311,7 +325,7 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Get` | static | `Spec` | `WeaponKind kind` | 34 |
+| `Get` | static | `Spec` | `WeaponKind kind` | 35 |
 
 ## `Assets/_Project/Scripts/Combat/WeaponHolder.cs`
 
@@ -372,8 +386,8 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Configure` |  | `void` | `WeaponKind weaponKind, Color weaponColor` | 43 |
-| `EquipOn` |  | `void` | `WeaponHolder holder, int soldierId` | 49 |
+| `Configure` |  | `void` | `WeaponKind weaponKind, Color weaponColor` | 49 |
+| `EquipOn` |  | `void` | `WeaponHolder holder, int soldierId` | 55 |
 
 **Propiedades:** `Kind`, `Color`
 
@@ -385,17 +399,17 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Register` | static | `void` | `Soldier soldier` | 23 |
-| `Unregister` | static | `void` | `Soldier soldier` | 29 |
-| `Clear` | static | `void` | — | 35 |
-| `Invalidate` | static | `void` | — | 48 |
-| `EnsureAllRegistered` | static | `void` | — | 78 |
-| `Rebarrer` | static | `void` | — | 88 |
-| `CountAlive` | static | `int` | `TeamId team` | 103 |
-| `CountDead` | static | `int` | `TeamId team` | 112 |
-| `FindById` | static | `Soldier` | `int id` | 121 |
-| `FindNearest` | static | `Soldier` | `Vector3 point, Func<Soldier, bool> predicate` | 128 |
-| `FindNearestEnemyInRange` | static | `Soldier` | `Vector3 point, TeamId excludeTeam, float range` | 149 |
+| `Register` | static | `void` | `Soldier soldier` | 32 |
+| `Unregister` | static | `void` | `Soldier soldier` | 42 |
+| `Clear` | static | `void` | — | 52 |
+| `Invalidate` | static | `void` | — | 66 |
+| `EnsureAllRegistered` | static | `void` | — | 96 |
+| `Rebarrer` | static | `void` | — | 106 |
+| `CountAlive` | static | `int` | `TeamId team` | 121 |
+| `CountDead` | static | `int` | `TeamId team` | 130 |
+| `FindById` | static | `Soldier` | `int id` | 139 |
+| `FindNearest` | static | `Soldier` | `Vector3 point, Func<Soldier, bool> predicate` | 144 |
+| `FindNearestEnemyInRange` | static | `Soldier` | `Vector3 point, TeamId excludeTeam, float range` | 165 |
 
 **Propiedades:** `All`
 
@@ -487,8 +501,8 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `ClearAll` |  | `void` | — | 80 |
-| `Dispose` |  | `void` | — | 86 |
+| `ClearAll` |  | `void` | — | 110 |
+| `Dispose` |  | `void` | — | 120 |
 
 ## `Assets/_Project/Scripts/Core/FlowField.cs`
 
@@ -516,6 +530,17 @@
 |---|---|---|---|---|
 | `Line` | static | `void` | `string message` | 17 |
 | `Clear` | static | `void` | — | 24 |
+
+## `Assets/_Project/Scripts/Core/InteligenciaDeEnemigos.cs`
+
+**Tipos:** `class InteligenciaDeEnemigos`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Revelar` | static | `void` | `int enemigoId` | 48 |
+| `EstaRevelado` | static | `bool` | `int enemigoId` | 49 |
 
 ## `Assets/_Project/Scripts/Core/Loc.cs`
 
@@ -754,9 +779,9 @@
 | `CrearAnimator` | static | `AnimatorController` | — | 70 |
 | `AjustarTiemposDeSalto` | static | `void` | `AnimatorState arriba, AnimatorState aire, AnimatorState abajo, Animato` | 199 |
 | `AjustarSaltoEnControllerExistente` | static | `string` | — | 210 |
-| `CrearPrefabsDeProps` | static | `void` | — | 384 |
-| `MontarSoldados` | static | `void` | `AnimatorController ctrl` | 459 |
-| `PoblarEscena` | static | `void` | — | 753 |
+| `CrearPrefabsDeProps` | static | `void` | — | 387 |
+| `MontarSoldados` | static | `void` | `AnimatorController ctrl` | 462 |
+| `PoblarEscena` | static | `void` | — | 747 |
 
 ## `Assets/_Project/Scripts/Editor/ArtSetup.cs`
 
@@ -803,6 +828,16 @@
 | `Generar` | static | `void` | — | 31 |
 | `Analizar` | static | `List<Fila>` | — | 47 |
 
+## `Assets/_Project/Scripts/Editor/AuditoriaDeColliders.cs`
+
+**Tipos:** `class AuditoriaDeColliders`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Auditar` | static | `void` | — | 11 |
+
 ## `Assets/_Project/Scripts/Editor/BalanceBench.cs`
 
 **Tipos:** `class BalanceBench`, `struct Resultado`
@@ -824,7 +859,29 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `VestirEscenaAbierta` | static | `void` | — | 44 |
+| `VestirEscenaAbierta` | static | `void` | — | 67 |
+| `GenerarCollidersDeArbolMenu` | static | `void` | — | 392 |
+| `AgregarColliderYDestruccion` | static | `void` | `GameObject inst, bool esDestructible, int vida, bool esBarril` | 775 |
+
+## `Assets/Editor/BuildAndPack.cs`
+
+**Tipos:** `class BuildAndPack`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Run` | static | `void` | — | 11 |
+
+## `Assets/_Project/Scripts/Editor/CinematicaIntroBuilder.cs`
+
+**Tipos:** `class CinematicaIntroBuilder`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Construir` | static | `void` | — | 19 |
 
 ## `Assets/_Project/Scripts/Editor/CliBuilder.cs`
 
@@ -849,6 +906,16 @@
 | `BuildWebGL` | static | `void` | — | 30 |
 | `BuildWebGLDesdeEditor` | static | `string` | — | 50 |
 
+## `Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fase23.cs`
+
+**Tipos:** `class HeadlessTestRunner`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `RunPhase23` | static | `void` | `SP.Player.PlayerInputDriver inputDriver, SP.Vehicles.Vehicle vehicle, ` | 10 |
+
 ## `Assets/_Project/Scripts/Editor/HeadlessTestRunner.cs`
 
 **Tipos:** `class HeadlessTestRunner`, `struct BenchResult`, `struct StressResult`
@@ -866,6 +933,16 @@
 | `BuildDemoScene` | static | `void` | — | 704 |
 
 **Propiedades:** `LastBenchmarkCsv`, `LastEquivalenceMismatches`, `LastProjectileMs`, `FailedCheckCount`, `FailedCheckMessages`
+
+## `Assets/Editor/HeliFix.cs`
+
+**Tipos:** `class HeliFix`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Fix` | static | `void` | — | 4 |
 
 ## `Assets/_Project/Scripts/Editor/LevelBlockoutBuilder.cs`
 
@@ -886,7 +963,7 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `BuildLoadingScene` | static | `void` | — | 25 |
-| `RegisterInBuildSettings` | static | `void` | — | 104 |
+| `RegisterInBuildSettings` | static | `void` | — | 122 |
 
 ## `Assets/_Project/Scripts/Editor/MenuSceneBuilder.cs`
 
@@ -908,6 +985,16 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Construir` | static | `void` | — | 17 |
+
+## `Assets/_Project/Scripts/Editor/MissionFlowTestRunner.cs`
+
+**Tipos:** `class MissionFlowTestRunner`, `class MissionFlowTestBehaviour`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `ProbarFlujoCompleto` | static | `void` | — | 28 |
 
 ## `Assets/_Project/Scripts/Editor/MonedaMunicionBuilder.cs`
 
@@ -992,6 +1079,7 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Migrar` | static | `void` | — | 30 |
+| `SimplificarConIconos` | static | `void` | — | 103 |
 
 ## `Assets/_Project/Scripts/Editor/SkinTransfer.cs`
 
@@ -1071,6 +1159,17 @@
 |---|---|---|---|---|
 | `BuildAll` | static | `void` | — | 33 |
 
+## `Assets/_Project/Scripts/Editor/WeaponStatusUiPipeline.cs`
+
+**Tipos:** `class WeaponStatusUiPipeline`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Simplificar` | static | `void` | — | 29 |
+| `ConstruirLayoutCompleto` | static | `void` | `GameObject panel` | 53 |
+
 ## `Assets/_Project/Scripts/Editor/WorldArtPipeline.cs`
 
 **Tipos:** `class WorldArtPipeline`, `enum Volumen`, `struct ReglaCategoria`, `struct Plantado`
@@ -1083,6 +1182,20 @@
 | `ArmarPrefabs` | static | `void` | — | 231 |
 | `ReemplazarEnEscena` | static | `void` | — | 315 |
 | `AplicarVisualesVehiculo` | static | `void` | `GameObject veh` | 553 |
+| `RepintarPisoEnEscena` | static | `void` | — | 641 |
+
+## `Assets/_Project/Scripts/Mision/CinematicaDeIntro.cs`
+
+**Tipos:** `class CinematicaDeIntro`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Iniciar` |  | `void` | `PlayerInputDriver driver, CinematicaIntroPath ruta, System.Action alTe` | 31 |
+| `Saltar` |  | `void` | — | 42 |
+
+**Propiedades:** `EnCurso`, `Terminada`, `WaypointActual`
 
 ## `Assets/_Project/Scripts/Mision/CinematicaDeVictoria.cs`
 
@@ -1096,18 +1209,29 @@
 
 **Propiedades:** `EnCurso`, `Terminada`, `SoldadosDeLaHorda`, `TracerasDisparadas`, `Tiempo`, `Plano`
 
-## `Assets/_Project/Scripts/Mision/EstadoDePartida.cs`
+## `Assets/_Project/Scripts/Mision/CinematicaIntroPath.cs`
 
-**Tipos:** `class EstadoDePartida`
+**Tipos:** `class CinematicaIntroPath`
 
 **Metodos publicos**
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Reiniciar` | static | `void` | — | 32 |
-| `Tick` | static | `void` | `float dt` | 39 |
+| `Reconectar` |  | `void` | — | 23 |
 
-**Propiedades:** `SinVivos`, `CalmaAcumulada`, `Revivio`, `Perdio`
+## `Assets/_Project/Scripts/Mision/EstadoDePartida.cs`
+
+**Tipos:** `enum CausaDeDerrota`, `class EstadoDePartida`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Reiniciar` | static | `void` | — | 41 |
+| `Tick` | static | `void` | `float dt` | 48 |
+| `RegistrarDerrotaExterna` | static | `void` | `CausaDeDerrota causa` | 109 |
+
+**Propiedades:** `SinVivos`, `CalmaAcumulada`, `Revivio`, `Perdio`, `Causa`
 
 ## `Assets/_Project/Scripts/Mision/Helicoptero.cs`
 
@@ -1117,7 +1241,7 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Alerta` |  | `void` | `bool on` | 51 |
+| `Alerta` |  | `void` | `bool on` | 68 |
 
 **Propiedades:** `Instancia`, `Vueltas`, `EnAlerta`, `DisparaCobertura`, `DisparosHechos`, `Volando`, `ClipDeRotor`
 
@@ -1129,14 +1253,14 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `PosicionDelJugador` |  | `Vector3` | — | 114 |
-| `PuntoObjetivoActual` |  | `Vector3` | — | 134 |
-| `DistanciaAlObjetivo` |  | `float` | — | 145 |
-| `CrearEnemigo` |  | `Soldier` | `string nombre, Vector3 pos, float yaw = 180f` | 211 |
-| `Perder` |  | `void` | `string motivo` | 551 |
-| `SaltarAFase` |  | `void` | `FaseDeMision f` | 562 |
+| `PosicionDelJugador` |  | `Vector3` | — | 154 |
+| `PuntoObjetivoActual` |  | `Vector3` | — | 174 |
+| `DistanciaAlObjetivo` |  | `float` | — | 185 |
+| `CrearEnemigo` |  | `Soldier` | `string nombre, Vector3 pos, float yaw = 180f` | 251 |
+| `Perder` |  | `void` | `string motivo` | 687 |
+| `SaltarAFase` |  | `void` | `FaseDeMision f` | 705 |
 
-**Propiedades:** `Instancia`, `Activo`, `Fase`, `Restante`, `Civil`, `CivilRescatado`, `Heli`, `OleadasLanzadas`, `SoldadosGenerados`, `TensionSonando`
+**Propiedades:** `Instancia`, `Activo`, `ProgresoRescate`, `Fase`, `Restante`, `Civil`, `CivilRescatado`, `Heli`, `OleadasLanzadas`, `SoldadosGenerados`, `TensionSonando`
 
 ## `Assets/_Project/Scripts/Mision/MisionHud.cs`
 
@@ -1146,8 +1270,8 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Crear` | static | `MisionHud` | `MisionDirector d` | 20 |
-| `Refrescar` |  | `void` | — | 95 |
+| `Crear` | static | `MisionHud` | `MisionDirector d` | 21 |
+| `Refrescar` |  | `void` | — | 103 |
 
 **Propiedades:** `TextoTitulo`, `TextoDetalle`, `TextoDificultad`
 
@@ -1176,7 +1300,7 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Evaluate` |  | `AimResult` | `Ray ray, Soldier excludeSelf` | 38 |
-| `PisoBajoRayo` | static | `bool` | `Ray ray, out Vector3 punto` | 147 |
+| `PisoBajoRayo` | static | `bool` | `Ray ray, out Vector3 punto` | 166 |
 
 **Propiedades:** `MaxDistance`
 
@@ -1221,18 +1345,18 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Get` | static | `Key` | `string actionId` | 120 |
-| `Set` | static | `string` | `string actionId, Key key` | 126 |
-| `ResetToDefaults` | static | `void` | — | 150 |
-| `InvalidateCache` | static | `void` | — | 162 |
-| `WasPressed` | static | `bool` | `string actionId` | 170 |
-| `IsPressed` | static | `bool` | `string actionId` | 179 |
-| `WasTapped` | static | `bool` | `string actionId, float holdSeconds = 0.3f` | 195 |
-| `IsHeld` | static | `bool` | `string actionId, float holdSeconds = 0.3f` | 213 |
-| `HeldSeconds` | static | `float` | `string actionId` | 233 |
-| `ForzarInicioDePulsacion` | static | `void` | `string actionId, float segundos` | 248 |
-| `HayPulsacionRegistrada` | static | `bool` | `string actionId, float holdSeconds` | 253 |
-| `DisplayName` | static | `string` | `string actionId` | 259 |
+| `Get` | static | `Key` | `string actionId` | 124 |
+| `Set` | static | `string` | `string actionId, Key key` | 130 |
+| `ResetToDefaults` | static | `void` | — | 154 |
+| `InvalidateCache` | static | `void` | — | 166 |
+| `WasPressed` | static | `bool` | `string actionId` | 174 |
+| `IsPressed` | static | `bool` | `string actionId` | 183 |
+| `WasTapped` | static | `bool` | `string actionId, float holdSeconds = 0.3f` | 199 |
+| `IsHeld` | static | `bool` | `string actionId, float holdSeconds = 0.3f` | 217 |
+| `HeldSeconds` | static | `float` | `string actionId` | 237 |
+| `ForzarInicioDePulsacion` | static | `void` | `string actionId, float segundos` | 252 |
+| `HayPulsacionRegistrada` | static | `bool` | `string actionId, float holdSeconds` | 257 |
+| `DisplayName` | static | `string` | `string actionId` | 263 |
 
 **Propiedades:** `AllActions`
 
@@ -1256,7 +1380,7 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Crear` | static | `MunicionPickup` | `Vector3 pos` | 32 |
+| `Crear` | static | `MunicionPickup` | `Vector3 pos` | 30 |
 
 ## `Assets/_Project/Scripts/Player/OrdenesDeEscuadra.cs`
 
@@ -1386,9 +1510,11 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `ResolverGestoDeQ` |  | `void` | `bool toque, bool sostenido, bool sigueApretada` | 48 |
-| `DestinatariosDeOrden` |  | `List<Soldier>` | — | 137 |
-| `EjecutarOrdenDelMenu` |  | `bool` | `int opcion` | 155 |
-| `EjecutarOrdenRadial` |  | `bool` | `int categoria, int sub = 0` | 220 |
+| `DestinatariosDeOrden` |  | `List<Soldier>` | — | 148 |
+| `EjecutarOrdenDelMenu` |  | `bool` | `int opcion` | 166 |
+| `EjecutarOrdenRadial` |  | `bool` | `int categoria, int sub = 0` | 231 |
+| `UsarTorreta` |  | `bool` | `TorretaFija t` | 542 |
+| `SalirDeTorreta` |  | `void` | — | 569 |
 
 **Propiedades:** `RadialAbierto`
 
@@ -1427,29 +1553,27 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `MostrarProgresoDemolicion` |  | `void` | `float f01` | 308 |
-| `OcultarProgresoDemolicion` |  | `void` | — | 309 |
-| `SetDestination` |  | `void` | `Vector3 punto` | 445 |
-| `CancelDestination` |  | `void` | — | 467 |
-| `ToggleVehicleCameraView` |  | `void` | — | 469 |
-| `ShowTutorialMessage` |  | `void` | `string text, float holdSeconds = 1.4f` | 478 |
-| `ReclamarControl` |  | `void` | `Soldier s` | 808 |
-| `TryRevivir` |  | `bool` | `Soldier caido, bool sostenidoLoSuficiente` | 1555 |
-| `TryResolverCobertura` |  | `bool` | `AimResult r, out Vector3 punto, out Collider dueno` | 1834 |
-| `IssueCoverOrderT` |  | `bool` | `Vector3 punto, Collider dueno` | 1871 |
-| `IssueCoverOrderForSelection` |  | `int` | `IReadOnlyList<Soldier> seleccion, Vector3 puntoApuntado, Transform obs` | 1895 |
-| `SubirATodos` |  | `int` | `Vehicle v` | 1924 |
-| `BajarATodos` |  | `int` | `Vehicle v` | 1945 |
-| `IssueGroundOrderT` |  | `void` | `Vector3 punto, bool shiftHeld` | 1990 |
-| `GOrderOnVehicle` |  | `void` | `Vehicle vehicle` | 2100 |
-| `SoldadoUnicoSeleccionado` |  | `Soldier` | — | 2218 |
-| `TryPossess` |  | `bool` | `Soldier target` | 2232 |
-| `EquipSlot` |  | `void` | `int slot` | 2380 |
-| `EquipWeaponHotkey` |  | `void` | `WeaponKind kind` | 2404 |
-| `TryIssueVehicleMoveOrder` |  | `bool` | `Vector3 point, Vehicle vehicle = null` | 2430 |
-| `UsarTorreta` |  | `bool` | `TorretaFija t` | 2541 |
-| `SalirDeTorreta` |  | `void` | — | 2568 |
-| `ConstruirContextoRadial` |  | `ContextoRadial` | `AimResult aim` | 2622 |
+| `MostrarProgresoDemolicion` |  | `void` | `float f01` | 314 |
+| `OcultarProgresoDemolicion` |  | `void` | — | 315 |
+| `SetDestination` |  | `void` | `Vector3 punto` | 451 |
+| `CancelDestination` |  | `void` | — | 473 |
+| `ToggleVehicleCameraView` |  | `void` | — | 475 |
+| `ShowTutorialMessage` |  | `void` | `string text, float holdSeconds = 1.4f` | 484 |
+| `ReclamarControl` |  | `void` | `Soldier s` | 845 |
+| `TryRevivir` |  | `bool` | `Soldier caido, bool sostenidoLoSuficiente` | 1606 |
+| `TryResolverCobertura` |  | `bool` | `AimResult r, out Vector3 punto, out Collider dueno` | 1885 |
+| `IssueCoverOrderT` |  | `bool` | `Vector3 punto, Collider dueno` | 1922 |
+| `IssueCoverOrderForSelection` |  | `int` | `IReadOnlyList<Soldier> seleccion, Vector3 puntoApuntado, Transform obs` | 1946 |
+| `SubirATodos` |  | `int` | `Vehicle v` | 1975 |
+| `BajarATodos` |  | `int` | `Vehicle v` | 1996 |
+| `IssueGroundOrderT` |  | `void` | `Vector3 punto, bool shiftHeld` | 2044 |
+| `GOrderOnVehicle` |  | `void` | `Vehicle vehicle` | 2178 |
+| `SoldadoUnicoSeleccionado` |  | `Soldier` | — | 2296 |
+| `TryPossess` |  | `bool` | `Soldier target` | 2310 |
+| `EquipSlot` |  | `void` | `int slot` | 2458 |
+| `EquipWeaponHotkey` |  | `void` | `WeaponKind kind` | 2482 |
+| `TryIssueVehicleMoveOrder` |  | `bool` | `Vector3 point, Vehicle vehicle = null` | 2508 |
+| `ConstruirContextoRadial` |  | `ContextoRadial` | `AimResult aim` | 2633 |
 
 **Propiedades:** `LookSensitivity`, `TurretSensitivity`, `InvertLookY`, `UltimaMira`, `DemolicionEnCurso`, `GranadaApuntando`, `GranadasLanzadasPorElJugador`, `Mira`, `ApuntadoVisual`, `TieneDestino`, `DestinoActual`, `IsHandlingDeath`, `EnTorretaFija`, `TorretaActual`
 
@@ -1495,16 +1619,16 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `SelectSingle` |  | `void` | `Soldier s` | 50 |
-| `AddToSelection` |  | `void` | `Soldier s` | 58 |
-| `SelectVehicle` |  | `void` | `Vehicle v` | 65 |
-| `SelectAll` |  | `void` | `IEnumerable<Soldier> squad` | 76 |
-| `SelectWoundedOnly` |  | `bool` | `float threshold01 = 0.5f` | 92 |
-| `IsWounded` | static | `bool` | `int current, int max, float threshold01` | 132 |
-| `SelectSameTypeOnScreen` |  | `void` | `Soldier reference, Camera cam` | 150 |
-| `Clear` |  | `void` | — | 217 |
+| `SelectSingle` |  | `void` | `Soldier s` | 56 |
+| `AddToSelection` |  | `void` | `Soldier s` | 64 |
+| `SelectVehicle` |  | `void` | `Vehicle v` | 71 |
+| `SelectAll` |  | `void` | `IEnumerable<Soldier> squad` | 82 |
+| `SelectWoundedOnly` |  | `bool` | `float threshold01 = 0.5f` | 98 |
+| `IsWounded` | static | `bool` | `int current, int max, float threshold01` | 138 |
+| `SelectSameTypeOnScreen` |  | `void` | `Soldier reference, Camera cam` | 156 |
+| `Clear` |  | `void` | — | 223 |
 
-**Propiedades:** `Selected`, `SelectedVehicle`
+**Propiedades:** `Instance`, `Selected`, `SelectedVehicle`
 
 ## `Assets/_Project/Scripts/Player/TrazadoDeCamino.cs`
 
@@ -1577,29 +1701,30 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `GainFor` | static | `float` | `SfxChannel c` | 87 |
-| `SetGain` | static | `void` | `SfxChannel c, float v` | 95 |
-| `InvalidateGainCache` | static | `void` | — | 107 |
-| `Attenuation` | static | `float` | `float distance` | 127 |
-| `CutoffFor` | static | `float` | `float distance` | 142 |
-| `NextPitch` | static | `float` | — | 162 |
-| `SelectVictim` | static | `int` | `VoiceState[] voices, float newAudibility, float now` | 188 |
-| `SonoRecien` | static | `bool` | `string nombreDeClip, int ultimos = 12` | 243 |
-| `EnsureVoices` |  | `void` | — | 270 |
-| `Play` |  | `void` | `SfxKind kind, Vector3 position, float volume, float priority` | 378 |
-| `Play` |  | `void` | `SfxKind kind, Vector3 position, float volume` | 383 |
-| `PlayClip` |  | `bool` | `AudioClip clip, Vector3 position, float volume, float priority` | 390 |
-| `PlayClip` |  | `bool` | `AudioClip clip, Vector3 position, float volume, float priority, SfxCha` | 396 |
-| `PlayFlat` |  | `bool` | `AudioClip clip, SfxChannel channel, float volume, float priority` | 455 |
-| `PlayUi` |  | `bool` | `SfxKind kind, float volume, float priority` | 494 |
-| `PlayVoice` |  | `bool` | `SfxKind kind, float volume, float priority` | 500 |
-| `PlayAt` | static | `bool` | `SfxKind kind, Vector3 position, float volume, float priority = 1f` | 507 |
-| `PlayClipAt` | static | `bool` | `AudioClip clip, Vector3 position, float volume, float priority = 1f` | 510 |
-| `PlayUi2D` | static | `bool` | `SfxKind kind, float volume, float priority = 1f` | 513 |
-| `PlayVoice2D` | static | `bool` | `SfxKind kind, float volume, float priority = 1f` | 516 |
-| `DistanceOrUnknown` | static | `float` | `Transform listener, Vector3 position` | 519 |
-| `Ocluido` |  | `bool` | `Vector3 position` | 527 |
-| `ResetStats` |  | `void` | — | 633 |
+| `GainFor` | static | `float` | `SfxChannel c` | 89 |
+| `SetGain` | static | `void` | `SfxChannel c, float v` | 98 |
+| `SetMasterGain` | static | `void` | `float v` | 107 |
+| `InvalidateGainCache` | static | `void` | — | 114 |
+| `Attenuation` | static | `float` | `float distance` | 135 |
+| `CutoffFor` | static | `float` | `float distance` | 150 |
+| `NextPitch` | static | `float` | — | 170 |
+| `SelectVictim` | static | `int` | `VoiceState[] voices, float newAudibility, float now` | 196 |
+| `SonoRecien` | static | `bool` | `string nombreDeClip, int ultimos = 12` | 251 |
+| `EnsureVoices` |  | `void` | — | 278 |
+| `Play` |  | `void` | `SfxKind kind, Vector3 position, float volume, float priority` | 386 |
+| `Play` |  | `void` | `SfxKind kind, Vector3 position, float volume` | 391 |
+| `PlayClip` |  | `bool` | `AudioClip clip, Vector3 position, float volume, float priority` | 398 |
+| `PlayClip` |  | `bool` | `AudioClip clip, Vector3 position, float volume, float priority, SfxCha` | 404 |
+| `PlayFlat` |  | `bool` | `AudioClip clip, SfxChannel channel, float volume, float priority` | 463 |
+| `PlayUi` |  | `bool` | `SfxKind kind, float volume, float priority` | 502 |
+| `PlayVoice` |  | `bool` | `SfxKind kind, float volume, float priority` | 508 |
+| `PlayAt` | static | `bool` | `SfxKind kind, Vector3 position, float volume, float priority = 1f` | 515 |
+| `PlayClipAt` | static | `bool` | `AudioClip clip, Vector3 position, float volume, float priority = 1f` | 518 |
+| `PlayUi2D` | static | `bool` | `SfxKind kind, float volume, float priority = 1f` | 521 |
+| `PlayVoice2D` | static | `bool` | `SfxKind kind, float volume, float priority = 1f` | 524 |
+| `DistanceOrUnknown` | static | `float` | `Transform listener, Vector3 position` | 527 |
+| `Ocluido` |  | `bool` | `Vector3 position` | 535 |
+| `ResetStats` |  | `void` | — | 641 |
 
 **Propiedades:** `Instance`, `DroppedCount`, `TotalReproducidos`, `UltimoSonidoTapado`, `VoiceCount`, `FreeVoiceCount`, `ActiveVoiceCount`, `Active3DVoiceCount`, `Active2DVoiceCount`
 
@@ -1651,8 +1776,9 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Bootstrap` |  | `void` | — | 52 |
-| `WriteTint` | static | `void` | `Renderer r, Color c` | 228 |
-| `ReadTint` | static | `Color` | `Renderer r` | 240 |
+| `ReiniciarActivo` | static | `void` | — | 91 |
+| `WriteTint` | static | `void` | `Renderer r, Color c` | 247 |
+| `ReadTint` | static | `Color` | `Renderer r` | 259 |
 
 ## `Assets/_Project/Scripts/Presentation/CuchilloFx.cs`
 
@@ -1677,7 +1803,7 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Aplicar` | static | `void` | `CursorTipo tipo` | 16 |
-| `Restaurar` | static | `void` | — | 28 |
+| `Restaurar` | static | `void` | — | 32 |
 
 **Propiedades:** `Actual`
 
@@ -1712,6 +1838,18 @@
 | `ResetIfStale` | static | `void` | — | 25 |
 | `ClearAll` | static | `void` | — | 46 |
 | `Spawn` | static | `GameObject` | `DecalKind kind, Vector3 position, Vector3 normal, float size` | 77 |
+
+## `Assets/_Project/Scripts/Presentation/DiamondGizmo.cs`
+
+**Tipos:** `class DiamondGizmo`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `CrearCara` | static | `GameObject` | `string nombre, Transform padre, float tamano, Material mat` | 68 |
+| `NuevoMaterial` | static | `Material` | `Color color, bool zTestAlways = false` | 114 |
+| `NuevoMaterialConEngranaje` | static | `Material` | `Color color` | 183 |
 
 ## `Assets/_Project/Scripts/Presentation/EnemyAlertIndicatorView.cs`
 
@@ -1780,11 +1918,11 @@
 |---|---|---|---|---|
 | `ReiniciarActivo` | static | `void` | — | 19 |
 | `Registrar` |  | `void` | — | 20 |
-| `Bind` |  | `void` | `GameObject victory, GameObject defeat` | 49 |
-| `ShowVictory` |  | `void` | — | 148 |
-| `ShowDefeat` |  | `void` | — | 161 |
-| `OnRetryClicked` |  | `void` | — | 180 |
-| `OnExitClicked` |  | `void` | — | 189 |
+| `Bind` |  | `void` | `GameObject victory, GameObject defeat` | 50 |
+| `ShowVictory` |  | `void` | — | 171 |
+| `ShowDefeat` |  | `void` | `string motivo = null` | 188 |
+| `OnRetryClicked` |  | `void` | — | 208 |
+| `OnExitClicked` |  | `void` | — | 217 |
 
 **Propiedades:** `Activo`, `IsShowing`
 
@@ -1831,6 +1969,19 @@
 
 **Propiedades:** `LodAllowed`
 
+## `Assets/_Project/Scripts/Presentation/HudIconFactory.cs`
+
+**Tipos:** `class HudIconFactory`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Cuchillo` | static | `Sprite` | — | 17 |
+| `Granada` | static | `Sprite` | — | 18 |
+| `Reloj` | static | `Sprite` | — | 19 |
+| `Escudo` | static | `Sprite` | — | 20 |
+
 ## `Assets/_Project/Scripts/Presentation/ImpactCubes.cs`
 
 **Tipos:** `enum ImpactSurface`, `class ImpactCubes`
@@ -1869,6 +2020,27 @@
 
 **Propiedades:** `Budget`, `ActiveCount`, `Budget`, `ActiveCount`, `TotalCount`
 
+## `Assets/_Project/Scripts/Presentation/InteractGearMarker.cs`
+
+**Tipos:** `class InteractGearMarker`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Mostrar` | static | `void` | `Vector3 ancla, bool destacado` | 69 |
+| `Ocultar` | static | `void` | — | 97 |
+
+## `Assets/_Project/Scripts/Presentation/InteractableDiamond.cs`
+
+**Tipos:** `class InteractableDiamond`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Agregar` | static | `InteractableDiamond` | `Transform padre, Vector3 localOffset, Color color` | 11 |
+
 ## `Assets/_Project/Scripts/Presentation/KillCylinderFx.cs`
 
 **Tipos:** `class KillCylinderFx`
@@ -1878,10 +2050,10 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `ResetIfStale` | static | `void` | — | 33 |
-| `Spawn` | static | `void` | `Vector3 position` | 145 |
-| `Prewarm` | static | `void` | — | 152 |
-| `LimpiarTodo` | static | `void` | — | 171 |
-| `Recycle` |  | `void` | — | 239 |
+| `Spawn` | static | `void` | `Vector3 position` | 147 |
+| `Prewarm` | static | `void` | — | 154 |
+| `LimpiarTodo` | static | `void` | — | 173 |
+| `Recycle` |  | `void` | — | 241 |
 
 **Propiedades:** `Budget`, `ActiveCount`, `TotalCount`
 
@@ -1920,6 +2092,16 @@
 | `Limpiar` | static | `int` | — | 50 |
 | `ContarHuerfanos` | static | `int` | — | 104 |
 
+## `Assets/_Project/Scripts/Presentation/Luminaria.cs`
+
+**Tipos:** `class Luminaria`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `TakeDamage` |  | `void` | `int amount, Vector3 hitPoint` | 11 |
+
 ## `Assets/_Project/Scripts/Presentation/MainMenuController.cs`
 
 **Tipos:** `class MainMenuController`
@@ -1948,6 +2130,18 @@
 
 **Propiedades:** `Existe`
 
+## `Assets/_Project/Scripts/Presentation/MinimapAttackerRings.cs`
+
+**Tipos:** `class MinimapAttackerRings`, `class RingState`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `ReiniciarActivo` | static | `void` | — | 12 |
+
+**Propiedades:** `Activo`
+
 ## `Assets/_Project/Scripts/Presentation/MinimapIcon.cs`
 
 **Tipos:** `class MinimapIcon`
@@ -1956,16 +2150,21 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `EnableFogOfWar` |  | `void` | — | 47 |
-| `TickFollow` |  | `bool` | — | 93 |
-| `ApplyFog` |  | `void` | `bool spotted` | 112 |
-| `EnableDirectionMarker` |  | `void` | `int layer, float iconRadius` | 172 |
-| `ConvertirEnTriangulo` |  | `bool` | — | 177 |
-| `ConvertirEnCuadrado` |  | `bool` | — | 230 |
-| `RegistrarObstaculos` | static | `int` | `Color color, float radius = 1.4f` | 253 |
-| `Spawn` | static | `MinimapIcon` | `Transform target, Color color, int layer, float radius = 1.6f` | 290 |
+| `EnableFogOfWar` |  | `void` | — | 61 |
+| `RepintarPorEquipo` |  | `void` | `bool forzar = false` | 117 |
+| `TickFollow` |  | `bool` | — | 183 |
+| `ApplyFog` |  | `void` | `bool spotted` | 213 |
+| `EnableDirectionMarker` |  | `void` | `int layer, float iconRadius` | 279 |
+| `ConvertirEnTriangulo` |  | `bool` | — | 284 |
+| `ConvertirEnTrianguloAnidado` |  | `bool` | `Color colorInterior` | 334 |
+| `ConvertirEnCirculo` |  | `bool` | — | 403 |
+| `ConvertirEnRombo` |  | `bool` | — | 439 |
+| `ConvertirEnCuadrado` |  | `bool` | — | 485 |
+| `RegistrarVehiculosLibres` | static | `int` | — | 511 |
+| `RegistrarObstaculos` | static | `int` | `Color color, float radius = 1.4f` | 532 |
+| `Spawn` | static | `MinimapIcon` | `Transform target, Color color, int layer, float radius = 1.6f` | 569 |
 
-**Propiedades:** `FogEnabled`, `IsRendered`, `TargetPosition`, `EsCuadrado`
+**Propiedades:** `Target`, `FogEnabled`, `IsRendered`, `TargetPosition`, `EsCuadrado`
 
 ## `Assets/_Project/Scripts/Presentation/MiraOptica.cs`
 
@@ -1976,9 +2175,9 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Asegurar` | static | `MiraOptica` | `Transform camaraPrincipal, Transform visorDelArma` | 40 |
-| `Configurar` |  | `void` | `WeaponKind arma` | 106 |
-| `Mostrar` |  | `void` | `bool apuntando` | 140 |
-| `Seguir` |  | `void` | `Camera principal, float fovObjetivo` | 156 |
+| `Configurar` |  | `void` | `WeaponKind arma` | 107 |
+| `Mostrar` |  | `void` | `bool apuntando` | 141 |
+| `Seguir` |  | `void` | `Camera principal, float fovObjetivo` | 157 |
 
 **Propiedades:** `Optica`, `Textura`, `Tubo`, `Forma`, `Amplia`
 
@@ -2020,6 +2219,16 @@
 | `Actualizar` |  | `void` | `Vector3 origenJugador, Vector3 objetivo` | 37 |
 | `Ocultar` |  | `void` | — | 68 |
 
+## `Assets/_Project/Scripts/Presentation/ObjectiveDiamondMarker.cs`
+
+**Tipos:** `class ObjectiveDiamondMarker`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Crear` | static | `ObjectiveDiamondMarker` | `System.Func<Vector3> obtenerPunto` | 34 |
+
 ## `Assets/_Project/Scripts/Presentation/ObstacleMarker.cs`
 
 **Tipos:** `class ObstacleMarker`
@@ -2052,20 +2261,32 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `ResetIfStale` | static | `void` | — | 63 |
-| `LimpiarTodo` | static | `void` | — | 192 |
-| `RecycleAll` | static | `void` | — | 212 |
-| `Spawn` | static | `void` | `Vector3 position, Color color, int orderIndex, float duration = 0.6f` | 274 |
-| `Spawn` | static | `void` | `Vector3 position, Color color, float duration = 0.6f` | 283 |
-| `ClearQueuedMarkers` | static | `void` | — | 294 |
-| `SpawnPlan` | static | `OrderMarkerFx` | `Vector3 position, Color color, int orderIndex` | 326 |
-| `ReleasePlan` | static | `void` | `OrderMarkerFx m` | 336 |
-| `HayOrdenPendienteEn` | static | `bool` | `Vector3 punto` | 356 |
-| `PurgarCompletados` | static | `int` | — | 382 |
-| `Prewarm` | static | `void` | — | 407 |
-| `Recycle` |  | `void` | — | 556 |
+| `ResetIfStale` | static | `void` | — | 66 |
+| `LimpiarTodo` | static | `void` | — | 231 |
+| `RecycleAll` | static | `void` | — | 251 |
+| `Spawn` | static | `void` | `Vector3 position, Color color, int orderIndex, float duration = 0.6f` | 313 |
+| `Spawn` | static | `void` | `Vector3 position, Color color, float duration = 0.6f` | 322 |
+| `ClearQueuedMarkers` | static | `void` | — | 333 |
+| `SpawnPlan` | static | `OrderMarkerFx` | `Vector3 position, Color color, int orderIndex` | 365 |
+| `ReleasePlan` | static | `void` | `OrderMarkerFx m` | 375 |
+| `HayOrdenPendienteEn` | static | `bool` | `Vector3 punto` | 395 |
+| `PurgarCompletados` | static | `int` | — | 421 |
+| `Prewarm` | static | `void` | — | 446 |
+| `Recycle` |  | `void` | — | 621 |
 
 **Propiedades:** `Budget`, `ActiveCount`, `TotalCount`
+
+## `Assets/_Project/Scripts/Presentation/ParticleMaterialFactory.cs`
+
+**Tipos:** `class ParticleMaterialFactory`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `CreateTransparent` | static | `Material` | `Color color, Texture2D textura = null` | 36 |
+| `MallaEsfera` | static | `Mesh` | — | 89 |
+| `MallaCubo` | static | `Mesh` | — | 122 |
 
 ## `Assets/_Project/Scripts/Presentation/PatrolRouteLine.cs`
 
@@ -2075,7 +2296,7 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Spawn` | static | `PatrolRouteLine` | `Vector3[] points, Color color, float height = 0.05f` | 31 |
+| `Spawn` | static | `PatrolRouteLine` | `Vector3[] points, Color color, float height = 0.05f` | 36 |
 
 **Propiedades:** `Markers`
 
@@ -2088,21 +2309,31 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Bind` |  | `void` | `GameObject pause, GameObject settings` | 49 |
-| `ShowPause` |  | `void` | — | 302 |
-| `OnContinueClicked` |  | `void` | — | 326 |
-| `OnSettingsClicked` |  | `void` | — | 345 |
-| `OnSettingsBackClicked` |  | `void` | — | 356 |
-| `ToggleControlsOverlay` |  | `void` | — | 381 |
-| `OnControlsClicked` |  | `void` | — | 391 |
-| `OnControlsBackClicked` |  | `void` | — | 400 |
-| `OnRebindClicked` |  | `void` | — | 409 |
-| `OnRebindBackClicked` |  | `void` | — | 418 |
-| `OnRebindResetClicked` |  | `void` | — | 426 |
-| `OnMenuClicked` |  | `void` | — | 439 |
-| `OnConfirmExitNo` |  | `void` | — | 445 |
-| `OnConfirmExitYes` |  | `void` | — | 452 |
+| `ShowPause` |  | `void` | — | 300 |
+| `OnContinueClicked` |  | `void` | — | 324 |
+| `OnSettingsClicked` |  | `void` | — | 343 |
+| `OnSettingsBackClicked` |  | `void` | — | 354 |
+| `ToggleControlsOverlay` |  | `void` | — | 379 |
+| `OnControlsClicked` |  | `void` | — | 389 |
+| `OnControlsBackClicked` |  | `void` | — | 398 |
+| `OnRebindClicked` |  | `void` | — | 407 |
+| `OnRebindBackClicked` |  | `void` | — | 416 |
+| `OnRebindResetClicked` |  | `void` | — | 424 |
+| `OnMenuClicked` |  | `void` | — | 437 |
+| `OnConfirmExitNo` |  | `void` | — | 443 |
+| `OnConfirmExitYes` |  | `void` | — | 450 |
 
 **Propiedades:** `IsPaused`, `IsControlsOverlayOpen`
+
+## `Assets/_Project/Scripts/Presentation/PisoInteractableHighlight.cs`
+
+**Tipos:** `class PisoInteractableHighlight`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Agregar` | static | `PisoInteractableHighlight` | `Transform objetivo, float radio, float yOffsetAlPiso = -0.4f` | 29 |
 
 ## `Assets/_Project/Scripts/Presentation/PossessedMarkerView.cs`
 
@@ -2162,6 +2393,34 @@
 
 **Propiedades:** `IsVisible`
 
+## `Assets/_Project/Scripts/Presentation/RoleIconFactory.cs`
+
+**Tipos:** `class RoleIconFactory`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `For` | static | `Sprite` | `RoleType role` | 21 |
+| `WorldIconTexture` | static | `Texture2D` | `RoleType role` | 49 |
+| `WorldIconTextureForWeapon` | static | `Texture2D` | `WeaponKind kind` | 73 |
+
+## `Assets/_Project/Scripts/Presentation/RomboVisibilidad.cs`
+
+**Tipos:** `class RomboVisibilidad`
+
+**Propiedades:** `Suprimidos`
+
+## `Assets/_Project/Scripts/Presentation/RutaAlObjetivo.cs`
+
+**Tipos:** `class RutaAlObjetivo`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Crear` | static | `RutaAlObjetivo` | — | 22 |
+
 ## `Assets/_Project/Scripts/Presentation/SafeMaterial.cs`
 
 **Tipos:** `class SafeMaterial`
@@ -2172,6 +2431,16 @@
 |---|---|---|---|---|
 | `Create` | static | `Material` | `Color color` | 77 |
 | `CreateShared` | static | `Material` | — | 108 |
+
+## `Assets/_Project/Scripts/Presentation/SafeMaterialTint.cs`
+
+**Tipos:** `class SafeMaterialTint`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `SetColor` |  | `void` | `Color c` | 23 |
 
 ## `Assets/_Project/Scripts/Presentation/SelectionRingFx.cs`
 
@@ -2185,7 +2454,7 @@
 | `SetColor` |  | `void` | `Color c` | 48 |
 | `ResetSpawnCount` | static | `void` | — | 64 |
 | `Spawn` | static | `SelectionRingFx` | `Transform target, Color color, float radius = 0.75f` | 66 |
-| `FlashAcknowledge` |  | `void` | — | 100 |
+| `FlashAcknowledge` |  | `void` | — | 101 |
 
 **Propiedades:** `SpawnCount`
 
@@ -2219,11 +2488,37 @@
 | `Desenfundar` | static | `AudioClip` | `WeaponKind arma` | 401 |
 | `GatilloVacio` | static | `AudioClip` | `WeaponKind arma` | 419 |
 
+## `Assets/_Project/Scripts/Presentation/ShapeMarkerFx.cs`
+
+**Tipos:** `class ShapeMarkerFx`, `class AnimadorFlecha`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `MatCirculo` | static | `Material` | `Color c` | 11 |
+| `MeshFlechaAbajo` | static | `Mesh` | — | 41 |
+| `CrearMarcador` | static | `GameObject` | `Color c, float radio, float escalaFlecha, float alturaFlecha = 1.2f` | 57 |
+
 ## `Assets/_Project/Scripts/Presentation/SoldierAnimatorDriver.cs`
 
 **Tipos:** `class SoldierAnimatorDriver`
 
 **Propiedades:** `PesoCapaDisparoActual`
+
+## `Assets/_Project/Scripts/Presentation/SparkleBurstFx.cs`
+
+**Tipos:** `class SparkleBurstFx`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Spawn` | static | `void` | `Vector3 position, Color color, float duration = 0.8f, float radius = 2` | 100 |
+| `Tick` | static | `void` | — | 140 |
+| `ClearAll` | static | `void` | — | 153 |
+
+**Propiedades:** `ActiveCount`
 
 ## `Assets/_Project/Scripts/Presentation/SpriteFx.cs`
 
@@ -2298,6 +2593,16 @@
 
 **Propiedades:** `CurrentText`, `IsVisible`
 
+## `Assets/_Project/Scripts/Presentation/UnitLocatorCylinder.cs`
+
+**Tipos:** `class UnitLocatorCylinder`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `ReiniciarActivo` | static | `void` | — | 79 |
+
 ## `Assets/_Project/Scripts/Presentation/VehicleFxReactor.cs`
 
 **Tipos:** `class VehicleFxReactor`, `class VehicleSmokePuff`
@@ -2318,8 +2623,8 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Create` | static | `VehicleMountIndicator` | — | 27 |
-| `Show` |  | `void` | `Vehicle vehicle, IEnumerable<Soldier> incomingAllies, bool puedeMontar` | 129 |
-| `Hide` |  | `void` | — | 149 |
+| `Show` |  | `void` | `Vehicle vehicle, IEnumerable<Soldier> incomingAllies, bool puedeMontar` | 131 |
+| `Hide` |  | `void` | — | 151 |
 
 **Propiedades:** `UltimoPuedeMontar`
 
@@ -2438,9 +2743,10 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `AlfaSegunDistanciaAMira` | static | `float` | `float distanciaPx` | 28 |
-| `Crear` | static | `TutorialBeacon` | `string texto, Color color, Vector3 posicion, Transform sigue = null, f` | 34 |
-| `QuitarTodas` | static | `void` | — | 47 |
-| `Quitar` |  | `void` | — | 54 |
+| `Crear` | static | `TutorialBeacon` | `string texto, Color color, Vector3 posicion, Transform sigue = null, f` | 38 |
+| `QuitarTodas` | static | `void` | — | 51 |
+| `Quitar` |  | `void` | — | 58 |
+| `OcultarColumna` |  | `void` | — | 71 |
 
 **Propiedades:** `Activas`, `Texto`, `AlfaEtiqueta`
 
@@ -2539,13 +2845,12 @@
 | `UpdateReloadCircle` |  | `void` | `SP.Combat.WeaponHolder weapon` | 195 |
 | `UpdateAmmoWarning` |  | `void` | `SP.Combat.WeaponHolder weapon` | 228 |
 | `SetVisible` |  | `void` | `bool visible` | 253 |
-| `Bind` |  | `void` | `Text prompt, Image cross` | 266 |
-| `BindSoldierInfo` |  | `void` | `GameObject panel, Text info` | 282 |
-| `BindVehicleInfo` |  | `void` | `GameObject panel, Image[] squares` | 297 |
-| `Initialize` |  | `void` | — | 305 |
-| `SetWatchedShooter` |  | `void` | `int soldierId` | 395 |
-| `UpdateFromAimResult` |  | `void` | `AimResult result` | 557 |
-| `PonerPromptContextual` |  | `void` | `string texto, bool destacado` | 650 |
+| `Bind` |  | `void` | `Text prompt, Image cross` | 268 |
+| `BindSoldierInfo` |  | `void` | `GameObject panel, Text info` | 284 |
+| `BindVehicleInfo` |  | `void` | `GameObject panel, Image[] squares` | 299 |
+| `Initialize` |  | `void` | — | 307 |
+| `SetWatchedShooter` |  | `void` | `int soldierId` | 397 |
+| `UpdateFromAimResult` |  | `void` | `AimResult result` | 559 |
 
 **Propiedades:** `CurrentAimTintColor`, `CurrentPrompt`, `IsVisible`, `CurrentPulseFrequency`
 
@@ -2561,20 +2866,18 @@
 | `SiguienteEscala` | static | `void` | — | 26 |
 | `PonerEscala` | static | `void` | `float e` | 31 |
 | `AplicarEscala` | static | `void` | — | 37 |
-| `Resoluciones` | static | `List<Resolution>` | — | 70 |
-| `IndiceResolucion` | static | `int` | — | 84 |
-| `TextoResolucion` | static | `string` | — | 92 |
-| `AlternarPantallaCompleta` | static | `void` | — | 94 |
-| `SiguienteResolucion` | static | `void` | — | 95 |
-| `AplicarPantalla` | static | `void` | — | 97 |
-| `TextoCalidad` | static | `string` | — | 106 |
-| `SiguienteCalidad` | static | `void` | — | 107 |
-| `PonerDaltonismo` | static | `void` | `bool v` | 116 |
-| `PonerHudMinimo` | static | `void` | `bool v` | 117 |
-| `Adaptar` | static | `Color` | `Color c` | 120 |
-| `Preparar` | static | `void` | `GameObject settingsPanel` | 137 |
-| `Refrescar` | static | `void` | `Transform extra` | 175 |
-| `AplicarHudMinimo` | static | `void` | `Transform canvas` | 224 |
+| `Resoluciones` | static | `List<Resolution>` | — | 69 |
+| `IndiceResolucion` | static | `int` | — | 83 |
+| `TextoResolucion` | static | `string` | — | 91 |
+| `AlternarPantallaCompleta` | static | `void` | — | 93 |
+| `SiguienteResolucion` | static | `void` | — | 94 |
+| `AplicarPantalla` | static | `void` | — | 96 |
+| `PonerDaltonismo` | static | `void` | `bool v` | 105 |
+| `PonerHudMinimo` | static | `void` | `bool v` | 106 |
+| `Adaptar` | static | `Color` | `Color c` | 109 |
+| `Preparar` | static | `void` | `GameObject settingsPanel` | 126 |
+| `Refrescar` | static | `void` | `Transform extra` | 214 |
+| `AplicarHudMinimo` | static | `void` | `Transform canvas` | 266 |
 
 **Propiedades:** `Daltonismo`, `HudMinimo`, `Escala`, `PantallaCompleta`
 
@@ -2621,6 +2924,28 @@
 | `OnPointerExit` |  | `void` | `PointerEventData eventData` | 58 |
 | `Attach` | static | `void` | `Button button` | 87 |
 
+## `Assets/_Project/Scripts/UI/CapasDeHud.cs`
+
+**Tipos:** `class CapasDeHud`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `ActivarModo` | static | `void` | `ControlMode modo` | 26 |
+
+**Propiedades:** `Instancia`
+
+## `Assets/_Project/Scripts/UI/CartelVolverView.cs`
+
+**Tipos:** `class CartelVolverView`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Crear` | static | `CartelVolverView` | — | 20 |
+
 ## `Assets/_Project/Scripts/UI/CirculoDeProgreso.cs`
 
 **Tipos:** `class CirculoDeProgreso`
@@ -2643,14 +2968,14 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `For` | static | `IEnumerable<ControlEntry>` | `ControlContext ctx` | 172 |
-| `LineFor` | static | `string` | `ControlContext ctx` | 182 |
-| `LineFor` | static | `string` | `ControlContext ctx, int maxEntries` | 185 |
-| `FullText` | static | `string` | — | 201 |
-| `DisplayKeyFor` | static | `string` | `ControlEntry e` | 215 |
-| `HeaderFor` | static | `string` | `ControlContext ctx` | 224 |
-| `FormatKey` | static | `string` | `string key` | 239 |
-| `Validate` | static | `bool` | `out string problem` | 251 |
+| `For` | static | `IEnumerable<ControlEntry>` | `ControlContext ctx` | 174 |
+| `LineFor` | static | `string` | `ControlContext ctx` | 184 |
+| `LineFor` | static | `string` | `ControlContext ctx, int maxEntries` | 187 |
+| `FullText` | static | `string` | — | 203 |
+| `DisplayKeyFor` | static | `string` | `ControlEntry e` | 217 |
+| `HeaderFor` | static | `string` | `ControlContext ctx` | 226 |
+| `FormatKey` | static | `string` | `string key` | 241 |
+| `Validate` | static | `bool` | `out string problem` | 253 |
 
 ## `Assets/_Project/Scripts/UI/DamageDirectionView.cs`
 
@@ -2671,10 +2996,10 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Bind` |  | `void` | `Image img, PlayerBrain playerBrain` | 22 |
-| `SetSpeedFraction` |  | `void` | `float frac01` | 74 |
+| `Bind` |  | `void` | `Image img, PlayerBrain playerBrain` | 23 |
+| `SetSpeedFraction` |  | `void` | `float frac01` | 121 |
 
-**Propiedades:** `CurrentAlpha`
+**Propiedades:** `CurrentAlpha`, `CurrentRedAlpha`
 
 ## `Assets/_Project/Scripts/UI/DeadNoticeView.cs`
 
@@ -2697,7 +3022,8 @@
 |---|---|---|---|---|
 | `AcomodarConfirmarSalida` | static | `void` | `GameObject panel` | 43 |
 | `AcomodarResultado` | static | `void` | `GameObject panel` | 68 |
-| `ContarSolapes` | static | `int` | `GameObject panel` | 95 |
+| `AcomodarSelectionCount` | static | `void` | `GameObject countPanel` | 96 |
+| `ContarSolapes` | static | `int` | `GameObject panel` | 115 |
 
 ## `Assets/_Project/Scripts/UI/FondoOpaco.cs`
 
@@ -2748,7 +3074,7 @@
 | `BeginListening` |  | `void` | `int row` | 66 |
 | `ShouldIgnoreCapture` | static | `bool` | `int listenStartFrame, int currentFrame` | 79 |
 | `RefreshAll` |  | `void` | — | 121 |
-| `NameOf` | static | `string` | `string actionId` | 155 |
+| `NameOf` | static | `string` | `string actionId` | 157 |
 
 **Propiedades:** `IsListening`
 
@@ -2775,7 +3101,7 @@
 | `AreaDelCanvas` |  | `Vector2` | — | 86 |
 | `Aplicar` |  | `void` | — | 94 |
 | `Aplicar` |  | `void` | `Vector2 area` | 96 |
-| `Diagnosticar` | static | `List<string>` | `GameObject settingsPanel, Vector2 area` | 272 |
+| `Diagnosticar` | static | `List<string>` | `GameObject settingsPanel, Vector2 area` | 282 |
 
 **Propiedades:** `Ultimo`, `Aplicaciones`
 
@@ -2802,22 +3128,22 @@
 | `Mostrar` |  | `void` | `int cat, bool contextual, params int[] opciones` | 29 |
 | `ReiniciarActivo` | static | `void` | — | 58 |
 | `RegistrarActivo` |  | `void` | — | 59 |
-| `PonerPista` | static | `void` | `int categoria, int opcion = -1` | 152 |
-| `EsVisible` |  | `bool` | `int categoria` | 167 |
-| `EsContextual` |  | `bool` | `int categoria` | 168 |
-| `Bind` |  | `void` | `Text texto, CanvasGroup canvasGroup` | 171 |
-| `PonerSoldados` |  | `void` | `string s1, string s2, string s3` | 198 |
-| `NombreDeOpcion` | static | `string` | `int categoria, int sub` | 210 |
-| `Abrir` |  | `void` | — | 249 |
-| `Abrir` |  | `void` | `ContextoRadial ctx` | 254 |
-| `CancelarSeleccion` |  | `void` | — | 295 |
-| `Cerrar` |  | `void` | — | 304 |
-| `MoverSeleccion` |  | `void` | `Vector2 delta` | 314 |
-| `ElegirDirecto` |  | `void` | `int categoria, int sub = -1` | 365 |
-| `CategoriaDeTecla` |  | `int` | `int tecla` | 390 |
-| `AsegurarEnEscena` | static | `MenuDeOrdenes` | — | 466 |
-| `Construir` | static | `MenuDeOrdenes` | `Transform padre` | 555 |
-| `LeerTecla` | static | `int` | — | 618 |
+| `PonerPista` | static | `void` | `int categoria, int opcion = -1` | 161 |
+| `EsVisible` |  | `bool` | `int categoria` | 176 |
+| `EsContextual` |  | `bool` | `int categoria` | 177 |
+| `Bind` |  | `void` | `Text texto, CanvasGroup canvasGroup` | 180 |
+| `PonerSoldados` |  | `void` | `string s1, string s2, string s3, bool m1 = false, bool m2 = false, boo` | 207 |
+| `NombreDeOpcion` | static | `string` | `int categoria, int sub` | 222 |
+| `Abrir` |  | `void` | — | 261 |
+| `Abrir` |  | `void` | `ContextoRadial ctx` | 266 |
+| `CancelarSeleccion` |  | `void` | — | 307 |
+| `Cerrar` |  | `void` | — | 316 |
+| `MoverSeleccion` |  | `void` | `Vector2 delta` | 326 |
+| `ElegirDirecto` |  | `void` | `int categoria, int sub = -1` | 378 |
+| `CategoriaDeTecla` |  | `int` | `int tecla` | 412 |
+| `AsegurarEnEscena` | static | `MenuDeOrdenes` | — | 532 |
+| `Construir` | static | `MenuDeOrdenes` | `Transform padre` | 635 |
+| `LeerTecla` | static | `int` | — | 703 |
 
 **Propiedades:** `Activo`, `Abierto`, `Seleccion`, `Sub`, `EsRadial`, `EnAnilloExterior`, `CategoriasVisibles`, `OpcionesVisibles`
 
@@ -2839,11 +3165,11 @@
 | `RegistrarActivo` |  | `void` | — | 26 |
 | `TryMinimapPointToWorld` |  | `bool` | `Vector2 localPoint, out Vector3 world` | 111 |
 | `TryWorldToMinimapPoint` |  | `bool` | `Vector3 world, out Vector2 localPoint` | 152 |
-| `AplicarTamanoInicial` |  | `void` | — | 282 |
-| `AplicarTamanoGuardado` |  | `void` | — | 296 |
-| `AlternarTamano` |  | `bool` | — | 301 |
-| `TamanoFijo` |  | `Vector2` | `int indice` | 315 |
-| `CiclarTamanoFijo` |  | `int` | — | 321 |
+| `AplicarTamanoInicial` |  | `void` | — | 290 |
+| `AplicarTamanoGuardado` |  | `void` | — | 307 |
+| `AlternarTamano` |  | `bool` | — | 312 |
+| `TamanoFijo` |  | `Vector2` | `int indice` | 326 |
+| `CiclarTamanoFijo` |  | `int` | — | 332 |
 
 **Propiedades:** `Activo`, `MinimapRect`, `MinimapCamera`, `GroundY`, `MapHalfExtent`, `Agrandado`, `Marco`, `IndiceTamanoFijo`
 
@@ -2870,7 +3196,7 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Refresh` |  | `void` | — | 39 |
+| `Refresh` |  | `void` | — | 40 |
 
 ## `Assets/_Project/Scripts/UI/ModeToastView.cs`
 
@@ -2891,9 +3217,9 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `ReiniciarActivo` | static | `void` | — | 13 |
-| `RegistrarActivo` |  | `void` | — | 14 |
-| `Asegurar` | static | `ModoDiosView` | `Transform canvasRoot` | 23 |
+| `ReiniciarActivo` | static | `void` | — | 14 |
+| `RegistrarActivo` |  | `void` | — | 15 |
+| `Asegurar` | static | `ModoDiosView` | `Transform canvasRoot` | 31 |
 
 **Propiedades:** `Activo`
 
@@ -2956,7 +3282,30 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Bind` |  | `void` | `Text text, Image fillImage` | 24 |
-| `UpdateFrom` |  | `void` | `Soldier soldier` | 41 |
+| `UpdateFrom` |  | `void` | `Soldier soldier` | 51 |
+
+## `Assets/_Project/Scripts/UI/RadialIconFactory.cs`
+
+**Tipos:** `class RadialIconFactory`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Calavera` | static | `Sprite` | — | 20 |
+| `ForCategoria` | static | `Sprite` | `int categoria` | 23 |
+
+## `Assets/_Project/Scripts/UI/RespawnPromptView.cs`
+
+**Tipos:** `class RespawnPromptView`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Mostrar` | static | `void` | — | 59 |
+| `Ocultar` | static | `void` | — | 67 |
+| `Tick` | static | `void` | — | 76 |
 
 ## `Assets/_Project/Scripts/UI/RosterRowView.cs`
 
@@ -2966,7 +3315,8 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Bind` |  | `void` | `Soldier soldier, int index` | 70 |
+| `Bind` |  | `void` | `Soldier soldier, int index` | 75 |
+| `OnPointerClick` |  | `void` | `PointerEventData eventData` | 256 |
 
 **Propiedades:** `Soldier`, `SoldierId`, `Index`, `IsHighlighted`
 
@@ -3021,7 +3371,7 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Bind` |  | `void` | `Text text` | 15 |
-| `SetModeVisible` |  | `void` | `bool allowed` | 37 |
+| `SetModeVisible` |  | `void` | `bool allowed` | 38 |
 
 ## `Assets/_Project/Scripts/UI/SpriteBlanco.cs`
 
@@ -3067,10 +3417,11 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `Asegurar` | static | `VehicleKeysPanel` | `Transform canvasRaiz` | 34 |
-| `SetVisible` |  | `void` | `bool v` | 75 |
-| `Destellar` |  | `void` | `string tecla` | 81 |
-| `Actualizar` |  | `void` | `Vehicle v, VehicleSeatRole? miAsiento, int aliadosEnCamino` | 90 |
+| `Asegurar` | static | `VehicleKeysPanel` | `Transform canvasRaiz` | 46 |
+| `SetExpandido` |  | `void` | `bool v` | 142 |
+| `SetVisible` |  | `void` | `bool v` | 147 |
+| `Destellar` |  | `void` | `string tecla` | 153 |
+| `Actualizar` |  | `void` | `Vehicle v, VehicleSeatRole? miAsiento, int aliadosEnCamino` | 162 |
 
 **Propiedades:** `UltimoTexto`, `Visible`
 
@@ -3097,12 +3448,13 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `ReiniciarActivo` | static | `void` | — | 13 |
-| `RegistrarActivo` |  | `void` | — | 14 |
-| `IconFor` | static | `Sprite` | `WeaponKind kind` | 35 |
-| `EnsureIcon` |  | `Image` | — | 57 |
-| `Bind` |  | `void` | `Text text, Image fillImage` | 86 |
-| `UpdateFrom` |  | `void` | `WeaponHolder weapon` | 109 |
+| `ReiniciarActivo` | static | `void` | — | 15 |
+| `RegistrarActivo` |  | `void` | — | 16 |
+| `IconFor` | static | `Sprite` | `WeaponKind kind` | 37 |
+| `EnsureIcon` |  | `Image` | — | 71 |
+| `Bind` |  | `void` | `Text text, Image fillImage` | 103 |
+| `UpdateFrom` |  | `void` | `WeaponHolder weapon` | 166 |
+| `EnsureExtras` |  | `void` | — | 302 |
 
 **Propiedades:** `Activo`, `Icon`
 
@@ -3115,9 +3467,9 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Barrer` | static | `int` | `Transform vehiculo, Collider casco, float velocidad, Vehicle datos` | 37 |
-| `AplastarObstaculos` | static | `int` | `Transform vehiculo, float velocidad, float radioDelCasco` | 85 |
-| `EquipoDeLaTripulacion` | static | `TeamId?` | `Vehicle datos` | 110 |
-| `Derribar` | static | `void` | `Soldier victima, Vector3 direccion` | 123 |
+| `AplastarObstaculos` | static | `int` | `Transform vehiculo, float velocidad, float radioDelCasco` | 89 |
+| `EquipoDeLaTripulacion` | static | `TeamId?` | `Vehicle datos` | 114 |
+| `Derribar` | static | `void` | `Soldier victima, Vector3 direccion` | 127 |
 
 ## `Assets/_Project/Scripts/Vehicles/DetachedTurretFlight.cs`
 
@@ -3137,14 +3489,14 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `De` | static | `TorretaFija` | `Soldier s` | 83 |
-| `MasCercana` | static | `TorretaFija` | `Vector3 p, float radio` | 90 |
-| `Ocupar` |  | `bool` | `Soldier s, out string motivo` | 105 |
-| `Liberar` |  | `void` | — | 142 |
-| `AcotarGiro` |  | `void` | `Soldier s` | 159 |
-| `FraccionDeArco` |  | `float` | `Soldier s` | 169 |
-| `InstalarEnEscena` | static | `int` | — | 205 |
-| `Instalar` | static | `TorretaFija` | `GameObject go` | 219 |
+| `De` | static | `TorretaFija` | `Soldier s` | 84 |
+| `MasCercana` | static | `TorretaFija` | `Vector3 p, float radio` | 91 |
+| `Ocupar` |  | `bool` | `Soldier s, out string motivo` | 106 |
+| `Liberar` |  | `void` | — | 143 |
+| `AcotarGiro` |  | `void` | `Soldier s` | 160 |
+| `FraccionDeArco` |  | `float` | `Soldier s` | 170 |
+| `InstalarEnEscena` | static | `int` | — | 206 |
+| `Instalar` | static | `TorretaFija` | `GameObject go` | 220 |
 
 **Propiedades:** `Todas`, `Ocupante`, `Libre`, `Puesto`, `YawCentro`
 
@@ -3194,22 +3546,22 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `TakeDamage` |  | `void` | `int amount, int attackerId` | 48 |
-| `AsignarBando` |  | `void` | `SP.Combat.TeamId bando, Color tinte` | 112 |
-| `FinalExplosion` |  | `void` | — | 149 |
-| `IsMountAnimating` |  | `bool` | `Soldier soldier` | 197 |
-| `RefreshOccupancyColor` |  | `void` | — | 219 |
-| `ClosestBoardingPoint` |  | `Vector3` | `Vector3 desde` | 272 |
-| `IsSeatFree` |  | `bool` | `VehicleSeatRole role` | 292 |
-| `FirstFreeSeat` |  | `VehicleSeatRole?` | — | 294 |
-| `ConfigurarTripulacion` |  | `void` | `Soldier[] tripulantes, VehicleSeatRole[] roles, bool enemigo` | 309 |
-| `PuedeAbordar` |  | `bool` | `Soldier soldier, out string motivo` | 335 |
-| `PuedeAbordar` |  | `bool` | `Soldier soldier` | 343 |
-| `Mount` |  | `bool` | `Soldier soldier, VehicleSeatRole? preferredRole = null, bool instantan` | 345 |
-| `Dismount` |  | `bool` | `Soldier soldier` | 556 |
-| `SwapSeats` |  | `bool` | `Soldier a, Soldier b` | 606 |
-| `MoveToSeat` |  | `bool` | `Soldier soldier, VehicleSeatRole role` | 631 |
-| `RoleOf` |  | `VehicleSeatRole?` | `Soldier soldier` | 656 |
-| `SoldierInSeat` |  | `Soldier` | `VehicleSeatRole role` | 681 |
+| `AsignarBando` |  | `void` | `SP.Combat.TeamId bando, Color tinte` | 130 |
+| `FinalExplosion` |  | `void` | — | 167 |
+| `IsMountAnimating` |  | `bool` | `Soldier soldier` | 215 |
+| `RefreshOccupancyColor` |  | `void` | — | 237 |
+| `ClosestBoardingPoint` |  | `Vector3` | `Vector3 desde` | 314 |
+| `IsSeatFree` |  | `bool` | `VehicleSeatRole role` | 334 |
+| `FirstFreeSeat` |  | `VehicleSeatRole?` | — | 336 |
+| `ConfigurarTripulacion` |  | `void` | `Soldier[] tripulantes, VehicleSeatRole[] roles, bool enemigo` | 351 |
+| `PuedeAbordar` |  | `bool` | `Soldier soldier, out string motivo` | 377 |
+| `PuedeAbordar` |  | `bool` | `Soldier soldier` | 385 |
+| `Mount` |  | `bool` | `Soldier soldier, VehicleSeatRole? preferredRole = null, bool instantan` | 387 |
+| `Dismount` |  | `bool` | `Soldier soldier` | 625 |
+| `SwapSeats` |  | `bool` | `Soldier a, Soldier b` | 717 |
+| `MoveToSeat` |  | `bool` | `Soldier soldier, VehicleSeatRole role` | 742 |
+| `RoleOf` |  | `VehicleSeatRole?` | `Soldier soldier` | 784 |
+| `SoldierInSeat` |  | `Soldier` | `VehicleSeatRole role` | 809 |
 
 **Propiedades:** `Health`, `IsDestroyed`, `IsInAgony`, `TorretaCanon`, `TorretaMetralleta`, `FinalExplosionDone`, `Bando`, `PlayerAboard`, `Capacity`, `OccupantCount`, `HasAnyRoom`, `Driver`, `Gunner`, `Occupants`, `EsTanqueEnemigo`, `AllSeatRoles`
 

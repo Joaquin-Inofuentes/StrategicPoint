@@ -2,10 +2,10 @@
 
 | Tipo | Cantidad |
 |---|---|
-| Escenas | 6 |
-| Prefabs | 133 |
+| Escenas | 17 |
+| Prefabs | 137 |
 | Materiales | 23 |
-| Assets (`.asset`) | 24 |
+| Assets (`.asset`) | 27 |
 | Shaders | 2 |
 | Input Actions | 1 |
 
@@ -17,6 +17,17 @@
 - `Assets/_Project/Scenes/SC_MainMenu.unity`
 - `Assets/_Project/Scenes/SC_TestLevel.unity`
 - `Assets/_Project/Scenes/SC_Tutorial.unity`
+- `Assets/_Project/Scenes/_SC_Gameplay_Historial/00_COPIA3_b979608_backup-previo-al-blockout.unity`
+- `Assets/_Project/Scenes/_SC_Gameplay_Historial/01_fa7c82f_SC_Gameplay.unity`
+- `Assets/_Project/Scenes/_SC_Gameplay_Historial/02_344d5d4_SC_Gameplay.unity`
+- `Assets/_Project/Scenes/_SC_Gameplay_Historial/03_d72a888_SC_Gameplay.unity`
+- `Assets/_Project/Scenes/_SC_Gameplay_Historial/04_b979608_SC_Gameplay.unity`
+- `Assets/_Project/Scenes/_SC_Gameplay_Historial/05_b79d192_SC_Gameplay.unity`
+- `Assets/_Project/Scenes/_SC_Gameplay_Historial/06_2b61cbd_SC_Gameplay.unity`
+- `Assets/_Project/Scenes/_SC_Gameplay_Historial/07_a465688_SC_Gameplay.unity`
+- `Assets/_Project/Scenes/_SC_Gameplay_Historial/08_a3acf98_SC_Gameplay.unity`
+- `Assets/_Project/Scenes/_SC_Gameplay_Historial/09_25bdf26_SC_Gameplay.unity`
+- `Assets/_Project/Scenes/_SC_Gameplay_Historial/10_99c3a2b_SC_Gameplay.unity`
 
 ## Shaders
 
@@ -109,7 +120,7 @@
 - `Assets/_Project/Prefabs/ArteMundo/P_Mod_Piso_Pasto_Var270.prefab`
 - `Assets/_Project/Prefabs/ArteMundo/P_Mod_Piso_Pasto_Var90.prefab`
 - `Assets/_Project/Prefabs/ArteMundo/P_Mod_Piso_Tierra.prefab`
-- …y 53 mas
+- …y 57 mas
 
 ## Como se construyen las escenas
 

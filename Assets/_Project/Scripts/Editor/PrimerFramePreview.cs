@@ -80,12 +80,18 @@ namespace SP.EditorTools
             var arma = Object.FindFirstObjectByType<WeaponStatusView>(FindObjectsInactive.Include);
             if (arma != null)
             {
-                arma.EnsureIcon();
+                WeaponStatusUiPipeline.ConstruirLayoutCompleto(arma.gameObject);
                 var w = primero.Weapon;
                 var t = arma.GetComponentInChildren<Text>(true);
                 if (t != null && w != null)
-                    t.text = $"[{w.Loadout.IndexOf(w.CurrentWeaponKind) + 1}] {w.CurrentWeaponKind}   {w.CurrentAmmo}/{w.MagazineSize}";
+                {
+                    string ammoStr = w.CurrentAmmo.ToString();
+                    if (w.UsaReservas) ammoStr += $" / {w.ReservaActual}";
+                    else ammoStr += $" / {w.MagazineSize}";
+                    t.text = ammoStr;
+                }
                 if (arma.Icon != null && w != null) arma.Icon.sprite = WeaponStatusView.IconFor(w.CurrentWeaponKind);
+                arma.EnsureExtras();
                 var fill = arma.transform.Find("BarBG/BarFill");
                 if (fill != null && fill.GetComponent<Image>() != null) fill.GetComponent<Image>().fillAmount = 1f;
             }
