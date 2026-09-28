@@ -136,8 +136,8 @@ namespace SP.Combat
             ownerId = shooterId;
             ownerTeam = shooterTeam;
             var miEquipo = shooterTeam;
-            predicadoObjetivo = s => s.Health.IsAlive && s.Team != miEquipo && s.gameObject.activeInHierarchy;
-            predicadoSupresion = s => s != null && s.Team != miEquipo && s.Health.IsAlive;
+            predicadoObjetivo = s => s.Health != null && s.Health.IsAlive && s.Team != miEquipo && s.gameObject.activeInHierarchy;
+            predicadoSupresion = s => s != null && s.Health != null && s.Team != miEquipo && s.Health.IsAlive;
             damage = dmg;
             explosionRadius = explosionRadiusValue;
             effectiveSpeed = VelocidadBase * speedMultiplier;

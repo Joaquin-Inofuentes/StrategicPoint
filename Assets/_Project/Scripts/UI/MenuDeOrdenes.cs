@@ -511,9 +511,18 @@ namespace SP.UI
                     }
                     opciones[j].rectTransform.localScale = Vector3.one * (elegida ? 1.03f : 1f);
                     float rad = centro * Mathf.Deg2Rad;
-                    etiquetasOpcion[j].rectTransform.anchoredPosition = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad)) * (RadioExterior * 0.78f);
+                    var dirOp = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad));
+                    var colorOp = elegida ? new Color(0.05f, 0.06f, 0.08f) : ctx ? new Color(1f, 0.9f, 0.45f) : Color.white;
+                    if (iconosOpcion != null && iconosOpcion[j] != null)
+                    {
+                        iconosOpcion[j].gameObject.SetActive(true);
+                        iconosOpcion[j].sprite = RadialIconFactory.ForOpcion(Seleccion, sub);
+                        iconosOpcion[j].color = colorOp;
+                        iconosOpcion[j].rectTransform.anchoredPosition = dirOp * (RadioExterior * 0.66f);
+                    }
+                    etiquetasOpcion[j].rectTransform.anchoredPosition = dirOp * (RadioExterior * 0.90f);
                     etiquetasOpcion[j].text = Texto(OpcionesDe[Seleccion][sub]).Replace(" · ", "\n");
-                    etiquetasOpcion[j].color = elegida ? new Color(0.05f, 0.06f, 0.08f) : ctx ? new Color(1f, 0.9f, 0.45f) : Color.white;
+                    etiquetasOpcion[j].color = colorOp;
                 }
             }
 

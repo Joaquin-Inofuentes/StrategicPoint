@@ -211,7 +211,12 @@ namespace SP.Mision
                 {
                     proximoPolvo = t + 0.07f;
                     float ang = Random.value * Mathf.PI * 2f;
-                    ImpactFx.Spawn(pad + new Vector3(Mathf.Cos(ang), 0.3f, Mathf.Sin(ang)) * Random.Range(2f, 9f), new Color(0.65f, 0.52f, 0.38f), Random.Range(1.8f, 3.2f), 0.9f);
+                    // Pedido explicito: "ese destello de arriba quitalo, encegese" -- peakScale
+                    // 1.8-3.2 (el uso normal de ImpactFx en combate va de 0.3 a 1.4, ver
+                    // SpawnScaledByDamage) hacia que cada puff de polvo fuera una esfera
+                    // translucida gigante que tapaba la toma cuando quedaba cerca/encima de
+                    // camara -- se leia como un destello que encegecia el plano, no como polvo.
+                    ImpactFx.Spawn(pad + new Vector3(Mathf.Cos(ang), 0.3f, Mathf.Sin(ang)) * Random.Range(2f, 9f), new Color(0.65f, 0.52f, 0.38f), Random.Range(0.4f, 0.8f), 0.9f);
                 }
 
                 // la horda dispara al helicoptero desde el piso (trazadoras, sin dano). Solo

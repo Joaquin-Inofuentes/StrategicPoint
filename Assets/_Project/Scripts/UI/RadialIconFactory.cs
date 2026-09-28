@@ -17,6 +17,12 @@ namespace SP.UI
         static Texture2D irAlli, cubrirse, atacar, posicion, curar, tanque, poseer, demoler, torreta, calavera;
         static Sprite spriteIrAlli, spriteCubrirse, spriteAtacar, spritePosicion, spriteCurar, spriteTanque, spritePoseer, spriteDemoler, spriteTorreta, spriteCalavera;
 
+        // Iconos de OPCION (anillo exterior): mas chicos y genericos que los de
+        // categoria, reutilizados entre varias opciones semanticamente parecidas
+        // ("TODOS" en Ir alli/Cubrirse/Atacar, "SOLO N" en varias categorias...).
+        static Texture2D grupo, corazon, flechaArriba, lineaFormacion, cunaFormacion, granada, siguiente, equis;
+        static Sprite spriteGrupo, spriteCorazon, spriteFlechaArriba, spriteLinea, spriteCuna, spriteGranada, spriteSiguiente, spriteEquis;
+
         public static Sprite Calavera() => spriteCalavera ??= AsSprite(calavera ??= BuildCalavera());
 
         // Mismo orden que MenuDeOrdenes.Porciones / los ids IrAlli..Torreta.
@@ -33,6 +39,68 @@ namespace SP.UI
             MenuDeOrdenes.Torreta => spriteTorreta ??= AsSprite(torreta ??= BuildTorreta()),
             _ => spriteIrAlli ??= AsSprite(irAlli ??= BuildFlechaAbajo()),
         };
+
+        // Icono de cada OPCION del anillo exterior (sub real, indice de OpcionesDe).
+        // Pedido explicito: "para todas las opciones... iconos grandes descriptivos
+        // y claros" -- el anillo interior (categorias) ya los tenia, el exterior
+        // (opciones) se habia quedado solo con texto. Se cubren las ~30 opciones
+        // reutilizando un puñado de formas ya existentes o nuevas segun la accion.
+        public static Sprite ForOpcion(int categoria, int sub)
+        {
+            var g = MenuDeOrdenes.Porciones;
+            switch (categoria)
+            {
+                case MenuDeOrdenes.IrAlli:
+                case MenuDeOrdenes.Cubrirse:
+                    return sub == 0 ? Grupo() : Persona();
+                case MenuDeOrdenes.Atacar:
+                    if (sub == 0) return Grupo();
+                    if (sub == MenuDeOrdenes.SubSuprimir) return AsSprite(demoler ??= BuildEstallido());
+                    if (sub == MenuDeOrdenes.SubGranada) return Granada();
+                    return Persona();
+                case MenuDeOrdenes.Posicion:
+                    switch (sub)
+                    {
+                        case 0: return Grupo();
+                        case 1: return AsSprite(irAlli ??= BuildFlechaAbajo());
+                        case 2: return Linea();
+                        case 3: return Cuna();
+                        default: return FlechaArriba();
+                    }
+                case MenuDeOrdenes.Curar:
+                    return sub == 3 ? Corazon() : AsSprite(curar ??= BuildCruz());
+                case MenuDeOrdenes.Tanque:
+                    switch (sub)
+                    {
+                        case 0: return FlechaArriba();
+                        case 1: return AsSprite(irAlli ??= BuildFlechaAbajo());
+                        case 2: return AsSprite(tanque ??= BuildTanque());
+                        default: return Persona();
+                    }
+                case MenuDeOrdenes.Poseer:
+                    return sub == 3 ? Siguiente() : Persona();
+                case MenuDeOrdenes.Demoler:
+                    if (sub == 0) return AsSprite(demoler ??= BuildEstallido());
+                    if (sub == 2) return Equis();
+                    return Persona();
+                case MenuDeOrdenes.Torreta:
+                    if (sub == 0) return AsSprite(torreta ??= BuildTorreta());
+                    if (sub == 1) return Equis();
+                    return Persona();
+                default:
+                    return Persona();
+            }
+        }
+
+        static Sprite Grupo() => spriteGrupo ??= AsSprite(grupo ??= BuildGrupo());
+        static Sprite Persona() => spritePoseer ??= AsSprite(poseer ??= BuildPersona());
+        static Sprite Corazon() => spriteCorazon ??= AsSprite(corazon ??= BuildCorazon());
+        static Sprite FlechaArriba() => spriteFlechaArriba ??= AsSprite(flechaArriba ??= BuildFlechaArriba());
+        static Sprite Linea() => spriteLinea ??= AsSprite(lineaFormacion ??= BuildLinea());
+        static Sprite Cuna() => spriteCuna ??= AsSprite(cunaFormacion ??= BuildCuna());
+        static Sprite Granada() => spriteGranada ??= AsSprite(granada ??= BuildGranada());
+        static Sprite Siguiente() => spriteSiguiente ??= AsSprite(siguiente ??= BuildSiguiente());
+        static Sprite Equis() => spriteEquis ??= AsSprite(equis ??= BuildEquis());
 
         static Sprite AsSprite(Texture2D tex) => Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
 
@@ -199,6 +267,115 @@ namespace SP.UI
                 bool cuerpo = (nx * nx) / (0.5f * 0.5f) + (ny * ny) / (0.42f * 0.42f) <= 1f && ny >= -0.4f;
                 bool cañon = nx >= 0f && nx <= 0.85f && Mathf.Abs(ny - 0.08f) <= 0.09f;
                 return base_ || cuerpo || cañon;
+            });
+            return tex;
+        }
+
+        // GRUPO ("TODOS"): tres cabezas solidas, mas ancha que POSEER para no confundirse con "un solo soldado".
+        static Texture2D BuildGrupo()
+        {
+            var tex = NuevaTextura();
+            Rellenar(tex, (nx, ny) =>
+            {
+                bool Cabeza(float cx) => (nx - cx) * (nx - cx) / (0.3f * 0.3f) + (ny - 0.15f) * (ny - 0.15f) / (0.3f * 0.3f) <= 1f;
+                bool Torso(float cx, float ancho)
+                {
+                    const float tope = -0.15f, baseY = -0.8f;
+                    if (ny > tope || ny < baseY) return false;
+                    return Mathf.Abs(nx - cx) <= ancho;
+                }
+                return Cabeza(0f) || Cabeza(-0.55f) || Cabeza(0.55f) || Torso(0f, 0.4f) || Torso(-0.55f, 0.28f) || Torso(0.55f, 0.28f);
+            });
+            return tex;
+        }
+
+        // CORAZON ("REVIVIR"): dos lobulos + punta.
+        static Texture2D BuildCorazon()
+        {
+            var tex = NuevaTextura();
+            Rellenar(tex, (nx, ny) =>
+            {
+                float dI = (nx + 0.28f) * (nx + 0.28f) + (ny - 0.15f) * (ny - 0.15f);
+                float dD = (nx - 0.28f) * (nx - 0.28f) + (ny - 0.15f) * (ny - 0.15f);
+                bool lobulos = dI <= 0.38f * 0.38f || dD <= 0.38f * 0.38f;
+                bool punta = EnTriangulo(nx, ny, -0.62f, 0.12f, 0.62f, 0.12f, 0f, -0.85f);
+                return lobulos || punta;
+            });
+            return tex;
+        }
+
+        // FLECHA ARRIBA ("SUBIR" / "RETIRADA"): igual forma que la de IR ALLI pero invertida.
+        static Texture2D BuildFlechaArriba()
+        {
+            var tex = NuevaTextura();
+            Rellenar(tex, (nx, ny) =>
+            {
+                bool cabeza = EnTriangulo(nx, ny, 0f, 0.85f, -0.55f, -0.05f, 0.55f, -0.05f);
+                bool cola = Mathf.Abs(nx) <= 0.2f && ny <= 0f && ny >= -0.75f;
+                return cabeza || cola;
+            });
+            return tex;
+        }
+
+        // FORMAR LINEA: tres cuadrados alineados en horizontal.
+        static Texture2D BuildLinea()
+        {
+            var tex = NuevaTextura();
+            Rellenar(tex, (nx, ny) =>
+            {
+                bool Cuadro(float cx) => Mathf.Abs(nx - cx) <= 0.18f && Mathf.Abs(ny) <= 0.18f;
+                return Cuadro(0f) || Cuadro(-0.6f) || Cuadro(0.6f);
+            });
+            return tex;
+        }
+
+        // FORMAR CUÑA: tres cuadrados en punta de flecha (uno adelante, dos atras).
+        static Texture2D BuildCuna()
+        {
+            var tex = NuevaTextura();
+            Rellenar(tex, (nx, ny) =>
+            {
+                bool Cuadro(float cx, float cy) => Mathf.Abs(nx - cx) <= 0.18f && Mathf.Abs(ny - cy) <= 0.18f;
+                return Cuadro(0f, 0.5f) || Cuadro(-0.5f, -0.4f) || Cuadro(0.5f, -0.4f);
+            });
+            return tex;
+        }
+
+        // GRANADA: cuerpo ovalado + traba superior.
+        static Texture2D BuildGranada()
+        {
+            var tex = NuevaTextura();
+            Rellenar(tex, (nx, ny) =>
+            {
+                bool cuerpo = nx * nx / (0.55f * 0.55f) + (ny + 0.1f) * (ny + 0.1f) / (0.7f * 0.7f) <= 1f && ny <= 0.5f;
+                bool traba = Mathf.Abs(nx) <= 0.12f && ny >= 0.45f && ny <= 0.78f;
+                bool anilla = Mathf.Abs(Mathf.Sqrt((nx - 0.18f) * (nx - 0.18f) + (ny - 0.78f) * (ny - 0.78f)) - 0.16f) <= 0.06f;
+                return cuerpo || traba || anilla;
+            });
+            return tex;
+        }
+
+        // SIGUIENTE: doble flecha ">>" (ciclar).
+        static Texture2D BuildSiguiente()
+        {
+            var tex = NuevaTextura();
+            Rellenar(tex, (nx, ny) =>
+                EnTriangulo(nx, ny, -0.55f, 0.5f, -0.55f, -0.5f, -0.05f, 0f) ||
+                EnTriangulo(nx, ny, 0.05f, 0.5f, 0.05f, -0.5f, 0.55f, 0f));
+            return tex;
+        }
+
+        // EQUIS ("CANCELAR" / "SALIR"): dos trazos cruzados.
+        static Texture2D BuildEquis()
+        {
+            var tex = NuevaTextura();
+            const float grosor = 0.16f;
+            Rellenar(tex, (nx, ny) =>
+            {
+                float d1 = Mathf.Abs(nx - ny) / 1.41421356f;
+                float d2 = Mathf.Abs(nx + ny) / 1.41421356f;
+                bool dentroDiagonal = Mathf.Max(Mathf.Abs(nx), Mathf.Abs(ny)) <= 0.8f;
+                return dentroDiagonal && (d1 <= grosor || d2 <= grosor);
             });
             return tex;
         }

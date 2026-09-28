@@ -119,7 +119,12 @@ namespace SP.Vehicles
             if (diamondMarker == null)
             {
                 diamondMaterial = SP.Presentation.DiamondGizmo.NuevoMaterial(SP.Presentation.DiamondGizmo.ColorVacio);
-                diamondMarker = SP.Presentation.DiamondGizmo.CrearCara("RomboTanque", transform, 1.8f, diamondMaterial);
+                // Pedido explicito: "los rombos de los tanques son enormes,
+                // deberian ser del tamaño igual al resto" -- 1.8 (mas del
+                // triple del TamanoBorde de UnitLocatorCylinder, 0.62, que
+                // usan los soldados) se notaba desproporcionado contra el
+                // resto de los marcadores del mundo.
+                diamondMarker = SP.Presentation.DiamondGizmo.CrearCara("RomboTanque", transform, 0.62f, diamondMaterial);
                 diamondMarker.transform.localPosition = new Vector3(0f, 4.5f, 0f);
             }
             RefreshOccupancyColor();

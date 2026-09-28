@@ -174,7 +174,10 @@ namespace SP.Presentation
         // hitbox de percepcion.
         public const float ConoMedioAnguloGrados = 35f;
         public const float ConoRadioFallback = 16f;
-        const float ConoAlpha = 0.16f;
+        // Pedido explicito: "quiero q los conos de vision sean 95% de
+        // transparencia" -- 0.16 (84% transparente) se notaba muy solido
+        // con 30+ conos superpuestos en pantalla a la vez.
+        const float ConoAlpha = 0.05f;
         Transform conoDeVision;
         MeshRenderer conoRenderer;
         float conoRadioActual = -1f;
