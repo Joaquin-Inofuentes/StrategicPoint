@@ -2,6 +2,7 @@ using UnityEngine;
 using SP.Actors;
 using SP.Core;
 using SP.Combat;
+using SP.Ai;
 
 namespace SP.Presentation
 {
@@ -79,6 +80,10 @@ namespace SP.Presentation
         Soldier soldierDetectado;
         TeamId equipoPintadoMinimapa;
         bool autoColoreado;
+        // Cacheado en DetectarTarget (una vez, no por frame): de aca sale el
+        // radio real del cono de vision, el mismo alcance que usa la IA para
+        // sensar (AiBrain.EffectiveVisionRange), no un numero inventado.
+        AiBrain brainDetectado;
 
         SP.Vehicles.Vehicle vehiculoDetectado;
         void DetectarTarget()
@@ -93,10 +98,13 @@ namespace SP.Presentation
                 var color = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
                 if (equipoPintadoMinimapa == TeamId.Enemy) ConvertirEnTriangulo();
                 else ConvertirEnCirculo();
-                
+
                 EnsureRenderer();
                 if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(color);
                 autoColoreado = true;
+
+                brainDetectado = Target.GetComponent<AiBrain>();
+                CrearOActualizarConoDeVision(color);
                 return;
             }
 
@@ -134,9 +142,123 @@ namespace SP.Presentation
             var colorSoldier = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
             if (equipoPintadoMinimapa == TeamId.Enemy) ConvertirEnTriangulo();
             else ConvertirEnCirculo();
-            
+
             EnsureRenderer();
             if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(colorSoldier);
+            CrearOActualizarConoDeVision(colorSoldier);
+        }
+
+        // --- Cono de vision (D1: "para saber a donde apunto" cada soldado) ---
+        //
+        // Un unico wedge compartido (radio 1, ver MallaCono) escalado por
+        // instancia al alcance REAL de vision del soldado
+        // (AiBrain.EffectiveVisionRange) -- no un numero cosmetico aparte,
+        // asi el cono siempre dice la verdad sobre lo que ese soldado puede
+        // llegar a ver. El poseido por el jugador no tiene su AiBrain
+        // corriendo (queda deshabilitado, no destruido) pero la propiedad se
+        // sigue pudiendo leer igual: ConoRadioFallback solo cubre el caso sin
+        // AiBrain en absoluto (por ejemplo un test sintetico).
+        //
+        // Medio angulo mas angosto que el cono real de deteccion de la IA
+        // (SemiconoDeVision = 100 grados, casi un semicirculo) a proposito:
+        // pintar el cono REAL con 50 soldados en pantalla seria un
+        // amontonamiento de abanicos ilegible. Este es un indicador
+        // direccional legible ("hacia aca apunta"), no una copia exacta del
+        // hitbox de percepcion.
+        public const float ConoMedioAnguloGrados = 35f;
+        public const float ConoRadioFallback = 16f;
+        const float ConoAlpha = 0.16f;
+        Transform conoDeVision;
+        MeshRenderer conoRenderer;
+        float conoRadioActual = -1f;
+
+        void CrearOActualizarConoDeVision(Color colorEquipo)
+        {
+            if (conoDeVision == null)
+            {
+                var go = new GameObject("ConoDeVision", typeof(MeshFilter), typeof(MeshRenderer));
+                go.transform.SetParent(transform, false);
+                go.layer = gameObject.layer;
+                conoDeVision = go.transform;
+                go.GetComponent<MeshFilter>().sharedMesh = MallaCono();
+                conoRenderer = go.GetComponent<MeshRenderer>();
+                conoRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                conoRenderer.receiveShadows = false;
+            }
+            var tinte = colorEquipo;
+            tinte.a = ConoAlpha;
+            conoRenderer.sharedMaterial = NuevoMaterialTransparente(tinte);
+            conoRadioActual = -1f; // fuerza a TickFollow a re-escalar con el radio actual
+        }
+
+        // Llamado cada frame desde TickFollow (mismo recorrido que ya mueve
+        // el icono): un simple SetLocalScale es barato, y el alcance de
+        // vision cambia con la postura/mira (StanceVisionMultiplier,
+        // AmpliacionDeVisionActual), asi que no alcanza con fijarlo una sola
+        // vez al detectar el target.
+        void ActualizarRadioCono()
+        {
+            if (conoDeVision == null) return;
+            float radio = brainDetectado != null ? brainDetectado.EffectiveVisionRange : ConoRadioFallback;
+            if (Mathf.Abs(radio - conoRadioActual) < 0.05f) return;
+            conoRadioActual = radio;
+            var escalaIcono = transform.localScale;
+            float sx = Mathf.Abs(escalaIcono.x) > 0.0001f ? radio / escalaIcono.x : radio;
+            float sz = Mathf.Abs(escalaIcono.z) > 0.0001f ? radio / escalaIcono.z : radio;
+            conoDeVision.localScale = new Vector3(sx, 1f, sz);
+        }
+
+        static Material NuevoMaterialTransparente(Color c)
+        {
+            var m = DiamondGizmo.NuevoMaterial(c);
+            if (m.HasProperty("_Surface"))
+            {
+                m.SetFloat("_Surface", 1f);
+                m.SetFloat("_Blend", 0f);
+                m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                m.SetInt("_ZWrite", 0);
+                m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                m.SetOverrideTag("RenderType", "Transparent");
+            }
+            m.SetColor("_BaseColor", c);
+            m.color = c;
+            return m;
+        }
+
+        static Mesh mallaCono;
+        static Mesh MallaCono()
+        {
+            if (mallaCono != null) return mallaCono;
+            const int segmentos = 10;
+            float medioAnguloRad = ConoMedioAnguloGrados * Mathf.Deg2Rad;
+            var m = new Mesh { name = "MinimapConoDeVision" };
+            var verts = new Vector3[segmentos + 2];
+            verts[0] = Vector3.zero; // apice, en el propio soldado
+            for (int i = 0; i <= segmentos; i++)
+            {
+                float t = (float)i / segmentos;
+                float ang = Mathf.Lerp(-medioAnguloRad, medioAnguloRad, t);
+                // +Z es "adelante", mismo frente que MallaTriangulo.
+                verts[i + 1] = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang));
+            }
+            var tris = new int[segmentos * 3 * 2];
+            int k = 0;
+            for (int i = 0; i < segmentos; i++)
+            {
+                tris[k++] = 0; tris[k++] = i + 1; tris[k++] = i + 2;
+                tris[k++] = 0; tris[k++] = i + 2; tris[k++] = i + 1; // segunda cara, visto desde abajo
+            }
+            m.vertices = verts;
+            m.triangles = tris;
+            var normals = new Vector3[verts.Length];
+            for (int i = 0; i < normals.Length; i++) normals[i] = Vector3.up;
+            m.normals = normals;
+            m.RecalculateBounds();
+            m.hideFlags = HideFlags.HideAndDontSave;
+            mallaCono = m;
+            return m;
         }
 
         void EnsureRenderer()
@@ -199,9 +321,14 @@ namespace SP.Presentation
                 return false;
             }
             transform.position = new Vector3(Target.position.x, height, Target.position.z);
-            if (esTriangulo || esDobleTriangulo || directionMarker != null)
+            // Antes esto solo giraba el icono si ya era un triangulo
+            // (enemigos): un aliado es un circulo simetrico que no
+            // necesitaba rotar. El cono de vision SI necesita la rotacion
+            // real aunque el icono de abajo sea un circulo.
+            if (esTriangulo || esDobleTriangulo || directionMarker != null || conoDeVision != null)
                 transform.rotation = Quaternion.Euler(0f, Target.eulerAngles.y, 0f);
             if (autoColoreado) RepintarPorEquipo();
+            ActualizarRadioCono();
             return true;
         }
 
