@@ -83,6 +83,14 @@ namespace SP.Presentation
         // vive aca y no en el Editor porque el runtime tambien lo necesita.
         public const int CantidadDeMuertes = 6;
         public const int CapaDisparo = 1;
+        public const int CapaMelee = 2;
+        public const string ParamCuchillo = "Cuchillo";
+        // Duracion EFECTIVA del clip en la capa Melee (1,5 s de clip / 2,5 de
+        // velocidad, ver AC_Soldado.controller): el peso de la capa se
+        // sostiene este tiempo y despues cae, mismo patron que pesoDisparo.
+        const float DuracionMelee = 0.6f;
+        float restanteDeMelee;
+        float pesoMelee;
 
         Soldier soldier;
         Vector3 posicionPrevia;
@@ -93,6 +101,7 @@ namespace SP.Presentation
         float mezclaAgachado;
         public float PesoCapaDisparoActual => animator != null && animator.layerCount > CapaDisparo ? animator.GetLayerWeight(CapaDisparo) : 0f;
         IDisposable shotSub;
+        IDisposable meleeSub;
         bool arrancado;
         // Ronda 11 (punto 6): los clips de costado bajan la cadera y los pies quedan hasta 4 cm bajo el piso (medido: 0,089 contra 0,129
         // en reposo). Se mide la altura del pie mas bajo respecto de la raiz mientras esta quieto y en el suelo, y despues se sube el
@@ -144,6 +153,7 @@ namespace SP.Presentation
         void OnEnable()
         {
             shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShot);
+            meleeSub = EventBus.Instance.Subscribe<MeleeAttackEvent>(OnMelee);
             posicionPrevia = transform.position;
             ultimaDireccion = transform.forward;
             arrancado = false;
@@ -153,12 +163,21 @@ namespace SP.Presentation
         {
             shotSub?.Dispose();
             shotSub = null;
+            meleeSub?.Dispose();
+            meleeSub = null;
         }
 
         void OnShot(ShotFiredEvent evt)
         {
             if (soldier == null || evt.ShooterId != soldier.Id) return;
             restanteDeDisparo = sostenidoDeDisparo;
+        }
+
+        void OnMelee(MeleeAttackEvent evt)
+        {
+            if (soldier == null || evt.AttackerId != soldier.Id || animator == null) return;
+            animator.SetTrigger(ParamCuchillo);
+            restanteDeMelee = DuracionMelee;
         }
 
         void Update()
@@ -228,6 +247,14 @@ namespace SP.Presentation
             mezclaAgachado = Mathf.MoveTowards(mezclaAgachado, agachadoAhora ? 1f : 0f, velocidadDeMezcla * dt);
             if (animator.layerCount > CapaDisparo)
                 animator.SetLayerWeight(CapaDisparo, pesoDisparo * (1f - mezclaAgachado));
+
+            // Mismo patron que pesoDisparo: la capa sube al golpear y cae
+            // sola despues de DuracionMelee, sin depender de que el Animator
+            // avise cuando termina el clip.
+            restanteDeMelee = Mathf.Max(0f, restanteDeMelee - dt);
+            pesoMelee = Mathf.MoveTowards(pesoMelee, restanteDeMelee > 0f ? 1f : 0f, velocidadDeMezcla * dt);
+            if (animator.layerCount > CapaMelee)
+                animator.SetLayerWeight(CapaMelee, pesoMelee);
         }
 
         float AlturaDelPieMasBajo()
