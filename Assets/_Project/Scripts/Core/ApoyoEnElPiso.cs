@@ -90,6 +90,18 @@ namespace SP.Core
             {
                 var c = Buffer[i].collider;
                 if (c == null || c == col || c.transform.IsChildOf(cuerpo)) continue;
+                // BUG REAL (tanque enemigo flotando en el aire): esto corre
+                // en GameplaySceneBootstrap.Start (DefaultExecutionOrder
+                // -200), ANTES de que Vehicle.Start monte y oculte a su
+                // propia tripulacion inicial -- que en la escena esta
+                // parada exactamente en la posicion del vehiculo. El rayo
+                // hacia abajo del tanque pegaba contra la cabeza de su
+                // propio conductor (todavia visible y activo) y "piso"
+                // terminaba siendo la altura de una persona parada, no el
+                // terreno real: el tanque se apoyaba sobre su tripulacion
+                // en vez del suelo. Un cuerpo nunca es piso valido para
+                // nada -- ni para un vehiculo ni para otro soldado.
+                if (c.GetComponentInParent<Soldier>() != null) continue;
                 // El piso es el punto MAS ALTO por debajo suyo: si hay una
                 // caja abajo, se apoya sobre la caja y no la atraviesa
                 // hasta el terreno.

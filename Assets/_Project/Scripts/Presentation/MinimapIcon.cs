@@ -174,10 +174,13 @@ namespace SP.Presentation
         // hitbox de percepcion.
         public const float ConoMedioAnguloGrados = 35f;
         public const float ConoRadioFallback = 16f;
-        // Pedido explicito: "quiero q los conos de vision sean 95% de
-        // transparencia" -- 0.16 (84% transparente) se notaba muy solido
-        // con 30+ conos superpuestos en pantalla a la vez.
-        const float ConoAlpha = 0.05f;
+        // Pedido explicito: "quiero q sean muy muy transparentes casi
+        // invisibles, gris, 99% de transparencia" -- 0.05 (95%) todavia se
+        // notaba como una cuna de color de equipo. Ahora son grises (no el
+        // color de equipo) y casi invisibles: apenas una pista de hacia
+        // donde mira el soldado, sin competir visualmente con nada mas.
+        const float ConoAlpha = 0.01f;
+        static readonly Color ConoColorGris = new Color(0.5f, 0.5f, 0.5f, 1f);
         Transform conoDeVision;
         MeshRenderer conoRenderer;
         float conoRadioActual = -1f;
@@ -195,7 +198,7 @@ namespace SP.Presentation
                 conoRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 conoRenderer.receiveShadows = false;
             }
-            var tinte = colorEquipo;
+            var tinte = ConoColorGris;
             tinte.a = ConoAlpha;
             conoRenderer.sharedMaterial = NuevoMaterialTransparente(tinte);
             conoRadioActual = -1f; // fuerza a TickFollow a re-escalar con el radio actual

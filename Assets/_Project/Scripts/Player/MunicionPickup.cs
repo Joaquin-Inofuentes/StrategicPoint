@@ -107,11 +107,19 @@ namespace SP.Player
             EventBus.Instance.Subscribe<EntityDiedEvent>(OnEnemigoMuerto);
         }
 
+        // Pedido explicito: "de manera aleatoria que suelte o no municion" --
+        // antes CUALQUIER enemigo caido soltaba una caja, sin excepcion. Una
+        // moneda al aire por baja se siente mas a botin real (no todos los
+        // caidos llevan encima balas de sobra) y hace que encontrar una
+        // caja sea un poco de suerte, no una certeza.
+        const float ProbabilidadDeSoltar = 0.5f;
+
         static void OnEnemigoMuerto(EntityDiedEvent evt)
         {
             if (!Application.isPlaying) return;
             var soldado = ActorRegistry.FindById(evt.ActorId);
             if (soldado == null || soldado.Team != TeamId.Enemy) return;
+            if (Random.value > ProbabilidadDeSoltar) return;
             Crear(soldado.transform.position);
         }
     }
