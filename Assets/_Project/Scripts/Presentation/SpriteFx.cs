@@ -127,12 +127,16 @@ namespace SP.Presentation
         // ---- Composiciones ----
         static readonly Color Fuego = new Color(1f, 0.55f, 0.12f, 1f), Llama = new Color(1f, 0.85f, 0.35f, 1f), Humo = new Color(0.33f, 0.31f, 0.29f, 0.75f), Tierra = new Color(0.45f, 0.36f, 0.27f, 0.9f);
 
-        // Explosion de granada / obus / carga: destello, bola de fuego, humo que sube, tierra y chispas. radio = radio de dano.
+        // Explosion de granada / obus / carga: bola de fuego, humo que sube, tierra y chispas. radio = radio de dano.
         public static int Explosion(Vector3 pos, float radio)
         {
             int n = 0;
             float r = Mathf.Max(0.5f, radio);
-            if (Lanzar("flare_01", pos, new Color(1f, 0.95f, 0.75f, 1f), r * 1.2f, r * 3.2f, 0.16f, 0f, default, 0f, 5) != null) n++;
+            // El destello blanco escalaba directo con el radio de dano del
+            // arma (hasta r*3.2 -- con el lanzacohetes, 5 m de radio, un
+            // sprite de 16 m opaco y casi blanco). Se saca del todo: el
+            // fuego, el humo y el anillo de onda expansiva ya venden la
+            // explosion sin blanquear la pantalla en las armas grandes.
             if (Lanzar("fire_01", pos, Fuego, r * 0.7f, r * 2.2f, 0.55f, Random.Range(-40f, 40f), default, 0f, 3) != null) n++;
             if (Lanzar("fire_02", pos + Vector3.up * 0.2f, Llama, r * 0.5f, r * 1.5f, 0.4f, Random.Range(-60f, 60f), default, 0f, 4) != null) n++;
             string[] humos = { "smoke_01", "smoke_02", "smoke_04" };
