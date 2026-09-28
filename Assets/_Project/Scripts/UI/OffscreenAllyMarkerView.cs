@@ -73,20 +73,7 @@ namespace SP.UI
             return t;
         }
 
-        void OnEnable()
-        {
-            if (Arrows == null || Arrows.Length == 0)
-            {
-                var found = new List<Image>();
-                for (int i = 0; i < MaxMarkers; i++)
-                {
-                    var t = transform.Find("AllyArrow_" + i);
-                    if (t != null) found.Add(t.GetComponent<Image>());
-                }
-                Arrows = found.ToArray();
-            }
-            HideAll();
-        }
+        void OnEnable() => HideAll();
 
         void OnDisable() => HideAll();
 

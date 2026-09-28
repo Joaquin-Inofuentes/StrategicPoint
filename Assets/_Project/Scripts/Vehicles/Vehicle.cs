@@ -80,6 +80,7 @@ namespace SP.Vehicles
         // Las dos torretas se resuelven UNA vez (antes UpdateInVehicle hacia dos Transform.Find por frame).
         // Cada una se busca por su pivote, sin adivinar (hay dos TurretWeapon: canon y metralleta).
         TurretWeapon torretaCanon, torretaMetralleta;
+        Transform metralletaStandPoint;
         bool torretasResueltas;
         public TurretWeapon TorretaCanon { get { ResolverTorretas(); return torretaCanon; } }
         public TurretWeapon TorretaMetralleta { get { ResolverTorretas(); return torretaMetralleta; } }
@@ -91,6 +92,12 @@ namespace SP.Vehicles
             torretaCanon = c != null ? c.GetComponent<TurretWeapon>() : null;
             var m = transform.Find("MetralletaMount/MetralletaPivot");
             torretaMetralleta = m != null ? m.GetComponent<TurretWeapon>() : null;
+            // Mismo motivo que torretaCanon/torretaMetralleta: LateUpdate lo
+            // consultaba con dos Transform.Find POR FRAME mientras alguien
+            // esta parado en la torreta (ver mas abajo). Se resuelve aca, una
+            // sola vez, junto con las torretas.
+            var sp = c != null ? c.Find("MetralletaStandPoint") : null;
+            metralletaStandPoint = sp != null ? sp : transform.Find("MetralletaStandPoint");
         }
         public bool FinalExplosionDone { get; private set; }
 
@@ -690,12 +697,11 @@ namespace SP.Vehicles
         {
             if (carritoDeParado != null)
             {
-                var standPoint = transform.Find("TurretMount/TurretPivot/MetralletaStandPoint");
-                if (standPoint == null) standPoint = transform.Find("MetralletaStandPoint");
-                if (standPoint != null)
+                ResolverTorretas();
+                if (metralletaStandPoint != null)
                 {
-                    carritoDeParado.position = standPoint.position;
-                    carritoDeParado.rotation = standPoint.rotation;
+                    carritoDeParado.position = metralletaStandPoint.position;
+                    carritoDeParado.rotation = metralletaStandPoint.rotation;
                 }
             }
             if (diamondMarker != null)

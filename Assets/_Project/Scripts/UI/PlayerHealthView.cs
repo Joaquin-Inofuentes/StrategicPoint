@@ -11,8 +11,8 @@ namespace SP.UI
     // recibir un golpe. En un FPS eso es información de primera línea.
     public class PlayerHealthView : MonoBehaviour
     {
-        Text label;
-        Image fill;
+        [SerializeField] Text label;
+        [SerializeField] Image fill;
 
         // Verde arriba de 60%, amarillo entre 25 y 60, rojo abajo de 25:
         // el color solo ya dice "estás bien / cuidado / te morís", sin
@@ -37,9 +37,6 @@ namespace SP.UI
                 rt.pivot = new Vector2(0f, 0f);
             }
 
-            if (label == null) label = transform.Find("Text")?.GetComponent<Text>();
-            if (fill == null) fill = transform.Find("BarBG/BarFill")?.GetComponent<Image>();
-            
             if (label != null) label.gameObject.SetActive(false);
         }
 

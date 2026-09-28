@@ -29,21 +29,7 @@ namespace SP.UI
         readonly List<List<Soldier>> pending = new List<List<Soldier>>();
         bool hasData;
 
-        void OnEnable()
-        {
-            if (Slots == null || Slots.Length == 0)
-            {
-                // Auto-reparacion por nombre, el patron del proyecto.
-                var found = new List<Text>();
-                for (int i = 0; i < SlotCount; i++)
-                {
-                    var t = transform.Find("Slot_" + (i + 1));
-                    found.Add(t != null ? t.GetComponent<Text>() : null);
-                }
-                Slots = found.ToArray();
-            }
-            timer = 0f;
-        }
+        void OnEnable() => timer = 0f;
 
         public void Bind(Text[] slots)
         {

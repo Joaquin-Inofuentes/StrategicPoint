@@ -50,10 +50,6 @@ namespace SP.UI
 
         void Awake()
         {
-            if (background == null) background = GetComponent<Image>();
-            if (label == null) label = transform.Find("Label")?.GetComponent<Text>();
-            if (healthFill == null) healthFill = transform.Find("BarBG/BarFill")?.GetComponent<Image>();
-            if (icon == null) icon = transform.Find("Icon")?.GetComponent<Image>();
             if (label != null) label.horizontalOverflow = HorizontalWrapMode.Overflow;   // Ronda 11: 2 renglones fijos, sin wrap que empuje texto sobre la barra
 
             // BUG REAL: GameplaySceneBootstrap.Start() repara (SpriteBlanco)

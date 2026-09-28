@@ -42,7 +42,7 @@ namespace SP.UI
         // GO: apagar una Image que comparte GameObject con su vista se
         // termina haciendo con SetActive(false) y eso apaga tambien el
         // componente, que deja de recibir Update y no se puede reencender.
-        Image pulse;
+        [SerializeField] Image pulse;
 
         // Numero de ciclo del latido ya sonado. Sin esto el clip se
         // dispararia en CADA frame del pico, no una vez por latido.
@@ -64,14 +64,7 @@ namespace SP.UI
 
         void OnEnable()
         {
-            // Auto-reparacion por la misma razon que el campo Brain: la
-            // referencia asignada en el editor se pierde en el reload.
-            if (pulse == null)
-            {
-                var child = transform.Find("Pulse");
-                if (child != null) pulse = child.GetComponent<Image>();
-                if (pulse != null) Prepare(pulse);
-            }
+            if (pulse != null) Prepare(pulse);
 
             // Arranca apagado y sin ciclo pendiente: al reactivarse la
             // vista el primer latido tiene que sonar cuando corresponda,

@@ -49,6 +49,13 @@ namespace SP.EditorTools
             new Variante { Nombre = "Francotirador", FbxCuerpo = "SM_Chr_Soldado_Francotirador", Extras = new[] {
                 new Pieza { Fbx = "SM_Chr_Soldado_Francotirador", Nodo = "SM_Chr_Equipo_Boina", Hueso = "Head" },
                 new Pieza { Fbx = "SM_Chr_Soldado_Francotirador", Nodo = "SM_Wpn_CuchilloCinto", Hueso = "Hips" } } },
+            // No hay ningun modelo de civil en el arte importado (solo cuerpos
+            // de soldado: Comando/Explorador/Francotirador/Fusilero/Medico) --
+            // se usa el cuerpo mas desnudo disponible (Explorador) SIN ninguna
+            // pieza de equipo (sin casco, sin cuchillo al cinto): es lo mas
+            // lejos de "soldado" que da el paquete de arte actual. El tinte
+            // azul de SoldierLook.MaterialCivil() termina de diferenciarlo.
+            new Variante { Nombre = "Civil", FbxCuerpo = "SM_Chr_Soldado_Explorador", Extras = new Pieza[0] },
         };
 
         [MenuItem("Strategic Point/Arte/8. Generar variantes de soldado (asalto, flanqueador, medico...)")]

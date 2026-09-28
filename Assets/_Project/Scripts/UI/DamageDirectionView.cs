@@ -13,7 +13,7 @@ namespace SP.UI
     // buscando al atacante y a menudo moria mientras lo hacia.
     public class DamageDirectionView : MonoBehaviour
     {
-        Image arrow;
+        [SerializeField] Image arrow;
         PlayerBrain brain;
         Coroutine routine;
         static Texture2D cachedWedgeTexture;
@@ -89,15 +89,9 @@ namespace SP.UI
         // OnEnable en vez de confiar en la suscripcion original.
         void OnEnable()
         {
-            // `arrow` (asignado por Bind() al armar la escena en Editor)
-            // es un campo privado comun -- no sobrevive al domain reload
-            // de entrar en Play mode, igual que `brain`. Se re-busca por
-            // nombre entre los hijos.
-            if (arrow == null)
-            {
-                var t = transform.Find("Arrow");
-                if (t != null) arrow = t.GetComponent<Image>();
-            }
+            // `arrow` ahora es [SerializeField] (cableado a mano en la
+            // escena): sobrevive el domain reload. `brain` sigue sin
+            // serializar -- se recupera del estatico, no de una busqueda.
             if (brain == null) brain = PlayerBrain.Activo;
             if (sub == null) Initialize();
         }

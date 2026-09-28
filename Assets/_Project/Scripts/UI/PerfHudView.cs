@@ -37,15 +37,7 @@ namespace SP.UI
         const float TextRefreshInterval = 0.25f;
         float textTimer;
 
-        void OnEnable()
-        {
-            if (label == null)
-            {
-                var t = transform.Find("Text");
-                if (t != null) label = t.GetComponent<Text>();
-            }
-            ApplyVisibility();
-        }
+        void OnEnable() => ApplyVisibility();
 
         public void Bind(Text text)
         {

@@ -78,24 +78,14 @@ namespace SP.Presentation
             if (brain == null || brain.Current == null) return;
             if (evt.TargetId != brain.Current.Id) return;
 
-            Vector3 attackerPos = Vector3.zero;
-            bool found = false;
-            
-            // Buscar la posicion del atacante
-            var soldiers = Object.FindObjectsByType<Soldier>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-            foreach (var s in soldiers)
-            {
-                if (s.Id == evt.AttackerId)
-                {
-                    attackerPos = s.transform.position;
-                    found = true;
-                    break;
-                }
-            }
+            // Antes barria TODA la escena (FindObjectsByType<Soldier>) por
+            // cada disparo que recibia el poseido -- con 50 soldados eso es
+            // un barrido completo por impacto. ActorRegistry ya mantiene el
+            // mismo indice por Id en O(1) (ver ActorRegistry.FindById).
+            var atacante = SP.Core.ActorRegistry.FindById(evt.AttackerId);
+            if (atacante == null) return;
 
-            if (!found) return;
-
-            SpawnRing(attackerPos);
+            SpawnRing(atacante.transform.position);
         }
 
         void SpawnRing(Vector3 pos)

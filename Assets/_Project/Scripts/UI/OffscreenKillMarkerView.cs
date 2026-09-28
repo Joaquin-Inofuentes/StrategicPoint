@@ -12,7 +12,7 @@ namespace SP.UI
     // jugador acaba de presenciar.
     public class OffscreenKillMarkerView : MonoBehaviour
     {
-        Image arrow;
+        [SerializeField] Image arrow;
         float hideAt;
         const float VisibleSeconds = 1.1f;
         const float EdgeMargin = 60f;
@@ -26,14 +26,6 @@ namespace SP.UI
             if (arrow != null) arrow.gameObject.SetActive(false);
         }
 
-        void OnEnable()
-        {
-            if (arrow == null)
-            {
-                var t = transform.Find("Arrow");
-                if (t != null) arrow = t.GetComponent<Image>();
-            }
-        }
 
         public void Report(Vector3 worldPosition)
         {

@@ -35,11 +35,12 @@ namespace SP.UI
         // este MonoBehaviour.
         //
         // El campo va privado y SIN serializar a proposito: una referencia
-        // asignada al construir la escena no sobrevive el domain reload al
-        // entrar a Play mode (el mismo bug que documenta CameraFxSettings),
-        // asi que la red de seguridad real es la busqueda por nombre en
-        // OnEnable, no el inspector.
-        Image flash;
+        // Antes era un campo comun: la asignacion al construir la escena no
+        // sobrevivia el domain reload al entrar a Play mode (el mismo bug
+        // que documenta CameraFxSettings) y la red de seguridad real era la
+        // busqueda por nombre en OnEnable, no el inspector. [SerializeField]
+        // hace que la referencia SI sobreviva -- ya no hace falta buscarla.
+        [SerializeField] Image flash;
 
         // Expuesto para verificarlo por reflexion o desde consola: sin
         // esto no habia forma de comprobar que el destello vuelve a cero
@@ -62,11 +63,6 @@ namespace SP.UI
         void OnEnable()
         {
             Instance = this;
-            if (flash == null)
-            {
-                var t = transform.Find("Flash");
-                if (t != null) flash = t.GetComponent<Image>();
-            }
             if (flash != null)
             {
                 flash.raycastTarget = false;

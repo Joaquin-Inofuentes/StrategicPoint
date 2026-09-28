@@ -11,9 +11,9 @@ namespace SP.UI
     // a cubrir la explosion.
     public class TurretAimView : MonoBehaviour
     {
-        Image reticle;
-        Image gapMarker;
-        Image cooldownFill;
+        [SerializeField] Image reticle;
+        [SerializeField] Image gapMarker;
+        [SerializeField] Image cooldownFill;
 
         // Circulo en el mundo (no en la UI): marca en el suelo el radio de
         // explosion REAL leido del arma, no un valor cosmetico duplicado.
@@ -34,25 +34,6 @@ namespace SP.UI
             gapMarker = gap;
             cooldownFill = cooldown;
             radiusRing = ring;
-        }
-
-        void OnEnable()
-        {
-            if (reticle == null)
-            {
-                var t = transform.Find("Reticle");
-                if (t != null) reticle = t.GetComponent<Image>();
-            }
-            if (gapMarker == null)
-            {
-                var t = transform.Find("GapMarker");
-                if (t != null) gapMarker = t.GetComponent<Image>();
-            }
-            if (cooldownFill == null)
-            {
-                var t = transform.Find("CooldownBG/CooldownFill");
-                if (t != null) cooldownFill = t.GetComponent<Image>();
-            }
         }
 
         public void SetVisible(bool visible)
