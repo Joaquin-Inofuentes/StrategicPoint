@@ -80,6 +80,22 @@ namespace SP.Tutorial
             columna = marcador.transform.Find("Flecha").gameObject;
             anillo = marcador.transform.Find("Quad").gameObject;
 
+            // BUG REAL ("el destello que ciega"): el anillo del piso salia
+            // de ShapeMarkerFx.CrearMarcador con el alpha del color tal
+            // cual se lo pasaron -- para "CENTRO" eso es 1f (opaco). Un
+            // disco de ~6 m, sin sombreado propio (Cull=0, sin luz que lo
+            // atenue), en un color bien saturado y SIEMPRE al 100% de
+            // opacidad (a diferencia de la Flecha, que arriba en
+            // LateUpdate ya se atenua sola hasta un maximo de 0.22) se lee
+            // como un flash solido contra la noche, no como una marca
+            // sutil en el piso. Bajarlo una sola vez a un cuarto de su
+            // alpha original alcanza para que siga leyendose la zona sin
+            // encandilar.
+            var rendAnillo = anillo.GetComponent<MeshRenderer>();
+            var colorAnillo = rendAnillo.sharedMaterial.color;
+            colorAnillo.a *= 0.25f;
+            rendAnillo.sharedMaterial.color = colorAnillo;
+
             if (fuente == null) fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             etiqueta = new GameObject("Etiqueta");
             etiqueta.transform.SetParent(transform, false);
