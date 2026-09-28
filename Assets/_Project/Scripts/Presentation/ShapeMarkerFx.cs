@@ -6,7 +6,6 @@ namespace SP.Presentation
     public static class ShapeMarkerFx
     {
         static Material matCirculo;
-        static Mesh meshFlecha;
 
         public static Material MatCirculo(Color c)
         {
@@ -38,23 +37,10 @@ namespace SP.Presentation
             return clon;
         }
 
-        public static Mesh MeshFlechaAbajo()
-        {
-            if (meshFlecha == null)
-            {
-                meshFlecha = new Mesh { name = "FlechaAbajo" };
-                meshFlecha.vertices = new[] {
-                    new Vector3(-0.4f, 0.6f, 0f),
-                    new Vector3(0.4f, 0.6f, 0f),
-                    new Vector3(0f, 0f, 0f)
-                };
-                meshFlecha.triangles = new[] { 0, 1, 2, 0, 2, 1 };
-                meshFlecha.RecalculateNormals();
-            }
-            return meshFlecha;
-        }
-
-        public static GameObject CrearMarcador(Color c, float radio, float escalaFlecha, float alturaFlecha = 1.2f)
+        // Pedido explicito: "elimina la Flecha, el triangulo que aparece
+        // arriba -- que jamas se genere". El marcador de objetivo queda
+        // solo con el anillo del piso.
+        public static GameObject CrearMarcador(Color c, float radio)
         {
             var root = new GameObject("MarcadorObjetivo");
             var circulo = GameObject.CreatePrimitive(PrimitiveType.Quad);
@@ -66,37 +52,7 @@ namespace SP.Presentation
             mc.sharedMaterial = MatCirculo(c);
             mc.shadowCastingMode = ShadowCastingMode.Off;
 
-            var flecha = new GameObject("Flecha");
-            flecha.transform.SetParent(root.transform, false);
-            flecha.transform.localPosition = new Vector3(0f, alturaFlecha, 0f);
-            flecha.transform.localScale = new Vector3(escalaFlecha, escalaFlecha, escalaFlecha);
-            var mf = flecha.AddComponent<MeshFilter>();
-            mf.sharedMesh = MeshFlechaAbajo();
-            var mrf = flecha.AddComponent<MeshRenderer>();
-            var matF = CoverHologram.NuevoTransparente(c);
-            mrf.sharedMaterial = matF;
-            mrf.shadowCastingMode = ShadowCastingMode.Off;
-            
-            flecha.AddComponent<AnimadorFlecha>();
-
             return root;
-        }
-    }
-
-    public class AnimadorFlecha : MonoBehaviour
-    {
-        Vector3 basePos;
-        void Start() { basePos = transform.localPosition; }
-        void Update()
-        {
-            transform.localPosition = basePos + Vector3.up * (Mathf.Sin(Time.time * 6f) * 0.15f);
-            var cam = SP.Core.CamaraPrincipal.Actual;
-            if (cam != null)
-            {
-                var dir = cam.transform.position - transform.position;
-                dir.y = 0;
-                if (dir.sqrMagnitude > 0.01f) transform.rotation = Quaternion.LookRotation(-dir);
-            }
         }
     }
 }

@@ -5,9 +5,11 @@ using SP.Presentation;
 
 namespace SP.Tutorial
 {
-    // Baliza del mundo para "mira aca": una columna translucida, un anillo en
-    // el piso que pulsa y una etiqueta que siempre mira a la camara. Puede
-    // seguir a un objeto que se mueve (un aliado, el tanque).
+    // Baliza del mundo para "mira aca": un anillo en el piso que pulsa y una
+    // etiqueta que siempre mira a la camara. Puede seguir a un objeto que se
+    // mueve (un aliado, el tanque). Tenia ademas una flecha/triangulo
+    // flotando arriba -- se elimino del todo (pedido explicito: se veia
+    // como un destello que encandilaba).
     public class TutorialBeacon : MonoBehaviour
     {
         static readonly List<TutorialBeacon> activas = new List<TutorialBeacon>();
@@ -18,7 +20,7 @@ namespace SP.Tutorial
         public Vector3 Posicion;
         public float Radio = 1.4f;
 
-        GameObject columna, anillo, etiqueta;
+        GameObject anillo, etiqueta;
         TextMesh mesh, sombraMesh;
         public float AlfaEtiqueta { get; private set; } = 1f;
 
@@ -61,36 +63,27 @@ namespace SP.Tutorial
             Destroy(gameObject);
         }
 
-        // La columna alta sirve de guia a distancia; una vez que el jugador
-        // ya llego al objetivo (no antes: llegar puede tardar bastante mas
-        // que el radio de 13 m donde el fundido por camara la apaga sola)
-        // se apaga a mano, sin esperar el fundido ambiental -- que ademas
-        // solo mira la distancia de la CAMARA, no si la mision considera
-        // "llegado" al jugador. El anillo del piso se deja: sigue marcando
-        // la zona a mantener durante la resistencia.
-        public void OcultarColumna()
-        {
-            if (columna != null) columna.SetActive(false);
-        }
+        // La flecha/columna que habia arriba (pedido explicito: eliminada
+        // del todo) era lo unico que este metodo apagaba al llegar al
+        // objetivo. Ya no hay nada que ocultar; queda vacio para no tener
+        // que tocar el unico lugar que lo llama (MisionDirector, al llegar
+        // al CENTRO). El anillo del piso se deja: sigue marcando la zona a
+        // mantener durante la resistencia.
+        public void OcultarColumna() { }
 
         void Armar(string texto, float alto, float alturaEtiqueta, float escalaTexto)
         {
-            var marcador = ShapeMarkerFx.CrearMarcador(color, Radio, 1f, alto * 0.8f);
+            var marcador = ShapeMarkerFx.CrearMarcador(color, Radio);
             marcador.transform.SetParent(transform, false);
-            columna = marcador.transform.Find("Flecha").gameObject;
             anillo = marcador.transform.Find("Quad").gameObject;
 
-            // BUG REAL ("el destello que ciega"): el anillo del piso salia
-            // de ShapeMarkerFx.CrearMarcador con el alpha del color tal
-            // cual se lo pasaron -- para "CENTRO" eso es 1f (opaco). Un
-            // disco de ~6 m, sin sombreado propio (Cull=0, sin luz que lo
-            // atenue), en un color bien saturado y SIEMPRE al 100% de
-            // opacidad (a diferencia de la Flecha, que arriba en
-            // LateUpdate ya se atenua sola hasta un maximo de 0.22) se lee
-            // como un flash solido contra la noche, no como una marca
-            // sutil en el piso. Bajarlo una sola vez a un cuarto de su
-            // alpha original alcanza para que siga leyendose la zona sin
-            // encandilar.
+            // El anillo del piso salia siempre al 100% de opacidad con el
+            // color tal cual se lo pasaron -- para "CENTRO" eso es 1f
+            // (opaco). Un disco de ~6 m, sin atenuar, en un color bien
+            // saturado, contra la noche se leia como un flash solido, no
+            // como una marca sutil en el piso. Bajarlo una sola vez a un
+            // cuarto de su alpha original alcanza para que siga leyendose
+            // la zona sin encandilar.
             var rendAnillo = anillo.GetComponent<MeshRenderer>();
             var colorAnillo = rendAnillo.sharedMaterial.color;
             colorAnillo.a *= 0.25f;
@@ -162,11 +155,6 @@ namespace SP.Tutorial
                     var cm = color; cm.a = alfa; mesh.color = cm;
                     if (sombraMesh != null) sombraMesh.color = new Color(0f, 0f, 0f, 0.9f * alfa);
                 }
-                // La columna se aclara al acercarse para no tapar la vista.
-                var rc = columna.GetComponent<MeshRenderer>();
-                float a = Mathf.Clamp01((d - 3f) / 10f) * 0.22f;
-                var c = rc.sharedMaterial.GetColor("_BaseColor"); c.a = a;
-                rc.sharedMaterial.SetColor("_BaseColor", c);
             }
         }
 

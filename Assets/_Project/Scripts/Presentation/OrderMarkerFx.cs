@@ -493,7 +493,7 @@ namespace SP.Presentation
         {
             if (customShape == null)
             {
-                customShape = ShapeMarkerFx.CrearMarcador(color, scale, scale * 0.7f, 1f);
+                customShape = ShapeMarkerFx.CrearMarcador(color, scale);
                 customShape.transform.SetParent(transform, false);
                 customShape.transform.localPosition = Vector3.zero;
             }
@@ -502,12 +502,9 @@ namespace SP.Presentation
                 // Update color
                 var quad = customShape.transform.Find("Quad");
                 if (quad != null) quad.GetComponent<MeshRenderer>().sharedMaterial = ShapeMarkerFx.MatCirculo(color);
-                var arrow = customShape.transform.Find("Flecha");
-                if (arrow != null) arrow.GetComponent<MeshRenderer>().sharedMaterial = CoverHologram.NuevoTransparente(color);
-                
+
                 // Update scale
                 if (quad != null) quad.transform.localScale = new Vector3(scale * 2f, scale * 2f, 1f);
-                if (arrow != null) arrow.transform.localScale = new Vector3(scale * 0.7f, scale * 0.7f, scale * 0.7f);
             }
             customShape.SetActive(true);
         }
