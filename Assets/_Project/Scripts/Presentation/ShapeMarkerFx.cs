@@ -90,7 +90,7 @@ namespace SP.Presentation
         void Update()
         {
             transform.localPosition = basePos + Vector3.up * (Mathf.Sin(Time.time * 6f) * 0.15f);
-            var cam = Camera.main;
+            var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam != null)
             {
                 var dir = cam.transform.position - transform.position;

@@ -10,6 +10,13 @@ namespace SP.Presentation
     // Vive en su propia capa (Minimap), que la cámara principal no ve y la
     // cámara del minimapa sí — así el minimapa no muestra el terreno ni la
     // geometría real, solo estos íconos de colores sobre fondo negro.
+    //
+    // [ExecuteAlways]: OnEnable pinta el equipo y arma el cono de vision
+    // (ver comentario ahi) usando solo datos ya serializados -- sin esto la
+    // escena horneada en el editor se veia sin pintar hasta apretar Play.
+    // No hay Update/LateUpdate propio (TickFollow lo llama WorldUiDirector
+    // a mano), asi que esto no agrega ningun tick nuevo en Edit mode.
+    [ExecuteAlways]
     public class MinimapIcon : MonoBehaviour
     {
         [SerializeField] Transform target;
@@ -278,8 +285,17 @@ namespace SP.Presentation
             // Se arregla la escena en vivo y no solo la construccion nueva:
             // los iconos de SC_Gameplay estan serializados con la cuña, y
             // reconstruirlos a mano seria un diff de escena por soldado.
-            if (Application.isPlaying && (esTriangulo || directionMarker != null)) ConvertirEnTriangulo();
-            if (Application.isPlaying) DetectarTarget();
+            //
+            // Pedido explicito: "quiero q la UI de editor sea estimando los
+            // valores pronosticados... antes del play y despues del play se
+            // vea igual". Antes esto corria SOLO en Play, asi que el
+            // minimapa en el editor mostraba los iconos sin pintar y sin
+            // cono de vision hasta apretar Play. Como DetectarTarget() solo
+            // lee datos ya serializados (Team, AiBrain) y no requiere
+            // simulacion corriendo, es seguro correrlo tambien en Edit mode
+            // (ver [ExecuteAlways] en la clase).
+            if (esTriangulo || directionMarker != null) ConvertirEnTriangulo();
+            DetectarTarget();
             WorldUiDirector.Register(this);
         }
 
@@ -720,6 +736,29 @@ namespace SP.Presentation
             var icon = go.AddComponent<MinimapIcon>();
             icon.Target = target;
             return icon;
+        }
+
+        // Evita el doble icono cuando la escena ya trae uno horneado por
+        // MinimapIconBakePipeline (editor) y ademas algo llama Spawn() de
+        // nuevo al entrar en Play (domain reload -> OnEnable de vuelta en
+        // el spawneador, ver UnitLocatorCylinder). Barrido directo por
+        // Target en vez de confiar en el orden de OnEnable entre objetos
+        // distintos, que Unity no garantiza.
+        public static bool ExisteIconoPara(Transform target) => BuscarPorTarget(target) != null;
+
+        // El icono de un vehiculo NO es su hijo (ver MinimapIconBakePipeline:
+        // ponerlo como hijo hacia que Vehicle.RefreshOccupancyColor lo
+        // agarrara con GetComponentsInChildren<Renderer>() y le pisara el
+        // material al re-tintar el chasis -- BUG REAL, NullReferenceException
+        // en Vehicle.cs:250 la primera vez que alguien subia/bajaba).
+        // Vehicle.cs usa esto para encontrar "su" icono sin depender de la
+        // jerarquia.
+        public static MinimapIcon BuscarPorTarget(Transform target)
+        {
+            if (target == null) return null;
+            foreach (var icon in FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (icon.Target == target) return icon;
+            return null;
         }
     }
 }

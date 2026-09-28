@@ -182,7 +182,12 @@ namespace SP.Presentation
             // resto de la señalizacion de esta unidad. MinimapIcon.Spawn ya
             // detecta el Soldier del Target solo y se pinta/convierte a
             // doble triangulo por su cuenta (ver MinimapIcon.DetectarSoldado).
-            if (Application.isPlaying)
+            // MinimapIconBakePipeline (editor, menu "Strategic Point/UI/4. ...")
+            // ya deja este icono horneado en la escena para que el minimapa
+            // se vea en el editor igual que en partida -- sin el chequeo de
+            // abajo, entrar en Play volvia a llamar Spawn() y duplicaba el
+            // icono de cada soldado ya horneado.
+            if (Application.isPlaying && !MinimapIcon.ExisteIconoPara(soldier.transform))
             {
                 int layerMinimapa = LayerMask.NameToLayer("Minimap");
                 if (layerMinimapa < 0) layerMinimapa = 8;

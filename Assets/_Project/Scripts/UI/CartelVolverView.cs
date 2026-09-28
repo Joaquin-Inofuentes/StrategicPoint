@@ -125,7 +125,8 @@ namespace SP.UI
                 panel.localScale = Vector3.one * scale;
 
                 // Flecha
-                if (Camera.main != null)
+                var camPrincipal = CamaraPrincipal.Actual;
+                if (camPrincipal != null)
                 {
                     Vector3 objPos = dir.PuntoObjetivoActual();
                     Vector3 playerPos = dir.PosicionDelJugador();
@@ -134,7 +135,7 @@ namespace SP.UI
                     if (toObj.sqrMagnitude > 0.1f)
                     {
                         toObj.Normalize();
-                        Vector3 camFwd = Camera.main.transform.forward;
+                        Vector3 camFwd = camPrincipal.transform.forward;
                         camFwd.y = 0f;
                         if (camFwd.sqrMagnitude > 0.1f)
                         {

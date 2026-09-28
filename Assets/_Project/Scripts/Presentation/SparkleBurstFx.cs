@@ -116,7 +116,12 @@ namespace SP.Presentation
             var velOverLifetime = ps.velocityOverLifetime;
             velOverLifetime.enabled = true;
             velOverLifetime.space = ParticleSystemSimulationSpace.World;
+            // Las 3 curvas (x/y/z) tienen que estar en el mismo modo o
+            // Unity tira "Particle Velocity curves must all be in the same
+            // mode" -- x/z en 0 pero con el mismo modo TwoConstants que y.
+            velOverLifetime.x = new ParticleSystem.MinMaxCurve(0f, 0f);
             velOverLifetime.y = new ParticleSystem.MinMaxCurve(upBias * 0.5f, upBias);
+            velOverLifetime.z = new ParticleSystem.MinMaxCurve(0f, 0f);
 
             var colorOverLifetime = ps.colorOverLifetime;
             var gradiente = new Gradient();

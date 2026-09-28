@@ -269,7 +269,7 @@ namespace SP.Vehicles
                 diamondMaterial.color = diamondTarget;
                 if (diamondMaterial.HasProperty("_BaseColor")) diamondMaterial.SetColor("_BaseColor", diamondTarget);
             }
-            var minimapIcon = GetComponentInChildren<SP.Presentation.MinimapIcon>();
+            var minimapIcon = SP.Presentation.MinimapIcon.BuscarPorTarget(transform);
             if (minimapIcon != null) minimapIcon.RepintarPorEquipo(true);
         }
 
