@@ -52,6 +52,23 @@ namespace SP.Presentation
         const float TamanoBorde = 0.62f;
         const float TamanoInterior = 0.40f;
 
+        // Pedido explicito: "los rombos aliados si estan muy cerca mio se
+        // achicaran al 5% y mientras mas lejos estan mas grandes seran los
+        // rombos. Osea es proporcional su tamano a mi distancia con ellos" --
+        // solo aplica a ALIADOS (el enemigo no cambia de tamano, para no
+        // confundir "mas grande = mas peligroso"). Cerca el aliado ya se ve
+        // solo, el rombo solo estorbaria; lejos es donde mas hace falta
+        // destacarlo.
+        const float EscalaAliadoCerca = 0.05f;
+        const float DistanciaEscalaMin = 2f;   // a esta distancia o menos, 5%
+        const float DistanciaEscalaMax = 45f;  // a esta distancia o mas, tamano normal (100%)
+
+        // Pedido explicito: "y si estan siguiendome y estan muy cerca
+        // directamente no tendran rombo por que se que son aliados" -- un
+        // aliado en formacion (Follow) pegado al jugador no necesita marca
+        // ninguna, ya se lo ve caminando al lado.
+        const float DistanciaOcultarSiguiendo = 4f;
+
         // Colores solidos y saturados a proposito -- pedido explicito de
         // "mucho contraste": el cilindro viejo era 16% opaco y se perdia
         // contra el pasto/tierra. Rojo/azul puros + emision (ver
@@ -192,10 +209,14 @@ namespace SP.Presentation
                 int layerMinimapa = LayerMask.NameToLayer("Minimap");
                 if (layerMinimapa < 0) layerMinimapa = 8;
                 // Pedido explicito: "los q me importan son muy pequeños" --
-                // el radio subio de 1.6 a 3.0 para que un soldado se lea a
-                // simple vista contra los rectangulos grises de obstaculos
-                // (esos quedan en su propio tamaño, ver RegistrarObstaculos).
-                MinimapIcon.Spawn(soldier.transform, equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado, layerMinimapa, 3.0f);
+                // el radio subio de 1.6 a 3.0 y despues a 4.0 (al agrandar
+                // el radio visible del minimapa de 26 a 110 m, ver
+                // MinimapFollow.OrthoSizeMinimo, el mismo icono ocupa menos
+                // de un tercio de los pixeles de antes) para que un soldado
+                // se lea a simple vista contra los rectangulos grises de
+                // obstaculos (esos quedan en su propio tamaño, ver
+                // RegistrarObstaculos).
+                MinimapIcon.Spawn(soldier.transform, equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado, layerMinimapa, 4.0f);
             }
         }
 
@@ -262,7 +283,25 @@ namespace SP.Presentation
 
                 bool anguloOk = angulo > AnguloDeMira;
                 bool inteligenciaOk = !esEnemigo || SP.Core.InteligenciaDeEnemigos.EstaRevelado(soldier.Id);
-                marcador.SetActive(anguloOk && inteligenciaOk);
+
+                // Aliado en formacion (siguiendome) y pegado a mi: sin rombo,
+                // ya se lo ve al lado.
+                bool ocultoPorSeguirCerca = !esEnemigo && soldier.Brain != null
+                    && soldier.Brain.State == SP.Ai.AiState.Follow
+                    && distancia <= DistanciaOcultarSiguiendo;
+
+                marcador.SetActive(anguloOk && inteligenciaOk && !ocultoPorSeguirCerca);
+
+                if (!esEnemigo)
+                {
+                    float t = Mathf.InverseLerp(DistanciaEscalaMin, DistanciaEscalaMax, distancia);
+                    float escala = Mathf.Lerp(EscalaAliadoCerca, 1f, t);
+                    marcador.transform.localScale = new Vector3(escala, escala, escala);
+                }
+                else if (marcador.transform.localScale != Vector3.one)
+                {
+                    marcador.transform.localScale = Vector3.one;
+                }
             }
 
             // Billboard: hay que rehacerlo TODOS los frames que este
