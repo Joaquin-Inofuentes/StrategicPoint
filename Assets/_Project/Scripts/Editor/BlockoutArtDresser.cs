@@ -198,20 +198,76 @@ namespace SP.EditorTools
         // mecanismo que ya describe el comentario de la clase).
         static void AjustarColliderAlArte(Transform cubo, Transform raizArte)
         {
-            var box = cubo.GetComponent<BoxCollider>();
-            if (box == null) return; // forma no rectangular: no se toca
+            var boxOriginal = cubo.GetComponent<BoxCollider>();
+            if (boxOriginal == null) return; // forma no rectangular: no se toca
 
             var renderers = raizArte.GetComponentsInChildren<Renderer>(true);
             if (renderers.Length == 0) return;
-            var bounds = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+
+            // BUG REAL reportado jugando: "hay un collider invisible que no me deja
+            // pasar entre los muros". Algunos cubos (p.ej. Cob_Callejon_2) tienen DOS
+            // modulos de ArteBloque bien separados (dos pilas de sacos a los costados
+            // de un pasillo), puestos asi a proposito para dejar el medio caminable.
+            // Encapsular TODOS los renderers en una sola caja terminaba tapando ese
+            // hueco con un collider invisible que unia ambas pilas. Ahora se agrupan
+            // los renderers por cercania y se genera un BoxCollider por grupo (varios
+            // BoxCollider en el mismo cubo forman un collider compuesto), asi que un
+            // hueco real entre dos partes separadas del arte sigue siendo caminable.
+            var grupos = AgruparPorCercania(renderers);
+
+            var extras = cubo.GetComponents<BoxCollider>();
+            foreach (var extra in extras) if (extra != boxOriginal) Object.DestroyImmediate(extra);
 
             var escala = cubo.lossyScale;
-            box.center = cubo.InverseTransformPoint(bounds.center);
-            box.size = new Vector3(
-                Mathf.Abs(escala.x) > 0.0001f ? bounds.size.x / Mathf.Abs(escala.x) : bounds.size.x,
-                Mathf.Abs(escala.y) > 0.0001f ? bounds.size.y / Mathf.Abs(escala.y) : bounds.size.y,
-                Mathf.Abs(escala.z) > 0.0001f ? bounds.size.z / Mathf.Abs(escala.z) : bounds.size.z);
+            for (int i = 0; i < grupos.Count; i++)
+            {
+                var box = i == 0 ? boxOriginal : cubo.gameObject.AddComponent<BoxCollider>();
+                var bounds = grupos[i];
+                box.center = cubo.InverseTransformPoint(bounds.center);
+                box.size = new Vector3(
+                    Mathf.Abs(escala.x) > 0.0001f ? bounds.size.x / Mathf.Abs(escala.x) : bounds.size.x,
+                    Mathf.Abs(escala.y) > 0.0001f ? bounds.size.y / Mathf.Abs(escala.y) : bounds.size.y,
+                    Mathf.Abs(escala.z) > 0.0001f ? bounds.size.z / Mathf.Abs(escala.z) : bounds.size.z);
+            }
+        }
+
+        // Une bounds de renderers que esten a menos de este margen entre si (en
+        // metros de mundo). Modulos contiguos de un mismo muro/barricada quedan casi
+        // pegados (huecos de pocos cm por como los coloca Cobertura()/Muro()), pero un
+        // pasillo real entre dos piezas separadas mide varios metros: con este umbral
+        // los primeros se fusionan y el segundo se detecta como grupos distintos.
+        const float MargenAgrupado = 2.5f;
+
+        static System.Collections.Generic.List<Bounds> AgruparPorCercania(Renderer[] renderers)
+        {
+            var grupos = new System.Collections.Generic.List<Bounds>();
+            foreach (var r in renderers) grupos.Add(r.bounds);
+
+            bool fusiono = true;
+            while (fusiono)
+            {
+                fusiono = false;
+                for (int i = 0; i < grupos.Count && !fusiono; i++)
+                    for (int j = i + 1; j < grupos.Count; j++)
+                        if (Separacion(grupos[i], grupos[j]) <= MargenAgrupado)
+                        {
+                            var b = grupos[i];
+                            b.Encapsulate(grupos[j]);
+                            grupos[i] = b;
+                            grupos.RemoveAt(j);
+                            fusiono = true;
+                            break;
+                        }
+            }
+            return grupos;
+        }
+
+        static float Separacion(Bounds a, Bounds b)
+        {
+            float dx = Mathf.Max(0f, Mathf.Max(a.min.x, b.min.x) - Mathf.Min(a.max.x, b.max.x));
+            float dy = Mathf.Max(0f, Mathf.Max(a.min.y, b.min.y) - Mathf.Min(a.max.y, b.max.y));
+            float dz = Mathf.Max(0f, Mathf.Max(a.min.z, b.min.z) - Mathf.Min(a.max.z, b.max.z));
+            return Mathf.Sqrt(dx * dx + dy * dy + dz * dz);
         }
 
         // Repara colliders desajustados en una escena YA vestida, sin rehacer todo el
@@ -228,17 +284,23 @@ namespace SP.EditorTools
                 if (t == null || t.name != RaizNombre) continue;
                 var cubo = t.parent;
                 if (cubo == null) continue;
-                var box = cubo.GetComponent<BoxCollider>();
-                if (box == null) continue;
+                var cajas = cubo.GetComponents<BoxCollider>();
+                if (cajas.Length == 0) continue;
                 revisados++;
 
                 var renderers = t.GetComponentsInChildren<Renderer>(true);
                 if (renderers.Length == 0) continue;
-                var bounds = renderers[0].bounds;
-                for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+                var grupos = AgruparPorCercania(renderers);
 
-                bool cubre = box.bounds.Contains(bounds.min) && box.bounds.Contains(bounds.max);
-                if (cubre) continue;
+                bool cubre = true;
+                foreach (var g in grupos)
+                {
+                    bool algunaCaja = false;
+                    foreach (var c in cajas)
+                        if (c.bounds.Contains(g.min) && c.bounds.Contains(g.max)) { algunaCaja = true; break; }
+                    if (!algunaCaja) { cubre = false; break; }
+                }
+                if (cubre && cajas.Length == grupos.Count) continue;
 
                 AjustarColliderAlArte(cubo, t);
                 reparados++;
