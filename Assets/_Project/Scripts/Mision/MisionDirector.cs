@@ -597,6 +597,11 @@ namespace SP.Mision
             if (tRescate < DuracionRescate) return;
 
             CivilRescatado = true;
+            // BUG REAL reportado jugando: la esfera amarilla flotante de
+            // "hay que rescatarme" se quedaba prendida para siempre, incluso
+            // con el civil ya rescatado y caminando detras del jugador.
+            var rehen = Civil.GetComponent<SP.Player.Rehen>();
+            if (rehen != null) rehen.DesactivarMarcador();
             if (balizaCivil != null) { balizaCivil.Quitar(); balizaCivil = null; }
             if (baliza != null) { baliza.Quitar(); baliza = null; }
             baliza = TutorialBeacon.Crear("HELICOPTERO", new Color(0.35f, 1f, 0.5f), Helipuerto + Vector3.right * 6f, null, 3.2f, 26f);

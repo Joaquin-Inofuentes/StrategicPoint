@@ -31,6 +31,7 @@ namespace SP.Player
         AudioSource audioSource;
         AudioClip tonoAviso;
         float proximoAviso;
+        Transform marcador;
 
         void Awake()
         {
@@ -78,6 +79,19 @@ namespace SP.Player
 
             var giro = marcador.AddComponent<GiroDeMarcador>();
             giro.Base = marcador.transform.localPosition;
+
+            this.marcador = marcador.transform;
+        }
+
+        // BUG REAL reportado jugando: la esfera amarilla de "hay que
+        // rescatarme" se quedaba flotando sobre el civil PARA SIEMPRE,
+        // incluso ya rescatado y siguiendo al jugador rumbo al helicoptero
+        // -- nada llamaba esto. MisionDirector.TickRescatar la apaga apenas
+        // CivilRescatado pasa a true. Se desactiva el GameObject entero (no
+        // se destruye) para no romper ninguna referencia que quede colgando.
+        public void DesactivarMarcador()
+        {
+            if (marcador != null) marcador.gameObject.SetActive(false);
         }
 
         void Update()
