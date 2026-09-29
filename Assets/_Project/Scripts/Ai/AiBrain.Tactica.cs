@@ -323,7 +323,17 @@ namespace SP.Ai
 
         void TickSeguirAlJugador()
         {
-            if (self.Team != TeamId.Player || Quieto) return;
+            // BUG REAL: el civil (Pasivo=true, "no reacciona a nada, solo
+            // sigue ordenes") quedaba afuera de este chequeo -- este
+            // llamado auto-sigue-al-lider corre para CUALQUIER aliado
+            // libre que este lejos, sin mirar Pasivo. Resultado: el civil
+            // arrancaba a caminar hacia el jugador desde su escondite ni
+            // bien aparecia, en vez de esperar a que el jugador se acerque
+            // (la mecanica real de rescate en MisionDirector.TickRescatar).
+            // La orden explicita de seguir que llega despues del rescate
+            // (MisionDirector.SeguirAlJugador -> OrderService.IssueFollowOrder)
+            // no pasa por aca, asi que este guard no la afecta.
+            if (self.Team != TeamId.Player || Quieto || Pasivo) return;
             var lider = AjustesDeEscuadra.Lider;
             if (lider == null || lider == self || lider.Health == null || !lider.Health.IsAlive || !lider.gameObject.activeInHierarchy)
             {
@@ -406,7 +416,15 @@ namespace SP.Ai
             int row = (idx / 2) + 1;
             float sign = (idx % 2 == 0) ? 1f : -1f;
             float px = sign * row * AjustesDeEscuadra.DistanciaLateralFormacion;
-            float pz = -row * AjustesDeEscuadra.DistanciaAtrasFormacion;
+            // BUG REAL reportado jugando: la primer fila (los dos aliados
+            // mas comunes, escuadra chica) iba en cuña BEHIND -- en la
+            // camara en primera persona del jugador quedaban fuera de
+            // cuadro, detras del hombro, invisibles mientras caminabas.
+            // Pedido explicito: "que vayan a mis lados, visibles". La
+            // primera fila ahora va EXACTO al costado (pz=0); solo si hay
+            // mas de dos aliados siguiendote, las filas siguientes se caen
+            // un poco hacia atras para no pisar a la fila de adelante.
+            float pz = -(row - 1) * AjustesDeEscuadra.DistanciaAtrasFormacion;
             followOffsetLocal = new Vector3(px, 0f, pz);
 
             seguirAuto = true;

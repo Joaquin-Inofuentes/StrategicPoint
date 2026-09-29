@@ -503,21 +503,27 @@ namespace SP.Player
         // IssueFollowOrder para cada soldado con el MISMO lider y sin
         // ranura -- todos terminaban persiguiendo el mismo punto (el
         // lider) al mismo followStopDistance, o sea el mismo circulo, y
-        // se apilaban unos sobre otros. Ahora se reparte una cuña de
-        // formacion DETRAS del lider (mismo criterio que
-        // IssueFormationOrderForSelection para ordenes de movimiento),
-        // en espacio LOCAL del lider -- AiBrain.Follow la reaplica cada
-        // tick contra la posicion y rotacion actuales de el, asi que la
-        // cuña gira con el lider en vez de quedar fija en el mundo.
-        // Mas angosto que FormationSpacing (pensado para una formacion de
-        // movimiento deliberada, mas abierta): al seguir, la cuña de
-        // Cuna suma rango + costado por cada escalon, y con el espaciado
-        // normal el segundo/tercer aliado terminaba casi 4m atras del
-        // lider -- separados de sobra, pero un grupo "que me sigue" se
-        // lee mas natural pegado, no desparramado. 1.3m sigue siendo mas
-        // del doble del cuerpo de un soldado (~0.55m de radio de sondeo),
-        // asi que la separacion entre ellos sigue garantizada.
-        const float FollowSpacing = 0.65f;   // ronda 13 (punto 4): mitad de 1,3 m. Sigue siendo mayor que el radio de un soldado (~0,4 m) entre ranuras vecinas
+        // se apilaban unos sobre otros. Se le dio una ranura por soldado
+        // para separarlos (ronda 13).
+        //
+        // BUG REAL NUEVO reportado jugando ("los aliados deberian ir a mis
+        // lados, visibles, no que desde el inicio vengan detras"): la ranura
+        // que se repartia era una cuña con la PUNTA justo detras del lider
+        // (x=0, z=-1,1) y el resto todavia mas atras -- en la camara sobre
+        // el hombro del jugador el primer aliado quedaba tapado por su
+        // propio cuerpo, invisible mientras caminaba. Esta es la formacion
+        // que de verdad se usa en partida real: MisionDirector le da esta
+        // orden a la escuadra completa apenas arranca la mision (ver su
+        // comentario "que me sigan primero"), y tambien el atajo [Y] /
+        // el radial "seguir". Ahora es una FILA al costado: el primer par
+        // de aliados va EXACTO a la par del lider (misma profundidad), y
+        // solo si hay mas de dos (escuadras mas grandes) los siguientes se
+        // escalonan hacia atras para no pisar a la fila de adelante --
+        // mismo criterio que AiBrain.Tactica.ComenzarSeguirAlJugador (el
+        // disparador automatico por distancia) para que las dos vias de
+        // "seguime" se vean identicas.
+        const float FollowLateral = 1.3f;    // separacion al costado del lider
+        const float FollowSpacing = 0.65f;   // ronda 13 (punto 4): cuanto se cae hacia atras cada fila extra. Sigue siendo mas del doble del radio de un soldado (~0,4 m) entre ranuras vecinas
 
         public static void IssueFollowOrderForSelection(IEnumerable<Soldier> selection, Soldier leader)
         {
@@ -526,8 +532,13 @@ namespace SP.Player
             list.RemoveAll(s => s == leader);
             if (list.Count == 0) return;
 
-            Vector3 puntoDeReferencia = Vector3.back * (FollowSpacing + 0.45f);   // ronda 13: el primero queda a ~1,1 m del lider (con 0,65 se le encimaba)
-            Vector3[] ranuras = FormationPoints(puntoDeReferencia, Vector3.forward, list.Count, FormationKind.Cuna, FollowSpacing);
+            var ranuras = new Vector3[list.Count];
+            for (int i = 0; i < list.Count; i++)
+            {
+                int row = (i / 2) + 1;
+                float sign = (i % 2 == 0) ? 1f : -1f;
+                ranuras[i] = new Vector3(sign * row * FollowLateral, 0f, -(row - 1) * FollowSpacing);
+            }
 
             for (int i = 0; i < list.Count; i++)
                 IssueFollowOrder(list[i], leader, ranuras[i]);
