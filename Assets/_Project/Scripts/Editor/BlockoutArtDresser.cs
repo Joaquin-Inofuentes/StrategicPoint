@@ -229,6 +229,63 @@ namespace SP.EditorTools
                     Mathf.Abs(escala.y) > 0.0001f ? bounds.size.y / Mathf.Abs(escala.y) : bounds.size.y,
                     Mathf.Abs(escala.z) > 0.0001f ? bounds.size.z / Mathf.Abs(escala.z) : bounds.size.z);
             }
+            SincronizarVolumenesDeNavegacion(cubo);
+        }
+
+        // BUG REAL encontrado testeando el nivel: el NavMeshModifierVolume ("no caminable") vive
+        // en el cubo, pero en 4 cubos con el arte corrido (Carro_Aldea, Barricada_Aldea,
+        // Cob_Callejon_2, Bunker_Canon_Oeste) el cubo quedo a 7-25 m de su arte: el navmesh tenia un
+        // agujero donde ya no hay nada y trataba como piso libre a la barricada real, asi que la IA
+        // planificaba rutas a traves de props solidos y quedaba "trabada". Se genera un volumen por
+        // caja de collider (el del cubo para la primera, hijos "NavBloqueo" para el resto), con el
+        // mismo margen que LevelBlockoutBuilder.AgregarVolumenNoCaminable.
+        const string NavHijo = "NavBloqueo";
+
+        static void AjustarVolumen(Unity.AI.Navigation.NavMeshModifierVolume vol, BoxCollider caja)
+        {
+            vol.center = caja.center + new Vector3(0f, -0.03f, 0f);
+            vol.size = Vector3.Scale(caja.size, new Vector3(1.02f, 1.1f, 1.02f));
+        }
+
+        static bool NavAlineado(Transform cubo, BoxCollider[] cajas)
+        {
+            var volCubo = cubo.GetComponent<Unity.AI.Navigation.NavMeshModifierVolume>();
+            var hijos = new List<Unity.AI.Navigation.NavMeshModifierVolume>();
+            foreach (Transform h in cubo)
+                if (h.name == NavHijo) hijos.Add(h.GetComponent<Unity.AI.Navigation.NavMeshModifierVolume>());
+            if (hijos.Count != cajas.Length - 1) return false;
+            for (int i = 0; i < cajas.Length; i++)
+            {
+                var v = i == 0 ? volCubo : hijos[i - 1];
+                if (v == null) return false;
+                var centroVol = v.transform.TransformPoint(v.center);
+                if (Vector3.Distance(centroVol, cajas[i].bounds.center) > 1f) return false;
+            }
+            return true;
+        }
+
+        static void SincronizarVolumenesDeNavegacion(Transform cubo)
+        {
+            var volCubo = cubo.GetComponent<Unity.AI.Navigation.NavMeshModifierVolume>();
+            if (volCubo == null) return; // todavia no se horneo el navmesh: BakeNavMesh los crea
+            var cajas = cubo.GetComponents<BoxCollider>();
+            if (cajas.Length == 0 || NavAlineado(cubo, cajas)) return;
+
+            var previos = new List<GameObject>();
+            foreach (Transform h in cubo) if (h.name == NavHijo) previos.Add(h.gameObject);
+            foreach (var p in previos) Object.DestroyImmediate(p);
+
+            AjustarVolumen(volCubo, cajas[0]);
+            for (int i = 1; i < cajas.Length; i++)
+            {
+                var go = new GameObject(NavHijo);
+                go.transform.SetParent(cubo, false);
+                go.transform.localPosition = cajas[i].center;
+                var v = go.AddComponent<Unity.AI.Navigation.NavMeshModifierVolume>();
+                v.area = volCubo.area;
+                v.center = new Vector3(0f, -0.03f, 0f);
+                v.size = Vector3.Scale(cajas[i].size, new Vector3(1.02f, 1.1f, 1.02f));
+            }
         }
 
         // Une bounds de renderers que esten a menos de este margen entre si (en
@@ -270,6 +327,18 @@ namespace SP.EditorTools
             return Mathf.Sqrt(dx * dx + dy * dy + dz * dz);
         }
 
+        // Rehornea el NavMeshSurface propio del proyecto (el mismo que LevelBlockoutBuilder) para
+        // que refleje los volumenes de navegacion recien reajustados. NO usar el "bake_navmesh"
+        // legacy: agrega un segundo navmesh superpuesto que ignora los NavMeshModifierVolume.
+        [MenuItem("Strategic Point/Arte/9c. Rehornear NavMesh (surface del proyecto)")]
+        public static void RehornearNavMesh()
+        {
+            LevelBlockoutBuilder.BakeNavMesh();
+            var escena = SceneManager.GetActiveScene();
+            EditorSceneManager.MarkSceneDirty(escena);
+            EditorSceneManager.SaveScene(escena);
+        }
+
         // Repara colliders desajustados en una escena YA vestida, sin rehacer todo el
         // reparto de ambiente/arboles/arbustos (que tiene su propio efecto secundario
         // de idempotencia via semilla fija, pero no hace falta arriesgarlo para esto).
@@ -278,7 +347,7 @@ namespace SP.EditorTools
         [MenuItem("Strategic Point/Arte/9b. Reparar colliders de cobertura desalineados")]
         public static void RepararCollidersDeArteBloque()
         {
-            int reparados = 0, revisados = 0;
+            int reparados = 0, revisados = 0, navReparados = 0;
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include))
             {
                 if (t == null || t.name != RaizNombre) continue;
@@ -304,7 +373,11 @@ namespace SP.EditorTools
                     }
                     if (!algunaCaja) { cubre = false; break; }
                 }
-                if (cubre && cajas.Length == grupos.Count) continue;
+                if (cubre && cajas.Length == grupos.Count)
+                {
+                    if (!NavAlineado(cubo, cajas)) { SincronizarVolumenesDeNavegacion(cubo); navReparados++; Debug.Log($"[BlockoutArtDresser] Volumen de navmesh reajustado: {cubo.name}"); }
+                    continue;
+                }
 
                 AjustarColliderAlArte(cubo, t);
                 reparados++;
@@ -313,7 +386,7 @@ namespace SP.EditorTools
             var escena = SceneManager.GetActiveScene();
             EditorSceneManager.MarkSceneDirty(escena);
             EditorSceneManager.SaveScene(escena);
-            Debug.Log($"[BlockoutArtDresser] {reparados}/{revisados} colliders de cobertura reajustados al arte real (escena guardada).");
+            Debug.Log($"[BlockoutArtDresser] {reparados}/{revisados} colliders de cobertura reajustados al arte real, {navReparados} volumenes de navmesh (escena guardada).");
         }
 
         // Pone un modulo, sin colliders, con escala/posicion/giro dados (en metros locales del cubo).
