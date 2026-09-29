@@ -297,7 +297,11 @@ namespace SP.EditorTools
                 {
                     bool algunaCaja = false;
                     foreach (var c in cajas)
-                        if (c.bounds.Contains(g.min) && c.bounds.Contains(g.max)) { algunaCaja = true; break; }
+                    {
+                        var cb = c.bounds;
+                        cb.Expand(0.02f);
+                        if (cb.Contains(g.min) && cb.Contains(g.max)) { algunaCaja = true; break; }
+                    }
                     if (!algunaCaja) { cubre = false; break; }
                 }
                 if (cubre && cajas.Length == grupos.Count) continue;
