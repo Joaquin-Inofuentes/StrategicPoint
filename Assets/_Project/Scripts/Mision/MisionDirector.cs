@@ -36,9 +36,23 @@ namespace SP.Mision
         [SerializeField] GameObject heliPrefab;
         [SerializeField] CinematicaIntroPath rutaDeIntro;
 
-        public Vector3 Plaza = new Vector3(4f, 0f, 119f);
-        public Vector3 Helipuerto = new Vector3(-26f, 0f, -8f);
-        public Vector3 RefugioDelCivil = new Vector3(-2f, 0f, 124f);
+        // Pedido explicito: "un gameobject que no es visible pero sera para
+        // saber el destino desde escena de manera simple" -- antes estos
+        // tres puntos eran numeros sueltos en el codigo, sin forma de verlos
+        // ni moverlos desde la escena. Si hay un MarcadorDeMision asignado
+        // se usa su posicion (arrastrable/visible como gizmo en el Editor,
+        // invisible en Play); si no, el numero de siempre sigue de
+        // respaldo, asi que una escena vieja sin marcadores no se rompe.
+        [SerializeField] Transform marcadorPlaza;
+        [SerializeField] Transform marcadorHelipuerto;
+        [SerializeField] Transform marcadorRefugioCivil;
+        [SerializeField] Vector3 plazaPorDefecto = new Vector3(4f, 0f, 119f);
+        [SerializeField] Vector3 helipuertoPorDefecto = new Vector3(-26f, 0f, -8f);
+        [SerializeField] Vector3 refugioDelCivilPorDefecto = new Vector3(-2f, 0f, 124f);
+
+        public Vector3 Plaza => marcadorPlaza != null ? marcadorPlaza.position : plazaPorDefecto;
+        public Vector3 Helipuerto => marcadorHelipuerto != null ? marcadorHelipuerto.position : helipuertoPorDefecto;
+        public Vector3 RefugioDelCivil => marcadorRefugioCivil != null ? marcadorRefugioCivil.position : refugioDelCivilPorDefecto;
         public float RadioCentro = 14f;
         public float RadioResistencia = 32f;
         public float RadioExtraccion = 13f;
@@ -124,11 +138,15 @@ namespace SP.Mision
             GameLog.Line($"Mision iniciada (dificultad {Dificultad.PerfilActual.Nombre})");
             CambioDeFase?.Invoke(Fase);
 
-            // Pedido explicito: "el rehen este visible siempre, solo que se
-            // lo vera agachado" -- para que la cinematica de apertura pueda
-            // mostrarlo tiene que existir DESDE el arranque, no recien al
-            // terminar Resistir (ver SpawnCivilOculto/AparecerCivil).
-            SpawnCivilOculto();
+            // Pedido explicito (revertido): hubo una etapa en la que el
+            // rehen estaba SIEMPRE presente desde el arranque (agachado,
+            // pasivo) para que la cinematica de apertura pudiera filmarlo.
+            // Ahora el pedido es al reves -- "hasta ese momento no
+            // aparecera": el civil ni siquiera existe en la escena hasta
+            // que termina la carga de Resistir (ver AparecerCivil), que lo
+            // crea y lo revela en el mismo instante con un estallido de
+            // fisica de particulas (DebrisPool, mismo criterio que el
+            // festejo de "llegaste al centro" en TickInfiltrar).
 
             // Pedido explicito: "desde el comienzo no arranque a atacar, q me sigan primero y no
             // vayan de golpe los aliados a atacar" -- la escuadra arranca con una orden de
@@ -453,35 +471,38 @@ namespace SP.Mision
         }
 
         // ---------------- civil ----------------
-        // Pedido explicito ("el rehen este visible siempre... se lo vera
-        // agachado"): nace ESCONDIDO y AGACHADO desde Start(), pasivo (no
-        // reacciona a nada, no tiene marcador ni suena su aviso de
-        // proximidad todavia) -- eso es obra de AparecerCivil(), que sigue
-        // llamandose en el mismo momento narrativo de siempre (al terminar
-        // Resistir). Separar "existir" de "revelarse" es lo unico que hace
-        // falta para que la cinematica de apertura pueda filmarlo.
-        void SpawnCivilOculto()
+        // Pedido explicito: "hasta ese momento no aparecera" -- el civil no
+        // existe en la escena hasta que se llama esto (al terminar la carga
+        // de Resistir, ver TickResistir), y aca nace, se revela y estalla su
+        // efecto de particulas en el mismo instante. Idempotente por las
+        // dudas (SaltarAFase de debug puede llamarlo mas de una vez si se
+        // salta de fase en fase): si Civil ya existe, no lo vuelve a crear.
+        void AparecerCivil()
         {
-            if (civilPrefab == null || Civil != null) return;
+            if (Civil != null || civilPrefab == null) return;
             var go = Instantiate(civilPrefab, new Vector3(RefugioDelCivil.x, 0f, RefugioDelCivil.z), Quaternion.Euler(0f, 180f, 0f));
             go.name = "Civil";
             Civil = go.GetComponent<Soldier>();
             SP.Core.ApoyoEnElPiso.Apoyar(go.transform);
             Civil.Configure("Civil", TeamId.Player, RoleType.Civilian, 150);
             if (Civil.Brain != null) Civil.Brain.Pasivo = true;
-            if (Civil.Motor != null) Civil.Motor.SetCrouching(true);
-        }
-
-        void AparecerCivil()
-        {
-            if (Civil == null) { SpawnCivilOculto(); if (Civil == null) return; }
-            if (Civil.Motor != null) Civil.Motor.SetCrouching(false);
             Civil.gameObject.AddComponent<Rehen>();   // tinte propio, marcador flotante y aviso sonoro al acercarse
             // Pedido explicito: "el cartel de civil rescatado mas delgado...
             // y sea en la base de abajo" -- columna mas fina (0.35 en vez de
             // 0.9), texto mas chico (escalaTexto 0.6) y pegado al piso
             // (0.7 m) en vez de flotando a la altura de la cabeza (3.4 m).
             balizaCivil = TutorialBeacon.Crear("CIVIL", new Color(0.4f, 0.9f, 1f), RefugioDelCivil, Civil.transform, 0.35f, 10f, alturaEtiqueta: 0.7f, escalaTexto: 0.6f);
+
+            // Fisica de particulas real (DebrisPool: fragmentos con
+            // gravedad/rebote propios, no un ParticleSystem de shader) en
+            // vez de uno nuevo -- mismo criterio que el festejo de "llegaste
+            // al centro" en TickInfiltrar.
+            var punto = Civil.transform.position + Vector3.up;
+            for (int i = 0; i < 12; i++)
+            {
+                var dir = (Random.insideUnitSphere + Vector3.up * 1.4f).normalized;
+                DebrisPool.Spawn(punto, dir * Random.Range(3f, 6f), new Color(0.4f, 0.9f, 1f), Random.Range(0.08f, 0.14f), 1.2f);
+            }
             GameLog.Line("Mision: el civil sale de su refugio");
         }
 
