@@ -287,6 +287,19 @@ namespace SP.UI
         // falla) maximiza el contraste contra CUALQUIER color de icono.
         public static readonly Color ColorDeFondo = new Color(0.025f, 0.03f, 0.035f);
 
+        // BUG REAL reportado jugando: "en el minimapa no veo a los enemigos
+        // ni los obstaculos". La camara del minimapa traia orthographicSize
+        // 26 guardado en la escena (un radio visible de apenas ~26 m) pero
+        // el nivel real mide mas de 300 m de largo (ver NavService.Grilla) y
+        // los tiroteos habituales pasan a 90-180 m (mismo dato que ya motivo
+        // subir DistanciaVisible en UnitLocatorCylinder) -- con ese zoom,
+        // cualquier enemigo u obstaculo a mas de 26 m del jugador quedaba
+        // SIEMPRE fuera del encuadre, aunque su icono estuviera bien creado
+        // y habilitado. 110 cubre el grueso del rango de combate real (hasta
+        // 110 m derecho, ~155 m en diagonal) sin llegar a mostrar el mapa
+        // entero. Se fuerza (mismo patron que backgroundColor arriba).
+        public const float OrthoSizeMinimo = 110f;
+
         public void AplicarTamanoInicial()
         {
             // Escenas ya horneadas guardaron 107 px (ilegible): se sube al nuevo minimo y el fondo deja de ser negro puro.
@@ -295,7 +308,11 @@ namespace SP.UI
             // Siempre se fuerza (no solo cuando ya era negro puro): asi una
             // escena horneada con el verde oscuro viejo tambien se pone al
             // dia sin tener que retocarla a mano.
-            if (camMini != null) camMini.backgroundColor = ColorDeFondo;
+            if (camMini != null)
+            {
+                camMini.backgroundColor = ColorDeFondo;
+                if (camMini.orthographicSize < OrthoSizeMinimo) camMini.orthographicSize = OrthoSizeMinimo;
+            }
             Agrandado = false;
             indiceTamanoFijo = 0;
             var b = ResolveBorder();

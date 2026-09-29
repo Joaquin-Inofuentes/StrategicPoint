@@ -747,7 +747,12 @@ namespace SP.Presentation
             return count;
         }
 
-        public static int RegistrarObstaculos(Color color, float radius = 1.4f)
+        // Piso subido de 1.4 a 2.8: con el radio visible del minimapa
+        // agrandado (ver MinimapFollow.OrthoSizeMinimo, de 26 a 110 m) el
+        // mismo icono ocupa una fraccion de los pixeles de antes -- sin este
+        // ajuste los obstaculos chicos quedaban en 1-2 px, indistinguibles
+        // del fondo.
+        public static int RegistrarObstaculos(Color color, float radius = 2.8f)
         {
             var previo = SP.Core.RaicesDeEscena.Buscar(ObstaclesRootName);
             if (previo != null)
