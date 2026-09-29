@@ -2790,11 +2790,18 @@ namespace SP.Player
 
         void ActualizarPromptContextual(AimResult aim)
         {
-            if (OrdenesMenu != null && OrdenesMenu.Abierto) { InteractGearMarker.Ocultar(); return; }
+            if (OrdenesMenu != null && OrdenesMenu.Abierto) { InteractGearMarker.Ocultar(); InteractHintView.Ocultar(); return; }
             var yo = Brain != null ? Brain.Current : null;
             bool mostrar = false;
             bool destacado = true;
             Vector3 ancla = Vector3.zero;
+            // Pedido explicito: "cuando me acerco a un interactuable quiero
+            // abajo un texto que diga aprete E para entrar" -- el rombo con
+            // engranaje resalta EN el objetivo, pero no dice que tecla
+            // apretar ni que hace. Solo se llena cuando "destacado" termina
+            // en true (hay una accion de verdad lista, no solo informativa).
+            string pista = null;
+            string tecla = KeyBindings.DisplayName(KeyBindings.Interactuar);
 
             switch (aim.Type)
             {
@@ -2812,12 +2819,14 @@ namespace SP.Player
                     if (aim.Soldier.Role == RoleType.Civilian) destacado = Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null;
                     else if (Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null) destacado = true;
                     else destacado = false; // simplemente te sigue: interactuable, pero sin accion urgente
+                    if (destacado) pista = $"APRETÁ [{tecla}] PARA CURAR";
                     break;
                 case AimTargetType.Caido:
                     if (aim.Soldier == null) break;
                     mostrar = true;
                     ancla = aim.Soldier.transform.position + Vector3.up * AlturaGearSoldado;
                     destacado = PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null;
+                    if (destacado) pista = $"APRETÁ [{tecla}] PARA REVIVIR";
                     break;
                 case AimTargetType.Obstacle:
                 {
@@ -2838,6 +2847,7 @@ namespace SP.Player
                         Vector3 centro = colObstaculo != null ? colObstaculo.bounds.center : m.transform.position;
                         float tope = colObstaculo != null ? colObstaculo.bounds.max.y : centro.y;
                         ancla = new Vector3(centro.x, tope + AlturaGearObstaculo, centro.z);
+                        if (destacado) pista = $"APRETÁ [{tecla}] PARA DEMOLER";
                     }
                     break;
                 }
@@ -2846,6 +2856,7 @@ namespace SP.Player
                     {
                         mostrar = true; destacado = true;
                         ancla = aim.Vehicle.transform.position + Vector3.up * AlturaGearVehiculo;
+                        pista = $"APRETÁ [{tecla}] PARA ENTRAR";
                     }
                     else if (aim.Vehicle != null && aim.Vehicle.IsDestroyed)
                     {
@@ -2859,12 +2870,14 @@ namespace SP.Player
                         mostrar = true;
                         destacado = aim.Torreta.Libre;
                         ancla = aim.Torreta.transform.position + Vector3.up * AlturaGearTorreta;
+                        if (destacado) pista = $"APRETÁ [{tecla}] PARA USAR";
                     }
                     break;
             }
 
             if (mostrar) InteractGearMarker.Mostrar(ancla, destacado);
             else InteractGearMarker.Ocultar();
+            InteractHintView.Mostrar(pista);
         }
 
         // -----------------------------------------------------------
