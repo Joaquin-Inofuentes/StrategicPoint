@@ -124,8 +124,7 @@ namespace SP.Vehicles
             Ocupante = s;
             s.transform.position = Puesto;
             s.transform.rotation = Quaternion.Euler(0f, YawCentro, 0f);
-            s.Motor.SetCrouching(false);
-            s.Motor.SetRunning(false);
+            if (s.Motor != null) { s.Motor.SetCrouching(false); s.Motor.SetRunning(false); }
 
             var arma = s.Weapon;
             armaPreviaIndice = arma.CurrentLoadoutIndex;
@@ -208,7 +207,9 @@ namespace SP.Vehicles
             int n = 0;
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude))
             {
-                if (t == null || t.name != NombreDelArte) continue;
+                // Un duplicado del arte se llama "P_Env_Emplazamiento_MG (1)": por eso la torreta del bunker de la DERECHA nunca se instalaba
+                // (la de la izquierda tenia el nombre exacto). Se acepta el nombre con el sufijo "(N)" de Unity.
+                if (t == null || !(t.name == NombreDelArte || t.name.StartsWith(NombreDelArte + " ("))) continue;
                 if (t.parent == null || t.parent.name != "ArteBloque") continue;   // los anidados son piezas del mismo
                 if (t.GetComponent<TorretaFija>() != null) continue;
                 Instalar(t.gameObject);

@@ -56,12 +56,15 @@ namespace SP.Mision
             ArmarSonido();
             ArmarDisco();
             ArmarPolvo();
+            ArmarLuces();
         }
 
         void OnDestroy()
         {
             if (Instancia == this) Instancia = null;
             if (matDisco != null) Destroy(matDisco);
+            if (matBalizaCola != null) Destroy(matBalizaCola);
+            if (matBalizaVientre != null) Destroy(matBalizaVientre);
             if (polvo != null) Destroy(polvo.GetComponent<ParticleSystemRenderer>().sharedMaterial);
         }
 
@@ -121,6 +124,68 @@ namespace SP.Mision
             var clip = AudioClip.Create("RotorProcedural", n, 1, sr, false);
             clip.SetData(d, 0);
             return clip;
+        }
+
+        // ---------------- luces (que se vea de noche) ----------------
+        // Pedido explicito: "el helicoptero de huida debe verse bien". Es un bulto oscuro contra un bosque oscuro: un foco calido
+        // lo ilumina desde arriba (viaja con el, tambien al despegar) y dos balizas de navegacion parpadean para poder seguirlo
+        // con la vista aunque se aleje: roja en la cola, blanca de destello abajo.
+        Renderer balizaCola, balizaVientre;
+        Material matBalizaCola, matBalizaVientre;
+
+        void ArmarLuces()
+        {
+            // Solo las mallas del arte (no el sistema de particulas ni el disco del rotor, que aun no tienen caja valida).
+            var rs = System.Array.FindAll(GetComponentsInChildren<MeshRenderer>(false), m => m.gameObject != disco && m.enabled);
+            if (rs.Length == 0) return;
+            var b = new Bounds(transform.InverseTransformPoint(rs[0].bounds.center), Vector3.zero);
+            foreach (var r in rs)
+            {
+                var c = r.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    var esq = c.center + Vector3.Scale(c.extents, new Vector3((i & 1) == 0 ? -1f : 1f, (i & 2) == 0 ? -1f : 1f, (i & 4) == 0 ? -1f : 1f));
+                    b.Encapsulate(transform.InverseTransformPoint(esq));
+                }
+            }
+            // El largo del fuselaje puede ir sobre Z o sobre X segun el arte: la cola queda del lado del extremo mas alejado.
+            bool largoEnZ = b.size.z >= b.size.x;
+            Vector3 cola = b.center + (largoEnZ ? new Vector3(0f, b.extents.y * 0.3f, -b.extents.z) : new Vector3(-b.extents.x, b.extents.y * 0.3f, 0f));
+
+            var foco = new GameObject("FocoDelHelicoptero");
+            foco.transform.SetParent(transform, false);
+            foco.transform.localPosition = new Vector3(b.center.x + 2f, b.max.y + 2.7f, b.center.z + 1f);
+            var luz = foco.AddComponent<Light>();
+            luz.type = LightType.Point;
+            luz.range = 24f;
+            luz.intensity = 45f;
+            luz.color = new Color(1f, 0.92f, 0.78f);
+            luz.shadows = LightShadows.None;
+
+            balizaCola = CrearBaliza("BalizaCola", cola, new Color(1f, 0.15f, 0.1f), 0.4f, out matBalizaCola);
+            balizaVientre = CrearBaliza("BalizaVientre", new Vector3(b.center.x, b.min.y + 0.1f, b.center.z), new Color(1f, 1f, 0.95f), 0.32f, out matBalizaVientre);
+        }
+
+        Renderer CrearBaliza(string nombre, Vector3 posLocal, Color color, float diametro, out Material material)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            go.name = nombre;
+            Destroy(go.GetComponent<Collider>());
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = posLocal;
+            go.transform.localScale = Vector3.one * diametro;
+            material = SafeMaterial.CreateLinea(color);
+            var r = go.GetComponent<Renderer>();
+            r.sharedMaterial = material;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            return r;
+        }
+
+        void ParpadearBalizas()
+        {
+            float t = Time.time;
+            if (balizaCola != null) balizaCola.enabled = Mathf.Repeat(t, 1.4f) < 0.7f;
+            if (balizaVientre != null) balizaVientre.enabled = Mathf.Repeat(t, 1.1f) < 0.12f || (Mathf.Repeat(t, 1.1f) > 0.24f && Mathf.Repeat(t, 1.1f) < 0.36f);
         }
 
         // ---------------- disco de desenfoque ----------------
@@ -239,6 +304,7 @@ namespace SP.Mision
         void Update()
         {
             float dt = Time.deltaTime;
+            ParpadearBalizas();
             Vueltas = Mathf.MoveTowards(Vueltas, objetivoVueltas, 420f * dt);
             if (rotorPrincipal != null) rotorPrincipal.Rotate(0f, Vueltas * dt, 0f, Space.Self);
             if (rotorCola != null) rotorCola.Rotate(Vueltas * 1.6f * dt, 0f, 0f, Space.Self);

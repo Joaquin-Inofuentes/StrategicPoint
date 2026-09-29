@@ -38,6 +38,9 @@ namespace SP.Combat
         TeamId duenoBando;
         Transform duenoTf;
         Transform luz;
+        bool sujeta;
+        float sujetaDesde;
+        TrailRenderer estela;
 
         // ------------------------------------------------------------------
         // Simulacion (compartida con la vista previa)
@@ -104,6 +107,25 @@ namespace SP.Combat
         // ------------------------------------------------------------------
         // Lanzamiento
         // ------------------------------------------------------------------
+        public int DuenoId => duenoId;
+        public bool Sujeta => sujeta;
+
+        // Mientras la anima el brazo del lanzador (SoldierGrenadeAnim) la granada queda en su mano: no vuela, no cuenta el
+        // fusible y no deja estela. Soltar() la libera con la velocidad con la que se la creo.
+        public void Sujetar()
+        {
+            sujeta = true;
+            sujetaDesde = Time.time;
+            if (estela != null) { estela.emitting = false; estela.Clear(); }
+        }
+
+        public void Soltar()
+        {
+            if (!sujeta) return;
+            sujeta = false;
+            if (estela != null) { estela.Clear(); estela.emitting = true; }
+        }
+
         public static Granada Lanzar(Vector3 origen, Vector3 v, Soldier dueno)
         {
             var go = new GameObject("Granada");
@@ -174,6 +196,7 @@ namespace SP.Combat
             tr.startColor = new Color(1f, 0.8f, 0.4f, 0.9f);
             tr.endColor = new Color(1f, 0.5f, 0.1f, 0f);
             tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            estela = tr;
         }
 
         // ------------------------------------------------------------------
@@ -183,6 +206,11 @@ namespace SP.Combat
         {
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
+            if (sujeta)
+            {
+                if (Time.time - sujetaDesde < 1.5f) return;   // red de seguridad: si la animacion no la suelta, sale igual
+                Soltar();
+            }
             edad += dt;
 
             if (!quieta) Avanzar(dt);

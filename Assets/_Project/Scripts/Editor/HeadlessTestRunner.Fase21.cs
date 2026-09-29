@@ -425,8 +425,10 @@ namespace SP.EditorTools
                 var layout = sp.GetComponent<SP.UI.LayoutDeAjustes>();
                 Check("El panel de Configuraciones tiene su LayoutDeAjustes", layout != null);
                 if (layout == null) return;
-                var extra = sp.Find("AjustesExtra");
-                Check("Existe el bloque de pantalla y accesibilidad", extra != null);
+                Check("Existen las secciones y los controles de pantalla, resolucion e idioma", sp.Find("Sec_Sonido") != null && sp.Find("Sec_Interfaz") != null && sp.Find("Sec_Control") != null
+                    && sp.Find("Sec_Pantalla") != null && sp.Find("Pantalla") != null && sp.Find("Resolucion") != null && sp.Find("Aplicar") != null && sp.Find("Idioma") != null);
+                Check("Se quitaron de Configuraciones tamano de interfaz, daltonismo, HUD minimo y subtitulos",
+                    sp.Find("Escala") == null && sp.Find("Daltonismo") == null && sp.Find("HudMinimo") == null && sp.Find("Subtitulos") == null && sp.Find("AjustesExtra") == null);
 
                 // Control negativo: el detector NO es ciego (una etiqueta de 10 de alto con fuente 18 tiene que marcarse).
                 var etiqueta = sp.Find("Volumen_Label") as RectTransform;
@@ -438,7 +440,7 @@ namespace SP.EditorTools
 
                 var resoluciones = new[] { new Vector2(1280, 720), new Vector2(1920, 1080), new Vector2(800, 600), new Vector2(1024, 768), new Vector2(2560, 1080),
                     new Vector2(1366, 768), new Vector2(1280, 800), new Vector2(640, 480), new Vector2(720, 1280), new Vector2(3840, 2160) };
-                var botones = new[] { "Pantalla", "Resolucion", "Calidad", "Daltonismo", "HudMinimo", "Escala", "Idioma", "Subtitulos" };
+                var botones = new[] { "Pantalla", "Idioma", "Aplicar" };
                 var rnd = new System.Random(13);
                 int total = 0, malos = 0, clics = 0, cambiosDeIdioma = 0;
                 var primeros = new List<string>();
@@ -463,7 +465,7 @@ namespace SP.EditorTools
                 malos = 0; primeros.Clear();
                 for (int i = 0; i < 200; i++)
                 {
-                    var b = extra.Find(botones[rnd.Next(botones.Length)]);
+                    var b = sp.Find(botones[rnd.Next(botones.Length)]);
                     // BUG REAL (no relacionado a esta ronda): algun nombre de
                     // "botones" matcheaba un Transform sin componente Button
                     // (un label o contenedor con el mismo nombre), y
@@ -490,8 +492,8 @@ namespace SP.EditorTools
                 foreach (var kv in antes)
                 {
                     if (kv.Key == null) continue;
-                    // Los textos del bloque extra que reflejan el idioma/estado se reescriben con Refrescar: se comparan solo los fijos.
-                    if (kv.Key.transform.IsChildOf(extra)) continue;
+                    // Los textos de los botones de pantalla e idioma reflejan el estado y se reescriben con Refrescar: se comparan solo los fijos.
+                    if (kv.Key.transform.IsChildOf(sp.Find("Pantalla")) || kv.Key.transform.IsChildOf(sp.Find("Idioma"))) continue;
                     if (kv.Key.text != kv.Value) { identico = false; primero = $"{kv.Key.name}: '{kv.Value}' -> '{kv.Key.text}'"; break; }
                 }
                 Check($"Tras 12 idas y vueltas de idioma los textos fijos del panel quedan idénticos {primero}", identico);
@@ -499,15 +501,48 @@ namespace SP.EditorTools
                 // 4) Las etiquetas de los toggles existen, tienen texto y caben (era 'no se ve el texto bajo los checks').
                 foreach (var n in new[] { "InvertirEjeY", "EfectosDeCamara" })
                 {
-                    var et = sp.Find(n + "_Label") as RectTransform;
+                    var et = sp.Find(n + "_Toggle/" + n + "_Label") as RectTransform;
                     var txt = et != null ? et.GetComponent<Text>() : null;
                     Check($"La etiqueta del toggle '{n}' tiene texto y cabe en su caja", txt != null && txt.text.Length > 0 && txt.preferredHeight <= et.rect.height + 1f && txt.verticalOverflow == VerticalWrapMode.Overflow);
                 }
                 var area1 = AreaCanvas(new Vector2(1920, 1080), 1f);
                 layout.Aplicar(area1);
-                var toggleCaja = (RectTransform)sp.Find("InvertirEjeY_Toggle");
-                var toggleEt = (RectTransform)sp.Find("InvertirEjeY_Label");
-                Check("La etiqueta del toggle queda a la derecha de la casilla, sin pisarla", toggleEt.anchoredPosition.x - toggleEt.sizeDelta.x * 0.5f >= toggleCaja.anchoredPosition.x + toggleCaja.sizeDelta.x * 0.5f - 0.5f);
+                var pildora = (RectTransform)sp.Find("InvertirEjeY_Toggle/Background");
+                var toggleEt = (RectTransform)sp.Find("InvertirEjeY_Toggle/InvertirEjeY_Label");
+                var cp = new Vector3[4]; var ce = new Vector3[4];
+                pildora.GetWorldCorners(cp); toggleEt.GetWorldCorners(ce);
+                Check("La etiqueta del toggle queda a la derecha del interruptor, sin pisarlo", ce[0].x >= cp[2].x - 0.5f);
+
+                // 5) Vestido y respuesta de cada control (aspecto nuevo y sonido de feedback).
+                int sinSonido = 0, sinCirculo = 0; string quien = "";
+                foreach (var sl in sp.GetComponentsInChildren<Slider>(true))
+                {
+                    if (sl.transform.parent != sp) continue;   // solo los del panel (no los del desplegable)
+                    if (sl.GetComponent<SP.UI.SliderDeAjuste>() == null) { sinSonido++; quien += sl.name + " "; }
+                    var perilla = sl.handleRect != null ? sl.handleRect.GetComponent<Image>() : null;
+                    if (perilla == null || perilla.sprite == null || Mathf.Abs(sl.handleRect.sizeDelta.x - sl.handleRect.sizeDelta.y) > 0.5f) { sinCirculo++; quien += sl.name + "(perilla) "; }
+                }
+                foreach (var tg in sp.GetComponentsInChildren<Toggle>(true))
+                    if (tg.transform.parent == sp && tg.GetComponent<SP.UI.InterruptorDeAjuste>() == null) { sinSonido++; quien += tg.name + " "; }
+                foreach (var bt in sp.GetComponentsInChildren<Button>(true))
+                    if (bt.transform.parent == sp && bt.GetComponent<SP.UI.ButtonSfx>() == null) { sinSonido++; quien += bt.name + " "; }
+                Check($"Todos los sliders, interruptores y botones de Configuraciones tienen su respuesta con sonido y las perillas son circulares ({quien})", sinSonido == 0 && sinCirculo == 0);
+                Check("El desplegable de resolucion tiene su sonido", sp.Find("Resolucion").GetComponent<SP.UI.SelectorSfx>() != null);
+
+                var sfx = SP.Presentation.AudioDirector.Instance;
+                if (sfx != null)
+                {
+                    var ev = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current);
+                    int Sono(System.Action accion) { int antes = SP.Presentation.AudioDirector.TotalReproducidos; accion(); return SP.Presentation.AudioDirector.TotalReproducidos - antes; }
+                    var sld = sp.Find("General_Slider").GetComponent<Slider>();
+                    Check("Un slider suena al pasar el mouse", Sono(() => UnityEngine.EventSystems.ExecuteEvents.Execute<UnityEngine.EventSystems.IPointerEnterHandler>(sld.gameObject, ev, UnityEngine.EventSystems.ExecuteEvents.pointerEnterHandler)) > 0);
+                    Check("Un slider suena al arrastrarlo (tic por tramo)", Sono(() => { sld.value = 0.1f; sld.value = 0.5f; sld.value = 0.9f; }) > 0);
+                    var tog = sp.Find("InvertirEjeY_Toggle").GetComponent<Toggle>();
+                    bool previo = tog.isOn;
+                    Check("Un interruptor suena al conmutarlo", Sono(() => tog.isOn = !previo) > 0);
+                    tog.isOn = previo;
+                    Check("Un boton suena al hacer clic", Sono(() => sp.Find("Idioma").GetComponent<Button>().onClick.Invoke()) > 0);
+                }
             }
             finally
             {

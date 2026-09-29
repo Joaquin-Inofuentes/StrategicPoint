@@ -47,11 +47,20 @@ namespace SP.UI
         // izquierda: marco amarillo brillante, tarjeta un poco mas grande y un realce del icono.
         static readonly Color MarcoSeleccion = new Color(1f, 0.92f, 0.25f, 1f);
         static readonly Color MarcoPoseido = new Color(1f, 1f, 1f, 0.55f);
-        Outline marco;
+        // El marco de seleccion son 4 tiras finas DENTRO de la tarjeta: no se agranda la tarjeta (antes crecia 12% y las vecinas,
+        // que se dibujan despues, la tapaban) ni se usa Outline (tine todo un Image translucido).
+        RectTransform marcoRaiz;
+        Image[] marcoLados;
+        // Icono de estado chico arriba de la tarjeta: calmado / atacando / interactuando.
+        Image estadoDisco, estadoIcono;
+        EstadoDeFila estado = EstadoDeFila.Calmo;
+        float proximoChequeoEstado, atacaHasta;
+        static readonly Color ColorCalmo = new Color(0.5f, 0.9f, 0.6f), ColorAtacando = new Color(1f, 0.32f, 0.26f), ColorInteractuando = new Color(1f, 0.82f, 0.25f);
+        public EstadoDeFila Estado => estado;
         static readonly Color DeadColor = new Color(0.12f, 0.12f, 0.13f, 0.75f);
         static readonly Color DeadTextColor = new Color(0.5f, 0.5f, 0.52f);
 
-        IDisposable damageSub, healedSub, diedSub, stateSub, weaponSub, possessionSub, selectionSub;
+        IDisposable damageSub, healedSub, diedSub, stateSub, weaponSub, possessionSub, selectionSub, shotSub;
 
         void Awake()
         {
@@ -70,14 +79,105 @@ namespace SP.UI
             // hace independiente del orden con el barrido global.
             SpriteBlanco.Reparar(healthFill);
 
-            if (background != null)
+            var rt = transform as RectTransform;
+            if (rt != null)
             {
-                marco = background.GetComponent<Outline>();
-                if (marco == null) marco = background.gameObject.AddComponent<Outline>();
-                marco.effectDistance = new Vector2(3f, -3f);
-                marco.useGraphicAlpha = false;
-                marco.enabled = false;
+                ArmarMarco(rt);
+                ArmarIconoDeEstado(rt);
             }
+        }
+
+        void ArmarMarco(RectTransform fila)
+        {
+            var go = new GameObject("MarcoSeleccion", typeof(RectTransform));
+            marcoRaiz = (RectTransform)go.transform;
+            marcoRaiz.SetParent(fila, false);
+            marcoRaiz.anchorMin = Vector2.zero; marcoRaiz.anchorMax = Vector2.one;
+            marcoRaiz.offsetMin = Vector2.zero; marcoRaiz.offsetMax = Vector2.zero;
+            go.AddComponent<LayoutElement>().ignoreLayout = true;
+            marcoLados = new Image[4];
+            for (int i = 0; i < 4; i++)
+            {
+                var lado = new GameObject("Lado" + i, typeof(RectTransform), typeof(Image));
+                var r = (RectTransform)lado.transform;
+                r.SetParent(marcoRaiz, false);
+                marcoLados[i] = lado.GetComponent<Image>();
+                marcoLados[i].raycastTarget = false;
+            }
+            marcoRaiz.gameObject.SetActive(false);
+        }
+
+        void PonerMarco(Color color, float grosor)
+        {
+            if (marcoLados == null) return;
+            // 0 arriba, 1 abajo, 2 izquierda, 3 derecha.
+            for (int i = 0; i < 4; i++)
+            {
+                var r = (RectTransform)marcoLados[i].transform;
+                marcoLados[i].color = color;
+                switch (i)
+                {
+                    case 0: r.anchorMin = new Vector2(0f, 1f); r.anchorMax = new Vector2(1f, 1f); r.pivot = new Vector2(0.5f, 1f); r.sizeDelta = new Vector2(0f, grosor); break;
+                    case 1: r.anchorMin = new Vector2(0f, 0f); r.anchorMax = new Vector2(1f, 0f); r.pivot = new Vector2(0.5f, 0f); r.sizeDelta = new Vector2(0f, grosor); break;
+                    case 2: r.anchorMin = new Vector2(0f, 0f); r.anchorMax = new Vector2(0f, 1f); r.pivot = new Vector2(0f, 0.5f); r.sizeDelta = new Vector2(grosor, 0f); break;
+                    default: r.anchorMin = new Vector2(1f, 0f); r.anchorMax = new Vector2(1f, 1f); r.pivot = new Vector2(1f, 0.5f); r.sizeDelta = new Vector2(grosor, 0f); break;
+                }
+                r.anchoredPosition = Vector2.zero;
+            }
+        }
+
+        void ArmarIconoDeEstado(RectTransform fila)
+        {
+            var go = new GameObject("Estado", typeof(RectTransform), typeof(Image));
+            var r = (RectTransform)go.transform;
+            r.SetParent(fila, false);
+            r.anchorMin = r.anchorMax = new Vector2(0.5f, 1f);
+            r.pivot = new Vector2(0.5f, 0f);
+            r.sizeDelta = new Vector2(22f, 22f);
+            r.anchoredPosition = new Vector2(0f, 5f);
+            go.AddComponent<LayoutElement>().ignoreLayout = true;
+            estadoDisco = go.GetComponent<Image>();
+            estadoDisco.sprite = EstadoIconFactory.Disco();
+            estadoDisco.color = new Color(0f, 0f, 0f, 0.78f);
+            estadoDisco.raycastTarget = false;
+
+            var gi = new GameObject("Glifo", typeof(RectTransform), typeof(Image));
+            var gr = (RectTransform)gi.transform;
+            gr.SetParent(r, false);
+            gr.anchorMin = Vector2.zero; gr.anchorMax = Vector2.one;
+            gr.offsetMin = new Vector2(3f, 3f); gr.offsetMax = new Vector2(-3f, -3f);
+            estadoIcono = gi.GetComponent<Image>();
+            estadoIcono.raycastTarget = false;
+            AplicarEstado(EstadoDeFila.Calmo, true);
+        }
+
+        void AplicarEstado(EstadoDeFila nuevo, bool forzar = false)
+        {
+            if (estadoIcono == null) return;
+            if (!forzar && nuevo == estado && estadoIcono.sprite != null) return;
+            estado = nuevo;
+            estadoIcono.sprite = EstadoIconFactory.Para(nuevo);
+            estadoIcono.color = nuevo == EstadoDeFila.Atacando ? ColorAtacando : nuevo == EstadoDeFila.Interactuando ? ColorInteractuando : ColorCalmo;
+            if (estadoDisco != null) estadoDisco.gameObject.SetActive(alive);
+        }
+
+        // Interactuando: usa algo (revive, cura, planta, torreta, vehiculo). Atacando: en combate segun la IA o disparo hace
+        // poco (el soldado que manejas no tiene IA activa). Calmo: el resto.
+        EstadoDeFila CalcularEstado()
+        {
+            var s = Soldier;
+            if (s == null || !alive) return EstadoDeFila.Calmo;
+            if (AccionesEnCurso.De(s, out _) || SP.Vehicles.TorretaFija.De(s) != null || (brain != null && brain.MontadoEnVehiculo))
+                return EstadoDeFila.Interactuando;
+            if (Time.time < atacaHasta) return EstadoDeFila.Atacando;
+            if (brain != null && (brain.State == AiState.Attack || brain.State == AiState.Chase || brain.State == AiState.MovingToAttackOrder))
+                return EstadoDeFila.Atacando;
+            return EstadoDeFila.Calmo;
+        }
+
+        void OnShot(ShotFiredEvent evt)
+        {
+            if (evt.ShooterId == SoldierId) atacaHasta = Time.time + 1.6f;
         }
 
         // Se llama una sola vez, apenas se instancia la fila. Deja el
@@ -127,6 +227,7 @@ namespace SP.UI
             weaponSub = EventBus.Instance.Subscribe<WeaponChangedEvent>(OnWeaponChanged);
             possessionSub = EventBus.Instance.Subscribe<PossessionChangedEvent>(OnPossession);
             selectionSub = EventBus.Instance.Subscribe<SelectionChangedEvent>(OnSelection);
+            shotSub = EventBus.Instance.Subscribe<ShotFiredEvent>(OnShot);
         }
 
         void OnDisable()
@@ -138,12 +239,18 @@ namespace SP.UI
             weaponSub?.Dispose();
             possessionSub?.Dispose();
             selectionSub?.Dispose();
+            shotSub?.Dispose();
         }
 
         // Revivir (reanimar / Health.Initialize) no publica ningun evento: sin esto la fila quedaba en
         // "CAIDO" para siempre aunque el soldado ya estuviera de pie.
         void Update()
         {
+            if (estadoIcono != null && Time.unscaledTime >= proximoChequeoEstado)
+            {
+                proximoChequeoEstado = Time.unscaledTime + 0.15f;
+                AplicarEstado(CalcularEstado());
+            }
             if (alive || Soldier == null || Soldier.Health == null || !Soldier.Health.IsAlive) return;
             alive = true;
             if (healthFill != null) healthFill.gameObject.SetActive(true);
@@ -259,14 +366,13 @@ namespace SP.UI
             background.color = !alive ? DeadColor : possessed ? PossessedColor : selected ? SelectedColor : NormalColor;
 
             bool resaltar = alive && selected;
-            if (marco != null)
+            if (marcoRaiz != null)
             {
-                marco.enabled = alive && (selected || possessed);
-                marco.effectColor = resaltar ? MarcoSeleccion : MarcoPoseido;
-                marco.effectDistance = resaltar ? new Vector2(4f, -4f) : new Vector2(2f, -2f);
+                bool ver = alive && (selected || possessed);
+                marcoRaiz.gameObject.SetActive(ver);
+                if (ver) PonerMarco(resaltar ? MarcoSeleccion : MarcoPoseido, resaltar ? 5f : 2f);
             }
-            // Seleccionado: la tarjeta crece; el resto vuelve a su tamaño.
-            transform.localScale = resaltar ? new Vector3(1.12f, 1.12f, 1f) : Vector3.one;
+            if (estadoDisco != null) estadoDisco.gameObject.SetActive(alive);
         }
 
         public bool IsHighlighted => possessed || selected;

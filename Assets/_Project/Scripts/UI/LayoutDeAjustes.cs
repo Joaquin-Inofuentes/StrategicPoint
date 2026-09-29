@@ -4,38 +4,31 @@ using UnityEngine.UI;
 
 namespace SP.UI
 {
-    // Ronda 13 (punto 6): el panel de Configuraciones se rompia con la resolucion, con el tamano de interfaz y al cambiar de
-    // idioma varias veces. Causas medidas en SC_Gameplay:
-    //   * el panel principal mide 480x940 y el extra 440x700 con posiciones escritas a mano; PanelAjustesExtra.Preparar solo
-    //     los escalaba UNA vez al abrir: cambiar el tamano de interfaz (que cambia la referencia de TODOS los CanvasScaler)
-    //     o la resolucion con el panel abierto lo dejaba fuera de pantalla o cortado;
-    //   * las etiquetas de los sliders y de los toggles miden 24 de alto con fuente 18 y "Truncate" vertical: con la fuente del
-    //     juego la linea no entra y el texto DESAPARECE (era el "texto de los toggles no se ve");
-    //   * etiqueta y valor de cada slider ocupaban la MISMA caja (400x24), el bloque de notas del panel extra se salia del
-    //     panel y pisaba el ultimo boton.
-    // Esto lo acomoda entero en tiempo de ejecucion (las posiciones ya estan guardadas en el .unity): dos columnas, filas con
-    // alturas medidas del texto y todo el conjunto escalado para entrar en el area util del canvas. Se reaplica cuando cambia
-    // el area (resolucion o escala), el idioma o el contenido de los textos, asi cualquier boton del panel lo deja bien.
+    // Acomoda toda la pantalla de Configuraciones en una sola tarjeta de dos columnas, en tiempo de ejecucion (las posiciones
+    // guardadas en la escena no se usan):
+    //   izquierda: SONIDO (Volumen, General, VFX, Voces) e INTERFAZ (tamano de HUD y de mirilla, idioma);
+    //   derecha:   MIRA Y CONTROL (sensibilidades, invertir eje Y, efectos de camara) y PANTALLA (modo, resolucion + aplicar).
+    // Titulo arriba, nota del mando y VOLVER abajo. Las filas tienen alturas fijas y toda la tarjeta se escala para entrar en el
+    // area util del canvas; se reaplica cuando cambia el area (resolucion), el idioma o cualquier texto, asi ninguna fila se
+    // pisa ni se sale. Antecedentes (ronda 13): etiquetas con Truncate que desaparecian, etiqueta y valor en la misma caja y
+    // paneles fuera de pantalla al cambiar la resolucion.
     [DisallowMultipleComponent]
     public class LayoutDeAjustes : MonoBehaviour
     {
-        public const float AnchoPrincipal = 480f, AnchoExtra = 440f, Separacion = 16f;
-        public const float AnchoContenido = 440f, Margen = 20f;
+        public const float Relleno = 28f, Columna = 410f, Hueco = 36f;
+        public const float AnchoTarjeta = Relleno * 2f + Columna * 2f + Hueco;
         public const float FraccionDelArea = 0.96f;
+        // Alturas de fila.
+        const float AltoSeccion = 32f, AltoSlider = 54f, AltoInterruptor = 42f, AltoBoton = 44f, HuecoSecciones = 14f, AnchoChip = 68f;
 
-        static readonly string[] OrdenDeSliders =
-        {
-            "Sensibilidad de mouse", "Sensibilidad de torreta", "Volumen", "General", "VFX", "Voces", "Tamaño de HUD", "Tamaño de mirilla",
-        };
-        static readonly string[] OrdenDeBotonesExtra =
-        {
-            "Pantalla", "Resolucion", "Escala", "Idioma",
-        };
+        static readonly string[] Sonido = { "Volumen", "General", "VFX", "Voces" };
+        static readonly string[] Interfaz = { "Tamaño de HUD", "Tamaño de mirilla" };
+        static readonly string[] Control = { "Sensibilidad de mouse", "Sensibilidad de torreta" };
+        static readonly string[] Interruptores = { "InvertirEjeY", "EfectosDeCamara" };
 
         public struct Resultado
         {
-            public float AltoPrincipal, AltoExtra, Escala;
-            public bool Apilado;
+            public float Alto, Escala;
         }
 
         RectTransform panel;
@@ -43,6 +36,14 @@ namespace SP.UI
         int firma = int.MinValue;
         public Resultado Ultimo { get; private set; }
         public int Aplicaciones { get; private set; }
+
+        struct Fila
+        {
+            public RectTransform rt;
+            public float x, y, w, h;
+            public TextAnchor? alineacion;
+        }
+        readonly List<Fila> filas = new List<Fila>();
 
         public static LayoutDeAjustes Asegurar(GameObject settingsPanel)
         {
@@ -61,8 +62,7 @@ namespace SP.UI
         void AlCambiarIdioma()
         {
             if (panel == null) return;
-            var extra = panel.Find("AjustesExtra");
-            if (extra != null) PanelAjustesExtra.Refrescar(extra);
+            PanelAjustesExtra.Refrescar(panel);
             firma = int.MinValue;
         }
 
@@ -99,107 +99,116 @@ namespace SP.UI
             areaAplicada = area;
             Aplicaciones++;
 
-            var extra = panel.Find("AjustesExtra") as RectTransform;
-            float h1 = AcomodarPrincipal();
-            float h2 = extra != null ? AcomodarExtra(extra) : 0f;
-
-            float kLado = Mathf.Min(1f, area.y * FraccionDelArea / Mathf.Max(h1, h2), area.x * FraccionDelArea / (AnchoPrincipal + (extra != null ? Separacion + AnchoExtra : 0f)));
-            float kApilado = extra != null
-                ? Mathf.Min(1f, area.y * FraccionDelArea / (h1 + Separacion + h2), area.x * FraccionDelArea / Mathf.Max(AnchoPrincipal, AnchoExtra))
-                : kLado;
-            // Apilado solo cuando mejora de verdad la escala (pantallas verticales o muy angostas).
-            bool apilado = extra != null && kApilado > kLado * 1.15f;
-            float k = apilado ? kApilado : kLado;
+            float alto = Acomodar();
+            float k = Mathf.Min(1f, area.y * FraccionDelArea / alto, area.x * FraccionDelArea / AnchoTarjeta);
 
             panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.sizeDelta = new Vector2(AnchoPrincipal, h1);
+            panel.sizeDelta = new Vector2(AnchoTarjeta, alto);
+            panel.anchoredPosition = Vector2.zero;
             panel.localScale = new Vector3(k, k, 1f);
-            if (extra != null)
-            {
-                extra.sizeDelta = new Vector2(AnchoExtra, h2);
-                if (apilado)
-                {
-                    extra.anchorMin = extra.anchorMax = new Vector2(0.5f, 0f);
-                    extra.pivot = new Vector2(0.5f, 1f);
-                    extra.anchoredPosition = new Vector2(0f, -Separacion);
-                    panel.anchoredPosition = new Vector2(0f, (Separacion + h2) * 0.5f * k);
-                }
-                else
-                {
-                    extra.anchorMin = extra.anchorMax = new Vector2(1f, 0.5f);
-                    extra.pivot = new Vector2(0f, 0.5f);
-                    extra.anchoredPosition = new Vector2(Separacion, 0f);
-                    panel.anchoredPosition = new Vector2(-(Separacion + AnchoExtra) * 0.5f * k, 0f);
-                }
-            }
-            else panel.anchoredPosition = Vector2.zero;
 
-            Ultimo = new Resultado { AltoPrincipal = h1, AltoExtra = h2, Escala = k, Apilado = apilado };
+            Ultimo = new Resultado { Alto = alto, Escala = k };
             firma = Firma();
         }
 
-        // ---------------- panel principal ----------------
-        float AcomodarPrincipal()
+        // ---------------- la tarjeta ----------------
+        // Devuelve el alto total. Todo se mide "desde el borde de arriba, hacia abajo" y se traduce al centro del panel.
+        float Acomodar()
         {
-            ArreglarTextos(panel, extra: false);
+            ArreglarTextos(panel);
+            filas.Clear();
+            float xIzq = -(Columna + Hueco) * 0.5f, xDer = (Columna + Hueco) * 0.5f;
+            float anchoInterior = AnchoTarjeta - Relleno * 2f;
 
-            var titulo = panel.Find("Title") as RectTransform;
-            if (titulo != null)
+            var notaTr = SP.Core.BuscarHijo.Ruta(panel, "Nota");
+            var nota = notaTr != null ? notaTr.GetComponent<Text>() : null;
+            float altoNota = 0f;
+            if (nota != null)
             {
-                titulo.anchorMin = titulo.anchorMax = titulo.pivot = new Vector2(0.5f, 1f);
-                titulo.anchoredPosition = new Vector2(0f, -14f);
-                titulo.sizeDelta = new Vector2(AnchoContenido, 44f);
+                nota.rectTransform.sizeDelta = new Vector2(anchoInterior, 20f);
+                altoNota = Mathf.Ceil(nota.preferredHeight) + 4f;
             }
 
-            // Primero se mide el alto total para poder poner las filas de arriba hacia abajo respecto del centro.
-            var sliders = new List<string>();
-            foreach (var n in OrdenDeSliders) if (panel.Find(n + "_Slider") != null) sliders.Add(n);
-            foreach (Transform h in panel.transform)
-                if (h.name.EndsWith("_Slider") && !sliders.Contains(h.name.Substring(0, h.name.Length - 7))) sliders.Add(h.name.Substring(0, h.name.Length - 7));
-            var toggles = new List<string>();
-            foreach (Transform h in panel.transform) if (h.name.EndsWith("_Toggle")) toggles.Add(h.name.Substring(0, h.name.Length - 7));
+            // 1) medir las dos columnas para conocer el alto total
+            const float yInicio = 76f;
+            float altoIzq = AltoSeccion + Sonido.Length * AltoSlider + HuecoSecciones + AltoSeccion + Interfaz.Length * AltoSlider + 8f + AltoBoton;
+            float altoDer = AltoSeccion + Control.Length * AltoSlider + Interruptores.Length * AltoInterruptor + HuecoSecciones
+                            + AltoSeccion + AltoBoton + 8f + 22f + AltoBoton;
+            float alto = yInicio + Mathf.Max(altoIzq, altoDer) + 14f + altoNota + 10f + 50f + 22f;
 
-            float alturaLinea = 26f;
-            foreach (var n in sliders) alturaLinea = Mathf.Max(alturaLinea, LineaDe(panel.Find(n + "_Label")));
-            float pasoSlider = alturaLinea + 2f + 20f + 14f;
-            float pasoToggle = 38f;
-            float alto = 64f + sliders.Count * pasoSlider + (toggles.Count > 0 ? 10f + toggles.Count * pasoToggle : 0f) + 14f + 56f + 22f;
+            // 2) titulo
+            Poner("Title", 0f, 16f, anchoInterior, 44f, TextAnchor.MiddleCenter);
+            Poner("TituloSep", 0f, 64f, anchoInterior, 2f);
 
-            float y = 64f;   // desde el borde de arriba, hacia abajo
+            // 3) columna izquierda
+            float y = yInicio;
+            y = Seccion("Sonido", xIzq, y, Sonido, null);
+            y += HuecoSecciones;
+            y = Seccion("Interfaz", xIzq, y, Interfaz, null);
+            y += 8f;
+            Poner("Idioma", xIzq, y, Columna, AltoBoton);
+
+            // 4) columna derecha
+            y = yInicio;
+            y = Seccion("Control", xDer, y, Control, Interruptores);
+            y += HuecoSecciones;
+            Poner("Sec_Pantalla", xDer, y, Columna, 24f, TextAnchor.MiddleLeft);
+            Poner("SecSep_Pantalla", xDer, y + 26f, Columna, 2f);
+            y += AltoSeccion;
+            Poner("Pantalla", xDer, y, Columna, AltoBoton);
+            y += AltoBoton + 8f;
+            Poner("ResolucionLabel", xDer, y, Columna, 20f, TextAnchor.MiddleLeft);
+            y += 22f;
+            const float anchoAplicar = 112f, huecoFila = 8f;
+            float anchoLista = Columna - anchoAplicar - huecoFila;
+            Poner("Resolucion", xDer - Columna * 0.5f + anchoLista * 0.5f, y, anchoLista, AltoBoton);
+            Poner("Aplicar", xDer + Columna * 0.5f - anchoAplicar * 0.5f, y, anchoAplicar, AltoBoton);
+
+            // 5) pie: nota y VOLVER
+            float yPie = alto - 22f - 50f - 10f - altoNota;
+            if (notaTr != null) Poner("Nota", 0f, yPie, anchoInterior, altoNota, TextAnchor.MiddleCenter);
+            Poner("BackButton", 0f, alto - 22f - 50f, 260f, 50f);
+
+            foreach (var f in filas)
+            {
+                Colocar(f.rt, f.x, f.y, f.w, f.h, alto, f.alineacion);
+                if (f.rt.GetComponent<Button>() != null)
+                    foreach (var et in f.rt.GetComponentsInChildren<Text>(true))
+                    {
+                        et.resizeTextForBestFit = true; et.resizeTextMinSize = 11; et.resizeTextMaxSize = 18;
+                        et.verticalOverflow = VerticalWrapMode.Overflow;
+                    }
+            }
+            return alto;
+        }
+
+        void Poner(string nombre, float x, float y, float w, float h, TextAnchor? alineacion = null)
+        {
+            var rt = SP.Core.BuscarHijo.Ruta(panel, nombre) as RectTransform;
+            if (rt != null) filas.Add(new Fila { rt = rt, x = x, y = y, w = w, h = h, alineacion = alineacion });
+        }
+
+        // Titulo de seccion con su linea, los sliders (etiqueta, chip con el valor, barra) y los interruptores. Devuelve la y siguiente.
+        float Seccion(string id, float x, float y, string[] sliders, string[] interruptores)
+        {
+            Poner("Sec_" + id, x, y, Columna, 24f, TextAnchor.MiddleLeft);
+            Poner("SecSep_" + id, x, y + 26f, Columna, 2f);
+            y += AltoSeccion;
             foreach (var n in sliders)
             {
-                var etiqueta = panel.Find(n + "_Label") as RectTransform;
-                var valor = panel.Find(n + "_Value") as RectTransform;
-                var slider = panel.Find(n + "_Slider") as RectTransform;
-                if (slider != null)
+                Poner(n + "_Label", x - AnchoChip * 0.5f - 4f, y, Columna - AnchoChip - 8f, 24f, TextAnchor.MiddleLeft);
+                Poner(n + "_Chip", x + Columna * 0.5f - AnchoChip * 0.5f, y, AnchoChip, 24f);
+                Poner(n + "_Value", x + Columna * 0.5f - AnchoChip * 0.5f, y, AnchoChip, 24f, TextAnchor.MiddleCenter);
+                Poner(n + "_Slider", x, y + 26f, Columna, 24f);
+                y += AltoSlider;
+            }
+            if (interruptores != null)
+                foreach (var n in interruptores)
                 {
-                    var img = slider.Find("Fill Area/Fill")?.GetComponent<Image>();
-                    if (img != null)
-                    {
-                        if (n.StartsWith("Sensibilidad")) img.color = new Color(0.7f, 0.3f, 0.8f);
-                        else if (n == "Volumen" || n == "General" || n == "VFX" || n == "Voces") img.color = new Color(0.2f, 0.7f, 0.9f);
-                        else img.color = new Color(0.3f, 0.8f, 0.4f);
-                    }
+                    Poner(n + "_Toggle", x, y + 4f, Columna, 34f);
+                    y += AltoInterruptor;
                 }
-                Colocar(etiqueta, -AnchoContenido * 0.5f + 150f, y, 300f, alturaLinea, alto, TextAnchor.MiddleLeft);
-                Colocar(valor, AnchoContenido * 0.5f - 50f, y, 100f, alturaLinea, alto, TextAnchor.MiddleRight);
-                Colocar(slider, 0f, y + alturaLinea + 2f, AnchoContenido, 20f, alto, null);
-                y += pasoSlider;
-            }
-            y += 10f;
-            foreach (var n in toggles)
-            {
-                var caja = panel.Find(n + "_Toggle") as RectTransform;
-                var etiqueta = panel.Find(n + "_Label") as RectTransform;
-                float filaAlto = 30f;
-                Colocar(caja, -AnchoContenido * 0.5f + 12f, y + (filaAlto - 24f) * 0.5f, 24f, 24f, alto, null);
-                Colocar(etiqueta, -AnchoContenido * 0.5f + 12f + 12f + 10f + 190f, y, 380f, filaAlto, alto, TextAnchor.MiddleLeft);
-                y += pasoToggle;
-            }
-            y += 14f;
-            var volver = panel.Find("BackButton") as RectTransform;
-            if (volver != null) Colocar(volver, 0f, y, 260f, 56f, alto, null);
-            return alto;
+            return y;
         }
 
         // Pone un rect por su borde superior (yTop, medido hacia abajo desde el borde de arriba del panel) y su centro x.
@@ -213,78 +222,8 @@ namespace SP.UI
             if (t != null && alineacion.HasValue) t.alignment = alineacion.Value;
         }
 
-        static float LineaDe(Transform etiqueta)
-        {
-            var t = etiqueta != null ? etiqueta.GetComponent<Text>() : null;
-            return t == null ? 26f : Mathf.Max(26f, Mathf.Ceil(t.fontSize * 1.6f));
-        }
-
-        // ---------------- panel extra ----------------
-        // Una sola columna: titulo, seccion PANTALLA (modo, resolucion + aplicar), seccion ACCESIBILIDAD (cinco botones) y la nota
-        // del mando. Cada fila tiene alto fijo y separacion propia, asi que nada se pisa a ninguna resolucion.
-        static readonly string[] BotonesDeAccesibilidad = { "Escala", "Idioma", "Daltonismo", "HudMinimo", "Subtitulos" };
-
-        float AcomodarExtra(RectTransform extra)
-        {
-            ArreglarTextos(extra, extra: true);
-            const float pad = 20f, fila = 44f, sep = 8f;
-            float ancho = AnchoExtra - pad * 2f;
-
-            var notaTr = SP.Core.BuscarHijo.Ruta(extra, "Nota");
-            var nota = notaTr != null ? notaTr.GetComponent<Text>() : null;
-            float altoNota = 0f;
-            if (nota != null)
-            {
-                nota.rectTransform.sizeDelta = new Vector2(ancho, 20f);
-                altoNota = Mathf.Ceil(nota.preferredHeight) + 6f;
-            }
-
-            var filas = new List<(RectTransform rt, float x, float y, float w, float h, TextAnchor? al)>();
-            float y = pad;
-            void Poner(Transform t, float h, float gap, TextAnchor? al = null)
-            {
-                var rt = t as RectTransform;
-                if (rt != null) filas.Add((rt, 0f, y, ancho, h, al));
-                y += h + gap;
-            }
-
-            Poner(SP.Core.BuscarHijo.Ruta(extra, "Titulo"), 34f, 12f, TextAnchor.MiddleCenter);
-            Poner(SP.Core.BuscarHijo.Ruta(extra, "SecPantalla"), 22f, 0f, TextAnchor.MiddleLeft);
-            Poner(SP.Core.BuscarHijo.Ruta(extra, "SepPantalla"), 2f, 10f);
-            Poner(SP.Core.BuscarHijo.Ruta(extra, "Pantalla"), fila, 12f);
-            Poner(SP.Core.BuscarHijo.Ruta(extra, "ResolucionLabel"), 20f, 2f, TextAnchor.MiddleLeft);
-            const float anchoAplicar = 112f, huecoFila = 8f;
-            float anchoLista = ancho - anchoAplicar - huecoFila;
-            var dd = SP.Core.BuscarHijo.Ruta(extra, "Resolucion") as RectTransform;
-            var ap = SP.Core.BuscarHijo.Ruta(extra, "Aplicar") as RectTransform;
-            if (dd != null) filas.Add((dd, -ancho * 0.5f + anchoLista * 0.5f, y, anchoLista, fila, null));
-            if (ap != null) filas.Add((ap, ancho * 0.5f - anchoAplicar * 0.5f, y, anchoAplicar, fila, null));
-            y += fila + 20f;
-            Poner(SP.Core.BuscarHijo.Ruta(extra, "SecAccesibilidad"), 22f, 0f, TextAnchor.MiddleLeft);
-            Poner(SP.Core.BuscarHijo.Ruta(extra, "SepAccesibilidad"), 2f, 10f);
-            foreach (var n in BotonesDeAccesibilidad) Poner(SP.Core.BuscarHijo.Ruta(extra, n), fila, sep);
-            y += 6f;
-            if (notaTr != null) Poner(notaTr, altoNota, 0f, TextAnchor.UpperCenter);
-            float alto = y + pad;
-
-            foreach (var f in filas)
-            {
-                Colocar(f.rt, f.x, f.y, f.w, f.h, alto, f.al);
-                if (f.rt.GetComponent<Button>() != null)
-                {
-                    // Rotulo a la izquierda y valor a la derecha: el texto se ajusta solo si es largo.
-                    foreach (var et in f.rt.GetComponentsInChildren<Text>(true))
-                    {
-                        et.resizeTextForBestFit = true; et.resizeTextMinSize = 11; et.resizeTextMaxSize = 18;
-                        et.verticalOverflow = VerticalWrapMode.Overflow;
-                    }
-                }
-            }
-            return alto;
-        }
-
         // Ningun texto se trunca (era la causa de las etiquetas invisibles) y los largos se parten en vez de desbordar.
-        static void ArreglarTextos(Transform raiz, bool extra)
+        static void ArreglarTextos(Transform raiz)
         {
             foreach (var t in raiz.GetComponentsInChildren<Text>(true))
             {
@@ -304,14 +243,10 @@ namespace SP.UI
             if (l == null) { problemas.Add("sin LayoutDeAjustes"); return problemas; }
             var r = l.Ultimo;
 
-            float anchoGrupo = r.Apilado ? Mathf.Max(AnchoPrincipal, AnchoExtra) : AnchoPrincipal + Separacion + AnchoExtra;
-            float altoGrupo = r.Apilado ? r.AltoPrincipal + Separacion + r.AltoExtra : Mathf.Max(r.AltoPrincipal, r.AltoExtra);
-            if (anchoGrupo * r.Escala > area.x + 0.5f) problemas.Add($"el conjunto ({anchoGrupo * r.Escala:0}) es mas ancho que el area ({area.x:0})");
-            if (altoGrupo * r.Escala > area.y + 0.5f) problemas.Add($"el conjunto ({altoGrupo * r.Escala:0}) es mas alto que el area ({area.y:0})");
+            if (AnchoTarjeta * r.Escala > area.x + 0.5f) problemas.Add($"la tarjeta ({AnchoTarjeta * r.Escala:0}) es mas ancha que el area ({area.x:0})");
+            if (r.Alto * r.Escala > area.y + 0.5f) problemas.Add($"la tarjeta ({r.Alto * r.Escala:0}) es mas alta que el area ({area.y:0})");
 
-            RevisarPanel((RectTransform)settingsPanel.transform, "principal", problemas);
-            var extra = settingsPanel.transform.Find("AjustesExtra") as RectTransform;
-            if (extra != null) RevisarPanel(extra, "extra", problemas);
+            RevisarPanel((RectTransform)settingsPanel.transform, problemas);
             return problemas;
         }
 
@@ -320,7 +255,7 @@ namespace SP.UI
             if (rt == null || !rt.gameObject.activeInHierarchy) return false;
             var t = rt.GetComponent<Text>();
             if (t != null) return !string.IsNullOrWhiteSpace(t.text);
-            return rt.GetComponent<Slider>() != null || rt.GetComponent<Toggle>() != null || rt.GetComponent<Button>() != null;
+            return rt.GetComponent<Slider>() != null || rt.GetComponent<Toggle>() != null || rt.GetComponent<Button>() != null || rt.GetComponent<Dropdown>() != null;
         }
 
         static Rect CajaEn(RectTransform panel, RectTransform hijo)
@@ -332,7 +267,7 @@ namespace SP.UI
             return Rect.MinMaxRect(Mathf.Min(min.x, max.x), Mathf.Min(min.y, max.y), Mathf.Max(min.x, max.x), Mathf.Max(min.y, max.y));
         }
 
-        static void RevisarPanel(RectTransform panel, string nombre, List<string> problemas)
+        static void RevisarPanel(RectTransform panel, List<string> problemas)
         {
             var cajas = new List<(RectTransform rt, Rect caja)>();
             foreach (Transform h in panel)
@@ -346,25 +281,27 @@ namespace SP.UI
             {
                 var (rt, c) = cajas[i];
                 if (c.xMin < limite.xMin - 0.5f || c.xMax > limite.xMax + 0.5f || c.yMin < limite.yMin - 0.5f || c.yMax > limite.yMax + 0.5f)
-                    problemas.Add($"[{nombre}] '{rt.name}' se sale del panel");
+                    problemas.Add($"'{rt.name}' se sale del panel");
                 var t = rt.GetComponent<Text>();
                 if (t != null)
                 {
                     float need = t.preferredHeight;
-                    if (need > rt.rect.height + 2f) problemas.Add($"[{nombre}] '{rt.name}' necesita {need:0} de alto y tiene {rt.rect.height:0} ('{t.text.Replace('\n', '|')}')");
+                    if (need > rt.rect.height + 2f) problemas.Add($"'{rt.name}' necesita {need:0} de alto y tiene {rt.rect.height:0} ('{t.text.Replace('\n', '|')}')");
                 }
                 for (int j = i + 1; j < cajas.Count; j++)
-                    if (c.Overlaps(cajas[j].caja)) problemas.Add($"[{nombre}] '{rt.name}' se pisa con '{cajas[j].rt.name}'");
+                    if (c.Overlaps(cajas[j].caja)) problemas.Add($"'{rt.name}' se pisa con '{cajas[j].rt.name}'");
             }
-            // Botones del panel extra: su etiqueta tiene que caber dentro del boton.
+            // Botones y rotulos de interruptor: la etiqueta tiene que caber.
             foreach (Transform h in panel)
             {
-                var b = h.GetComponent<Button>();
-                if (b == null || !h.gameObject.activeInHierarchy) continue;
-                var et = h.GetComponentInChildren<Text>();
-                if (et == null) continue;
-                float need = et.preferredHeight;
-                if (need > ((RectTransform)h).rect.height + 2f) problemas.Add($"[{nombre}] la etiqueta de '{h.name}' no cabe en el boton ('{et.text}')");
+                if (!h.gameObject.activeInHierarchy) continue;
+                if (h.GetComponent<Button>() == null && h.GetComponent<Toggle>() == null) continue;
+                foreach (var et in h.GetComponentsInChildren<Text>())
+                {
+                    float need = et.preferredHeight;
+                    if (need > ((RectTransform)et.transform).rect.height + 2f && et.text.Length > 0)
+                        problemas.Add($"la etiqueta de '{h.name}' no cabe ('{et.text}')");
+                }
             }
         }
     }

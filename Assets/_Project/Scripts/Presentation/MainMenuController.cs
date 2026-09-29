@@ -62,7 +62,7 @@ namespace SP.Presentation
         public void MostrarDificultad()
         {
             var raiz = transform.parent;
-            if (raiz == null) { IniciarPartida(NivelDificultad.Medio); return; }
+            if (raiz == null) { IniciarPartida(NivelDificultad.Facil); return; }
             if (panelDificultad != null) { panelDificultad.SetActive(true); return; }
 
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");

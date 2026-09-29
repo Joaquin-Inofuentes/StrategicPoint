@@ -77,7 +77,7 @@ namespace SP.UI
 
             // De arriba hacia abajo y sin que dos cajas compartan franja:
             // titulo, estadisticas, y recien despues los botones.
-            if (titulo != null) titulo.anchoredPosition = new Vector2(0f, 150f);
+            if (titulo != null) titulo.anchoredPosition = new Vector2(0f, 162f);
             if (reason != null) reason.anchoredPosition = new Vector2(0f, 100f);
             if (stats != null) stats.anchoredPosition = new Vector2(0f, 50f);
 

@@ -56,8 +56,22 @@ namespace SP.Presentation
 
         bool buttonsWired;
 
+        // Los carteles con canvas propio (pista de interaccion, acciones en curso, mision) van en ordenes 35-40 y quedaban
+        // ENCIMA de la pausa y de Configuraciones, que viven en el canvas del HUD (orden 0). Todo el arbol de la pausa pasa a
+        // un canvas anidado de orden 900 (el que ya suponia el comentario de InteractHintView).
+        void SubirALaCapaDePausa()
+        {
+            if (!(transform is RectTransform)) return;
+            var cv = GetComponent<Canvas>();
+            if (cv == null) cv = gameObject.AddComponent<Canvas>();
+            cv.overrideSorting = true;
+            cv.sortingOrder = 900;
+            if (GetComponent<UnityEngine.UI.GraphicRaycaster>() == null) gameObject.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+        }
+
         void OnEnable()
         {
+            SubirALaCapaDePausa();
             if (pausePanel == null)
             {
                 var t = transform.Find("PausePanel");

@@ -142,6 +142,8 @@ namespace SP.Presentation
             if (GetComponent<SP.Presentation.WeaponBackRack>() == null) gameObject.AddComponent<SP.Presentation.WeaponBackRack>();
             // Golpe de cuchillo procedural (cuchillo en la mano + IK del brazo): ver SoldierMeleeAnim.
             if (GetComponent<SoldierMeleeAnim>() == null) gameObject.AddComponent<SoldierMeleeAnim>();
+            // Lanzamiento de granada procedural (granada en la mano + IK del brazo): ver SoldierGrenadeAnim.
+            if (GetComponent<SoldierGrenadeAnim>() == null) gameObject.AddComponent<SoldierGrenadeAnim>();
         }
 
         void PintarPorEquipo()

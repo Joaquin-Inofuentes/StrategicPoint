@@ -19,22 +19,20 @@ namespace SP.Presentation
     // tajo flotante de siempre.
     public class SoldierMeleeAnim : MonoBehaviour
     {
-        public const float Total = 0.55f;
-        const float FinCarga = 0.09f, FinTajo = 0.27f, EntradaPeso = 0.06f, SalidaPeso = 0.16f;
-        const float LargoCuchillo = 0.34f;
+        public const float Total = 0.72f;
+        const float FinCarga = 0.17f, FinTajo = 0.37f, EntradaPeso = 0.07f, SalidaPeso = 0.24f;
+        const float LargoCuchillo = 0.4f;
 
         // Puntos de la mano en unidades del alcance del brazo, medidos desde el hombro: (derecha, arriba, adelante).
-        static readonly Vector3 PuntoDeCarga = new Vector3(0.55f, 0.45f, 0.15f);
-        static readonly Vector3 PuntoDeTajo = new Vector3(-0.42f, -0.12f, 0.88f);
+        static readonly Vector3 PuntoDeCarga = new Vector3(0.78f, 0.82f, -0.22f);
+        static readonly Vector3 PuntoDeTajo = new Vector3(-0.7f, -0.5f, 0.9f);
         static readonly Vector3 HintDelCodo = new Vector3(0.7f, -0.6f, -0.1f);
 
         Animator anim;
         Transform pecho, brazo, antebrazo, mano;
         Transform cuchillo, punta;
         TrailRenderer estela;
-        Renderer[] renderersDelArma;
-        bool[] armaEstabaVisible;
-        bool armaOculta;
+        readonly OcultadorDeArma arma = new OcultadorDeArma();
         float t = -1f;
         bool resuelto;
 
@@ -100,8 +98,8 @@ namespace SP.Presentation
             p.transform.SetParent(mano, false);
             punta = p.transform;
             estela = p.AddComponent<TrailRenderer>();
-            estela.time = 0.16f;
-            estela.startWidth = 0.06f; estela.endWidth = 0f;
+            estela.time = 0.22f;
+            estela.startWidth = 0.11f; estela.endWidth = 0f;
             estela.minVertexDistance = 0.02f;
             estela.sharedMaterial = SafeMaterial.Create(new Color(0.85f, 0.95f, 1f));
             estela.startColor = new Color(0.85f, 0.95f, 1f, 0.9f);
@@ -110,7 +108,7 @@ namespace SP.Presentation
             estela.emitting = false;
         }
 
-        static float Suave(float k) { k = Mathf.Clamp01(k); return k * k * (3f - 2f * k); }
+        static float Suave(float k) => BrazoIk.Suave(k);
 
         void LateUpdate()
         {
@@ -125,8 +123,9 @@ namespace SP.Presentation
             }
 
             float w = Suave(Mathf.Min(t / EntradaPeso, (Total - t) / SalidaPeso, 1f));
-            // 0 = carga (mano atras), 1 = fin del tajo (mano adelante).
-            float k = t < FinCarga ? 0f : Suave((t - FinCarga) / (FinTajo - FinCarga));
+            // 0 = carga (mano atras), 1 = fin del tajo (mano adelante); pasa un poco de 1 y vuelve (sobrepaso: mas exagerado).
+            float x = t < FinCarga ? 0f : Mathf.Clamp01((t - FinCarga) / (FinTajo - FinCarga));
+            float k = Suave(x) + 0.14f * Mathf.Sin(Mathf.PI * x) * (t < FinTajo ? 1f : 0f);
 
             OcultarArma(true);
             if (!cuchillo.gameObject.activeSelf) cuchillo.gameObject.SetActive(true);
@@ -134,8 +133,10 @@ namespace SP.Presentation
             // Torso: gira hacia el lado de la carga y despues barre hacia el otro.
             if (pecho != null)
             {
-                float giro = Mathf.Lerp(26f, -30f, k) * w;
-                pecho.rotation = Quaternion.AngleAxis(giro, transform.up) * pecho.rotation;
+                // Giro grande y cuerpo que se echa hacia atras en la carga y se tira hacia adelante en el tajo.
+                float giro = Mathf.LerpUnclamped(46f, -58f, k) * w;
+                float inclinacion = Mathf.LerpUnclamped(-14f, 24f, k) * w;
+                pecho.rotation = Quaternion.AngleAxis(giro, transform.up) * Quaternion.AngleAxis(inclinacion, transform.right) * pecho.rotation;
             }
 
             ResolverBrazo(k, w);
@@ -144,35 +145,9 @@ namespace SP.Presentation
 
         void ResolverBrazo(float k, float w)
         {
-            Vector3 hombro = brazo.position;
-            float l1 = Vector3.Distance(brazo.position, antebrazo.position);
-            float l2 = Vector3.Distance(antebrazo.position, mano.position);
-            float alcance = l1 + l2;
-            if (alcance < 0.05f) return;
-
-            Vector3 p = Vector3.Lerp(PuntoDeCarga, PuntoDeTajo, k);
-            Vector3 d = (transform.right * p.x + transform.up * p.y + transform.forward * p.z) * alcance;
-            float dist = Mathf.Clamp(d.magnitude, 0.3f * alcance, 0.98f * alcance);
-            Vector3 dirN = d.sqrMagnitude > 1e-6f ? d.normalized : transform.forward;
-            Vector3 objetivo = hombro + dirN * dist;
-
-            // Codo: interseccion de las dos esferas (largo del brazo y del antebrazo), del lado que marca el hint.
-            float a = (l1 * l1 - l2 * l2 + dist * dist) / (2f * dist);
-            float h = Mathf.Sqrt(Mathf.Max(0f, l1 * l1 - a * a));
-            Vector3 hint = transform.right * HintDelCodo.x + transform.up * HintDelCodo.y + transform.forward * HintDelCodo.z;
-            Vector3 lado = Vector3.ProjectOnPlane(hint, dirN);
-            if (lado.sqrMagnitude < 1e-6f) lado = transform.right;
-            Vector3 codo = hombro + dirN * a + lado.normalized * h;
-
-            Vector3 viejaDirBrazo = (antebrazo.position - brazo.position).normalized;
-            Vector3 nuevaDirBrazo = (codo - hombro).normalized;
-            var rotBrazo = Quaternion.FromToRotation(viejaDirBrazo, nuevaDirBrazo) * brazo.rotation;
-            brazo.rotation = Quaternion.Slerp(brazo.rotation, rotBrazo, w);
-
-            Vector3 viejaDirAntebrazo = (mano.position - antebrazo.position).normalized;
-            Vector3 nuevaDirAntebrazo = (objetivo - antebrazo.position).normalized;
-            var rotAntebrazo = Quaternion.FromToRotation(viejaDirAntebrazo, nuevaDirAntebrazo) * antebrazo.rotation;
-            antebrazo.rotation = Quaternion.Slerp(antebrazo.rotation, rotAntebrazo, w);
+            // El punto de la mano se pasa por un sobrepaso corto al final del tajo (mas exagerado) antes de asentarse.
+            Vector3 p = Vector3.LerpUnclamped(PuntoDeCarga, PuntoDeTajo, k);
+            BrazoIk.Resolver(transform, brazo, antebrazo, mano, p, HintDelCodo, w);
         }
 
         void ColocarCuchillo(float w)
@@ -187,28 +162,7 @@ namespace SP.Presentation
 
         void OcultarArma(bool ocultar)
         {
-            if (ocultar == armaOculta) return;
-            if (ocultar)
-            {
-                var arma = (mano != null ? BuscarHijo.Ruta(mano, "WeaponVisual") : null) ?? BuscarHijo.Ruta(transform, "WeaponVisual");
-                if (arma == null) return;
-                renderersDelArma = arma.GetComponentsInChildren<Renderer>(true);
-                armaEstabaVisible = new bool[renderersDelArma.Length];
-                for (int i = 0; i < renderersDelArma.Length; i++)
-                {
-                    armaEstabaVisible[i] = renderersDelArma[i] != null && renderersDelArma[i].enabled;
-                    if (renderersDelArma[i] != null) renderersDelArma[i].enabled = false;
-                }
-                armaOculta = true;
-            }
-            else
-            {
-                if (renderersDelArma != null)
-                    for (int i = 0; i < renderersDelArma.Length; i++)
-                        if (renderersDelArma[i] != null && armaEstabaVisible[i]) renderersDelArma[i].enabled = true;
-                renderersDelArma = null;
-                armaOculta = false;
-            }
+            if (ocultar) arma.Ocultar(mano, transform); else arma.Restaurar();
         }
 
         void Terminar()

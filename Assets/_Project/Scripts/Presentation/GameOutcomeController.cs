@@ -103,7 +103,26 @@ namespace SP.Presentation
                 {
                     defeatReason = t.GetComponent<Text>();
                 }
-                if (defeatReason != null) SP.UI.FondoOpaco.Poner(defeatReason);
+                if (defeatReason != null)
+                {
+                    // Pedido explicito: "toda la escuadra cayo, el texto deberia estar mejor ubicado". Nacia en el centro del panel
+                    // (y=0) y su fondo tapaba la parte de arriba de REINTENTAR: ahora va entre el titulo y las estadisticas
+                    // (mismo ancla que ellos, ver Diagramador.AcomodarResultado) y el fondo mide lo que el texto.
+                    var rr = defeatReason.rectTransform;
+                    rr.anchorMin = rr.anchorMax = new Vector2(0.5f, 0.6f);
+                    rr.pivot = new Vector2(0.5f, 0.5f);
+                    rr.sizeDelta = new Vector2(560f, 36f);
+                    rr.anchoredPosition = new Vector2(0f, 100f);
+                    var fondo = SP.UI.FondoOpaco.Poner(defeatReason);
+                    if (fondo != null)
+                    {
+                        // El fondo puede venir ya guardado en la escena (en el centro): se lo lleva junto al texto.
+                        var fr = fondo.rectTransform;
+                        fr.anchorMin = rr.anchorMin; fr.anchorMax = rr.anchorMax; fr.pivot = rr.pivot;
+                        fr.anchoredPosition = rr.anchoredPosition;
+                        fr.sizeDelta = rr.sizeDelta + new Vector2(SP.UI.FondoOpaco.MargenX * 2f, SP.UI.FondoOpaco.MargenY * 2f);
+                    }
+                }
             }
 
             // Mismo motivo que en MainMenuController/PauseController: los

@@ -42,7 +42,7 @@ namespace SP.Core
         {
             get
             {
-                if (!actual.HasValue) actual = (NivelDificultad)Mathf.Clamp(PlayerPrefs.GetInt(Pref, (int)NivelDificultad.Medio), 0, 2);
+                if (!actual.HasValue) actual = (NivelDificultad)Mathf.Clamp(PlayerPrefs.GetInt(Pref, (int)NivelDificultad.Facil), 0, 2);
                 return actual.Value;
             }
             set

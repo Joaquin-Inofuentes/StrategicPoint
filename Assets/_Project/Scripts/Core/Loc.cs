@@ -51,6 +51,7 @@ namespace SP.Core
             { "ACERCATE A UNA CAJA DE SUMINISTROS PARA CAMBIAR DE ARMA", "GET NEXT TO A SUPPLY CRATE TO SWAP WEAPONS" },
             { "TODOS", "ALL" }, { "TODOS SUPRIMEN", "ALL SUPPRESS" }, { "GRANADA ALLI", "GRENADE THERE" },
             { "Voces", "Voices" }, { "Invertir eje Y", "Invert Y axis" },
+            { "SONIDO", "SOUND" }, { "INTERFAZ", "INTERFACE" }, { "MIRA Y CONTROL", "AIM AND CONTROL" }, { "MODO", "MODE" }, { "APLICAR", "APPLY" },
             { "Daltonismo cambia verde y rojo por azul y naranja.\nHUD minimo oculta mision, minimapa y escuadra (tecla F10).\nMando: stick izq. mover, stick der. mirar, RT disparar,\nA saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.",
               "Colorblind mode swaps green and red for blue and orange.\nMinimal HUD hides mission, minimap and squad (F10 key).\nGamepad: left stick move, right stick look, RT fire,\nA jump, B crouch, X reload, RB/LB swap weapon, Start pause." },
             { "REVIVIENDO", "REVIVING" }, { "CURANDO", "HEALING" }, { "DETONANDO", "DETONATING" }, { "AFINANDO PUNTERIA", "STEADYING AIM" }, { "USANDO BOTIQUIN", "USING MEDKIT" },
