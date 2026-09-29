@@ -2,6 +2,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using SP.Combat;
 using SP.Core;
 using SP.Player;
 using SP.Presentation;
@@ -57,6 +58,17 @@ namespace SP.Mision
             EnCurso = false;
             WaypointActual = -1;
             alTerminarRef?.Invoke();
+        }
+
+        // Pedido explicito: "un sonido de disparo al saltear tomas de
+        // escena" -- feedback audible cada vez que se corta la transicion
+        // o la espera de una toma con ESPACIO/click. Reusa el mismo clip
+        // sintetico del rifle (GenericSfx.GetWeaponShot) en vez de armar un
+        // tono nuevo, asi suena a disparo de verdad y no a otro "bip" mas.
+        static void SonarSalteoDeToma()
+        {
+            var clip = GenericSfx.GetWeaponShot(WeaponKind.Rifle);
+            AudioDirector.Instance?.PlayFlat(clip, SfxChannel.Ui, 0.7f, 1f);
         }
 
         void ArmarLienzo()
@@ -188,9 +200,10 @@ namespace SP.Mision
                     if (skipPressed)
                     {
                         skipping = true;
+                        SonarSalteoDeToma();
                         break;
                     }
-                    
+
                     t += Time.deltaTime;
                     float k = Mathf.Clamp01(t / duracion);
                     float suave = k * k * (3f - 2f * k);   // smoothstep: sin el arranque/frenado brusco de un lerp lineal
@@ -228,7 +241,7 @@ namespace SP.Mision
                 while (te < espera && !skipping)
                 {
                     bool skipPressed = (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) || (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame);
-                    if (skipPressed) { skipping = true; break; }
+                    if (skipPressed) { skipping = true; SonarSalteoDeToma(); break; }
                     te += Time.deltaTime;
                     yield return null;
                 }
