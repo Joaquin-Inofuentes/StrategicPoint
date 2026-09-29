@@ -2956,7 +2956,9 @@ namespace SP.Player
                 if (KeyBindings.IsPressed(KeyBindings.RotarCamaraRts))
                 {
                     orbitando = true;
-                    Rig.rtsYaw += mouse.delta.ReadValue().x * rtsLookSens * 0.5f * Time.deltaTime;
+                    // Orbita alrededor del punto central de la pantalla: X gira, Y inclina.
+                    var d = mouse.delta.ReadValue() * rtsLookSens * 0.5f * Time.deltaTime;
+                    Rig.OrbitarRts(d.x, d.y);
                 }
 
                 float scroll = mouse.scroll.ReadValue().y;

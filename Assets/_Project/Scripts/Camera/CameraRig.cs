@@ -48,9 +48,31 @@ namespace SP.CameraSystem
         // mas inclinada hacia adelante (mas picado, estilo Age of
         // Empires/Company of Heroes: se sigue leyendo el mapa desde arriba
         // pero el terreno y los soldados muestran volumen de verdad).
-        [SerializeField, Range(0f, 60f)]
-        public float rtsInclinacionAdelante = 20f;
+        //
+        // Pedido explicito: "en RTS quiero que la camara este rotada por defecto 20 grados
+        // para adelante extra" -- se suma a los 20 que ya habia: 40 por defecto. El maximo sube
+        // a 75 porque ahora tambien se puede inclinar orbitando (OrbitarRts).
+        [SerializeField, Range(0f, 75f)]
+        public float rtsInclinacionAdelante = 40f;
         public float rtsYaw = 0f;
+
+        public const float InclinacionOrbitaMin = 10f, InclinacionOrbitaMax = 75f;
+
+        // Orbita la camara RTS alrededor del punto del suelo que esta en el CENTRO de la pantalla
+        // (rtsFocusPoint): el giro cambia el yaw y la inclinacion sube/baja la camara sobre esa
+        // esfera. La distancia al foco se conserva (la altura se recalcula), asi el punto central
+        // no se corre ni se acerca/aleja mientras se orbita.
+        public void OrbitarRts(float deltaYaw, float deltaInclinacion)
+        {
+            rtsYaw += deltaYaw;
+            float inclinacion = rtsInclinacionAdelante;
+            float distancia = rtsCurrentHeight / Mathf.Max(0.05f, Mathf.Cos(inclinacion * Mathf.Deg2Rad));
+            inclinacion = Mathf.Clamp(inclinacion + deltaInclinacion, InclinacionOrbitaMin, InclinacionOrbitaMax);
+            rtsInclinacionAdelante = inclinacion;
+            float altura = Mathf.Clamp(distancia * Mathf.Cos(inclinacion * Mathf.Deg2Rad), rtsMinHeight, rtsMaxHeight);
+            rtsCurrentHeight = altura;
+            rtsTargetHeight = altura;
+        }
 
         Vector3 RtsLookEuler => new Vector3(90f - rtsInclinacionAdelante, rtsYaw, 0f);
 
@@ -369,6 +391,7 @@ namespace SP.CameraSystem
         Vector3? savedRtsFocus;
         float savedRtsHeight = -1f;
         float savedRtsYaw = 0f;
+        float savedRtsInclinacion = -1f;
 
         public void SetMode(ControlMode mode, Vector3? rtsFallbackCenter = null)
         {
@@ -384,6 +407,7 @@ namespace SP.CameraSystem
                 savedRtsFocus = rtsFocusPoint;
                 savedRtsHeight = rtsCurrentHeight;
                 savedRtsYaw = rtsYaw;
+                savedRtsInclinacion = rtsInclinacionAdelante;
             }
 
             Mode = mode;
@@ -426,6 +450,7 @@ namespace SP.CameraSystem
                 rtsCurrentHeight = savedRtsHeight;
                 rtsTargetHeight = savedRtsHeight;
                 rtsYaw = savedRtsYaw;
+                if (savedRtsInclinacion >= 0f) rtsInclinacionAdelante = savedRtsInclinacion;
                 transform.rotation = Quaternion.Euler(RtsLookEuler);
                 transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
                 // El objetivo de paneo suavizado debe re-sincronizarse con
