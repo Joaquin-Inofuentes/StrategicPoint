@@ -464,7 +464,14 @@ namespace SP.EditorTools
                 for (int i = 0; i < 200; i++)
                 {
                     var b = extra.Find(botones[rnd.Next(botones.Length)]);
-                    if (b != null) { b.GetComponent<Button>().onClick.Invoke(); clics++; }
+                    // BUG REAL (no relacionado a esta ronda): algun nombre de
+                    // "botones" matcheaba un Transform sin componente Button
+                    // (un label o contenedor con el mismo nombre), y
+                    // GetComponent<Button>() volvia null -- NullReferenceException
+                    // en el .onClick que tiraba abajo la suite entera antes de
+                    // llegar a las fases siguientes.
+                    var boton = b != null ? b.GetComponent<Button>() : null;
+                    if (boton != null) { boton.onClick.Invoke(); clics++; }
                     if (rnd.Next(4) == 0) { Loc.Alternar(); cambiosDeIdioma++; }
                     var r = resoluciones[rnd.Next(resoluciones.Length)];
                     var area = AreaCanvas(r, SP.UI.AjustesDeJuego.Escala);

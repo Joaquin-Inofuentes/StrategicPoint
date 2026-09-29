@@ -32,7 +32,7 @@ namespace SP.EditorTools
 
         static void Fase23_FormacionLateral(SP.Actors.Soldier vega, SP.Actors.Soldier kes, SP.Actors.Soldier doc)
         {
-            TestLog.Step("Probando Fase23_FormacionLateral: formacion WEDGE al seguir");
+            TestLog.Step("Probando Fase23_FormacionLateral: primera fila al costado (visible en camara), no detras");
             
             var prevLider = SP.Ai.AjustesDeEscuadra.Lider;
             var prevLat = SP.Ai.AjustesDeEscuadra.DistanciaLateralFormacion;
@@ -64,7 +64,9 @@ namespace SP.EditorTools
             var relDoc = vega.transform.InverseTransformPoint(doc.transform.position);
             
             Check("Uno esta a la derecha y otro a la izquierda", relKes.x * relDoc.x < 0f && Mathf.Abs(relKes.x) > 0.5f && Mathf.Abs(relDoc.x) > 0.5f);
-            Check("Ambos van por detras (-Z)", relKes.z < -0.5f && relDoc.z < -0.5f);
+            // Pedido explicito: la primera fila va AL COSTADO (visible en la
+            // camara del jugador), no detras del hombro. z≈0, ya no < -0.5.
+            Check("Ambos van a la par (Z≈0, no detras)", Mathf.Abs(relKes.z) < 0.5f && Mathf.Abs(relDoc.z) < 0.5f);
             
             SP.Ai.AjustesDeEscuadra.Lider = prevLider;
             SP.Ai.AjustesDeEscuadra.DistanciaLateralFormacion = prevLat;
