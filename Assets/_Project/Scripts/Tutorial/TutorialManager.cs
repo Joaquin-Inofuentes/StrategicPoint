@@ -540,7 +540,7 @@ namespace SP.Tutorial
                 Id = "vista_tactica", Titulo = "VER COBERTURAS Y RUTAS", Teclas = "C", Acento = cian,
                 Subs = new[]
                 {
-                    S("Mantén C: aparecen las coberturas", "Mantén apretada la tecla [C]: los puntos de cobertura del piso (discos celestes) y las rutas de patrulla enemigas se hacen visibles. Soltando la tecla se esconden.", "La tecla C está entre la X y la V.", () => f.verCoberturas, v => f.verCoberturas = v),
+                    S("Mantén C: aparecen las coberturas", "Mantén apretada la tecla [C]: los puntos de cobertura del piso (discos celestes) se hacen visibles. Soltando la tecla se esconden.", "La tecla C está entre la X y la V.", () => f.verCoberturas, v => f.verCoberturas = v),
                     S("Suelta C: se esconden", "Suelta la tecla [C]: el mapa vuelve a quedar limpio. (Con el radial sobre CUBRIRSE también se ven.)", "Deja de apretar C.", () => f.ocultaCoberturas, v => f.ocultaCoberturas = v),
                 },
                 Evaluar = () =>

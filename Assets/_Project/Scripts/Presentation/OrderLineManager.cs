@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using UnityEngine;
 using SP.Core;
+using SP.Combat;
+using SP.CameraSystem;
 
 namespace SP.Presentation
 {
@@ -25,7 +27,11 @@ namespace SP.Presentation
                 var brain = soldier.Brain;
                 var destination = brain != null ? brain.CurrentOrderDestination : null;
 
-                if (!destination.HasValue || !soldier.gameObject.activeInHierarchy)
+                // Destino de un ENEMIGO: solo a la vista en RTS o con el radial abierto (mismo criterio que las
+                // esferas de patrulla, ver PlayerInputDriver.ActualizarVistaTactica); en FPS no se muestra.
+                bool ocultoPorSerEnemigo = soldier.Team == TeamId.Enemy && !(CameraRig.Instance != null && CameraRig.Instance.RutasVisibles);
+
+                if (!destination.HasValue || !soldier.gameObject.activeInHierarchy || ocultoPorSerEnemigo)
                 {
                     RemoveLine(soldier.Id);
                     continue;

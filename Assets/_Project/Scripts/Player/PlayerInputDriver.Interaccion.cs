@@ -64,48 +64,22 @@ namespace SP.Player
             return it == null ? null : "[Q] " + it.GetPrompt(this);
         }
 
-        // Ronda 12: el TOQUE de [Q] y el [Q] SOSTENIDO ya no dan lo mismo sobre lo apuntado. Sostenido abre el radial completo
-        // (elegis vos); el toque ejecuta AL INSTANTE la accion natural para lo que tenes en la mira, sin menu:
-        //   enemigo -> los tuyos lo atacan | aliado herido -> el medico lo atiende | caido -> el medico lo revive
-        //   aliado sano -> ese soldado te sigue | tanque aliado con lugar -> subir todos | nada -> "SIGANME" a la escuadra.
-        // Devuelve el texto de lo que hizo (para la suite y el tutorial) o null si cayo al fallback de seguir.
+        // Toque de [Q] (menos de 1 s sin elegir nada en el radial): TODA la escuadra te sigue, si o si.
+        // Pedido explicito de esta ronda; reemplaza la accion contextual de la ronda 12 (atacar al apuntado, curar,
+        // seguir a un aliado, subir al tanque), que sigue disponible manteniendo [Q] en el radial. Unica excepcion:
+        // si apuntas a un aliado CAIDO y hay medico, el toque lo reanima (es lo que promete el cartel "[Q] REVIVIR").
+        // Devuelve en UltimaAccionRapida lo que hizo (para la suite y el tutorial).
         public string UltimaAccionRapida { get; private set; }
 
         void AccionRapidaDeQ()
         {
             UltimaAccionRapida = null;
             var aim = ultimoResultadoDeMira;
-            var yo = Brain != null ? Brain.Current : null;
-            bool hecho = false;
-            switch (aim.Type)
+            if (aim.Type == AimTargetType.Caido && aim.Soldier != null && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null)
             {
-                case AimTargetType.Enemy:
-                    if (aim.Soldier != null && aim.Soldier.Health != null && aim.Soldier.Health.IsAlive)
-                    { hecho = EjecutarOrdenRadial(MenuDeOrdenes.Atacar, 0); UltimaAccionRapida = "ATACAR"; }
-                    break;
-                case AimTargetType.Caido:
-                    if (aim.Soldier != null && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null)
-                    { hecho = EjecutarOrdenRadial(MenuDeOrdenes.Curar, 3); UltimaAccionRapida = "REVIVIR"; }
-                    break;
-                case AimTargetType.Ally:
-                    if (aim.Soldier != null && aim.Soldier != yo)
-                    {
-                        if (Herido(aim.Soldier) && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null)
-                        { hecho = EjecutarOrdenRadial(MenuDeOrdenes.Curar, 2); UltimaAccionRapida = "CURAR"; }
-                        else if (yo != null)
-                        {
-                            OrderService.IssueFollowOrderForSelection(new List<Soldier> { aim.Soldier }, yo);
-                            Avisar(aim.Soldier.DisplayName.ToUpperInvariant() + " TE SIGUE");
-                            hecho = true; UltimaAccionRapida = "SEGUIR ALIADO";
-                        }
-                    }
-                    break;
-                case AimTargetType.Vehicle:
-                    if (aim.Vehicle != null && !aim.Vehicle.IsDestroyed && aim.Vehicle.Bando == TeamId.Player && aim.Vehicle.HasAnyRoom && !currentSeat.HasValue)
-                    { hecho = EjecutarOrdenRadial(MenuDeOrdenes.Tanque, 0); UltimaAccionRapida = "SUBIR TODOS"; }
-                    break;
+                if (EjecutarOrdenRadial(MenuDeOrdenes.Curar, 3)) { UltimaAccionRapida = "REVIVIR"; return; }
             }
-            if (!hecho) { UltimaAccionRapida = null; SeguirAlPoseido(); }
+            if (SeguirTodosSiOSi() > 0) UltimaAccionRapida = "SEGUIR TODOS";
         }
 
         // Llamado desde el TAP de [Q] (ResolverGestoDeQ). Devuelve true si

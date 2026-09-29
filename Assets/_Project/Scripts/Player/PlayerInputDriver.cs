@@ -2620,14 +2620,18 @@ namespace SP.Player
                 ModeToast.Show(on ? "MODO DIOS: NADIE DE TU BANDO RECIBE DAÑO  ·  [F4] PARA APAGAR" : "MODO DIOS APAGADO", 2.2f);
         }
 
-        // Coberturas del piso y rutas de patrulla enemigas: NO estan siempre a la vista. Se ven mientras
-        // se mantiene [C], y las coberturas ademas cuando el radial esta parado sobre CUBRIRSE.
+        // Coberturas del piso: NO estan siempre a la vista. Se ven mientras se mantiene [C], y ademas cuando el
+        // radial esta parado sobre CUBRIRSE.
+        // Rutas de patrulla / destinos enemigos (esferas de waypoint y lineas de orden): pedido explicito, "unicamente
+        // deberia verlos cuando este en RTS o cuando via radial doy orden". Ya no dependen de [C].
         void ActualizarVistaTactica()
         {
             bool tecla = KeyBindings.IsPressed(KeyBindings.VerTactico);
             bool radialCubrirse = OrdenesMenu != null && OrdenesMenu.Abierto && OrdenesMenu.Seleccion == MenuDeOrdenes.Cubrirse;
             Coberturas.MostrarMarcas(tecla || radialCubrirse);
-            if (Rig != null) Rig.MostrarRutas(tecla);
+            bool enRts = Rig != null && Rig.Mode == ControlMode.Rts;
+            bool radialAbierto = OrdenesMenu != null && OrdenesMenu.Abierto;
+            if (Rig != null) Rig.MostrarRutas(enRts || radialAbierto);
         }
 
         // AMETRALLADORA FIJA: UsarTorreta/SalirDeTorreta/OrdenDeTorreta/
@@ -3005,7 +3009,7 @@ namespace SP.Player
             }
 
             string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
-            SetInstructionText($"[Arrastrar] seleccionar · [Shift+Click] sumar · [Click der.] mover la selección · [Ctrl+Click der.] trazar recorrido · [Q] mantener: radial · [C] mantener: coberturas y rutas · [WASD] panear · [Shift] panear rápido · [Rueda] zoom al cursor · [TAB] vista FPS · {selectionLabel}");
+            SetInstructionText($"[Arrastrar] seleccionar · [Shift+Click] sumar · [Click der.] mover la selección · [Ctrl+Click der.] trazar recorrido · [C] mantener: coberturas y rutas · [WASD] panear · [Shift] panear rápido · [Rueda] zoom al cursor · [TAB] vista FPS · {selectionLabel}");
 
             if (mouse == null || Rig.Cam == null) return;
 

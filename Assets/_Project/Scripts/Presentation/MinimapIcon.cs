@@ -199,8 +199,8 @@ namespace SP.Presentation
         // 0.01 se demostro INVISIBLE contra el fondo del minimapa (ver
         // captura de validacion) -- no una pista sutil sino directamente
         // nada. Subido al minimo que sigue siendo legible como cuña tenue.
-        const float ConoAlpha = 0.14f;
-        static readonly Color ConoColorGris = new Color(0.5f, 0.5f, 0.5f, 1f);
+        // Subido de 0.14 a 0.3: ahora el cono es de color (rojo/azul/amarillo) y hay que distinguirlo entre si.
+        const float ConoAlpha = 0.3f;
         Transform conoDeVision;
         MeshRenderer conoRenderer;
         float conoRadioActual = -1f;
@@ -238,7 +238,9 @@ namespace SP.Presentation
                 conoRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 conoRenderer.receiveShadows = false;
             }
-            var tinte = ConoColorGris;
+            // Pedido explicito: "en el minimapa los conos de vision diferenciar enemigos de aliados y mio con
+            // colores simples": el cono toma el color del rombo (enemigo rojo, aliado azul, el tuyo amarillo).
+            var tinte = colorEquipo;
             tinte.a = ConoAlpha;
             conoRenderer.sharedMaterial = NuevoMaterialTransparente(tinte);
             conoRadioActual = -1f; // fuerza a TickFollow a re-escalar con el radio actual

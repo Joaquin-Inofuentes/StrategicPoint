@@ -36,7 +36,7 @@ namespace SP.Player
         public const string AlternarVista = "alternar_vista";
         public const string Controles = "controles";
         public const string Frenar = "frenar";
-        // Mantener: muestra las coberturas del piso y las rutas de patrulla enemigas.
+        // Mantener: muestra las coberturas del piso (las rutas enemigas solo se ven en RTS o con el radial abierto).
         public const string VerTactico = "ver_tactico";
         // Era "camara_vehiculo" (V alternaba primera/tercera persona en el
         // vehiculo) -- ese toggle ya no existe, la vista de vehiculo es

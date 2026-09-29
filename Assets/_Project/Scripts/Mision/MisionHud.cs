@@ -90,18 +90,20 @@ namespace SP.Mision
             var go = new GameObject("TemporizadorResistir", typeof(RectTransform), typeof(CanvasGroup));
             go.transform.SetParent(raiz, false);
             timerRt = go.GetComponent<RectTransform>();
-            timerRt.anchorMin = timerRt.anchorMax = new Vector2(0.5f, 0.5f);
+            // Pedido explicito: "el texto de resisti y el numero mas arriba en el centro, y el numero a la mitad de
+            // tamaño" (antes: 128 px sobre la mira). Anclado ARRIBA al centro, asi queda alto sea cual sea la resolucion.
+            timerRt.anchorMin = timerRt.anchorMax = new Vector2(0.5f, 1f);
             timerRt.pivot = new Vector2(0.5f, 0.5f);
-            timerRt.anchoredPosition = new Vector2(0f, 100f);   // justo sobre la mira, sin taparla
-            timerRt.sizeDelta = new Vector2(560f, 200f);
+            timerRt.anchoredPosition = new Vector2(0f, -110f);
+            timerRt.sizeDelta = new Vector2(560f, 110f);
             timerGrupo = go.GetComponent<CanvasGroup>();
             timerGrupo.alpha = 0f; timerGrupo.interactable = false; timerGrupo.blocksRaycasts = false;
 
-            timerEtiqueta = Texto(go.transform, font, 28, new Vector2(0f, 74f), new Vector2(560f, 40f), new Color(1f, 0.82f, 0.3f));
-            timerNumero = Texto(go.transform, font, 128, new Vector2(0f, -8f), new Vector2(560f, 150f), Color.white);
+            timerEtiqueta = Texto(go.transform, font, 28, new Vector2(0f, 36f), new Vector2(560f, 40f), new Color(1f, 0.82f, 0.3f));
+            timerNumero = Texto(go.transform, font, 64, new Vector2(0f, -22f), new Vector2(560f, 80f), Color.white);
             var borde = timerNumero.gameObject.AddComponent<Outline>();
             borde.effectColor = new Color(0f, 0f, 0f, 0.85f);
-            borde.effectDistance = new Vector2(4f, -4f);
+            borde.effectDistance = new Vector2(2f, -2f);
             timerEtiqueta.text = "RESISTI";
         }
 

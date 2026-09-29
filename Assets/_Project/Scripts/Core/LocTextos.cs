@@ -110,7 +110,7 @@ namespace SP.Core
             { "Camina hacia la caja hasta tocarla.", "Walk to the crate until you touch it." },
             { "VER COBERTURAS Y RUTAS", "SEE COVER AND ROUTES" },
             { "Mantén C: aparecen las coberturas", "Hold C: cover points appear" },
-            { "Mantén apretada la tecla [C]: los puntos de cobertura del piso (discos celestes) y las rutas de patrulla enemigas se hacen visibles. Soltando la tecla se esconden.", "Hold the [C] key: the floor cover points (light-blue discs) and the enemy patrol routes become visible. Releasing the key hides them." },
+            { "Mantén apretada la tecla [C]: los puntos de cobertura del piso (discos celestes) se hacen visibles. Soltando la tecla se esconden.", "Hold the [C] key: the floor cover points (light-blue discs) become visible. Releasing the key hides them." },
             { "La tecla C está entre la X y la V.", "The C key is between X and V." },
             { "Suelta C: se esconden", "Release C: they hide" },
             { "Suelta la tecla [C]: el mapa vuelve a quedar limpio. (Con el radial sobre CUBRIRSE también se ven.)", "Release the [C] key: the map is clean again. (They also show with the radial on COVER.)" },

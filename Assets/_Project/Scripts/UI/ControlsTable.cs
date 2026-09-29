@@ -116,7 +116,7 @@ namespace SP.UI
             new ControlEntry("Clic", "disparar la metralleta del tanque", ControlContext.VehiculoPasajero),
             new ControlEntry("Clic", "seleccionar al aliado o al vehículo bajo el cursor", ControlContext.Rts),
 
-            new ControlEntry("Q", "mantener: radial de órdenes (solo ofrece lo que podés hacer con lo que apuntás); tocar: cambiar de soldado", APieOTactico | AdentroDelVehiculo, SP.Player.KeyBindings.CiclarPosesion),
+            new ControlEntry("Q", "tocar (menos de 1 s): TODOS los aliados te siguen, sí o sí · mantener: radial de órdenes (solo ofrece lo que podés hacer con lo que apuntás)", ControlContext.FpsAPie | AdentroDelVehiculo, SP.Player.KeyBindings.CiclarPosesion),
 
             new ControlEntry("Clic der.", "mantener: mirar por la mira del arma (primera persona con zoom)", ControlContext.FpsAPie),
             new ControlEntry("Clic der.", "mantener: mirar por la mira del cañón o de la metralleta", ControlContext.VehiculoArtillero | ControlContext.VehiculoPasajero),
@@ -138,7 +138,7 @@ namespace SP.UI
 
             new ControlEntry("[ ]", "subir o bajar al soldado que manejas en el orden de la escuadra", ControlContext.FpsAPie),
             new ControlEntry(", .", "junto a una caja de suministros: cambiar el arma principal (arsenal)", ControlContext.FpsAPie),
-            new ControlEntry("C", "mantener: ver las coberturas del piso y las rutas de patrulla enemigas", Todos, SP.Player.KeyBindings.VerTactico),
+            new ControlEntry("C", "mantener: ver las coberturas del piso", Todos, SP.Player.KeyBindings.VerTactico),
             new ControlEntry("F4", "modo dios: nadie de tu bando recibe daño (otra vez para apagar)", Todos),
 
             new ControlEntry("Espacio", "frenar (mantener)", ControlContext.VehiculoConductor, SP.Player.KeyBindings.Frenar),

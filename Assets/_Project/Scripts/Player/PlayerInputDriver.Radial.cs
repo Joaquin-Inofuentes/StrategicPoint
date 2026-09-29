@@ -34,6 +34,12 @@ namespace SP.Player
         // click rapido lo dispare por error.
         public const float SostenerParaMenu = 0.15f;
 
+        // Pedido explicito: "cuando apriete en menos de 1 segundo la tecla Q obligara a todos a seguirme si o si".
+        // Una pulsacion de [Q] que dura menos que esto y NO elige nada en el radial (se suelta con el cursor en el
+        // centro) es "SIGANME" para TODA la escuadra, sin importar la mira, la seleccion ni lo que esten haciendo.
+        public const float ToqueMaximoParaSeguir = 1f;
+        float radialAbiertoDesde;
+
         // Un unico lugar que decide, cada frame, cual de los dos gestos de
         // [Q] esta ocurriendo. Estan juntos a proposito: separarlos en dos
         // ifs sueltos es como se cuelan los casos en que los dos disparan
@@ -112,7 +118,8 @@ namespace SP.Player
                         if (sub >= 0) EjecutarOrdenRadial(cat, sub);
                         else EjecutarOrdenRadial(cat, primeraVisible);
                     }
-                    else AudioDirector.PlayUi2D(SfxKind.RadialCancel, 0.5f, 0.8f);   // soltar sin elegir = cancelar (se oye)
+                    else if (Time.unscaledTime - radialAbiertoDesde + SostenerParaMenu < ToqueMaximoParaSeguir) AccionRapidaDeQ();   // soltar sin elegir en menos de 1 s = TODOS ME SIGUEN
+                    else AudioDirector.PlayUi2D(SfxKind.RadialCancel, 0.5f, 0.8f);   // soltar sin elegir despues de 1 s = cancelar (se oye)
                     aimCongelado = null;
                 }
                 return;
@@ -122,14 +129,21 @@ namespace SP.Player
             if (toque && !TryInteractuarConMira()) AccionRapidaDeQ();
         }
 
-        // Ronda 11 (punto 8): la accion por defecto del toque de [Q]. Si no hay nada interactuable en la mira, la escuadra te sigue.
-        void SeguirAlPoseido()
+        // Toda la escuadra viva te sigue, SI O SI: ignora la seleccion de RTS, la mira y lo que estuvieran haciendo
+        // (IssueFollowOrder pisa cualquier orden, cola o cobertura). Solo se salta a los que estan dentro de un
+        // vehiculo (bajarlos por sorpresa en marcha seria peor). Devuelve a cuantos les llego.
+        public int SeguirTodosSiOSi()
         {
-            if (Brain == null || Brain.Current == null) return;
-            var dest = DestinatariosDeOrden();
-            if (dest.Count == 0) return;
-            OrderService.IssueFollowOrderForSelection(dest, Brain.Current);
+            var yo = Brain != null ? Brain.Current : null;
+            if (yo == null || Squad == null) return 0;
+            var todos = new List<Soldier>();
+            foreach (var s in Squad)
+                if (s != null && s != yo && s.Health != null && s.Health.IsAlive && s.gameObject.activeInHierarchy
+                    && !(s.Brain != null && s.Brain.MontadoEnVehiculo)) todos.Add(s);
+            if (todos.Count == 0) return 0;
+            OrderService.IssueFollowOrderForSelection(todos, yo);
             Avisar("SIGANME");
+            return todos.Count;
         }
 
         // Punto al que apuntaba el jugador cuando abrio el radial: el mouse se usa para
@@ -144,6 +158,7 @@ namespace SP.Player
             bool Muerto(int i) => Squad != null && i < Squad.Count && Squad[i] != null && Squad[i].Health != null && !Squad[i].Health.IsAlive;
             OrdenesMenu.PonerSoldados(Clase(0), Clase(1), Clase(2), Muerto(0), Muerto(1), Muerto(2));
             aimCongelado = ultimoResultadoDeMira;
+            radialAbiertoDesde = Time.unscaledTime;
             OrdenesMenu.Abrir(ConstruirContextoRadial(aimCongelado.Value));
         }
 
@@ -318,8 +333,12 @@ namespace SP.Player
                     {
                         var todos = DestinatariosPorSub(0, out quien);
                         if (todos.Count == 0) { RejectOrder("NADIE A QUIEN ORDENAR"); return false; }
-                        var puntoTactico = objetivo != null ? objetivo.transform.position
+                        // BUG REAL: antes el enemigo MAS CERCANO (hasta 100 m) ganaba sobre el punto apuntado: mirando al
+                        // piso a 14 m, "GRANADA ALLI" y "SUPRIMEN" iban a un enemigo a 80 m ("no alcanza"). Ahora manda lo
+                        // apuntado (enemigo o punto del mundo) y el enemigo mas cercano solo se usa si no se apunta a nada.
+                        var puntoTactico = aim.Type == AimTargetType.Enemy && objetivo != null ? objetivo.transform.position
                             : aim.Type != AimTargetType.None ? aim.Point
+                            : objetivo != null ? objetivo.transform.position
                             : (yo != null ? yo.transform.position + yo.transform.forward * 15f : transform.position);
                         if (sub == MenuDeOrdenes.SubSuprimir)
                         {
