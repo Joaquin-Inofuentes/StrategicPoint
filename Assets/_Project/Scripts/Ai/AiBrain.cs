@@ -861,7 +861,32 @@ namespace SP.Ai
             switch (State)
             {
                 case AiState.Patrol:
+                    // BUG REAL: el civil (Pasivo=true, "no reacciona a nada,
+                    // solo sigue ordenes") arranca en este mismo estado por
+                    // default (AiState.Patrol es el valor inicial de State
+                    // para cualquier AiBrain) y este caso jamas miraba
+                    // Pasivo -- deambulaba solo por sus puntos de patrulla
+                    // apenas se revelaba, antes de que el jugador se
+                    // acercara. Pasivo ya bloquea la reaccion a combate;
+                    // ahora tambien bloquea esta patrulla "de fabrica" para
+                    // que un Pasivo se quede quieto hasta recibir una orden
+                    // explicita (ver MisionDirector.SeguirAlJugador).
                     int patrolCount = PatrolCount;
+                    if (Pasivo)
+                    {
+                        // El NavMeshAgent sigue caminando solo hacia un
+                        // destino que haya quedado seteado de ANTES de que
+                        // Pasivo se pusiera en true (por ejemplo, el primer
+                        // Tick de este mismo frame en Configure(), un
+                        // instante antes de que MisionDirector.SpawnCivilOculto
+                        // le ponga Pasivo=true) -- Unity no necesita que se
+                        // lo llame de nuevo cada frame para seguir moviendose.
+                        // Sin este ClearPath() el civil terminaba caminando
+                        // solo unos metros aunque este caso ya no volviera a
+                        // llamar a AvanzarConRodeo.
+                        ClearPath();
+                        break;
+                    }
                     if (patrolCount > 0 && !enCobertura)
                     {
                         if (AvanzarConRodeo(PatrolPointAt(patrolIndex), 1f, dt, ref destinoPatrulla, ref tienePatrulla, ref relojDePatrulla))
