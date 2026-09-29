@@ -451,6 +451,19 @@ namespace SP.Mision
             GameLog.Line($"Mision: refuerzos desde el bosque ({n})");
         }
 
+        // BUG REAL encontrado testeando el nivel: el helipuerto esta a ~13 m del muro sur, asi que la
+        // parte sur del arco de la horda (radio 22-45 m) caia AFUERA del perimetro, detras de
+        // Base_Muro_Sur (z=-21.5) y del limite invisible "Sur" (z=-17.3): esos enemigos nacian sin
+        // camino ("el destino esta bloqueado") y nunca llegaban. Los puntos que quedan fuera se
+        // reflejan hacia adentro en vez de descartarse, para no perder enemigos de la horda.
+        const float ZMinJugable = -14f, XMinJugable = -49f, XMaxJugable = 56f;
+        static Vector3 DentroDelPerimetro(Vector3 p)
+        {
+            if (p.z < ZMinJugable) p.z = ZMinJugable + Mathf.Min(ZMinJugable - p.z, 30f);
+            p.x = Mathf.Clamp(p.x, XMinJugable, XMaxJugable);
+            return p;
+        }
+
         // La horda que persigue al jugador al acercarse al helicoptero.
         void LanzarHorda()
         {
@@ -463,7 +476,7 @@ namespace SP.Mision
             var puntos = PosicionesDispersas(Helipuerto, n, -20f, 200f, 22f, 45f, 6f);
             for (int i = 0; i < n; i++)
             {
-                var s = CrearEnemigo($"Enemigo_Horda_{i + 1}", puntos[i], 180f);
+                var s = CrearEnemigo($"Enemigo_Horda_{i + 1}", DentroDelPerimetro(puntos[i]), 180f);
                 if (s != null) s.Brain.IssueMoveOrder(Helipuerto + new Vector3(Random.Range(-8f, 8f), 0f, Random.Range(6f, 14f)));
             }
             AlertQueue.Push("¡UNA HORDA TE PERSIGUE! ¡AL HELICOPTERO!", AlertPriority.Alta, 3f);
