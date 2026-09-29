@@ -24,7 +24,7 @@ namespace SP.Mision
         public int WaypointActual { get; private set; } = -1;
 
         GameObject lienzo;
-        Image barraArriba, barraAbajo, fondoSubtitulo;
+        Image barraArriba, barraAbajo;
         Text subtitulo, cartelFinal, cartelSiguiente;
         PlayerInputDriver driverRef;
         System.Action alTerminarRef;
@@ -107,19 +107,24 @@ namespace SP.Mision
             barraArriba.rectTransform.pivot = new Vector2(0.5f, 1f); barraAbajo.rectTransform.pivot = new Vector2(0.5f, 0f);
             barraArriba.rectTransform.sizeDelta = new Vector2(0f, 0f); barraAbajo.rectTransform.sizeDelta = new Vector2(0f, 0f);
 
-            fondoSubtitulo = Rect(lienzo.transform, "FondoSubtitulo", new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Color(0f, 0f, 0f, 0f));
-            fondoSubtitulo.rectTransform.pivot = new Vector2(0.5f, 0f);
-            fondoSubtitulo.rectTransform.anchoredPosition = new Vector2(0f, 60f);
-            fondoSubtitulo.rectTransform.sizeDelta = new Vector2(1400f, 110f);
-
+            // Pedido explicito: "en la cinematica aparece un recuadro
+            // molesto, eliminalo" -- ese recuadro era FondoSubtitulo, un
+            // rectangulo negro semitransparente atras del subtitulo. Se
+            // saca el fondo y se deja solo el texto (con su propia Shadow
+            // para seguir leyendose contra cualquier escena de fondo).
             var subGO = new GameObject("Subtitulo", typeof(RectTransform), typeof(Text), typeof(Shadow));
-            subGO.transform.SetParent(fondoSubtitulo.transform, false);
+            subGO.transform.SetParent(lienzo.transform, false);
             subtitulo = subGO.GetComponent<Text>();
             subtitulo.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             subtitulo.fontSize = 34; subtitulo.fontStyle = FontStyle.Bold; subtitulo.alignment = TextAnchor.MiddleCenter;
             subtitulo.color = new Color(1f, 1f, 1f, 0f); subtitulo.raycastTarget = false;
-            var subRt = subtitulo.rectTransform; subRt.anchorMin = Vector2.zero; subRt.anchorMax = Vector2.one;
-            subRt.offsetMin = subRt.offsetMax = Vector2.zero;
+            var subRt = subtitulo.rectTransform; subRt.anchorMin = new Vector2(0.5f, 0f); subRt.anchorMax = new Vector2(0.5f, 0f);
+            subRt.pivot = new Vector2(0.5f, 0f);
+            subRt.anchoredPosition = new Vector2(0f, 60f);
+            subRt.sizeDelta = new Vector2(1400f, 110f);
+            var subSombra = subGO.GetComponent<Shadow>();
+            subSombra.effectColor = new Color(0f, 0f, 0f, 0.85f);
+            subSombra.effectDistance = new Vector2(2f, -2f);
 
             var finGO = new GameObject("CartelFinal", typeof(RectTransform), typeof(Text), typeof(Shadow));
             finGO.transform.SetParent(lienzo.transform, false);
@@ -259,7 +264,7 @@ namespace SP.Mision
                     yield return null;
                 }
 
-                if (conSubtitulo) { subtitulo.color = new Color(1f, 1f, 1f, 0f); fondoSubtitulo.color = new Color(0f, 0f, 0f, 0f); }
+                if (conSubtitulo) subtitulo.color = new Color(1f, 1f, 1f, 0f);
                 cartelSiguiente.color = new Color(1f, 1f, 1f, 0f);
             }
 
@@ -275,7 +280,6 @@ namespace SP.Mision
                 t += Time.deltaTime;
                 float a = Mathf.Clamp01(t / 0.4f);
                 subtitulo.color = new Color(1f, 1f, 1f, a);
-                fondoSubtitulo.color = new Color(0f, 0f, 0f, a * 0.55f);
                 yield return null;
             }
         }
@@ -288,7 +292,6 @@ namespace SP.Mision
                 t += Time.deltaTime;
                 float a = 1f - Mathf.Clamp01(t / 0.4f);
                 subtitulo.color = new Color(1f, 1f, 1f, a);
-                fondoSubtitulo.color = new Color(0f, 0f, 0f, a * 0.55f);
                 yield return null;
             }
         }
