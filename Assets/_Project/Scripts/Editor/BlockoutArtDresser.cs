@@ -171,9 +171,83 @@ namespace SP.EditorTools
                 default: n = Cobertura(raiz, s, suelo, nombre, hash); break;
             }
 
-            if (n > 0) mr.enabled = false;
+            if (n > 0) { mr.enabled = false; AjustarColliderAlArte(cubo, raiz); }
             else Object.DestroyImmediate(raiz.gameObject);
             return n;
+        }
+
+        // BUG REAL reportado jugando: "P_Env_Barricada_Concreto (2) perdio los colliders"
+        // -- Cobertura()/Bunker() calculan las posiciones de los modulos en funcion de
+        // Mathf.RoundToInt(L / largoDelModulo), asi que la cantidad de modulos (y cuanto
+        // se extienden) depende del tamano DEL CUBO en el momento de vestirlo. Si alguien
+        // despues mueve o escala ese cubo a mano (sin volver a correr "Vestir el
+        // blockout con arte"), el collider del cubo (que es el unico que realmente
+        // bloquea: los modulos de ArteBloque no tienen collider propio, ver comentario
+        // arriba de la clase) se queda con el tamano viejo mientras el arte -- que ya
+        // esta puesto en posiciones fijas -- puede terminar bien lejos de ese cubito.
+        // Resultado: el jugador y las balas atraviesan de taquito un tramo entero de
+        // barricada que se ve solido. Confirmado en vivo: Barricada_Aldea tenia un
+        // collider de 1x1.2x3 m mientras sus 8 modulos de concreto se repartian en un
+        // area real de 23x1.2x22 m.
+        //
+        // En vez de confiar en el localScale original del cubo, se reajusta su
+        // BoxCollider para que encierre el area real que el arte recien puesto ocupa.
+        // Esto no rompe el derrumbe por daño (que aplasta cubo.localScale.y): el tamano
+        // del collider sigue en unidades LOCALES, asi que un squash posterior de la
+        // escala del cubo lo encoge en mundo exactamente igual que al arte (mismo
+        // mecanismo que ya describe el comentario de la clase).
+        static void AjustarColliderAlArte(Transform cubo, Transform raizArte)
+        {
+            var box = cubo.GetComponent<BoxCollider>();
+            if (box == null) return; // forma no rectangular: no se toca
+
+            var renderers = raizArte.GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length == 0) return;
+            var bounds = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+
+            var escala = cubo.lossyScale;
+            box.center = cubo.InverseTransformPoint(bounds.center);
+            box.size = new Vector3(
+                Mathf.Abs(escala.x) > 0.0001f ? bounds.size.x / Mathf.Abs(escala.x) : bounds.size.x,
+                Mathf.Abs(escala.y) > 0.0001f ? bounds.size.y / Mathf.Abs(escala.y) : bounds.size.y,
+                Mathf.Abs(escala.z) > 0.0001f ? bounds.size.z / Mathf.Abs(escala.z) : bounds.size.z);
+        }
+
+        // Repara colliders desajustados en una escena YA vestida, sin rehacer todo el
+        // reparto de ambiente/arboles/arbustos (que tiene su propio efecto secundario
+        // de idempotencia via semilla fija, pero no hace falta arriesgarlo para esto).
+        // Util para escenas viejas dressed antes de que Vestir() ajustara el collider
+        // solo, o si alguien vuelve a mover un cubo a mano.
+        [MenuItem("Strategic Point/Arte/9b. Reparar colliders de cobertura desalineados")]
+        public static void RepararCollidersDeArteBloque()
+        {
+            int reparados = 0, revisados = 0;
+            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include))
+            {
+                if (t == null || t.name != RaizNombre) continue;
+                var cubo = t.parent;
+                if (cubo == null) continue;
+                var box = cubo.GetComponent<BoxCollider>();
+                if (box == null) continue;
+                revisados++;
+
+                var renderers = t.GetComponentsInChildren<Renderer>(true);
+                if (renderers.Length == 0) continue;
+                var bounds = renderers[0].bounds;
+                for (int i = 1; i < renderers.Length; i++) bounds.Encapsulate(renderers[i].bounds);
+
+                bool cubre = box.bounds.Contains(bounds.min) && box.bounds.Contains(bounds.max);
+                if (cubre) continue;
+
+                AjustarColliderAlArte(cubo, t);
+                reparados++;
+                Debug.Log($"[BlockoutArtDresser] Collider reajustado: {cubo.name}");
+            }
+            var escena = SceneManager.GetActiveScene();
+            EditorSceneManager.MarkSceneDirty(escena);
+            EditorSceneManager.SaveScene(escena);
+            Debug.Log($"[BlockoutArtDresser] {reparados}/{revisados} colliders de cobertura reajustados al arte real (escena guardada).");
         }
 
         // Pone un modulo, sin colliders, con escala/posicion/giro dados (en metros locales del cubo).
