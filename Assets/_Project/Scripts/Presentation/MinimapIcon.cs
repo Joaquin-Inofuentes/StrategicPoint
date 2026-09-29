@@ -316,25 +316,35 @@ namespace SP.Presentation
             conoDeVision.localScale = new Vector3(sx, 1f, sz);
         }
 
+        // BUG REAL reportado jugando: "el material de los conos de vision
+        // no tiene transparencia" -- el material salia de DiamondGizmo.
+        // NuevoMaterial (shader Unlit de URP, pensado para los rombos
+        // SOLIDOS) y despues se le pisaban las propiedades _Surface/
+        // _SrcBlend/_DstBlend a mano para volverlo transparente. Esas
+        // propiedades reportaban los valores correctos al inspeccionar el
+        // material en vivo, pero el cono se seguia viendo como un triangulo
+        // gris solido, sin mezcla real con el fondo. En vez de seguir
+        // peleando con el toggle de superficie del shader Unlit (pensado
+        // para materiales opacos, no para este caso), el cono arma su
+        // material directamente con Sprites/Default: shader nativo de
+        // Unity, SIEMPRE alpha-blended por diseño (lo mismo que usa
+        // cualquier sprite/UI de toda la vida), sin ninguna superficie que
+        // alternar ni keyword que prender.
+        static Shader shaderTransparente;
+        static Shader ResolverShaderTransparente()
+        {
+            if (shaderTransparente != null && shaderTransparente.isSupported) return shaderTransparente;
+            shaderTransparente = Shader.Find("Sprites/Default");
+            return shaderTransparente;
+        }
+
         static Material NuevoMaterialTransparente(Color c)
         {
-            var m = DiamondGizmo.NuevoMaterial(c);
-            if (m.HasProperty("_Surface"))
-            {
-                m.SetFloat("_Surface", 1f);
-                m.SetFloat("_Blend", 0f);
-                m.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-                m.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
-                m.SetInt("_ZWrite", 0);
-                m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-                m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
-                m.SetOverrideTag("RenderType", "Transparent");
-            }
-            m.SetColor("_BaseColor", c);
+            var shader = ResolverShaderTransparente();
+            var m = shader != null ? new Material(shader) { hideFlags = HideFlags.HideAndDontSave } : DiamondGizmo.NuevoMaterial(c);
             m.color = c;
             var tex = TexturaCono();
             m.mainTexture = tex;
-            if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
             return m;
         }
 
