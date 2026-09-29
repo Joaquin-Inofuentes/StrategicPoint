@@ -347,6 +347,8 @@ namespace SP.Presentation
             // primera vez.
             if (settingsPanel == null || settingsPanel.activeSelf) return;
             settingsPanel.SetActive(true);
+            // El menu de pausa se esconde mientras se ve Configuraciones: sus botones asomaban entre los dos paneles.
+            if (IsPaused && pausePanel != null) pausePanel.SetActive(false);
             SP.UI.PanelAjustesExtra.Preparar(settingsPanel);
             GameLog.Line("Se entro a configuraciones");
         }
@@ -355,6 +357,7 @@ namespace SP.Presentation
         {
             if (settingsPanel == null || !settingsPanel.activeSelf) return;
             settingsPanel.SetActive(false);
+            if (IsPaused && pausePanel != null) pausePanel.SetActive(true);
             GameLog.Line("Se salio de configuraciones");
         }
 

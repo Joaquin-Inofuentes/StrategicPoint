@@ -140,6 +140,8 @@ namespace SP.Presentation
             // de la espalda (ver WeaponBackRack) -- pedido explicito de
             // poder verle el resto del loadout a quien manejas.
             if (GetComponent<SP.Presentation.WeaponBackRack>() == null) gameObject.AddComponent<SP.Presentation.WeaponBackRack>();
+            // Golpe de cuchillo procedural (cuchillo en la mano + IK del brazo): ver SoldierMeleeAnim.
+            if (GetComponent<SoldierMeleeAnim>() == null) gameObject.AddComponent<SoldierMeleeAnim>();
         }
 
         void PintarPorEquipo()
@@ -176,6 +178,10 @@ namespace SP.Presentation
         void OnMelee(MeleeAttackEvent evt)
         {
             if (soldier == null || evt.AttackerId != soldier.Id || animator == null) return;
+            // Si el soldado tiene rig humano, el golpe lo anima SoldierMeleeAnim (la capa Melee del controller queda en peso 0:
+            // su clip movia el hombro con el fusil en la mano). Sin rig humano cae al clip de siempre.
+            var golpe = GetComponent<SoldierMeleeAnim>();
+            if (golpe != null && golpe.Iniciar()) return;
             animator.SetTrigger(ParamCuchillo);
             restanteDeMelee = DuracionMelee;
         }

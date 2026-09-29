@@ -24,8 +24,13 @@ namespace SP.Presentation
             var pos = dueno.transform.position;
             AudioDirector.PlayAt(SfxKind.KnifeSwing, pos, jugador ? 0.85f : 0.6f, 0.8f);
 
-            var go = new GameObject("TajoDeCuchillo");
-            go.AddComponent<TajoVisual>().Iniciar(dueno.transform);
+            // Con rig humano el golpe lo anima SoldierMeleeAnim (cuchillo en la mano); el tajo flotante queda para los cubos.
+            var anim = dueno.GetComponent<SoldierMeleeAnim>();
+            if (anim == null || !anim.Activo)
+            {
+                var go = new GameObject("TajoDeCuchillo");
+                go.AddComponent<TajoVisual>().Iniciar(dueno.transform);
+            }
 
             if (objetivo == null) return;
             var golpe = objetivo.transform.position + Vector3.up * 0.3f;

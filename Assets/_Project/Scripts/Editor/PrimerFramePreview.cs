@@ -110,6 +110,69 @@ namespace SP.EditorTools
             }
         }
 
+        // Solo la esquina inferior izquierda (roster) y la derecha (arma y municion), listas en modo edicion.
+        [MenuItem("Strategic Point/Vista previa/Inicializar UI inferior (roster + arma)")]
+        public static void InicializarUiInferior()
+        {
+            var scene = EditorSceneManager.GetActiveScene();
+            if (scene.name != "SC_Gameplay") { Debug.LogWarning("[PrimerFrame] Abri SC_Gameplay primero."); return; }
+            var driver = Object.FindFirstObjectByType<PlayerInputDriver>(FindObjectsInactive.Include);
+            Soldier primero = driver != null && driver.Squad != null && driver.Squad.Count > 0 ? driver.Squad[0] : null;
+            if (primero == null) { Debug.LogWarning("[PrimerFrame] No hay escuadra."); return; }
+            Roster(driver);
+            var arma = Object.FindFirstObjectByType<WeaponStatusView>(FindObjectsInactive.Include);
+            if (arma != null)
+            {
+                arma.EnsureExtras();
+                CorregirIconosDeArma(arma);
+            }
+            EditorSceneManager.MarkSceneDirty(scene);
+            Debug.Log("[PrimerFrame] UI inferior inicializada: roster con " + driver.Squad.Count + " filas y panel de arma.");
+        }
+
+        // Las Image del panel de arma se guardaron una vez con un Sprite generado por codigo (sin textura al reabrir la escena,
+        // se dibujaban como ovalos punteados): se reapuntan a los PNG de Resources/UI/HudIcons.
+        static void CorregirIconosDeArma(WeaponStatusView arma)
+        {
+            void Poner(string nombre, Sprite sprite)
+            {
+                var t = arma.transform.Find(nombre);
+                var im = t != null ? t.GetComponent<Image>() : null;
+                if (im == null || sprite == null) return;
+                im.sprite = sprite; EditorUtility.SetDirty(im);
+            }
+            Poner("ExtrasCuchillo", SP.Presentation.HudIconFactory.Cuchillo());
+            Poner("ExtrasGranada", SP.Presentation.HudIconFactory.Granada());
+            Poner("Reloj", SP.Presentation.HudIconFactory.Reloj());
+        }
+
+        // Icono del rol como PNG real (Resources/UI/RoleIcons): asi el Image de la fila lo puede guardar la escena.
+        static Sprite IconoDeRol(SP.Combat.RoleType rol)
+        {
+            const string dir = "Assets/_Project/Resources/UI/RoleIcons";
+            string path = dir + "/RoleIcon_" + rol + ".png";
+            var existente = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (existente != null) return existente;
+            System.IO.Directory.CreateDirectory(dir);
+            var origen = SP.Presentation.RoleIconFactory.For(rol).texture;
+            int w = origen.width, h = origen.height;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+            for (int y = 0; y < h; y++)
+                for (int x = 0; x < w; x++)
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, origen.GetPixel(x, y).a));
+            tex.Apply();
+            System.IO.File.WriteAllBytes(path, tex.EncodeToPNG());
+            Object.DestroyImmediate(tex);
+            AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+            var imp = (TextureImporter)AssetImporter.GetAtPath(path);
+            imp.textureType = TextureImporterType.Sprite;
+            imp.spriteImportMode = SpriteImportMode.Single;
+            imp.alphaIsTransparency = true; imp.mipmapEnabled = false;
+            imp.textureCompression = TextureImporterCompression.Uncompressed;
+            imp.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<Sprite>(path);
+        }
+
         static void Roster(PlayerInputDriver driver)
         {
             var roster = Object.FindFirstObjectByType<RosterView>(FindObjectsInactive.Include);
@@ -126,20 +189,19 @@ namespace SP.EditorTools
             {
                 if (s == null) continue;
                 var fila = (RosterRowView)PrefabUtility.InstantiatePrefab(prefab, roster.transform);
+                fila.gameObject.name = "Row_" + s.DisplayName;
                 bool poseido = indice == 1;
 
-                var fondo = fila.GetComponent<Image>();
-                if (fondo != null) fondo.color = poseido ? new Color(0.15f, 0.55f, 0.85f, 0.9f) : new Color(0f, 0f, 0f, 0.85f);
-
-                var label = fila.transform.Find("Label");
-                if (label != null && label.GetComponent<Text>() != null)
-                {
-                    label.GetComponent<Text>().text =
-                        $"{(poseido ? "► " : "  ")}<size=16><b>{indice} · {s.Role}</b></size>\n" +
-                        $"<size=10><color=#9aa0ac>{s.DisplayName}   ·   {s.Health.Current}/{s.Health.MaxHealth}   ·   Rifle   ·   {(poseido ? "(vos)" : "Quieto")}</color></size>";
-                }
-                var relleno = fila.transform.Find("BarBG/BarFill");
-                if (relleno != null && relleno.GetComponent<Image>() != null) relleno.GetComponent<Image>().fillAmount = 1f;
+                // Mismo aspecto que arma RosterRowView.Bind en partida: icono del rol, solo el numero de vida y la barra llena.
+                var so = new SerializedObject(fila);
+                var fondo = so.FindProperty("background").objectReferenceValue as Image;
+                var label = so.FindProperty("label").objectReferenceValue as Text;
+                var relleno = so.FindProperty("healthFill").objectReferenceValue as Image;
+                var icono = so.FindProperty("icon").objectReferenceValue as Image;
+                if (fondo != null) { fondo.color = poseido ? new Color(0.15f, 0.55f, 0.85f, 0.9f) : new Color(0f, 0f, 0f, 0.85f); EditorUtility.SetDirty(fondo); }
+                if (label != null) { label.text = "<size=12>" + s.Health.Current + "</size>"; label.color = Color.white; EditorUtility.SetDirty(label); }
+                if (relleno != null) { relleno.fillAmount = 1f; EditorUtility.SetDirty(relleno); }
+                if (icono != null) { icono.sprite = IconoDeRol(s.Role); EditorUtility.SetDirty(icono); }
                 indice++;
             }
             LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)roster.transform);

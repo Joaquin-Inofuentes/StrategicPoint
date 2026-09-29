@@ -809,6 +809,8 @@ namespace SP.Player
             {
                 // El radial tambien se abre desde el asiento (bajar, mandar el tanque, poseer...).
                 ActualizarMenuDeOrdenes();
+                PoseerConFuncion(kb);   // [F1]-[F3] tambien desde un asiento (ver TryPossess: toma el asiento del elegido)
+                if (!currentSeat.HasValue) return;
                 if (currentSeat.HasValue) UpdateInVehicle(kb, Mouse.current);
                 return;
             }
@@ -816,12 +818,7 @@ namespace SP.Player
             // [F1]/[F2]/[F3]: poseen en FPS o seleccionan en RTS (funciona en vehículos también).
             if (Rig.Mode == ControlMode.Fps)
             {
-                if (AtajosDeTecladoHeredados)
-                {
-                    if (kb.f1Key.wasPressedThisFrame) PossessSquadIndex(0);
-                    if (kb.f2Key.wasPressedThisFrame) PossessSquadIndex(1);
-                    if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
-                }
+                PoseerConFuncion(kb);   // pedido explicito: F1/F2/F3 cambian de soldado en FPS (ya no dependen de los atajos heredados)
             }
             else
             {
@@ -2266,6 +2263,14 @@ namespace SP.Player
             mountIndicator.Show(result.Vehicle, incoming, !result.Vehicle.IsDestroyed && result.Vehicle.HasAnyRoom);
         }
 
+        void PoseerConFuncion(Keyboard kb)
+        {
+            if (kb == null || (OrdenesMenu != null && OrdenesMenu.Abierto)) return;
+            if (kb.f1Key.wasPressedThisFrame) PossessSquadIndex(0);
+            else if (kb.f2Key.wasPressedThisFrame) PossessSquadIndex(1);
+            else if (kb.f3Key.wasPressedThisFrame) PossessSquadIndex(2);
+        }
+
         void PossessSquadIndex(int index)
         {
             if (Squad == null || index < 0 || index >= Squad.Count) return;
@@ -2847,8 +2852,8 @@ namespace SP.Player
                     if (aim.Soldier == null) break;
                     mostrar = true;
                     ancla = aim.Soldier.transform.position + Vector3.up * AlturaGearSoldado;
-                    destacado = PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null;
-                    if (destacado) pista = $"APRETÁ [{tecla}] PARA REVIVIR";
+                    destacado = true;   // mantener [E] revive con cualquier clase (UpdateRevivalHold), no solo con medico vivo
+                    pista = $"MANTENGA [{tecla}] PARA REVIVIR";
                     break;
                 case AimTargetType.Obstacle:
                 {

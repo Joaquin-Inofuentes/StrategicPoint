@@ -27,9 +27,11 @@ namespace SP.Presentation
                 var brain = soldier.Brain;
                 var destination = brain != null ? brain.CurrentOrderDestination : null;
 
-                // Destino de un ENEMIGO: solo a la vista en RTS o con el radial abierto (mismo criterio que las
-                // esferas de patrulla, ver PlayerInputDriver.ActualizarVistaTactica); en FPS no se muestra.
-                bool ocultoPorSerEnemigo = soldier.Team == TeamId.Enemy && !(CameraRig.Instance != null && CameraRig.Instance.RutasVisibles);
+                // Destino de un ENEMIGO: pedido explicito "en RTS no deberian verse las lineas de destino de los
+                // enemigos". Solo se ve con el radial abierto y en primera persona (dar una orden mirando el terreno).
+                bool enRts = CameraRig.Instance != null && CameraRig.Instance.Mode == ControlMode.Rts;
+                bool radialAbierto = SP.UI.MenuDeOrdenes.Activo != null && SP.UI.MenuDeOrdenes.Activo.Abierto;
+                bool ocultoPorSerEnemigo = soldier.Team == TeamId.Enemy && (enRts || !radialAbierto);
 
                 if (!destination.HasValue || !soldier.gameObject.activeInHierarchy || ocultoPorSerEnemigo)
                 {

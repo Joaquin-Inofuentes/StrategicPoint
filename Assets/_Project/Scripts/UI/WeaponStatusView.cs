@@ -249,6 +249,7 @@ namespace SP.UI
                 reloj = t.GetComponent<Image>();
             }
             if (reloj == null) return;
+            if (reloj.sprite == null || reloj.sprite.texture == null) reloj.sprite = HudIconFactory.Reloj();
             reloj.gameObject.SetActive(weapon.ReadinessFraction01 < 0.999f);
         }
 
@@ -308,7 +309,7 @@ namespace SP.UI
                     : CrearIconoExtra(transform, "ExtrasCuchillo", HudIconFactory.Cuchillo(), new Vector2(78f, 54f));
                 if (transform.Find("ExtrasCuchilloLabel") == null) CrearEtiqueta(transform, "ExtrasCuchilloLabel", "F", new Vector2(60f, 58f));
             }
-            if (extrasCuchillo != null && extrasCuchillo.sprite == null)
+            if (extrasCuchillo != null && (extrasCuchillo.sprite == null || extrasCuchillo.sprite.texture == null))
             {
                 extrasCuchillo.sprite = HudIconFactory.Cuchillo();
             }
@@ -320,7 +321,7 @@ namespace SP.UI
                     : CrearIconoExtra(transform, "ExtrasGranada", HudIconFactory.Granada(), new Vector2(78f, 18f));
                 if (transform.Find("ExtrasGranadaLabel") == null) CrearEtiqueta(transform, "ExtrasGranadaLabel", "G", new Vector2(60f, 22f));
             }
-            if (extrasGranada != null && extrasGranada.sprite == null)
+            if (extrasGranada != null && (extrasGranada.sprite == null || extrasGranada.sprite.texture == null))
             {
                 extrasGranada.sprite = HudIconFactory.Granada();
             }

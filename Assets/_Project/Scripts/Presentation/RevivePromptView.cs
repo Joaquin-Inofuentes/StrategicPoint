@@ -51,7 +51,9 @@ namespace SP.Presentation
             if (!bootstrapped) Bootstrap();
             if (label == null || soldier == null) return false;
 
-            bool visible = soldier.Health != null && !soldier.Health.IsAlive && soldier.Team == TeamId.Player;
+            // Pedido explicito: el cartel flotante "[Q] REVIVIR" (tecla equivocada, revivir es MANTENER [E]) se quito; el
+            // aviso vive abajo de la pantalla ("MANTENGA [E] PARA REVIVIR", InteractHintView). Se conserva el componente apagado.
+            const bool visible = false;
             if (label.gameObject.activeSelf != visible) label.gameObject.SetActive(visible);
             return visible;
         }
@@ -96,7 +98,7 @@ namespace SP.Presentation
             // accion contextual destacada en AimUI -- consistencia entre el
             // cartel de mundo y el cartel de mira.
             text.color = new Color(1f, 0.85f, 0.25f);
-            text.text = "[Q] REVIVIR";
+            text.text = "MANTENGA [E] PARA REVIVIR";
             var textRt = textGO.GetComponent<RectTransform>();
             textRt.anchorMin = Vector2.zero;
             textRt.anchorMax = Vector2.one;

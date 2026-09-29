@@ -220,49 +220,66 @@ namespace SP.UI
         }
 
         // ---------------- panel extra ----------------
+        // Una sola columna: titulo, seccion PANTALLA (modo, resolucion + aplicar), seccion ACCESIBILIDAD (cinco botones) y la nota
+        // del mando. Cada fila tiene alto fijo y separacion propia, asi que nada se pisa a ninguna resolucion.
+        static readonly string[] BotonesDeAccesibilidad = { "Escala", "Idioma", "Daltonismo", "HudMinimo", "Subtitulos" };
+
         float AcomodarExtra(RectTransform extra)
         {
             ArreglarTextos(extra, extra: true);
-            const float pad = 16f;
+            const float pad = 20f, fila = 44f, sep = 8f;
+            float ancho = AnchoExtra - pad * 2f;
 
-            Text titulo = null, nota = null;
-            foreach (Transform h in extra)
-            {
-                var t = h.GetComponent<Text>();
-                if (t == null || h.GetComponent<Button>() != null) continue;
-                if (titulo == null) titulo = t; else if (nota == null) nota = t;
-            }
-            var botones = new List<RectTransform>();
-            foreach (var n in OrdenDeBotonesExtra) { var b = extra.Find(n) as RectTransform; if (b != null) botones.Add(b); }
-
+            var notaTr = SP.Core.BuscarHijo.Ruta(extra, "Nota");
+            var nota = notaTr != null ? notaTr.GetComponent<Text>() : null;
             float altoNota = 0f;
             if (nota != null)
             {
-                nota.rectTransform.sizeDelta = new Vector2(AnchoExtra - pad * 2f, 20f);
-                altoNota = Mathf.Ceil(nota.preferredHeight) + 10f;
+                nota.rectTransform.sizeDelta = new Vector2(ancho, 20f);
+                altoNota = Mathf.Ceil(nota.preferredHeight) + 6f;
             }
-            float alto = pad + 34f + 12f + botones.Count * 52f + 8f + altoNota + pad;
 
+            var filas = new List<(RectTransform rt, float x, float y, float w, float h, TextAnchor? al)>();
             float y = pad;
-            if (titulo != null) { Colocar(titulo.rectTransform, 0f, y, AnchoExtra - pad * 2f, 34f, alto, TextAnchor.MiddleCenter); }
-            y += 34f + 12f;
-            foreach (var b in botones)
+            void Poner(Transform t, float h, float gap, TextAnchor? al = null)
             {
-                Colocar(b, 0f, y, AnchoExtra - pad * 2f, 44f, alto, null);
-                var etiqueta = b.GetComponentInChildren<Text>();
-                if (etiqueta != null)
-                {
-                    etiqueta.resizeTextForBestFit = true;
-                    etiqueta.resizeTextMinSize = 11;
-                    etiqueta.resizeTextMaxSize = 20;
-                    etiqueta.verticalOverflow = VerticalWrapMode.Overflow;
-                    var er = etiqueta.rectTransform;
-                    er.anchorMin = Vector2.zero; er.anchorMax = Vector2.one; er.offsetMin = new Vector2(8f, 2f); er.offsetMax = new Vector2(-8f, -2f);
-                }
-                y += 52f;
+                var rt = t as RectTransform;
+                if (rt != null) filas.Add((rt, 0f, y, ancho, h, al));
+                y += h + gap;
             }
-            y += 8f;
-            if (nota != null) Colocar(nota.rectTransform, 0f, y, AnchoExtra - pad * 2f, altoNota, alto, TextAnchor.UpperCenter);
+
+            Poner(SP.Core.BuscarHijo.Ruta(extra, "Titulo"), 34f, 12f, TextAnchor.MiddleCenter);
+            Poner(SP.Core.BuscarHijo.Ruta(extra, "SecPantalla"), 22f, 0f, TextAnchor.MiddleLeft);
+            Poner(SP.Core.BuscarHijo.Ruta(extra, "SepPantalla"), 2f, 10f);
+            Poner(SP.Core.BuscarHijo.Ruta(extra, "Pantalla"), fila, 12f);
+            Poner(SP.Core.BuscarHijo.Ruta(extra, "ResolucionLabel"), 20f, 2f, TextAnchor.MiddleLeft);
+            const float anchoAplicar = 112f, huecoFila = 8f;
+            float anchoLista = ancho - anchoAplicar - huecoFila;
+            var dd = SP.Core.BuscarHijo.Ruta(extra, "Resolucion") as RectTransform;
+            var ap = SP.Core.BuscarHijo.Ruta(extra, "Aplicar") as RectTransform;
+            if (dd != null) filas.Add((dd, -ancho * 0.5f + anchoLista * 0.5f, y, anchoLista, fila, null));
+            if (ap != null) filas.Add((ap, ancho * 0.5f - anchoAplicar * 0.5f, y, anchoAplicar, fila, null));
+            y += fila + 20f;
+            Poner(SP.Core.BuscarHijo.Ruta(extra, "SecAccesibilidad"), 22f, 0f, TextAnchor.MiddleLeft);
+            Poner(SP.Core.BuscarHijo.Ruta(extra, "SepAccesibilidad"), 2f, 10f);
+            foreach (var n in BotonesDeAccesibilidad) Poner(SP.Core.BuscarHijo.Ruta(extra, n), fila, sep);
+            y += 6f;
+            if (notaTr != null) Poner(notaTr, altoNota, 0f, TextAnchor.UpperCenter);
+            float alto = y + pad;
+
+            foreach (var f in filas)
+            {
+                Colocar(f.rt, f.x, f.y, f.w, f.h, alto, f.al);
+                if (f.rt.GetComponent<Button>() != null)
+                {
+                    // Rotulo a la izquierda y valor a la derecha: el texto se ajusta solo si es largo.
+                    foreach (var et in f.rt.GetComponentsInChildren<Text>(true))
+                    {
+                        et.resizeTextForBestFit = true; et.resizeTextMinSize = 11; et.resizeTextMaxSize = 18;
+                        et.verticalOverflow = VerticalWrapMode.Overflow;
+                    }
+                }
+            }
             return alto;
         }
 
