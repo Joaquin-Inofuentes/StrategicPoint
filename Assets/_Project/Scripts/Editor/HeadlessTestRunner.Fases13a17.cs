@@ -359,6 +359,16 @@ namespace SP.EditorTools
                 Check($"'{par.Item2}': altura de cadera {prom:0.00} cerca de la de pie (0,96), no hundida (0,41)", prom > 0.85f && prom < 1.1f);
             }
 
+            // --- Melee: con el FBX importado como Generic, la capa Melee "corria" pero un Animator humanoide ignora las
+            //     curvas de transform de un clip generico: el cuerpo no se movia y parecia que [F] no animaba nada ---
+            var impMelee = UnityEditor.AssetImporter.GetAtPath("Assets/ARTS/Slim Shooter Pack/AnimacionAtaqueMelee.fbx") as UnityEditor.ModelImporter;
+            Check("El ataque de melee se importa como Humanoide (mismo avatar que el soldado)", impMelee != null && impMelee.animationType == UnityEditor.ModelImporterAnimationType.Human);
+            AnimationClip clipMelee = null;
+            if (ctrlSoldado != null && ctrlSoldado.layers.Length > SP.Presentation.SoldierAnimatorDriver.CapaMelee)
+                foreach (var e in ctrlSoldado.layers[SP.Presentation.SoldierAnimatorDriver.CapaMelee].stateMachine.states)
+                    if (e.state.name == "Cuchillo") clipMelee = e.state.motion as AnimationClip;
+            Check("El estado Cuchillo de la capa Melee usa un clip humanoide (que de verdad mueve el esqueleto)", clipMelee != null && clipMelee.isHumanMotion);
+
             // --- Sonidos: cada accion nueva tiene un clip valido y audible ---
             var nuevos = new[] { SfxKind.Explosion, SfxKind.GrenadePin, SfxKind.GrenadeThrow, SfxKind.GrenadeBounce, SfxKind.KnifeSwing, SfxKind.KnifeHit,
                                  SfxKind.Jump, SfxKind.Land, SfxKind.RadialOpen, SfxKind.RadialTick, SfxKind.RadialConfirm, SfxKind.RadialCancel,

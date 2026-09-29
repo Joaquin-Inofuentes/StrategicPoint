@@ -71,10 +71,13 @@ namespace SP.Player
         // shooters: sin esto no habia forma de invertir el eje vertical.
         public bool InvertLookY { get; set; }
         [SerializeField] float rtsPanSpeed = 56f;   // pedido explicito: x2 de nuevo (antes 28, que ya era x2 de 14)
-        // Sensibilidad del orbit de camara en RTS (arrastrar con el boton de
-        // rotar): misma escala que lookSensitivity, propia porque orbitar la
-        // vista cenital es un gesto distinto a mirar a pie.
-        [SerializeField] float rtsLookSens = 0.15f;
+        // Sensibilidad del orbitado de la camara RTS (mantener la tecla de rotar y mover el mouse),
+        // en GRADOS POR PIXEL de mouse, sin depender de los FPS. Pedido explicito: "multiplica por
+        // 15 la velocidad, rota muy lento" -- el valor anterior (0,15 * 0,5 * deltaTime) equivalia
+        // a ~0,00125 grados/pixel a 60 FPS; x15 = ~0,019. Slider simple para ajustarlo en Play.
+        [Header("Camara RTS")]
+        [Range(0.001f, 1f)]
+        public float sensibilidadOrbitaRts = 0.019f;
         // Pedido explicito: "si mantengo shift WASD se desplaza mas rapido".
         const float RtsPanShiftMultiplier = 2.2f;
         // Ronda 11: 80 (era 40, y antes 20) y sin suavizado (ver CameraRig.AnimarZoom). Const y no [SerializeField]: un valor serializado en la escena pisaria el nuevo.
@@ -2957,7 +2960,7 @@ namespace SP.Player
                 {
                     orbitando = true;
                     // Orbita alrededor del punto central de la pantalla: X gira, Y inclina.
-                    var d = mouse.delta.ReadValue() * rtsLookSens * 0.5f * Time.deltaTime;
+                    var d = mouse.delta.ReadValue() * sensibilidadOrbitaRts;
                     Rig.OrbitarRts(d.x, d.y);
                 }
 
