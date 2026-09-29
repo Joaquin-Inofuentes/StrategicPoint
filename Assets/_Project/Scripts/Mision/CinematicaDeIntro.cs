@@ -29,6 +29,49 @@ namespace SP.Mision
         PlayerInputDriver driverRef;
         System.Action alTerminarRef;
 
+        // BUG REAL reportado jugando: "la UI esta rota, se ve la de FPS en la
+        // cinematica". EsCanvasDePausa() (ver comentario mas abajo) exceptuaba
+        // del apagado a CUALQUIER canvas que tuviera un PauseController colgando
+        // -- pero en SC_Gameplay el PauseController no vive en un canvas propio,
+        // sino como un hijo mas del MISMO Canvas compartido que tiene el HUD
+        // entero (crosshair, minimapa, municion, etc.), asi que la excepcion
+        // terminaba dejando ENCENDIDO todo el HUD de gameplay durante la
+        // cinematica. La solucion no puede ser volver a apagar ese canvas entero
+        // (el panel de pausa quedaria invisible otra vez, el bug original que
+        // EsCanvasDePausa arreglaba) ni dejarlo prendido (este bug). En cambio,
+        // se apaga cada HIJO de ese canvas salvo el propio PauseController, y se
+        // recuerda cuales se tocaron para reactivar solo esos al terminar/saltar
+        // la cinematica (no todos: algunos ya estaban apagados por su propio
+        // estado de juego, p.ej. Hud_RTS si el jugador esta en modo FPS).
+        readonly System.Collections.Generic.List<GameObject> ocultadosPorCinematica = new System.Collections.Generic.List<GameObject>();
+
+        void OcultarHudCompartidoConPausa()
+        {
+            foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            {
+                if (cv == null || cv.gameObject == lienzo || cv.renderMode == RenderMode.WorldSpace) continue;
+                if (EsCanvasDeMenuDedicado(cv)) continue;
+                var pause = cv.GetComponentInChildren<SP.Presentation.PauseController>(true);
+                if (pause == null) { cv.enabled = false; continue; }
+                foreach (Transform hijo in cv.transform)
+                {
+                    if (hijo == pause.transform) continue;
+                    if (!hijo.gameObject.activeSelf) continue;
+                    hijo.gameObject.SetActive(false);
+                    ocultadosPorCinematica.Add(hijo.gameObject);
+                }
+            }
+        }
+
+        void RestaurarHudOcultado()
+        {
+            foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+                if (cv != null && cv.gameObject != lienzo && cv.renderMode != RenderMode.WorldSpace) cv.enabled = true;
+            foreach (var go in ocultadosPorCinematica)
+                if (go != null) go.SetActive(true);
+            ocultadosPorCinematica.Clear();
+        }
+
         public void Iniciar(PlayerInputDriver driver, CinematicaIntroPath ruta, System.Action alTerminar)
         {
             if (EnCurso) return;
@@ -46,8 +89,7 @@ namespace SP.Mision
             StopAllCoroutines();
             SP.Ai.AiBrain.IAPausada = false;
             RomboVisibilidad.Suprimidos = false;
-            foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
-                if (cv != null && (lienzo == null || cv.gameObject != lienzo) && cv.renderMode != RenderMode.WorldSpace) cv.enabled = true;
+            RestaurarHudOcultado();
             if (driverRef != null)
             {
                 driverRef.enabled = true;
@@ -60,24 +102,14 @@ namespace SP.Mision
             alTerminarRef?.Invoke();
         }
 
-        // BUG REAL reportado jugando: "[ESC] no funciona en las
-        // cinematicas". Si funcionaba (PauseController.Update() sigue
-        // corriendo, ajena a la cinematica, y pausaba el tiempo bien) pero
-        // el panel quedaba invisible: el barrido de arriba apaga TODOS los
-        // canvases salvo los que cuelgan de CapasDeHud.Hud_Menu, y ese
-        // campo nunca se asigna desde codigo -- en SC_Gameplay quedo NULL,
-        // asi que ningun canvas calificaba como "menu" y el canvas de
-        // pausa se apagaba con el resto. El jugador apretaba ESC, el
-        // tiempo se congelaba en silencio y no aparecia nada: parecia que
-        // la tecla no hacia nada. En vez de depender de que Hud_Menu este
-        // bien cableado en cada escena, se exceptua directamente cualquier
-        // canvas que tenga un PauseController colgando (busqueda barata,
-        // corre una sola vez al arrancar la cinematica).
-        static bool EsCanvasDePausa(Canvas cv)
+        // Canvas de menu propio y separado del HUD compartido (p.ej. un
+        // Hud_Menu bien cableado en CapasDeHud): a este si conviene dejarlo
+        // prendido entero. El caso del PauseController colgando del canvas
+        // COMPARTIDO se maneja aparte, en OcultarHudCompartidoConPausa().
+        static bool EsCanvasDeMenuDedicado(Canvas cv)
         {
-            if (SP.UI.CapasDeHud.Instancia != null && SP.UI.CapasDeHud.Instancia.Hud_Menu != null
-                && cv.transform.IsChildOf(SP.UI.CapasDeHud.Instancia.Hud_Menu.transform)) return true;
-            return cv.GetComponentInChildren<SP.Presentation.PauseController>(true) != null;
+            return SP.UI.CapasDeHud.Instancia != null && SP.UI.CapasDeHud.Instancia.Hud_Menu != null
+                && cv.transform.IsChildOf(SP.UI.CapasDeHud.Instancia.Hud_Menu.transform);
         }
 
         // Pedido explicito: "un sonido de disparo al saltear tomas de
@@ -170,9 +202,7 @@ namespace SP.Mision
                 driver.enabled = false;
                 if (driver.Rig != null) driver.Rig.enabled = false;
             }
-            foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
-                if (cv != null && cv.gameObject != lienzo && cv.renderMode != RenderMode.WorldSpace && !EsCanvasDePausa(cv))
-                    cv.enabled = false;
+            OcultarHudCompartidoConPausa();
             AlertQueue.Clear();
 
             var cam = SP.Core.CamaraPrincipal.Actual != null ? SP.Core.CamaraPrincipal.Actual : (driver != null && driver.Rig != null ? driver.Rig.Cam : null);
@@ -328,8 +358,7 @@ namespace SP.Mision
 
             SP.Ai.AiBrain.IAPausada = false;
             RomboVisibilidad.Suprimidos = false;
-            foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
-                if (cv != null && cv.gameObject != lienzo && cv.renderMode != RenderMode.WorldSpace) cv.enabled = true;
+            RestaurarHudOcultado();
             if (driver != null)
             {
                 driver.enabled = true;
