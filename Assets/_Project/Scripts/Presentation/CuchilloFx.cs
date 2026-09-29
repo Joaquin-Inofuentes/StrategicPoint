@@ -43,14 +43,23 @@ namespace SP.Presentation
         // extendido y una estela. Se destruye solo.
         class TajoVisual : MonoBehaviour
         {
-            const float Duracion = 0.24f;
+            // BUG REAL reportado jugando: "la animacion de melee no se
+            // ejecuta" -- en realidad SI se disparaba (Tajos se
+            // incrementaba, TryMelee corria bien), pero a 0.25 m sobre el
+            // pivote (altura de cadera/muslo, tapado por el propio cuerpo
+            // desde la camara al hombro) y en 0,24 s totales, el jugador
+            // nunca llegaba a REGISTRARLO como una animacion -- pasaba
+            // demasiado bajo y demasiado rapido para leerse. Subido a
+            // altura de pecho/mano y estirado un poco (sigue siendo un
+            // gesto rapido, no una animacion lenta) para que se vea.
+            const float Duracion = 0.32f;
             Transform pivote;
             float edad;
 
             public void Iniciar(Transform dueno)
             {
                 transform.SetParent(dueno, false);
-                transform.localPosition = new Vector3(0f, 0.25f, 0.1f);
+                transform.localPosition = new Vector3(0f, 0.9f, 0.1f);
                 transform.localRotation = Quaternion.identity;
                 pivote = transform;
 
@@ -85,8 +94,8 @@ namespace SP.Presentation
                 punta.transform.SetParent(transform, false);
                 punta.transform.localPosition = new Vector3(0f, 0f, 1.15f);
                 var tr = punta.AddComponent<TrailRenderer>();
-                tr.time = 0.28f;
-                tr.startWidth = 0.28f; tr.endWidth = 0f;
+                tr.time = 0.34f;
+                tr.startWidth = 0.36f; tr.endWidth = 0f;
                 tr.minVertexDistance = 0.03f;
                 tr.sharedMaterial = SafeMaterial.Create(new Color(0.75f, 0.95f, 1f));
                 tr.startColor = new Color(0.75f, 0.95f, 1f, 1f);
