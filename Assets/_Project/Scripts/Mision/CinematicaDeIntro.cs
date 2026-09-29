@@ -63,6 +63,8 @@ namespace SP.Mision
             }
         }
 
+        // Se llama DESPUES de devolverle el control al driver: RosterView.OnEnable reconstruye las
+        // filas leyendo PlayerInputDriver.Activo, y con el driver aun apagado el roster quedaba vacio.
         void RestaurarHudOcultado()
         {
             foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
@@ -89,12 +91,12 @@ namespace SP.Mision
             StopAllCoroutines();
             SP.Ai.AiBrain.IAPausada = false;
             RomboVisibilidad.Suprimidos = false;
-            RestaurarHudOcultado();
             if (driverRef != null)
             {
                 driverRef.enabled = true;
                 if (driverRef.Rig != null) driverRef.Rig.enabled = true;
             }
+            RestaurarHudOcultado();
             if (lienzo != null) { Destroy(lienzo); lienzo = null; }
             Terminada = true;
             EnCurso = false;
@@ -358,12 +360,12 @@ namespace SP.Mision
 
             SP.Ai.AiBrain.IAPausada = false;
             RomboVisibilidad.Suprimidos = false;
-            RestaurarHudOcultado();
             if (driver != null)
             {
                 driver.enabled = true;
                 if (driver.Rig != null) driver.Rig.enabled = true;
             }
+            RestaurarHudOcultado();
             if (lienzo != null) Destroy(lienzo);
             Terminada = true;
             EnCurso = false;
