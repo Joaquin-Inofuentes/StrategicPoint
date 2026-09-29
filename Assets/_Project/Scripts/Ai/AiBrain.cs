@@ -840,8 +840,19 @@ namespace SP.Ai
             // El sensado puede interrumpir una patrulla u orden de movimiento
             // simple, pero no una orden de ataque ni una de subir a un
             // vehículo ya en curso: esas son deliberadas.
+            //
+            // BUG REAL reportado jugando: "los aliados no disparan/no
+            // reaccionan". Toda la escuadra arranca la mision en Follow
+            // (MisionDirector llama IssueFollowOrderForSelection apenas
+            // empieza), y Follow estaba en esta lista de estados
+            // "protegidos" -- asi el sensado de enemigos se saltaba por
+            // completo mientras un aliado te seguia, que es la inmensa
+            // mayoria del tiempo de juego. Un aliado siguiendote no eligio
+            // eso con la misma deliberacion que una orden de ataque o de
+            // subirse a un vehiculo: no tiene sentido que por eso ignore
+            // que le estan disparando.
             bool onProtectedOrder = State == AiState.MovingToAttackOrder ||
-                State == AiState.MovingToOrder || State == AiState.Follow;
+                State == AiState.MovingToOrder;
             if (State != AiState.Chase && State != AiState.Attack && !onProtectedOrder)
             {
                 // Misma guarda de sensado de siempre; lo unico que cambia es
@@ -1001,7 +1012,11 @@ namespace SP.Ai
 
                 case AiState.Chase:
                 case AiState.MovingToAttackOrder:
-                    if (target == null) { SetState(AiState.Patrol); break; }
+                    // Si el sensado interrumpio un Follow (ver mas arriba), al
+                    // perder el objetivo se vuelve a seguir al lider en vez de
+                    // quedar patrullando solo -- lo mismo que ya hacia el
+                    // arranque de Tick con followTarget != null mas arriba.
+                    if (target == null) { SetState(followTarget != null ? AiState.Follow : AiState.Patrol); break; }
                     float d = Vector3.Distance(self.transform.position, target.transform.position);
 
                     // La linea de tiro se pregunta ACA, no solo al gatillar.
@@ -1088,7 +1103,7 @@ namespace SP.Ai
                     break;
 
                 case AiState.Attack:
-                    if (target == null || !target.Health.IsAlive) { SetState(AiState.Patrol); break; }
+                    if (target == null || !target.Health.IsAlive) { SetState(followTarget != null ? AiState.Follow : AiState.Patrol); break; }
                     float dd = Vector3.Distance(self.transform.position, target.transform.position);
                     if (dd > EffectiveAttackRange) { SetState(hasOrder ? AiState.MovingToAttackOrder : AiState.Chase); break; }
 
