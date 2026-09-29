@@ -29,7 +29,7 @@ namespace SP.Presentation
         {
             path = new NavMeshPath();
             linea = gameObject.AddComponent<LineRenderer>();
-            linea.material = SafeMaterial.Create(new Color(1f, 0.82f, 0.3f, 0.85f));
+            linea.material = SafeMaterial.CreateLinea(new Color(1f, 0.82f, 0.3f, 0.85f));   // sin luz: con el Lit salia oscura
             linea.widthMultiplier = 0.18f;
             linea.numCornerVertices = 2;
             linea.textureMode = LineTextureMode.Tile;

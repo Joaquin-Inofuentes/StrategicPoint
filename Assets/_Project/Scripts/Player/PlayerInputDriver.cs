@@ -22,6 +22,14 @@ namespace SP.Player
     [DefaultExecutionOrder(-200)]
     public partial class PlayerInputDriver : MonoBehaviour
     {
+        // Sensibilidad del orbitado de la camara RTS (mantener la tecla de rotar y mover el mouse),
+        // en GRADOS POR PIXEL de mouse, sin depender de los FPS. Pedidos explicitos: "multiplica por 15
+        // la velocidad, rota muy lento" (0,00125 -> 0,019) y despues "5 veces mas" (0,019 -> 0,095).
+        // Slider simple, primero del Inspector, para ajustarlo en Play.
+        [Header("Camara RTS")]
+        [Range(0.001f, 1f)]
+        public float sensibilidadOrbitaRts = 0.095f;
+
         public PlayerBrain Brain;
         public AimTargeting Aim;
         public CameraRig Rig;
@@ -71,13 +79,8 @@ namespace SP.Player
         // shooters: sin esto no habia forma de invertir el eje vertical.
         public bool InvertLookY { get; set; }
         [SerializeField] float rtsPanSpeed = 56f;   // pedido explicito: x2 de nuevo (antes 28, que ya era x2 de 14)
-        // Sensibilidad del orbitado de la camara RTS (mantener la tecla de rotar y mover el mouse),
-        // en GRADOS POR PIXEL de mouse, sin depender de los FPS. Pedido explicito: "multiplica por
-        // 15 la velocidad, rota muy lento" -- el valor anterior (0,15 * 0,5 * deltaTime) equivalia
-        // a ~0,00125 grados/pixel a 60 FPS; x15 = ~0,019. Slider simple para ajustarlo en Play.
-        [Header("Camara RTS")]
-        [Range(0.001f, 1f)]
-        public float sensibilidadOrbitaRts = 0.019f;
+        // (la sensibilidad del orbitado RTS, sensibilidadOrbitaRts, vive al principio de la clase para que
+        // salga arriba de todo en el Inspector)
         // Pedido explicito: "si mantengo shift WASD se desplaza mas rapido".
         const float RtsPanShiftMultiplier = 2.2f;
         // Ronda 11: 80 (era 40, y antes 20) y sin suavizado (ver CameraRig.AnimarZoom). Const y no [SerializeField]: un valor serializado en la escena pisaria el nuevo.
@@ -1107,6 +1110,11 @@ namespace SP.Player
         // primer click adentro se bloquea y esconde, como cualquier FPS; con
         // Escape se libera de nuevo. En vista RTS lo dejamos libre siempre,
         // porque ahí el mouse selecciona y arrastra en vez de mirar.
+        bool orbitandoRts;
+        int framesOrbitando;
+        int devolverCursorFrames;
+        Vector2 cursorAntesDeOrbitar;
+
         void UpdateCursorLock(Keyboard kb)
         {
             // Antes también se bloqueaba con solo currentSeat.HasValue,
@@ -1124,7 +1132,9 @@ namespace SP.Player
             // "comido" por este re-bloqueo en vez de llegarle al boton: se
             // veia como que Reintentar/Salir no respondian a nada.
             bool modalShowing = (Outcome != null && Outcome.IsShowing) || (PauseRef != null && PauseRef.IsPaused);
-            bool wantsLock = Rig.Mode == ControlMode.Fps && !modalShowing;
+            // Orbitando la camara RTS (tecla de rotar apretada) el cursor tambien se bloquea y se esconde.
+            if (Rig.Mode != ControlMode.Rts || modalShowing) orbitandoRts = false;
+            bool wantsLock = (Rig.Mode == ControlMode.Fps || orbitandoRts) && !modalShowing;
 
             if (wantsLock)
             {
@@ -1145,6 +1155,14 @@ namespace SP.Player
             {
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
+            }
+
+            // Termino la orbita RTS: el cursor reaparece donde estaba antes de orbitar (no en el centro).
+            // (con un frame de espera: Unity ignora el warp si el cursor todavia figura bloqueado).
+            if (devolverCursorFrames > 0 && Cursor.lockState == CursorLockMode.None)
+            {
+                devolverCursorFrames--;
+                if (devolverCursorFrames == 0 && Mouse.current != null) Mouse.current.WarpCursorPosition(cursorAntesDeOrbitar);
             }
 
             if (kb.escapeKey.wasPressedThisFrame)
@@ -2959,9 +2977,27 @@ namespace SP.Player
                 if (KeyBindings.IsPressed(KeyBindings.RotarCamaraRts))
                 {
                     orbitando = true;
-                    // Orbita alrededor del punto central de la pantalla: X gira, Y inclina.
-                    var d = mouse.delta.ReadValue() * sensibilidadOrbitaRts;
-                    Rig.OrbitarRts(d.x, d.y);
+                    // Mientras se orbita el cursor queda CENTRADO Y OCULTO (bloqueado): asi el mouse
+                    // gira sin limite de pantalla. Al soltar vuelve al pixel donde estaba.
+                    if (!orbitandoRts)
+                    {
+                        orbitandoRts = true;
+                        cursorAntesDeOrbitar = mouse.position.ReadValue();
+                        framesOrbitando = 0;
+                    }
+                    framesOrbitando++;
+                    // Los primeros frames bloqueados traen el salto de centrado del cursor: no se aplican.
+                    if (framesOrbitando > 2)
+                    {
+                        // Orbita alrededor del punto central de la pantalla: X gira, Y inclina.
+                        var d = mouse.delta.ReadValue() * sensibilidadOrbitaRts;
+                        Rig.OrbitarRts(d.x, d.y);
+                    }
+                }
+                else if (orbitandoRts)
+                {
+                    orbitandoRts = false;
+                    devolverCursorFrames = 2;
                 }
 
                 float scroll = mouse.scroll.ReadValue().y;

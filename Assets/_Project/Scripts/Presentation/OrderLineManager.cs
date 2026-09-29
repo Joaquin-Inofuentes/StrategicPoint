@@ -12,7 +12,8 @@ namespace SP.Presentation
     // todos cada frame y crea/reposiciona/borra las lineas solo.
     public class OrderLineManager : MonoBehaviour
     {
-        static readonly Color LineColor = new Color(0.35f, 0.85f, 0.35f, 0.6f);
+        // Blanca (pedido explicito: "quiero que sea blanca no gris o negra"), sin luz: ver SafeMaterial.CreateLinea.
+        static readonly Color LineColor = new Color(1f, 1f, 1f, 0.9f);
 
         readonly Dictionary<int, LineRenderer> lines = new Dictionary<int, LineRenderer>();
 
@@ -65,9 +66,9 @@ namespace SP.Presentation
             var go = new GameObject("OrderLine");
             var lr = go.AddComponent<LineRenderer>();
             lr.positionCount = 2;
-            lr.widthMultiplier = 0.04f;
+            lr.widthMultiplier = 0.1f;   // 0.04 era invisible a la altura de la camara RTS
             lr.useWorldSpace = true;
-            lr.material = SafeMaterial.Create(LineColor);
+            lr.material = SafeMaterial.CreateLinea(Color.white);
             lr.startColor = LineColor;
             lr.endColor = LineColor;
             return lr;

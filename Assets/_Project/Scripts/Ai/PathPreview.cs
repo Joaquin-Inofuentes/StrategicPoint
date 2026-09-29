@@ -19,7 +19,8 @@ namespace SP.Ai
     {
         public static PathPreview Instance { get; private set; }
 
-        static readonly Color PathColor = new Color(0.4f, 0.9f, 1f, 0.9f);
+        // Blanca (pedido explicito: "quiero que sea blanca no gris o negra"), sin luz: ver SafeMaterial.CreateLinea.
+        static readonly Color PathColor = new Color(1f, 1f, 1f, 0.95f);
 
         LineRenderer line;
         readonly List<Vector3> buffer = new List<Vector3>(64);
@@ -47,14 +48,21 @@ namespace SP.Ai
             if (line != null) return;
             var existing = transform.Find("PathPreviewLine");
             if (existing != null) line = existing.GetComponent<LineRenderer>();
-            if (line != null) return;
+            if (line != null)
+            {
+                // El hijo pudo quedar guardado en la escena con el material Lit viejo (gris/negro): se renueva.
+                line.material = SP.Presentation.SafeMaterial.CreateLinea(Color.white);
+                line.startColor = PathColor;
+                line.endColor = PathColor;
+                return;
+            }
 
             var go = new GameObject("PathPreviewLine");
             go.transform.SetParent(transform, false);
             line = go.AddComponent<LineRenderer>();
             line.useWorldSpace = true;
             line.widthMultiplier = 0.16f;
-            line.material = SP.Presentation.SafeMaterial.Create(PathColor);
+            line.material = SP.Presentation.SafeMaterial.CreateLinea(Color.white);
             line.startColor = PathColor;
             line.endColor = PathColor;
             line.positionCount = 0;

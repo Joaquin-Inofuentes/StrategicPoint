@@ -102,6 +102,22 @@ namespace SP.Presentation
             return mat;
         }
 
+        // Material SIN LUZ para LineRenderers. Create() clona el material Lit de la pipeline y un
+        // LineRenderer no tiene normales utiles: el sombreado lo deja gris/negro por mas blanco que sea
+        // el color (pedido explicito: "la linea del camino quiero que sea blanca, no gris o negra").
+        // Sprites/Default es unlit, viene siempre incluido y respeta el color de vertices del
+        // LineRenderer (startColor/endColor) y el alfa; se usa el Unlit de URP solo si faltara.
+        public static Material CreateLinea(Color color)
+        {
+            var shader = Shader.Find("Sprites/Default");
+            if (shader == null || !shader.isSupported) shader = Shader.Find("Universal Render Pipeline/Unlit");
+            if (shader == null || !shader.isSupported) return Create(color);   // ultimo recurso: el de siempre
+
+            var mat = new Material(shader) { hideFlags = HideFlags.HideAndDontSave };
+            mat.color = color;
+            return mat;
+        }
+
         // Para el puñado de sitios que compartian UN material entre
         // muchas instancias (SelectionRingFx, OrderMarkerFx: pool con
         // color fijo, se tiñe despues por MaterialPropertyBlock).

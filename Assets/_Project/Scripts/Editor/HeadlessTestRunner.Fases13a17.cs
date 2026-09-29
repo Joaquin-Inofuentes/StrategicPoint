@@ -369,6 +369,40 @@ namespace SP.EditorTools
                     if (e.state.name == "Cuchillo") clipMelee = e.state.motion as AnimationClip;
             Check("El estado Cuchillo de la capa Melee usa un clip humanoide (que de verdad mueve el esqueleto)", clipMelee != null && clipMelee.isHumanMotion);
 
+            // --- Camara RTS: orbita x5 en un slider, lineas de camino blancas SIN luz, pose inicial editable a mano ---
+            var goOrb = new GameObject("__test_orbita");
+            var drvOrb = goOrb.AddComponent<SP.Player.PlayerInputDriver>();
+            var campoSens = typeof(SP.Player.PlayerInputDriver).GetField("sensibilidadOrbitaRts");
+            Check("La sensibilidad de orbita RTS es un slider publico que vale 0,095 (x5 sobre 0,019)",
+                campoSens != null && campoSens.IsDefined(typeof(RangeAttribute), false) && Mathf.Approximately(drvOrb.sensibilidadOrbitaRts, 0.095f));
+            UnityEngine.Object.DestroyImmediate(goOrb);
+
+            var matLinea = SP.Presentation.SafeMaterial.CreateLinea(Color.white);
+            Check("El material de las lineas de camino no tiene luz (Sprites/Default o Unlit), si no sale gris/negro",
+                matLinea != null && matLinea.shader != null && (matLinea.shader.name == "Sprites/Default" || matLinea.shader.name.EndsWith("/Unlit")));
+            UnityEngine.Object.DestroyImmediate(matLinea);
+
+            var goPrev = new GameObject("__test_pathpreview");
+            var prev = goPrev.AddComponent<SP.Ai.PathPreview>();
+            prev.Show(Vector3.zero, new Vector3(5f, 0f, 5f));
+            var lrPrev = goPrev.transform.Find("PathPreviewLine")?.GetComponent<LineRenderer>();
+            Check("La linea del camino que cumplira la orden es BLANCA y sin luz",
+                lrPrev != null && lrPrev.startColor.r > 0.99f && lrPrev.startColor.g > 0.99f && lrPrev.startColor.b > 0.99f
+                && lrPrev.sharedMaterial != null && lrPrev.sharedMaterial.shader.name == "Sprites/Default");
+            UnityEngine.Object.DestroyImmediate(goPrev);
+
+            var goRig = new GameObject("__test_rig");
+            var rigPose = goRig.AddComponent<SP.CameraSystem.CameraRig>();
+            var goMarcador = new GameObject("__test_marcador");
+            goMarcador.transform.SetPositionAndRotation(new Vector3(20f, 40f, -10f), Quaternion.Euler(60f, 35f, 0f));
+            rigPose.rtsPoseInicial = goMarcador.transform;
+            rigPose.RestoreOrSetRtsView(Vector3.zero);
+            Check("La camara RTS arranca en la pose del marcador RtsCamaraInicial (posicion, yaw 35, inclinacion 30)",
+                Vector3.Distance(goRig.transform.position, new Vector3(20f, 40f, -10f)) < 0.05f
+                && Mathf.Abs(rigPose.rtsYaw - 35f) < 0.01f && Mathf.Abs(rigPose.rtsInclinacionAdelante - 30f) < 0.01f);
+            UnityEngine.Object.DestroyImmediate(goRig);
+            UnityEngine.Object.DestroyImmediate(goMarcador);
+
             // --- Sonidos: cada accion nueva tiene un clip valido y audible ---
             var nuevos = new[] { SfxKind.Explosion, SfxKind.GrenadePin, SfxKind.GrenadeThrow, SfxKind.GrenadeBounce, SfxKind.KnifeSwing, SfxKind.KnifeHit,
                                  SfxKind.Jump, SfxKind.Land, SfxKind.RadialOpen, SfxKind.RadialTick, SfxKind.RadialConfirm, SfxKind.RadialCancel,

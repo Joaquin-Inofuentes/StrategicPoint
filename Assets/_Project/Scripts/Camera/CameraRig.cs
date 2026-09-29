@@ -31,6 +31,17 @@ namespace SP.CameraSystem
             if (rig != null) Instance = rig;
         }
 
+        // Pedido explicito: "el nombre del gameobject de la camara de RTS para cambiar su posicion
+        // inicial y rotacion yo manualmente antes del play". MainCamera es una sola para FPS y RTS y su
+        // transform lo pisan los dos modos en cada frame, asi que mover ESA no sirve. Este marcador
+        // (GameObject "RtsCamaraInicial", hijo de Cameras) SI: se mueve/rota a mano en la escena y la
+        // PRIMERA vez que se entra a la vista RTS la camara arranca exactamente ahi (posicion, yaw e
+        // inclinacion; la altura se acota a rtsMinHeight..rtsMaxHeight y el foco al mapa).
+        [Header("Vista RTS inicial")]
+        public bool usarPoseInicialRts = true;
+        public Transform rtsPoseInicial;
+        bool poseInicialRtsConsumida;
+
         [SerializeField] Camera cam;
         [SerializeField] float rtsHeight = 30f;
         [SerializeField] float rtsMinHeight = 12f;
@@ -459,10 +470,50 @@ namespace SP.CameraSystem
                 // de la sesion RTS anterior (o de FPS), un salto visible.
                 panTargetInitialized = false;
             }
-            else
+            else if (!AplicarPoseInicialRts())
             {
                 SetRtsView(fallbackCenter);
             }
+        }
+
+        // Primera entrada a RTS: si hay marcador de pose inicial, la camara nace donde el jugador lo puso.
+        // Devuelve false (y no toca nada) si esta apagado, no hay marcador o ya se uso una vez.
+        bool AplicarPoseInicialRts()
+        {
+            if (poseInicialRtsConsumida || !usarPoseInicialRts || rtsPoseInicial == null) return false;
+            poseInicialRtsConsumida = true;
+
+            Vector3 pos = rtsPoseInicial.position;
+            Vector3 euler = rtsPoseInicial.eulerAngles;
+            rtsInclinacionAdelante = Mathf.Clamp(90f - Mathf.DeltaAngle(0f, euler.x), 0f, 75f);
+            rtsYaw = euler.y;
+
+            float altura = Mathf.Clamp(pos.y, rtsMinHeight, rtsMaxHeight);
+            Vector3 forward = Quaternion.Euler(RtsLookEuler) * Vector3.forward;
+            float descenso = -forward.y;
+            // El foco es donde el rayo de la camara toca el suelo; si la pose no mira hacia abajo, el punto de abajo.
+            Vector3 foco = descenso > 0.01f ? pos + forward * (pos.y / descenso) : new Vector3(pos.x, 0f, pos.z);
+            foco = new Vector3(foco.x, 0f, foco.z);
+            AcotarAlMapa(ref foco);
+
+            CancelTransition();
+            rtsFocusPoint = foco;
+            rtsCurrentHeight = altura;
+            rtsTargetHeight = altura;
+            transform.rotation = Quaternion.Euler(RtsLookEuler);
+            transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
+            panTargetInitialized = false;
+            return true;
+        }
+
+        // Muestra en el editor de donde va a salir la camara RTS (frustum del marcador).
+        void OnDrawGizmos()
+        {
+            if (rtsPoseInicial == null || !usarPoseInicialRts) return;
+            Gizmos.color = new Color(1f, 0.85f, 0.2f, 1f);
+            Gizmos.matrix = Matrix4x4.TRS(rtsPoseInicial.position, rtsPoseInicial.rotation, Vector3.one);
+            Gizmos.DrawFrustum(Vector3.zero, normalFov, 25f, 0.3f, 16f / 9f);
+            Gizmos.matrix = Matrix4x4.identity;
         }
 
         public void ToggleMode(Vector3? rtsFallbackCenter = null) => SetMode(Mode == ControlMode.Fps ? ControlMode.Rts : ControlMode.Fps, rtsFallbackCenter);
