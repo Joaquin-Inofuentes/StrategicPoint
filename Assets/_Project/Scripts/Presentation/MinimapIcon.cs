@@ -112,7 +112,14 @@ namespace SP.Presentation
                 esPoseidoPintado = equipoPintadoMinimapa != TeamId.Enemy && soldierDetectado.Brain != null && soldierDetectado.Brain.IsPossessedByPlayer;
                 var color = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo
                     : esPoseidoPintado ? DiamondGizmo.ColorObjetivo : DiamondGizmo.ColorAliado;
-                if (equipoPintadoMinimapa == TeamId.Enemy) ConvertirEnTriangulo();
+                // Pedido explicito: "falta indicador de norte/orientacion" --
+                // el poseido por el jugador era un circulo simetrico, igual
+                // que cualquier aliado: no habia forma de saber hacia donde
+                // mirabas sin girar la camara principal. Ahora usa el mismo
+                // triangulo direccional que ya tenian los enemigos (distinto
+                // color, ColorObjetivo en vez de ColorEnemigo, asi no se
+                // confunden).
+                if (equipoPintadoMinimapa == TeamId.Enemy || esPoseidoPintado) ConvertirEnTriangulo();
                 else ConvertirEnCirculo();
 
                 EnsureRenderer();
@@ -159,7 +166,9 @@ namespace SP.Presentation
             esPoseidoPintado = poseidoAhora;
             var colorSoldier = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo
                 : esPoseidoPintado ? DiamondGizmo.ColorObjetivo : DiamondGizmo.ColorAliado;
-            if (equipoPintadoMinimapa == TeamId.Enemy) ConvertirEnTriangulo();
+            // Mismo criterio que en DetectarTarget: el poseido tambien lleva
+            // el triangulo direccional, no solo los enemigos.
+            if (equipoPintadoMinimapa == TeamId.Enemy || esPoseidoPintado) ConvertirEnTriangulo();
             else ConvertirEnCirculo();
 
             EnsureRenderer();
