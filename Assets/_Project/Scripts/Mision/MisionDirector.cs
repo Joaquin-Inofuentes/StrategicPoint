@@ -44,11 +44,12 @@ namespace SP.Mision
         public float RadioExtraccion = 13f;
         public float RadioDeAlertaDelHeli = 85f;
         public float SegundosDeResistencia = 60f;
-        // Pedido explicito: "aparecera una barra de carga de liberando que
-        // dura 10 segundos y luego te seguira" -- antes eran 1.2 s sin
-        // ninguna barra visible (ver TickRescatar).
-        public const float DuracionRescate = 10f;
-        public float ProgresoRescate => Mathf.Clamp01(tRescate / DuracionRescate);
+        // Pedido explicito (revertido): hubo una barra de carga de
+        // "liberando" de 10 s; ahora el pedido es al reves -- "que sea que
+        // te acercas y el carga instantaneamente y tira un efecto de
+        // particulas" (el efecto ya existia, ver SparkleBurstFx.Spawn mas
+        // abajo en TickRescatar). Se acerca, se rescata en el acto.
+        public const float RadioDeRescate = 4.5f;
 
         public FaseDeMision Fase { get; private set; } = FaseDeMision.Infiltrar;
         public float Restante { get; private set; }
@@ -66,7 +67,7 @@ namespace SP.Mision
         SP.Presentation.ObjectiveArrowIndicator flechaDeObjetivo;
         TutorialBeacon baliza, balizaCivil;
         AudioSource tension;
-        float tRescate, proximoSeguir, avisoAtras, tiempoFuera, proximoAvisoCentro;
+        float proximoSeguir, avisoAtras, tiempoFuera, proximoAvisoCentro;
         bool hordaLanzada, refuerzosLanzados;
         readonly List<bool> oleadaHecha = new List<bool> { false, false, false };
         Transform raizEnemigos;
@@ -512,7 +513,7 @@ namespace SP.Mision
             {
                 case FaseDeMision.Infiltrar: TickInfiltrar(); break;
                 case FaseDeMision.Resistir: TickResistir(dt); break;
-                case FaseDeMision.Rescatar: TickRescatar(dt); break;
+                case FaseDeMision.Rescatar: TickRescatar(); break;
                 case FaseDeMision.Escapar: TickEscapar(dt); break;
             }
             if (hud != null) hud.Refrescar();
@@ -589,12 +590,11 @@ namespace SP.Mision
             }
         }
 
-        void TickRescatar(float dt)
+        void TickRescatar()
         {
             if (Civil == null || !Civil.Health.IsAlive) { Perder("EL CIVIL MURIO"); return; }
             float d = Plano(PosicionDelJugador(), Civil.transform.position);
-            if (d <= 4.5f) tRescate += dt; else tRescate = Mathf.Max(0f, tRescate - dt);
-            if (tRescate < DuracionRescate) return;
+            if (d > RadioDeRescate) return;
 
             CivilRescatado = true;
             // BUG REAL reportado jugando: la esfera amarilla flotante de
