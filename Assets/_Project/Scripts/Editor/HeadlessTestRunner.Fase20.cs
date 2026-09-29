@@ -66,7 +66,7 @@ namespace SP.EditorTools
             }
 
             // --- Q y E ---
-            Check("Q: mantener empieza a los 0,5 s", PlayerInputDriver.SostenerParaMenu == 0.5f);
+            Check("Q: mantener empieza a los 0,15 s", PlayerInputDriver.SostenerParaMenu == 0.15f);
             Check("E: mantener 0,5 s = habilidad especial, tap = interactuar", PlayerInputDriver.SostenerParaEspecial == 0.5f);
             Check("Zoom RTS sin lerp a 80 u/s", PlayerInputDriver.rtsZoomSpeed == 80f);
 

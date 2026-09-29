@@ -23,10 +23,16 @@ namespace SP.Player
         // Menu de ordenes: [Q] sostenido
         // -----------------------------------------------------------
 
-        // Umbral que separa los dos gestos de la MISMA tecla. 0,3 s es el
-        // valor por defecto de KeyBindings: bastante mas que un toque
-        // deliberado y bastante menos que "lo dejo apretado".
-        public const float SostenerParaMenu = 0.5f;   // Ronda 11: tap = menos de medio segundo
+        // Umbral que separa los dos gestos de la MISMA tecla.
+        // BUG REAL reportado jugando: con 0,5 s el radial tardaba medio
+        // segundo entero en aparecer despues de mantener [Q] -- un click
+        // real (tocar y soltar) dura bien por debajo de eso, asi que medio
+        // segundo es mucho mas de lo que hace falta para distinguir un
+        // toque de un mantenido. Bajado al minimo que sigue siendo mayor
+        // que un click deliberado (tipicamente 80-120 ms): el radial ahora
+        // se siente practicamente instantaneo al mantener, sin que un
+        // click rapido lo dispare por error.
+        public const float SostenerParaMenu = 0.15f;
 
         // Un unico lugar que decide, cada frame, cual de los dos gestos de
         // [Q] esta ocurriendo. Estan juntos a proposito: separarlos en dos

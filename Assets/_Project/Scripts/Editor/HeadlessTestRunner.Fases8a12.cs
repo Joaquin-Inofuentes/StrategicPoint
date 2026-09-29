@@ -37,15 +37,17 @@ namespace SP.EditorTools
                 SP.Player.KeyBindings.CiclarPosesion, PlayerInputDriver.SostenerParaMenu);
             Check("Un toque de 0,1 s NO llega al umbral de mantener (no abre el menu)", !aLos100ms);
 
-            // Ronda 11 (punto 8): el umbral pasa de 0,3 a 0,5 s: 0,4 s sigue siendo un toque (accion por defecto), 0,6 s ya abre el menu.
-            SP.Player.KeyBindings.ForzarInicioDePulsacion(SP.Player.KeyBindings.CiclarPosesion, 0.4f);
-            bool aLos400ms = SP.Player.KeyBindings.HayPulsacionRegistrada(
+            // BUG REAL reportado jugando: con 0,5 s el radial tardaba medio segundo entero en
+            // aparecer al mantener [Q] -- bajado a 0,15 s (bastante mas que un click real de
+            // 80-120 ms, bastante menos que medio segundo). 0,08 s sigue siendo un toque, 0,2 s ya abre el menu.
+            SP.Player.KeyBindings.ForzarInicioDePulsacion(SP.Player.KeyBindings.CiclarPosesion, 0.08f);
+            bool aLos80ms = SP.Player.KeyBindings.HayPulsacionRegistrada(
                 SP.Player.KeyBindings.CiclarPosesion, PlayerInputDriver.SostenerParaMenu);
-            Check("Sostener 0,4 s sigue siendo un toque (umbral de mantener = 0,5 s)", !aLos400ms && PlayerInputDriver.SostenerParaMenu == 0.5f);
-            SP.Player.KeyBindings.ForzarInicioDePulsacion(SP.Player.KeyBindings.CiclarPosesion, 0.6f);
-            bool aLos600ms = SP.Player.KeyBindings.HayPulsacionRegistrada(
+            Check("Sostener 0,08 s sigue siendo un toque (umbral de mantener = 0,15 s)", !aLos80ms && PlayerInputDriver.SostenerParaMenu == 0.15f);
+            SP.Player.KeyBindings.ForzarInicioDePulsacion(SP.Player.KeyBindings.CiclarPosesion, 0.2f);
+            bool aLos200ms = SP.Player.KeyBindings.HayPulsacionRegistrada(
                 SP.Player.KeyBindings.CiclarPosesion, PlayerInputDriver.SostenerParaMenu);
-            Check("Sostener 0,6 s SI llega al umbral de mantener (abre el menu)", aLos600ms);
+            Check("Sostener 0,2 s SI llega al umbral de mantener (abre el menu)", aLos200ms);
 
             var menu = inputDriver.OrdenesMenu;
             Check("El menu de ordenes existe en el canvas y arranca cerrado", menu != null && !menu.Abierto);
