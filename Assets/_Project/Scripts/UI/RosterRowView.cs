@@ -42,7 +42,12 @@ namespace SP.UI
 
         static readonly Color NormalColor = new Color(0f, 0f, 0f, 0.85f);
         static readonly Color PossessedColor = new Color(0.15f, 0.55f, 0.85f, 0.9f);
-        static readonly Color SelectedColor = new Color(0.85f, 0.65f, 0.1f, 0.9f);
+        static readonly Color SelectedColor = new Color(0.95f, 0.72f, 0.1f, 0.95f);
+        // Pedido explicito: en vez del cartel "N seleccionados", los seleccionados se RESALTAN aca abajo a la
+        // izquierda: marco amarillo brillante, tarjeta un poco mas grande y un realce del icono.
+        static readonly Color MarcoSeleccion = new Color(1f, 0.92f, 0.25f, 1f);
+        static readonly Color MarcoPoseido = new Color(1f, 1f, 1f, 0.55f);
+        Outline marco;
         static readonly Color DeadColor = new Color(0.12f, 0.12f, 0.13f, 0.75f);
         static readonly Color DeadTextColor = new Color(0.5f, 0.5f, 0.52f);
 
@@ -64,6 +69,15 @@ namespace SP.UI
             // roster se reconstruye. Reparar aca, en cada fila nueva, la
             // hace independiente del orden con el barrido global.
             SpriteBlanco.Reparar(healthFill);
+
+            if (background != null)
+            {
+                marco = background.GetComponent<Outline>();
+                if (marco == null) marco = background.gameObject.AddComponent<Outline>();
+                marco.effectDistance = new Vector2(3f, -3f);
+                marco.useGraphicAlpha = false;
+                marco.enabled = false;
+            }
         }
 
         // Se llama una sola vez, apenas se instancia la fila. Deja el
@@ -243,6 +257,16 @@ namespace SP.UI
         {
             if (background == null) return;
             background.color = !alive ? DeadColor : possessed ? PossessedColor : selected ? SelectedColor : NormalColor;
+
+            bool resaltar = alive && selected;
+            if (marco != null)
+            {
+                marco.enabled = alive && (selected || possessed);
+                marco.effectColor = resaltar ? MarcoSeleccion : MarcoPoseido;
+                marco.effectDistance = resaltar ? new Vector2(4f, -4f) : new Vector2(2f, -2f);
+            }
+            // Seleccionado: la tarjeta crece; el resto vuelve a su tamaño.
+            transform.localScale = resaltar ? new Vector3(1.12f, 1.12f, 1f) : Vector3.one;
         }
 
         public bool IsHighlighted => possessed || selected;

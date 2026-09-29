@@ -43,14 +43,24 @@ namespace SP.Mision
             // 1/3 de tamano y mas sutil" -- menos opaco (0.62 -> 0.4) y todo
             // el panel escalado a un tercio del area (factor de LINEA
             // 1/raiz(3) =~ 0.58, para que el AREA visible sea un tercio).
-            h.panel.color = new Color(0.05f, 0.07f, 0.1f, 0.4f);
+            h.panel.color = new Color(0.04f, 0.06f, 0.09f, 0.62f);
             h.panel.raycastTarget = false;
             var rt = go.GetComponent<RectTransform>();
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
             rt.anchoredPosition = new Vector2(20f, -20f);
             rt.sizeDelta = new Vector2(320f, 112f);
-            rt.localScale = Vector3.one * 0.58f;
+            rt.localScale = Vector3.one * 0.72f;
+
+            // Pulido de UI: filete dorado a la izquierda, para que el cartel se lea como panel y no como texto suelto.
+            var filete = new GameObject("Filete", typeof(RectTransform), typeof(Image));
+            filete.transform.SetParent(go.transform, false);
+            filete.GetComponent<Image>().color = new Color(1f, 0.82f, 0.3f, 0.95f);
+            filete.GetComponent<Image>().raycastTarget = false;
+            var frt = filete.GetComponent<RectTransform>();
+            frt.anchorMin = new Vector2(0f, 0f); frt.anchorMax = new Vector2(0f, 1f);
+            frt.pivot = new Vector2(0f, 0.5f);
+            frt.anchoredPosition = Vector2.zero; frt.sizeDelta = new Vector2(4f, 0f);
 
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             h.titulo = Texto(go.transform, font, 14, new Vector2(0f, 40f), new Vector2(304f, 20f), new Color(1f, 0.82f, 0.3f));

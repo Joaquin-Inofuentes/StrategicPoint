@@ -148,6 +148,11 @@ namespace SP.CameraSystem
         // sostiene la tecla de vista tactica ([C]). Antes ensuciaban toda la pantalla.
         bool rutasVisibles;
         public bool RutasVisibles => rutasVisibles;
+        // Pedido explicito: "hay esferas visibles en RTS, no deberian verse, filtralo por capas". Las esferas de
+        // patrulla (capa "Waypoints") se sacan del culling mask de la camara SIEMPRE, en FPS y en RTS. Este tilde
+        // de Inspector solo existe para depurar rondas enemigas: prendido, se ven donde antes (RTS / radial).
+        [Header("Debug")]
+        public bool verEsferasDeWaypoints = false;
         public void MostrarRutas(bool visibles)
         {
             if (rutasVisibles == visibles) return;
@@ -160,7 +165,7 @@ namespace SP.CameraSystem
             if (cam == null) return;
             int layer = LayerMask.NameToLayer(PatrolRouteLine.LayerName);
             if (layer < 0) return;
-            if (rutasVisibles) cam.cullingMask |= (1 << layer);
+            if (rutasVisibles && verEsferasDeWaypoints) cam.cullingMask |= (1 << layer);
             else cam.cullingMask &= ~(1 << layer);
         }
 

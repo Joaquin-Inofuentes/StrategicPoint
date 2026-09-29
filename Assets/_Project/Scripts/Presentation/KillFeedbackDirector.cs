@@ -186,7 +186,7 @@ namespace SP.Presentation
         // Texto ya agrupado para el feed, en vez de una linea por baja.
         public string FeedText()
         {
-            string who = LastKillWasPlayer ? "ABATIDO" : "ABATIDO POR TU ESCUADRA";
+            string who = "ENEMIGO ABATIDO";   // pedido explicito: mismo texto para las bajas propias y de la escuadra (el color las distingue)
             if (GroupedKills > 1) return $"{who} x{GroupedKills}";
             if (LastKillWasPlayer && Streak >= 3) return $"{who}   ·   RACHA {Streak}";
             return who;

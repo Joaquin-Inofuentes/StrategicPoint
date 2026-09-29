@@ -22,6 +22,7 @@ namespace SP.UI
         // suscripcion cada vez que se pasa a FPS, con el mismo efecto que
         // ya paso una vez al desactivarse a si misma desde OnEnable.
         bool modeAllowsVisible = true;
+        public static bool MostrarCartel = false;
 
         void OnEnable()
         {
@@ -43,7 +44,9 @@ namespace SP.UI
 
         void Refresh()
         {
-            bool visible = modeAllowsVisible && lastCount > 0;
+            // Pedido explicito: en vez de "N seleccionados" se RESALTAN los seleccionados en el roster de abajo a la
+            // izquierda (RosterRowView). Este cartel queda apagado a proposito (la clase sigue viva por los tests).
+            bool visible = MostrarCartel && modeAllowsVisible && lastCount > 0;
             if (background != null) background.enabled = visible;
             if (label != null) label.gameObject.SetActive(visible);
         }

@@ -51,9 +51,17 @@ namespace SP.UI
             // Apilar una linea por baja cubria la pantalla justo cuando
             // mas informacion hay.
             var director = SP.Presentation.KillFeedbackDirector.Instance;
-            label.text = director != null ? director.FeedText() : "SOLDADO ABATIDO";
+            label.text = director != null ? director.FeedText() : "ENEMIGO ABATIDO";
             label.gameObject.SetActive(true);
             var rt = label.rectTransform;
+            // Pedido explicito: "a la mitad de tamaño, mas arriba y centrado". Antes: 44 px con un golpe de escala 2x
+            // que se salia de la pantalla. Ahora 22 px, anclado arriba al centro y un golpe de escala corto (1.3x).
+            label.fontSize = 22;
+            label.alignment = TextAnchor.MiddleCenter;
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(0f, -36f);
+            rt.sizeDelta = new Vector2(700f, 40f);
             // Las bajas propias van en naranja fuerte y las de la
             // escuadra en un tono mas frio: sin esto el jugador no podia
             // evaluar su aporte contra el de sus soldados.
@@ -69,7 +77,7 @@ namespace SP.UI
             {
                 t += Time.unscaledDeltaTime;
                 float k = t / punchTime;
-                rt.localScale = Vector3.one * Mathf.Lerp(0.2f, 2f, k);
+                rt.localScale = Vector3.one * Mathf.Lerp(0.6f, 1.3f, k);
                 rt.localRotation = Quaternion.Euler(0f, 0f, Mathf.Sin(k * 40f) * (1f - k) * 10f);
                 label.color = new Color(baseColor.r, baseColor.g, baseColor.b, 1f);
                 yield return null;
@@ -80,7 +88,7 @@ namespace SP.UI
             while (t < settleTime)
             {
                 t += Time.unscaledDeltaTime;
-                rt.localScale = Vector3.one * Mathf.Lerp(2f, 1f, t / settleTime);
+                rt.localScale = Vector3.one * Mathf.Lerp(1.3f, 1f, t / settleTime);
                 rt.localRotation = Quaternion.Slerp(rt.localRotation, Quaternion.identity, t / settleTime);
                 yield return null;
             }

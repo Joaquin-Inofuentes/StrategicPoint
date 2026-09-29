@@ -712,7 +712,17 @@ namespace SP.Vehicles
             if (diamondMarker != null)
             {
                 var cam = SP.Core.CamaraPrincipal.Actual;
-                if (cam != null) diamondMarker.transform.rotation = cam.transform.rotation;
+                if (cam != null)
+                {
+                    diamondMarker.transform.rotation = cam.transform.rotation;
+                    // Pulido de UI: con la camara RTS casi encima del tanque el rombo se veia gigante y tapaba el HUD;
+                    // por debajo de 20 m se achica en proporcion a la distancia (piso 0.4) y de ahi para arriba queda igual.
+                    float dist = Vector3.Distance(cam.transform.position, diamondMarker.transform.position);
+                    float k = 0.62f * Mathf.Clamp(dist / 20f, 0.4f, 1f);   // 0.62 = tamano base de CrearCara
+                    // El casco del tanque esta escalado y no uniforme (~1.4 x 1.7 x 1.4): se compensa para que el rombo mida lo mismo que el de los soldados.
+                    var ps = transform.lossyScale;
+                    diamondMarker.transform.localScale = new Vector3(k / Mathf.Max(0.01f, ps.x), k / Mathf.Max(0.01f, ps.y), k / Mathf.Max(0.01f, ps.z));
+                }
                 diamondMarker.SetActive(!IsDestroyed);
             }
         }

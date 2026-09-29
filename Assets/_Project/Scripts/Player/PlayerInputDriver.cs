@@ -614,11 +614,8 @@ namespace SP.Player
             foreach (var s in Squad) if (s != null && s.Id == evt.TargetId) { victim = s; break; }
             if (victim == null || !victim.Health.IsAlive) return;
 
-            if (!lastAttackAlert.TryGetValue(victim.Id, out var last) || Time.time - last > AttackAlertCooldown)
-            {
-                lastAttackAlert[victim.Id] = Time.time;
-                DeadNotice.Show($"{victim.DisplayName} esta bajo ataque", 2f);
-            }
+            // Pedido explicito: se QUITO el cartel rojo "X esta bajo ataque" (tapaba la pantalla en RTS). El
+            // ataque ya se ve en el roster (barra de vida) y en el minimapa; queda solo el de vida critica.
 
             // Aviso de vida critica: una sola vez por caida por debajo del
             // umbral, no una vez por bala mientras siga por debajo.
