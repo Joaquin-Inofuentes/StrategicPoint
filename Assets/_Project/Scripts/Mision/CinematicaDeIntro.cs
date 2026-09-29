@@ -60,6 +60,26 @@ namespace SP.Mision
             alTerminarRef?.Invoke();
         }
 
+        // BUG REAL reportado jugando: "[ESC] no funciona en las
+        // cinematicas". Si funcionaba (PauseController.Update() sigue
+        // corriendo, ajena a la cinematica, y pausaba el tiempo bien) pero
+        // el panel quedaba invisible: el barrido de arriba apaga TODOS los
+        // canvases salvo los que cuelgan de CapasDeHud.Hud_Menu, y ese
+        // campo nunca se asigna desde codigo -- en SC_Gameplay quedo NULL,
+        // asi que ningun canvas calificaba como "menu" y el canvas de
+        // pausa se apagaba con el resto. El jugador apretaba ESC, el
+        // tiempo se congelaba en silencio y no aparecia nada: parecia que
+        // la tecla no hacia nada. En vez de depender de que Hud_Menu este
+        // bien cableado en cada escena, se exceptua directamente cualquier
+        // canvas que tenga un PauseController colgando (busqueda barata,
+        // corre una sola vez al arrancar la cinematica).
+        static bool EsCanvasDePausa(Canvas cv)
+        {
+            if (SP.UI.CapasDeHud.Instancia != null && SP.UI.CapasDeHud.Instancia.Hud_Menu != null
+                && cv.transform.IsChildOf(SP.UI.CapasDeHud.Instancia.Hud_Menu.transform)) return true;
+            return cv.GetComponentInChildren<SP.Presentation.PauseController>(true) != null;
+        }
+
         // Pedido explicito: "un sonido de disparo al saltear tomas de
         // escena" -- feedback audible cada vez que se corta la transicion
         // o la espera de una toma con ESPACIO/click. Reusa el mismo clip
@@ -146,15 +166,8 @@ namespace SP.Mision
                 if (driver.Rig != null) driver.Rig.enabled = false;
             }
             foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
-            {
-                if (cv != null && cv.gameObject != lienzo && cv.renderMode != RenderMode.WorldSpace)
-                {
-                    bool isMenu = SP.UI.CapasDeHud.Instancia != null && 
-                                  SP.UI.CapasDeHud.Instancia.Hud_Menu != null && 
-                                  cv.transform.IsChildOf(SP.UI.CapasDeHud.Instancia.Hud_Menu.transform);
-                    if (!isMenu) cv.enabled = false;
-                }
-            }
+                if (cv != null && cv.gameObject != lienzo && cv.renderMode != RenderMode.WorldSpace && !EsCanvasDePausa(cv))
+                    cv.enabled = false;
             AlertQueue.Clear();
 
             var cam = SP.Core.CamaraPrincipal.Actual != null ? SP.Core.CamaraPrincipal.Actual : (driver != null && driver.Rig != null ? driver.Rig.Cam : null);
