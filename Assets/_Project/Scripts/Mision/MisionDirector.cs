@@ -57,7 +57,10 @@ namespace SP.Mision
         public float RadioResistencia = 32f;
         public float RadioExtraccion = 13f;
         public float RadioDeAlertaDelHeli = 85f;
-        public float SegundosDeResistencia = 60f;
+        // Pedido explicito: el temporizador de resistir baja de 60 a 30 segundos. Las oleadas se
+        // reparten en proporcion (FraccionOleada), no en segundos fijos, para que la ultima no
+        // quede fuera de una ventana mas corta.
+        public float SegundosDeResistencia = 30f;
         // Pedido explicito (revertido): hubo una barra de carga de
         // "liberando" de 10 s; ahora el pedido es al reves -- "que sea que
         // te acercas y el carga instantaneamente y tira un efecto de
@@ -92,7 +95,7 @@ namespace SP.Mision
 
         // Tamanos base de cada oleada (se multiplican por la dificultad).
         static readonly int[] TamanoOleada = { 4, 5, 6 };
-        static readonly float[] SegundoOleada = { 2f, 22f, 42f };
+        static readonly float[] FraccionOleada = { 2f / 60f, 22f / 60f, 42f / 60f };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reiniciar() => Instancia = null;
@@ -602,7 +605,7 @@ namespace SP.Mision
                 float antes = SegundosDeResistencia - Restante;
                 Restante -= dt;
                 for (int i = 0; i < oleadaHecha.Count; i++)
-                    if (!oleadaHecha[i] && SegundosDeResistencia - Restante >= SegundoOleada[i]) { oleadaHecha[i] = true; LanzarOleada(i); }
+                    if (!oleadaHecha[i] && SegundosDeResistencia - Restante >= FraccionOleada[i] * SegundosDeResistencia) { oleadaHecha[i] = true; LanzarOleada(i); }
                 tiempoFuera = 0f;
                 if (Restante <= 0f)
                 {

@@ -14,6 +14,16 @@ namespace SP.Mision
         RectTransform relleno, barra;
         Image panel;
 
+        // Pedido explicito: "el contador de segundos en el centro, que aparezca y desaparezca al
+        // terminar; un timer grande y visible". Vive aparte del cartel (que es chico y esta arriba a
+        // la izquierda) como hijo directo del canvas del HUD.
+        Text timerNumero, timerEtiqueta;
+        CanvasGroup timerGrupo;
+        RectTransform timerRt;
+        bool timerVisible;
+        float timerAlpha, timerPulso;
+        int timerUltimoSegundo = -1;
+
         public string TextoTitulo => titulo != null ? titulo.text : "";
         public string TextoDetalle => detalle != null ? detalle.text : "";
         public string TextoDificultad => dificultad != null ? dificultad.text : "";
@@ -65,12 +75,67 @@ namespace SP.Mision
             h.relleno.offsetMin = h.relleno.offsetMax = Vector2.zero;
             h.relleno.sizeDelta = new Vector2(0f, 0f);
 
+            h.CrearTimerGrande(raiz, font);
+
             var p = Dificultad.PerfilActual;
             h.dificultad.text = $"Dificultad: {p.Nombre}";   // el detalle (enemigos/aliados/vos) vive en Configuraciones, no en el HUD
             h.Refrescar();
             
             CartelVolverView.Crear();
             return h;
+        }
+
+        void CrearTimerGrande(Transform raiz, Font font)
+        {
+            var go = new GameObject("TemporizadorResistir", typeof(RectTransform), typeof(CanvasGroup));
+            go.transform.SetParent(raiz, false);
+            timerRt = go.GetComponent<RectTransform>();
+            timerRt.anchorMin = timerRt.anchorMax = new Vector2(0.5f, 0.5f);
+            timerRt.pivot = new Vector2(0.5f, 0.5f);
+            timerRt.anchoredPosition = new Vector2(0f, 100f);   // justo sobre la mira, sin taparla
+            timerRt.sizeDelta = new Vector2(560f, 200f);
+            timerGrupo = go.GetComponent<CanvasGroup>();
+            timerGrupo.alpha = 0f; timerGrupo.interactable = false; timerGrupo.blocksRaycasts = false;
+
+            timerEtiqueta = Texto(go.transform, font, 28, new Vector2(0f, 74f), new Vector2(560f, 40f), new Color(1f, 0.82f, 0.3f));
+            timerNumero = Texto(go.transform, font, 128, new Vector2(0f, -8f), new Vector2(560f, 150f), Color.white);
+            var borde = timerNumero.gameObject.AddComponent<Outline>();
+            borde.effectColor = new Color(0f, 0f, 0f, 0.85f);
+            borde.effectDistance = new Vector2(4f, -4f);
+            timerEtiqueta.text = "RESISTI";
+        }
+
+        void OnDestroy() { if (timerRt != null) Destroy(timerRt.gameObject); }
+
+        void Update()
+        {
+            if (timerGrupo == null) return;
+            // El director deja de llamar Refrescar() al terminar la partida (Victoria/Derrota):
+            // sin este chequeo el timer quedaba colgado en pantalla.
+            if (timerVisible && (director == null || director.Fase != FaseDeMision.Resistir)) timerVisible = false;
+            float dt = Time.unscaledDeltaTime;
+            timerAlpha = Mathf.MoveTowards(timerAlpha, timerVisible ? 1f : 0f, dt / (timerVisible ? 0.25f : 0.5f));
+            timerGrupo.alpha = timerAlpha;
+            timerPulso = Mathf.MoveTowards(timerPulso, 0f, dt * 3f);
+            // Entra "cayendo" desde mas grande y sale agrandandose mientras se desvanece.
+            float escala = timerVisible ? Mathf.Lerp(1.5f, 1f, timerAlpha) : Mathf.Lerp(1.3f, 1f, timerAlpha);
+            timerRt.localScale = Vector3.one * escala * (1f + 0.22f * timerPulso);
+        }
+
+        void RefrescarTimerGrande(FaseDeMision f, bool dentro)
+        {
+            if (timerGrupo == null) return;
+            timerVisible = f == FaseDeMision.Resistir;
+            if (!timerVisible) { timerUltimoSegundo = -1; return; }
+
+            int seg = Mathf.Max(0, Mathf.CeilToInt(director.Restante));
+            timerNumero.text = seg.ToString();
+            bool ultimos = dentro && seg <= 5;
+            timerNumero.color = !dentro ? new Color(1f, 0.55f, 0.3f) : ultimos ? new Color(1f, 0.3f, 0.25f) : Color.white;
+            timerEtiqueta.text = dentro ? "RESISTI" : "VOLVE AL CENTRO";
+            timerEtiqueta.color = dentro ? new Color(1f, 0.82f, 0.3f) : new Color(1f, 0.3f, 0.25f);
+            if (ultimos && seg != timerUltimoSegundo) timerPulso = 1f;
+            timerUltimoSegundo = seg;
         }
 
         static string Pct(float f)
@@ -104,6 +169,7 @@ namespace SP.Mision
         {
             if (director == null || titulo == null) return;
             var f = director.Fase;
+            RefrescarTimerGrande(f, director.DistanciaAlObjetivo() <= director.RadioResistencia);
             bool visible = f != FaseDeMision.Victoria && f != FaseDeMision.Derrota;
             if (panel.enabled != visible) { panel.enabled = visible; foreach (var t in GetComponentsInChildren<Graphic>(true)) t.enabled = visible; }
             if (!visible) return;
