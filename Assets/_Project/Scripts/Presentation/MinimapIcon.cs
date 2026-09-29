@@ -87,6 +87,13 @@ namespace SP.Presentation
         Soldier soldierDetectado;
         TeamId equipoPintadoMinimapa;
         bool autoColoreado;
+        // BUG REAL reportado jugando: la escuadra entera arranca pegada al
+        // jugador (1-2 m de distancia) y los tres iconos, del mismo azul y
+        // mismo tamaño, se funden en un solo blob en el minimapa -- no hay
+        // forma de saber cual sos VOS. Se cachea si la ultima pintada fue
+        // "poseido" para poder detectar el cambio (el jugador puede poseer
+        // a otro soldado en runtime) sin repintar cada frame de gusto.
+        bool esPoseidoPintado;
         // Cacheado en DetectarTarget (una vez, no por frame): de aca sale el
         // radio real del cono de vision, el mismo alcance que usa la IA para
         // sensar (AiBrain.EffectiveVisionRange), no un numero inventado.
@@ -102,7 +109,9 @@ namespace SP.Presentation
             if (soldierDetectado != null)
             {
                 equipoPintadoMinimapa = soldierDetectado.Team;
-                var color = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
+                esPoseidoPintado = equipoPintadoMinimapa != TeamId.Enemy && soldierDetectado.Brain != null && soldierDetectado.Brain.IsPossessedByPlayer;
+                var color = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo
+                    : esPoseidoPintado ? DiamondGizmo.ColorObjetivo : DiamondGizmo.ColorAliado;
                 if (equipoPintadoMinimapa == TeamId.Enemy) ConvertirEnTriangulo();
                 else ConvertirEnCirculo();
 
@@ -144,9 +153,12 @@ namespace SP.Presentation
             }
 
             if (soldierDetectado == null) return;
-            if (!forzar && soldierDetectado.Team == equipoPintadoMinimapa) return;
+            bool poseidoAhora = soldierDetectado.Team != TeamId.Enemy && soldierDetectado.Brain != null && soldierDetectado.Brain.IsPossessedByPlayer;
+            if (!forzar && soldierDetectado.Team == equipoPintadoMinimapa && poseidoAhora == esPoseidoPintado) return;
             equipoPintadoMinimapa = soldierDetectado.Team;
-            var colorSoldier = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
+            esPoseidoPintado = poseidoAhora;
+            var colorSoldier = equipoPintadoMinimapa == TeamId.Enemy ? DiamondGizmo.ColorEnemigo
+                : esPoseidoPintado ? DiamondGizmo.ColorObjetivo : DiamondGizmo.ColorAliado;
             if (equipoPintadoMinimapa == TeamId.Enemy) ConvertirEnTriangulo();
             else ConvertirEnCirculo();
 
@@ -174,12 +186,11 @@ namespace SP.Presentation
         // hitbox de percepcion.
         public const float ConoMedioAnguloGrados = 35f;
         public const float ConoRadioFallback = 16f;
-        // Pedido explicito: "quiero q sean muy muy transparentes casi
-        // invisibles, gris, 99% de transparencia" -- 0.05 (95%) todavia se
-        // notaba como una cuna de color de equipo. Ahora son grises (no el
-        // color de equipo) y casi invisibles: apenas una pista de hacia
-        // donde mira el soldado, sin competir visualmente con nada mas.
-        const float ConoAlpha = 0.01f;
+        // Pedido explicito original: "99% de transparencia". En la practica
+        // 0.01 se demostro INVISIBLE contra el fondo del minimapa (ver
+        // captura de validacion) -- no una pista sutil sino directamente
+        // nada. Subido al minimo que sigue siendo legible como cuña tenue.
+        const float ConoAlpha = 0.14f;
         static readonly Color ConoColorGris = new Color(0.5f, 0.5f, 0.5f, 1f);
         Transform conoDeVision;
         MeshRenderer conoRenderer;
@@ -189,11 +200,31 @@ namespace SP.Presentation
         {
             if (conoDeVision == null)
             {
+                // BUG REAL encontrado con el minimapa de la escena horneada:
+                // el material de NuevoMaterialTransparente es
+                // HideAndDontSave, asi que NO sobrevive el guardado de la
+                // escena -- al reabrir el editor o entrar en Play el
+                // MeshRenderer del cono ya bakeado quedaba con material
+                // null (Unity lo dibuja solido y opaco, ignorando el alfa
+                // 1%). Como este campo (no serializado) volvia a null,
+                // este metodo creaba OTRO GameObject "ConoDeVision" al lado
+                // en vez de arreglar el existente -- quedaban dos conos
+                // apilados: el viejo opaco tapando al nuevo transparente.
+                // Se limpia cualquier "ConoDeVision" fantasma antes de
+                // crear el definitivo, para que nunca quede mas de uno.
+                for (int i = transform.childCount - 1; i >= 0; i--)
+                {
+                    var hijo = transform.GetChild(i);
+                    if (hijo.name != "ConoDeVision") continue;
+                    if (Application.isPlaying) Destroy(hijo.gameObject);
+                    else DestroyImmediate(hijo.gameObject);
+                }
+
                 var go = new GameObject("ConoDeVision", typeof(MeshFilter), typeof(MeshRenderer));
                 go.transform.SetParent(transform, false);
                 go.layer = gameObject.layer;
                 conoDeVision = go.transform;
-                go.GetComponent<MeshFilter>().sharedMesh = MallaCono();
+                go.GetComponent<MeshFilter>().sharedMesh = MallaConoQuad();
                 conoRenderer = go.GetComponent<MeshRenderer>();
                 conoRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 conoRenderer.receiveShadows = false;
@@ -202,6 +233,70 @@ namespace SP.Presentation
             tinte.a = ConoAlpha;
             conoRenderer.sharedMaterial = NuevoMaterialTransparente(tinte);
             conoRadioActual = -1f; // fuerza a TickFollow a re-escalar con el radio actual
+        }
+
+        // BUG REAL (2026): la malla original del cono era un abanico de
+        // triangulos armado a mano (apice + arco). Con ESA malla, el
+        // material transparente (alfa 1%) se dibujaba solido y opaco pase
+        // lo que pase -- probado con distintos shaders, distintas
+        // combinaciones de _Surface/_Blend/_Cull, con y sin normales, con
+        // y sin la segunda cara duplicada: siempre opaco. Un Quad simple
+        // con el MISMO material SI se mezclaba bien (transparencia real).
+        // La malla en abanico quedo descartada por completo: ahora el cono
+        // es un Quad chato (igual que el anillo de ShapeMarkerFx) con una
+        // textura que recorta la forma de cuna -- opaca en blanco dentro
+        // del angulo/radio, transparente afuera -- y el tinte final se
+        // sigue aplicando por color de material como siempre.
+        static Mesh mallaConoQuad;
+        static Mesh MallaConoQuad()
+        {
+            if (mallaConoQuad != null) return mallaConoQuad;
+            var m = new Mesh { name = "MinimapConoDeVisionQuad" };
+            m.vertices = new Vector3[]
+            {
+                new Vector3(-1f, 0f, -1f),
+                new Vector3(1f, 0f, -1f),
+                new Vector3(1f, 0f, 1f),
+                new Vector3(-1f, 0f, 1f),
+            };
+            m.uv = new Vector2[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f) };
+            m.triangles = new int[] { 0, 2, 1, 0, 3, 2 };
+            m.RecalculateNormals();
+            m.RecalculateBounds();
+            m.hideFlags = HideFlags.HideAndDontSave;
+            mallaConoQuad = m;
+            return m;
+        }
+
+        // Mascara del abanico: blanco opaco dentro del angulo/radio del
+        // cono (apice en el centro de la textura, abre hacia +V = +Z,
+        // "adelante"), transparente afuera. El tinte/alfa final del cono
+        // los pone el material (ver NuevoMaterialTransparente); esta
+        // textura solo recorta la forma.
+        static Texture2D texturaCono;
+        static Texture2D TexturaCono()
+        {
+            if (texturaCono != null) return texturaCono;
+            const int size = 64;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.wrapMode = TextureWrapMode.Clamp;
+            float medioAnguloRad = ConoMedioAnguloGrados * Mathf.Deg2Rad;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float u = (x - 31.5f) / 31.5f;
+                    float v = (y - 31.5f) / 31.5f;
+                    float d = Mathf.Sqrt(u * u + v * v);
+                    float a = 0f;
+                    if (v > 0f && d <= 1f && Mathf.Atan2(Mathf.Abs(u), v) <= medioAnguloRad) a = 1f;
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+                }
+            }
+            tex.Apply();
+            tex.hideFlags = HideFlags.HideAndDontSave;
+            texturaCono = tex;
+            return texturaCono;
         }
 
         // Llamado cada frame desde TickFollow (mismo recorrido que ya mueve
@@ -237,40 +332,9 @@ namespace SP.Presentation
             }
             m.SetColor("_BaseColor", c);
             m.color = c;
-            return m;
-        }
-
-        static Mesh mallaCono;
-        static Mesh MallaCono()
-        {
-            if (mallaCono != null) return mallaCono;
-            const int segmentos = 10;
-            float medioAnguloRad = ConoMedioAnguloGrados * Mathf.Deg2Rad;
-            var m = new Mesh { name = "MinimapConoDeVision" };
-            var verts = new Vector3[segmentos + 2];
-            verts[0] = Vector3.zero; // apice, en el propio soldado
-            for (int i = 0; i <= segmentos; i++)
-            {
-                float t = (float)i / segmentos;
-                float ang = Mathf.Lerp(-medioAnguloRad, medioAnguloRad, t);
-                // +Z es "adelante", mismo frente que MallaTriangulo.
-                verts[i + 1] = new Vector3(Mathf.Sin(ang), 0f, Mathf.Cos(ang));
-            }
-            var tris = new int[segmentos * 3 * 2];
-            int k = 0;
-            for (int i = 0; i < segmentos; i++)
-            {
-                tris[k++] = 0; tris[k++] = i + 1; tris[k++] = i + 2;
-                tris[k++] = 0; tris[k++] = i + 2; tris[k++] = i + 1; // segunda cara, visto desde abajo
-            }
-            m.vertices = verts;
-            m.triangles = tris;
-            var normals = new Vector3[verts.Length];
-            for (int i = 0; i < normals.Length; i++) normals[i] = Vector3.up;
-            m.normals = normals;
-            m.RecalculateBounds();
-            m.hideFlags = HideFlags.HideAndDontSave;
-            mallaCono = m;
+            var tex = TexturaCono();
+            m.mainTexture = tex;
+            if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
             return m;
         }
 
@@ -342,7 +406,12 @@ namespace SP.Presentation
                 else DestroyImmediate(gameObject);
                 return false;
             }
-            transform.position = new Vector3(Target.position.x, height, Target.position.z);
+            // El poseido se dibuja un poco mas alto que el resto: con la
+            // escuadra pegada al jugador (caso comun al arrancar la mision)
+            // los discos coplanares se pisan entre si y "vos" quedabas
+            // indistinguible de un aliado cualquiera debajo tuyo.
+            float alturaIcono = height + (esPoseidoPintado ? 0.5f : 0f);
+            transform.position = new Vector3(Target.position.x, alturaIcono, Target.position.z);
             // Antes esto solo giraba el icono si ya era un triangulo
             // (enemigos): un aliado es un circulo simetrico que no
             // necesitaba rotar. El cono de vision SI necesita la rotacion
