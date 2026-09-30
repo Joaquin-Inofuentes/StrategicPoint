@@ -1,24 +1,28 @@
-using System.Collections.Generic;
+using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using SP.Core;
-using SP.Mision;
 
 namespace SP.EditorTools
 {
     // Pedido explicito: "quiero que de la imagen de noche, una noche medio iluminada por
     // lamparas y estrellas en el cielo" + "que sean SIEMPRE luces duras". Pone la escena abierta
-    // de noche: el sol pasa a luz de luna (tenue, fria, sombras duras), el ambiente baja a un
-    // azul oscuro, y el skybox por defecto se reemplaza por uno propio con estrellas (una sola
+    // de noche: el sol pasa a luz de luna (fria, sombras duras) que ademas se DIBUJA en el cielo, el ambiente baja a un
+    // azul oscuro, y el skybox por defecto se reemplaza por uno propio con estrellas, via lactea y luna (una sola
     // textura equirectangular generada por codigo -- no hay ningun asset de imagen descargado).
+    // Las luces de los caminos y los adornos (fogatas, reflectores) los arma AmbientacionDelNivel.
     // Es idempotente: reusa/pisa los mismos assets si ya existen en vez de duplicarlos.
     public static class NightLightingBuilder
     {
         const string CarpetaTexturas = "Assets/_Project/Textures/Skybox";
-        const string RutaTextura = CarpetaTexturas + "/T_CieloNocturno.asset";
+        const string RutaTexturaVieja = CarpetaTexturas + "/T_CieloNocturno.asset";
+        const string RutaTextura = CarpetaTexturas + "/T_CieloNocturno.png";
         const string RutaMaterial = "Assets/_Project/Materials/M_Skybox_Noche.mat";
+
+        // Hacia donde esta la luna (vector de mundo, sale de la camara hacia la luna): al nor-noreste y a media altura, asi
+        // el jugador la ve al frente mientras avanza hacia el norte y la luz le pega de costado y de frente a los enemigos.
+        public static readonly Vector3 DireccionDeLaLuna = new Vector3(0.42f, 0.36f, 0.83f).normalized;
 
         [MenuItem("Strategic Point/Arte/10. Poner de noche (escena abierta)")]
         public static void PonerDeNoche()
@@ -27,12 +31,11 @@ namespace SP.EditorTools
 
             PonerLunaEnElSol();
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.06f, 0.08f, 0.14f);
+            RenderSettings.ambientLight = new Color(0.072f, 0.092f, 0.16f);
             RenderSettings.skybox = ConstruirMaterialDeCielo();
             DynamicGI.UpdateEnvironment();
             AplicarNiebla();
-            PonerLucesDeCamino();
-            QuitarBarandasDeCamino();
+            QuitarLucesViejasDeCamino();
 
             // BUG REAL encontrado en vivo: la MainCamera de SC_Gameplay tiene clearFlags=SolidColor
             // (limpia a un gris/blanco fijo) -- con eso, NINGUN skybox se dibuja jamas, la escena se
@@ -44,7 +47,7 @@ namespace SP.EditorTools
 
             EditorSceneManager.MarkSceneDirty(escena);
             EditorSceneManager.SaveScene(escena);
-            Debug.Log($"[NightLightingBuilder] {escena.name}: noche aplicada (sol=luna, ambiente oscuro, cielo con estrellas).");
+            Debug.Log($"[NightLightingBuilder] {escena.name}: noche aplicada (luna en el cielo, ambiente oscuro, estrellas y niebla).");
         }
 
         static void PonerLunaEnElSol()
@@ -57,134 +60,44 @@ namespace SP.EditorTools
             }
             if (sol == null) return;
             var luz = sol.GetComponent<Light>();
-            // Luna: tenue y fria, no la luz del dia atenuada -- y SIEMPRE dura (pedido explicito),
-            // nunca Soft, a diferencia de como estaba antes.
-            luz.intensity = 0.28f;
-            luz.color = new Color(0.55f, 0.68f, 0.95f);
+            // Luna: fria, SIEMPRE dura (pedido explicito), nunca Soft. La luz viaja de la luna hacia el suelo.
+            luz.intensity = 0.34f;
+            luz.color = new Color(0.58f, 0.7f, 0.98f);
             luz.shadows = LightShadows.Hard;
+            sol.transform.rotation = Quaternion.LookRotation(-DireccionDeLaLuna);
         }
 
-        // "Niebla a lo lejos": profundidad atmosferica en la distancia sin
-        // tapar el combate cercano. Lineal (no exponencial) para que el
-        // corte sea predecible: nada de niebla hasta FogStart, e
-        // invisible total recien en FogEnd. El color es el mismo tono del
-        // horizonte del skybox de noche, para que la niebla se funda con el
-        // cielo en vez de leerse como una pared gris pegada encima.
-        const float FogStart = 55f;
-        const float FogEnd = 210f;
+        // "Niebla a lo lejos": profundidad atmosferica en la distancia sin tapar el combate cercano. Lineal (no
+        // exponencial) para que el corte sea predecible: nada de niebla hasta FogStart, e invisible total recien en
+        // FogEnd. El color es el mismo tono del horizonte del skybox de noche, para que la niebla se funda con el
+        // cielo en vez de leerse como una pared gris pegada encima. Los caminos iluminados se ven de lejos.
+        const float FogStart = 45f;
+        const float FogEnd = 235f;
 
         static void AplicarNiebla()
         {
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.10f, 0.13f, 0.22f);
+            RenderSettings.fogColor = new Color(0.085f, 0.115f, 0.2f);
             RenderSettings.fogStartDistance = FogStart;
             RenderSettings.fogEndDistance = FogEnd;
         }
 
-        // "Que las luces destaquen el camino": el unico "camino" que el
-        // codigo conoce de verdad (en vez de adivinar sobre el arte del
-        // nivel) es la ruta que el propio pathfinding del juego calcularia
-        // para ir de un objetivo de mision al siguiente (Helipuerto ->
-        // Plaza -> RefugioDelCivil, los tres puntos de MisionDirector). Se
-        // usa NavService.Graph.TryFindPath (el mismo grafo que usan los
-        // soldados) para no arriesgarse a poner un farol adentro de un
-        // edificio con una interpolacion en linea recta.
-        const float EspaciadoLuces = 18f;
-        const float AlturaLuces = 3f;
-        const int MaxLuces = 14;
-
-        static void PonerLucesDeCamino()
+        // Las luces de camino de la version anterior (una linea de faroles sobre la ruta de pathfinding entre los
+        // objetivos de mision) las reemplazan las de AmbientacionDelNivel, que siguen cada camino del nivel.
+        static void QuitarLucesViejasDeCamino()
         {
             var raiz = GameObject.Find("CaminoLights");
             if (raiz != null) Object.DestroyImmediate(raiz);
-
-            var director = Object.FindFirstObjectByType<MisionDirector>();
-            if (director == null)
-            {
-                Debug.LogWarning("[NightLightingBuilder] No hay MisionDirector en la escena: se omiten las luces de camino.");
-                return;
-            }
-
-            var puntosDelCamino = new List<Vector3>();
-            AgregarTramo(director.Helipuerto, director.Plaza, puntosDelCamino);
-            AgregarTramo(director.Plaza, director.RefugioDelCivil, puntosDelCamino);
-            if (puntosDelCamino.Count == 0) return;
-
-            var raizGo = new GameObject("CaminoLights");
-            int puestas = 0;
-            Vector3 ultima = puntosDelCamino[0] + Vector3.one * 999f; // fuerza la primera luz
-            foreach (var p in puntosDelCamino)
-            {
-                if (puestas >= MaxLuces) break;
-                if (Vector3.Distance(new Vector3(ultima.x, 0f, ultima.z), new Vector3(p.x, 0f, p.z)) < EspaciadoLuces) continue;
-                CrearFarol(raizGo.transform, p);
-                ultima = p;
-                puestas++;
-            }
-            Debug.Log($"[NightLightingBuilder] {puestas} luces puestas a lo largo del camino de mision.");
-        }
-
-        // Junta los puntos de esquina del pathfinding real entre "desde" y
-        // "hasta", re-muestreados cada EspaciadoLuces unidades a lo largo de
-        // cada tramo recto -- el grafo solo devuelve las esquinas, y entre
-        // dos esquinas lejanas (tramos rectos largos) no habria ningun
-        // farol en el medio.
-        static void AgregarTramo(Vector3 desde, Vector3 hasta, List<Vector3> destino)
-        {
-            var esquinas = new List<Vector3>();
-            if (!NavService.Graph.TryFindPath(desde, hasta, esquinas) || esquinas.Count == 0)
-            {
-                destino.Add(desde);
-                destino.Add(hasta);
-                return;
-            }
-
-            Vector3 anterior = desde;
-            foreach (var esquina in esquinas)
-            {
-                float largo = Vector3.Distance(anterior, esquina);
-                int pasos = Mathf.Max(1, Mathf.RoundToInt(largo / EspaciadoLuces));
-                for (int i = 0; i <= pasos; i++) destino.Add(Vector3.Lerp(anterior, esquina, i / (float)pasos));
-                anterior = esquina;
-            }
-        }
-
-        static void CrearFarol(Transform padre, Vector3 puntoDelCamino)
-        {
-            var go = new GameObject("Farol");
-            go.layer = LayerMask.NameToLayer("Obstacle");
-            go.transform.SetParent(padre, false);
-            go.transform.position = new Vector3(puntoDelCamino.x, puntoDelCamino.y + AlturaLuces, puntoDelCamino.z);
-
-            var luz = go.AddComponent<Light>();
-            luz.type = LightType.Point;
-            luz.color = new Color(1f, 0.78f, 0.5f);
-            luz.intensity = 3.5f;
-            luz.range = 14f;
-            luz.shadows = LightShadows.None; // un farol por luz dinamica con sombras cada 18 m es caro y no se nota a esa escala
-
-            var col = go.AddComponent<BoxCollider>();
-            col.size = new Vector3(0.5f, 0.5f, 0.5f);
-
-            var luminaria = go.AddComponent<SP.Presentation.Luminaria>();
-        }
-
-        // Pedido explicito: "quita las vallas" -- las barandas de madera que
-        // antes bordeaban el camino de mision (P_Mod_Valla_Madera) molestaban
-        // y se sacan. Esto NO solo deja de ponerlas: las escenas horneadas en
-        // sesiones anteriores ya las tenian guardadas, asi que se borra
-        // tambien la raiz vieja si aparece (idempotente).
-        static void QuitarBarandasDeCamino()
-        {
-            var raizVieja = GameObject.Find("CaminoBarandas");
-            if (raizVieja != null) Object.DestroyImmediate(raizVieja);
+            // Pedido explicito: "quita las vallas": las barandas de madera que bordeaban el camino de mision.
+            var barandas = GameObject.Find("CaminoBarandas");
+            if (barandas != null) Object.DestroyImmediate(barandas);
         }
 
         static Material ConstruirMaterialDeCielo()
         {
-            var mat = AssetDatabase.LoadAssetAtPath<Material>(RutaMaterial);
             var tex = ConstruirTexturaDeCielo();
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(RutaMaterial);
             if (mat == null)
             {
                 var shader = Shader.Find("Skybox/Panoramic");
@@ -196,17 +109,17 @@ namespace SP.EditorTools
             mat.SetTexture("_MainTex", tex);
             mat.SetFloat("_Mapping", 1f);      // Latitude Longitude Layout
             mat.SetFloat("_ImageType", 0f);    // 360 Degrees
-            mat.SetColor("_Tint", new Color(0.6f, 0.6f, 0.6f));
-            mat.SetFloat("_Exposure", 1.1f);
+            mat.SetColor("_Tint", new Color(0.5f, 0.5f, 0.5f));   // el multiplicador "gris medio" del shader: 0.5 = sin cambio
+            mat.SetFloat("_Exposure", 1.15f);
             mat.SetFloat("_Rotation", 0f);
             EditorUtility.SetDirty(mat);
             return mat;
         }
 
-        // Textura equirectangular unica (1 sola imagen para todo el cielo, en vez de 6 caras de
-        // cubemap: menos piezas, menos puntos donde romperse). Fila 0 = cenit (arriba), fila
-        // Height-1 = nadir (abajo, no se ve nunca -- queda pareja). Degrade azul oscuro con mas
-        // estrellas cerca del cenit y un resplandor tenue de horizonte a mitad de imagen.
+        // Textura equirectangular 4096 x 2048 (una sola imagen para todo el cielo). Mapeo de Skybox/Panoramic:
+        //   u = 0.5 - atan2(z, x) / 2pi      v = 1 - acos(y) / pi      (v = 1 es el cenit, v = 0 el nadir)
+        // Contenido: degrade azul-noche con un resplandor de horizonte, via lactea tenue, ~4000 estrellas finas (algunas
+        // brillantes con cruz), y la luna con halo en `DireccionDeLaLuna`.
         static Texture2D ConstruirTexturaDeCielo()
         {
             if (!AssetDatabase.IsValidFolder(CarpetaTexturas))
@@ -214,66 +127,140 @@ namespace SP.EditorTools
                 if (!AssetDatabase.IsValidFolder("Assets/_Project/Textures")) AssetDatabase.CreateFolder("Assets/_Project", "Textures");
                 AssetDatabase.CreateFolder("Assets/_Project/Textures", "Skybox");
             }
+            // La version anterior era un Texture2D suelto (.asset, 1024 px, mapeado al reves): se reemplaza por un PNG.
+            if (AssetDatabase.LoadAssetAtPath<Texture2D>(RutaTexturaVieja) != null) AssetDatabase.DeleteAsset(RutaTexturaVieja);
 
-            const int W = 1024, H = 512;
-            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(RutaTextura);
-            bool nueva = tex == null;
-            if (nueva) tex = new Texture2D(W, H, TextureFormat.RGBA32, false, true) { name = "T_CieloNocturno" };
-            tex.wrapModeU = TextureWrapMode.Repeat;
-            tex.wrapModeV = TextureWrapMode.Clamp;
-            tex.filterMode = FilterMode.Bilinear;
+            const int W = 4096, H = 2048;
+            var pix = new Color[W * H];
+            var zenit = new Color(0.010f, 0.018f, 0.052f);
+            var medio = new Color(0.034f, 0.056f, 0.125f);
+            var horizonte = new Color(0.115f, 0.155f, 0.265f);
+            var tierra = new Color(0.028f, 0.038f, 0.075f);
 
-            var pix = new Color32[W * H];
-            var noche = new Color(0.02f, 0.03f, 0.07f);
-            var horizonte = new Color(0.10f, 0.13f, 0.22f);
-            var cenit = new Color(0.01f, 0.015f, 0.04f);
+            // Plano de la via lactea: una banda inclinada.
+            var normalBanda = new Vector3(0.25f, 0.82f, -0.52f).normalized;
+            var luna = DireccionDeLaLuna;
+
             for (int y = 0; y < H; y++)
             {
-                float v = y / (float)(H - 1); // 0 = cenit, 1 = nadir
-                Color fila;
-                if (v < 0.5f) fila = Color.Lerp(cenit, horizonte, v / 0.5f);            // cenit -> horizonte
-                else fila = Color.Lerp(horizonte, noche, Mathf.Clamp01((v - 0.5f) / 0.2f)); // horizonte -> tierra (abajo, plano)
-                for (int x = 0; x < W; x++) pix[y * W + x] = fila;
+                float v = (y + 0.5f) / H;
+                float lat = (1f - v) * Mathf.PI;
+                float cosLat = Mathf.Cos(lat), sinLat = Mathf.Sin(lat);
+                // Color base segun la altura (dir.y = cosLat).
+                float elev = cosLat;
+                Color baseFila;
+                if (elev >= 0f)
+                {
+                    float t = Mathf.Pow(elev, 0.55f);
+                    baseFila = t < 0.5f ? Color.Lerp(horizonte, medio, t / 0.5f) : Color.Lerp(medio, zenit, (t - 0.5f) / 0.5f);
+                }
+                else baseFila = Color.Lerp(horizonte, tierra, Mathf.Clamp01(-elev / 0.18f));
+
+                for (int x = 0; x < W; x++)
+                {
+                    float u = (x + 0.5f) / W;
+                    float lon = (0.5f - u) * Mathf.PI * 2f;
+                    var dir = new Vector3(Mathf.Cos(lon) * sinLat, cosLat, Mathf.Sin(lon) * sinLat);
+                    var c = baseFila;
+
+                    // Via lactea: banda suave modulada por ruido.
+                    float dPlano = Vector3.Dot(dir, normalBanda);
+                    float banda = Mathf.Exp(-(dPlano * dPlano) / (2f * 0.16f * 0.16f));
+                    if (banda > 0.02f && elev > -0.05f)
+                    {
+                        float n = Mathf.PerlinNoise(u * 26f, v * 13f) * 0.6f + Mathf.PerlinNoise(u * 90f + 7f, v * 45f + 3f) * 0.4f;
+                        c += new Color(0.05f, 0.06f, 0.1f) * (banda * Mathf.Clamp01(n * 1.6f - 0.25f));
+                    }
+
+                    // Luna: disco + halo.
+                    float cosAng = Mathf.Clamp(Vector3.Dot(dir, luna), -1f, 1f);
+                    if (cosAng > 0.6f)
+                    {
+                        float ang = Mathf.Acos(cosAng);
+                        const float radioDisco = 0.052f;   // ~3 grados: mas grande que la luna real, se lee bien
+                        float halo = Mathf.Exp(-ang / 0.08f) * 0.30f + Mathf.Exp(-(ang * ang) / (2f * 0.22f * 0.22f)) * 0.06f;
+                        c += new Color(0.5f, 0.62f, 0.9f) * halo;
+                        if (ang < radioDisco * 1.06f)
+                        {
+                            float borde = Mathf.Clamp01((radioDisco * 1.06f - ang) / (radioDisco * 0.06f));
+                            // Crateres: manchas de ruido que oscurecen un poco el disco.
+                            float cr = Mathf.PerlinNoise(u * 900f, v * 450f) * 0.6f + Mathf.PerlinNoise(u * 300f + 9f, v * 150f) * 0.4f;
+                            float k = Mathf.Lerp(0.78f, 1.05f, cr);
+                            var disco = new Color(0.92f, 0.94f, 0.88f) * k;
+                            c = Color.Lerp(c, disco, borde);
+                        }
+                    }
+                    pix[y * W + x] = c;
+                }
             }
 
-            // Estrellas: mas densas y brillantes cerca del cenit (v chico), casi ninguna bajo el
-            // horizonte (v > 0.55, mirando al suelo). Semilla fija: resultado igual en cada corrida.
-            var rnd = new System.Random(20260922);
-            int estrellas = 2200;
+            // Estrellas: uniformes sobre la esfera (arriba del horizonte), casi ninguna abajo. Se pintan achatando en X
+            // segun la latitud para que se vean redondas en el cielo (la textura equirectangular se comprime en los polos).
+            var rnd = new System.Random(20260929);
+            int estrellas = 4200;
             for (int i = 0; i < estrellas; i++)
             {
-                float v = Mathf.Pow((float)rnd.NextDouble(), 1.6f) * 0.62f; // sesgado hacia el cenit
-                int y = Mathf.Clamp(Mathf.RoundToInt(v * (H - 1)), 0, H - 1);
-                int x = rnd.Next(0, W);
-                float brillo = 0.55f + (float)rnd.NextDouble() * 0.45f;
+                float yy = Mathf.Lerp(-0.02f, 1f, (float)rnd.NextDouble());
+                float lon = (float)(rnd.NextDouble() * Mathf.PI * 2f);
+                float lat = Mathf.Acos(yy);
+                float u = 0.5f - lon / (Mathf.PI * 2f);
+                u = u - Mathf.Floor(u);
+                float v = 1f - lat / Mathf.PI;
+                var dir = new Vector3(Mathf.Cos(lon) * Mathf.Sin(lat), yy, Mathf.Sin(lon) * Mathf.Sin(lat));
+                if (Vector3.Dot(dir, luna) > 0.985f) continue;   // ninguna sobre la luna
+                float brillo = Mathf.Pow((float)rnd.NextDouble(), 2.6f) * 0.85f + 0.14f;
                 float tinte = (float)rnd.NextDouble();
-                var color = Color.Lerp(new Color(0.85f, 0.9f, 1f), new Color(1f, 0.92f, 0.8f), tinte) * brillo;
-                color.a = 1f;
-                PintarEstrella(pix, W, H, x, y, color, rnd.NextDouble() < 0.12);
+                var color = Color.Lerp(new Color(0.8f, 0.9f, 1f), new Color(1f, 0.9f, 0.75f), tinte);
+                float radio = 0.75f + brillo * 0.9f;
+                PintarEstrella(pix, W, H, u * W, v * H, Mathf.Sin(lat), radio, color, brillo, brillo > 0.8f);
             }
 
-            tex.SetPixels32(pix);
+            var tex = new Texture2D(W, H, TextureFormat.RGB24, false, false);
+            tex.SetPixels(pix);
             tex.Apply(false, false);
-            if (nueva) AssetDatabase.CreateAsset(tex, RutaTextura);
-            else EditorUtility.SetDirty(tex);
-            return tex;
+            var bytes = tex.EncodeToPNG();
+            Object.DestroyImmediate(tex);
+            File.WriteAllBytes(Path.Combine(Directory.GetCurrentDirectory(), RutaTextura), bytes);
+            AssetDatabase.ImportAsset(RutaTextura, ImportAssetOptions.ForceUpdate);
+
+            var imp = (TextureImporter)AssetImporter.GetAtPath(RutaTextura);
+            imp.textureType = TextureImporterType.Default;
+            imp.sRGBTexture = true;
+            imp.mipmapEnabled = false;
+            imp.wrapModeU = TextureWrapMode.Repeat;
+            imp.wrapModeV = TextureWrapMode.Clamp;
+            imp.filterMode = FilterMode.Bilinear;
+            imp.maxTextureSize = 4096;
+            imp.textureCompression = TextureImporterCompression.CompressedHQ;
+            imp.npotScale = TextureImporterNPOTScale.None;
+            imp.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(RutaTextura);
         }
 
-        static void PintarEstrella(Color32[] pix, int w, int h, int x, int y, Color color, bool grande)
+        static void PintarEstrella(Color[] pix, int w, int h, float cx, float cy, float sinLat, float radio, Color color, float brillo, bool cruz)
         {
-            Poner(pix, w, h, x, y, color);
-            if (!grande) return;
-            // Una estrella de cada ~8 se pinta con una cruz de 1px para que destaque un poco.
-            var tenue = color * 0.5f; tenue.a = 1f;
-            Poner(pix, w, h, x - 1, y, tenue); Poner(pix, w, h, x + 1, y, tenue);
-            Poner(pix, w, h, x, y - 1, tenue); Poner(pix, w, h, x, y + 1, tenue);
-        }
-
-        static void Poner(Color32[] pix, int w, int h, int x, int y, Color color)
-        {
-            x = ((x % w) + w) % w; // el cielo es 360: envuelve en X
-            if (y < 0 || y >= h) return;
-            pix[y * w + x] = color;
+            float rx = radio / Mathf.Max(0.18f, sinLat), ry = radio;
+            int ex = Mathf.CeilToInt(rx * 2.4f), ey = Mathf.CeilToInt(ry * 2.4f);
+            for (int dy = -ey; dy <= ey; dy++)
+            {
+                int py = Mathf.FloorToInt(cy) + dy;
+                if (py < 0 || py >= h) continue;
+                for (int dx = -ex; dx <= ex; dx++)
+                {
+                    int px = ((Mathf.FloorToInt(cx) + dx) % w + w) % w;
+                    float fx = (px + 0.5f - cx); if (fx > w * 0.5f) fx -= w; if (fx < -w * 0.5f) fx += w;
+                    float fy = py + 0.5f - cy;
+                    float d2 = (fx * fx) / (rx * rx) + (fy * fy) / (ry * ry);
+                    float a = Mathf.Exp(-d2 * 1.4f) * brillo;
+                    if (cruz)
+                    {
+                        float ax = Mathf.Abs(fx) / (rx * 5f), ay = Mathf.Abs(fy) / (ry * 5f);
+                        a += brillo * 0.35f * (Mathf.Exp(-ay * ay * 60f) * Mathf.Exp(-ax * 3f) + Mathf.Exp(-ax * ax * 60f) * Mathf.Exp(-ay * 3f));
+                    }
+                    if (a < 0.01f) continue;
+                    pix[py * w + px] += color * a;
+                }
+            }
         }
     }
 }

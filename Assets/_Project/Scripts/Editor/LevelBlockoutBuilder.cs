@@ -13,26 +13,26 @@ namespace SP.EditorTools
     //
     // Todo el bloqueo es un cubo (BoxCollider + ObstacleMarker, asi entra al
     // minimapa, a las coberturas y a la navegacion sin tocar nada mas); todo
-    // el "suelo" es pintura de las dos capas del terreno (pasto / tierra).
+    // el "suelo" es pintura de las capas del terreno (pasto / tierra / grava / hojarasca).
     //
-    // NIVEL 4 VECES MAS GRANDE que la primera version (116,8 x 320 m contra
-    // 58,4 x 160 m: el doble por lado = 4x el area), en ocho bloques que se
-    // recorren de sur a norte. Los tanques enemigos estan en los bloques 5, 7
-    // y 8; el cañon del propio tanque derriba coberturas y las "brechas" de la
-    // muralla (las explosiones dañan obstaculos).
+    // NIVEL DE 116,8 x 320 m en ocho bloques que se recorren de sur a norte, con TRES CAMINOS hasta el rehen (ver
+    // RutasDelNivel): la carretera central (grava, iluminada, con los tanques), el sendero del bosque (oeste) y el camino
+    // de servicio (este). Los muros del cañon y de la chicane tienen una puerta para cada flanco, la aldea tiene calles
+    // que cruzan los tres caminos y el fortin se puede rodear o entrar por sus brechas. El REHEN esta en el extremo norte
+    // del mapa (el refugio), a ~300 m de la base: ir a buscarlo y volver es la mitad dura de la mision.
     //
     // Es IDEMPOTENTE: cada corrida borra "Nivel_Blockout" y lo rearma, asi que
     // se puede retocar la tabla de abajo y volver a correr desde
     //   Strategic Point > Nivel > Construir blockout
     //
-    //   1. Base ................ z -22 ..  14   patio de partida (escuadra + tanque propio)
-    //   2. Campo de tiro ....... z  16 ..  64   coberturas bajas destructibles
-    //   3. Paso del cañon ...... z  68 ..  88   dos muros largos y un hueco de 18 m
-    //   4. Aldea ............... z  90 .. 142   casas, calle central y plaza
+    //   1. Base ................ z -22 ..  14   patio de partida (escuadra + tanque propio + helipuerto)
+    //   2. Campo de tiro ....... z  16 ..  64   coberturas bajas destructibles y un puesto de control
+    //   3. Paso del cañon ...... z  68 ..  88   muros con tres pasos: sendero (O), hueco central y camino de servicio (E)
+    //   4. Aldea ............... z  90 .. 142   casas, calle central, plaza y dos calles transversales
     //   5. Puesto avanzado ..... z 148 .. 190   TANQUE ENEMIGO 1 + 4 soldados
-    //   6. Chicane ............. z 194 .. 220   muros en S (el tanque gira, la infanteria rodea)
-    //   7. Fortin .............. z 224 .. 270   TANQUE ENEMIGO 2 + 6 soldados, porton y brechas
-    //   8. Deposito final ...... z 274 .. 298   TANQUE ENEMIGO 3 + 3 soldados
+    //   6. Chicane ............. z 194 .. 220   muros en S para el centro y una puerta para cada flanco
+    //   7. Fortin .............. z 224 .. 270   TANQUE ENEMIGO 2 + 6 soldados, porton sur/norte y brechas laterales
+    //   8. Refugio del rehen ... z 274 .. 298   TANQUE ENEMIGO 3 + guardias, casa del rehen y tres entradas
     public static class LevelBlockoutBuilder
     {
         const string RootName = "Nivel_Blockout";
@@ -48,6 +48,18 @@ namespace SP.EditorTools
         const string PrefabTanque = "Assets/_Project/Prefabs/P_Vehicle_Blindado.prefab";
 
         const int HpIndestructible = 999999;
+
+        // El terreno del nivel (no el "Terrain_Fondo" lejano, que tambien es un Terrain de la escena).
+        public static Terrain TerrenoPrincipal()
+        {
+            Terrain elegido = null;
+            foreach (var t in Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (t.name == "Terrain_Fondo") continue;
+                if (elegido == null || t.name == "Terrain_Main") elegido = t;
+            }
+            return elegido;
+        }
 
         struct Bloque
         {
@@ -65,6 +77,14 @@ namespace SP.EditorTools
         static void C(string grupo, string nombre, float x, float z, bool horizontal = true, int vida = 300)
             => B(grupo, nombre, "Cobertura", x, z, horizontal ? 3f : 1f, 1.2f, horizontal ? 1f : 3f, vida);
 
+        // Muro corrido entre dos X (o dos Z) a una Z (o X) dada.
+        static void MuroX(string grupo, string nombre, float x0, float x1, float z, float alto = 4f, float grosor = 3f, string mat = "Muro", int vida = HpIndestructible)
+            => B(grupo, nombre, mat, (x0 + x1) * 0.5f, z, x1 - x0, alto, grosor, vida);
+
+        // Erizo checo: cobertura chica y destructible en los pasos.
+        static void Erizo(string grupo, string nombre, float x, float z)
+            => B(grupo, nombre, "Cobertura", x, z, 2.2f, 1.6f, 2.2f, 500);
+
         static void DefinirBloques()
         {
             Bloques.Clear();
@@ -74,11 +94,13 @@ namespace SP.EditorTools
             B(base1, "Base_Muro_Oeste", "Muro", -52f, -4f, 1.5f, 3f, 36f);
             B(base1, "Base_Muro_Este", "Muro", 60f, -4f, 1.5f, 3f, 36f);
             B(base1, "Base_Muro_Sur", "Muro", 4f, -21.5f, 111f, 3f, 1.5f);
-            B(base1, "Casilla_Base", "Casa", -40f, 4f, 8f, 4f, 6f);
+            B(base1, "Casilla_Base", "Casa", -33f, 7f, 8f, 4f, 6f);
             C(base1, "Cobertura_Base_1", -24f, 9f);
             C(base1, "Cobertura_Base_2", -8f, 11f);
             C(base1, "Cobertura_Base_3", 20f, 10f);
             C(base1, "Cobertura_Base_4", 38f, 8f, false);
+            B(base1, "Contenedor_Base_1", "Contenedor", 44f, -14f, 6f, 2.8f, 2.5f);
+            B(base1, "Contenedor_Base_2", "Contenedor", 50f, -8f, 2.5f, 2.8f, 6f);
 
             // ---------------- 2. CAMPO DE TIRO ----------------
             const string campo = "2_CampoDeTiro";
@@ -86,56 +108,78 @@ namespace SP.EditorTools
             C(campo, "Cob_B1", -34f, 32f); C(campo, "Cob_B2", -12f, 34f, false); C(campo, "Cob_B3", 24f, 33f, false); C(campo, "Cob_B4", 42f, 32f); C(campo, "Cob_B5", 56f, 34f);
             C(campo, "Cob_C1", -46f, 42f, false); C(campo, "Cob_C2", -20f, 43f); C(campo, "Cob_C3", 30f, 44f); C(campo, "Cob_C4", 52f, 42f, false);
             C(campo, "Cob_D1", -30f, 54f, false); C(campo, "Cob_D2", -8f, 55f); C(campo, "Cob_D3", 18f, 54f); C(campo, "Cob_D4", 44f, 56f, false);
-            B(campo, "Ruina_Campo_1", "Casa", -38f, 38f, 4f, 3f, 4f);
-            B(campo, "Ruina_Campo_2", "Casa", 46f, 48f, 4f, 3f, 4f);
+            B(campo, "Ruina_Campo_1", "Casa", -31f, 38f, 4f, 3f, 4f);
+            B(campo, "Ruina_Campo_2", "Casa", 42f, 48f, 4f, 3f, 4f);
+            // Puesto de control sobre la carretera: dos erizos y un hueco de 8 m (pasa el tanque).
+            Erizo(campo, "Erizo_Campo_1", -2f, 60f); Erizo(campo, "Erizo_Campo_2", 10f, 60f);
+            // Alambrado que encauza el sendero del bosque y el camino de servicio.
+            B(campo, "Valla_Campo_O1", "Cobertura", -36f, 14f, 1f, 2f, 10f, 500);
+            B(campo, "Valla_Campo_O2", "Cobertura", -35f, 54f, 1f, 2f, 10f, 500);
+            B(campo, "Valla_Campo_E1", "Cobertura", 41f, 16f, 1f, 2f, 10f, 500);
+            B(campo, "Valla_Campo_E2", "Cobertura", 43f, 52f, 1f, 2f, 12f, 500);
 
-            // ---------------- 3. PASO DEL CAÑON: hueco central x -6..12 ----------------
+            // ---------------- 3. PASO DEL CAÑON: tres pasos (sendero O x -48..-38, hueco central x -6..12, servicio E x 46..56) ----------------
             const string canon = "3_PasoDelCanon";
-            B(canon, "Muro_Canon_Oeste", "Muro", -30.1f, 72f, 48.2f, 4f, 3f);
-            B(canon, "Muro_Canon_Este", "Muro", 37.3f, 72f, 50.6f, 4f, 3f);
+            MuroX(canon, "Muro_Canon_Oeste_A", -54.2f, -48f, 72f);
+            MuroX(canon, "Muro_Canon_Oeste_B", -38f, -6f, 72f);
+            MuroX(canon, "Muro_Canon_Este_A", 12f, 46f, 72f);
+            MuroX(canon, "Muro_Canon_Este_B", 56f, 62.6f, 72f);
             B(canon, "Bunker_Canon_Oeste", "Cobertura", -9f, 79f, 5f, 2f, 3f, 700);
             B(canon, "Bunker_Canon_Este", "Cobertura", 15f, 79f, 5f, 2f, 3f, 700);
             B(canon, "Torre_Vigia_Oeste", "Torre", -22f, 79f, 3f, 5f, 3f);
             B(canon, "Torre_Vigia_Este", "Torre", 30f, 79f, 3f, 5f, 3f);
-            C(canon, "Sacos_Canon_1", -36f, 82f); C(canon, "Sacos_Canon_2", 46f, 82f);
+            // Los pasos laterales: un obstaculo en el medio de cada uno obliga a serpentear (y da donde cubrirse).
+            C(canon, "Sacos_Paso_Oeste_1", -44f, 78f); C(canon, "Sacos_Paso_Oeste_2", -40f, 82f, false); Erizo(canon, "Erizo_Paso_Oeste", -46f, 84f);
+            C(canon, "Sacos_Paso_Este_1", 50f, 78f); C(canon, "Sacos_Paso_Este_2", 54f, 82f, false); Erizo(canon, "Erizo_Paso_Este", 48f, 84f);
 
-            // ---------------- 4. ALDEA: calle libre x -14..20 ----------------
+            // ---------------- 4. ALDEA: calle libre x -14..20; carriles laterales libres (x < -38 y x > 47) ----------------
             const string aldea = "4_Aldea";
-            B(aldea, "Casa_O1", "Casa", -42f, 98f, 9f, 5f, 7f);
-            B(aldea, "Casa_O2", "Casa", -28f, 96f, 8f, 5f, 7f);
-            B(aldea, "Casa_O3", "Casa", -40f, 114f, 8f, 5f, 8f);
-            B(aldea, "Casa_O4", "Casa", -24f, 116f, 9f, 5f, 7f);
-            B(aldea, "Casa_O5", "Casa", -38f, 132f, 8f, 5f, 7f);
-            B(aldea, "Casa_O6", "Casa", -22f, 134f, 8f, 5f, 6f);
+            B(aldea, "Casa_O1", "Casa", -33.5f, 98f, 9f, 5f, 7f);
+            B(aldea, "Casa_O2", "Casa", -20f, 96f, 8f, 5f, 7f);
+            B(aldea, "Casa_O3", "Casa", -32f, 114f, 8f, 5f, 8f);
+            B(aldea, "Casa_O4", "Casa", -20f, 116f, 9f, 5f, 7f);
+            B(aldea, "Casa_O5", "Casa", -31f, 132f, 8f, 5f, 7f);
+            B(aldea, "Casa_O6", "Casa", -19f, 134f, 8f, 5f, 6f);
             B(aldea, "Casa_E1", "Casa", 28f, 98f, 9f, 5f, 7f);
-            B(aldea, "Casa_E2", "Casa", 44f, 96f, 8f, 5f, 7f);
+            B(aldea, "Casa_E2", "Casa", 40f, 96f, 8f, 5f, 7f);
             B(aldea, "Casa_E3", "Casa", 30f, 116f, 9f, 5f, 7f);
-            B(aldea, "Casa_E4", "Casa", 46f, 114f, 8f, 5f, 8f);
+            B(aldea, "Casa_E4", "Casa", 41f, 114f, 8f, 5f, 8f);
             B(aldea, "Casa_E5", "Casa", 28f, 134f, 8f, 5f, 7f);
-            B(aldea, "Casa_E6", "Casa", 46f, 132f, 8f, 5f, 7f);
+            B(aldea, "Casa_E6", "Casa", 41f, 132f, 8f, 5f, 7f);
             B(aldea, "Pozo", "Cobertura", 4f, 115f, 2f, 1f, 2f, 400);
             C(aldea, "Sacos_Aldea_1", -8f, 104f, false, 400);
             C(aldea, "Sacos_Aldea_2", 16f, 126f, true, 400);
-            C(aldea, "Barricada_Aldea", -6f, 124f, false);
+            B(aldea, "Barricada_Aldea", "Cobertura", -6f, 124f, 1f, 1.2f, 3f, 300);
             B(aldea, "Carro_Aldea", "Cobertura", 10f, 106f, 3f, 1.4f, 1.6f, 300);
             C(aldea, "Cob_Callejon_1", -10f, 130f); C(aldea, "Cob_Callejon_2", 14f, 100f);
+            // Ruinas y erizos en las calles transversales (donde se cruzan los tres caminos).
+            B(aldea, "MuroCaido_Aldea_1", "Cobertura", -28f, 106f, 3.6f, 1.3f, 1.8f, 300);
+            B(aldea, "MuroCaido_Aldea_2", "Cobertura", 36f, 124f, 3.6f, 1.3f, 1.8f, 300);
+            Erizo(aldea, "Erizo_Aldea_1", -2f, 108f); Erizo(aldea, "Erizo_Aldea_2", 12f, 122f);
+            // Alambrado a los costados de la aldea: los carriles quedan a la vista pero separados.
+            B(aldea, "Valla_Aldea_O", "Cobertura", -39.5f, 88f, 1f, 2f, 12f, 500);
+            B(aldea, "Valla_Aldea_E", "Cobertura", 46.5f, 138f, 1f, 2f, 12f, 500);
 
             // ---------------- 5. PUESTO AVANZADO ENEMIGO ----------------
             const string puesto = "5_PuestoAvanzado";
             C(puesto, "Sacos_Puesto_1", -16f, 156f, true, 400); C(puesto, "Sacos_Puesto_2", 24f, 156f, true, 400);
             B(puesto, "Torre_Puesto", "Torre", -30f, 168f, 4f, 6f, 4f);
-            B(puesto, "Muro_Puesto_Oeste", "Muro", -40f, 172f, 1.5f, 3f, 20f);
-            B(puesto, "Muro_Puesto_Este", "Muro", 50f, 172f, 1.5f, 3f, 20f);
+            B(puesto, "Muro_Puesto_Oeste", "Muro", -34f, 172f, 1.5f, 3f, 20f);
+            B(puesto, "Muro_Puesto_Este", "Muro", 42f, 172f, 1.5f, 3f, 20f);
             B(puesto, "Bunker_Puesto", "Cobertura", 4f, 178f, 6f, 2f, 2.5f, 600);
-            C(puesto, "Caja_P1", -8f, 170f); C(puesto, "Caja_P2", 18f, 166f); C(puesto, "Caja_P3", 32f, 182f, false); C(puesto, "Caja_P4", -22f, 184f); C(puesto, "Caja_P5", 8f, 186f);
+            C(puesto, "Caja_P1", -8f, 170f); C(puesto, "Caja_P2", 18f, 166f); C(puesto, "Caja_P3", 32f, 182f, false); C(puesto, "Caja_P4", -22f, 184f); C(puesto, "Caja_P5", 8f, 192f);
+            Erizo(puesto, "Erizo_Puesto_1", -10f, 150f); Erizo(puesto, "Erizo_Puesto_2", 18f, 150f);
 
-            // ---------------- 6. CHICANE ----------------
+            // ---------------- 6. CHICANE: S para el centro + puerta oeste (x -48..-38) y puerta este (x 46..56) ----------------
             const string chicane = "6_Chicane";
-            B(chicane, "Muro_Chicane_1", "Muro", -20f, 198f, 68.4f, 4f, 2.5f);   // x -54,2 .. 14,2  (hueco al este)
-            B(chicane, "Muro_Chicane_2", "Muro", 26.3f, 210f, 72.6f, 4f, 2.5f);  // x -10 .. 62,6   (hueco al oeste)
+            MuroX(chicane, "Muro_Chicane_1_Oeste", -54.2f, -48f, 198f, 4f, 2.5f);
+            MuroX(chicane, "Muro_Chicane_1_Centro", -38f, 14.2f, 198f, 4f, 2.5f);    // hueco central-este: x 14 .. 62
+            MuroX(chicane, "Muro_Chicane_2_Centro", -10f, 46f, 210f, 4f, 2.5f);      // hueco oeste: x -54 .. -10
+            MuroX(chicane, "Muro_Chicane_2_Este", 56f, 62.6f, 210f, 4f, 2.5f);
             C(chicane, "Cob_Chi_1", 30f, 203f); C(chicane, "Cob_Chi_2", -30f, 204f); C(chicane, "Cob_Chi_3", 0f, 216f, false); C(chicane, "Cob_Chi_4", 48f, 216f);
+            Erizo(chicane, "Erizo_Chicane_O", -43f, 202f); Erizo(chicane, "Erizo_Chicane_E", 51f, 206f);
 
-            // ---------------- 7. FORTIN: x -30..46, z 224..270, porton x -2..14 ----------------
+            // ---------------- 7. FORTIN: x -30..46, z 224..270, porton sur x -2..14, porton norte x 0..8, brechas laterales ----------------
             const string fortin = "7_Fortin";
             B(fortin, "Muralla_Sur_Oeste", "Muro", -16f, 224f, 28f, 3.5f, 1.5f);
             B(fortin, "Muralla_Sur_Este", "Muro", 30f, 224f, 32f, 3.5f, 1.5f);
@@ -145,23 +189,37 @@ namespace SP.EditorTools
             B(fortin, "Muralla_Este_A", "Muro", 46f, 232f, 1.5f, 3.5f, 16f);
             B(fortin, "Brecha_Este", "Brecha", 46f, 244f, 1.5f, 3.5f, 8f, 700);
             B(fortin, "Muralla_Este_B", "Muro", 46f, 259f, 1.5f, 3.5f, 22f);
-            B(fortin, "Muralla_Norte_A", "Muro", -18f, 270f, 24f, 3.5f, 1.5f);
-            B(fortin, "Brecha_Norte", "Brecha", -2f, 270f, 8f, 3.5f, 1.5f, 700);
-            B(fortin, "Muralla_Norte_B", "Muro", 24f, 270f, 44f, 3.5f, 1.5f);
+            B(fortin, "Muralla_Norte_A", "Muro", -15f, 270f, 30f, 3.5f, 1.5f);
+            B(fortin, "Muralla_Norte_B", "Muro", 27f, 270f, 38f, 3.5f, 1.5f);
             B(fortin, "Torre_Fortin", "Torre", 8f, 249f, 4f, 7f, 4f);
+            B(fortin, "Torre_Fortin_SO", "Torre", -27f, 228f, 4f, 7f, 4f);
+            B(fortin, "Torre_Fortin_SE", "Torre", 43f, 228f, 4f, 7f, 4f);
+            B(fortin, "Torre_Fortin_NO", "Torre", -27f, 266f, 4f, 7f, 4f);
+            B(fortin, "Torre_Fortin_NE", "Torre", 43f, 266f, 4f, 7f, 4f);
             B(fortin, "Cuartel_O", "Casa", -18f, 258f, 10f, 4f, 8f);
             B(fortin, "Cuartel_E", "Casa", 32f, 258f, 10f, 4f, 8f);
-            C(fortin, "Caja_F1", -20f, 236f); C(fortin, "Caja_F2", 28f, 236f); C(fortin, "Caja_F3", -4f, 240f, false); C(fortin, "Caja_F4", 16f, 262f);
-            C(fortin, "Caja_F5", -10f, 250f); C(fortin, "Caja_F6", 22f, 248f, false); C(fortin, "Caja_F7", 4f, 264f); C(fortin, "Caja_F8", 38f, 240f);
+            C(fortin, "Caja_F1", -20f, 236f); C(fortin, "Caja_F2", 28f, 236f); C(fortin, "Caja_F3", 0f, 240f, false); C(fortin, "Caja_F4", 16f, 264f);
+            C(fortin, "Caja_F5", -16f, 250f); C(fortin, "Caja_F6", 26f, 246f, false); C(fortin, "Caja_F7", 4f, 264f); C(fortin, "Caja_F8", 38f, 240f);
+            // Los flancos por fuera de la muralla: cobertura y un alambrado que no tapa el paso.
+            C(fortin, "Cob_FlancoO_1", -37f, 232f, false); C(fortin, "Cob_FlancoO_2", -46f, 252f); C(fortin, "Cob_FlancoE_1", 55f, 234f, false); C(fortin, "Cob_FlancoE_2", 55f, 254f);
 
-            // ---------------- 8. DEPOSITO FINAL ----------------
-            const string deposito = "8_Deposito";
-            B(deposito, "Galpon_Oeste", "Casa", -34f, 284f, 12f, 4f, 8f);
-            B(deposito, "Galpon_Este", "Casa", 42f, 286f, 12f, 4f, 8f);
-            B(deposito, "Contenedor_1", "Torre", -12f, 291f, 6f, 3f, 2.5f);
-            B(deposito, "Contenedor_2", "Torre", 24f, 291f, 6f, 3f, 2.5f);
-            B(deposito, "Muro_Fondo", "Muro", 4f, 296.5f, 100f, 3f, 1.5f);
-            C(deposito, "Cob_Dep_1", -6f, 280f); C(deposito, "Cob_Dep_2", 16f, 281f); C(deposito, "Cob_Dep_3", -22f, 290f, false); C(deposito, "Cob_Dep_4", 34f, 278f, false);
+            // ---------------- 8. REFUGIO DEL REHEN: patio z 274..297, casa del rehen al fondo, entradas oeste / centro / este ----------------
+            const string refugio = "8_Refugio";
+            B(refugio, "Casa_Refugio", "Casa", 4f, 291f, 14f, 5f, 7f);
+            B(refugio, "Galpon_Oeste", "Casa", -32f, 289f, 12f, 4f, 8f);
+            B(refugio, "Galpon_Este", "Casa", 42f, 289f, 12f, 4f, 8f);
+            B(refugio, "Contenedor_Ref_1", "Contenedor", -16f, 285f, 6f, 2.8f, 2.5f);
+            B(refugio, "Contenedor_Ref_2", "Contenedor", 24f, 285f, 6f, 2.8f, 2.5f);
+            B(refugio, "Contenedor_Ref_3", "Contenedor", -22f, 294f, 2.5f, 2.8f, 6f);
+            B(refugio, "Contenedor_Ref_4", "Contenedor", 30f, 294f, 2.5f, 2.8f, 6f);
+            B(refugio, "Torre_Refugio_O", "Torre", -9f, 294f, 4f, 7f, 4f);
+            B(refugio, "Torre_Refugio_E", "Torre", 17f, 294f, 4f, 7f, 4f);
+            B(refugio, "Muro_Fondo", "Muro", 4f, 296.5f, 100f, 3f, 1.5f);
+            MuroX(refugio, "Muro_Refugio_Oeste", -49f, -43f, 274f, 3f, 1.5f);
+            MuroX(refugio, "Muro_Refugio_Este", 50f, 57f, 274f, 3f, 1.5f);
+            C(refugio, "Cob_Ref_1", -8f, 289f, false); C(refugio, "Cob_Ref_2", 16f, 289f, false);
+            C(refugio, "Cob_Ref_3", -26f, 282f); C(refugio, "Cob_Ref_4", 34f, 282f); C(refugio, "Cob_Ref_5", -4f, 281f);
+            Erizo(refugio, "Erizo_Ref_O", -36f, 277f); Erizo(refugio, "Erizo_Ref_E", 44f, 278f); Erizo(refugio, "Erizo_Ref_C", 12f, 272f);
         }
 
         // ---------------------------------------------------------------
@@ -169,25 +227,36 @@ namespace SP.EditorTools
         // ---------------------------------------------------------------
         struct Ronda { public string Nombre; public float X, Z; public float MediaX, MediaZ; }
 
-        // Infantes: los cinco primeros son los que YA estaban en la escena
-        // (se reubican); el resto se crea desde el prefab de enemigo.
+        // Infantes: los primeros quince son los que YA estaban en la escena (se reubican); el resto se crea desde el
+        // prefab de enemigo. El centro esta muy guarnecido; los flancos, menos (pero hay quien los vigile).
         static readonly Ronda[] Infantes =
         {
             new Ronda { Nombre = "Enemigo_Patrulla_1", X = -6f,  Z = 172f, MediaX = 6f, MediaZ = 4f },
             new Ronda { Nombre = "Enemigo_Patrulla_2", X = 20f,  Z = 172f, MediaX = 6f, MediaZ = 4f },
             new Ronda { Nombre = "Enemigo_Patrulla_3", X = -24f, Z = 178f, MediaX = 5f, MediaZ = 4f },
-            new Ronda { Nombre = "Enemigo_Patrulla_4", X = -10f, Z = 244f, MediaX = 6f, MediaZ = 4f },
-            new Ronda { Nombre = "Enemigo_Patrulla_5", X = 22f,  Z = 252f, MediaX = 6f, MediaZ = 4f },
-            new Ronda { Nombre = "Enemigo_Puesto_4",   X = 36f,  Z = 176f, MediaX = 5f, MediaZ = 5f },
-            new Ronda { Nombre = "Enemigo_Chicane_1",  X = -22f, Z = 203f, MediaX = 8f, MediaZ = 3f },
-            new Ronda { Nombre = "Enemigo_Chicane_2",  X = 40f,  Z = 214f, MediaX = 8f, MediaZ = 3f },
-            new Ronda { Nombre = "Enemigo_Fortin_1",   X = -20f, Z = 262f, MediaX = 5f, MediaZ = 4f },
-            new Ronda { Nombre = "Enemigo_Fortin_2",   X = 34f,  Z = 264f, MediaX = 5f, MediaZ = 4f },
+            new Ronda { Nombre = "Enemigo_Patrulla_4", X = -12f, Z = 246f, MediaX = 5f, MediaZ = 4f },
+            new Ronda { Nombre = "Enemigo_Patrulla_5", X = 18f,  Z = 250f, MediaX = 4f, MediaZ = 4f },
+            new Ronda { Nombre = "Enemigo_Puesto_4",   X = 34f,  Z = 176f, MediaX = 5f, MediaZ = 5f },
+            new Ronda { Nombre = "Enemigo_Chicane_1",  X = -18f, Z = 203f, MediaX = 8f, MediaZ = 3f },
+            new Ronda { Nombre = "Enemigo_Chicane_2",  X = 36f,  Z = 215f, MediaX = 6f, MediaZ = 3f },
+            new Ronda { Nombre = "Enemigo_Fortin_1",   X = -6f,  Z = 265f, MediaX = 5f, MediaZ = 3f },
+            new Ronda { Nombre = "Enemigo_Fortin_2",   X = 34f,  Z = 265.5f, MediaX = 5f, MediaZ = 3f },
             new Ronda { Nombre = "Enemigo_Fortin_3",   X = 4f,   Z = 232f, MediaX = 6f, MediaZ = 3f },
-            new Ronda { Nombre = "Enemigo_Fortin_4",   X = 34f,  Z = 240f, MediaX = 5f, MediaZ = 4f },
-            new Ronda { Nombre = "Enemigo_Deposito_1", X = -22f, Z = 284f, MediaX = 6f, MediaZ = 3f },
-            new Ronda { Nombre = "Enemigo_Deposito_2", X = 32f,  Z = 283f, MediaX = 6f, MediaZ = 3f },
-            new Ronda { Nombre = "Enemigo_Deposito_3", X = 4f,   Z = 279f, MediaX = 6f, MediaZ = 2f },
+            new Ronda { Nombre = "Enemigo_Fortin_4",   X = 32f,  Z = 242f, MediaX = 4f, MediaZ = 3f },
+            new Ronda { Nombre = "Enemigo_Deposito_1", X = -26f, Z = 279f, MediaX = 5f, MediaZ = 2f },
+            new Ronda { Nombre = "Enemigo_Deposito_2", X = 30f,  Z = 279f, MediaX = 5f, MediaZ = 2f },
+            new Ronda { Nombre = "Enemigo_Deposito_3", X = 9f,   Z = 281.5f, MediaX = 3f, MediaZ = 1.5f },
+            // Sendero del bosque (oeste)
+            new Ronda { Nombre = "Enemigo_Sendero_1",  X = -43f, Z = 58f,  MediaX = 3f, MediaZ = 6f },
+            new Ronda { Nombre = "Enemigo_Sendero_2",  X = -43f, Z = 140f, MediaX = 3f, MediaZ = 6f },
+            new Ronda { Nombre = "Enemigo_Sendero_3",  X = -41f, Z = 236f, MediaX = 3f, MediaZ = 6f },
+            // Camino de servicio (este)
+            new Ronda { Nombre = "Enemigo_Servicio_1", X = 52f,  Z = 62f,  MediaX = 3f, MediaZ = 6f },
+            new Ronda { Nombre = "Enemigo_Servicio_2", X = 52f,  Z = 150f, MediaX = 3f, MediaZ = 6f },
+            new Ronda { Nombre = "Enemigo_Servicio_3", X = 52f,  Z = 236f, MediaX = 3f, MediaZ = 6f },
+            // Guardias de las entradas del refugio
+            new Ronda { Nombre = "Enemigo_Refugio_1",  X = -40f, Z = 280f, MediaX = 3f, MediaZ = 3f },
+            new Ronda { Nombre = "Enemigo_Refugio_2",  X = 48f,  Z = 281f, MediaX = 2.5f, MediaZ = 2.5f },
         };
 
         struct DatosTanque { public string Nombre; public float X, Z, Rot; public Vector2[] Ruta; }
@@ -196,10 +265,10 @@ namespace SP.EditorTools
         {
             new DatosTanque { Nombre = "Tanque_Enemigo_1", X = 30f, Z = 162f, Rot = 180f,
                 Ruta = new[] { new Vector2(30f, 162f), new Vector2(-2f, 162f), new Vector2(-2f, 186f), new Vector2(40f, 188f) } },
-            new DatosTanque { Nombre = "Tanque_Enemigo_2", X = 10f, Z = 240f, Rot = 180f,
-                Ruta = new[] { new Vector2(14f, 238f), new Vector2(-14f, 240f), new Vector2(-14f, 256f), new Vector2(30f, 246f) } },
-            new DatosTanque { Nombre = "Tanque_Enemigo_3", X = 4f, Z = 288f, Rot = 180f,
-                Ruta = new[] { new Vector2(-20f, 284f), new Vector2(28f, 284f) } },
+            new DatosTanque { Nombre = "Tanque_Enemigo_2", X = 14f, Z = 232f, Rot = 180f,
+                Ruta = new[] { new Vector2(14f, 232f), new Vector2(-6f, 236f), new Vector2(-6f, 258f), new Vector2(22f, 258f), new Vector2(22f, 238f) } },
+            new DatosTanque { Nombre = "Tanque_Enemigo_3", X = 4f, Z = 277f, Rot = 180f,
+                Ruta = new[] { new Vector2(-14f, 277f), new Vector2(22f, 277f) } },
         };
 
         // ---------------------------------------------------------------
@@ -224,7 +293,7 @@ namespace SP.EditorTools
             BakeNavMesh();
 
             EditorSceneManager.MarkSceneDirty(scene);
-            Debug.Log($"[Blockout] Nivel 4x listo: {cubos} cubos, {enemigos} soldados enemigos, {tanques} tanques enemigos, terreno pintado y NavMesh horneado.");
+            Debug.Log($"[Blockout] Nivel listo: {cubos} cubos, {enemigos} soldados enemigos, {tanques} tanques enemigos, terreno pintado y NavMesh horneado.");
         }
 
         // ---------------------------------------------------------------
@@ -240,7 +309,7 @@ namespace SP.EditorTools
 
         static void AlinearYPintarTerreno()
         {
-            var terrain = Object.FindFirstObjectByType<Terrain>();
+            var terrain = TerrenoPrincipal();
             if (terrain == null) { Debug.LogWarning("[Blockout] No hay Terrain."); return; }
             var td = terrain.terrainData;
 
@@ -255,28 +324,21 @@ namespace SP.EditorTools
             // pintura quedaba a 0,6 m por pixel en Z. 1024 la deja a 0,3 m.
             td.alphamapResolution = 1024;
 
-            // Pedido explicito: "mejora la pintada del terrain". Antes las
-            // dos texturas (pasto y tierra) usaban el mismo tile de 10x10 m
-            // -- en un terreno de 117x320 m eso se repite ~12x en X y ~32x
-            // en Z, y las dos capas se repiten en el MISMO patron, lo que
-            // se nota como una grilla. Tiles mas grandes y DISTINTOS entre
-            // capas rompen ese patron; un poco de smoothness en el pasto
-            // (la tierra queda en 0, mate, tal cual el material real) le
-            // da algo de vida bajo luz dinamica en vez de leerse plano.
+            // Cuatro capas: 0 pasto, 1 tierra (las de siempre), 2 grava (caminos y patios), 3 hojarasca (bosque).
             AjustarCapasDeTerreno(td);
 
             int res = td.alphamapResolution;
             int capas = td.alphamapLayers;
             var mapa = new float[res, res, capas];
+            var w = new float[4];
             for (int i = 0; i < res; i++)
             {
                 float wz = TerrainOrigin.z + (i + 0.5f) / res * TerrainSize.z;
                 for (int j = 0; j < res; j++)
                 {
                     float wx = TerrainOrigin.x + (j + 0.5f) / res * TerrainSize.x;
-                    float tierra = PesoDeTierra(wx, wz);
-                    mapa[i, j, 0] = 1f - tierra;                 // GrassLayer
-                    if (capas > 1) mapa[i, j, 1] = tierra;       // DirtLayer
+                    PesosDeCapas(wx, wz, w);
+                    for (int c = 0; c < capas && c < 4; c++) mapa[i, j, c] = w[c];
                 }
             }
             td.SetAlphamaps(0, 0, mapa);
@@ -291,90 +353,96 @@ namespace SP.EditorTools
             AssetDatabase.SaveAssets();
         }
 
-        // Tile mas grande (menos repeticiones visibles) y DISTINTO por capa
-        // (pasto y tierra no se repiten en el mismo patron); un toque de
-        // smoothness en el pasto para que no se vea 100% mate bajo luz
-        // dinamica. Se toca el asset compartido (.terrainlayer), no la
-        // instancia del terreno -- por eso el SetDirty + guardado aparte.
         static void AjustarCapasDeTerreno(TerrainData td)
         {
             var layers = td.terrainLayers;
-            if (layers == null || layers.Length == 0) return;
-
-            var grass = layers[0];
-            if (grass != null)
+            if (layers != null && layers.Length > 0 && layers[0] != null)
             {
-                grass.tileSize = new Vector2(15f, 15f);
-                grass.smoothness = 0.12f;
-                EditorUtility.SetDirty(grass);
+                layers[0].tileSize = new Vector2(15f, 15f);
+                layers[0].smoothness = 0.12f;
+                EditorUtility.SetDirty(layers[0]);
             }
-            if (layers.Length > 1 && layers[1] != null)
+            if (layers != null && layers.Length > 1 && layers[1] != null)
             {
-                var dirt = layers[1];
-                dirt.tileSize = new Vector2(11f, 11f);
-                EditorUtility.SetDirty(dirt);
+                layers[1].tileSize = new Vector2(11f, 11f);
+                EditorUtility.SetDirty(layers[1]);
             }
+            var todas = new TerrainLayer[4];
+            todas[0] = layers != null && layers.Length > 0 ? layers[0] : null;
+            todas[1] = layers != null && layers.Length > 1 ? layers[1] : null;
+            todas[2] = TexturasDeTerreno.Grava();
+            todas[3] = TexturasDeTerreno.Hojarasca();
+            td.terrainLayers = todas;
         }
 
-        // 0 = pasto, 1 = tierra. Formas suaves + ruido para que los bordes no
-        // sean rectas de regla.
-        static readonly Vector2[] CaminoPrincipal =
+        // 0 = pasto, 1 = tierra, 2 = grava, 3 = hojarasca (suman 1). Formas suaves + ruido para que los bordes no sean
+        // rectas de regla; cada camino tiene su piso: la carretera y el camino de servicio son de grava, el sendero del
+        // bosque de tierra pisada, y el bosque a los costados de hojarasca oscura.
+        static void PesosDeCapas(float x, float z, float[] w)
         {
-            new Vector2(4f, -10f), new Vector2(4f, 20f), new Vector2(-8f, 48f), new Vector2(4f, 74f), new Vector2(4f, 100f),
-            new Vector2(2f, 140f), new Vector2(10f, 166f), new Vector2(4f, 200f), new Vector2(4f, 226f), new Vector2(6f, 262f),
-            new Vector2(4f, 284f),
-        };
-
-        static float PesoDeTierra(float x, float z)
-        {
-            // Dos octavas: la gruesa da la ondulacion general del borde
-            // (como antes), la fina le suma mordidas chicas e irregulares.
-            // Un camino de tierra pisado de verdad no tiene un borde de una
-            // sola frecuencia prolija -- con una sola octava se notaba como
-            // una curva de manual, no como tierra gastada.
+            // Dos octavas: la gruesa da la ondulacion general del borde, la fina le suma mordidas chicas e irregulares.
             float ruidoGrueso = (Mathf.PerlinNoise(x * 0.09f + 40f, z * 0.09f + 90f) - 0.5f) * 3.4f;
             float ruidoFino = (Mathf.PerlinNoise(x * 0.35f + 500f, z * 0.35f + 700f) - 0.5f) * 1.1f;
             float ruido = ruidoGrueso + ruidoFino;
-            float d = float.MaxValue;
             var p = new Vector2(x, z);
+            const float borde = 2.6f;
 
-            // Base
-            d = Mathf.Min(d, DistRect(x, z, -54.2f, -22.3f, 62.6f, 8f));
-            // Camino principal, 10 m de ancho
-            for (int k = 0; k < CaminoPrincipal.Length - 1; k++)
-                d = Mathf.Min(d, DistSegmento(p, CaminoPrincipal[k], CaminoPrincipal[k + 1]) - 5f);
-            // Calle transversal de la aldea y sendas del campo de tiro
-            d = Mathf.Min(d, DistSegmento(p, new Vector2(-46f, 115f), new Vector2(52f, 115f)) - 3f);
-            d = Mathf.Min(d, DistSegmento(p, new Vector2(-40f, 40f), new Vector2(50f, 30f)) - 2f);
-            d = Mathf.Min(d, DistSegmento(p, new Vector2(-30f, 22f), new Vector2(0f, 60f)) - 1.5f);
-            // Plazas y patios
-            d = Mathf.Min(d, DistRect(x, z, -6f, 66f, 14f, 90f));
-            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(4f, 115f)) - 14f);
-            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(10f, 167f)) - 22f);
-            d = Mathf.Min(d, DistRect(x, z, -30f, 224f, 46f, 270f));
-            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(10f, 285f)) - 17f);
-            d = Mathf.Min(d, DistRect(x, z, -50f, 194f, 60f, 222f) + 10f);   // mancha en la chicane
-            // Manchones sueltos
-            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(-34f, 30f)) - 6f);
-            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(40f, 46f)) - 5f);
-            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(-36f, 150f)) - 7f);
-            d = Mathf.Min(d, Vector2.Distance(p, new Vector2(48f, 150f)) - 6f);
+            float Mezcla(float d) => Mathf.Clamp01(1f - Mathf.SmoothStep(0f, 1f, (d + ruido) / borde + 0.5f));
 
-            float borde = 2.6f;
-            float caminoYPlaza = Mathf.Clamp01(1f - Mathf.SmoothStep(0f, 1f, (d + ruido) / borde + 0.5f));
+            // ---- grava: carretera, camino de servicio, base, plaza, patios ----
+            float dGrava = float.MaxValue;
+            dGrava = Mathf.Min(dGrava, RutasDelNivel.DistanciaABorde(x, z, TipoDeRuta.Carretera));
+            dGrava = Mathf.Min(dGrava, RutasDelNivel.DistanciaABorde(x, z, TipoDeRuta.Servicio) + 0.8f);
+            dGrava = Mathf.Min(dGrava, DistRect(x, z, -54.2f, -22.3f, 62.6f, 4f));                      // patio de la base
+            dGrava = Mathf.Min(dGrava, Vector2.Distance(p, new Vector2(4f, 119f)) - 13f);               // plaza de la aldea
+            dGrava = Mathf.Min(dGrava, DistRect(x, z, -30f, 224f, 46f, 270f));                          // patio del fortin
+            dGrava = Mathf.Min(dGrava, DistRect(x, z, -40f, 275f, 54f, 287f));                          // patio del refugio
+            dGrava = Mathf.Min(dGrava, DistRect(x, z, -2f, 214f, 14f, 226f));                           // porton sur del fortin
+            float grava = Mezcla(dGrava);
 
-            // Manchones de tierra sueltos y sutiles en el pasto abierto,
-            // lejos del camino: un campo 100% parejo se lee como una
-            // alfombra pintada. Dos ruidos combinados (uno ancho para donde
-            // aparecen las manchas, uno fino para que el borde de cada
-            // mancha no sea un circulo perfecto) y un tope bajo (0.35) para
-            // que nunca compita visualmente con el camino real.
+            // ---- tierra: sendero del bosque, conectores, hombros de los caminos, puesto avanzado, campamentos ----
+            float dTierra = float.MaxValue;
+            dTierra = Mathf.Min(dTierra, RutasDelNivel.DistanciaABorde(x, z, TipoDeRuta.Bosque));
+            dTierra = Mathf.Min(dTierra, RutasDelNivel.DistanciaABorde(x, z, TipoDeRuta.Conector));
+            dTierra = Mathf.Min(dTierra, RutasDelNivel.DistanciaABorde(x, z, TipoDeRuta.Carretera) - 2.2f);   // hombro de la carretera
+            dTierra = Mathf.Min(dTierra, RutasDelNivel.DistanciaABorde(x, z, TipoDeRuta.Servicio) - 1.6f);
+            dTierra = Mathf.Min(dTierra, Vector2.Distance(p, new Vector2(10f, 167f)) - 20f);            // puesto avanzado
+            dTierra = Mathf.Min(dTierra, Vector2.Distance(p, new Vector2(4f, 119f)) - 17f);             // borde de la plaza
+            dTierra = Mathf.Min(dTierra, DistRect(x, z, -50f, 194f, 60f, 222f) + 12f);                  // mancha de la chicane
+            dTierra = Mathf.Min(dTierra, DistRect(x, z, -36f, 3f, -28f, 11f) - 3f);                     // alrededor de la casilla
+            foreach (var c in Campamentos) dTierra = Mathf.Min(dTierra, Vector2.Distance(p, c) - 4.5f);
+            float tierra = Mezcla(dTierra);
+
+            // ---- hojarasca: el bosque de los flancos (fuera de los caminos) ----
+            float bosqueO = Mathf.Clamp01((-30f - x) / 7f);
+            float bosqueE = Mathf.Clamp01((x - 44f) / 7f);
+            float zonaBosque = Mathf.Max(bosqueO, bosqueE);
+            // La aldea y el fortin no tienen bosque encima: se apaga con la distancia a los patios.
+            float enBase = Mathf.Clamp01((z - 12f) / 10f);
+            float manchas = Mathf.PerlinNoise(x * 0.06f + 300f, z * 0.06f + 800f);
+            float hojarasca = zonaBosque * enBase * Mathf.Lerp(0.55f, 1f, manchas);
+
+            // Manchones de tierra sueltos y sutiles en el pasto abierto (un campo 100% parejo se lee como una alfombra).
             float manchaAncha = Mathf.PerlinNoise(x * 0.05f + 1000f, z * 0.05f + 2000f);
             float manchaFina = Mathf.PerlinNoise(x * 0.22f + 3000f, z * 0.22f + 4000f);
             float desgaste = Mathf.Clamp01((manchaAncha - 0.62f) * 6f) * Mathf.Clamp01((manchaFina - 0.4f) * 3f) * 0.35f;
 
-            return Mathf.Max(caminoYPlaza, desgaste);
+            // Prioridad: grava > tierra > hojarasca > desgaste > pasto.
+            float wg = grava;
+            float wt = Mathf.Min(tierra, 1f - wg);
+            float wh = Mathf.Min(hojarasca, 1f - wg - wt);
+            float wd = Mathf.Min(desgaste, 1f - wg - wt - wh);
+            w[2] = wg;
+            w[1] = wt + wd;
+            w[3] = wh;
+            w[0] = Mathf.Max(0f, 1f - w[1] - w[2] - w[3]);
         }
+
+        // Campamentos con fogata (claros de tierra pisada); las fogatas las pone AmbientacionDelNivel en estos mismos puntos.
+        public static readonly Vector2[] Campamentos =
+        {
+            new Vector2(-36f, 148f), new Vector2(-40f, 232f), new Vector2(47f, 92f), new Vector2(48f, 232f), new Vector2(-8f, 63f),
+        };
 
         // Distancia (negativa adentro) de un punto a un rectangulo XZ.
         static float DistRect(float x, float z, float x0, float z0, float x1, float z1)
@@ -385,13 +453,6 @@ namespace SP.EditorTools
             if (fuera > 0f) return fuera;
             float adentro = Mathf.Min(Mathf.Min(x - x0, x1 - x), Mathf.Min(z - z0, z1 - z));
             return -adentro;
-        }
-
-        static float DistSegmento(Vector2 p, Vector2 a, Vector2 b)
-        {
-            var ab = b - a;
-            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / Mathf.Max(ab.sqrMagnitude, 1e-6f));
-            return Vector2.Distance(p, a + ab * t);
         }
 
         // ---------------------------------------------------------------
@@ -412,6 +473,7 @@ namespace SP.EditorTools
                 case "Muro": color = new Color(0.52f, 0.53f, 0.56f); break;
                 case "Casa": color = new Color(0.74f, 0.63f, 0.48f); break;
                 case "Torre": color = new Color(0.42f, 0.38f, 0.38f); break;
+                case "Contenedor": color = new Color(0.45f, 0.30f, 0.22f); break;
                 case "Brecha": color = new Color(0.62f, 0.45f, 0.40f); break;   // muro debil: el tanque lo rompe
                 default: color = new Color(0.36f, 0.45f, 0.30f); break; // Cobertura
             }

@@ -26,17 +26,17 @@ namespace SP.Presentation
             public bool TanqueEnemigo;
         }
 
-        // Mismos limites que LevelBlockoutBuilder (bloques de sur a norte).
+        // Mismos limites que LevelBlockoutBuilder (bloques de sur a norte). Tres caminos: ver RutasDelNivel.
         static readonly Zona[] Zonas =
         {
-            new Zona { Nombre = "1 · BASE", ZMin = -30f, ZMax = 15f, Consejo = "Tanque propio: [E] para subir" },
+            new Zona { Nombre = "1 · BASE", ZMin = -30f, ZMax = 15f, Consejo = "Tres caminos al rehen: carretera (centro), sendero del bosque (oeste), camino de servicio (este)" },
             new Zona { Nombre = "2 · CAMPO DE TIRO", ZMin = 15f, ZMax = 66f, Consejo = "Mantene [C] para ver las coberturas · [Q] radial > CUBRIRSE" },
-            new Zona { Nombre = "3 · PASO DEL CAÑON", ZMin = 66f, ZMax = 90f, Consejo = "Hueco de 18 m: pasa el tanque" },
-            new Zona { Nombre = "4 · ALDEA", ZMin = 90f, ZMax = 145f, Consejo = "Casas y calle central" },
-            new Zona { Nombre = "5 · PUESTO AVANZADO", ZMin = 145f, ZMax = 192f, TanqueEnemigo = true, Consejo = "Usa tu tanque: el cañon derriba coberturas" },
-            new Zona { Nombre = "6 · CHICANE", ZMin = 192f, ZMax = 222f, Consejo = "Muros en S: el tanque tiene que girar" },
-            new Zona { Nombre = "7 · FORTIN", ZMin = 222f, ZMax = 272f, TanqueEnemigo = true, Consejo = "Las brechas (muro rojizo) se rompen a cañonazos" },
-            new Zona { Nombre = "8 · DEPOSITO FINAL", ZMin = 272f, ZMax = 310f, TanqueEnemigo = true, Consejo = "Ultimo bloque" },
+            new Zona { Nombre = "3 · PASO DEL CAÑON", ZMin = 66f, ZMax = 90f, Consejo = "Tres pasos: sendero (oeste), hueco central (pasa el tanque) y camino de servicio (este)" },
+            new Zona { Nombre = "4 · ALDEA", ZMin = 90f, ZMax = 145f, Consejo = "Las calles cruzan los tres caminos: podes cambiar de flanco" },
+            new Zona { Nombre = "5 · PUESTO AVANZADO", ZMin = 145f, ZMax = 192f, TanqueEnemigo = true, Consejo = "Los flancos rodean el puesto: menos tanques, mas arboles" },
+            new Zona { Nombre = "6 · CHICANE", ZMin = 192f, ZMax = 222f, Consejo = "Muros en S en el centro; cada flanco tiene su puerta" },
+            new Zona { Nombre = "7 · FORTIN", ZMin = 222f, ZMax = 272f, TanqueEnemigo = true, Consejo = "Se rodea por los flancos o se entra por las brechas (muro rojizo: cañonazos)" },
+            new Zona { Nombre = "8 · REFUGIO DEL REHEN", ZMin = 272f, ZMax = 310f, TanqueEnemigo = true, Consejo = "La baliza cian marca la casa del rehen. Despues: de vuelta a la base" },
         };
 
         public static int ZonaActual { get; private set; } = -1;

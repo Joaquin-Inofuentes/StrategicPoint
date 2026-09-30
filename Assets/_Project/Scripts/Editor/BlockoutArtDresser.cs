@@ -38,6 +38,8 @@ namespace SP.EditorTools
         static readonly List<TreeInstance> arbolesTerrain = new List<TreeInstance>();
         static readonly List<Vector3> arbolesTerrainMundo = new List<Vector3>(); // copia en XZ de mundo, para separacion
         static Terrain terrenoDeArboles;
+        // Solo SC_Gameplay tiene los tres caminos de RutasDelNivel: ahi el bosque se reparte por zonas y respeta los caminos.
+        static bool nivelConRutas;
         static int prototipoArbolA = -1, prototipoArbolB = -1;
 
         // Arbustos: mismo criterio que los arboles de arriba, pero via el sistema de DETALLES del
@@ -81,6 +83,10 @@ namespace SP.EditorTools
             // 1) limpiar lo anterior
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include))
                 if (t != null && t.name == RaizNombre) Object.DestroyImmediate(t.gameObject);
+            // Los colliders de los arboles de la corrida anterior frenarian la plantacion nueva (Physics.OverlapSphere
+            // los vería como obstaculos): se borran ANTES de repartir; GenerarCollidersDeArbol los rehace al final.
+            var collidersViejos = GameObject.Find("ArteMundo/ArbolesColliders");
+            if (collidersViejos != null) Object.DestroyImmediate(collidersViejos);
             var ambienteViejo = GameObject.Find("ArteMundo/Ambiente");
             if (ambienteViejo != null)
                 for (int i = ambienteViejo.transform.childCount - 1; i >= 0; i--)
@@ -166,6 +172,7 @@ namespace SP.EditorTools
                 case "Brecha": n = Muro(raiz, s, suelo, "P_Mod_Muro_RotoAlto", false); break;
                 case "Casa": n = Edificio(raiz, s, suelo, false, cubo.position); break;
                 case "Torre": n = Edificio(raiz, s, suelo, true, cubo.position); break;
+                case "Contenedor": n = Edificio(raiz, s, suelo, true, cubo.position, conArma: false); break;
                 case "Bidon": n = Ajustar(raiz, "P_Env_Barril", Vector3.zero, s, suelo, 0f); break;
                 case "Caja": n = Cajas(raiz, s, suelo); break;
                 default: n = Cobertura(raiz, s, suelo, nombre, hash); break;
@@ -456,7 +463,7 @@ namespace SP.EditorTools
 
         // Casa / cuartel / torre: 4 paredes de modulos (puerta mirando a la ruta central,
         // ventanas alternadas), pilares en las esquinas y techo de losas.
-        static int Edificio(Transform raiz, Vector3 s, float suelo, bool torre, Vector3 mundo)
+        static int Edificio(Transform raiz, Vector3 s, float suelo, bool torre, Vector3 mundo, bool conArma = true)
         {
             float t = 0.39f * 1.5f;
             float sy = s.y / 2.87f;
@@ -496,7 +503,7 @@ namespace SP.EditorTools
                     var pos = new Vector3(-s.x * 0.5f + (ix + 0.5f) * s.x / nx, suelo + s.y - 0.37f, -s.z * 0.5f + (iz + 0.5f) * s.z / nz);
                     if (Poner(raiz, "P_Mod_Losa", pos, 0f, new Vector3(lx, 1f, lz)) != null) n++;
                 }
-            if (torre && Poner(raiz, "P_Env_Emplazamiento_MG", new Vector3(0f, suelo + s.y, 0f), 0f, Vector3.one * 1.6f) != null) n++;
+            if (torre && conArma && Poner(raiz, "P_Env_Emplazamiento_MG", new Vector3(0f, suelo + s.y, 0f), 0f, Vector3.one * 1.6f) != null) n++;
             return n;
         }
 
@@ -520,6 +527,22 @@ namespace SP.EditorTools
             float L = aX ? s.x : s.z, T = aX ? s.z : s.x;
 
             if (nombre.StartsWith("Caja")) return Cajas(raiz, s, suelo);
+            if (nombre.StartsWith("Erizo"))
+                return Ajustar(raiz, "P_Env_Barricada_Erizo", Vector3.zero, s, suelo, 0f);
+            if (nombre.StartsWith("MuroCaido"))
+                return Ajustar(raiz, "P_Env_Muro_Caido", Vector3.zero, s, suelo, aX ? 0f : 90f);
+            if (nombre.StartsWith("Valla"))
+            {
+                int kv = Mathf.Max(1, Mathf.RoundToInt(L / 3.83f));
+                int nv = 0;
+                for (int i = 0; i < kv; i++)
+                {
+                    float u = -L * 0.5f + (i + 0.5f) * L / kv;
+                    var pos = aX ? new Vector3(u, suelo, 0f) : new Vector3(0f, suelo, u);
+                    if (Poner(raiz, "P_Mod_Valla_Alambrado", pos, aX ? 0f : 90f, new Vector3(L / kv / 3.83f, s.y / 2.01f, 1f)) != null) nv++;
+                }
+                return nv;
+            }
             if (nombre.StartsWith("Carro"))
                 return Ajustar(raiz, "P_Env_Auto_Quemado", Vector3.zero, s, suelo, aX ? 90f : 0f);
             if (nombre.StartsWith("Pozo"))
@@ -604,7 +627,7 @@ namespace SP.EditorTools
         [MenuItem("Strategic Point/Arte/11. Generar colliders de arboles (segun Terrain actual)")]
         public static void GenerarCollidersDeArbolMenu()
         {
-            var terreno = Terrain.activeTerrain;
+            var terreno = LevelBlockoutBuilder.TerrenoPrincipal();
             GenerarCollidersDeArbol(terreno);
             if (terreno != null)
             {
@@ -690,8 +713,106 @@ namespace SP.EditorTools
         // Mismo criterio de dispersion con reintentos que tenian ArbolA/ArbolB en la lista de
         // Repartir() (mismas cantidades base, mismo "lejos de la ruta"), pero escribiendo a
         // arbolesTerrain en vez de instanciar un prefab.
+        // BOSQUE POR ZONAS (solo SC_Gameplay). Los flancos del mapa (x < -30 y x > 44) son bosque denso; el centro, la
+        // aldea y los patios llevan solo unos pocos arboles sueltos. Los caminos de RutasDelNivel quedan despejados
+        // (mas ancho en la carretera, mas angosto en el sendero del bosque) y nada nace sobre un cubo ni sobre otro arbol.
+        static float DensidadDeArboles(float x, float z)
+        {
+            float oeste = Mathf.Clamp01((-24f - x) / 8f), este = Mathf.Clamp01((x - 36f) / 8f);
+            float flanco = Mathf.Max(oeste, este);
+            // Bosquecillos sueltos en el centro (entre la carretera y las casas) para que no sea un descampado.
+            float bosquecillo = Mathf.Clamp01((Mathf.PerlinNoise(x * 0.045f + 11f, z * 0.045f + 5f) - 0.6f) * 5f) * 0.65f;
+            // La base (z < 12) queda despejada: ahi se planta el helipuerto y arranca la escuadra.
+            float enBase = Mathf.Clamp01((z - 12f) / 8f);
+            return Mathf.Max(Mathf.Lerp(0.035f, 1f, flanco), bosquecillo) * enBase;
+        }
+
+        // Zonas donde NO nace nada (ni arboles ni arbustos ni props): los patios de los enemigos con tanque y la plaza --
+        // los tanques patrullan ahi y un tronco o un crater les cortaria la ruta. x0, z0, x1, z1.
+        static readonly float[][] ZonasDespejadas =
+        {
+            new[] { -8f, 150f, 44f, 192f },     // puesto avanzado (tanque 1)
+            new[] { -29f, 226f, 45f, 269f },    // patio del fortin (tanque 2)
+            new[] { -34f, 274f, 46f, 296f },    // patio del refugio (tanque 3 y casa del rehen)
+            new[] { -10f, 108f, 20f, 130f },    // plaza de la aldea (aca se resiste)
+            new[] { -12f, 198f, 60f, 212f },    // pasillo de la chicane
+        };
+
+        static bool EnZonaDespejada(float x, float z)
+        {
+            foreach (var r in ZonasDespejadas)
+                if (x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3]) return true;
+            return false;
+        }
+
+        static float DespejeDeRuta(float x, float z)
+        {
+            int idx;
+            float d = RutasDelNivel.DistanciaABorde(x, z, out idx);
+            if (idx < 0) return float.MaxValue;
+            var t = RutasDelNivel.Todas[idx].Tipo;
+            // d es la distancia al BORDE del camino; el margen exigido depende del tipo (la carretera queda bien abierta).
+            float margen = t == TipoDeRuta.Carretera ? 4.5f : t == TipoDeRuta.Conector ? 2.2f : 1.6f;
+            return d - margen;
+        }
+
+        static void EsparcirBosqueDelNivel(float x0, float x1, float z0, float z1, System.Random rnd)
+        {
+            const float separacionMinima = 2.3f;
+            int meta = 1100, puestos = 0, intentos = 0;
+            while (puestos < meta && intentos++ < meta * 60)
+            {
+                float x = Mathf.Lerp(x0, x1, (float)rnd.NextDouble()), z = Mathf.Lerp(z0, z1, (float)rnd.NextDouble());
+                if ((float)rnd.NextDouble() > DensidadDeArboles(x, z)) continue;
+                if (DespejeDeRuta(x, z) < 0f || EnZonaDespejada(x, z)) continue;
+                bool libre = true;
+                foreach (var c in Physics.OverlapSphere(new Vector3(x, 2f, z), 2.4f))
+                    if (!(c is TerrainCollider) && c.name != "Ground") { libre = false; break; }
+                if (libre)
+                    foreach (var p in arbolesTerrainMundo)
+                        if ((p.x - x) * (p.x - x) + (p.z - z) * (p.z - z) < separacionMinima * separacionMinima) { libre = false; break; }
+                if (!libre) continue;
+
+                int proto = rnd.NextDouble() < 0.55 ? prototipoArbolB : prototipoArbolA;
+                if (proto < 0) proto = Mathf.Max(prototipoArbolA, prototipoArbolB);
+                AgregarArbolTerreno(new Vector3(x, 0f, z), proto, Mathf.Lerp(0.9f, 1.5f, (float)rnd.NextDouble()), rnd);
+                puestos++;
+            }
+        }
+
+        static void EsparcirArbustosDelNivel(float x0, float x1, float z0, float z1, System.Random rnd)
+        {
+            var capas = new[] { capaArbustoGrande, capaArbustoMedio };
+            const float separacionMinima = 1.6f;
+            int meta = 520, puestos = 0, intentos = 0;
+            while (puestos < meta && intentos++ < meta * 60)
+            {
+                float x = Mathf.Lerp(x0, x1, (float)rnd.NextDouble()), z = Mathf.Lerp(z0, z1, (float)rnd.NextDouble());
+                // Arbustos: un poco mas repartidos que los arboles (tambien bordean los caminos, pero sin pisarlos).
+                float dens = Mathf.Max(DensidadDeArboles(x, z), 0.05f);
+                if ((float)rnd.NextDouble() > dens) continue;
+                if (DespejeDeRuta(x, z) < -0.5f || EnZonaDespejada(x, z)) continue;
+                bool libre = true;
+                foreach (var c in Physics.OverlapSphere(new Vector3(x, 2f, z), 2f))
+                    if (!(c is TerrainCollider) && c.name != "Ground") { libre = false; break; }
+                if (libre)
+                    foreach (var p in arbolesTerrainMundo)
+                        if ((p.x - x) * (p.x - x) + (p.z - z) * (p.z - z) < 2f * 2f) { libre = false; break; }
+                if (libre)
+                    foreach (var p in arbustosTerrainMundo)
+                        if ((p.x - x) * (p.x - x) + (p.z - z) * (p.z - z) < separacionMinima * separacionMinima) { libre = false; break; }
+                if (!libre) continue;
+
+                int capa = capas[rnd.Next(capas.Length)];
+                if (capa < 0) capa = Mathf.Max(capas[0], capas[1]);
+                AgregarArbustoTerreno(new Vector3(x, 0f, z), capa);
+                puestos++;
+            }
+        }
+
         static void EsparcirArbolesInterior(float x0, float x1, float z0, float z1, float ejeX, float factorArea, System.Random rnd)
         {
+            if (nivelConRutas) { EsparcirBosqueDelNivel(x0, x1, z0, z1, rnd); return; }
             var tipos = new (int prototipo, int cantidadBase)[] { (prototipoArbolA, 46), (prototipoArbolB, 38) };
             const float separacionMinima = 2.2f; // copas de ~2-2.5 m de radio: que no se pisen entre si
             foreach (var (prototipo, cantidadBase) in tipos)
@@ -820,6 +941,7 @@ namespace SP.EditorTools
         // pisar arboles Y otros arbustos (arbolesTerrainMundo + arbustosTerrainMundo).
         static void EsparcirArbustosInterior(float x0, float x1, float z0, float z1, float ejeX, float factorArea, System.Random rnd)
         {
+            if (nivelConRutas) { EsparcirArbustosDelNivel(x0, x1, z0, z1, rnd); return; }
             var tipos = new (int capa, int cantidadBase)[] { (capaArbustoGrande, 34), (capaArbustoMedio, 44) };
             const float separacionMinima = 1.6f;
             foreach (var (capa, cantidadBase) in tipos)
@@ -862,7 +984,8 @@ namespace SP.EditorTools
                 ambiente.transform.SetParent(arte.transform, false);
             }
             Physics.SyncTransforms();
-            var terreno = Terrain.activeTerrain;
+            var terreno = LevelBlockoutBuilder.TerrenoPrincipal();
+            nivelConRutas = SceneManager.GetActiveScene().name == "SC_Gameplay";
             var rnd = new System.Random(4242);
             PrepararPrototiposDeArbol(terreno);
             PrepararPrototiposDeArbusto(terreno);
@@ -910,6 +1033,7 @@ namespace SP.EditorTools
                     float x = Mathf.Lerp(x0, x1, (float)rnd.NextDouble()), z = Mathf.Lerp(z0, z1, (float)rnd.NextDouble());
                     if (lejos && Mathf.Abs(x - ejeX) < 11f) continue;
                     if (!lejos && Mathf.Abs(x - ejeX) < 3f) continue;
+                    if (nivelConRutas && (RutasDelNivel.DistanciaABorde(x, z) < 1.5f || EnZonaDespejada(x, z))) continue;   // los caminos y los patios de tanques quedan libres
                     float y = terreno != null ? terreno.SampleHeight(new Vector3(x, 0f, z)) + terreno.transform.position.y : 0f;
                     bool libre = true;
                     foreach (var c in Physics.OverlapSphere(new Vector3(x, y + 1.5f, z), 3.2f))
@@ -942,7 +1066,7 @@ namespace SP.EditorTools
             // instancia se cuelga ahora una Light de verdad en la punta.
             var farol = P("P_Env_Farol");
             int indiceFarol = 0;
-            if (farol != null)
+            if (farol != null && !nivelConRutas)
                 for (float z = z0 + 10f; z < z1 - 6f; z += 15f)
                     foreach (var lado in new[] { -9f, 17f })
                     {

@@ -207,7 +207,7 @@ namespace SP.Mision
                 case FaseDeMision.Rescatar:
                 {
                     titulo.text = "OBJETIVO 3/4 · RESCATAR AL CIVIL";
-                    detalle.text = $"Acercate al civil para rescatarlo · {Mathf.RoundToInt(d)} m";
+                    detalle.text = $"Llega al refugio del civil (norte) y acercate para rescatarlo · {Mathf.RoundToInt(d)} m";
                     SetBarra(0f, amarillo);
                     break;
                 }

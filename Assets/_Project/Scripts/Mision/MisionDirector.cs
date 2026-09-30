@@ -48,7 +48,7 @@ namespace SP.Mision
         [SerializeField] Transform marcadorRefugioCivil;
         [SerializeField] Vector3 plazaPorDefecto = new Vector3(4f, 0f, 119f);
         [SerializeField] Vector3 helipuertoPorDefecto = new Vector3(-26f, 0f, -8f);
-        [SerializeField] Vector3 refugioDelCivilPorDefecto = new Vector3(-2f, 0f, 124f);
+        [SerializeField] Vector3 refugioDelCivilPorDefecto = new Vector3(4f, 0f, 283f);
 
         public Vector3 Plaza => marcadorPlaza != null ? marcadorPlaza.position : plazaPorDefecto;
         public Vector3 Helipuerto => marcadorHelipuerto != null ? marcadorHelipuerto.position : helipuertoPorDefecto;
@@ -437,9 +437,10 @@ namespace SP.Mision
 
         // Refuerzos al salir con el civil: pedido explicito "q vayan apareciendo desde el bosque
         // cuando estes llendo al helicoptero, osea son 2 zonas de re aparicion de enemigos" -- junto
-        // con LanzarLineasEnemigas() (movida mas adentro del predio), esta es la segunda zona. En vez
-        // de aparecer en campo abierto entre la plaza y la base, salen de la linea de arboles del
-        // borde oeste (X ~ -46, mismo lado que el Helipuerto) a lo largo del tramo de vuelta.
+        // con LanzarLineasEnemigas() (movida mas adentro del predio), esta es la segunda zona. El rehen ahora
+        // esta en el extremo norte (~300 m de la base): la vuelta es larga, asi que los refuerzos salen de la
+        // linea de arboles de AMBOS flancos -- el sendero del bosque (oeste, cerca de la base) y el camino de
+        // servicio (este, a la altura de la aldea) -- y esperan la vuelta patrullando sus caminos.
         void LanzarRefuerzos()
         {
             refuerzosLanzados = true;
@@ -450,8 +451,15 @@ namespace SP.Mision
                 var s = CrearEnemigo($"Enemigo_Bosque_{i + 1}", puntos[i], 90f);
                 if (s != null) Patrullar(s, 6f, 4f);
             }
+            int ne = Escalar(3);
+            var este = PosicionesEnFranja(50f, 55f, 96f, 190f, ne, 12f);
+            for (int i = 0; i < ne; i++)
+            {
+                var s = CrearEnemigo($"Enemigo_Servicio_{i + 1}", este[i], 270f);
+                if (s != null) Patrullar(s, 3f, 6f);
+            }
             // Pedido explicito: quitar el aviso "REFUERZOS ENEMIGOS EN EL CAMINO DE VUELTA" -- molesta.
-            GameLog.Line($"Mision: refuerzos desde el bosque ({n})");
+            GameLog.Line($"Mision: refuerzos desde el bosque ({n}) y el camino de servicio ({ne})");
         }
 
         // BUG REAL encontrado testeando el nivel: el helipuerto esta a ~13 m del muro sur, asi que la
@@ -613,7 +621,7 @@ namespace SP.Mision
                     if (baliza != null) { baliza.Quitar(); baliza = null; }
                     AparecerCivil();
                     CambiarFase(FaseDeMision.Rescatar);
-                    AlertQueue.Push("¡AGUANTASTE! UN CIVIL PIDE AYUDA: ROMPE EL CERCO Y SACALO", AlertPriority.Alta, 3.5f);
+                    AlertQueue.Push("¡AGUANTASTE! UN CIVIL PIDE AYUDA EN EL REFUGIO, AL NORTE: ELEGI TU CAMINO Y SACALO", AlertPriority.Alta, 3.5f);
                 }
             }
             else
