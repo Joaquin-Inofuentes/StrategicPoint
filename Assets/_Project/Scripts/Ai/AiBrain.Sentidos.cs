@@ -37,9 +37,55 @@ namespace SP.Ai
         public bool TieneLineaDeTiro(Soldier objetivo)
         {
             if (objetivo == null || self == null) return false;
+            // Un enemigo metido en un arbusto o en el bosque NO puede disparar: "si o si ataquen solamente afuera"
+            // (ver Vegetacion). Sin linea de tiro la IA cae en Chase, y ahi sale a cielo abierto (SalirDeLaVegetacion).
+            if (EnVegetacion) return false;
+            return VeFisicamente(objetivo);
+        }
+
+        // La linea de tiro real (paredes), sin la regla de la vegetacion: sirve para no soltar al blanco mientras el enemigo sale del monte.
+        bool VeFisicamente(Soldier objetivo)
+        {
+            if (objetivo == null || self == null) return false;
             return SP.Core.NavService.HayLineaDeTiro(
                 self.transform.position, objetivo.transform.position,
                 self.transform, objetivo.transform);
+        }
+
+        // Enemigo parado dentro de un arbusto o del bosque (solo en la partida principal).
+        public bool EnVegetacion => self != null && self.Team == TeamId.Enemy && SP.Core.Vegetacion.Dentro(self.transform.position);
+
+        Vector3 salidaDelMonte;
+        bool tieneSalidaDelMonte;
+        float relojSalidaDelMonte;
+
+        // Enemigo en el monte con un blanco fijado: camina al claro mas cercano antes de pelear. Devuelve true si este tick lo uso para eso.
+        bool SalirDeLaVegetacion(float dt)
+        {
+            if (!EnVegetacion) { tieneSalidaDelMonte = false; return false; }
+            relojSalidaDelMonte -= dt;
+            if (!tieneSalidaDelMonte || relojSalidaDelMonte <= 0f)
+            {
+                relojSalidaDelMonte = 1.5f;
+                tieneSalidaDelMonte = SP.Core.Vegetacion.TryPuntoLibre(self.transform.position, out salidaDelMonte);
+                if (tieneSalidaDelMonte) PlanPathTo(salidaDelMonte);
+            }
+            if (!tieneSalidaDelMonte) return false;   // sin claro cerca: que pelee como pueda (igual no dispara, pero no se queda clavado)
+            self.Motor.SetCrouching(false);
+            AdvanceTo(salidaDelMonte, 0.5f, dt);
+            return true;
+        }
+
+        // En el borde del monte: si el proximo paso hacia el punto lo metia adentro, se queda afuera encarando al blanco.
+        bool EnemigoNoEntraAlMonte(Vector3 haciaPunto, float dt)
+        {
+            if (self.Team != TeamId.Enemy || !SP.Core.Vegetacion.Rige) return false;
+            var d = haciaPunto - self.transform.position; d.y = 0f;
+            if (d.sqrMagnitude < 0.01f) return false;
+            var paso = self.transform.position + d.normalized * 1.8f;
+            if (!SP.Core.Vegetacion.Dentro(paso)) return false;
+            if (target != null) self.Motor.LookTowards(target.transform.position, dt);
+            return true;
         }
 
         // ------------------------------------------------------------------

@@ -29,14 +29,14 @@ namespace SP.Presentation
         // Mismos limites que LevelBlockoutBuilder (bloques de sur a norte). Tres caminos: ver RutasDelNivel.
         static readonly Zona[] Zonas =
         {
-            new Zona { Nombre = "1 · BASE", ZMin = -30f, ZMax = 15f, Consejo = "Tres caminos al rehen: carretera (centro), sendero del bosque (oeste), camino de servicio (este)" },
+            new Zona { Nombre = "1 · BASE", ZMin = -30f, ZMax = 15f, Consejo = "Cada camino pide un rol: ASALTO abre las compuertas del oeste · FRANCOTIRADOR apaga las luces del este · MEDICO sostiene la carretera" },
             new Zona { Nombre = "2 · CAMPO DE TIRO", ZMin = 15f, ZMax = 66f, Consejo = "Mantene [C] para ver las coberturas · [Q] radial > CUBRIRSE" },
-            new Zona { Nombre = "3 · PASO DEL CAÑON", ZMin = 66f, ZMax = 90f, Consejo = "Tres pasos: sendero (oeste), hueco central (pasa el tanque) y camino de servicio (este)" },
-            new Zona { Nombre = "4 · ALDEA", ZMin = 90f, ZMax = 145f, Consejo = "Las calles cruzan los tres caminos: podes cambiar de flanco" },
-            new Zona { Nombre = "5 · PUESTO AVANZADO", ZMin = 145f, ZMax = 192f, TanqueEnemigo = true, Consejo = "Los flancos rodean el puesto: menos tanques, mas arboles" },
-            new Zona { Nombre = "6 · CHICANE", ZMin = 192f, ZMax = 222f, Consejo = "Muros en S en el centro; cada flanco tiene su puerta" },
-            new Zona { Nombre = "7 · FORTIN", ZMin = 222f, ZMax = 272f, TanqueEnemigo = true, Consejo = "Se rodea por los flancos o se entra por las brechas (muro rojizo: cañonazos)" },
-            new Zona { Nombre = "8 · REFUGIO DEL REHEN", ZMin = 272f, ZMax = 310f, TanqueEnemigo = true, Consejo = "La baliza cian marca la casa del rehen. Despues: de vuelta a la base" },
+            new Zona { Nombre = "3 · PASO DEL CAÑON", ZMin = 66f, ZMax = 90f, Consejo = "Oeste: COMPUERTA blindada (solo el Asalto la demuele) · vigias en las torres: se los iguala con el Francotirador" },
+            new Zona { Nombre = "4 · ALDEA", ZMin = 90f, ZMax = 145f, Consejo = "Las calles cruzan los tres caminos: cambia de flanco... y de soldado (1/2/3) segun lo que venga" },
+            new Zona { Nombre = "5 · PUESTO AVANZADO", ZMin = 145f, ZMax = 192f, TanqueEnemigo = true, Consejo = "Polvorines (barriles con cartel amarillo): un tiro del Francotirador y vuela el grupo entero" },
+            new Zona { Nombre = "6 · CHICANE", ZMin = 192f, ZMax = 222f, Consejo = "Muros en S en el centro; cada flanco tiene su puerta · la luz te delata: mira el cartel A LA LUZ / EN LA SOMBRA" },
+            new Zona { Nombre = "7 · FORTIN", ZMin = 222f, ZMax = 272f, TanqueEnemigo = true, Consejo = "Antena de radio al este del fortin: demolerla evita los refuerzos de la vuelta · porton norte sellado: carga del Asalto" },
+            new Zona { Nombre = "8 · REFUGIO DEL REHEN", ZMin = 272f, ZMax = 310f, TanqueEnemigo = true, Consejo = "La baliza cian marca al rehen. Al sacarlo, el enemigo CIERRA el camino por el que subiste: volve por otro" },
         };
 
         public static int ZonaActual { get; private set; } = -1;

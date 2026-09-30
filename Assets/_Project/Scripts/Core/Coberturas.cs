@@ -246,6 +246,7 @@ namespace SP.Core
                 if (distanciaDeTiro < float.MaxValue
                     && (puntos[i] - objetivo.transform.position).sqrMagnitude > distanciaDeTiro * distanciaDeTiro)
                     continue;
+                if (EnemigoEnElMonte(quien, puntos[i])) continue;   // desde un arbusto el enemigo no puede disparar
                 if (!HayLineaDeTiroDesde(puntos[i] + alturaDeTiro, objetivo, quien)) continue;
                 mejor = d;
                 elegida = puntos[i];
@@ -272,6 +273,7 @@ namespace SP.Core
                 if (d > mejor) continue;
                 float dObj = Vector3.Distance(puntos[i], objetivo.transform.position);
                 if (dObj < minimo || dObj > maximo) continue;
+                if (EnemigoEnElMonte(quien, puntos[i])) continue;   // desde un arbusto el enemigo no puede disparar
                 if (!HayLineaDeTiroDesde(puntos[i] + alturaDeTiro, objetivo, quien)) continue;
                 mejor = d;
                 punto = puntos[i];
@@ -279,6 +281,9 @@ namespace SP.Core
             }
             return dueno != null;
         }
+
+        static bool EnemigoEnElMonte(Soldier quien, Vector3 punto) =>
+            quien != null && quien.Team == SP.Combat.TeamId.Enemy && Vegetacion.Dentro(punto);
 
         // F2: se puede disparar al objetivo parado en ese punto. 'quien'
         // se ignora en el rayo porque su cuerpo todavia esta en otro lado

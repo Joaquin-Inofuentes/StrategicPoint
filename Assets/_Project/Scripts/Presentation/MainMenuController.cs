@@ -82,6 +82,18 @@ namespace SP.Presentation
             {
                 var nivel = niveles[i];
                 var d = Dificultad.Datos(nivel);
+                bool elegida = nivel == Dificultad.Actual;   // FACIL por defecto; despues, la ultima que elegiste
+                if (elegida)
+                {
+                    var marco = new GameObject("Marco_" + d.Nombre, typeof(RectTransform), typeof(Image));
+                    marco.transform.SetParent(panelDificultad.transform, false);
+                    marco.GetComponent<Image>().color = Color.white;
+                    marco.GetComponent<Image>().raycastTarget = false;
+                    var mrt = marco.GetComponent<RectTransform>();
+                    mrt.anchorMin = mrt.anchorMax = new Vector2(0.5f, 0.45f);
+                    mrt.anchoredPosition = new Vector2((i - 1) * 470f * E, 0f);
+                    mrt.sizeDelta = new Vector2(440f * E + 8f, 360f * E + 8f);
+                }
                 var go = new GameObject("Dificultad_" + d.Nombre, typeof(RectTransform), typeof(Image), typeof(Button));
                 go.transform.SetParent(panelDificultad.transform, false);
                 go.GetComponent<Image>().color = colores[i];
@@ -90,6 +102,7 @@ namespace SP.Presentation
                 rt.anchoredPosition = new Vector2((i - 1) * 470f * E, 0f);
                 rt.sizeDelta = new Vector2(440f * E, 360f * E);
                 Texto(go.transform, font, d.Nombre, F(40), new Vector2(0.5f, 0.86f), new Vector2(420f * E, 60f * E), Color.white);
+                if (elegida) Texto(go.transform, font, nivel == NivelDificultad.Facil && !PlayerPrefs.HasKey("sp_dificultad_v2") ? "POR DEFECTO" : "ELEGIDA", F(18), new Vector2(0.5f, 0.945f), new Vector2(300f * E, 26f * E), new Color(1f, 0.95f, 0.6f));
                 Texto(go.transform, font, Dificultad.Resumen(nivel), F(22), new Vector2(0.5f, 0.52f), new Vector2(420f * E, 150f * E), Color.white, TextAnchor.MiddleLeft);
                 Texto(go.transform, font, d.Frase, F(20), new Vector2(0.5f, 0.15f), new Vector2(400f * E, 80f * E), new Color(1f, 1f, 1f, 0.85f));
                 var b = go.GetComponent<Button>();

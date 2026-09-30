@@ -8,6 +8,10 @@ namespace SP.Presentation
         public int Health = 1;
         private bool isBroken = false;
 
+        // La luz cuenta para la vision de los enemigos (IluminacionTactica): romper la lampara la apaga y te esconde.
+        void OnEnable() { var l = GetComponent<Light>(); if (l != null && !isBroken) IluminacionTactica.Registrar(l); }
+        void OnDisable() { var l = GetComponent<Light>(); if (l != null) IluminacionTactica.Quitar(l); }
+
         public void TakeDamage(int amount, Vector3 hitPoint)
         {
             if (isBroken) return;

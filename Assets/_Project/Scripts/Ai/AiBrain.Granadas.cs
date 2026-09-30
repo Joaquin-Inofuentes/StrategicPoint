@@ -119,6 +119,7 @@ namespace SP.Ai
             bool aliado = self.Team == TeamId.Player;
             if (!aliado && !(Dificultad.Activa && Dificultad.Actual == NivelDificultad.Dificil)) return;   // los enemigos solo en DIFICIL
             if (State != AiState.Attack && State != AiState.Chase) return;
+            if (EnVegetacion) return;   // los enemigos tampoco tiran granadas desde el monte
 
             var origen = self.transform.position + Vector3.up * 1.6f + self.transform.forward * 0.4f;
             var haciaBlanco = target.transform.position - self.transform.position;

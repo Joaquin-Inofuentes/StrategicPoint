@@ -786,7 +786,7 @@ namespace SP.Ai
             bool enCombateConTarget = State == AiState.Chase || State == AiState.Attack || State == AiState.MovingToAttackOrder;
             if (target != null && enCombateConTarget)
             {
-                if (TieneLineaDeTiro(target))
+                if (VeFisicamente(target))   // no TieneLineaDeTiro: salir del monte no cuenta como "perdi de vista"
                 {
                     segundosSinLineaDeTiro = 0f;
                 }
@@ -1019,6 +1019,10 @@ namespace SP.Ai
                     if (target == null) { SetState(followTarget != null ? AiState.Follow : AiState.Patrol); break; }
                     float d = Vector3.Distance(self.transform.position, target.transform.position);
 
+                    // Enemigo dentro de un arbusto o del bosque: primero sale al claro (solo pelea afuera).
+                    // (Solo si lo ve de verdad: si hay una pared en medio, el rodeo de abajo puede cruzar un matorral.)
+                    if (VeFisicamente(target) && SalirDeLaVegetacion(dt)) break;
+
                     // La linea de tiro se pregunta ACA, no solo al gatillar.
                     // Sin esta mitad, el gate de disparo hacia oscilar el
                     // estado: Chase veia al enemigo en rango y pasaba a
@@ -1079,7 +1083,8 @@ namespace SP.Ai
                             // Con linea de tiro, el acercamiento de siempre:
                             // frenar al 85% del alcance esta bien, porque
                             // desde ahi ya se puede disparar.
-                            self.Motor.MoveTowards(target.transform.position, EffectiveAttackRange * 0.85f, dt);
+                            if (!EnemigoNoEntraAlMonte(target.transform.position, dt))
+                                self.Motor.MoveTowards(target.transform.position, EffectiveAttackRange * 0.85f, dt);
                         }
                         else
                         {

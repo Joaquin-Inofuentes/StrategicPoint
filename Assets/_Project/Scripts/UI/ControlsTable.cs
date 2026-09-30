@@ -116,7 +116,7 @@ namespace SP.UI
             new ControlEntry("Clic", "disparar la metralleta del tanque", ControlContext.VehiculoPasajero),
             new ControlEntry("Clic", "seleccionar al aliado o al vehículo bajo el cursor", ControlContext.Rts),
 
-            new ControlEntry("Q", "tocar (menos de 1 s): TODOS los aliados te siguen, sí o sí · mantener: radial de órdenes (solo ofrece lo que podés hacer con lo que apuntás)", ControlContext.FpsAPie | AdentroDelVehiculo, SP.Player.KeyBindings.CiclarPosesion),
+            new ControlEntry("Q", "tocar 2 veces seguidas (en menos de 1 s): TODOS los aliados te siguen, sí o sí · mantener: radial de órdenes (solo ofrece lo que podés hacer con lo que apuntás)", ControlContext.FpsAPie | AdentroDelVehiculo, SP.Player.KeyBindings.CiclarPosesion),
 
             new ControlEntry("Clic der.", "mantener: mirar por la mira del arma (primera persona con zoom)", ControlContext.FpsAPie),
             new ControlEntry("Clic der.", "mantener: mirar por la mira del cañón o de la metralleta", ControlContext.VehiculoArtillero | ControlContext.VehiculoPasajero),

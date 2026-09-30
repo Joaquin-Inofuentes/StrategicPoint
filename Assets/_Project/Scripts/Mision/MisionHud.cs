@@ -92,6 +92,7 @@ namespace SP.Mision
             h.Refrescar();
             
             CartelVolverView.Crear();
+            IndicadorDeExposicion.Crear(raiz);
             return h;
         }
 

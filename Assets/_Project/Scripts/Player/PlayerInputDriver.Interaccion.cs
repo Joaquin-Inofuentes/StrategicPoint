@@ -64,12 +64,26 @@ namespace SP.Player
             return it == null ? null : "[Q] " + it.GetPrompt(this);
         }
 
-        // Toque de [Q] (menos de 1 s sin elegir nada en el radial): TODA la escuadra te sigue, si o si.
-        // Pedido explicito de esta ronda; reemplaza la accion contextual de la ronda 12 (atacar al apuntado, curar,
-        // seguir a un aliado, subir al tanque), que sigue disponible manteniendo [Q] en el radial. Unica excepcion:
-        // si apuntas a un aliado CAIDO y hay medico, el toque lo reanima (es lo que promete el cartel "[Q] REVIVIR").
+        // DOBLE toque de [Q] (dos toques seguidos, el segundo a menos de 1 s del primero, sin elegir nada en el radial):
+        // TODA la escuadra te sigue, si o si. Un toque solo NO hace nada (antes seguian con un toque y salia sin querer).
+        // Pedido explicito; reemplaza la accion contextual de la ronda 12 (atacar al apuntado, curar, seguir a un aliado,
+        // subir al tanque), que sigue disponible manteniendo [Q] en el radial. Unica excepcion: si apuntas a un aliado
+        // CAIDO y hay medico, UN toque lo reanima (es lo que promete el cartel "[Q] REVIVIR").
         // Devuelve en UltimaAccionRapida lo que hizo (para la suite y el tutorial).
         public string UltimaAccionRapida { get; private set; }
+
+        // Tiempo maximo entre los dos toques.
+        public const float VentanaDobleToque = 1f;
+        float ultimoToqueQ = -99f;
+
+        // Registra un toque de [Q]; devuelve true si este es el SEGUNDO seguido dentro de la ventana.
+        bool EsDobleToqueDeQ()
+        {
+            float ahora = Time.unscaledTime;
+            if (ahora - ultimoToqueQ <= VentanaDobleToque) { ultimoToqueQ = -99f; return true; }
+            ultimoToqueQ = ahora;
+            return false;
+        }
 
         void AccionRapidaDeQ()
         {
@@ -79,6 +93,7 @@ namespace SP.Player
             {
                 if (EjecutarOrdenRadial(MenuDeOrdenes.Curar, 3)) { UltimaAccionRapida = "REVIVIR"; return; }
             }
+            if (!EsDobleToqueDeQ()) return;   // el primer toque solo arma la ventana
             if (SeguirTodosSiOSi() > 0) UltimaAccionRapida = "SEGUIR TODOS";
         }
 

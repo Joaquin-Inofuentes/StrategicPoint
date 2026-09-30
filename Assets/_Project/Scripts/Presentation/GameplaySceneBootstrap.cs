@@ -75,6 +75,8 @@ namespace SP.Presentation
             {
                 int ajustados = SP.Core.Dificultad.AplicarVida();
                 GameLog.Line($"Dificultad {SP.Core.Dificultad.PerfilActual.Nombre}: vida ajustada en {ajustados} soldados");
+                int fuera = SP.Core.Vegetacion.DespejarEnemigosIniciales();
+                if (fuera > 0) GameLog.Line($"{fuera} enemigos que arrancaban entre arbustos se corrieron al claro (solo atacan afuera del monte)");
             }
 
             // El soldado de asalto puede demoler muros (agachado y quieto 4 s).

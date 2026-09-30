@@ -629,6 +629,8 @@ namespace SP.Combat
         {
             if (owner == null) Bootstrap();
             if (IsReloading || cooldownTimer > 0f || owner == null) return false;
+            // Regla dura: un soldado ENEMIGO dentro de un arbusto o del bosque no dispara nunca (ver Vegetacion).
+            if (owner.Team == SP.Combat.TeamId.Enemy && Vegetacion.Dentro(owner.transform.position)) return false;
             // Ronda 13 (punto 11): 20 soldados de mision (tripulaciones de tanque enemigo, fortines, patrullas) quedaban con el pool
             // sin cablear en la escena y NUNCA disparaban. Se autocura igual que TurretWeapon: un unico ProjectilePool por escena.
             if (pool == null) pool = ProjectilePool.Activo;

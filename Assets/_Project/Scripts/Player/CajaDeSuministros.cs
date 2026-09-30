@@ -151,6 +151,12 @@ namespace SP.Player
             Crear(new Vector3(9f, 0f, 8f));
             Crear(new Vector3(plaza.x - 10f, 0f, plaza.z * 0.5f));
             Crear(new Vector3(plaza.x - 14f, 0f, plaza.z - 16f));
+            // Puestos sanitarios a mitad de cada camino y uno junto al refugio: el Medico cura, pero las cajas reponen
+            // granadas y vida del soldado que manejas -- y son la pausa entre un tramo caliente y el siguiente.
+            Crear(new Vector3(-45.5f, 0f, 134f));   // sendero del bosque (oeste)
+            Crear(new Vector3(54.5f, 0f, 60f));     // camino de servicio (este), antes del paso
+            Crear(new Vector3(4f, 0f, 205f));       // pasillo de la chicane (centro)
+            Crear(new Vector3(-6f, 0f, 276f));      // patio del refugio
         }
     }
 }

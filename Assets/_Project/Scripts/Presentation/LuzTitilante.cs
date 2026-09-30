@@ -1,5 +1,7 @@
 using UnityEngine;
 
+using SP.Core;
+
 namespace SP.Presentation
 {
     // Luz de fuego / farol viejo: la intensidad oscila con ruido suave (nunca se apaga del todo) y, si tiene `Llama`,
@@ -30,6 +32,9 @@ namespace SP.Presentation
             semilla = Random.value * 100f;
             if (llama != null) { escalaBase = llama.localScale; escalaBaseY = escalaBase.y; }
         }
+
+        void OnEnable() { if (luz == null) luz = GetComponent<Light>(); IluminacionTactica.Registrar(luz); }
+        void OnDisable() => IluminacionTactica.Quitar(luz);
 
         void Update()
         {

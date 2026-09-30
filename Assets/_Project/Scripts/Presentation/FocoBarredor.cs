@@ -1,9 +1,10 @@
 using UnityEngine;
+using SP.Core;
 
 namespace SP.Presentation
 {
     // Reflector de una torre: el haz barre de un lado a otro (yaw oscilante alrededor de `yawCentro`, con el cabeceo
-    // fijo hacia el suelo). Ambientacion pura: no cambia la vision de la IA ni el gameplay.
+    // fijo hacia el suelo). El haz cuenta como luz para IluminacionTactica: quien lo cruza es visto de lejos.
     [DisallowMultipleComponent]
     public class FocoBarredor : MonoBehaviour
     {
@@ -19,7 +20,12 @@ namespace SP.Presentation
             Aplicar(0f);
         }
 
-        void OnEnable() => Aplicar(Time.time);
+        void OnEnable()
+        {
+            Aplicar(Time.time);
+            IluminacionTactica.Registrar(GetComponentInChildren<Light>());   // el haz tambien te delata
+        }
+        void OnDisable() => IluminacionTactica.Quitar(GetComponentInChildren<Light>());
         void Update() => Aplicar(Time.time);
 
         void Aplicar(float t)

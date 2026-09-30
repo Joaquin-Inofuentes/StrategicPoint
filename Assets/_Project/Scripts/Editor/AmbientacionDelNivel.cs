@@ -83,6 +83,7 @@ namespace SP.EditorTools
             LevelBlockoutBuilder.Construir();
             BlockoutArtDresser.VestirEscenaAbierta();
             Ambientar();
+            EstrategiaDelNivel.Construir();
             LevelBlockoutBuilder.BakeNavMesh();
             EditorSceneManager.MarkSceneDirty(escena);
             EditorSceneManager.SaveScene(escena);
@@ -235,8 +236,8 @@ namespace SP.EditorTools
                     return new EstiloDeFarola { Nombre = "FarolaCalle", Altura = 4.8f, Brazo = 1.3f, Paso = 15f, DistanciaAlBorde = 1.2f, Foco = new Vector3(0.5f, 0.12f, 0.36f),
                         Luz = new Color(1f, 0.74f, 0.42f), Emision = new Color(1f, 0.72f, 0.4f), Intensidad = 3.8f, Rango = 17f };
                 case TipoDeRuta.Bosque:
-                    return new EstiloDeFarola { Nombre = "FarolBosque", Altura = 2.8f, Brazo = 0.5f, Paso = 16f, DistanciaAlBorde = 1.6f, Foco = new Vector3(0.3f, 0.36f, 0.3f),
-                        Luz = new Color(0.5f, 0.95f, 0.85f), Emision = new Color(0.4f, 0.9f, 0.8f), Intensidad = 2.5f, Rango = 11f };
+                    return new EstiloDeFarola { Nombre = "FarolBosque", Altura = 2.8f, Brazo = 0.5f, Paso = 32f, DistanciaAlBorde = 1.6f, Foco = new Vector3(0.3f, 0.36f, 0.3f),
+                        Luz = new Color(0.5f, 0.95f, 0.85f), Emision = new Color(0.4f, 0.9f, 0.8f), Intensidad = 2.2f, Rango = 9f };
                 case TipoDeRuta.Servicio:
                     return new EstiloDeFarola { Nombre = "ReflectorServicio", Altura = 5.6f, Brazo = 1f, Paso = 19f, DistanciaAlBorde = 1.6f, Foco = new Vector3(0.7f, 0.16f, 0.5f),
                         Luz = new Color(1f, 0.9f, 0.74f), Emision = new Color(1f, 0.88f, 0.7f), Intensidad = 4.2f, Rango = 19f, UnSoloLado = true };

@@ -61,6 +61,9 @@ namespace SP.Presentation
             }
         }
 
+        // Para obstaculos que se arman por codigo o por herramientas del nivel (compuertas blindadas, barricadas de cierre).
+        public void ConfigurarVida(int vida) { maxHealth = Mathf.Max(1, vida); currentHealth = maxHealth; }
+
         public int MaxHealth => maxHealth;
         public int CurrentHealth => currentHealth < 0 ? maxHealth : currentHealth;
         public bool IsCollapsed { get; private set; }

@@ -254,6 +254,13 @@ namespace SP.EditorTools
             new Ronda { Nombre = "Enemigo_Servicio_1", X = 52f,  Z = 62f,  MediaX = 3f, MediaZ = 6f },
             new Ronda { Nombre = "Enemigo_Servicio_2", X = 52f,  Z = 150f, MediaX = 3f, MediaZ = 6f },
             new Ronda { Nombre = "Enemigo_Servicio_3", X = 52f,  Z = 236f, MediaX = 3f, MediaZ = 6f },
+            // Vigias: francotiradores enemigos en las torres (los nombres se eligieron para que el reparto de variantes de
+            // SoldierClasses les toque el fusil de francotirador). Ven a 36 m y disparan a 32: solo el Francotirador los iguala.
+            new Ronda { Nombre = "Enemigo_Vigia_Torre_3",  X = -22f, Z = 83f,  MediaX = 1.2f, MediaZ = 0.8f },
+            new Ronda { Nombre = "Enemigo_Vigia_Torre_9",  X = 30f,  Z = 83f,  MediaX = 1.2f, MediaZ = 0.8f },
+            new Ronda { Nombre = "Enemigo_Vigia_Puesto",   X = -30f, Z = 173f, MediaX = 1.2f, MediaZ = 0.8f },
+            new Ronda { Nombre = "Enemigo_Nido_4",         X = 8f,   Z = 244f, MediaX = 1.2f, MediaZ = 0.8f },
+            new Ronda { Nombre = "Enemigo_Francotirador_4", X = -12f, Z = 290f, MediaX = 1.2f, MediaZ = 0.8f },
             // Guardias de las entradas del refugio
             new Ronda { Nombre = "Enemigo_Refugio_1",  X = -40f, Z = 280f, MediaX = 3f, MediaZ = 3f },
             new Ronda { Nombre = "Enemigo_Refugio_2",  X = 48f,  Z = 281f, MediaX = 2.5f, MediaZ = 2.5f },
@@ -638,12 +645,16 @@ namespace SP.EditorTools
                 if (ai == null) continue;
                 var so = new SerializedObject(ai);
                 bool enemigo = s.Team == SP.Combat.TeamId.Enemy;
-                so.FindProperty("visionRange").floatValue = enemigo ? 22f : 20f;
-                so.FindProperty("attackRange").floatValue = enemigo ? 13f : 12f;
+                bool vigia = enemigo && EsVigia(s.name);
+                so.FindProperty("visionRange").floatValue = vigia ? 36f : (enemigo ? 22f : 20f);
+                so.FindProperty("attackRange").floatValue = vigia ? 32f : (enemigo ? 13f : 12f);
                 so.ApplyModifiedPropertiesWithoutUndo();
                 EditorUtility.SetDirty(ai);
             }
         }
+
+        // Los francotiradores enemigos (ver Infantes): nombre con "Vigia", "Nido" o "Francotirador".
+        internal static bool EsVigia(string nombre) => nombre.Contains("Vigia") || nombre.Contains("Nido") || nombre.Contains("Francotirador");
 
         static void AsegurarAjustesDeEscuadra()
         {

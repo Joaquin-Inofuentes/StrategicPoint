@@ -517,6 +517,8 @@ namespace SP.Ai
             {
                 var s = candidatos[i];
                 float dist = Vector3.Distance(self.transform.position, s.transform.position);
+                // De noche un enemigo ve a distancia completa solo a quien esta iluminado (ver IluminacionTactica).
+                if (equipo == TeamId.Enemy && dist > IluminacionTactica.VisionContra(s.transform.position, vision)) continue;
                 if (dist > vision)
                 {
                     // Vision extendida: cono + linea de tiro.

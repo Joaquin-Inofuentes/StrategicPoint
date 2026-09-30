@@ -34,9 +34,10 @@ namespace SP.Player
         // click rapido lo dispare por error.
         public const float SostenerParaMenu = 0.15f;
 
-        // Pedido explicito: "cuando apriete en menos de 1 segundo la tecla Q obligara a todos a seguirme si o si".
+        // Pedido explicito: "si aprieto 2 veces seguidas rapido (en menos de 1 segundo) vienen a seguirme si o si".
         // Una pulsacion de [Q] que dura menos que esto y NO elige nada en el radial (se suelta con el cursor en el
-        // centro) es "SIGANME" para TODA la escuadra, sin importar la mira, la seleccion ni lo que esten haciendo.
+        // centro) cuenta como UN toque; dos toques a menos de VentanaDobleToque (ver AccionRapidaDeQ) son "SIGANME" para TODA
+        // la escuadra, sin importar la mira, la seleccion ni lo que esten haciendo. Un toque solo no hace nada.
         public const float ToqueMaximoParaSeguir = 1f;
         float radialAbiertoDesde;
 

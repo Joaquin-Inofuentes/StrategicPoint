@@ -192,34 +192,40 @@ namespace SP.EditorTools
                     campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.Enemy, Soldier = enemigo, Point = enemigo.transform.position, HitTransform = enemigo.transform });
                     kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
                     inputDriver.ResolverGestoDeQ(true, false, false);
-                    Check("Q toque mirando a un enemigo = SIGANME a todos (no ataca)", inputDriver.UltimaAccionRapida == "SEGUIR TODOS"
+                    Check("Q: UN solo toque NO hace seguir a nadie", inputDriver.UltimaAccionRapida == null
+                        && kes.Brain.State != SP.Ai.AiState.Follow && doc.Brain.State != SP.Ai.AiState.Follow);
+                    inputDriver.ResolverGestoDeQ(true, false, false);
+                    Check("Q doble toque mirando a un enemigo = SIGANME a todos (no ataca)", inputDriver.UltimaAccionRapida == "SEGUIR TODOS"
                         && kes.Brain.State == SP.Ai.AiState.Follow && doc.Brain.State == SP.Ai.AiState.Follow);
                     Check("Q toque NO abre el radial", !inputDriver.RadialAbierto);
                 }
                 campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.Ally, Soldier = kes, Point = kes.transform.position, HitTransform = kes.transform });
                 kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
-                inputDriver.ResolverGestoDeQ(true, false, false);
-                Check("Q toque mirando a un aliado = TODOS te siguen, no solo ese", inputDriver.UltimaAccionRapida == "SEGUIR TODOS"
+                inputDriver.ResolverGestoDeQ(true, false, false); inputDriver.ResolverGestoDeQ(true, false, false);
+                Check("Q doble toque mirando a un aliado = TODOS te siguen, no solo ese", inputDriver.UltimaAccionRapida == "SEGUIR TODOS"
                     && kes.Brain.State == SP.Ai.AiState.Follow && doc.Brain.State == SP.Ai.AiState.Follow);
                 campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.None });
                 kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
-                inputDriver.ResolverGestoDeQ(true, false, false);
-                Check("Q toque sin nada en la mira = SIGANME a la escuadra entera", inputDriver.UltimaAccionRapida == "SEGUIR TODOS"
+                inputDriver.ResolverGestoDeQ(true, false, false); inputDriver.ResolverGestoDeQ(true, false, false);
+                Check("Q doble toque sin nada en la mira = SIGANME a la escuadra entera", inputDriver.UltimaAccionRapida == "SEGUIR TODOS"
                     && kes.Brain.State == SP.Ai.AiState.Follow && doc.Brain.State == SP.Ai.AiState.Follow);
                 // Aunque haya una seleccion de RTS armada, el toque los manda a TODOS (no solo a los seleccionados).
                 campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.None });
                 doc.Brain.CancelOrder(); kes.Brain.CancelOrder();
                 inputDriver.Selection.Clear();
                 inputDriver.Selection.SelectSingle(kes);
-                inputDriver.ResolverGestoDeQ(true, false, false);
-                Check("Q toque con solo uno seleccionado: igual siguen los DOS", kes.Brain.State == SP.Ai.AiState.Follow && doc.Brain.State == SP.Ai.AiState.Follow);
+                inputDriver.ResolverGestoDeQ(true, false, false); inputDriver.ResolverGestoDeQ(true, false, false);
+                Check("Q doble toque con solo uno seleccionado: igual siguen los DOS", kes.Brain.State == SP.Ai.AiState.Follow && doc.Brain.State == SP.Ai.AiState.Follow);
                 inputDriver.Selection.Clear();
                 // Mantener y soltar SIN elegir, antes de 1 s, es lo mismo que un toque.
                 kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
                 inputDriver.OrdenesMenu.Cerrar();
-                inputDriver.ResolverGestoDeQ(false, true, true);
-                inputDriver.ResolverGestoDeQ(false, false, false);
-                Check("Q mantenido medio segundo y soltado sin elegir (menos de 1 s) = todos te siguen",
+                for (int veces = 0; veces < 2; veces++)
+                {
+                    inputDriver.ResolverGestoDeQ(false, true, true);
+                    inputDriver.ResolverGestoDeQ(false, false, false);
+                }
+                Check("Q mantenido y soltado sin elegir (menos de 1 s), dos veces seguidas = todos te siguen",
                     !inputDriver.OrdenesMenu.Abierto && kes.Brain.State == SP.Ai.AiState.Follow && doc.Brain.State == SP.Ai.AiState.Follow);
                 campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.None });
             }

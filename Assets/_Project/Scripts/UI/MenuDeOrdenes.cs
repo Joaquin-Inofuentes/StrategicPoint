@@ -129,8 +129,15 @@ namespace SP.UI
         public const float OpacidadDeFondo = 0.78f;
         const float RadioInterior = 175f;     // borde exterior del anillo de categorias
         const float RadioExterior = 310f;     // borde exterior del abanico de opciones
-        const float RadioIconoCategoria = RadioInterior * 0.44f;
-        const float TamanoIconoCategoria = 58f; // lado maximo del icono; Refrescar() lo achica si no entra
+        // Ubicacion de iconos y etiquetas: el icono va en el MEDIO de la banda del anillo (el hueco del centro mide 0,36 del radio
+        // interior y 0,6 del exterior) con la etiqueta chica de una linea justo DEBAJO, como una unidad; antes el icono quedaba
+        // pegado al centro (pisaba el texto "ORDENES") y la etiqueta flotaba afuera, tapando el abanico.
+        const float RadioIconoCategoria = RadioInterior * 0.68f;
+        const float SubidaDelIcono = 9f, BajadaDeLaEtiqueta = 20f;
+        const float RadioIconoOpcion = RadioExterior * 0.80f;
+        const float SubidaDelIconoOpcion = 10f, BajadaDeLaEtiquetaOpcion = 18f;
+        const float TamanoIconoCategoria = 44f; // lado maximo del icono; Refrescar() lo achica si no entra
+        const float TamanoIconoOpcion = 38f;
         const float RadioMaximoCursor = 300f; // alcance del cursor virtual
         const float ZonaMuerta = 34f;         // por debajo no se elige nada
         const float PasoDeAbanico = 32f;      // grados entre opciones del abanico
@@ -226,6 +233,27 @@ namespace SP.UI
             return sub >= 0 && sub < o.Length ? o[sub] : "";
         }
 
+        // Nombre de una sola linea para la etiqueta del anillo interior ("CUBRIRSE (HACIA DONDE MIRO)" -> "CUBRIRSE"; el detalle
+        // de lo apuntado ya lo muestra el texto del centro).
+        public static string NombreCorto(int categoria)
+        {
+            if (categoria < 0 || categoria >= Porciones.Length) return "";
+            string s = Porciones[categoria];
+            int p = s.IndexOf('(');
+            if (p > 0) s = s.Substring(0, p);
+            return s.Replace("AL APUNTADO", "").Replace("\n", " ").Trim();
+        }
+
+        // Parte una etiqueta larga en dos lineas por el espacio mas cercano al medio (las que ya traen salto no se tocan).
+        public static string Partir(string s)
+        {
+            if (string.IsNullOrEmpty(s) || s.Contains("\n") || s.Length <= 9) return s;
+            int mejor = -1, medio = s.Length / 2;
+            for (int i = 0; i < s.Length; i++)
+                if (s[i] == ' ' && (mejor < 0 || Mathf.Abs(i - medio) < Mathf.Abs(mejor - medio))) mejor = i;
+            return mejor < 0 ? s : s.Substring(0, mejor) + "\n" + s.Substring(mejor + 1);
+        }
+
         // El radial se achica si la pantalla es baja: el anillo exterior nunca sale del canvas.
         void AjustarEscala()
         {
@@ -266,6 +294,7 @@ namespace SP.UI
         public void Abrir(ContextoRadial ctx)
         {
             AjustarEscala();
+            AsegurarDiscoDelCentro();
             Distribuir(ctx);
             Abierto = true;
             virtualPos = Vector2.zero;
@@ -421,7 +450,7 @@ namespace SP.UI
             // (2 * radio * sin(paso/2)); con 8-9 categorias esa cuerda da ~53-59 px, MENOR que el
             // icono de 58 px -> se pisan. Se achica el icono para que siempre quede holgado.
             float cuerda = 2f * RadioIconoCategoria * Mathf.Sin(paso * 0.5f * Mathf.Deg2Rad);
-            float tamanoIcono = Mathf.Clamp(cuerda * 0.8f, 34f, TamanoIconoCategoria);
+            float tamanoIcono = Mathf.Clamp(cuerda * 0.5f, 30f, TamanoIconoCategoria);
             for (int i = 0; i < rebanadas.Length; i++)
             {
                 bool activa = i < ids.Count;
@@ -456,13 +485,13 @@ namespace SP.UI
                 var dir = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad));
                 if (iconosCategoria != null && iconosCategoria[i] != null)
                 {
-                    iconosCategoria[i].rectTransform.anchoredPosition = dir * RadioIconoCategoria;
+                    iconosCategoria[i].rectTransform.anchoredPosition = dir * RadioIconoCategoria + Vector2.up * SubidaDelIcono;
                     iconosCategoria[i].rectTransform.sizeDelta = new Vector2(tamanoIcono, tamanoIcono);
                     iconosCategoria[i].color = colorTexto;
                 }
-                etiquetas[i].rectTransform.anchoredPosition = dir * (RadioInterior * 0.88f);
+                etiquetas[i].rectTransform.anchoredPosition = dir * RadioIconoCategoria + Vector2.down * BajadaDeLaEtiqueta;
                 string marca = cat == PistaCategoria && !sel ? "▶" : ctx ? "★" : (i + 1).ToString();
-                etiquetas[i].text = "<size=9>" + marca + "</size> " + Porciones[cat].Replace("\n", " ");
+                etiquetas[i].text = "<size=9>" + marca + "</size> " + NombreCorto(cat);
                 etiquetas[i].color = colorTexto;
             }
 
@@ -476,6 +505,7 @@ namespace SP.UI
                 etiquetasOpcion[j].gameObject.SetActive(visible);
                 if (iconosOpcion != null && iconosOpcion[j] != null) iconosOpcion[j].gameObject.SetActive(false);
                 if (!visible) continue;
+                etiquetasOpcion[j].rectTransform.sizeDelta = new Vector2(92f, 30f);   // el radial guardado en la escena puede traer la caja vieja (118 x 40)
                 float centro = AnguloDeSlot(slotSel) + (j - (n - 1) * 0.5f) * PasoDeAbanico;
                 bool ctx = EsContextual(Seleccion);
                 var c = ctx ? Dorado : Acentos[Seleccion];
@@ -495,9 +525,9 @@ namespace SP.UI
                     {
                         iconosOpcion[j].gameObject.SetActive(true);
                         iconosOpcion[j].color = new Color(0.5f, 0.5f, 0.5f);
-                        iconosOpcion[j].rectTransform.anchoredPosition = dir * (RadioExterior * 0.72f);
+                        iconosOpcion[j].rectTransform.anchoredPosition = dir * RadioIconoOpcion + Vector2.up * SubidaDelIconoOpcion;
                     }
-                    etiquetasOpcion[j].rectTransform.anchoredPosition = dir * (RadioExterior * 0.86f);
+                    etiquetasOpcion[j].rectTransform.anchoredPosition = dir * RadioIconoOpcion + Vector2.down * BajadaDeLaEtiquetaOpcion;
                     etiquetasOpcion[j].text = $"<size=9>{sub + 1}</size>\n{SP.Core.Loc.T("MUERTO")}";
                     etiquetasOpcion[j].color = new Color(0.5f, 0.5f, 0.5f);
                 }
@@ -518,10 +548,11 @@ namespace SP.UI
                         iconosOpcion[j].gameObject.SetActive(true);
                         iconosOpcion[j].sprite = RadialIconFactory.ForOpcion(Seleccion, sub);
                         iconosOpcion[j].color = colorOp;
-                        iconosOpcion[j].rectTransform.anchoredPosition = dirOp * (RadioExterior * 0.66f);
+                        iconosOpcion[j].rectTransform.anchoredPosition = dirOp * RadioIconoOpcion + Vector2.up * SubidaDelIconoOpcion;
+                        iconosOpcion[j].rectTransform.sizeDelta = new Vector2(TamanoIconoOpcion, TamanoIconoOpcion);
                     }
-                    etiquetasOpcion[j].rectTransform.anchoredPosition = dirOp * (RadioExterior * 0.90f);
-                    etiquetasOpcion[j].text = Texto(OpcionesDe[Seleccion][sub]).Replace(" · ", "\n");
+                    etiquetasOpcion[j].rectTransform.anchoredPosition = dirOp * RadioIconoOpcion + Vector2.down * BajadaDeLaEtiquetaOpcion;
+                    etiquetasOpcion[j].text = Partir(Texto(OpcionesDe[Seleccion][sub]).Replace(" · ", "\n"));
                     etiquetasOpcion[j].color = colorOp;
                 }
             }
@@ -590,6 +621,44 @@ namespace SP.UI
             sp.hideFlags = HideFlags.HideAndDontSave;
             if (interior) donaInterior = sp; else donaExterior = sp;
             return sp;
+        }
+
+        // Disco oscuro detras del texto del centro: sin el, el texto se mezclaba con la mira y con el paisaje.
+        // Se asegura tambien al abrir: el radial guardado en SC_Gameplay puede venir de antes de que existiera.
+        void AsegurarDiscoDelCentro()
+        {
+            if (SP.Core.BuscarHijo.Ruta(transform, "CentroFondo") != null) return;
+            var discoGO = new GameObject("CentroFondo", typeof(RectTransform), typeof(Image));
+            discoGO.transform.SetParent(transform, false);
+            discoGO.transform.SetAsFirstSibling();
+            var disco = discoGO.GetComponent<Image>();
+            disco.sprite = Disco();
+            disco.color = new Color(0.03f, 0.05f, 0.08f, 0.82f);
+            disco.raycastTarget = false;
+            disco.rectTransform.anchorMin = disco.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            disco.rectTransform.anchoredPosition = Vector2.zero;
+            float lado = RadioInterior * 0.36f * 2f - 2f;
+            disco.rectTransform.sizeDelta = new Vector2(lado, lado);
+        }
+
+        static Sprite discoCentro;
+        static Sprite Disco()
+        {
+            if (discoCentro != null) return discoCentro;
+            const int n = 128;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
+            var px = new Color32[n * n];
+            float R = n * 0.5f;
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(R, R));
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(R - d) * 255f));
+                }
+            tex.SetPixels32(px); tex.Apply();
+            discoCentro = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+            discoCentro.hideFlags = HideFlags.HideAndDontSave;
+            return discoCentro;
         }
 
         static Text NuevoTexto(Transform padre, string nombre, Font font, int tam, Vector2 caja)
@@ -681,12 +750,14 @@ namespace SP.UI
             for (int j = 0; j < MaxOpcionesPorCategoria; j++)
             {
                 menu.opciones[j] = NuevaRebanada(go.transform, "Opcion" + (j + 1), exterior, RadioExterior, fillOp);
-                menu.iconosOpcion[j] = NuevoIcono(go.transform, "IconoOpcion" + (j + 1), RadialIconFactory.Calavera(), 34f);
-                menu.etiquetasOpcion[j] = NuevoTexto(go.transform, "TextoOpcion" + (j + 1), font, TamanoLetra, new Vector2(118f, 40f));
+                menu.iconosOpcion[j] = NuevoIcono(go.transform, "IconoOpcion" + (j + 1), RadialIconFactory.Calavera(), TamanoIconoOpcion);
+                menu.etiquetasOpcion[j] = NuevoTexto(go.transform, "TextoOpcion" + (j + 1), font, TamanoLetra, new Vector2(92f, 30f));
                 menu.opciones[j].gameObject.SetActive(false);
                 menu.iconosOpcion[j].gameObject.SetActive(false);
                 menu.etiquetasOpcion[j].gameObject.SetActive(false);
             }
+
+            menu.AsegurarDiscoDelCentro();
 
             // Centro: nombre de la orden elegida.
             var ct = NuevoTexto(go.transform, "Centro", font, 14, new Vector2(112f, 80f));

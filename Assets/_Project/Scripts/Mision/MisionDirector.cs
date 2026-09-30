@@ -108,7 +108,7 @@ namespace SP.Mision
             if (boot != null && boot.esTutorial) { Destroy(gameObject); return; }
             Instancia = this;
         }
-        void OnDestroy() { if (Instancia == this) Instancia = null; MusicDirector.Atenuacion = 1f; }
+        void OnDestroy() { if (Instancia == this) Instancia = null; IluminacionTactica.Activa = false; MusicDirector.Atenuacion = 1f; }
 
         void Start()
         {
@@ -133,6 +133,7 @@ namespace SP.Mision
             }
 
             LanzarLineasEnemigas();
+            IluminacionTactica.Activa = true;   // de noche solo te ven de lejos si estas a la luz
             hud = MisionHud.Crear(this);
             flechaDeObjetivo = SP.Presentation.ObjectiveArrowIndicator.Crear();
             baliza = TutorialBeacon.Crear("CENTRO", new Color(1f, 0.85f, 0.25f), Plaza, null, 3.2f, 24f);
@@ -441,9 +442,80 @@ namespace SP.Mision
         // esta en el extremo norte (~300 m de la base): la vuelta es larga, asi que los refuerzos salen de la
         // linea de arboles de AMBOS flancos -- el sendero del bosque (oeste, cerca de la base) y el camino de
         // servicio (este, a la altura de la aldea) -- y esperan la vuelta patrullando sus caminos.
+        // ---------------- carriles: el camino de ida se cierra ----------------
+        // Diseño del nivel: los tres caminos piden roles distintos, asi que la vuelta no puede ser un calco de la ida.
+        // Al rescatar al civil, el enemigo cierra con una barricada blindada el carril por el que subiste (RegistrarCarrilDeIda
+        // lo anota la primera vez que el jugador pasa el puesto avanzado) y lo guarnece: hay que elegir OTRO camino de vuelta
+        // -- y por lo tanto otro reparto de roles -- o abrirse paso con el Asalto. La barricada cierra el paso del canon (z=72),
+        // el ultimo estrangulamiento antes de la base, y sus guardias esperan del otro lado.
+        public enum Carril { Oeste, Centro, Este }
+        public Carril? CarrilDeIda { get; private set; }
+        public Carril? CarrilCerrado { get; private set; }
+        public const float ZDelPuesto = 188f;
+
+        public static Carril CarrilDe(Vector3 p) => p.x < -30f ? Carril.Oeste : (p.x > 44f ? Carril.Este : Carril.Centro);
+
+        void RegistrarCarrilDeIda()
+        {
+            if (CarrilDeIda.HasValue) return;
+            var p = PosicionDelJugador();
+            if (p == Vector3.zero || p.z < ZDelPuesto) return;
+            CarrilDeIda = CarrilDe(p);
+            GameLog.Line("Mision: carril de ida = " + CarrilDeIda.Value);
+        }
+
+        static readonly string[] AvisoDeCierre =
+        {
+            "¡EL ENEMIGO CERRO EL SENDERO DEL BOSQUE (OESTE)! VOLVE POR OTRO CAMINO O ABRI LA BARRICADA CON EL ASALTO",
+            "¡EL ENEMIGO CERRO LA CARRETERA CENTRAL! VOLVE POR OTRO CAMINO O ABRI LA BARRICADA CON EL ASALTO",
+            "¡EL ENEMIGO CERRO EL CAMINO DE SERVICIO (ESTE)! VOLVE POR OTRO CAMINO O ABRI LA BARRICADA CON EL ASALTO",
+        };
+        // Guardias del cierre: al sur de la barricada del canon (la ultima puerta antes de la base), mirando al norte.
+        static readonly Vector3[] PuestoDeCierre = { new Vector3(-43f, 0f, 64f), new Vector3(3f, 0f, 64f), new Vector3(51f, 0f, 64f) };
+
+        void CerrarCarrilDeIda()
+        {
+            var carril = CarrilDeIda ?? Carril.Centro;
+            CarrilCerrado = carril;
+            var raizEstrategia = SP.Core.RaicesDeEscena.Buscar("Estrategia");
+            var cierre = raizEstrategia != null ? raizEstrategia.transform.Find("Cierres/Cierre_" + carril) : null;
+            if (cierre != null)
+            {
+                cierre.gameObject.SetActive(true);
+                SP.Core.NavService.Invalidate();
+            }
+            int n = Escalar(3) + (AntenaDeRadio.Activa != null && !AntenaDeRadio.Destruida ? 1 : 0);
+            var c = PuestoDeCierre[(int)carril];
+            for (int i = 0; i < n; i++)
+            {
+                var pos = c + new Vector3((i - (n - 1) * 0.5f) * 3.2f, 0f, Random.Range(-2f, 2f));
+                var s = CrearEnemigo($"Enemigo_Cierre_{i + 1}", pos, 0f);
+                if (s != null) Patrullar(s, 2.5f, 1.5f);
+            }
+            AlertQueue.Push(AvisoDeCierre[(int)carril], AlertPriority.Alta, 5f);
+            GameLog.Line($"Mision: carril cerrado = {carril} ({n} guardias)");
+        }
+
+        // La radio enemiga: si la antena del fortin sigue en pie cuando rescatas al civil, llega una segunda oleada a la aldea.
+        void LlamarRefuerzosPorRadio()
+        {
+            if (AntenaDeRadio.Activa == null || AntenaDeRadio.Destruida) return;
+            int n = Escalar(4);
+            var puntos = PosicionesEnFranja(-10f, 16f, 132f, 142f, n, 6f);
+            for (int i = 0; i < n; i++)
+            {
+                var s = CrearEnemigo($"Enemigo_Radio_{i + 1}", puntos[i], 180f);
+                if (s != null) s.Brain.IssueMoveOrder(Plaza + new Vector3(Random.Range(-6f, 6f), 0f, Random.Range(4f, 12f)));
+            }
+            AlertQueue.Push("¡LA RADIO ENEMIGA PIDIO REFUERZOS! LLEGAN A LA ALDEA", AlertPriority.Alta, 4f);
+            GameLog.Line($"Mision: refuerzos por radio ({n})");
+        }
+
         void LanzarRefuerzos()
         {
             refuerzosLanzados = true;
+            CerrarCarrilDeIda();
+            LlamarRefuerzosPorRadio();
             int n = Escalar(5);
             var puntos = PosicionesEnFranja(-48f, -42f, 15f, 95f, n, 8f);
             for (int i = 0; i < n; i++)
@@ -556,9 +628,9 @@ namespace SP.Mision
 
             switch (Fase)
             {
-                case FaseDeMision.Infiltrar: TickInfiltrar(); break;
-                case FaseDeMision.Resistir: TickResistir(dt); break;
-                case FaseDeMision.Rescatar: TickRescatar(); break;
+                case FaseDeMision.Infiltrar: RegistrarCarrilDeIda(); TickInfiltrar(); break;
+                case FaseDeMision.Resistir: RegistrarCarrilDeIda(); TickResistir(dt); break;
+                case FaseDeMision.Rescatar: RegistrarCarrilDeIda(); TickRescatar(); break;
                 case FaseDeMision.Escapar: TickEscapar(dt); break;
             }
             if (hud != null) hud.Refrescar();

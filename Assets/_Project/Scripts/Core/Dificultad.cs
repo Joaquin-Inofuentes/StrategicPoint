@@ -27,7 +27,8 @@ namespace SP.Core
             public string Frase;
         }
 
-        const string Pref = "sp_dificultad";
+        // "_v2": la bajada global de dificultad reinicia la eleccion guardada; por defecto la partida arranca en FACIL.
+        const string Pref = "sp_dificultad_v2";
         static NivelDificultad? actual;
 
         public static bool Activa { get; set; }
@@ -53,16 +54,29 @@ namespace SP.Core
             }
         }
 
+        // Bajada GLOBAL de dificultad (pedido explicito): en TODOS los niveles el enemigo hace la mitad de dano y los aliados
+        // tienen el doble de vida. Se multiplica sobre el perfil de cada nivel, asi la diferencia entre FACIL/MEDIO/DIFICIL se mantiene.
+        public const float FactorDanoEnemigoGlobal = 0.5f;
+        public const float FactorVidaAliadosGlobal = 2f;
+
         public static Perfil Datos(NivelDificultad n)
+        {
+            var p = DatosBase(n);
+            p.DanoEnemigos *= FactorDanoEnemigoGlobal;
+            p.VidaAliados *= FactorVidaAliadosGlobal;
+            return p;
+        }
+
+        static Perfil DatosBase(NivelDificultad n)
         {
             switch (n)
             {
                 case NivelDificultad.Facil:
-                    return new Perfil { Nombre = "FACIL", VidaEnemigos = 0.75f, DanoEnemigos = 0.65f, VidaAliados = 1.35f, DanoAliados = 1.25f, VidaJugador = 1.5f, DanoJugador = 1.3f, CantidadDeOleadas = 0.75f, Frase = "Para aprender: enemigos debiles y tu escuadra aguanta mucho mas." };
+                    return new Perfil { Nombre = "FACIL", VidaEnemigos = 0.75f, DanoEnemigos = 0.65f, VidaAliados = 1.35f, DanoAliados = 1.25f, VidaJugador = 1.5f, DanoJugador = 1.3f, CantidadDeOleadas = 0.75f, Frase = "Para aprender: enemigos debiles, pegan poco y tu escuadra aguanta muchisimo." };
                 case NivelDificultad.Dificil:
-                    return new Perfil { Nombre = "DIFICIL", VidaEnemigos = 1.05f, DanoEnemigos = 1.05f, VidaAliados = 1f, DanoAliados = 1f, VidaJugador = 1f, DanoJugador = 1f, CantidadDeOleadas = 1.4f, Frase = "Enemigos potenciados, oleadas 40% mas grandes y cero ayuda." };
+                    return new Perfil { Nombre = "DIFICIL", VidaEnemigos = 1.05f, DanoEnemigos = 1.05f, VidaAliados = 1f, DanoAliados = 1f, VidaJugador = 1f, DanoJugador = 1f, CantidadDeOleadas = 1.4f, Frase = "Enemigos potenciados y oleadas 40% mas grandes; tu escuadra sigue aguantando el doble." };
                 default:
-                    return new Perfil { Nombre = "MEDIO", VidaEnemigos = 0.95f, DanoEnemigos = 0.9f, VidaAliados = 1.15f, DanoAliados = 1.05f, VidaJugador = 1.25f, DanoJugador = 1.1f, CantidadDeOleadas = 1f, Frase = "El balance pensado: tu escuadra tiene una pequeña ventaja." };
+                    return new Perfil { Nombre = "MEDIO", VidaEnemigos = 0.95f, DanoEnemigos = 0.9f, VidaAliados = 1.15f, DanoAliados = 1.05f, VidaJugador = 1.25f, DanoJugador = 1.1f, CantidadDeOleadas = 1f, Frase = "El balance pensado: tu escuadra tiene una ventaja clara." };
             }
         }
 
@@ -121,6 +135,8 @@ namespace SP.Core
             if (victima != null)
             {
                 var v = victima.GetComponent<Soldier>();
+                // Golpe de origen desconocido (torreta, cañon, explosion sin duenio) contra tu bando: es del enemigo, tambien a la mitad.
+                if (atacante == null && v != null && v.Team == TeamId.Player && v.Role != RoleType.Civilian) m *= d.DanoEnemigos;
                 if (v != null && v.Brain != null && v.Brain.IsPossessedByPlayer && d.VidaJugador > 0f) m /= d.VidaJugador;
             }
             return m;
