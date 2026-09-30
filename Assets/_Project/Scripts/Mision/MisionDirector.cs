@@ -573,6 +573,9 @@ namespace SP.Mision
         // efecto de particulas en el mismo instante. Idempotente por las
         // dudas (SaltarAFase de debug puede llamarlo mas de una vez si se
         // salta de fase en fase): si Civil ya existe, no lo vuelve a crear.
+        // 4 veces los 150 de antes: el civil aguanta mas tiempo despues de rescatarlo (pedido explicito).
+        public const int VidaDelCivil = 600;
+
         void AparecerCivil()
         {
             if (Civil != null || civilPrefab == null) return;
@@ -580,8 +583,10 @@ namespace SP.Mision
             go.name = "Civil";
             Civil = go.GetComponent<Soldier>();
             SP.Core.ApoyoEnElPiso.Apoyar(go.transform);
-            Civil.Configure("Civil", TeamId.Player, RoleType.Civilian, 150);
+            Civil.Configure("Civil", TeamId.Player, RoleType.Civilian, VidaDelCivil);
             if (Civil.Brain != null) Civil.Brain.Pasivo = true;
+            // Indestructible hasta que el jugador llegue a el (TickRescatar lo vuelve normal): el civil no puede morir antes.
+            if (Civil.Health != null) Civil.Health.Invulnerable = true;
             Civil.gameObject.AddComponent<Rehen>();   // tinte propio, marcador flotante y aviso sonoro al acercarse
             // Pedido explicito: "el cartel de civil rescatado mas delgado...
             // y sea en la base de abajo" -- columna mas fina (0.35 en vez de
@@ -714,6 +719,7 @@ namespace SP.Mision
             if (d > RadioDeRescate) return;
 
             CivilRescatado = true;
+            Civil.Health.Invulnerable = false;   // llegaste a el: desde ahora hay que protegerlo
             // BUG REAL reportado jugando: la esfera amarilla flotante de
             // "hay que rescatarme" se quedaba prendida para siempre, incluso
             // con el civil ya rescatado y caminando detras del jugador.
@@ -831,7 +837,7 @@ namespace SP.Mision
                 case FaseDeMision.Resistir: Restante = SegundosDeResistencia; CambiarFase(f); break;
                 case FaseDeMision.Rescatar: AparecerCivil(); Restante = 0f; CambiarFase(f); break;
                 case FaseDeMision.Escapar:
-                    AparecerCivil(); CivilRescatado = true; if (!refuerzosLanzados) LanzarRefuerzos();
+                    AparecerCivil(); CivilRescatado = true; if (Civil != null) Civil.Health.Invulnerable = false; if (!refuerzosLanzados) LanzarRefuerzos();
                     if (baliza != null) baliza.Quitar();
                     baliza = TutorialBeacon.Crear("HELICOPTERO", new Color(0.35f, 1f, 0.5f), Helipuerto + Vector3.right * 6f, null, 3.2f, 26f);
                     CambiarFase(f); break;

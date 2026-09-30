@@ -109,6 +109,10 @@ namespace SP.Combat
             if (Current >= maxHealth) IsRegenerating = false;
         }
 
+        // Indestructible: nada le quita vida (balas, explosiones, atropello, caidas, cuchillo, headshot). Lo usa la mision con el
+        // civil desde que aparece hasta que el jugador llega a el (MisionDirector.TickRescatar).
+        public bool Invulnerable { get; set; }
+
         public void TakeDamage(int amount, int attackerId) => TakeDamage(amount, attackerId, false);
 
         // headshot: instakill SOLO lo decide el llamador (Projectile), que ya sabe si
@@ -135,7 +139,7 @@ namespace SP.Combat
             if (amount <= 0) return;
 
             // [F4] modo dios: el bando del jugador no recibe dano.
-            if (ModoDios.Protege(this)) return;
+            if (Invulnerable || ModoDios.Protege(this)) return;
 
             // Dificultad: potenciadores de dano segun quien pega y a quien (solo partida principal).
             if (Dificultad.Activa) amount = Mathf.Max(1, Mathf.RoundToInt(amount * Dificultad.MultiplicadorDeDano(attackerId, this)));
