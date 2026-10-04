@@ -50,6 +50,28 @@ Audio replacements added for Strategic Point (prototype, not for distribution).
   (GenericSfx.GetWeaponShot picks it up automatically from Resources/Audio/
   Sfx/Shot_Rocket -- no code change needed).
 
+- Sonidos REALES del tanque (pedido explicito: "sonido real de movimiento de tanque y de
+  cañonazos descargado de internet"). Los cuatro son CC0 (dominio publico) de freesound.org,
+  bajados con permiso del usuario desde el CDN publico de previews (hq mp3, mismo metodo que
+  el rotor del helicoptero), pasados a mono 16 bit, recortados y normalizados por script:
+  * Sfx/Orugas/Orugas_T26_Parola_greatmganga.wav -- "t26_moving_01.wav" de greatmganga
+    (https://freesound.org/people/greatmganga/sounds/329800/): tanque sovietico T-26 real
+    andando (motor + orugas), grabado en el museo de tanques de Parola, Finlandia (2009).
+    Tramo estable de 2.0 s a 9.0 s, loop con fundido cruzado de 0.6 s. Lo usa
+    SonidosDeOperacion para el motor de todos los tanques (pitch/volumen segun velocidad).
+  * Sfx/OrugasChirrido/Orugas_tracks_christerljung.wav -- "tracks moving" de christerljung
+    (https://freesound.org/people/christerljung/sounds/849062/). Loop de 3 s con fundido
+    cruzado de 0.35 s. Capa de chirrido de orugas en VehicleAudioFeedback (muda con el
+    tanque quieto, crece con la velocidad); reemplaza al diente de sierra sintetico.
+  * Sfx/CannonBody/Canon_Howitzer_qubodup.wav -- "Howitzer Artillery Gun Shot Sound
+    Effect 01" de qubodup (https://freesound.org/people/qubodup/sounds/161343/), disparo
+    real de obus extraido de un video del US Army. 0.72 s, fade-out final.
+  * Sfx/CannonBody/Canon_Artilleria69_InMotionAudio.wav -- "GUNArtl_69thFieldArtillery
+    Gun01" de InMotionAudio (https://freesound.org/people/InMotionAudio/sounds/702245/),
+    artilleria de campaña real. 1.68 s con la cola de eco, fade-out desde 0.9 s.
+  GenericSfx elige al azar entre los dos cañonazos (variacion); la metralleta del tanque ya no
+  usa el cañonazo sino Shot_Heavy.
+
 - Music/Tension.wav: generated procedurally by a script (drone + heartbeat + strings + clock);
   no third-party material.
 

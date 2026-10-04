@@ -150,6 +150,8 @@ namespace SP.Combat
             : (fireCooldown > 0f ? 1f - Mathf.Clamp01(cooldownTimer / fireCooldown) : 1f);
 
         public int CurrentAmmo { get; private set; } = 8;
+        // Cargar partida / volver a un bug: deja el cargador como estaba.
+        public void RestaurarMunicion(int cargador) { CurrentAmmo = Mathf.Max(0, cargador); }
         public int MagazineSize => magazineSize;
         public bool IsReloading { get; private set; }
         public float ReloadRemaining => IsReloading ? Mathf.Max(0f, reloadTimer) : 0f;

@@ -48,8 +48,12 @@ namespace SP.Presentation
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetearZona() => ZonaActual = -1;
 
+        // Los carteles de bloque son del nivel de SC_Gameplay; otros niveles (Operacion Cuartel) los apagan.
+        public static bool Desactivado;
+
         public static AnuncioDeZonas Asegurar()
         {
+            if (Desactivado) return null;
             if (Activo != null) return Activo;
             var a = new GameObject("AnuncioDeZonas").AddComponent<AnuncioDeZonas>();
             a.RegistrarActivo();

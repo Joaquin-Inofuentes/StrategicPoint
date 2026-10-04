@@ -21,7 +21,7 @@ namespace SP.Presentation
     // CameraSwoosh: transicion FPS<->RTS.
     // Ronda 7: Explosion (boom con cola), GrenadePin/Throw/Bounce, KnifeSwing/Hit, Jump/Land,
     // RadialOpen/Tick/Confirm/Cancel, HealStart/Done, Revive y BombPlant/Tick (ver SfxSintetico).
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire, TutKey, TutSub, TutStep, TutVictory, Explosion, GrenadePin, GrenadeThrow, GrenadeBounce, KnifeSwing, KnifeHit, Jump, Land, RadialOpen, RadialTick, RadialConfirm, RadialCancel, HealStart, HealDone, Revive, BombPlant, BombTick, AmmoPickup }
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire, TutKey, TutSub, TutStep, TutVictory, Explosion, GrenadePin, GrenadeThrow, GrenadeBounce, KnifeSwing, KnifeHit, Jump, Land, RadialOpen, RadialTick, RadialConfirm, RadialCancel, HealStart, HealDone, Revive, BombPlant, BombTick, AmmoPickup, Logro, ObjetivoCumplido, ImpactoPesado, BalaImpacto, Orugas, MotorCamioneta, AmbienteDesierto, RuedasCamioneta }
 
     // Sonidos genéricos: primero busca grabaciones reales importadas bajo
     // Resources/Audio/Sfx/<Kind>/ (pedido explicito: "quita todos los
@@ -49,6 +49,24 @@ namespace SP.Presentation
             }
             if (arr == null || arr.Length == 0) return null;
             return arr[Random.Range(0, arr.Length)];
+        }
+
+        // Bug #052: cada sonido se cargaba (Resources.LoadAll + datos de audio) la primera vez que sonaba, en pleno combate.
+        public static int Precargar()
+        {
+            int n = 0;
+            foreach (SfxKind k in System.Enum.GetValues(typeof(SfxKind)))
+            {
+                Get(k);
+                if (realClipsCache.TryGetValue(k.ToString(), out var arr) && arr != null)
+                    foreach (var c in arr) if (c != null && c.loadState == AudioDataLoadState.Unloaded) { c.LoadAudioData(); n++; }
+            }
+            foreach (WeaponKind w in System.Enum.GetValues(typeof(WeaponKind)))
+            {
+                var c = GetWeaponShot(w);
+                if (c != null && c.loadState == AudioDataLoadState.Unloaded) { c.LoadAudioData(); n++; }
+            }
+            return n;
         }
 
         public static AudioClip Get(SfxKind kind)
@@ -227,6 +245,14 @@ namespace SP.Presentation
                 case SfxKind.TutVictory: return GenerateArpegio(new[] { 523f, 659f, 784f, 1047f, 784f, 1047f, 1319f }, 0.16f, "TutVictory");
                 // Ronda 7: sintesis dedicada (SfxSintetico).
                 case SfxKind.Explosion: return SfxSintetico.Explosion();
+                case SfxKind.Logro: return SfxSintetico.Logro();
+                case SfxKind.ObjetivoCumplido: return SfxSintetico.ObjetivoCumplido();
+                case SfxKind.ImpactoPesado: return SfxSintetico.ImpactoPesado();
+                case SfxKind.BalaImpacto: return SfxSintetico.BalaImpacto();
+                case SfxKind.Orugas: return SfxSintetico.Orugas();
+                case SfxKind.MotorCamioneta: return SfxSintetico.MotorCamioneta();
+                case SfxKind.RuedasCamioneta: return SfxSintetico.RuedasCamioneta();
+                case SfxKind.AmbienteDesierto: return SfxSintetico.AmbienteDesierto();
                 case SfxKind.GrenadePin: return SfxSintetico.GranadaSeguro();
                 case SfxKind.GrenadeThrow: return SfxSintetico.GranadaLanzada();
                 case SfxKind.GrenadeBounce: return SfxSintetico.GranadaRebote();

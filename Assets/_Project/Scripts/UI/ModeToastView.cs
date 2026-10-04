@@ -37,6 +37,15 @@ namespace SP.UI
         public void Show(string text, float fadeSeconds = 1f)
         {
             if (label == null || group == null) return;
+            // Avisos largos ("¡2 KES CAIDO! NECESITA REANIMACION") se cortaban en una linea: parte en dos y achica la letra si hace falta.
+            if (!label.resizeTextForBestFit)
+            {
+                label.horizontalOverflow = HorizontalWrapMode.Wrap;
+                label.verticalOverflow = VerticalWrapMode.Truncate;
+                label.resizeTextMaxSize = Mathf.Max(14, label.fontSize);
+                label.resizeTextMinSize = Mathf.Max(12, Mathf.RoundToInt(label.fontSize * 0.55f));
+                label.resizeTextForBestFit = true;
+            }
             label.text = text;
             if (routine != null) StopCoroutine(routine);
             routine = StartCoroutine(FadeOut(fadeSeconds));

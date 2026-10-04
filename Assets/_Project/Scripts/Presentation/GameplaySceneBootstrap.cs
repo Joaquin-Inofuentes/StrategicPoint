@@ -38,6 +38,7 @@ namespace SP.Presentation
             // escena): asi el primer estallido real no paga la creacion
             // de 64 objetos, y nada de esto termina guardado en la escena.
             DebrisPool.Prewarm();
+            PrecalentadoDeCombate.Ejecutar();
 
             // TODAS las barras del juego estaban rotas: una Image con
             // type = Filled solo respeta fillAmount si tiene sprite, y no
@@ -137,7 +138,9 @@ namespace SP.Presentation
             GameLog.Line("Cargo la escena");
             if (ObjectiveBanner != null && !esTutorial)
                 {
-                if (SP.Mision.MisionDirector.Instancia != null)
+                if (SP.Operacion.OperacionDirector.Activo)
+                    ObjectiveBanner.Show("OPERACION CUARTEL\nInfiltra · 3 puestos · Centro de datos · Tanque · Helicoptero", 5f);
+                else if (SP.Mision.MisionDirector.Instancia != null)
                     ObjectiveBanner.Show("MISION: RESCATE\nCentro · Resiste 60 s · Rescate · Helicoptero", 5f);
                 else
                     ObjectiveBanner.Show("Elimina a todos los enemigos\nmanteniendo viva a tu escuadra", 3f);

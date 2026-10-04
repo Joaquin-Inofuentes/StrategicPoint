@@ -85,16 +85,15 @@ namespace SP.Player
             return false;
         }
 
+        // Q tocada: orden CONTEXTUAL segun lo que se apunta (ver PlayerInputDriver.Contextual.cs). Antes un toque solo no hacia
+        // nada y hacia falta el doble toque; el doble toque sigue sirviendo (en terreno ya es seguir).
         void AccionRapidaDeQ()
         {
             UltimaAccionRapida = null;
-            var aim = ultimoResultadoDeMira;
-            if (aim.Type == AimTargetType.Caido && aim.Soldier != null && PedidoDeCuracion.MedicoDisponible(aim.Soldier) != null)
-            {
-                if (EjecutarOrdenRadial(MenuDeOrdenes.Curar, 3)) { UltimaAccionRapida = "REVIVIR"; return; }
-            }
-            if (!EsDobleToqueDeQ()) return;   // el primer toque solo arma la ventana
-            if (SeguirTodosSiOSi() > 0) UltimaAccionRapida = "SEGUIR TODOS";
+            var aim = aimCongelado ?? ultimoResultadoDeMira;
+            UltimaAccionRapida = AccionContextualDeQ(aim);
+            SesionLog.Evento(System.FormattableString.Invariant($"Q CONTEXTUAL: {UltimaAccionRapida ?? "(nada)"} · apuntando a {aim.Type}{(aim.Soldier != null ? ":" + aim.Soldier.DisplayName : "")} en ({aim.Point.x:0.0},{aim.Point.z:0.0})"));
+            if (UltimaAccionRapida == null && EsDobleToqueDeQ() && SeguirTodosSiOSi() > 0) UltimaAccionRapida = "SEGUIR TODOS";
         }
 
         // Llamado desde el TAP de [Q] (ResolverGestoDeQ). Devuelve true si

@@ -192,6 +192,8 @@ namespace SP.Presentation
             // navegacion todavia cree cerrado: sin esto los soldados
             // seguirian rodeando un escombro que ya no existe.
             SP.Core.NavService.Invalidate();
+            // El NavMesh del agent tambien se horneo con este muro en pie: se rehace en juego (si no, todos lo siguen rodeando).
+            SP.Core.NavMeshViva.Solicitar();
             // Y por el mismo motivo, las coberturas que daba este obstaculo
             // ya no cubren de nada: sin reregistrar, la IA seguiria yendo a
             // esconderse detras de un escombro.

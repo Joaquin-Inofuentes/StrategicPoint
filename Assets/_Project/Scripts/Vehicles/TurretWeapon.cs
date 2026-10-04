@@ -33,8 +33,13 @@ namespace SP.Vehicles
         // asimetricos a proposito: un cañon de tanque real baja poco (el
         // propio chasis lo tapa) pero sube bastante mas para poder pegarle
         // a algo en una loma o un techo.
-        [SerializeField] float minPitchDeg = -8f;
-        [SerializeField] float maxPitchDeg = 35f;
+        // OJO con el signo: pitch NEGATIVO es hacia ARRIBA (Euler x). Los valores viejos (-8, 35) estaban al reves: el
+        // cañon subia apenas 8 grados y bajaba 35 ("la torreta no se movia para arriba y abajo"). Ahora sube 25 y baja 10.
+        [SerializeField] float minPitchDeg = -25f;
+        [SerializeField] float maxPitchDeg = 10f;
+        public float PitchActual => NormalizePitch(transform.eulerAngles.x);
+        public float MinPitch => minPitchDeg;
+        public float MaxPitch => maxPitchDeg;
         public Transform Muzzle;
 
         float cooldownTimer;
@@ -149,6 +154,23 @@ namespace SP.Vehicles
             DesiredPitch = Mathf.Clamp(DesiredPitch + delta, minPitchDeg, maxPitchDeg);
         }
 
+        // Bug #047: el artillero apunta con la CAMARA (que ahora sube y baja con el mouse) y el cañon calcula solo la
+        // elevacion balistica para que el obus caiga en el punto bajo la mira. Antes el mouse vertical movia el tubo pero la
+        // camara no lo seguia: no se podia mirar el suelo y el punto de caida quedaba lejos del centro de la pantalla.
+        public void ElevarHacia(Vector3 punto)
+        {
+            EnsureDesiredPitch();
+            var origen = Muzzle != null ? Muzzle.position : transform.position;
+            var d = punto - origen;
+            float horiz = new Vector2(d.x, d.z).magnitude;
+            if (horiz < 0.5f) return;
+            float v = ProjectileSpeed * SpeedMultiplier;
+            float balistico = ProjectileGravity > 0f ? 0.5f * Mathf.Asin(Mathf.Clamp(ProjectileGravity * horiz / (v * v), -1f, 1f)) * Mathf.Rad2Deg : 0f;
+            DesiredPitch = Mathf.Clamp(-(Mathf.Atan2(d.y, horiz) * Mathf.Rad2Deg + balistico), minPitchDeg, maxPitchDeg);
+        }
+
+        public void FijarLimitesDeElevacion(float arriba, float abajo) { minPitchDeg = -Mathf.Abs(arriba); maxPitchDeg = Mathf.Abs(abajo); }
+
         // Giro bajo control del jugador: el cañon persigue DesiredYaw/Pitch
         // a velocidad limitada, igual que AimAt hace con el blanco de la
         // IA. Los dos ejes en la MISMA rotacion (Quaternion.Euler(pitch,
@@ -170,6 +192,38 @@ namespace SP.Vehicles
 
         void OnDestroy() => WorldSystemsRegistry.Unregister(this);
 
+        // El pivot gira en yaw Y pitch (gimbal), asi que el CUERPO de la torreta (VisualMundo/P_Veh_Tanque_Torreta, hijo
+        // directo del pivot) se inclinaba entero junto con el cañon: parecia que la torreta se despegaba del chasis. El
+        // cuerpo queda nivelado (solo yaw) y lo unico que sube y baja es el cañon (TurretBarrel), como en un tanque real.
+        Transform cuerpoNivelado;
+        Vector3 cuerpoPosLocal;
+        Quaternion cuerpoRotLocal;
+        bool cuerpoBuscado;
+        public Transform CuerpoNivelado => cuerpoNivelado;
+
+        void LateUpdate()
+        {
+            if (!cuerpoBuscado)
+            {
+                cuerpoBuscado = true;
+                for (int i = 0; i < transform.childCount; i++)
+                {
+                    var c = transform.GetChild(i);
+                    if (c.name != "VisualMundo") continue;
+                    bool esTorreta = false;
+                    foreach (Transform n in c.GetComponentsInChildren<Transform>(true))
+                        if (n.name.Contains("Torreta")) { esTorreta = true; break; }
+                    if (!esTorreta) continue;
+                    cuerpoNivelado = c; cuerpoPosLocal = c.localPosition; cuerpoRotLocal = c.localRotation;
+                    break;
+                }
+            }
+            if (cuerpoNivelado == null) return;
+            var soloYaw = Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+            cuerpoNivelado.rotation = soloYaw * cuerpoRotLocal;
+            cuerpoNivelado.position = transform.position + soloYaw * Vector3.Scale(transform.lossyScale, cuerpoPosLocal);
+        }
+
         public void SetPool(ProjectilePool projectilePool) => pool = projectilePool;
 
         public void RotateYaw(float yawDelta) => transform.Rotate(Vector3.up, yawDelta, Space.World);
@@ -189,7 +243,17 @@ namespace SP.Vehicles
             float desiredYaw = Quaternion.LookRotation(dir).eulerAngles.y;
             float currentYaw = transform.eulerAngles.y;
             float newYaw = Mathf.MoveTowardsAngle(currentYaw, desiredYaw, turnSpeedDegPerSec * dt);
-            transform.rotation = Quaternion.Euler(0f, newYaw, 0f);
+            // Pedido: "la torreta no se movia para arriba y abajo". La IA aplanaba el cañon a pitch 0 en cada frame: ahora
+            // tambien ELEVA hacia el blanco (altura relativa + el pequeño angulo balistico que compensa la caida del obus).
+            float horiz = dir.magnitude;
+            float dy = worldPoint.y - (Muzzle != null ? Muzzle.position.y : transform.position.y);
+            float v = ProjectileSpeed * SpeedMultiplier;
+            float balistico = 0.5f * Mathf.Asin(Mathf.Clamp(ProjectileGravity * horiz / (v * v), -1f, 1f)) * Mathf.Rad2Deg;
+            float pitchObjetivo = Mathf.Clamp(-(Mathf.Atan2(dy, horiz) * Mathf.Rad2Deg + balistico), minPitchDeg, maxPitchDeg);
+            float newPitch = Mathf.MoveTowardsAngle(NormalizePitch(transform.eulerAngles.x), pitchObjetivo, turnSpeedDegPerSec * 0.6f * dt);
+            transform.rotation = Quaternion.Euler(newPitch, newYaw, 0f);
+            desiredPitchInit = true;
+            DesiredPitch = newPitch;
 
             // Mantiene sincronizado el angulo deseado del jugador con el
             // que persigue la IA: si no, al bajarse el artillero humano y
@@ -326,8 +390,19 @@ namespace SP.Vehicles
             // mas potente queda mudo, que es peor que perder cualquier otra
             // cosa. El cuerpo va por encima del crack porque es el que
             // lleva el peso; si solo entra uno, que entre ese.
-            PlayAtMuzzle(SP.Presentation.SfxKind.CannonBody, 0.9f, 0.95f);
-            PlayAtMuzzle(SP.Presentation.SfxKind.CannonCrack, 0.55f, 0.9f);
+            // La metralleta coaxial comparte este componente: suena como ametralladora pesada, NO como cañonazo
+            // (con el obus real de Resources/Audio/Sfx/CannonBody cada rafaga de MG sonaba a artilleria).
+            bool esMetralleta = transform.parent != null && transform.parent.name == "MetralletaMount";
+            if (esMetralleta)
+            {
+                if (Application.isPlaying) SP.Presentation.AudioDirector.PlayClipAt(SP.Presentation.GenericSfx.GetWeaponShot(WeaponKind.Heavy), MuzzlePosition, 0.8f, 0.8f);
+            }
+            else
+            {
+                PlayAtMuzzle(SP.Presentation.SfxKind.CannonBody, 1f, 0.95f);
+                // Con la grabacion real del cañonazo (CC0) el crack sintetico queda como capa sutil de "golpe".
+                PlayAtMuzzle(SP.Presentation.SfxKind.CannonCrack, 0.2f, 0.9f);
+            }
 
             // Item 190: duck leve al disparar el cañon. Un cañonazo tiene
             // que "aplastar" un instante el resto de la mezcla o se pierde

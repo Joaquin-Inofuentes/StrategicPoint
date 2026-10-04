@@ -414,7 +414,8 @@ namespace SP.Player
             var spots = FormationPoints(center, forward, list.Count, kind, FormationSpacing);
             for (int i = 0; i < list.Count; i++) IssueMoveOrder(list[i], spots[i], queued);
 
-            AnnounceBatch(list, list.Count == 1 ? "Se dio la orden de ir a una posicion a 1 soldado" : $"Se dio la orden de ir a una posicion a {list.Count} soldados");
+            AnnounceBatch(list, (list.Count == 1 ? "Se dio la orden de ir a una posicion a 1 soldado" : $"Se dio la orden de ir a una posicion a {list.Count} soldados")
+                + $" (centro {center.x:0.0},{center.z:0.0} · {kind}{(queued ? " · encolada" : "")})");
         }
 
         // Cierre comun de TODA orden de lote: un solo sonido, una linea de
@@ -437,6 +438,7 @@ namespace SP.Player
             // 221: el lote es exactamente la granularidad correcta para el
             // historial -- una entrada por orden dada, no una por soldado.
             OrderHistory.Record(logLine, list != null ? list.Count : 0);
+            SP.Core.SesionLog.Orden(logLine, list);
 
             // Antes decia siempre lo mismo sin importar si eran uno o
             // diez soldados: si la seleccion no era la esperada, no habia
@@ -487,12 +489,15 @@ namespace SP.Player
         // no hay OrderMarkerFx.Spawn por soldado porque el destino se
         // mueve con el lider, un cubo fijo en el piso mentiria apenas
         // caminara un paso.
-        public static void IssueFollowOrder(Soldier soldier, Soldier leader, Vector3 formationOffsetLocal = default)
+        // silencioso: sin cartel ni sonido (el medico que va hacia un herido no "te sigue"; antes el pedido de curacion
+        // re-emitia esta orden cada frame y el "X TE SIGUE" sonaba en bucle: bug #039).
+        public static void IssueFollowOrder(Soldier soldier, Soldier leader, Vector3 formationOffsetLocal = default, float forzarSegundos = 0f, bool silencioso = false)
         {
             if (LoManejaElJugador(soldier)) return;
             var brain = soldier.GetComponent<AiBrain>();
             if (brain != null) brain.IsPossessedByPlayer = false;
-            brain?.IssueFollowOrder(leader, formationOffsetLocal);
+            brain?.IssueFollowOrder(leader, formationOffsetLocal, forzarSegundos);
+            if (silencioso) return;
             // Marca sobre el aliado que recibe la orden (el destino se mueve
             // con el lider, asi que no hay marcador fijo en el piso).
             SP.Presentation.Feedback.Accion(SfxKind.FollowCall, $"{soldier.DisplayName.ToUpperInvariant()} TE SIGUE",
@@ -525,7 +530,7 @@ namespace SP.Player
         const float FollowLateral = 1.3f;    // separacion al costado del lider
         const float FollowSpacing = 0.65f;   // ronda 13 (punto 4): cuanto se cae hacia atras cada fila extra. Sigue siendo mas del doble del radio de un soldado (~0,4 m) entre ranuras vecinas
 
-        public static void IssueFollowOrderForSelection(IEnumerable<Soldier> selection, Soldier leader)
+        public static void IssueFollowOrderForSelection(IEnumerable<Soldier> selection, Soldier leader, float forzarSegundos = 0f)
         {
             if (selection == null || leader == null) return;
             var list = new List<Soldier>(selection);
@@ -541,7 +546,7 @@ namespace SP.Player
             }
 
             for (int i = 0; i < list.Count; i++)
-                IssueFollowOrder(list[i], leader, ranuras[i]);
+                IssueFollowOrder(list[i], leader, ranuras[i], forzarSegundos);
 
             OrderMarkerFx.Spawn(leader.transform.position, OrderMarkerFx.FollowColor);
             AnnounceBatch(list, list.Count == 1 ? "Se dio la orden de seguir a 1 soldado" : $"Se dio la orden de seguir a {list.Count} soldados");

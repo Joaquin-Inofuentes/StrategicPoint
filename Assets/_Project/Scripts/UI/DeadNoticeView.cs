@@ -55,6 +55,10 @@ namespace SP.UI
         void BeginShow(string message, float fadeSeconds)
         {
             if (label == null || group == null) return;
+            // Bug #039: "SOLDADO_3_DOC: NOS DISPARAN! A" -- el texto largo se cortaba. Ajuste por renglon y tamano automatico.
+            label.horizontalOverflow = HorizontalWrapMode.Wrap;
+            label.verticalOverflow = VerticalWrapMode.Truncate;
+            if (!label.resizeTextForBestFit) { label.resizeTextMaxSize = Mathf.Max(label.fontSize, 20); label.resizeTextMinSize = 16; label.resizeTextForBestFit = true; }
             label.text = message;
             routine = StartCoroutine(FadeOut(fadeSeconds));
         }

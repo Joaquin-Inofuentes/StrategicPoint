@@ -97,10 +97,55 @@ namespace SP.UI
             ResolveCamera();
         }
 
+        // Bugs #043/#049: "en el minimapa los enemigos no vienen hacia mi / no aparecen los enemigos reales". El minimapa
+        // estaba fijo con el norte arriba y la vista (sobre todo la RTS, que suele mirar al suroeste) no: lo que entraba
+        // por abajo de la pantalla aparecia arriba en el minimapa. Ahora gira con la camara principal (arriba del minimapa
+        // = hacia donde mira la camara) y la "N" del marco se mueve por el borde marcando el norte real.
+        public bool girarConLaCamara = true;
+        public float Giro { get; private set; }
+
         void LateUpdate()
         {
             if (Target == null) return;
             transform.position = new Vector3(Target.position.x, height, Target.position.z);
+            var rig = SP.CameraSystem.CameraRig.Instance;
+            Giro = girarConLaCamara && rig != null ? rig.transform.eulerAngles.y : 0f;
+            transform.rotation = Quaternion.Euler(90f, Giro, 0f);
+            UbicarNorte();
+        }
+
+        RectTransform[] marcasDeNorte;
+        void UbicarNorte()
+        {
+            var b = ResolveBorder();
+            if (b == null) return;
+            if (marcasDeNorte == null)
+            {
+                var l = new System.Collections.Generic.List<RectTransform>();
+                foreach (var t in b.GetComponentsInChildren<RectTransform>(true))
+                    if (t.name == "N" || t.name == "MinimapNorte") l.Add(t);
+                marcasDeNorte = l.ToArray();
+                // Encima de la imagen del minimapa (si no, la imagen la tapa cuando cae adentro del cuadro).
+                foreach (var m in marcasDeNorte)
+                {
+                    m.anchorMin = m.anchorMax = new Vector2(0.5f, 0.5f); m.pivot = new Vector2(0.5f, 0.5f); m.SetAsLastSibling();
+                    if (m.GetComponent<UnityEngine.UI.Outline>() == null) m.gameObject.AddComponent<UnityEngine.UI.Outline>().effectColor = Color.black;
+                }
+            }
+            // Adentro del cuadro negro (sobre el borde gris claro la N blanca no se leia).
+            float r = Mathf.Min(b.rect.width, b.rect.height) * 0.5f - 24f;
+            float a = Giro * Mathf.Deg2Rad;
+            var pos = new Vector2(-Mathf.Sin(a) * r, Mathf.Cos(a) * r);
+            foreach (var m in marcasDeNorte) if (m != null) m.anchoredPosition = pos;
+        }
+
+        // Ejes del encuadre en el plano XZ: derecha y arriba de la imagen (giran con Giro).
+        static void EjesDe(Camera cam, out Vector3 derecha, out Vector3 arriba)
+        {
+            derecha = cam.transform.right; derecha.y = 0f;
+            arriba = cam.transform.up; arriba.y = 0f;
+            if (derecha.sqrMagnitude < 1e-6f || arriba.sqrMagnitude < 1e-6f) { derecha = Vector3.right; arriba = Vector3.forward; return; }
+            derecha.Normalize(); arriba.Normalize();
         }
 
         // Convierte un punto local del RectTransform de la RawImage (el
@@ -135,10 +180,9 @@ namespace SP.UI
             // mundo y su eje arriba es +Z. Por eso el mapeo es directo: X
             // con X, Y de la imagen con Z del mundo, sin matrices.
             Vector3 center = CameraCenter(cam);
-            world = new Vector3(
-                center.x + (nx - 0.5f) * 2f * halfW,
-                groundY,
-                center.z + (ny - 0.5f) * 2f * halfH);
+            EjesDe(cam, out var derecha, out var arriba);
+            world = new Vector3(center.x, groundY, center.z) + derecha * ((nx - 0.5f) * 2f * halfW) + arriba * ((ny - 0.5f) * 2f * halfH);
+            world.y = groundY;
 
             return IsInsideWorld(world);
         }
@@ -166,8 +210,10 @@ namespace SP.UI
             if (halfW <= 0f || halfH <= 0f) return false;
 
             Vector3 center = CameraCenter(cam);
-            float nx = 0.5f + (world.x - center.x) / (2f * halfW);
-            float ny = 0.5f + (world.z - center.z) / (2f * halfH);
+            EjesDe(cam, out var derecha, out var arriba);
+            var delta = new Vector3(world.x - center.x, 0f, world.z - center.z);
+            float nx = 0.5f + Vector3.Dot(delta, derecha) / (2f * halfW);
+            float ny = 0.5f + Vector3.Dot(delta, arriba) / (2f * halfH);
             if (nx < -EdgeTolerance || nx > 1f + EdgeTolerance) return false;
             if (ny < -EdgeTolerance || ny > 1f + EdgeTolerance) return false;
 

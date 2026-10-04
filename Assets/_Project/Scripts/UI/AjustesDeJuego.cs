@@ -8,6 +8,7 @@ namespace SP.UI
     // HUD minimo. Se guardan en PlayerPrefs y se aplican solas al arrancar cada escena.
     public static class AjustesDeJuego
     {
+        const string PrefPantallaV2 = "sp_pantalla_defecto_v2";
         const string PrefCompleta = "sp_pantalla_completa", PrefRes = "sp_resolucion", PrefCalidad = "sp_calidad",
                      PrefDalto = "sp_daltonismo", PrefHudMin = "sp_hud_minimo", PrefEscala = "sp_escala_interfaz";
 
@@ -61,6 +62,17 @@ namespace SP.UI
             UnityEngine.SceneManagement.SceneManager.sceneLoaded -= AlCargarEscena;
             UnityEngine.SceneManagement.SceneManager.sceneLoaded += AlCargarEscena;
             if (Application.isEditor) return;   // en el Editor no se toca la ventana del juego ni la calidad
+            // PANTALLA COMPLETA POR DEFECTO (pedido explicito): la primera vez que corre esta version se arranca en pantalla completa a la
+            // resolucion nativa, aunque una build vieja haya dejado guardado "ventana". Despues manda lo que el jugador elija en Configuraciones.
+            if (PlayerPrefs.GetInt(PrefPantallaV2, 0) == 0)
+            {
+                PlayerPrefs.SetInt(PrefPantallaV2, 1);
+                PlayerPrefs.SetInt(PrefCompleta, 1);
+                PlayerPrefs.DeleteKey(PrefRes);
+                PlayerPrefs.Save();
+                Screen.SetResolution(Display.main.systemWidth, Display.main.systemHeight, FullScreenMode.FullScreenWindow);
+                return;
+            }
             if (PlayerPrefs.HasKey(PrefRes) || PlayerPrefs.HasKey(PrefCompleta)) AplicarPantalla();
         }
 

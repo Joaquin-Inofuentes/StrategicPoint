@@ -14,8 +14,8 @@ namespace SP.UI
     {
         const int Size = 64;
 
-        static Texture2D irAlli, cubrirse, atacar, posicion, curar, tanque, poseer, demoler, torreta, calavera;
-        static Sprite spriteIrAlli, spriteCubrirse, spriteAtacar, spritePosicion, spriteCurar, spriteTanque, spritePoseer, spriteDemoler, spriteTorreta, spriteCalavera;
+        static Texture2D irAlli, cubrirse, atacar, posicion, curar, tanque, poseer, demoler, torreta, calavera, engranaje;
+        static Sprite spriteIrAlli, spriteCubrirse, spriteAtacar, spritePosicion, spriteCurar, spriteTanque, spritePoseer, spriteDemoler, spriteTorreta, spriteCalavera, spriteEngranaje;
 
         // Iconos de OPCION (anillo exterior): mas chicos y genericos que los de
         // categoria, reutilizados entre varias opciones semanticamente parecidas
@@ -37,6 +37,7 @@ namespace SP.UI
             MenuDeOrdenes.Poseer => spritePoseer ??= AsSprite(poseer ??= BuildPersona()),
             MenuDeOrdenes.Demoler => spriteDemoler ??= AsSprite(demoler ??= BuildEstallido()),
             MenuDeOrdenes.Torreta => spriteTorreta ??= AsSprite(torreta ??= BuildTorreta()),
+            MenuDeOrdenes.Interactuar => spriteEngranaje ??= AsSprite(engranaje ??= BuildEngranaje()),
             _ => spriteIrAlli ??= AsSprite(irAlli ??= BuildFlechaAbajo()),
         };
 
@@ -83,6 +84,8 @@ namespace SP.UI
                     if (sub == 0) return AsSprite(demoler ??= BuildEstallido());
                     if (sub == 2) return Equis();
                     return Persona();
+                case MenuDeOrdenes.Interactuar:
+                    return sub == 0 ? AsSprite(engranaje ??= BuildEngranaje()) : Persona();
                 case MenuDeOrdenes.Torreta:
                     if (sub == 0) return AsSprite(torreta ??= BuildTorreta());
                     if (sub == 1) return Equis();
@@ -202,6 +205,22 @@ namespace SP.UI
             Rellenar(tex, (nx, ny) =>
                 (Mathf.Abs(nx) <= mitadAncho && Mathf.Abs(ny) <= mitadLargo) ||
                 (Mathf.Abs(ny) <= mitadAncho && Mathf.Abs(nx) <= mitadLargo));
+            return tex;
+        }
+
+        // INTERACTUAR: engranaje (anillo con dientes y agujero central).
+        static Texture2D BuildEngranaje()
+        {
+            var tex = NuevaTextura();
+            Rellenar(tex, (nx, ny) =>
+            {
+                float r = Mathf.Sqrt(nx * nx + ny * ny);
+                if (r < 0.28f) return false;                      // agujero
+                float ang = Mathf.Atan2(ny, nx);
+                float diente = Mathf.Abs(Mathf.Sin(ang * 4f));    // 8 dientes
+                float rMax = diente > 0.55f ? 0.9f : 0.68f;
+                return r <= rMax;
+            });
             return tex;
         }
 

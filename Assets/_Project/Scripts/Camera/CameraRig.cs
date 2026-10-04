@@ -523,6 +523,26 @@ namespace SP.CameraSystem
 
         public void ToggleMode(Vector3? rtsFallbackCenter = null) => SetMode(Mode == ControlMode.Fps ? ControlMode.Rts : ControlMode.Fps, rtsFallbackCenter);
 
+        // Bug #049: "siempre que cambie de FPS a RTS deberia estar centrado entre los 3". Conserva el zoom, el giro y la
+        // inclinacion que el jugador dejo, pero el foco pasa al centro de la escuadra, con altura suficiente para que entren
+        // todos (radio = el soldado mas alejado del centro).
+        public void CentrarRtsEn(Vector3 foco, float radio)
+        {
+            if (Mode != ControlMode.Rts) return;
+            CancelTransition();
+            foco = new Vector3(foco.x, 0f, foco.z);
+            AcotarAlMapa(ref foco);
+            rtsFocusPoint = foco;
+            float altura = Mathf.Clamp(Mathf.Max(rtsCurrentHeight, radio * 2.4f + 18f), rtsMinHeight, rtsMaxHeight);
+            rtsCurrentHeight = altura;
+            rtsTargetHeight = altura;
+            transform.rotation = Quaternion.Euler(RtsLookEuler);
+            transform.position = RtsCameraPositionFor(rtsFocusPoint, rtsCurrentHeight);
+            panTargetInitialized = false;
+        }
+
+        public Vector3 RtsFoco => rtsFocusPoint;
+
         // Mientras hay una transición en curso (BeginTransition), el resto
         // de los métodos Follow* no deben pisarla escribiendo la transform
         // de golpe cada frame; por eso todos arrancan chequeando esto.
@@ -800,7 +820,7 @@ namespace SP.CameraSystem
         const float AimFollowSpeed = 6f;
 
         public void FollowThirdPersonAimed(Vector3 pivotPos, Vector3 aimForward, float distance = 7f, float height = 3f,
-            Vector3? miraPos = null, Quaternion? miraRot = null)
+            Vector3? miraPos = null, Quaternion? miraRot = null, float? inclinacion = null)
         {
             if (IsTransitioning) return;
             QuitarOffsetPrevio();
@@ -809,6 +829,9 @@ namespace SP.CameraSystem
             flat.Normalize();
             Vector3 desired = pivotPos - flat * distance + Vector3.up * height;
             Quaternion desiredRot = Quaternion.LookRotation((pivotPos + Vector3.up * 1.2f - desired).normalized);
+            // Bug #047: con 'inclinacion' (grados, + = hacia abajo) la camara la usa en vez de mirar siempre al pivote con el
+            // mismo angulo: el artillero puede mirar el suelo cerca del tanque o levantar la vista.
+            if (inclinacion.HasValue) desiredRot = Quaternion.Euler(inclinacion.Value, Quaternion.LookRotation(flat).eulerAngles.y, 0f);
             float k = Mathf.Clamp01(Time.deltaTime * AimFollowSpeed);
             Vector3 basePos = Vector3.Lerp(transform.position, desired, k);
             Quaternion baseRot = Quaternion.Slerp(transform.rotation, desiredRot, k);

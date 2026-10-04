@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using SP.Actors;
 using SP.Combat;
@@ -89,11 +90,86 @@ namespace SP.Presentation
         // material compartido de una sesion de Play anterior podria quedar
         // referenciado como "fake null" si algo lo destruyo entre medio.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetearMaterialCompartido() => materialBordeCompartido = null;
+        static void ResetearMaterialCompartido() { materialBordeCompartido = null; materialSombraCompartido = null; materialesPorColor.Clear(); materialesPorIcono.Clear(); }
 
         // Llamado desde ReinicioDeEstaticos (mismo patron que el resto de
         // los sistemas del proyecto): idempotente con ResetearMaterialCompartido.
         public static void ReiniciarActivo() => materialBordeCompartido = null;
+
+        static Material materialSombraCompartido;
+        static Material MaterialSombra()
+        {
+            if (materialSombraCompartido == null) materialSombraCompartido = DiamondGizmo.NuevoMaterial(new Color(0.02f, 0.02f, 0.03f, 1f));
+            return materialSombraCompartido;
+        }
+
+        // Bug #049: en RTS "rombos mas grandes para aliados, yo y seleccionado; cuando me acerco se achican y si me alejo se
+        // agrandan". El tamaño crece con la distancia a la camara (ocupa mas o menos lo mismo en pantalla a cualquier zoom),
+        // el tuyo es amarillo y los seleccionados son mas grandes y laten.
+        public const float EscalaRtsPorMetro = 1f / 26f, EscalaRtsMax = 6f, ExtraYo = 1.3f, ExtraSeleccionado = 1.3f;
+        bool yoPintado;
+        public float EscalaActual => marcador != null ? marcador.transform.localScale.x : 0f;
+        public bool MarcadorVisible => marcador != null && marcador.activeSelf;
+
+        static bool EnRts() => SP.CameraSystem.CameraRig.Instance != null && SP.CameraSystem.CameraRig.Instance.Mode == SP.CameraSystem.ControlMode.Rts;
+
+        bool EstaSeleccionado()
+        {
+            var sc = SP.Player.SelectionController.Instance;
+            if (sc == null || sc.Selected == null) return false;
+            for (int i = 0; i < sc.Selected.Count; i++) if (sc.Selected[i] == soldier) return true;
+            return false;
+        }
+
+        // Bug #052: cada soldado creaba 2 materiales propios (interior + icono): 12 ms por refuerzo que aparecia. Ahora se
+        // comparten por color y por textura de icono, y "pintar" es cambiar el material del renderer.
+        static readonly Dictionary<Color, Material> materialesPorColor = new Dictionary<Color, Material>();
+        static readonly Dictionary<Texture, Material> materialesPorIcono = new Dictionary<Texture, Material>();
+        Renderer rendInterior;
+
+        static Material MaterialDeColor(Color c)
+        {
+            if (!materialesPorColor.TryGetValue(c, out var m) || m == null) { m = DiamondGizmo.NuevoMaterial(c); materialesPorColor[c] = m; }
+            return m;
+        }
+
+        static Material MaterialDeIcono(Texture tex)
+        {
+            if (tex == null) return MaterialDeColor(Color.white);
+            if (!materialesPorIcono.TryGetValue(tex, out var m) || m == null)
+            {
+                m = DiamondGizmo.NuevoMaterial(Color.white);
+                m.mainTexture = tex;
+                if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
+                materialesPorIcono[tex] = m;
+            }
+            return m;
+        }
+
+        void PintarInterior(Color c)
+        {
+            materialInterior = MaterialDeColor(c);
+            if (rendInterior != null) rendInterior.sharedMaterial = materialInterior;
+        }
+
+        static float EscalaPara(float distancia, bool esEnemigo, bool soyYo)
+        {
+            if (EnRts())
+            {
+                // Proporcional a la distancia: el mismo tamaño en pantalla a cualquier altura de camara. Los enemigos un poco
+                // mas chicos que los propios (no "crecen por ser peligrosos": crecen por estar lejos, igual que todos).
+                float e = Mathf.Clamp(distancia * EscalaRtsPorMetro, 0.6f, EscalaRtsMax);
+                if (esEnemigo) e *= 0.8f;
+                if (soyYo) e *= ExtraYo;
+                return e;
+            }
+            if (esEnemigo) return 1f;
+            // FPS: aliados casi invisibles pegados a vos y mas grandes cuanto mas lejos (antes topaban en 1 a los 45 m).
+            float t = Mathf.InverseLerp(DistanciaEscalaMin, DistanciaEscalaMax, distancia);
+            float escala = Mathf.Lerp(EscalaAliadoCerca, 1f, t);
+            if (distancia > DistanciaEscalaMax) escala = Mathf.Min(2.5f, distancia / DistanciaEscalaMax);
+            return escala;
+        }
 
         static Material MaterialBorde()
         {
@@ -134,21 +210,8 @@ namespace SP.Presentation
             shotSub = null;
         }
 
-        void OnDestroy()
-        {
-            if (materialInterior != null)
-            {
-                if (Application.isPlaying) Destroy(materialInterior);
-                else DestroyImmediate(materialInterior);
-                materialInterior = null;
-            }
-            if (materialIcono != null)
-            {
-                if (Application.isPlaying) Destroy(materialIcono);
-                else DestroyImmediate(materialIcono);
-                materialIcono = null;
-            }
-        }
+        // Los materiales son compartidos (ver MaterialDeColor): no se destruyen con el soldado.
+        void OnDestroy() { materialInterior = null; materialIcono = null; }
 
         void Construir()
         {
@@ -156,14 +219,20 @@ namespace SP.Presentation
             marcador.transform.SetParent(transform, false);
             marcador.transform.localPosition = new Vector3(0f, Altura, 0f);
 
+            // Bug #049 ("que resalten y haya mas contraste real"): contorno OSCURO detras del blanco. El blanco solo se perdia
+            // contra el asfalto claro y el cielo; negro + blanco + color se lee sobre cualquier fondo.
+            var sombra = DiamondGizmo.CrearCara("Sombra", marcador.transform, TamanoBorde * 1.28f, MaterialSombra());
+            sombra.transform.localPosition = new Vector3(0f, 0f, 0.02f);
+
             // Fondo blanco primero (mas grande, sin offset): al ser mas
             // grande que el interior, siempre asoma como un contorno parejo
             // alrededor del rombo de color.
             DiamondGizmo.CrearCara("Borde", marcador.transform, TamanoBorde, MaterialBorde());
 
             equipoPintado = soldier.Team;
-            materialInterior = DiamondGizmo.NuevoMaterial(equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado);
+            materialInterior = MaterialDeColor(equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado);
             var interior = DiamondGizmo.CrearCara("Interior", marcador.transform, TamanoInterior, materialInterior);
+            rendInterior = interior.GetComponent<Renderer>();
             // Un pelo hacia la camara para que nunca compita en Z con el
             // borde (evita z-fighting entre los dos rombos coplanares).
             interior.transform.localPosition = new Vector3(0f, 0f, -0.02f);
@@ -177,9 +246,7 @@ namespace SP.Presentation
             var iconoTex = equipoPintado == TeamId.Enemy
                 ? RoleIconFactory.WorldIconTextureForWeapon(SP.Actors.SoldierClasses.Para(soldier).Loadout is { Length: > 0 } lo ? lo[0] : WeaponKind.Rifle)
                 : RoleIconFactory.WorldIconTexture(soldier.Role);
-            materialIcono = DiamondGizmo.NuevoMaterial(Color.white);
-            materialIcono.mainTexture = iconoTex;
-            if (materialIcono.HasProperty("_BaseMap")) materialIcono.SetTexture("_BaseMap", iconoTex);
+            materialIcono = MaterialDeIcono(iconoTex);
             var icono = DiamondGizmo.CrearCara("Icono", marcador.transform, TamanoInterior * 0.72f, materialIcono);
             icono.transform.localPosition = new Vector3(0f, 0f, -0.03f);
 
@@ -222,7 +289,9 @@ namespace SP.Presentation
 
         void Update()
         {
-            if (dead || marcador == null || soldier == null || soldier.Health == null) return;
+            if (marcador == null || soldier == null || soldier.Health == null) return;
+            // Al revivir, el rombo vuelve (antes quedaba apagado para siempre despues de la primera muerte).
+            if (dead) { if (!soldier.Health.IsAlive) return; dead = false; lodTimer = 0f; }
 
             if (RomboVisibilidad.Suprimidos) { marcador.SetActive(false); return; }
 
@@ -235,8 +304,15 @@ namespace SP.Presentation
                 lodTimer = LodCheckInterval;
 
                 if (!soldier.Health.IsAlive) { dead = true; marcador.SetActive(false); return; }
-                // El propio poseido no necesita ubicarse a si mismo.
-                if (soldier.Brain != null && soldier.Brain.IsPossessedByPlayer) { marcador.SetActive(false); return; }
+                // El propio poseido no necesita ubicarse a si mismo en primera persona; en RTS si (bug #049: "rombos para
+                // aliados y YO"), en amarillo.
+                bool soyYo = soldier.Brain != null && soldier.Brain.IsPossessedByPlayer;
+                if (soyYo && !EnRts()) { marcador.SetActive(false); return; }
+                if (soyYo != yoPintado)
+                {
+                    yoPintado = soyYo;
+                    PintarInterior(soyYo ? DiamondGizmo.ColorObjetivo : (soldier.Team == TeamId.Enemy ? ColorEnemigo : ColorAliado));
+                }
 
                 // Pedido explicito: "una vez que me subo al tanque el rombo de
                 // arriba no se va". Para los asientos ocultos (conductor,
@@ -260,9 +336,7 @@ namespace SP.Presentation
                 if (soldier.Team != equipoPintado)
                 {
                     equipoPintado = soldier.Team;
-                    var colorNuevo = equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado;
-                    materialInterior.color = colorNuevo;
-                    if (materialInterior.HasProperty("_BaseColor")) materialInterior.SetColor("_BaseColor", colorNuevo);
+                    PintarInterior(yoPintado ? DiamondGizmo.ColorObjetivo : equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado);
                 }
 
                 var haciaSoldado = transform.position - cam.transform.position;
@@ -281,7 +355,8 @@ namespace SP.Presentation
                     SP.Core.NavService.HayLineaDeTiro(cam.transform.position, transform.position, null, soldier.transform))
                     SP.Core.InteligenciaDeEnemigos.Revelar(soldier.Id);
 
-                bool anguloOk = angulo > AnguloDeMira;
+                // En RTS no hay "mira": el rombo no se apaga por quedar en el centro de la pantalla.
+                bool anguloOk = angulo > AnguloDeMira || EnRts();
                 bool inteligenciaOk = !esEnemigo || SP.Core.InteligenciaDeEnemigos.EstaRevelado(soldier.Id);
 
                 // Aliado en formacion (siguiendome) y pegado a mi: sin rombo,
@@ -292,16 +367,17 @@ namespace SP.Presentation
 
                 marcador.SetActive(anguloOk && inteligenciaOk && !ocultoPorSeguirCerca);
 
-                if (!esEnemigo)
-                {
-                    float t = Mathf.InverseLerp(DistanciaEscalaMin, DistanciaEscalaMax, distancia);
-                    float escala = Mathf.Lerp(EscalaAliadoCerca, 1f, t);
-                    marcador.transform.localScale = new Vector3(escala, escala, escala);
-                }
-                else if (marcador.transform.localScale != Vector3.one)
-                {
-                    marcador.transform.localScale = Vector3.one;
-                }
+            }
+
+            // La escala se recalcula todos los frames que se ve: el zoom de RTS cambia la distancia de forma continua y a
+            // saltos de 0,15 s se notaba.
+            if (marcador.activeSelf)
+            {
+                float dist = (transform.position - cam.transform.position).magnitude;
+                bool yo = soldier.Brain != null && soldier.Brain.IsPossessedByPlayer;
+                float e = EscalaPara(dist, soldier.Team == TeamId.Enemy, yo);
+                if (EnRts() && soldier.Team != TeamId.Enemy && EstaSeleccionado()) e *= ExtraSeleccionado * (1f + 0.08f * Mathf.Sin(Time.unscaledTime * 7f));
+                marcador.transform.localScale = Vector3.one * e;
             }
 
             // Billboard: hay que rehacerlo TODOS los frames que este

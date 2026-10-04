@@ -178,7 +178,7 @@ namespace SP.EditorTools
             if (muro != null) foreach (var mf in muro.GetComponentsInChildren<MeshFilter>()) tris += mf.sharedMesh.triangles.Length / 3;
             Check($"El muro recto ya no tiene la cara superior solapada ({tris} triangulos)", muro != null && tris == 34);
 
-            // Q: toque (menos de 1 s, sin elegir nada) = TODA la escuadra te sigue, si o si, mires lo que mires;
+            // Q: toque = accion CONTEXTUAL segun lo que miras (enemigo=ataque, terreno=seguir...), y el doble toque sin nada contextual = TODA la escuadra te sigue;
             // sostenido = radial. Se fija la mira por reflexion (la suite no corre Update).
             var campoMira = typeof(PlayerInputDriver).GetField("ultimoResultadoDeMira", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             Soldier enemigo = null;
@@ -192,11 +192,9 @@ namespace SP.EditorTools
                     campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.Enemy, Soldier = enemigo, Point = enemigo.transform.position, HitTransform = enemigo.transform });
                     kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
                     inputDriver.ResolverGestoDeQ(true, false, false);
-                    Check("Q: UN solo toque NO hace seguir a nadie", inputDriver.UltimaAccionRapida == null
+                    Check("Q: un toque mirando a un enemigo = orden CONTEXTUAL de ataque (no sigue a nadie)", inputDriver.UltimaAccionRapida != null
+                        && inputDriver.UltimaAccionRapida != "SEGUIR TODOS"
                         && kes.Brain.State != SP.Ai.AiState.Follow && doc.Brain.State != SP.Ai.AiState.Follow);
-                    inputDriver.ResolverGestoDeQ(true, false, false);
-                    Check("Q doble toque mirando a un enemigo = SIGANME a todos (no ataca)", inputDriver.UltimaAccionRapida == "SEGUIR TODOS"
-                        && kes.Brain.State == SP.Ai.AiState.Follow && doc.Brain.State == SP.Ai.AiState.Follow);
                     Check("Q toque NO abre el radial", !inputDriver.RadialAbierto);
                 }
                 campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.Ally, Soldier = kes, Point = kes.transform.position, HitTransform = kes.transform });

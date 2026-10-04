@@ -268,7 +268,13 @@ namespace SP.Combat
                 {
                     bool headshot = ultimoImpactoFueCabeza;
                     int finalDamage = headshot ? damage * 2 : damage;
-                    if (headshot) EventBus.Instance.Publish(new HeadshotEvent(ownerId, hit.Id, puntoDeImpacto));
+                    if (headshot)
+                    {
+                        EventBus.Instance.Publish(new HeadshotEvent(ownerId, hit.Id, puntoDeImpacto));
+                        // Bug #044: el tiro a la cabeza del soldado que maneja el jugador se anuncia.
+                        var poseido = SP.Player.PlayerInputDriver.Activo != null && SP.Player.PlayerInputDriver.Activo.Brain != null ? SP.Player.PlayerInputDriver.Activo.Brain.Current : null;
+                        if (poseido != null && poseido.Id == ownerId) AnunciarHeadshot(puntoDeImpacto, hit.Health.Current <= finalDamage);
+                    }
                     hit.Health.TakeDamage(finalDamage, ownerId, false);
                     ImpactCubes.Spawn(puntoDeImpacto, -transform.forward, ImpactSurface.Soldier, finalDamage);
                 }
@@ -469,6 +475,8 @@ namespace SP.Combat
             // director (Edit mode, o antes de que se construya) devuelve
             // false en silencio en vez de tirar.
             AudioDirector.PlayAt(sfx, point, volume, priority);
+            // Capa extra de "tac" + ping de rebote contra blindaje: el impacto contra un vehiculo sonaba plano.
+            if (kind == EnvironmentHitKind.Vehicle) AudioDirector.PlayAt(SfxKind.BalaImpacto, point, volume * 0.8f, priority);
         }
 
         // ------------------------------------------------------------------
@@ -576,7 +584,7 @@ namespace SP.Combat
 
         // La onda no dobla esquinas: si entre el centro de la explosion y
         // la victima hay un solido, no le llega.
-        static bool LaExplosionAlcanza(Vector3 centro, Vector3 victima)
+        static bool LaExplosionAlcanza(Vector3 centro, Vector3 victima, Transform ignorar = null)
         {
             var delta = victima - centro;
             float dist = delta.magnitude;
@@ -587,10 +595,21 @@ namespace SP.Combat
             {
                 var c = BufferExplosion[i].collider;
                 if (c == null) continue;
+                if (ignorar != null && c.transform.IsChildOf(ignorar)) continue;
                 if (!SP.Core.NavService.BlocksMovement(c)) continue;
                 return false;
             }
             return true;
+        }
+
+        // Bug #047: contra un vehiculo la linea de vista iba al PIVOTE, que en las camionetas esta a ras del piso: el rayo
+        // chocaba con el suelo (o con el propio casco) y un obus que reventaba pegado a la camioneta no le hacia nada.
+        // Se apunta al centro de su caja y se ignoran sus propios colliders.
+        static bool LaExplosionAlcanzaVehiculo(Vector3 centro, SP.Vehicles.Vehicle v)
+        {
+            var col = v.GetComponentInChildren<Collider>();
+            var destino = col != null && col.enabled ? col.bounds.center : v.transform.position + Vector3.up * 0.8f;
+            return LaExplosionAlcanza(centro, destino, v.transform);
         }
 
         // Salpicadura de sangre al impactar un soldado: cubitos chicos que
@@ -633,6 +652,7 @@ namespace SP.Combat
         // coberturas y las brechas del enemigo. Multiplicador sobre el daño de
         // una bala normal, con caida hacia el borde.
         public const float FactorDanoDeExplosionAObstaculos = 3f;
+        public const int VidaMaximaDeVehiculoLiviano = 250;
         static readonly Collider[] bufferExplosion = new Collider[48];
         static readonly HashSet<SP.Presentation.ObstacleMarker> marcasGolpeadas = new HashSet<SP.Presentation.ObstacleMarker>();
 
@@ -715,9 +735,14 @@ namespace SP.Combat
                 if (vehicle == null || vehicle == ignoreVehicle) continue;
                 float distV = Vector3.Distance(vehicle.transform.position, point);
                 if (distV > radius) continue;
-                if (!LaExplosionAlcanza(point, vehicle.transform.position)) continue;
+                if (!LaExplosionAlcanzaVehiculo(point, vehicle)) continue;
                 float cercaniaV = 1f - Mathf.Clamp01(distV / radius);
-                vehicle.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * multiplicadorVsVehiculo * Mathf.Lerp(DanoMinimoEnElBorde, 1f, cercaniaV))), ownerId);
+                int danoV = Mathf.Max(1, Mathf.RoundToInt(damage * multiplicadorVsVehiculo * Mathf.Lerp(DanoMinimoEnElBorde, 1f, cercaniaV)));
+                // Bug #055: "el vehiculo tras recibir un proyectil de estos sea destruido". Un arma antivehiculo (lanzacohetes,
+                // multiplicador >= 2) revienta de un impacto a cualquier vehiculo liviano (camionetas: <= 250 de vida).
+                if (multiplicadorVsVehiculo >= 2f && vehicle.Health != null && vehicle.Health.MaxHealth <= VidaMaximaDeVehiculoLiviano)
+                    danoV = Mathf.Max(danoV, vehicle.Health.Current);
+                vehicle.TakeDamage(danoV, ownerId);
             }
 
             EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, point));
@@ -728,6 +753,8 @@ namespace SP.Combat
             // diseño nuevo, no el item 192.
             // Ronda 7: la explosion tiene estruendo propio (trueno grave + crack + escombros que caen).
             SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.Explosion, point, 1f, 1f);
+            // Obus de tanque (radio grande): golpe seco y trueno extra, para que se sienta el peso del cañon.
+            if (radius >= 4.5f) SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.ImpactoPesado, point, 1f, 1f);
             ImpactFx.SpawnExplosion(point, radius);
 
             // Una explosion cerca se veia pero no se SENTIA: la camara
@@ -807,6 +834,19 @@ namespace SP.Combat
         const float FraccionSuperiorCabeza = 0.18f;
         bool ultimoImpactoFueCabeza;
 
+        public static int HeadshotsDelJugador { get; private set; }
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarHeadshots() => HeadshotsDelJugador = 0;
+
+        static void AnunciarHeadshot(Vector3 punto, bool mata)
+        {
+            HeadshotsDelJugador++;
+            // Sonido + pulso; el texto va en pantalla bajo la mira (la etiqueta en el mundo era ilegible a distancia).
+            SP.Presentation.Feedback.Accion(SP.Presentation.SfxKind.ImpactoPesado, null, null,
+                new Color(1f, 0.25f, 0.2f), aviso: false, pulso: true, volumen: 0.8f);
+            SP.UI.HeadshotPopup.Mostrar(mata);
+        }
+
         bool LeDioAlCuerpo(SP.Actors.Soldier victima, Vector3 punto)
         {
             ultimoImpactoFueCabeza = false;
@@ -841,11 +881,17 @@ namespace SP.Combat
             // ningun paso de fisica. Es la misma caja que se ve en
             // pantalla, asi que sigue siendo la mejor aproximacion
             // disponible para "donde esta la cabeza".
-            var renderer = victima.GetComponent<Renderer>();
-            Bounds cuerpoBounds = renderer != null ? renderer.bounds : cuerpo.bounds;
-
-            float alturaCabeza = cuerpoBounds.max.y - cuerpoBounds.size.y * FraccionSuperiorCabeza;
-            ultimoImpactoFueCabeza = punto.y >= alturaCabeza;
+            // Bug #044: headshot SOLO contra enemigos y con la caja propia de la cabeza (HitboxCabeza, pegada al hueso). A un
+            // aliado o al jugador nunca se le cuenta headshot.
+            if (victima.Team == TeamId.Enemy && ownerTeam == TeamId.Player)
+            {
+                var cabeza = HitboxCabeza.De(victima);
+                if (cabeza != null) { ultimoImpactoFueCabeza = cabeza.Toca(punto, RadioDeBala + 0.05f); return true; }
+                var renderer = victima.GetComponent<Renderer>();
+                Bounds cuerpoBounds = renderer != null ? renderer.bounds : cuerpo.bounds;
+                float alturaCabeza = cuerpoBounds.max.y - cuerpoBounds.size.y * FraccionSuperiorCabeza;
+                ultimoImpactoFueCabeza = punto.y >= alturaCabeza;
+            }
             return true;
         }
 

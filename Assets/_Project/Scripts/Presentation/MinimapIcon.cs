@@ -244,6 +244,10 @@ namespace SP.Presentation
             tinte.a = ConoAlpha;
             conoRenderer.sharedMaterial = NuevoMaterialTransparente(tinte);
             conoRadioActual = -1f; // fuerza a TickFollow a re-escalar con el radio actual
+            // Bug #049: con 15-20 enemigos los conos rojos se fundian en una mancha que tapaba DONDE estaba cada uno ("no me
+            // aparecen los enemigos reales"). Los enemigos quedan como triangulos nitidos; el cono es solo de la escuadra.
+            bool esEnemigo = soldierDetectado != null && soldierDetectado.Team == TeamId.Enemy;
+            if (conoDeVision.gameObject.activeSelf == esEnemigo) conoDeVision.gameObject.SetActive(!esEnemigo);
         }
 
         // BUG REAL (2026): la malla original del cono era un abanico de
@@ -364,6 +368,30 @@ namespace SP.Presentation
             if (selfRenderer == null) selfRenderer = GetComponent<MeshRenderer>();
         }
 
+        // Aliado caido: el icono parpadea en el minimapa (ver TickFollow).
+        public bool CaidoParpadeando { get; private set; }
+
+        // Bug: "en el minimapa no se ven mis aliados". El radio visible del minimapa es de 110 m (OrthoSizeMinimo) y el icono de
+        // un soldado medía 4 m: 3 px de un minimapa de 150 px. Los iconos de SOLDADOS se escalan con el zoom real de la camara del
+        // minimapa (un soldado ocupa ~6% del radio visible, ~9 px), sin tocar obstaculos ni objetivos.
+        Vector3 escalaBase;
+        bool escalaBaseTomada;
+        public static float FraccionDelRadio = 0.065f;
+        void AjustarEscalaAlZoom(float extra)
+        {
+            if (!escalaBaseTomada) { escalaBase = transform.localScale; escalaBaseTomada = true; }
+            var mm = SP.UI.MinimapFollow.Activo;
+            var cam = mm != null ? mm.MinimapCamera : null;
+            float radio = cam != null ? cam.orthographicSize * FraccionDelRadio * 2f : escalaBase.x;
+            float lado = Mathf.Max(escalaBase.x, radio) * extra;
+            var nueva = new Vector3(lado, escalaBase.y, lado);
+            if ((transform.localScale - nueva).sqrMagnitude > 0.0001f)
+            {
+                transform.localScale = nueva;
+                conoRadioActual = -1f;   // el cono es hijo del icono: hay que recalcularlo con la escala nueva
+            }
+        }
+
         // Alta y baja en el unico recorrido de UI de mundo. Mismo patron
         // que SP.Core.WorldSystemsRegistry.
         void OnEnable()
@@ -423,10 +451,35 @@ namespace SP.Presentation
             // null y el icono seguia seguido al cadaver para siempre.
             if (soldierDetectado != null && soldierDetectado.Health != null && !soldierDetectado.Health.IsAlive)
             {
+                // Bugs #10 y #15: un ALIADO caido perdia el icono para siempre (se destruia y nadie lo volvia a crear al
+                // revivirlo: "en el minimapa no se ven mis aliados"). Ahora el aliado caido queda en el minimapa PARPADEANDO
+                // (necesita reanimacion) y al revivir vuelve a verse normal. Los enemigos muertos siguen desapareciendo.
+                if (Application.isPlaying && soldierDetectado.Team == TeamId.Player && soldierDetectado.Role != RoleType.Civilian
+                    && soldierDetectado.gameObject.activeInHierarchy)
+                {
+                    EnsureRenderer();
+                    bool prendido = Mathf.Repeat(Time.unscaledTime, 0.5f) < 0.3f;
+                    if (selfRenderer != null) selfRenderer.enabled = prendido;
+                    if (conoDeVision != null && conoDeVision.gameObject.activeSelf) conoDeVision.gameObject.SetActive(false);
+                    if (directionMarker != null && directionMarker.gameObject.activeSelf) directionMarker.gameObject.SetActive(false);
+                    AjustarEscalaAlZoom(1.35f + 0.35f * Mathf.Sin(Time.unscaledTime * 12f));
+                    transform.position = new Vector3(Target.position.x, height + 1f, Target.position.z);
+                    CaidoParpadeando = true;
+                    return true;
+                }
                 if (Application.isPlaying) Destroy(gameObject);
                 else DestroyImmediate(gameObject);
                 return false;
             }
+            if (CaidoParpadeando)
+            {
+                // Revivio: vuelve el icono normal.
+                CaidoParpadeando = false;
+                EnsureRenderer();
+                if (selfRenderer != null) selfRenderer.enabled = true;
+                if (conoDeVision != null) conoDeVision.gameObject.SetActive(true);
+            }
+            if (soldierDetectado != null && Application.isPlaying) AjustarEscalaAlZoom(1f);
             // El poseido se dibuja un poco mas alto que el resto: con la
             // escuadra pegada al jugador (caso comun al arrancar la mision)
             // los discos coplanares se pisan entre si y "vos" quedabas

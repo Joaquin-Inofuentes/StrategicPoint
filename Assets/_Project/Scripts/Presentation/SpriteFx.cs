@@ -19,10 +19,21 @@ namespace SP.Presentation
             if (cache.TryGetValue(nombre, out var s) && s != null) return s;
             var tex = SP.Core.RecursosCache.Cargar<Texture2D>(Carpeta + nombre);
             if (tex == null) return null;
-            s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), tex.width);
+            // Bug #052: sin meshType, Sprite.Create arma una malla "Tight" que recorre el contorno de la textura de 512 px
+            // (SpriteMeshGenerator: 45-60 ms en el frame de la PRIMERA granada). Un efecto que mira a camara va bien con un rectangulo.
+            s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), tex.width, 0, SpriteMeshType.FullRect);
             s.name = nombre;
             cache[nombre] = s;
             return s;
+        }
+
+        // Carga y arma todos los sprites de impacto durante la carga del nivel, no en plena explosion.
+        public static int Precargar()
+        {
+            int n = 0;
+            foreach (var tex in Resources.LoadAll<Texture2D>(Carpeta.TrimEnd('/')))
+                if (tex != null && Obtener(tex.name) != null) n++;
+            return n;
         }
     }
 
@@ -48,6 +59,15 @@ namespace SP.Presentation
             foreach (var f in pool) if (f != null) { if (Application.isPlaying) Destroy(f.gameObject); else DestroyImmediate(f.gameObject); }
             pool.Clear();
             if (root != null) { if (Application.isPlaying) Destroy(root.gameObject); else DestroyImmediate(root.gameObject); root = null; }
+        }
+
+        // Bug #052: el pool se llenaba de a uno en pleno combate (AddComponent en el frame de la explosion). Se arma entero al cargar.
+        public static void Precalentar()
+        {
+            if (!Application.isPlaying) return;
+            var creados = new List<SpriteFx>();
+            while (pool.Count < Cupo) { var fx = Tomar(); fx.gameObject.SetActive(true); creados.Add(fx); }
+            foreach (var fx in creados) fx.gameObject.SetActive(false);
         }
 
         static SpriteFx Tomar()

@@ -93,7 +93,7 @@ namespace SP.EditorTools
             if (f.ClicFinal > LimiteClic) f.Avisos += "CLIC_FINAL ";
             if (f.RmsDb < RmsMinimoDb) f.Avisos += "MUY_BAJO ";
             if (f.RmsDb > RmsMaximoDb) f.Avisos += "MUY_ALTO ";
-            if (f.Duracion > 8f) f.Avisos += "MUY_LARGO ";
+            if (f.Duracion > 8f && !(f.Nombre ?? "").StartsWith("Sfx_Ambiente")) f.Avisos += "MUY_LARGO ";   // los ambientes en loop son largos a proposito
             lista.Add(f);
         }
     }

@@ -483,6 +483,7 @@ namespace SP.Mision
             {
                 cierre.gameObject.SetActive(true);
                 SP.Core.NavService.Invalidate();
+                SP.Core.NavMeshViva.Solicitar();   // la malla del agent tiene que enterarse del cierre: sin esto el civil y los aliados siguen eligiendo ese carril
             }
             int n = Escalar(3) + (AntenaDeRadio.Activa != null && !AntenaDeRadio.Destruida ? 1 : 0);
             var c = PuestoDeCierre[(int)carril];

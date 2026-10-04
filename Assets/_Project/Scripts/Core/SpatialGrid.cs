@@ -87,6 +87,11 @@ namespace SP.Core
             foreach (var s in ActorRegistry.All)
             {
                 if (s == null || s.Health == null || !s.Health.IsAlive) continue;
+                // BUG REAL (bugs #12-#17 del usuario): las oleadas EN RESERVA de la Operacion (soldados apagados que esperan su
+                // turno) entraban a la grilla. La escuadra "veia" y perseguia enemigos que no existian (Chase/Attack con 0 enemigos
+                // vivos), nunca habia "calma" y el medico no reanimaba a nadie. Se excluye al apagado SALVO al que esta montado en
+                // un vehiculo (la regla original de arriba sigue valiendo para ese caso).
+                if (!s.gameObject.activeInHierarchy && !(s.Brain != null && s.Brain.MontadoEnVehiculo)) continue;
                 var key = CellOf(s.transform.position);
                 if (!cells.TryGetValue(key, out var list))
                 {

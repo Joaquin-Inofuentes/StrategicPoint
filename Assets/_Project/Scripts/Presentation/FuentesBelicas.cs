@@ -38,21 +38,24 @@ namespace SP.Presentation
         void Update()
         {
             if (Time.unscaledTime < proximo) return;
-            proximo = Time.unscaledTime + 0.25f;
-            Aplicar();
+            // Bug #052: el barrido de toda la escena (incluidos inactivos) cada 0,25 s costaba 2-8 ms por vez.
+            proximo = Time.unscaledTime + 1f;
+            Aplicar(FindObjectsInactive.Exclude);
         }
 
         public static bool EsBelica(Font f) => f != null && (f.name == "BlackOpsOne-Regular" || f.name == "StardosStencil-Bold");
 
         // Aplica las fuentes a todo lo que este en las escenas cargadas. Devuelve cuantos textos cambio.
-        public static int Aplicar()
+        public static int Aplicar() => Aplicar(FindObjectsInactive.Include);
+
+        public static int Aplicar(FindObjectsInactive inactivos)
         {
             var titulo = Titulo; var texto = Texto;
             if (titulo == null || texto == null) return 0;
             int n = 0;
-            var textos = Object.FindObjectsByType<Text>(FindObjectsInactive.Include);
+            var textos = Object.FindObjectsByType<Text>(inactivos);
             for (int i = 0; i < textos.Length; i++) if (Aplicar(textos[i], titulo, texto)) n++;
-            var mallas = Object.FindObjectsByType<TextMesh>(FindObjectsInactive.Include);
+            var mallas = Object.FindObjectsByType<TextMesh>(inactivos);
             for (int i = 0; i < mallas.Length; i++) if (Aplicar(mallas[i], texto)) n++;
             Cambiados += n;
             return n;

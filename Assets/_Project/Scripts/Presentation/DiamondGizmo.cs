@@ -168,7 +168,10 @@ namespace SP.Presentation
                     float cicloDiente = Mathf.Repeat(ang / (Mathf.PI * 2f) * dientes, 1f);
                     float radioDeBorde = cicloDiente < 0.5f ? radioExterior : radioValle;
                     bool relleno = r <= radioDeBorde && r >= radioInterior;
-                    pix[y * lado + x] = relleno ? new Color32(255, 255, 255, 255) : new Color32(255, 255, 255, 0);
+                    // Bug #041: el material es Unlit OPACO (ignora el alfa), asi que el "transparente" salia del mismo color
+                    // que el engranaje y el rombo se veia liso. Fondo oscuro opaco: el tinte lo deja en tono apagado y el
+                    // engranaje resalta encima.
+                    pix[y * lado + x] = relleno ? new Color32(255, 255, 255, 255) : new Color32(45, 45, 45, 255);
                 }
             }
             tex.SetPixels32(pix);

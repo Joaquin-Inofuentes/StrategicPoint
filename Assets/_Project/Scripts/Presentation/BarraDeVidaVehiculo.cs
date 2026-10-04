@@ -19,7 +19,7 @@ namespace SP.Presentation
     public class BarraDeVidaVehiculo : MonoBehaviour
     {
         public const float AnchoMundo = 3.2f, AltoMundo = 0.34f;
-        public const float DistanciaMaxima = 120f;
+        public const float DistanciaMaxima = 120f, DistanciaMinima = 6f;
 
         Vehicle vehicle;
         Canvas canvas;
@@ -46,11 +46,11 @@ namespace SP.Presentation
             Construir();
         }
 
-        void Construir()
+        // Altura: sobre el punto mas alto de los renderers del chasis (el tanque no es alto siempre igual).
+        // Bug #056: las camionetas se achican a la mitad DESPUES de instanciarse (OperacionDirector.InstanciarCamioneta) y la
+        // barra quedaba a la altura de la camioneta grande, flotando ~2 m arriba. Se vuelve a medir en Start, ya escaladas.
+        void MedirAltura()
         {
-            if (raizCanvas != null) return;
-
-            // Altura: sobre el punto mas alto de los renderers del chasis (el tanque no es alto siempre igual).
             float techo = 0f;
             bool hay = false;
             var b = new Bounds(transform.position, Vector3.zero);
@@ -60,7 +60,17 @@ namespace SP.Presentation
                 if (!hay) { b = r.bounds; hay = true; } else b.Encapsulate(r.bounds);
             }
             if (hay) techo = b.max.y - transform.position.y;
-            alturaSobreElCasco = Mathf.Max(1.6f, techo) + 0.9f;
+            float minimo = 1.6f * Mathf.Clamp(transform.lossyScale.y, 0.3f, 1f);
+            alturaSobreElCasco = Mathf.Max(minimo, techo) + 0.9f * Mathf.Clamp(transform.lossyScale.y, 0.5f, 1f);
+        }
+
+        void Start() => MedirAltura();
+
+        void Construir()
+        {
+            if (raizCanvas != null) return;
+
+            MedirAltura();
 
             var go = new GameObject("BarraDeVidaVehiculo", typeof(Canvas));
             raizCanvas = go.transform;
@@ -70,7 +80,8 @@ namespace SP.Presentation
             canvas.renderMode = RenderMode.WorldSpace;
             var rt = go.GetComponent<RectTransform>();
             rt.sizeDelta = new Vector2(320f, 34f);
-            go.transform.localScale = Vector3.one * (AnchoMundo / 320f);
+            // Proporcional al vehiculo (bug #047: las camionetas a mitad de escala llevaban una barra de 3,2 m, mas ancha que ellas).
+            go.transform.localScale = Vector3.one * (AnchoMundo * Mathf.Clamp(transform.lossyScale.x, 0.45f, 1.5f) / 320f);
 
             fondo = NuevaImagen("Fondo", go.transform, new Color(0f, 0f, 0f, 0.65f));
             Estirar(fondo.rectTransform, 0f);
@@ -121,7 +132,9 @@ namespace SP.Presentation
             bool mostrar = !vehicle.IsDestroyed && hp.IsAlive && !vehicle.PlayerAboard;
             if (mostrar && cam != null)
             {
-                if ((cam.transform.position - transform.position).sqrMagnitude > DistanciaMaxima * DistanciaMaxima) mostrar = false;
+                float d2 = (cam.transform.position - raizCanvas.position).sqrMagnitude;
+                // Pegada a la camara (una camioneta embistiendo al tanque) la barra tapaba media pantalla.
+                if (d2 > DistanciaMaxima * DistanciaMaxima || d2 < DistanciaMinima * DistanciaMinima) mostrar = false;
                 else raizCanvas.rotation = cam.transform.rotation;
             }
             if (canvas.enabled != mostrar) canvas.enabled = mostrar;

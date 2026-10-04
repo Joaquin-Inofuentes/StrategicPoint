@@ -16,7 +16,9 @@ namespace SP.Player
         // Tiempo de carga vigente. Es 4 s salvo en el paso del tutorial que practica CANCELAR.
         public static float Segundos = SegundosNormales;
         public const float AlcanceMaximo = 4.5f;  // distancia maxima al obstaculo para cargar (Ronda 11: era 9 m; ahora la mitad)
-        public const float LadoMaximo = 45f;      // muros mas largos que esto no se pueden volar
+        // Muros mas largos que esto no se pueden volar. 60 m: los muros del chicane (53 y 57 m) son muros normales y tienen que caer;
+        // quedan afuera solo los bordes del mapa (Norte/Sur/Este/Oeste, el fondo de la base y la muralla sur de la base: 100-314 m).
+        public const float LadoMaximo = 60f;
         public const int DanoDeLaCarga = 35;      // a los enemigos pegados al muro (nunca a los propios)
         public const float RadioDeLaCarga = 4.5f;
 
@@ -28,6 +30,15 @@ namespace SP.Player
                 if (m != null) return m;
             }
             return null;
+        }
+
+        // El obstaculo que el jugador tiene en la mira. BUG REAL reportado jugando: "agacho al asalto frente al muro con franjas
+        // y no pasa nada". AimTargeting devuelve Cubrirse (no Obstacle) cuando el muro apuntado tambien sirve de cobertura -- la
+        // compuerta del fortin lo es --, y la demolicion solo miraba Obstacle: nunca arrancaba la carga ni aparecia DEMOLER en el radial.
+        public static ObstacleMarker MarcadorDeLaMira(AimResult aim)
+        {
+            if (aim.Type != AimTargetType.Obstacle && aim.Type != AimTargetType.Cubrirse) return null;
+            return MarcadorApuntado(aim.HitTransform, aim.Point);
         }
 
         public static bool EsDemolible(ObstacleMarker m, out string motivo)
@@ -151,6 +162,7 @@ namespace SP.Player
             Progreso = 0f;
             tiempoDeOrden = 0f;
             OrderService.IssueMoveOrder(yo, puntoDeCarga);
+            SP.Core.SesionLog.Orden("DEMOLER", yo, "muro " + m.name);
             return true;
         }
 
@@ -186,18 +198,23 @@ namespace SP.Player
             if (driver == null) driver = PlayerInputDriver.Activo;
             if (driver == null) return;
 
-            ObstacleMarker m = null;
             var aim = driver.UltimaMira;
-            if (aim.Type == AimTargetType.Obstacle) m = Demolicion.MarcadorApuntado(aim.HitTransform, aim.Point);
+            ObstacleMarker m = Demolicion.MarcadorDeLaMira(aim);
+            bool apuntaAlMuro = m != null;
             if (m == null && objetivo != null && !objetivo.IsCollapsed) m = objetivo;
 
             string motivo = null;
-            bool valido = m != null && Demolicion.EsDemolible(m, out motivo) && Demolicion.DistanciaA(yo, m) <= Demolicion.AlcanceMaximo;
-            bool agachado = yo.Motor.IsCrouching;
+            bool demolible = m != null && Demolicion.EsDemolible(m, out motivo);
+            float distancia = m != null ? Demolicion.DistanciaA(yo, m) : 0f;
+            bool valido = demolible && distancia <= Demolicion.AlcanceMaximo;
+            // Pedido explicito: "cambia CTRL por E". Ahora se mantiene [E] (la habilidad de clase) quieto frente al muro; agacharse
+            // con [Ctrl] sigue valiendo (compatibilidad), pero ya no hace falta.
+            bool eSostenida = driver.EspecialSostenido;
+            bool agachado = eSostenida || yo.Motor.IsCrouching;
             float velocidad = dt > 0f ? (yo.transform.position - ultimaPos).magnitude / dt : 0f;
             bool quieto = velocidad < 0.35f;
 
-            if (valido && aim.Type == AimTargetType.Obstacle && m != objetivo) { objetivo = m; Progreso = 0f; }
+            if (valido && apuntaAlMuro && m != objetivo) { objetivo = m; Progreso = 0f; }
 
             if (valido && agachado && quieto && Time.timeScale > 0f)
             {
@@ -214,7 +231,7 @@ namespace SP.Player
             if (cargando && Progreso > 0f)
             {
                 cargando = false;
-                string por = !agachado ? "TE LEVANTASTE" : !quieto ? "TE MOVISTE" : "PERDISTE EL OBJETIVO";
+                string por = !agachado ? "SOLTASTE [E]" : !quieto ? "TE MOVISTE" : "PERDISTE EL OBJETIVO";
                 Feedback.Accion(SfxKind.EmptyClick, "CARGA CANCELADA: " + por, yo.transform.position, Feedback.Warn, aviso: true, pulso: false, volumen: 0.5f);
             }
             Progreso = Mathf.Max(0f, Progreso - dt * 1.5f);
@@ -222,10 +239,18 @@ namespace SP.Player
             driver.OcultarProgresoDemolicion();
 
             // Consejo cada tanto: apuntas a algo demolible pero no cumplis las condiciones.
-            if (valido && Time.time >= proximoAviso && aim.Type == AimTargetType.Obstacle)
+            if (valido && Time.time >= proximoAviso && apuntaAlMuro)
             {
                 proximoAviso = Time.time + 7f;
-                Feedback.Accion(SfxKind.TutSub, "AGACHATE [Ctrl] Y QUEDATE QUIETO 4 s PARA DEMOLER", null, Feedback.Info, aviso: true, pulso: false, volumen: 0.3f);
+                Feedback.Accion(SfxKind.TutSub, "MANTEN [E] QUIETO 4 s PARA DEMOLER", null, Feedback.Info, aviso: true, pulso: false, volumen: 0.3f);
+            }
+            // BUG REAL reportado jugando: "apreto Ctrl y no detona". Con la camara detras del soldado el muro parece mas cerca de lo
+            // que esta, y fuera de los 4,5 m (o si es de los muros enormes) no aparecia NINGUN aviso: la carga simplemente no arrancaba.
+            else if ((agachado || KeyBindings.WasPressed(KeyBindings.Interactuar)) && apuntaAlMuro && !valido && Time.time >= proximoAviso)
+            {
+                proximoAviso = Time.time + 1.2f;
+                string aviso = !demolible ? motivo : "ACERCATE AL MURO: ESTAS A " + distancia.ToString("0.0") + " m (MAX " + Demolicion.AlcanceMaximo.ToString("0.#") + " m)";
+                Feedback.Accion(SfxKind.EmptyClick, aviso, null, Feedback.Warn, aviso: true, pulso: false, volumen: 0.4f);
             }
             if (!valido) objetivo = null;
         }

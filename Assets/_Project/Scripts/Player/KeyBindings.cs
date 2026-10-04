@@ -60,6 +60,10 @@ namespace SP.Player
         public const string MinimapCiclarTamano = "minimap_ciclar_tamano";
         public const string FocalizarRts = "focalizar_rts";
         public const string RotarCamaraRts = "rotar_camara_rts";
+        // Mantener [Espacio] a pie abre el radial de ordenes (igual que mantener [Q]); el salto se quito.
+        public const string RadialEspacio = "radial_espacio";
+        // Marca el instante actual como "bug" en el registro de sesion (ver SesionLog): foto del estado + camara. Tambien [8].
+        public const string MarcarBug = "marcar_bug";
 
         // Valores de fabrica. Son EXACTAMENTE los que el juego ya usaba, de
         // modo que sin tocar nada el remapeo es invisible.
@@ -104,6 +108,8 @@ namespace SP.Player
             { MinimapCiclarTamano, Key.L },
             { FocalizarRts, Key.F },
             { RotarCamaraRts, Key.Backquote },
+            { RadialEspacio, Key.Space },
+            { MarcarBug, Key.U },
         };
 
         static Dictionary<string, Key> current;

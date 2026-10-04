@@ -292,6 +292,7 @@ namespace SP.Presentation
         void Update()
         {
             if (Keyboard.current == null || !Application.isPlaying) return;
+            if (SP.Core.SesionLog.DialogoAbierto) return;   // [Esc] cancela el reporte de bug, no abre la pausa
             if (!Keyboard.current.escapeKey.wasPressedThisFrame && !SP.Player.MandoFps.Pausa) return;
             // La partida ya terminó (ganaste/perdiste): [ESC] no debe
             // abrir un menú de pausa encima de esa pantalla.

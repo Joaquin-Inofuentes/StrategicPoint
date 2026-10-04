@@ -194,10 +194,27 @@ namespace SP.Presentation
             GameLog.Line("Ganaste");
             Time.timeScale = 0f;
             ReleaseCursor();
+            if (victoryStats == null) victoryStats = victoryPanel.transform.Find("Stats")?.GetComponent<Text>();
             if (victoryStats != null) victoryStats.text = BuildStatsText();
             victoryPanel.SetActive(true);
-            FocusRetryButton(victoryPanel);
+            Animar(victoryPanel, victoryStats, true);
             GameLog.Line("Pantalla de ganar activa");
+        }
+
+        // Bug #064: entra con fundido, titulo animado y las estadisticas fila por fila (ver PantallaDeResultado). El foco del
+        // teclado va a Reintentar recien cuando los botones terminan de aparecer.
+        void Animar(GameObject panel, Text statsViejo, bool victoria)
+        {
+            if (!isActiveAndEnabled) { FocusRetryButton(panel); return; }
+            StartCoroutine(AnimarYEnfocar(panel, statsViejo, victoria));
+        }
+
+        System.Collections.IEnumerator AnimarYEnfocar(GameObject panel, Text statsViejo, bool victoria)
+        {
+            var filas = SP.Mision.EstadisticasDeMision.Filas(victoria);
+            float y = victoria ? 92f : 64f;
+            yield return PantallaDeResultado.Animar(panel, filas, statsViejo, y);
+            FocusRetryButton(panel);
         }
 
         // "motivo" es el mismo texto legible que ya se empujaba como toast de 3 s (AlertQueue) --
@@ -211,9 +228,10 @@ namespace SP.Presentation
             Time.timeScale = 0f;
             ReleaseCursor();
             if (defeatReason != null) defeatReason.text = string.IsNullOrEmpty(motivo) ? "" : SP.Core.Loc.T(motivo);
+            if (defeatStats == null) defeatStats = defeatPanel.transform.Find("Stats")?.GetComponent<Text>();
             if (defeatStats != null) defeatStats.text = BuildStatsText();
             defeatPanel.SetActive(true);
-            FocusRetryButton(defeatPanel);
+            Animar(defeatPanel, defeatStats, false);
             GameLog.Line("Pantalla de perder activa");
         }
 

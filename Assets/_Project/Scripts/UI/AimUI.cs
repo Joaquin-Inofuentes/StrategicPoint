@@ -409,6 +409,8 @@ namespace SP.UI
         static readonly Color EnemyTint = new Color(1f, 0.45f, 0.4f);
         static readonly Color VehicleTint = new Color(0.5f, 0.7f, 1f);
         static readonly Color ObstacleTint = new Color(0.85f, 0.85f, 0.85f);
+        // Bug #041: interactuable (panel, computadora, arma en el piso, caido, torreta) = mira dorada; el engranaje va sobre el objeto.
+        static readonly Color InteractTint = new Color(1f, 0.82f, 0.15f);
         // B5: un obstaculo con ObstacleMarker aguanta disparos y se puede
         // derrumbar (F1-F3, G1) -- uno sin ese componente (un Muro, por
         // ejemplo) es pared fija. Antes los dos se veian identicos bajo
@@ -606,6 +608,13 @@ namespace SP.UI
                     CurrentPrompt = "";
                     currentAimTint = crosshairBaseColor;
                     break;
+                case AimTargetType.Interactuar:
+                case AimTargetType.Recoger:
+                case AimTargetType.Caido:
+                case AimTargetType.Torreta:
+                    CurrentPrompt = "";
+                    currentAimTint = InteractTint;
+                    break;
                 default:
                     CurrentPrompt = "";
                     currentAimTint = crosshairBaseColor;
@@ -679,11 +688,22 @@ namespace SP.UI
             _ => state.ToString(),
         };
 
+        public const float DistanciaParaVerAsientos = 12f;
+
         void UpdateVehicleInfo(AimResult result)
         {
             if (vehicleInfoPanel == null) return;
 
             bool show = result.Type == AimTargetType.Vehicle && result.Vehicle != null;
+            // Bug #056: "cuando apunto a un vehiculo no deberian aparecerme sus slots hasta que este cerca". Los asientos
+            // solo importan si se puede subir: vehiculo propio, entero y a menos de DistanciaParaVerAsientos del soldado.
+            if (show)
+            {
+                var yo = SP.Player.PlayerInputDriver.Activo != null && SP.Player.PlayerInputDriver.Activo.Brain != null ? SP.Player.PlayerInputDriver.Activo.Brain.Current : null;
+                var v = result.Vehicle;
+                show = yo != null && !v.IsDestroyed && v.PuedeAbordar(yo)
+                    && (v.transform.position - yo.transform.position).sqrMagnitude <= DistanciaParaVerAsientos * DistanciaParaVerAsientos;
+            }
             vehicleInfoPanel.SetActive(show);
             if (!show || seatSquares == null) return;
 

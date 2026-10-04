@@ -68,6 +68,19 @@ namespace SP.Mision
             if (polvo != null) Destroy(polvo.GetComponent<ParticleSystemRenderer>().sharedMaterial);
         }
 
+        // Bug #051: "se quedo trabado el sonido del helicoptero" en la pantalla de victoria. La pantalla pone timeScale 0 y el
+        // loop del rotor (AudioSource propio, no pasa por la pausa de AudioListener) seguia sonando a todo volumen para siempre.
+        // La cinematica de salida lo baja con VolumenExtra mientras se aleja y al final lo apaga del todo.
+        public float VolumenExtra { get; set; } = 1f;
+        bool sonidoApagado;
+        public bool SonidoApagado => sonidoApagado || sonido == null || !sonido.isPlaying;
+        public void ApagarSonido()
+        {
+            sonidoApagado = true;
+            VolumenExtra = 0f;
+            if (sonido != null) sonido.Stop();
+        }
+
         public void Alerta(bool on)
         {
             objetivoVueltas = on ? VueltasEnAlerta : VueltasEnEspera;
@@ -320,8 +333,9 @@ namespace SP.Mision
                 // igual de fuerte aunque el jugador bajara "Efectos" a
                 // cero en Opciones. GainFor se relee cada frame (barato,
                 // cache en memoria) para que el slider surta efecto en vivo.
-                sonido.volume = Mathf.Lerp(0.30f, 1f, k) * arrancando * SP.Presentation.AudioDirector.GainFor(SP.Presentation.SfxChannel.Sfx);
+                sonido.volume = Mathf.Lerp(0.30f, 1f, k) * arrancando * Mathf.Clamp01(VolumenExtra) * SP.Presentation.AudioDirector.GainFor(SP.Presentation.SfxChannel.Sfx);
                 sonido.pitch = Mathf.Lerp(0.85f, 1.25f, k);
+                if (sonidoApagado && sonido.isPlaying) sonido.Stop();
             }
             if (disco != null && matDisco != null)
             {

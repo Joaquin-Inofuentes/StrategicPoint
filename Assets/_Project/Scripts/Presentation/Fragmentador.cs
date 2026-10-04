@@ -115,6 +115,14 @@ namespace SP.Presentation
             return m;
         }
 
+        // Bug #052: se crean todos los trozos al cargar el nivel (inactivos) en vez de en el frame del primer derrumbe.
+        public static void Precalentar()
+        {
+            if (!Application.isPlaying) return;
+            Tomar();
+            while (pool.Count < Cupo) Crear();
+        }
+
         static Fragmento Tomar()
         {
             if (root == null)
@@ -130,6 +138,11 @@ namespace SP.Presentation
                 for (int i = 1; i < pool.Count; i++) if (pool[i].Edad > viejo.Edad) viejo = pool[i];
                 return viejo;
             }
+            return Crear();
+        }
+
+        static Fragmento Crear()
+        {
             var go = new GameObject("Fragmento") { hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild, layer = LayerSinRayos };
             go.transform.SetParent(root, false);
             go.AddComponent<MeshFilter>();

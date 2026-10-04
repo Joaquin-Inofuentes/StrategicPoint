@@ -87,6 +87,8 @@ namespace SP.Player
         public const float rtsZoomSpeed = 80f;
         // [E]: menos de esto = interactuar (toque); esto o mas = accion especial de la clase.
         public const float SostenerParaEspecial = 0.5f;
+        // [E] mantenido (>= SostenerParaEspecial) este frame: la habilidad de clase y la carga de demolicion del asalto.
+        public bool EspecialSostenido { get; private set; }
         bool eToque;
 
         // Las ordenes de escuadra viven en el radial de [Q]; las teclas sueltas
@@ -417,7 +419,12 @@ namespace SP.Player
             var canvasRoot = AimUiRef != null ? AimUiRef.transform.parent : null;
             var mirilla = MirillaView.Asegurar(canvasRoot);
             if (mirilla == null) return;
+            // Bug #041: "el engranaje esta bueno pero mejor encima del interactuable, no sobre el cursor: me tapa la vista".
+            // La mira ya NO se reemplaza por el icono grande: queda la del arma, en dorado, y el rombo con engranaje va arriba
+            // del objeto (InteractGearMarker, desde ActualizarPromptContextual).
+            var icono = IconoDeMiraInteractiva(result);
             var tinte = result.Type == AimTargetType.Enemy ? new Color(1f, 0.32f, 0.26f)
+                      : icono != null ? new Color(1f, 0.82f, 0.15f)
                       : result.Type == AimTargetType.Ally ? new Color(0.45f, 1f, 0.55f)
                       : new Color(1f, 1f, 1f, 0.95f);
             mirilla.Actualizar(Rig.EstaConZoom && Rig.AdsBlend > 0.55f, spec.Reticle, tinte);
@@ -425,6 +432,32 @@ namespace SP.Player
             {
                 AimUiRef.SetCrosshairStyle(MirillaView.SpriteDe(spec.Reticle), spec.Reticle == ReticleStyle.Punto ? 46f : 54f);
                 AimUiRef.SetBaseCrosshairHidden(mirilla.Alfa > 0.5f);
+                MiraInteractivaActual = icono != null ? result.Type.ToString() : null;
+            }
+        }
+
+        // Bug #11: "cuando apunto a un interactuable debe cambiar el cursor". La mira pasa a un icono (engranaje = panel /
+        // computadora / arma para recoger, cruz = caido para reanimar, torreta) y vuelve a la cruz del arma al dejar de apuntar.
+        public string MiraInteractivaActual { get; private set; }
+        // Tambien son interactuables el vehiculo propio ([E] subir) y el aliado herido con medico disponible ([E] curar).
+        Sprite IconoDeMiraInteractiva(AimResult r)
+        {
+            if (r.Type == AimTargetType.Vehicle && r.Vehicle != null && !r.Vehicle.IsDestroyed && r.Vehicle.Bando == TeamId.Player && !currentSeat.HasValue)
+                return SP.UI.RadialIconFactory.ForCategoria(SP.UI.MenuDeOrdenes.Tanque);
+            if (r.Type == AimTargetType.Ally && r.Soldier != null && Herido(r.Soldier) && PedidoDeCuracion.MedicoDisponible(r.Soldier) != null)
+                return SP.UI.RadialIconFactory.ForCategoria(SP.UI.MenuDeOrdenes.Curar);
+            return IconoDeMiraInteractiva(r.Type);
+        }
+
+        static Sprite IconoDeMiraInteractiva(AimTargetType t)
+        {
+            switch (t)
+            {
+                case AimTargetType.Interactuar: return SP.UI.RadialIconFactory.ForCategoria(SP.UI.MenuDeOrdenes.Interactuar);
+                case AimTargetType.Caido: return SP.UI.RadialIconFactory.ForCategoria(SP.UI.MenuDeOrdenes.Curar);
+                case AimTargetType.Torreta: return SP.UI.RadialIconFactory.ForCategoria(SP.UI.MenuDeOrdenes.Torreta);
+                case AimTargetType.Recoger: return SP.UI.RadialIconFactory.ForCategoria(SP.UI.MenuDeOrdenes.Interactuar);
+                default: return null;
             }
         }
 
@@ -581,6 +614,9 @@ namespace SP.Player
         void OnDisable()
         {
             QuitarRegistro();
+            // El cartel de interaccion ("MANTEN [E] QUIETO PARA DEMOLER"...) lo refresca este Update: si el driver se apaga (subida
+            // al helicoptero, cinematicas) quedaba congelado en pantalla, incluso encima de la pantalla de victoria.
+            InteractHintView.Ocultar(); InteractGearMarker.Ocultar();
             // Es un estatico: si se queda apuntando al soldado de la
             // partida anterior, la siguiente arranca con un soldado
             // fantasma al que nadie le puede dar ordenes.
@@ -684,6 +720,9 @@ namespace SP.Player
             // el panel de pausa está en pantalla el jugador podía seguir
             // moviéndose, disparando y girando la cámara por detrás.
             if (PauseRef != null && PauseRef.IsPaused) return;
+            VolverSiMeReanimaron();
+            // Dialogo de reporte de bug abierto: el teclado es del campo de texto (escribir "w" no tiene que mover al soldado).
+            if (SP.Core.SesionLog.DialogoAbierto) return;
 
             // [H] consulta los controles sin pausar el juego -- sigue
             // corriendo la simulacion (a diferencia de abrirlo desde
@@ -716,6 +755,7 @@ namespace SP.Player
 
             UpdateCursorLock(kb);
             if (Rig.Mode != ControlMode.Rts) CursorContextual.Restaurar();
+            else { InteractHintView.Ocultar(); InteractGearMarker.Ocultar(); }
 
             // [F4] modo dios y [C] (mantener) vista tactica: se atienden en cualquier modo de camara.
             if (kb.f4Key.wasPressedThisFrame) AlternarModoDios();
@@ -791,6 +831,7 @@ namespace SP.Player
                     // en el poseido -- si no hay vista guardada (primera
                     // vez), cae a centrar en foco como antes.
                     Rig.RestoreOrSetRtsView(focus);
+                    CentrarRtsEnLaEscuadra();
                 }
 
                 if (ModeToast != null) ModeToast.Show(Rig.Mode == ControlMode.Rts ? "VISTA RTS" : "VISTA FPS");
@@ -803,6 +844,7 @@ namespace SP.Player
                 SP.UI.ScreenFlashView.ModeChange();
             }
 
+            if (Rig.Mode != ControlMode.Fps || currentSeat.HasValue || handlingDeath) EspecialSostenido = false;
             if (handlingDeath) return;
 
             if (currentSeat.HasValue)
@@ -878,6 +920,27 @@ namespace SP.Player
         // escena breve se siente como una interrupción rara, no
         // intencional.
         public bool IsHandlingDeath => handlingDeath;
+
+        // Bug #12: si la camara de muerte ya habia pasado a RTS y DESPUES te reanimaban (medico o rescatista), te quedabas en
+        // RTS con tu soldado de pie y sin saberlo. Ahora al revivir volves solo a primera persona con un aviso.
+        Soldier caidoEsperandoRescate;
+        public bool EsperandoRescate => caidoEsperandoRescate != null;
+
+        void VolverSiMeReanimaron()
+        {
+            if (caidoEsperandoRescate == null) return;
+            if (Brain.Current != caidoEsperandoRescate) { caidoEsperandoRescate = null; return; }
+            if (!caidoEsperandoRescate.Health.IsAlive || handlingDeath) return;
+            var yo = caidoEsperandoRescate;
+            caidoEsperandoRescate = null;
+            GameLog.Line($"{yo.DisplayName} fue reanimado: vuelve a primera persona");
+            SesionLog.Evento($"{yo.DisplayName} (jugador) reanimado: vuelve a FPS");
+            Rig.SetMode(ControlMode.Fps);
+            Rig.BeginTransition(yo.EyeAnchor != null ? yo.EyeAnchor : yo.transform);
+            if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(true);
+            if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(true);
+            AvisoCentral.Mostrar("¡TE REANIMARON! DE VUELTA EN COMBATE", 2f, new Color(0.1f, 0.35f, 0.15f, 0.9f));
+        }
 
         // El anillo del asesino y el punto de camara de la muerte eran
         // locales de la corrutina: si esta se cortaba a mitad, nadie los
@@ -987,6 +1050,7 @@ namespace SP.Player
                     GameLog.Line("Sin aliados libres: EstadoDePartida decide derrota o recuperacion");
                     Rig.SetMode(ControlMode.Rts);
                     Rig.SetRtsView(deadSoldier.transform.position);
+                    caidoEsperandoRescate = deadSoldier;
                 }
                 else
                 {
@@ -1056,6 +1120,7 @@ namespace SP.Player
                             GameLog.Line("Nadie pidio el cambio a tiempo: la vista pasa sola a RTS");
                             Rig.SetMode(ControlMode.Rts);
                             Rig.SetRtsView(deadSoldier.transform.position);
+                            caidoEsperandoRescate = deadSoldier;
                             break;
                         }
 
@@ -1227,6 +1292,21 @@ namespace SP.Player
             var mandoMover = MandoFps.Mover;
             if (mandoMover.sqrMagnitude > 0f) move += f * mandoMover.y + r * mandoMover.x;
             if (TorretaFijaActiva) { move = Vector3.zero; destinoAuto = null; }
+            if (PedidoDeCuracion.CurandoAlJugador(Brain.Current))
+            {
+                if (kb.spaceKey.wasPressedThisFrame)
+                {
+                    PedidoDeCuracion.CancelarPorElJugador();
+                    AvisoCentral.Mostrar("CURACION DETENIDA", 1.4f, new Color(0.35f, 0.2f, 0.05f, 0.88f));
+                    SesionLog.Evento("El jugador corto la curacion con [ESPACIO]");
+                }
+                else
+                {
+                    if (move.sqrMagnitude > 0.0001f)
+                        AvisoCentral.Mostrar("AGUARDE, ESTA SIENDO CURADO · APRIETE [ESPACIO] PARA DETENERLO", 1.2f);
+                    move = Vector3.zero; destinoAuto = null;
+                }
+            }
             bool moving = move.sqrMagnitude > 0.0001f;
             // Destino automatico (SetDestination): camina solo hasta el punto,
             // sin cursor ni camara. Las teclas WASD siguen mandando.
@@ -1275,13 +1355,8 @@ namespace SP.Player
             // (recentrar camara) ni con el de la camara de muerte (pedir
             // cambio de cuerpo): son ramas mutuamente excluyentes, esta
             // vive solo adentro de UpdateFps.
-            if ((kb.spaceKey.wasPressedThisFrame || MandoFps.Saltar) && !TorretaFijaActiva)
-            {
-                bool yaSaltaba = Brain.Current.Motor.IsJumping;
-                Brain.Current.Motor.Jump();
-                if (!yaSaltaba && Brain.Current.Motor.IsJumping)
-                    Feedback.Accion(SfxKind.Jump, null, Brain.Current.transform.position, Feedback.Info, aviso: false, pulso: false, volumen: 0.6f);
-            }
+            // Pedido explicito: "si mantengo barra espaciadora me abra el menu radial, quita lo de salto, nunca se usa".
+            // [Espacio] ya no salta: mantenido abre el radial (ver ActualizarMenuDeOrdenes). El motor conserva Jump() (trepar, tutorial).
             // Aterrizaje: golpe sordo y un sacudon leve de camara al volver a apoyar los pies.
             bool enElAire = Brain.Current.Motor.IsJumping;
             if (saltandoAntes && !enElAire)
@@ -1343,6 +1418,7 @@ namespace SP.Player
             // [Ctrl] queda solo para agacharse. eToque se calcula UNA vez por cuadro: WasTapped consume la pulsacion.
             eToque = KeyBindings.WasTapped(KeyBindings.Interactuar, SostenerParaEspecial);
             bool ctrlSostenido = KeyBindings.IsHeld(KeyBindings.Interactuar, SostenerParaEspecial) || MandoFps.Agachar;
+            EspecialSostenido = ctrlSostenido;
             ActualizarHabilidadDeClase(result, ctrlSostenido, moving);
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateAmmoWarning(Brain.Current.Weapon);
@@ -2316,6 +2392,35 @@ namespace SP.Player
 
         // El soldado propio y vivo que esta seleccionado SI Y SOLO SI es
         // el unico. Null en cualquier otro caso.
+        // Bug #049: al pasar a RTS la camara queda centrada entre los soldados vivos de la escuadra (los que van en un
+        // vehiculo cuentan por la posicion del vehiculo).
+        public void CentrarRtsEnLaEscuadra()
+        {
+            if (Rig == null || Squad == null) return;
+            var puntos = new List<Vector3>();
+            foreach (var s in Squad)
+            {
+                if (s == null || s.Health == null || !s.Health.IsAlive || s.Role == RoleType.Civilian) continue;
+                Vector3 p;
+                if (s.gameObject.activeInHierarchy) p = s.transform.position;
+                else
+                {
+                    Vehicle dentro = null;
+                    foreach (var v in Vehicle.Todos) if (v != null && v.RoleOf(s) != null) { dentro = v; break; }
+                    if (dentro == null) continue;
+                    p = dentro.transform.position;
+                }
+                puntos.Add(p);
+            }
+            if (puntos.Count == 0) return;
+            var centro = Vector3.zero;
+            foreach (var p in puntos) centro += p;
+            centro /= puntos.Count;
+            float radio = 0f;
+            foreach (var p in puntos) radio = Mathf.Max(radio, Vector3.Distance(new Vector3(p.x, 0f, p.z), new Vector3(centro.x, 0f, centro.z)));
+            Rig.CentrarRtsEn(centro, radio);
+        }
+
         public Soldier SoldadoUnicoSeleccionado()
         {
             if (Selection == null || Selection.Selected.Count != 1) return null;
@@ -2575,7 +2680,10 @@ namespace SP.Player
                     return $"Enemigo: {result.Soldier.DisplayName}   ·   [Q] mantener: radial → ATACAR   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Vehicle:
                     return "[Q] mantener: radial → TANQUE (subir / bajar / ir)   ·   [Click] disparar   ·   [TAB] vista RTS";
+                case AimTargetType.Cubrirse:
                 case AimTargetType.Obstacle:
+                    if (Brain.Current != null && Brain.Current.Role == RoleType.Assault)
+                        return "Obstáculo   ·   [Ctrl] agachado y quieto 4 s: DEMOLER (a menos de 4,5 m)   ·   [Q] mantener: radial   ·   [Click] disparar";
                     return "Obstáculo   ·   [Q] mantener: radial → CUBRIRSE / DEMOLER   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Ground:
                     return "[Q] mantener: radial → IR ALLI   ·   [Click der.] mandar el tanque aquí (si hay conductor)   ·   [Click] disparar   ·   [TAB] vista RTS";
@@ -2717,9 +2825,10 @@ namespace SP.Player
                     }
                     break;
 
+                case AimTargetType.Cubrirse:   // un muro que tambien sirve de cobertura se puede demoler igual
                 case AimTargetType.Obstacle:
                 {
-                    var m = Demolicion.MarcadorApuntado(aim.HitTransform, aim.Point);
+                    var m = Demolicion.MarcadorDeLaMira(aim);
                     string motivo;
                     if (m != null && Demolicion.EsDemolible(m, out motivo))
                     {
@@ -2754,6 +2863,17 @@ namespace SP.Player
                         if (aim.Torreta.Libre) c.Mostrar(MenuDeOrdenes.Torreta, true, 0, 2);
                     }
                     break;
+
+                case AimTargetType.Interactuar:
+                {
+                    var ord = OrdenableEnLaMira(aim);
+                    if (ord != null && !ord.Completo)
+                    {
+                        apunta = $"{ord.NombreParaOrden} ({ord.QuienDebe})";
+                        c.Mostrar(MenuDeOrdenes.Interactuar, true);
+                    }
+                    break;
+                }
             }
 
             // Estados propios: no dependen de la mira.
@@ -2855,11 +2975,12 @@ namespace SP.Player
                     destacado = true;   // mantener [E] revive con cualquier clase (UpdateRevivalHold), no solo con medico vivo
                     pista = $"MANTENGA [{tecla}] PARA REVIVIR";
                     break;
+                case AimTargetType.Cubrirse:
                 case AimTargetType.Obstacle:
                 {
-                    var m = Demolicion.MarcadorApuntado(aim.HitTransform, aim.Point);
+                    var m = Demolicion.MarcadorDeLaMira(aim);
                     string motivo;
-                    if (m != null && Demolicion.EsDemolible(m, out motivo))
+                    if (m != null && !currentSeat.HasValue && Demolicion.EsDemolible(m, out motivo))   // a bordo de un vehiculo no se demuele
                     {
                         bool asalto = (yo != null && yo.Role == RoleType.Assault) || DestinatariosDeOrden().Exists(x => x.Role == RoleType.Assault);
                         mostrar = true;
@@ -2874,7 +2995,13 @@ namespace SP.Player
                         Vector3 centro = colObstaculo != null ? colObstaculo.bounds.center : m.transform.position;
                         float tope = colObstaculo != null ? colObstaculo.bounds.max.y : centro.y;
                         ancla = new Vector3(centro.x, tope + AlturaGearObstaculo, centro.z);
-                        if (destacado) pista = $"APRETÁ [{tecla}] PARA DEMOLER";
+                        // Demoler NO es [E]: el asalto que manejas agachado ([Ctrl]) y quieto 4 s; si lo manda otro, va por el radial [Q].
+                        // "MANTEN [E]" solo cerca del muro (antes salia apuntando a una pared a 100 m, donde demoler es imposible);
+                        // la orden por radial al asalto de la escuadra se ofrece hasta 40 m.
+                        float dMuro = yo != null ? Demolicion.DistanciaA(yo, m) : 999f;
+                        bool yoAsalto = yo != null && yo.Role == RoleType.Assault;
+                        if (destacado && yoAsalto && dMuro <= Demolicion.AlcanceMaximo * 2f) pista = "MANTEN [E] QUIETO PARA DEMOLER";
+                        else if (destacado && !yoAsalto && dMuro <= 40f) pista = "[Q] MANTENER → DEMOLER";
                     }
                     break;
                 }
@@ -2898,6 +3025,31 @@ namespace SP.Player
                         destacado = aim.Torreta.Libre;
                         ancla = aim.Torreta.transform.position + Vector3.up * AlturaGearTorreta;
                         if (destacado) pista = $"APRETÁ [{tecla}] PARA USAR";
+                    }
+                    break;
+                case AimTargetType.Interactuar:
+                {
+                    var ord = OrdenableEnLaMira(aim);
+                    if (ord != null && !ord.Completo)
+                    {
+                        mostrar = true; destacado = true;
+                        ancla = ord.Raiz.position + Vector3.up * 2.6f;
+                        pista = $"[Q] ENVIAR AL {ord.QuienDebe}  ·  O ACERCATE Y MANTEN [{tecla}]";
+                    }
+                    else if (aim.HitTransform != null)
+                    {
+                        mostrar = true; destacado = true;
+                        ancla = aim.HitTransform.position + Vector3.up * 2.2f;
+                    }
+                    break;
+                }
+                case AimTargetType.Recoger:
+                    // Bug #041: arma/municion/caja en el piso -- antes solo cambiaba la mira; ahora el rombo va encima del objeto.
+                    if (aim.HitTransform != null)
+                    {
+                        mostrar = true; destacado = true;
+                        ancla = aim.HitTransform.position + Vector3.up * 1.1f;
+                        pista = "PASÁ POR ENCIMA PARA RECOGER";
                     }
                     break;
             }

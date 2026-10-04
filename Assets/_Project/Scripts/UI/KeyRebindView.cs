@@ -152,6 +152,8 @@ namespace SP.UI
             { KeyBindings.SeleccionarMismoTipo, "Seleccionar mismo tipo" },
             { KeyBindings.FocalizarRts, "Focalizar seleccion (RTS)" },
             { KeyBindings.RotarCamaraRts, "Rotar camara (RTS)" },
+            { KeyBindings.RadialEspacio, "Radial de ordenes (mantener, a pie)" },
+            { KeyBindings.MarcarBug, "Marcar bug (foto del estado)" },
         };
 
         public static string NameOf(string actionId) =>

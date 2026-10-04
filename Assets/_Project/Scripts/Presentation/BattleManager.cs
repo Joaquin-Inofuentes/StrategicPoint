@@ -33,6 +33,8 @@ namespace SP.Presentation
             if (Outcome == null) return;
             // Con la mision de rescate activa, la victoria la decide el MisionDirector.
             if (SP.Mision.MisionDirector.Activo) return;
+            // La Operacion Cuartel (nivel de blockout) tambien decide sola cuando se gana.
+            if (SP.Operacion.OperacionDirector.Activo) return;
 
             // Antes solo miraba la lista `Enemies` (los 4 de la patrulla),
             // pero el mapa tiene 7 enemigos: matando esos 4 saltaba

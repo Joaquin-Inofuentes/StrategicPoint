@@ -31,6 +31,11 @@ namespace SP.Ai
             if (AgentActivo)
             {
                 SincronizarAgente();
+                // Bugs #043/#046 ("los enemigos no vienen / se quedaron inmoviles"): el refresco de rodeo (0,5 s) volvia a pedir
+                // la ruta aunque la anterior siguiera calculandose. Con 40+ agentes la cola asincrona del NavMesh tarda mas que
+                // eso: cada pedido nuevo pisaba al anterior, la ruta quedaba "pendiente" para siempre y el soldado clavado
+                // (medido: pathPending=true, hasPath=false, 0 m en 30 s). Si ya hay un pedido en curso al mismo destino, se espera.
+                if (agentTieneDestino && agent.pathPending && (agentDestino - destination).sqrMagnitude < 9f) return;
                 if (agent.SetDestination(destination))
                 {
                     agentDestino = destination;
@@ -181,9 +186,17 @@ namespace SP.Ai
                 // frena el acercamiento normal: una cobertura a esa
                 // distancia del enemigo es una posicion de tiro de verdad,
                 // no una que queda a un paso de quedarse corta.
-                tieneCobertura = SP.Core.Coberturas.TryMejorCobertura(
-                    self.transform.position, objetivo, self, RadioDeBusquedaDeCobertura,
-                    EffectiveAttackRange * 0.85f, out elegida);
+                elegida = Vector3.zero;
+                if (VersionDeCobertura >= 1)
+                {
+                    tieneCobertura = SP.Core.CoberturasPuntuadas.TryElegir(self.transform.position, objetivo, self, RadioDeBusquedaDeCobertura,
+                        EffectiveAttackRange, Vida01, VersionDeCobertura, Recargando, tieneCobertura ? coberturaElegida : (Vector3?)null, out var el);
+                    if (tieneCobertura) elegida = el.punto;
+                }
+                else
+                    tieneCobertura = SP.Core.Coberturas.TryMejorCobertura(
+                        self.transform.position, objetivo, self, RadioDeBusquedaDeCobertura,
+                        EffectiveAttackRange * 0.85f, out elegida);
                 if (!tieneCobertura) return false;
                 // Solo se replanifica cuando la eleccion CAMBIA: repetir
                 // PlanPathTo al mismo punto cada medio segundo tira el
@@ -209,9 +222,159 @@ namespace SP.Ai
             relojDeCobertura = 0f;
         }
 
+        // ------------------------------------------------------------------
+        // Blancos INALCANZABLES
+        // ------------------------------------------------------------------
+        // BUG REAL ("mis aliados se quedan trabados antes del puesto 3 aunque no haya pelea"): un guardia del puesto siguiente, del
+        // otro lado de la barrera todavia cerrada, cuenta como "enemigo visto"; el aliado lo persigue, el NavMesh solo le da una
+        // ruta PARCIAL (la barrera corta el paso) que hasta lo manda a dar vueltas por el mapa, y se queda yendo y viniendo sin
+        // poder disparar ni volver con el jugador. Ahora, sin linea de tiro y con ruta parcial (o sin acercarse en 8 s), el blanco
+        // se descarta 10 s: el aliado vuelve a seguir al jugador y el sensado ya no lo elige hasta que pase ese tiempo.
+        readonly System.Collections.Generic.Dictionary<int, float> ignorados = new System.Collections.Generic.Dictionary<int, float>();
+        float chaseSinLineaT, chaseDistRef;
+        int chaseObjetivoId = -1;
+        public int ObjetivosDescartados { get; private set; }
+
+        public bool Ignorando(Soldier s)
+        {
+            if (s == null || ignorados.Count == 0) return false;
+            if (!ignorados.TryGetValue(s.Id, out var hasta)) return false;
+            if (Time.time < hasta) return true;
+            ignorados.Remove(s.Id);
+            return false;
+        }
+
+        float chaseUltimaLlamada = -99f;
+
+        bool VigilarInalcanzable(float distanciaAlBlanco, float dt)
+        {
+            // Solo los aliados: los enemigos que rodean a la escuadra se comportan como siempre.
+            if (target == null || self.Team != SP.Combat.TeamId.Player) return false;
+            // El reloj es de la PERSECUCION sin linea de tiro, no de un blanco puntual: con varios guardias detras de la misma
+            // barrera el aliado iba cambiando de blanco y el reloj de cada uno arrancaba de cero (MEDIDO: 20 s pegado a la barrera).
+            if (Time.time - chaseUltimaLlamada > 1f) { chaseSinLineaT = 0f; chaseDistRef = distanciaAlBlanco; }
+            chaseUltimaLlamada = Time.time;
+            chaseSinLineaT += dt;
+            if (distanciaAlBlanco < chaseDistRef - 2f) { chaseDistRef = distanciaAlBlanco; chaseSinLineaT = Mathf.Min(chaseSinLineaT, 4f); }
+            bool parcial = AgentActivo && !agent.pathPending && agent.hasPath && agent.pathStatus == NavMeshPathStatus.PathPartial;
+            // Pegado a algo (golpes del vigilante de progreso) o sin acercarse: tambien cuenta.
+            bool pegado = GolpesSinProgreso >= 1 && chaseSinLineaT > 2f;
+            if (!((parcial && chaseSinLineaT > 1.5f) || pegado || chaseSinLineaT > 8f)) return false;
+
+            // Se descarta al blanco y a todos los que estan con el del otro lado (a menos de 12 m de el, sin linea de tiro desde aca).
+            string motivo = parcial ? "ruta parcial" : pegado ? "pegado a un obstaculo" : "sin acercarse";
+            var vistos = target;
+            float hasta = Time.time + 10f;
+            int cantidad = 0;
+            foreach (var s in SP.Core.ActorRegistry.All)
+            {
+                if (s == null || s.Team == self.Team || s.Health == null || !s.Health.IsAlive) continue;
+                if (s != vistos && ((s.transform.position - vistos.transform.position).sqrMagnitude > 144f || TieneLineaDeTiro(s))) continue;
+                ignorados[s.Id] = hasta;
+                cantidad++;
+            }
+            ObjetivosDescartados += cantidad;
+            GameLog.Line($"{self.DisplayName} descarta a {cantidad} enemigo(s) cerca de {vistos.DisplayName}: del otro lado de un obstaculo ({motivo}) · vuelve con el grupo");
+            SP.Core.SesionLog.Evento($"{self.DisplayName} descarta {cantidad} objetivo(s) inalcanzable(s) cerca de {vistos.DisplayName} a {distanciaAlBlanco:0.0} m ({motivo})");
+            target = null;
+            sensedTarget = null;
+            chaseSinLineaT = 0f; chaseObjetivoId = -1;
+            ClearPath();
+            // Vuelve con quien venia siguiendo; si ya no tiene a quien, con el soldado que maneja el jugador.
+            if (followTarget != null && followTarget.Health != null && followTarget.Health.IsAlive && followTarget.gameObject.activeInHierarchy)
+            {
+                SetState(AiState.Follow);
+                return true;
+            }
+            var lider = AjustesDeEscuadra.Lider;
+            if (lider == null || lider == self)
+            {
+                var drv = SP.Player.PlayerInputDriver.Activo;
+                lider = drv != null && drv.Brain != null ? drv.Brain.Current : null;
+            }
+            if (lider != null && lider != self && lider.Health != null && lider.Health.IsAlive && lider.gameObject.activeInHierarchy) ComenzarSeguirAlJugador(lider);
+            else { hasOrder = false; SetState(AiState.Patrol); }
+            return true;
+        }
+
+        // ------------------------------------------------------------------
+        // Vigilante de PROGRESO (independiente de PlanPathTo)
+        // ------------------------------------------------------------------
+        // BUG REAL ("se quedan trabados mis aliados al pasar del puesto 2 al 3 sin pelea"): el vigilante de atascos de arriba
+        // (TickStuckWatch*) se reinicia en CADA PlanPathTo, y AvanzarConRodeo (Follow, patrulla, rodeo) replanifica cada 0,5 s,
+        // asi que su temporizador de ~1 s jamas llegaba a disparar: un aliado empujando contra un muro (o metido en el margen
+        // del NavMesh pegado a uno) quedaba trabado para siempre. Este vigilante mide solo el avance real del cuerpo:
+        //   1er aviso (2 s sin avanzar 35 cm):  se apoya el cuerpo sobre el NavMesh mas cercano y se rehace la ruta.
+        //   2do aviso (aliados):               se lo reubica junto a su destino (si esta lejos) -- mejor un salto que un soldado clavado.
+        const float VentanaSinProgreso = 2f;
+        const float AvanceMinimo = 0.35f;
+        Vector3 sinProgresoAncla;
+        float sinProgresoT;
+        int sinProgresoGolpes;
+        public int GolpesSinProgreso => sinProgresoGolpes;
+        public int DesatascosHechos { get; private set; }
+
+        void VigilarProgreso(Vector3 meta, float umbral, float dt)
+        {
+            if (self == null) return;
+            if (sinProgresoT <= 0f && sinProgresoAncla == Vector3.zero) sinProgresoAncla = self.transform.position;
+            sinProgresoT += dt;
+            if (sinProgresoT < VentanaSinProgreso) return;
+            sinProgresoT = 0f;
+            var movido = self.transform.position - sinProgresoAncla; movido.y = 0f;
+            sinProgresoAncla = self.transform.position;
+            var aMeta = meta - self.transform.position; aMeta.y = 0f;
+            if (movido.magnitude > AvanceMinimo || aMeta.magnitude <= umbral + 0.6f) { sinProgresoGolpes = 0; return; }
+            if (Pasivo || Quieto) return;
+
+            sinProgresoGolpes++;
+            DesatascosHechos++;
+            if (sinProgresoGolpes == 1)
+            {
+                if (ApoyarEnNavMesh()) GameLog.Line($"{self.DisplayName} estaba trabado: se apoya en el NavMesh y rehace la ruta");
+                else GameLog.Line($"{self.DisplayName} estaba trabado: rehace la ruta");
+                PlanPathTo(meta);
+                return;
+            }
+            // Segundo aviso en adelante: solo los aliados se reubican (un enemigo atascado no importa tanto y un salto seria visible).
+            // Y solo siguiendo o yendo a un punto: en Chase/cobertura la meta es el enemigo y saltar junto a el seria absurdo.
+            if (self.Team != SP.Combat.TeamId.Player || (State != AiState.Follow && State != AiState.MovingToOrder)) { PlanPathTo(meta); return; }
+            if (aMeta.magnitude < 5f) { sinProgresoGolpes = 0; return; }   // ya esta cerca: no hace falta saltar
+            // A metro y medio de la meta, del lado de donde venia: si la meta es otro soldado (seguir, curar) antes quedaba
+            // parado ENCIMA de el (medido en el bug #039: 0,0 m entre el medico y el herido).
+            var junto = meta + (aMeta.sqrMagnitude > 0.01f ? -aMeta.normalized : Vector3.back) * 1.5f;
+            if (UnityEngine.AI.NavMesh.SamplePosition(junto, out var h, 4f, UnityEngine.AI.NavMesh.AllAreas))
+            {
+                var p = new Vector3(h.position.x, self.transform.position.y, h.position.z);
+                self.transform.position = p;
+                SP.Core.ApoyoEnElPiso.Apoyar(self.transform);
+                sinProgresoAncla = self.transform.position;
+                sinProgresoGolpes = 0;
+                ClearPath();
+                SincronizarAgente();
+                GameLog.Line($"{self.DisplayName} seguia trabado: se reubica junto a su destino {p}");
+            }
+        }
+
+        // Si el cuerpo quedo en el margen del NavMesh pegado a un muro (o adentro de un solido), lo apoya sobre el punto caminable
+        // mas cercano. Devuelve true si lo movio.
+        bool ApoyarEnNavMesh()
+        {
+            if (!UnityEngine.AI.NavMesh.SamplePosition(self.transform.position, out var h, 2.5f, UnityEngine.AI.NavMesh.AllAreas)) return false;
+            var d = h.position - self.transform.position; d.y = 0f;
+            if (d.magnitude < 0.25f) return false;
+            // Un poco hacia adentro del tramo caminable para no volver a quedar rozando el muro.
+            var p = new Vector3(h.position.x, self.transform.position.y, h.position.z);
+            self.transform.position = p;
+            sinProgresoAncla = p;
+            SincronizarAgente();
+            return true;
+        }
+
         bool AdvanceTo(Vector3 destination, float threshold, float dt)
         {
             EnsureAgent();
+            VigilarProgreso(destination, threshold, dt);
             if (TryAdvanceWithAgent(destination, threshold, dt, out bool llegoConAgent))
                 return llegoConAgent;
 
@@ -249,6 +412,8 @@ namespace SP.Ai
         // con el A* casero de siempre, asi la suite headless (sin NavMesh
         // bakeado) y cualquier escena sin bakear se comportan como antes.
         // Devuelve true si el agent se hizo cargo; "llego" dice si ya llego.
+        float pendienteSinRuta;
+
         bool TryAdvanceWithAgent(Vector3 destination, float threshold, float dt, out bool llego)
         {
             llego = false;
@@ -256,7 +421,9 @@ namespace SP.Ai
 
             SincronizarAgente();
 
-            if (!agentTieneDestino || (agentDestino - destination).sqrMagnitude > 0.25f)
+            // Bugs #043/#046: no se pisa un pedido que todavia se esta calculando si el destino casi no cambio (ver PlanPathTo).
+            float corrimiento = agentTieneDestino ? (agentDestino - destination).sqrMagnitude : float.MaxValue;
+            if (!agentTieneDestino || (corrimiento > 0.25f && !(agent.pathPending && corrimiento < 9f)))
             {
                 if (!agent.SetDestination(destination))
                 {
@@ -267,6 +434,13 @@ namespace SP.Ai
                 agentTieneDestino = true;
             }
 
+            // Se rehizo el NavMesh (un muro cayo o se cerro un carril): la ruta que el agent traia se planeo con la malla vieja.
+            if (agentNavVersion != SP.Core.NavMeshViva.Version)
+            {
+                agentNavVersion = SP.Core.NavMeshViva.Version;
+                agent.SetDestination(destination);
+            }
+
             TickStuckWatchAgent(destination, dt);
             // El vigilante pudo dar la orden por cumplida (ClearPath).
             if (!agentTieneDestino || !AgentActivo) return true;
@@ -274,7 +448,15 @@ namespace SP.Ai
             // Sin primera ruta todavia: quieto este frame. Con una ruta
             // vieja (replanificacion periodica) se sigue caminando por ella
             // para no frenar cada medio segundo.
-            if (agent.pathPending && !agent.hasPath) return true;
+            // Bugs #043/#046: si la primera ruta tarda (cola del NavMesh cargada), en vez de quedarse plantado se avanza derecho
+            // hacia el destino mientras tanto (el motor ya frena contra paredes); apenas llega la ruta, manda ella.
+            if (agent.pathPending && !agent.hasPath)
+            {
+                pendienteSinRuta += dt;
+                if (pendienteSinRuta > 0.4f) self.Motor.MoveTowards(destination, threshold, dt);
+                return true;
+            }
+            pendienteSinRuta = 0f;
             if (!agent.pathPending && agent.pathStatus == NavMeshPathStatus.PathInvalid)
             {
                 agentTieneDestino = false;

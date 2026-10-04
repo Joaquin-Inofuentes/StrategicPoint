@@ -39,6 +39,8 @@ namespace SP.Player
         // centro) cuenta como UN toque; dos toques a menos de VentanaDobleToque (ver AccionRapidaDeQ) son "SIGANME" para TODA
         // la escuadra, sin importar la mira, la seleccion ni lo que esten haciendo. Un toque solo no hace nada.
         public const float ToqueMaximoParaSeguir = 1f;
+        // "Siganme": durante estos segundos los aliados ignoran el combate y vienen a vos si o si (ver AiBrain.IssueFollowOrder).
+        public const float SeguirForzadoSegundos = 2f;
         float radialAbiertoDesde;
 
         // Un unico lugar que decide, cada frame, cual de los dos gestos de
@@ -47,10 +49,12 @@ namespace SP.Player
         // en el mismo frame.
         void ActualizarMenuDeOrdenes()
         {
+            // [Espacio] mantenido tambien abre el radial, pero solo a pie en FPS: dentro de un vehiculo es el freno de mano.
+            bool conEspacio = !currentSeat.HasValue && Rig != null && Rig.Mode == ControlMode.Fps && !TorretaFijaActiva;
             ResolverGestoDeQ(
                 KeyBindings.WasTapped(KeyBindings.CiclarPosesion, SostenerParaMenu),
-                KeyBindings.IsHeld(KeyBindings.CiclarPosesion, SostenerParaMenu),
-                KeyBindings.IsPressed(KeyBindings.CiclarPosesion));
+                KeyBindings.IsHeld(KeyBindings.CiclarPosesion, SostenerParaMenu) || (conEspacio && KeyBindings.IsHeld(KeyBindings.RadialEspacio, SostenerParaMenu)),
+                KeyBindings.IsPressed(KeyBindings.CiclarPosesion) || (conEspacio && KeyBindings.IsPressed(KeyBindings.RadialEspacio)));
         }
 
         // La decision, separada de la lectura del teclado. Los dos gestos de
@@ -76,7 +80,7 @@ namespace SP.Player
                 // fallback. Se saco a pedido: Q-toque solo debe interactuar con la mira,
                 // nunca poseer a otro. CycleLivingAlly sigue viva via el radial (POSEER,
                 // categoria 6, sub >= 3), asi que no queda huerfana.
-                if (toque && !TryInteractuarConMira()) AccionRapidaDeQ();
+                if (toque) AccionRapidaDeQ();
                 return;
             }
 
@@ -127,7 +131,7 @@ namespace SP.Player
             }
 
             // Ver comentario arriba: se saco el fallback a CycleLivingAlly en el tap de Q.
-            if (toque && !TryInteractuarConMira()) AccionRapidaDeQ();
+            if (toque) AccionRapidaDeQ();
         }
 
         // Toda la escuadra viva te sigue, SI O SI: ignora la seleccion de RTS, la mira y lo que estuvieran haciendo
@@ -142,7 +146,7 @@ namespace SP.Player
                 if (s != null && s != yo && s.Health != null && s.Health.IsAlive && s.gameObject.activeInHierarchy
                     && !(s.Brain != null && s.Brain.MontadoEnVehiculo)) todos.Add(s);
             if (todos.Count == 0) return 0;
-            OrderService.IssueFollowOrderForSelection(todos, yo);
+            OrderService.IssueFollowOrderForSelection(todos, yo, SeguirForzadoSegundos);
             Avisar("SIGANME");
             return todos.Count;
         }
@@ -209,7 +213,7 @@ namespace SP.Player
                     return true;
                 case 3:
                     if (destinatarios.Count == 0 || Brain == null || Brain.Current == null) break;
-                    OrderService.IssueFollowOrderForSelection(destinatarios, Brain.Current);
+                    OrderService.IssueFollowOrderForSelection(destinatarios, Brain.Current, SeguirForzadoSegundos);
                     Avisar("SIGANME");
                     return true;
                 case 4:
@@ -235,7 +239,7 @@ namespace SP.Player
         // o vehiculo) o, si no se apunta a nada, 14 m al frente del soldado.
         Vector3 PuntoApuntadoParaOrdenes(AimResult r)
         {
-            if (r.Type == AimTargetType.Ground || r.Type == AimTargetType.Obstacle) return r.Point;
+            if (r.Type == AimTargetType.Ground || r.Type == AimTargetType.Obstacle || r.Type == AimTargetType.Interactuar) return r.Point;
             if ((r.Type == AimTargetType.Enemy || r.Type == AimTargetType.Ally) && r.Soldier != null) return r.Soldier.transform.position;
             if (r.Type == AimTargetType.Vehicle && r.Vehicle != null) return r.Vehicle.transform.position;
             var yo = Brain != null && Brain.Current != null ? Brain.Current.transform.position : transform.position;
@@ -254,6 +258,7 @@ namespace SP.Player
         {
             var aim = aimCongelado ?? ultimoResultadoDeMira;
             bool ok = EjecutarOrdenRadialInterno(categoria, sub);
+            SesionLog.Evento($"RADIAL: {MenuDeOrdenes.NombreCorto(categoria)} / {MenuDeOrdenes.NombreDeOpcion(categoria, sub)} · ok={ok} · apuntando a {aim.Type}{(aim.Soldier != null ? ":" + aim.Soldier.DisplayName : "")}");
             if (ok)
             {
                 ConfirmarOrdenRadial(categoria, sub, aim);
@@ -273,6 +278,7 @@ namespace SP.Player
             new Color(0.75f, 0.55f, 1f),   // 6 POSEER
             new Color(1f, 0.6f, 0.2f),     // 7 DEMOLER
             new Color(1f, 0.82f, 0.25f),   // 8 TORRETA
+            new Color(0.4f, 1f, 0.7f),     // 9 INTERACTUAR
         };
 
         // Toda orden del radial confirma con un "ping" de interfaz, el nombre de la opcion flotando en el
@@ -389,6 +395,12 @@ namespace SP.Player
                     return OrdenDeTanque(sub, aim);
                 case 8: // TORRETA FIJA
                     return OrdenDeTorreta(sub, aim);
+                case MenuDeOrdenes.Interactuar:
+                {
+                    var o = OrdenableEnLaMira(aim);
+                    if (o == null) { RejectOrder("APUNTA A UN PANEL O A LA COMPUTADORA"); return false; }
+                    return EnviarAInteractuar(o, sub);
+                }
                 case 6: // POSEER
                 {
                     if (sub == 4)

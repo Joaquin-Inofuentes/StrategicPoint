@@ -124,6 +124,7 @@ namespace SP.Player
 
         void ClearVehicleSeatState()
         {
+            MiraDeTorreta.Ocultar();
             if (currentSeat.HasValue && Vehicle != null)
             {
                 Vehicle.PlayerAboard = false;
@@ -142,6 +143,9 @@ namespace SP.Player
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
             Vehicle.PlayerAboard = false;
             currentSeat = null;
+            // Bug #060: al bajar (fin del viaje) la mira del cañon y la mirilla quedaban pegadas en pantalla a pie.
+            MirillaView.Instancia?.Ocultar();
+            MiraDeTorreta.Ocultar();
 
             // Si venías viendo el vehículo desde arriba (RTS), bajarte no
             // debe dejar la cámara con una posición/rotación de FPS
@@ -166,9 +170,10 @@ namespace SP.Player
             if (AimUiRef != null) AimUiRef.SetVisible(false);
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
             bool puestoDeTiro = currentSeat == VehicleSeatRole.Gunner || currentSeat == VehicleSeatRole.Passenger1;
-            if (!puestoDeTiro || Rig.Mode != ControlMode.Fps) MirillaView.Instancia?.Ocultar();
+            if (!puestoDeTiro || Rig.Mode != ControlMode.Fps) { MirillaView.Instancia?.Ocultar(); MiraDeTorreta.Ocultar(); }
             if (SelectionCount != null) SelectionCount.SetModeVisible(false);
             HideFpsOnlyIndicators();
+            InteractHintView.Mostrar(null);   // el cartel de "MANTEN [E] PARA DEMOLER" quedaba pegado de cuando se iba a pie
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor.Motor.SetCrouching(false); bodyHiddenFor = null; }
             if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
             if (Vehicle.RoleOf(Brain.Current) == null)
@@ -347,14 +352,10 @@ namespace SP.Player
                     // girando" tenga algo que informar.
                     var delta = radialAbierto ? Vector2.zero : mouse.delta.ReadValue();
                     turret.AddDesiredYaw(delta.x * turretSensitivity);
-                    // BUG REAL: delta.y (arriba/abajo del mouse) se leia
-                    // completo mas arriba pero nunca se usaba -- el cañon
-                    // solo podia girar en el plano horizontal. Signo
-                    // invertido a proposito: mouse hacia arriba (delta.y
-                    // positivo) tiene que INCLINAR el cañon hacia arriba,
-                    // que en este rig es pitch NEGATIVO (ver
-                    // TurretWeapon.minPitchDeg/maxPitchDeg).
-                    turret.AddDesiredPitch(-delta.y * turretSensitivity);
+                    // Bug #047: el mouse vertical inclina la CAMARA (se puede mirar el suelo o levantar la vista) y el cañon
+                    // eleva solo, con el arco balistico, para que el obus caiga donde esta la mira. Antes movia el tubo pero la
+                    // camara quedaba fija: no se veia a donde iba el tiro.
+                    ApuntarConLaCamara(turret, delta.y);
                     turret.TickPlayerAim(Time.deltaTime);
                     if (mouse.leftButton.wasPressedThisFrame) turret.TryFire();
 
@@ -389,7 +390,7 @@ namespace SP.Player
                 {
                     var delta = radialAbierto ? Vector2.zero : mouse.delta.ReadValue();
                     mgTurret.AddDesiredYaw(delta.x * turretSensitivity);
-                    mgTurret.AddDesiredPitch(-delta.y * turretSensitivity);
+                    ApuntarConLaCamara(mgTurret, delta.y);
                     mgTurret.TickPlayerAim(Time.deltaTime);
                     if (mouse.leftButton.isPressed) mgTurret.TryFire();
                     // Ronda 12: la metralleta del tanque se apunta con la mirilla NORMAL (la misma que la torreta fija):
@@ -579,8 +580,11 @@ namespace SP.Player
                 Vector3 planoFwd = Vector3.ProjectOnPlane(aimSource.forward, Vector3.up);
                 planoFwd = planoFwd.sqrMagnitude > 1e-4f ? planoFwd.normalized : Vehicle.transform.forward;
                 Vector3 miraPos = aimSource.position + Vector3.up * (esCanon ? 0.85f : 0.28f) + (esCanon ? planoFwd * 0.15f : -aimSource.forward * 0.4f);
+                // La camara (y la mira del periscopio) usan la inclinacion del jugador, no la del tubo: el tubo agrega el arco
+                // balistico encima, y si la mira siguiera al tubo se realimentaria (cada frame apuntaria un poco mas arriba).
+                var miraRot = Quaternion.Euler(inclinacionArtillero, Quaternion.LookRotation(planoFwd, Vector3.up).eulerAngles.y, 0f);
                 Rig.FollowThirdPersonAimed(Vehicle.transform.position + Vector3.up * 1f, aimSource.forward, 8f, 3.5f,
-                    miraPos, Quaternion.LookRotation(aimSource.forward, Vector3.up));
+                    miraPos, miraRot, inclinacionArtillero);
             }
             else
                 Rig.FollowThirdPerson(Vehicle.transform, 8f, 3.5f);
@@ -590,9 +594,51 @@ namespace SP.Player
             if (mirilla != null)
                 mirilla.Actualizar(conMira && Rig.EstaConZoom && Rig.AdsBlend > 0.55f, reticula,
                     arma != null && arma.IsOnTarget() ? new Color(0.45f, 1f, 0.55f) : new Color(1f, 0.9f, 0.5f));
-            if (TurretAim != null && conMira && Rig.AdsBlend > 0.55f) TurretAim.SetVisible(false);
+            bool periscopio = conMira && Rig.EstaConZoom && Rig.AdsBlend > 0.55f;
+            if (TurretAim != null && periscopio) TurretAim.SetVisible(false);
+            // Mira propia del artillero: cruceta + anillo de vida del enemigo + anillo de recarga + rombo de impacto (ver MiraDeTorreta).
+            MiraDeTorreta.Actualizar(canvasRoot, Rig.Cam, arma, Vehicle != null ? Vehicle.transform : null, conMira, periscopio);
             ApplyVehicleCameraFeel();
             ApplyVehicleSpeedFx();
+        }
+
+        // Bug #047: inclinacion de la camara del artillero (grados, + = hacia abajo). Abajo llega a ver el suelo a pocos
+        // metros del tanque; arriba, un poco sobre el horizonte.
+        public const float InclinacionMinArtillero = -15f, InclinacionMaxArtillero = 38f;
+        float inclinacionArtillero = 10f;
+        public float InclinacionArtillero => inclinacionArtillero;
+        readonly RaycastHit[] golpesDeMira = new RaycastHit[24];
+
+        void ApuntarConLaCamara(TurretWeapon arma, float deltaY)
+        {
+            inclinacionArtillero = Mathf.Clamp(inclinacionArtillero - deltaY * turretSensitivity, InclinacionMinArtillero, InclinacionMaxArtillero);
+            if (arma != null && PuntoBajoLaMira(out var punto)) arma.ElevarHacia(punto);
+        }
+
+        // Primer obstaculo real bajo el centro de la camara (sin el propio vehiculo ni triggers); si no hay nada, un punto lejano.
+        public bool PuntoBajoLaMira(out Vector3 punto)
+        {
+            punto = default;
+            if (Rig == null || Rig.Cam == null) return false;
+            var ray = Rig.GetForwardRay();
+            const float alcance = 350f;
+            int n = Physics.RaycastNonAlloc(ray, golpesDeMira, alcance, ~0, QueryTriggerInteraction.Ignore);
+            float mejor = float.MaxValue;
+            for (int i = 0; i < n; i++)
+            {
+                var h = golpesDeMira[i];
+                if (h.distance >= mejor || h.collider == null) continue;
+                if (Vehicle != null && h.collider.transform.IsChildOf(Vehicle.transform)) continue;
+                if (Brain != null && Brain.Current != null && h.collider.transform.IsChildOf(Brain.Current.transform)) continue;
+                mejor = h.distance;
+                punto = h.point;
+            }
+            if (mejor == float.MaxValue)
+            {
+                // Mirando al cielo: un punto lejano en esa direccion (el tubo sube al maximo que permite).
+                punto = ray.origin + ray.direction * alcance;
+            }
+            return true;
         }
 
         // Sin esto la camara del vehiculo esta rigidamente pegada al

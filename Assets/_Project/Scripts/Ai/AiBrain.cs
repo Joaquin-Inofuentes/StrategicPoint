@@ -67,6 +67,7 @@ namespace SP.Ai
         NavMeshAgent agent;
         Vector3 agentDestino;
         bool agentTieneDestino;
+        int agentNavVersion;   // version de NavMeshViva con la que el agent planeo su ruta (si cambia, se replanifica)
 
         Soldier self;
         Soldier target;
@@ -110,6 +111,11 @@ namespace SP.Ai
         // Ronda 13 (punto 4): "seguirme" a la mitad de distancia. Es un factor y no un cambio del campo porque
         // followStopDistance esta serializado en los prefabs y en las escenas (un default nuevo no lo pisa).
         public const float FactorDeCercaniaAlSeguir = 0.5f;
+        // Bug #039/#040: el medico que va a curar "sigue" al herido, pero la distancia de seguimiento de la escena lo frenaba
+        // a ~7,5 m (medido) y la curacion pide 2,5 m: no curaba nunca. > 0 pisa el umbral del seguimiento (lo pone el pedido).
+        public float UmbralDeSeguimientoForzado = -1f;
+        // Bug #042: guardia que arranca detras de una cobertura (lo pone Operacion.Atrincherar).
+        public bool Atrincherado;
 
         // La postura NO se serializa a proposito, al reves que patrolRoute:
         // no se asigna al construir la escena sino en runtime (el jugador
@@ -158,7 +164,7 @@ namespace SP.Ai
         [SerializeField] Transform[] patrolWaypoints;
         int patrolIndex;
 
-        int PatrolCount => patrolWaypoints != null && patrolWaypoints.Length > 0
+        public int PatrolCount => patrolWaypoints != null && patrolWaypoints.Length > 0
             ? patrolWaypoints.Length
             : (patrolRoute != null ? patrolRoute.Length : 0);
 
@@ -267,6 +273,9 @@ namespace SP.Ai
         void EnsureAgent()
         {
             if (agent == null) agent = GetComponent<NavMeshAgent>();
+            // Bugs #043/#046: con el default (100 iteraciones de A* por frame para TODOS los agentes) las rutas largas de 40+
+            // soldados tardaban varios segundos en salir de la cola. 2000 sigue siendo barato y las resuelve en 1-2 frames.
+            if (NavMesh.pathfindingIterationsPerFrame < 2000) NavMesh.pathfindingIterationsPerFrame = 2000;
         }
 
         void SyncAgentSettings()
@@ -308,10 +317,27 @@ namespace SP.Ai
         // quedo para que su ruta y su remainingDistance partan de ahi. Se
         // llama todos los ticks, asi tambien cubre los movimientos que hace
         // AiBrain directo por el motor (Chase, strafing, Follow).
+        //
+        // BUG REAL ("mis aliados se quedan trabados al pasar del puesto 2 al 3"): nextPosition NO teletransporta. Si el cuerpo se
+        // movio de golpe (salto de fase, bajar de un vehiculo, empujon de una explosion o de otro soldado) el agent se quedaba en su
+        // posicion vieja -- MEDIDO: agent en z=-273 con el soldado en z=-165 -- y todas sus rutas partian de ahi: el soldado
+        // caminaba hacia una esquina que no era la suya, empujando de costado contra una barrera para siempre. Ahora, si la
+        // diferencia pasa de 1,5 m, se hace Warp (que si reubica el agent) y se descarta la ruta vieja.
+        const float DesfaseMaximoDelAgente = 1.5f;
         void SincronizarAgente()
         {
             if (!AgentActivo) return;
-            agent.nextPosition = transform.position - Vector3.up * agent.baseOffset;
+            Vector3 pies = transform.position - Vector3.up * agent.baseOffset;
+            if ((agent.nextPosition - pies).sqrMagnitude > DesfaseMaximoDelAgente * DesfaseMaximoDelAgente)
+            {
+                // Warp tambien escribe el transform aunque updatePosition este apagado (MEDIDO: los soldados quedaban en y=-6,4
+                // porque el pivote bajaba a los pies): el cuerpo vuelve a donde estaba.
+                Vector3 cuerpo = transform.position;
+                bool ok = agent.Warp(pies);
+                transform.position = cuerpo;
+                if (ok) { agentTieneDestino = false; return; }
+            }
+            agent.nextPosition = pies;
         }
 
         // Lo llama Vehicle.Dismount: el agent se apago al subir (Mount) y
@@ -348,6 +374,24 @@ namespace SP.Ai
         }
 
         public Soldier CurrentTarget => target;
+
+        // Para el reporte de bug ([U]): todo lo que hace falta para entender por que un soldado hace lo que hace.
+        public bool TieneOrden => hasOrder;
+        public string DescribirOrden()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append(hasOrder ? (orderIsAttack ? "orden=ATACAR" : (followTarget != null && State == AiState.Follow ? "orden=SEGUIR" : "orden=IR")) : "orden=-");
+            if (hasOrder && !orderIsAttack && State == AiState.MovingToOrder) sb.Append(System.FormattableString.Invariant($" destino=({orderDestination.x:0.0},{orderDestination.z:0.0})"));
+            if (attackMoveDestination.HasValue) sb.Append(System.FormattableString.Invariant($" avanzarAtacando=({attackMoveDestination.Value.x:0.0},{attackMoveDestination.Value.z:0.0})"));
+            if (followTarget != null) sb.Append(" sigueA=" + followTarget.name + (SiguiendoForzado ? "(forzado)" : ""));
+            if (target != null) sb.Append(System.FormattableString.Invariant($" blanco={target.name}@{Vector3.Distance(self.transform.position, target.transform.position):0.0}m activo={target.gameObject.activeInHierarchy}"));
+            sb.Append(" camino=" + RemainingPathPoints + " cola=" + orderQueue.Count);
+            if (Pasivo) sb.Append(" PASIVO");
+            if (Quieto) sb.Append(" QUIETO");
+            if (MontadoEnVehiculo) sb.Append(" MONTADO");
+            if (PatrolCount > 0) sb.Append(" patrulla=" + PatrolCount);
+            return sb.ToString();
+        }
 
         // ------------------------------------------------------------------
         // Item 212: postura de combate
@@ -527,6 +571,7 @@ namespace SP.Ai
             {
                 ultimoAtacanteId = attacker.Id;
                 tiempoUltimoAtaque = Time.time;
+                if (SiguiendoForzado) return;   // los primeros segundos del "siganme" se ignora el fuego enemigo
                 if (State == AiState.Idle || State == AiState.Patrol || State == AiState.MovingToOrder || State == AiState.Follow)
                 {
                     target = attacker;
@@ -540,7 +585,7 @@ namespace SP.Ai
             // Le dispararon a un aliado cerca de mí: me sumo a la pelea.
             var victim = ActorRegistry.FindById(evt.TargetId);
             if (victim == null || victim == self || victim.Team != self.Team) return;
-            if (State != AiState.Idle && State != AiState.Patrol) return;
+            if (!LibreParaAyudar) return;
 
             float dist = Vector3.Distance(self.transform.position, victim.transform.position);
             if (dist > alertRadius) return;
@@ -559,8 +604,17 @@ namespace SP.Ai
 
             target = attacker;
             hasOrder = false;
+            followTarget = null;
             SetState(AiState.Chase);
+            GameLog.Line($"{self.DisplayName} ayuda a {victim.DisplayName}: ataca a {attacker.DisplayName}");
         }
+
+        // Pedido explicito: "si un aliado es atacado y otro aliado no tiene nada que hacer (no esta interactuando ni atacando a
+        // nadie) que vaya a ayudarlo a atacar a quien ataca a su par". "Sin nada que hacer" = parado, patrullando o siguiendo
+        // (no el seguimiento forzado del "siganme"), sin estar quieto por orden, sin estar curando/hackeando y sin orden propia.
+        public bool LibreParaAyudar =>
+            !Pasivo && !Quieto && mountTarget == null && !orderIsAttack && !(coberturaPorOrden)
+            && (State == AiState.Idle || State == AiState.Patrol || (State == AiState.Follow && !SiguiendoForzado));
 
         // Pedido explicito ("zona de escucha de disparos aliados"): antes
         // SOLO se reaccionaba a OnAnyDamage, es decir, a un tiro que
@@ -573,9 +627,9 @@ namespace SP.Ai
         void OnShotFiredNearby(ShotFiredEvent evt)
         {
             if (self == null || Pasivo || !self.Health.IsAlive) return;
-            // Mismo criterio que OnAnyDamage: si ya esta ocupado (Chase,
-            // Attack, siguiendo una orden) el tiro no lo interrumpe.
-            if (State != AiState.Idle && State != AiState.Patrol) return;
+            // Mismo criterio que OnAnyDamage: si ya esta ocupado (Chase, Attack, con una orden propia) el tiro no lo
+            // interrumpe; seguir al jugador (sin la parte forzada) cuenta como "sin nada que hacer".
+            if (!LibreParaAyudar) return;
 
             var shooter = ActorRegistry.FindById(evt.ShooterId);
             if (shooter == null || !shooter.Health.IsAlive || shooter.Team == self.Team) return;
@@ -646,11 +700,20 @@ namespace SP.Ai
         // fijo que borrar/reemplazar -- Follow se re-evalua cada Tick
         // contra la posicion ACTUAL de leader. Pisa cualquier orden previa
         // (mueve, ataca, montar) igual que las demas Issue*.
-        public void IssueFollowOrder(Soldier leader, Vector3 formationOffsetLocal = default)
+        // Pedido explicito: "seguirme: omiten contra quien esten luchando y te siguen durante 2 segundos si o si, y luego se
+        // dispersan si ven enemigos". forzarSegundos > 0: durante ese lapso el soldado NO reacciona al combate (ni sensa, ni
+        // devuelve fuego, ni se engancha por un disparo); pasado el lapso la IA vuelve a su comportamiento normal y, si ve
+        // enemigos, pelea (y retoma el seguimiento al terminar, como siempre).
+        float seguirForzadoHasta;
+        public bool SiguiendoForzado => State == AiState.Follow && Time.time < seguirForzadoHasta;
+
+        public void IssueFollowOrder(Soldier leader, Vector3 formationOffsetLocal = default, float forzarSegundos = 0f)
         {
             if (leader == null || leader == self) return;
             if (!bootstrapped) Bootstrap();
             NuevaOrden();
+            seguirForzadoHasta = forzarSegundos > 0f ? Time.time + forzarSegundos : 0f;
+            if (forzarSegundos > 0f && self != null && self.Motor != null) self.Motor.SetCrouching(false);
             target = null;
             hasOrder = true;
             orderIsAttack = false;
@@ -853,7 +916,7 @@ namespace SP.Ai
             // que le estan disparando.
             bool onProtectedOrder = State == AiState.MovingToAttackOrder ||
                 State == AiState.MovingToOrder;
-            if (State != AiState.Chase && State != AiState.Attack && !onProtectedOrder)
+            if (State != AiState.Chase && State != AiState.Attack && !onProtectedOrder && !SiguiendoForzado)
             {
                 // Misma guarda de sensado de siempre; lo unico que cambia es
                 // de donde sale el resultado: la consulta ahora pasa por el
@@ -868,6 +931,10 @@ namespace SP.Ai
                     SetState(AiState.Chase);
                 }
             }
+
+            // Bug #042: guardia atrincherado (Operacion.Atrincherar) -- mientras espera sin blanco, agachado detras de su cobertura.
+            if (Atrincherado && target == null && (State == AiState.Patrol || State == AiState.Idle) && self.Motor != null && !self.Motor.IsCrouching)
+                self.Motor.SetCrouching(true);
 
             switch (State)
             {
@@ -1006,7 +1073,8 @@ namespace SP.Ai
                             puntoASeguir = followTarget.transform.position + followTarget.transform.TransformDirection(new Vector3(0f, 0f, followOffsetLocal.z));
                         }
                     }
-                    float umbralSeguimiento = tieneRanura ? Mathf.Max(arriveThreshold, 0.5f) : followStopDistance * FactorDeCercaniaAlSeguir;
+                    float umbralSeguimiento = UmbralDeSeguimientoForzado > 0f ? UmbralDeSeguimientoForzado
+                        : tieneRanura ? Mathf.Max(arriveThreshold, 0.5f) : followStopDistance * FactorDeCercaniaAlSeguir;
                     SeguirHasta(puntoASeguir, umbralSeguimiento, dt);
                     break;
 
@@ -1080,6 +1148,7 @@ namespace SP.Ai
                         // acercamiento de siempre.
                         if (TieneLineaDeTiro(target))
                         {
+                            chaseSinLineaT = 0f;
                             // Con linea de tiro, el acercamiento de siempre:
                             // frenar al 85% del alcance esta bien, porque
                             // desde ahi ya se puede disparar.
@@ -1100,6 +1169,7 @@ namespace SP.Ai
                             // que SI se pueda disparar. Solo si no hay
                             // ninguna a mano se cae al rodeo de siempre,
                             // que es lo que arreglo el caso del Muro.
+                            if (VigilarInalcanzable(d, dt)) break;   // el blanco esta del otro lado de algo que no se puede cruzar: se lo suelta
                             if (!CubrirseDe(target, dt))
                                 RodearHasta(target.transform.position, dt);
                         }

@@ -50,6 +50,18 @@ namespace SP.UI
             float gap = turret.YawGapDeg;
             bool onTarget = Mathf.Abs(gap) <= AimToleranceDeg;
 
+            // El cuadradito de 14 px y la barra de recarga quedaron reemplazados por MiraDeTorreta (cruceta + anillos).
+            if (reticle != null && reticle.enabled) reticle.enabled = false;
+            if (cooldownFill != null)
+            {
+                if (cooldownFill.enabled) cooldownFill.enabled = false;
+                var fondo = cooldownFill.transform.parent;
+                if (fondo != null && fondo != transform)
+                {
+                    var im = fondo.GetComponent<Image>();
+                    if (im != null && im != reticle && im.enabled) im.enabled = false;
+                }
+            }
             if (reticle != null)
             {
                 reticle.color = onTarget ? OnTargetColor : TurningColor;

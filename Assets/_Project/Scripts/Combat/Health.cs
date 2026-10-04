@@ -54,6 +54,14 @@ namespace SP.Combat
         public event System.Action Revivido;
         bool estuvoVivo;
 
+        // Restaura la vida exacta (cargar partida / volver a un bug): 0 = muerto, >0 = vivo con esa vida (revive si estaba muerto).
+        public void RestaurarVida(int actual)
+        {
+            if (actual <= 0) { if (Current > 0) TakeDamage(Current + 1000, -1); return; }
+            if (Current <= 0) Initialize(ActorId, maxHealth);
+            Current = Mathf.Clamp(actual, 1, maxHealth);
+        }
+
         public void Initialize(int actorId, int max)
         {
             bool revive = estuvoVivo && Current <= 0 && max > 0;

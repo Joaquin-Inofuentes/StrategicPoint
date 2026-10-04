@@ -31,8 +31,28 @@ namespace SP.Ai
         public bool CoberturaPorOrden => coberturaPorOrden;
         public Vector3 CoberturaPunto => coberturaPunto;
 
-        // Solo los enemigos buscan cobertura por su cuenta en pleno combate.
-        bool BuscaCoberturaSolo => self != null && (self.Team == TeamId.Enemy || (Humanizada && Herido && !IsPossessedByPlayer));
+        // Bug #061: "revisa que los aliados y enemigos usen coberturas". Antes solo los enemigos se cubrian solos (los aliados
+        // unicamente con la dificultad humanizada y heridos: en la practica nunca). Ahora tambien los aliados que no maneja el
+        // jugador; la decision de si conviene cubrirse sigue siendo la ponderada (CoberturasPuntuadas.Presion).
+        // Bug #061: radio de la cobertura "a mano" que se toma aun sin presion (ver TickCoberturaTactica).
+        public const float RadioDeCoberturaAMano = 8f;
+        bool BuscaCoberturaSolo => self != null && !SinCobertura && (CoberturaPropia || self.Team == TeamId.Enemy
+            || (self.Team == TeamId.Player && self.Role != RoleType.Civilian && !IsPossessedByPlayer && !Pasivo));
+
+        // Version de la eleccion de cobertura: 0 = la vieja (la mas cercana con linea de tiro), 1..5 = puntuacion ponderada
+        // (ver CoberturasPuntuadas). El banco de duelos (CoberturaBench) la cambia por soldado para comparar iteraciones.
+        public static int DefaultVersionCobertura = 5;
+        public int VersionCobertura = -1;
+        public int VersionDeCobertura => VersionCobertura >= 0 ? VersionCobertura : DefaultVersionCobertura;
+        public bool SinCobertura;       // banco de pruebas: el rival "sin IA de cobertura"
+        public bool CoberturaPropia;    // fuerza la busqueda autonoma de cobertura (banco de pruebas)
+        public float UltimaPresion { get; private set; }
+        public int CoberturasElegidas { get; private set; }
+        public int CambiosDeCobertura { get; private set; }
+        float relojReevaluar;
+
+        float Vida01 => self != null && self.Health != null ? (float)self.Health.Current / Mathf.Max(1, self.Health.MaxHealth) : 1f;
+        bool Recargando => self != null && self.Weapon != null && (self.Weapon.IsReloading || self.Weapon.CurrentAmmo <= 0);
 
         // El jugador manda a este soldado a cubrirse en 'punto': camina, se
         // agacha y se queda ahi hasta recibir otra orden.
@@ -84,6 +104,9 @@ namespace SP.Ai
 
         void NuevaOrden()
         {
+            // Bug #8: una orden del jugador (seguir, ir, atacar...) al medico que estaba con un pedido de curacion lo dejaba
+            // atado al pedido viejo (y Pasivo: no peleaba) hasta 30 s. Cualquier orden que NO venga del propio pedido lo suelta.
+            SP.Player.PedidoDeCuracion.SoltarSiEsElEnfermero(self);
             LiberarCobertura();
             seguirAuto = false;
             if (Quieto) Quieto = false;
@@ -123,7 +146,7 @@ namespace SP.Ai
         void EntrarEnCoberturaBase()
         {
             subStateCobertura = CoverSubState.Hidden;
-            relojSubStateCobertura = UnityEngine.Random.Range(1.2f, 2.0f);
+            relojSubStateCobertura = DuracionOculto();
             esCoberturaDeBorde = false;
             lateralOffset = Vector3.zero;
 
@@ -134,6 +157,20 @@ namespace SP.Ai
                     esCoberturaDeBorde = true;
                 }
             }
+        }
+
+        // Ciclo oculto/asoma. Antes fijo (oculto 1.2-2.0 s, asoma 0.8-1.4 s: dispara ~40% del tiempo). Con F_CICLO depende de la vida:
+        // sano asoma casi todo el tiempo, herido se esconde mas.
+        float DuracionOculto()
+        {
+            if (!CoberturasPuntuadas.Usa(VersionDeCobertura, CoberturasPuntuadas.F_CICLO)) return UnityEngine.Random.Range(1.2f, 2.0f);
+            return Mathf.Lerp(0.35f, 1.8f, 1f - Vida01) * UnityEngine.Random.Range(0.85f, 1.15f);
+        }
+
+        float DuracionAsomado()
+        {
+            if (!CoberturasPuntuadas.Usa(VersionDeCobertura, CoberturasPuntuadas.F_CICLO)) return UnityEngine.Random.Range(0.8f, 1.4f);
+            return Mathf.Lerp(2.2f, 0.7f, 1f - Vida01) * UnityEngine.Random.Range(0.85f, 1.15f);
         }
 
         void TickCicloCobertura(float dt)
@@ -162,7 +199,7 @@ namespace SP.Ai
                     else
                     {
                         subStateCobertura = CoverSubState.Peeking;
-                        relojSubStateCobertura = UnityEngine.Random.Range(0.8f, 1.4f);
+                        relojSubStateCobertura = DuracionAsomado();
                         
                         if (esCoberturaDeBorde)
                         {
@@ -180,7 +217,7 @@ namespace SP.Ai
                 else
                 {
                     subStateCobertura = CoverSubState.Hidden;
-                    relojSubStateCobertura = UnityEngine.Random.Range(1.2f, 2.0f);
+                    relojSubStateCobertura = DuracionOculto();
                 }
             }
 
@@ -283,15 +320,66 @@ namespace SP.Ai
                 else return true;
             }
 
-            if (enCobertura) return false;
+            int version = VersionDeCobertura;
+            if (enCobertura)
+            {
+                // v5: ya cubierto, pero si cambio la situacion (se hirio, recargo, hay otra claramente mejor) se muda.
+                if (CoberturasPuntuadas.Usa(version, CoberturasPuntuadas.F_MUDARSE) && !coberturaPorOrden)
+                {
+                    relojReevaluar -= dt;
+                    if (relojReevaluar <= 0f)
+                    {
+                        relojReevaluar = 2.5f;
+                        if (CoberturasPuntuadas.TryElegir(self.transform.position, target, self, 12f, EffectiveAttackRange, Vida01, version, Recargando, coberturaPunto, out var otra)
+                            && (otra.punto - coberturaPunto).sqrMagnitude > 2f * 2f)
+                        {
+                            // Puntaje de la actual: se re-evalua restringido a ella con la histeresis ya sumada.
+                            if (CoberturasPuntuadas.TryElegir(coberturaPunto, target, self, 1.2f, EffectiveAttackRange, Vida01, version, Recargando, coberturaPunto, out var actualE)
+                                ? otra.puntaje > actualE.puntaje + 0.5f : true)
+                            {
+                                CambiosDeCobertura++;
+                                coberturaPunto = otra.punto; coberturaDueno = otra.dueno;
+                                enCobertura = false; yendoACobertura = true;
+                                PlanPathTo(otra.punto);
+                                return true;
+                            }
+                        }
+                    }
+                }
+                return false;
+            }
 
             relojTactico -= dt;
             if (relojTactico > 0f) return false;
             relojTactico = 1.2f + (self.Id % 5) * 0.15f;
 
             float dActual = Vector3.Distance(self.transform.position, target.transform.position);
-            if (!Coberturas.TryCoberturaDeTiro(self.transform.position, target, self, 12f,
-                    EffectiveAttackRange * 0.45f, EffectiveAttackRange * 0.9f, out var punto, out var dueno)) return false;
+            // Decision ponderada: sano y sin presion NO se cubre (cubrirse cuesta fuego: solo dispara mientras asoma)...
+            bool sinPresion = false;
+            if (CoberturasPuntuadas.Usa(version, CoberturasPuntuadas.F_DECIDIR))
+            {
+                int amenazas = CoberturasPuntuadas.AmenazasSobre(self);
+                UltimaPresion = CoberturasPuntuadas.Presion(Vida01, Recargando, amenazas, dActual, EffectiveAttackRange);
+                sinPresion = UltimaPresion <= CoberturasPuntuadas.UmbralDeCubrirse;
+            }
+            Vector3 punto; Collider dueno;
+            if (sinPresion)
+            {
+                // ...salvo (bug #061) una cobertura A MANO desde la que sigue disparando: cuesta poco y es lo que haria
+                // cualquiera. Medido en la ciudad: con 26 enemigos peleando se cubria 1, porque la escuadra (3) no alcanza
+                // para "presionar" a un enemigo sano.
+                if (!CoberturasPuntuadas.TryElegir(self.transform.position, target, self, RadioDeCoberturaAMano, EffectiveAttackRange, Vida01, version, Recargando, null, out var cerca)
+                    || !cerca.puedeDisparar) return false;
+                punto = cerca.punto; dueno = cerca.dueno;
+            }
+            else if (version >= 1)
+            {
+                if (!CoberturasPuntuadas.TryElegir(self.transform.position, target, self, 12f, EffectiveAttackRange, Vida01, version, Recargando, null, out var el)) return false;
+                punto = el.punto; dueno = el.dueno;
+            }
+            else if (!Coberturas.TryCoberturaDeTiro(self.transform.position, target, self, 12f,
+                    EffectiveAttackRange * 0.45f, EffectiveAttackRange * 0.9f, out punto, out dueno)) return false;
+            CoberturasElegidas++;
             // Solo si de verdad cambia algo: no correr 1 m, ni alejarse.
             if ((punto - self.transform.position).sqrMagnitude < 1.5f * 1.5f) return false;
             if (Vector3.Distance(punto, target.transform.position) > dActual + 2f) return false;
@@ -318,6 +406,10 @@ namespace SP.Ai
         // ------------------------------------------------------------------
         bool seguirAuto;
         static float ultimoAvisoDeSeguir = -99f;
+        // Mas alla de esto el aliado "se fue del minimapa" y vuelve si o si (bug #16).
+        public static float RadioDeRegresoForzado = 45f;
+        float proximoRegresoForzado, ultimoAvisoRegreso = -99f;
+        public int RegresosForzados { get; private set; }
 
         public bool SiguiendoAlJugador => seguirAuto;
 
@@ -344,6 +436,29 @@ namespace SP.Ai
             var d = lider.transform.position - self.transform.position;
             d.y = 0f;
             float dist = d.magnitude;
+
+            // Bug #16: "si los aliados desaparecen de la visibilidad del minimapa, si o si vienen hacia mi; les costo mucho venir y
+            // se distraen con un enemigo". Mas lejos que RadioDeRegresoForzado vuelven SI O SI: seguimiento forzado (no se
+            // enganchan con ningun enemigo durante el lapso), renovado mientras sigan lejos. Solo se respeta lo que el jugador
+            // fijo a proposito: ALTO (Quieto), montar un vehiculo, una cobertura ordenada, una orden explicita de IR/ATACAR, o que
+            // este atendiendo un pedido de curacion.
+            if (dist > RadioDeRegresoForzado && mountTarget == null && !coberturaPorOrden && !MontadoEnVehiculo
+                && !(hasOrder && State != AiState.Follow) && SP.Player.PedidoDeCuracion.Enfermero != self)
+            {
+                if (Time.time >= proximoRegresoForzado)
+                {
+                    proximoRegresoForzado = Time.time + 3.5f;
+                    IssueFollowOrder(lider, default, 4f);
+                    seguirAuto = true;
+                    RegresosForzados++;
+                    if (Time.time - ultimoAvisoRegreso > 8f)
+                    {
+                        ultimoAvisoRegreso = Time.time;
+                        SP.Core.SesionLog.Evento(System.FormattableString.Invariant($"{self.DisplayName} estaba a {dist:0} m (fuera del minimapa): vuelve SI O SI con {lider.DisplayName}"));
+                    }
+                }
+                return;
+            }
 
             if (seguirAuto)
             {
@@ -516,6 +631,7 @@ namespace SP.Ai
             for (int i = 0; i < candidatos.Count; i++)
             {
                 var s = candidatos[i];
+                if (Ignorando(s)) continue;   // descartado por inalcanzable (ver VigilarInalcanzable)
                 float dist = Vector3.Distance(self.transform.position, s.transform.position);
                 // De noche un enemigo ve a distancia completa solo a quien esta iluminado (ver IluminacionTactica).
                 if (equipo == TeamId.Enemy && dist > IluminacionTactica.VisionContra(s.transform.position, vision)) continue;

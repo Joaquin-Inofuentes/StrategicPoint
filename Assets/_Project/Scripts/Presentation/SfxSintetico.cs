@@ -9,7 +9,7 @@ namespace SP.Presentation
     // corridas suenen igual, y cada clip se normaliza al pico para que el volumen se calibre en
     // el punto de llamada y no aqui. GenericSfx cae aca cuando no hay un clip real bajo
     // Resources/Audio/Sfx/<Clave>/ (asi el usuario puede reemplazar cualquiera soltando un .wav).
-    public static class SfxSintetico
+    public static partial class SfxSintetico
     {
         const int SR = 44100;
 

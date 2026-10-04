@@ -61,14 +61,14 @@ namespace SP.UI
             Activo = this;
         }
         public const int CantidadDeOpciones = 5;
-        public const int CantidadDeCategorias = 9;
+        public const int CantidadDeCategorias = 10;
         public const int CantidadDePorciones = CantidadDeCategorias;
         public const int MaxOpcionesPorCategoria = 6;
         // Item 61: ATACAR tiene, ademas de "a quien ordeno" (0..3), dos ordenes tacticas.
         public const int SubSuprimir = 4, SubGranada = 5;
 
         // Identificadores estables de categoria (el orden en pantalla cambia con el contexto).
-        public const int IrAlli = 0, Cubrirse = 1, Atacar = 2, Posicion = 3, Curar = 4, Tanque = 5, Poseer = 6, Demoler = 7, Torreta = 8;
+        public const int IrAlli = 0, Cubrirse = 1, Atacar = 2, Posicion = 3, Curar = 4, Tanque = 5, Poseer = 6, Demoler = 7, Torreta = 8, Interactuar = 9;
 
         // Lista historica (formaciones, sigueme, alto, curarme): la sigue usando
         // EjecutarOrdenDelMenu(1..5), que la suite ejerce sin teclado.
@@ -93,6 +93,7 @@ namespace SP.UI
             "POSEER",
             "DEMOLER",
             "TORRETA\nFIJA",
+            "INTERACTUAR",
         };
 
         // Opciones de cada categoria (anillo exterior). {1}{2}{3} = clase del soldado N.
@@ -107,6 +108,7 @@ namespace SP.UI
             new[] { "SOLDADO {1}", "SOLDADO {2}", "SOLDADO {3}", "SIGUIENTE", "POSEER A ESTE" },
             new[] { "ASALTO DEMUELE", "YO DEMUELO", "CANCELAR" },
             new[] { "USAR LA TORRETA", "SALIR DE LA TORRETA", "QUE LO MONTEN" },
+            new[] { "EL INDICADO VA", "SOLO {1}", "SOLO {2}", "SOLO {3}" },
         };
 
         static readonly Color[] Acentos =
@@ -114,6 +116,7 @@ namespace SP.UI
             new Color(0.4f, 0.92f, 0.5f),  new Color(1f, 0.86f, 0.3f),  new Color(1f, 0.35f, 0.3f),  new Color(0.3f, 0.85f, 1f),
             new Color(0.95f, 0.45f, 0.8f), new Color(1f, 0.66f, 0.25f), new Color(0.7f, 0.6f, 1f),   new Color(1f, 0.55f, 0.2f),
             new Color(0.5f, 0.9f, 0.85f),
+            new Color(0.4f, 1f, 0.7f),
         };
 
         // Las categorias contextuales (lo que se apunta) se pintan de este dorado.

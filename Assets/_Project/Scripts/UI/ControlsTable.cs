@@ -127,7 +127,10 @@ namespace SP.UI
             new ControlEntry("R", "alternar munición explosiva / perforante", ControlContext.VehiculoArtillero),
 
             new ControlEntry("Ctrl", "agacharse (mantener)", ControlContext.FpsAPie),
-            new ControlEntry("Espacio", "saltar", ControlContext.FpsAPie),
+            new ControlEntry("Espacio", "mantener: menú radial de órdenes (igual que mantener Q)", ControlContext.FpsAPie, SP.Player.KeyBindings.RadialEspacio),
+            new ControlEntry("Q", "tocar apuntando: terreno = que te sigan, enemigo = atacar, aliado herido = curar, muro destructible = demoler, panel/computadora = enviar al que corresponde (mantener = radial)", ControlContext.FpsAPie, SP.Player.KeyBindings.CiclarPosesion),
+            new ControlEntry("E", "mantener frente a un muro (solo el ASALTO): plantar la carga y demoler. Si estás lejos de algo interactuable, avisa que te acerques", ControlContext.FpsAPie, SP.Player.KeyBindings.Interactuar),
+            new ControlEntry("U / 8", "marcar un BUG: guarda foto del estado de todo + captura de cámara con un número para pedir que se retome desde ahí", Todos, SP.Player.KeyBindings.MarcarBug),
             new ControlEntry("F", "cuchillo: tajo rápido, sin balas (arco brillante y golpe sordo si conecta)", ControlContext.FpsAPie, SP.Player.KeyBindings.AtaqueCuchillo),
             new ControlEntry("G", "granada: mantener para ver la curva y el radio, soltar para lanzar (clic der. o Esc la guardan)", ControlContext.FpsAPie, SP.Player.KeyBindings.Granada),
             new ControlEntry("1/2/3", "cambiar de arma según tu clase", ControlContext.FpsAPie),

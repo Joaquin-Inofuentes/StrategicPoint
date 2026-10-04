@@ -336,9 +336,14 @@ namespace SP.Actors
             soldierCacheado.EyeAnchor.localPosition = new Vector3(p.x, y, p.z);
         }
 
+        // Bug #039/#040: un aliado de IA al que el medico esta curando seguia caminando/persiguiendo, el medico nunca llegaba
+        // a quedar en rango y la curacion arrancaba y se cortaba en bucle. Retenido = no se desplaza (sigue girando y disparando).
+        // Lo prende y apaga PedidoDeCuracion.
+        public bool Retenido;
+
         public void Move(Vector3 worldDirection, float dt)
         {
-            if (Vaulting) return;
+            if (Vaulting || Retenido) return;
             if (worldDirection.sqrMagnitude > 1f) worldDirection.Normalize();
             transform.position += Resolve(worldDirection * MoveSpeed * dt);
             RevisarBorde();

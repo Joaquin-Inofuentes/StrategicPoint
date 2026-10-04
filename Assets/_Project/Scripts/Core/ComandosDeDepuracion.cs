@@ -18,7 +18,8 @@ namespace SP.Core
             if (!s.Health.IsAlive) return s.DisplayName + " ya estaba caido";
             bool dios = ModoDios.Activo;
             if (dios) ModoDios.Poner(false);          // el modo dios anula el dano: para matar hay que apagarlo un instante
-            s.Health.TakeDamage(s.Health.Current + s.Health.MaxHealth, s.Id);
+            // La dificultad reduce el dano al bando del jugador: un solo golpe de "toda la vida" podia no tumbarlo.
+            for (int i = 0; i < 40 && s.Health.IsAlive; i++) s.Health.TakeDamage(s.Health.Current + s.Health.MaxHealth, s.Id);
             if (dios) ModoDios.Poner(true);
             GameLog.Line("[COMANDO] matar " + s.DisplayName);
             return "mate a " + s.DisplayName;

@@ -145,7 +145,30 @@ namespace SP.Vehicles
             CacheColorIfNeeded();
             baseColor = tinte;
             if (chassisRenderers != null)
-                foreach (var r in chassisRenderers) if (r != null && r.sharedMaterial != null) r.sharedMaterial.color = tinte;
+                for (int i = 0; i < chassisRenderers.Length; i++)
+                {
+                    var r = chassisRenderers[i];
+                    if (r == null || r.sharedMaterial == null) continue;
+                    // El trimsheet ya trae su propio color: se le mezcla el del equipo a la mitad, no se lo reemplaza por un tinte plano.
+                    baseColors[i] = TieneTextura(r) ? Color.Lerp(Color.white, tinte, 0.55f) : tinte;
+                    r.sharedMaterial.color = baseColors[i];
+                }
+        }
+
+        // Solo el bando, sin teñir (bug #047: las camionetas enemigas ya vienen pintadas de rojo, pero quedaban como
+        // "Player": sin anillo de vida en la mira del cañon, barra verde y rombo azul en el minimapa).
+        public void MarcarBando(SP.Combat.TeamId bando) => Bando = bando;
+
+        static bool EsDelRombo(Transform t)
+        {
+            for (; t != null; t = t.parent) if (t.name == "RomboTanque") return true;
+            return false;
+        }
+
+        static bool TieneTextura(Renderer r)
+        {
+            var m = r.sharedMaterial;
+            return m != null && m.HasProperty("_BaseMap") && m.GetTexture("_BaseMap") != null;
         }
 
         void OnDestroyed()
@@ -168,7 +191,7 @@ namespace SP.Vehicles
             // cambiar visualmente.
             CacheColorIfNeeded();
             if (chassisRenderers != null)
-                foreach (var r in chassisRenderers) if (r != null) r.sharedMaterial.color = Color.Lerp(baseColor, Color.black, 0.35f);
+                for (int i = 0; i < chassisRenderers.Length; i++) if (chassisRenderers[i] != null) chassisRenderers[i].sharedMaterial.color = Color.Lerp(baseColors[i], Color.black, 0.35f);
 
             EventBus.Instance.Publish(new VehicleDestroyedEvent(this));
 
@@ -183,7 +206,7 @@ namespace SP.Vehicles
             IsInAgony = false;
 
             if (chassisRenderers != null)
-                foreach (var r in chassisRenderers) if (r != null) r.sharedMaterial.color = Color.Lerp(baseColor, Color.black, 0.85f);
+                for (int i = 0; i < chassisRenderers.Length; i++) if (chassisRenderers[i] != null) chassisRenderers[i].sharedMaterial.color = Color.Lerp(baseColors[i], Color.black, 0.85f);
 
             SP.Presentation.ImpactFx.SpawnExplosion(transform.position + Vector3.up, 4f);
             DetachTurret();
@@ -229,6 +252,11 @@ namespace SP.Vehicles
         // Feedback de color: el chasis se pone un poco más oscuro/saturado
         // cuando tiene gente adentro, y vuelve a su color de base al vaciarse.
         Renderer[] chassisRenderers;
+        // BUG REAL ("el material del tanque esta roto"): baseColor salia del PRIMER renderer (el cubo gris 0,5 del blockout) y se
+        // aplicaba a TODOS: los meshes del trimsheet (color blanco = la textura tal cual) quedaban multiplicados por gris 0,5 y por
+        // el oscurecimiento de ocupado/danado: el tanque se veia casi negro. Las UV y la textura estaban bien. Ahora cada renderer
+        // oscurece desde SU color, y el rombo del tanque (un Unlit propio) ya no se tine.
+        Color[] baseColors;
         Color baseColor;
         bool colorCached;
 
@@ -236,12 +264,21 @@ namespace SP.Vehicles
         {
             if (colorCached) return;
             colorCached = true;
-            chassisRenderers = GetComponentsInChildren<Renderer>();
+            var todos = GetComponentsInChildren<Renderer>();
+            var lista = new List<Renderer>(todos.Length);
+            foreach (var r in todos)
+            {
+                if (r == null || r.sharedMaterial == null) continue;
+                if (EsDelRombo(r.transform)) continue;
+                lista.Add(r);
+            }
+            chassisRenderers = lista.ToArray();
+            baseColors = new Color[chassisRenderers.Length];
             for (int i = 0; i < chassisRenderers.Length; i++)
             {
                 var r = chassisRenderers[i];
-                if (r == null || r.sharedMaterial == null) continue;
                 r.sharedMaterial = new Material(r.sharedMaterial);
+                baseColors[i] = r.sharedMaterial.color;
             }
             if (chassisRenderers.Length > 0 && chassisRenderers[0].sharedMaterial != null) baseColor = chassisRenderers[0].sharedMaterial.color;
         }
@@ -251,8 +288,8 @@ namespace SP.Vehicles
             CacheColorIfNeeded();
             if (chassisRenderers != null && chassisRenderers.Length > 0)
             {
-                Color target = seats.Count > 0 ? Color.Lerp(baseColor, Color.black, 0.28f) : baseColor;
-                foreach (var r in chassisRenderers) r.sharedMaterial.color = target;
+                for (int i = 0; i < chassisRenderers.Length; i++)
+                    chassisRenderers[i].sharedMaterial.color = seats.Count > 0 ? Color.Lerp(baseColors[i], Color.black, 0.28f) : baseColors[i];
             }
 
             if (diamondMaterial != null)
@@ -723,7 +760,13 @@ namespace SP.Vehicles
                     var ps = transform.lossyScale;
                     diamondMarker.transform.localScale = new Vector3(k / Mathf.Max(0.01f, ps.x), k / Mathf.Max(0.01f, ps.y), k / Mathf.Max(0.01f, ps.z));
                 }
-                diamondMarker.SetActive(!IsDestroyed);
+                // Bug #057: "veo el rombo mio, que molesta": yendo a bordo (en primera/tercera persona) el rombo del propio
+                // vehiculo flotaba arriba de la mira. Solo se ve desde afuera o en RTS.
+                var drv = SP.Player.PlayerInputDriver.Activo;
+                var yo = drv != null && drv.Brain != null ? drv.Brain.Current : null;
+                bool aBordo = yo != null && RoleOf(yo) != null
+                    && !(SP.CameraSystem.CameraRig.Instance != null && SP.CameraSystem.CameraRig.Instance.Mode == SP.CameraSystem.ControlMode.Rts);
+                diamondMarker.SetActive(!IsDestroyed && !aBordo);
             }
         }
 
