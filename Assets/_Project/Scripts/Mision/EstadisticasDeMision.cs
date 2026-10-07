@@ -26,12 +26,14 @@ namespace SP.Mision
         public int VehiculosDestruidos { get; private set; }
         public int Disparos { get; private set; }
         public int Impactos { get; private set; }
+        public int HeadshotsJugador { get; private set; }      // Bug #094: tiros a la cabeza del soldado que manejabas
+        public int HeadshotsEscuadra { get; private set; }     // ...y de tus aliados
         public float Inicio { get; private set; }
         readonly Dictionary<string, int> bajasPorSoldado = new Dictionary<string, int>();
         public IReadOnlyDictionary<string, int> BajasPorSoldado => bajasPorSoldado;
         public int BajasEnemigas => BajasPorMi + BajasPorAliados + BajasOtras;
 
-        IDisposable subMuerte, subDisparo, subDano, subVehiculo;
+        IDisposable subMuerte, subDisparo, subDano, subVehiculo, subHeadshot;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reiniciar() { Instancia = null; }
@@ -59,9 +61,54 @@ namespace SP.Mision
         {
             BajasPorMi = BajasPorAliados = BajasOtras = MisMuertes = CaidosDeLaEscuadra = 0;
             Reanimaciones = VehiculosDestruidos = Disparos = Impactos = 0;
+            HeadshotsJugador = HeadshotsEscuadra = 0;
             bajasPorSoldado.Clear();
             SupervivientesForzados = -1; HeridosRescatados = 0;
             Inicio = Time.time;
+        }
+
+        // P10 (guardar partida): los contadores van en un texto "clave=valor;..." (el tiempo transcurrido, no el reloj absoluto).
+        public string Serializar()
+        {
+            var sb = new System.Text.StringBuilder();
+            var ic = System.Globalization.CultureInfo.InvariantCulture;
+            sb.Append("bm=").Append(BajasPorMi).Append(";ba=").Append(BajasPorAliados).Append(";bo=").Append(BajasOtras).Append(";mm=").Append(MisMuertes)
+              .Append(";ce=").Append(CaidosDeLaEscuadra).Append(";re=").Append(Reanimaciones).Append(";vd=").Append(VehiculosDestruidos)
+              .Append(";di=").Append(Disparos).Append(";im=").Append(Impactos).Append(";hj=").Append(HeadshotsJugador).Append(";he=").Append(HeadshotsEscuadra)
+              .Append(";t=").Append(Mathf.Max(0f, Time.time - Inicio).ToString("0.0", ic)).Append(";hr=").Append(HeridosRescatados);
+            foreach (var kv in bajasPorSoldado) sb.Append(";s:").Append(kv.Key.Replace(';', ' ').Replace('=', ' ')).Append('=').Append(kv.Value);
+            return sb.ToString();
+        }
+
+        public void Restaurar(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return;
+            var ic = System.Globalization.CultureInfo.InvariantCulture;
+            Limpiar();
+            foreach (var par in s.Split(';'))
+            {
+                int i = par.IndexOf('=');
+                if (i <= 0) continue;
+                string k = par.Substring(0, i), v = par.Substring(i + 1);
+                int.TryParse(v, out int n);
+                switch (k)
+                {
+                    case "bm": BajasPorMi = n; break;
+                    case "ba": BajasPorAliados = n; break;
+                    case "bo": BajasOtras = n; break;
+                    case "mm": MisMuertes = n; break;
+                    case "ce": CaidosDeLaEscuadra = n; break;
+                    case "re": Reanimaciones = n; break;
+                    case "vd": VehiculosDestruidos = n; break;
+                    case "di": Disparos = n; break;
+                    case "im": Impactos = n; break;
+                    case "hj": HeadshotsJugador = n; break;
+                    case "he": HeadshotsEscuadra = n; break;
+                    case "hr": HeridosRescatados = n; break;
+                    case "t": if (float.TryParse(v, System.Globalization.NumberStyles.Float, ic, out var t)) Inicio = Time.time - t; break;
+                    default: if (k.StartsWith("s:")) bajasPorSoldado[k.Substring(2)] = n; break;
+                }
+            }
         }
 
         void OnEnable()
@@ -70,13 +117,14 @@ namespace SP.Mision
             subDisparo = EventBus.Instance.Subscribe<ShotFiredEvent>(OnDisparo);
             subDano = EventBus.Instance.Subscribe<DamageTakenEvent>(OnDano);
             subVehiculo = EventBus.Instance.Subscribe<VehicleDestroyedEvent>(OnVehiculo);
+            subHeadshot = EventBus.Instance.Subscribe<HeadshotEvent>(OnHeadshot);
             SP.Player.Reanimacion.Revivido += OnReanimado;
         }
 
         void OnDisable()
         {
-            subMuerte?.Dispose(); subDisparo?.Dispose(); subDano?.Dispose(); subVehiculo?.Dispose();
-            subMuerte = subDisparo = subDano = subVehiculo = null;
+            subMuerte?.Dispose(); subDisparo?.Dispose(); subDano?.Dispose(); subVehiculo?.Dispose(); subHeadshot?.Dispose();
+            subMuerte = subDisparo = subDano = subVehiculo = subHeadshot = null;
             SP.Player.Reanimacion.Revivido -= OnReanimado;
         }
 
@@ -121,6 +169,13 @@ namespace SP.Mision
             if (yo == null || e.AttackerId != yo.Id) return;
             var v = ActorRegistry.FindById(e.TargetId);
             if (v != null && v.Team == TeamId.Enemy) Impactos++;
+        }
+
+        void OnHeadshot(HeadshotEvent e)
+        {
+            var tirador = ActorRegistry.FindById(e.ShooterId);
+            if (!EsEscuadra(tirador)) return;
+            if (tirador == Yo()) HeadshotsJugador++; else HeadshotsEscuadra++;
         }
 
         void OnVehiculo(VehicleDestroyedEvent e)
@@ -173,6 +228,7 @@ namespace SP.Mision
             r.Add(new Fila { Etiqueta = "TUS MUERTES", Valor = "{0}", Numero = e.MisMuertes });
             r.Add(new Fila { Etiqueta = "CAIDOS DE LA ESCUADRA", Valor = "{0}" + (e.Reanimaciones > 0 ? "  ·  " + e.Reanimaciones + (e.Reanimaciones == 1 ? " reanimado" : " reanimados") : ""), Numero = e.CaidosDeLaEscuadra });
             if (e.VehiculosDestruidos > 0) r.Add(new Fila { Etiqueta = "VEHICULOS DESTRUIDOS", Valor = "{0}", Numero = e.VehiculosDestruidos });
+            r.Add(new Fila { Etiqueta = "HEADSHOTS", Valor = "{0}" + (e.HeadshotsEscuadra > 0 ? "  (+" + e.HeadshotsEscuadra + " de tu escuadra)" : ""), Numero = e.HeadshotsJugador });
             if (e.Disparos > 0) r.Add(new Fila { Etiqueta = "PUNTERIA", Valor = "{0}%  (" + e.Disparos + " disparos)", Numero = Mathf.Clamp(Mathf.RoundToInt(100f * e.Impactos / e.Disparos), 0, 100) });
             float t = Mathf.Max(0f, Time.time - e.Inicio);
             r.Add(new Fila { Etiqueta = "TIEMPO", Valor = $"{Mathf.FloorToInt(t / 60f):00}:{Mathf.FloorToInt(t % 60f):00}", Numero = -1 });

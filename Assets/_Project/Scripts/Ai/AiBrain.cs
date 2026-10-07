@@ -55,6 +55,16 @@ namespace SP.Ai
         [SerializeField] float tiempoMaximoSinVisibilidad = 5f;
         float segundosSinLineaDeTiro;
 
+        // WP4 (#080): histeresis de Attack. No sale a Chase hasta pasar este tiempo SIN linea de tiro, y no reinicia la reaccion si vuelve
+        // al mismo blanco antes de ReinicioDeReaccionSegundos.
+        public const float HisteresisSinLineaSegundos = 0.6f;
+        public const float ReinicioDeReaccionSegundos = 1.5f;
+        // Sale de Attack recien un poco mas alla del alcance con el que entro (evita el vaiven en el borde del rango).
+        public const float HisteresisDeAlcance = 1.08f;
+        float sinLineaEnAttack, tSalidaDeAttack = -99f;
+        int ultimoBlancoAttackId = -1;
+        float relojAgachado; bool agachadoVeAlBlanco = true;
+
         // El NavMeshAgent es SOLO el planificador de ruta: updatePosition y
         // updateRotation quedan apagados y quien mueve el transform sigue
         // siendo SoldierMotor (colision con Deslizador, altura del pivote,
@@ -446,7 +456,9 @@ namespace SP.Ai
         // WeaponHolder.MultiplicadorRol, que lee el mismo Role.
         [SerializeField] float sniperAttackRangeMultiplier = 1.6f;
 
-        public float EffectiveAttackRange => attackRange * RoleAttackRangeMultiplier * (Humanizada && visionRange >= 5f ? AmpliacionDeAtaque : 1f);
+        // WP10 (#101): el campanario de la ciudad da alcance extra al soldado que esta arriba (1 = normal).
+        public float BonusDeAlcance { get; set; } = 1f;
+        public float EffectiveAttackRange => attackRange * RoleAttackRangeMultiplier * (Humanizada && visionRange >= 5f ? AmpliacionDeAtaque : 1f) * BonusDeAlcance;
 
         // Armas de corto alcance (metralleta, escopeta): el soldado se acerca a 70% del alcance normal,
         // que es donde su dispersion rinde. Sin esto se quedaban a 12 m disparando al aire y perdian
@@ -554,7 +566,15 @@ namespace SP.Ai
                     self.Motor.SetCrouching(false);
                 }
             }
-            if (next == AiState.Attack) ArmarReaccion();
+            // WP4 (#080): salir de Attack y volver al MISMO blanco en menos de 1,5 s no reinicia la reaccion (0,25-0,6 s sin disparar): con la
+            // linea de tiro intermitente el soldado se quedaba reaccionando para siempre.
+            if (State == AiState.Attack && next != AiState.Attack) { ultimoBlancoAttackId = target != null ? target.Id : -1; tSalidaDeAttack = Time.time; }
+            if (next == AiState.Attack)
+            {
+                bool mismoBlanco = target != null && target.Id == ultimoBlancoAttackId && Time.time - tSalidaDeAttack < ReinicioDeReaccionSegundos;
+                if (!mismoBlanco) ArmarReaccion();
+                sinLineaEnAttack = 0f;
+            }
             State = next;
             EventBus.Instance.Publish(new AiStateChangedEvent(self.Id, next.ToString()));
         }
@@ -936,6 +956,9 @@ namespace SP.Ai
             if (Atrincherado && target == null && (State == AiState.Patrol || State == AiState.Idle) && self.Motor != null && !self.Motor.IsCrouching)
                 self.Motor.SetCrouching(true);
 
+            // WP4 (#087): el aliado herido en combate se repliega (cobertura / medico) disparando; mientras lo hace no persigue ni ataca.
+            if (TickHerido(dt)) { TickSeparacion(dt); return; }
+
             switch (State)
             {
                 case AiState.Patrol:
@@ -1149,11 +1172,14 @@ namespace SP.Ai
                         if (TieneLineaDeTiro(target))
                         {
                             chaseSinLineaT = 0f;
-                            // Con linea de tiro, el acercamiento de siempre:
-                            // frenar al 85% del alcance esta bien, porque
-                            // desde ahi ya se puede disparar.
-                            if (!EnemigoNoEntraAlMonte(target.transform.position, dt))
-                                self.Motor.MoveTowards(target.transform.position, EffectiveAttackRange * 0.85f, dt);
+                            // WP4 (#074/#081): "todos deben buscar cobertura para disparar". Antes de avanzar a cielo abierto se busca una
+                            // cobertura a mano desde la que se pueda tirar y que no aleje del blanco (el herido si puede alejarse).
+                            if (BuscaCoberturaSolo && CubrirseDe(target, dt, RadioDeCoberturaAMano, Herido ? float.MaxValue : d + 1f, 0.9f)) break;
+                            // Con linea de tiro, el acercamiento de siempre. WP4 (#086): cada soldado se acerca por SU rumbo (abanico de
+                            // +-30 grados segun su Id) y no todos al mismo punto.
+                            Vector3 puntoDeAtaque = PuntoDeAtaque(target);
+                            if (!EnemigoNoEntraAlMonte(puntoDeAtaque, dt))
+                                self.Motor.MoveTowards(puntoDeAtaque, 0.4f, dt);
                         }
                         else
                         {
@@ -1170,7 +1196,7 @@ namespace SP.Ai
                             // ninguna a mano se cae al rodeo de siempre,
                             // que es lo que arreglo el caso del Muro.
                             if (VigilarInalcanzable(d, dt)) break;   // el blanco esta del otro lado de algo que no se puede cruzar: se lo suelta
-                            if (!CubrirseDe(target, dt))
+                            if (!CubrirseDe(target, dt, RadioDeBusquedaDeCobertura, Herido ? float.MaxValue : d + 2f))   // WP4 (#081): sin alejarse
                                 RodearHasta(target.transform.position, dt);
                         }
                     }
@@ -1180,7 +1206,7 @@ namespace SP.Ai
                 case AiState.Attack:
                     if (target == null || !target.Health.IsAlive) { SetState(followTarget != null ? AiState.Follow : AiState.Patrol); break; }
                     float dd = Vector3.Distance(self.transform.position, target.transform.position);
-                    if (dd > EffectiveAttackRange) { SetState(hasOrder ? AiState.MovingToAttackOrder : AiState.Chase); break; }
+                    if (dd > EffectiveAttackRange * HisteresisDeAlcance) { SetState(hasOrder ? AiState.MovingToAttackOrder : AiState.Chase); break; }
 
                     // Enemigo: busca una cobertura desde la que seguir
                     // disparando (ver AiBrain.Tactica). Corriendo hacia ella no
@@ -1197,8 +1223,10 @@ namespace SP.Ai
                     // blanco mientras se dispara vale hasta a cielo abierto.
                     if (enCobertura && subStateCobertura == CoverSubState.Peeking && !esCoberturaDeBorde)
                         self.Motor.SetCrouching(false);
-                    else
+                    else if (enCobertura)
                         self.Motor.SetCrouching(true);
+                    else
+                        self.Motor.SetCrouching(PuedeDispararAgachado(dt));   // WP4 (#080): a cielo abierto agachado solo si desde agachado se ve al blanco
 
                     self.Motor.LookTowards(target.transform.position, dt);
                     self.Weapon.Tick(dt);
@@ -1222,15 +1250,23 @@ namespace SP.Ai
                     // Sin linea de tiro no se gatilla: se vuelve a Chase para
                     // buscar el angulo. Quedarse quieto disparandole a la
                     // pared es lo que hacia antes.
-                    if (!TieneLineaDeTiro(target))
+                    // WP4 (#080): histeresis. Un parpadeo de la linea de tiro (el blanco cruza un arbol, se asoma el borde de una barricada)
+                    // ya no saca al soldado de Attack: recien pasados 0,6 s seguidos sin linea vuelve a Chase.
+                    bool hayLinea = TieneLineaDeTiro(target);
+                    if (!hayLinea)
                     {
-                        SetState(hasOrder ? AiState.MovingToAttackOrder : AiState.Chase);
-                        break;
+                        sinLineaEnAttack += dt;
+                        if (sinLineaEnAttack >= HisteresisSinLineaSegundos)
+                        {
+                            SetState(hasOrder ? AiState.MovingToAttackOrder : AiState.Chase);
+                            break;
+                        }
                     }
+                    else sinLineaEnAttack = 0f;
                     // En Libre StanceAllowsFire es true y el TryFire es el
                     // mismo de siempre. AltoElFuego encara y sigue al
                     // enemigo con la mira, pero no aprieta el gatillo.
-                    if (StanceAllowsFire && aimedAtTarget && (!enCobertura || subStateCobertura != CoverSubState.Hidden))
+                    if (hayLinea && StanceAllowsFire && aimedAtTarget && (!enCobertura || subStateCobertura != CoverSubState.Hidden))
                     {
                         // BUG REAL, mismo que ya se encontro y arreglo del
                         // lado del jugador (ver PlayerBrain.Fire): el
@@ -1299,6 +1335,9 @@ namespace SP.Ai
                     }
                     break;
             }
+
+            // WP4 (#086): ningun soldado se queda encima de otro del mismo bando.
+            TickSeparacion(dt);
         }
 
 

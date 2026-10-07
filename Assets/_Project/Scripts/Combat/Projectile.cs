@@ -138,7 +138,8 @@ namespace SP.Combat
             var miEquipo = shooterTeam;
             predicadoObjetivo = s => s.Health != null && s.Health.IsAlive && s.Team != miEquipo && s.gameObject.activeInHierarchy;
             predicadoSupresion = s => s != null && s.Health != null && s.Team != miEquipo && s.Health.IsAlive;
-            damage = dmg;
+            // Bug #079: la FURIA (5 bajas seguidas) duplica el dano de TODO lo que dispare el soldado que la tiene (balas y explosiones).
+            damage = SP.Presentation.RachaDeBajas.MultiplicadorPara(shooterId) > 1f ? Mathf.RoundToInt(dmg * SP.Presentation.RachaDeBajas.MultiplicadorPara(shooterId)) : dmg;
             explosionRadius = explosionRadiusValue;
             effectiveSpeed = VelocidadBase * speedMultiplier;
             velocity = (direction.sqrMagnitude > 0.0001f ? direction.normalized : Vector3.forward) * effectiveSpeed;
@@ -267,15 +268,21 @@ namespace SP.Combat
                 else
                 {
                     bool headshot = ultimoImpactoFueCabeza;
+                    UltimoImpactoEnSoldado = puntoDeImpacto; UltimoImpactoFueCabeza = headshot;   // para los checks (#094)
+                    // #107/#108: el headshot del bando jugador sobre un enemigo humano MATA al toque (Health.TakeDamage(..., true) se lleva
+                    // toda la vida). Solo llega aca como headshot si el tirador es del bando jugador y la victima enemiga (ver LeDioAlCuerpo);
+                    // los vehiculos y torretas no pasan por este camino. Un enemigo pegandole a la cabeza del jugador sigue siendo dano normal.
+                    bool instakill = headshot && HeadshotMataAlInstante && ownerTeam == TeamId.Player && hit.Team == TeamId.Enemy && !hit.Health.Invulnerable;
                     int finalDamage = headshot ? damage * 2 : damage;
                     if (headshot)
                     {
                         EventBus.Instance.Publish(new HeadshotEvent(ownerId, hit.Id, puntoDeImpacto));
                         // Bug #044: el tiro a la cabeza del soldado que maneja el jugador se anuncia.
                         var poseido = SP.Player.PlayerInputDriver.Activo != null && SP.Player.PlayerInputDriver.Activo.Brain != null ? SP.Player.PlayerInputDriver.Activo.Brain.Current : null;
-                        if (poseido != null && poseido.Id == ownerId) AnunciarHeadshot(puntoDeImpacto, hit.Health.Current <= finalDamage);
+                        if (poseido != null && poseido.Id == ownerId) AnunciarHeadshot(puntoDeImpacto, instakill || hit.Health.Current <= finalDamage);
+                        if (instakill) EfectoDeHeadshotMortal(puntoDeImpacto);
                     }
-                    hit.Health.TakeDamage(finalDamage, ownerId, false);
+                    hit.Health.TakeDamage(finalDamage, ownerId, instakill);
                     ImpactCubes.Spawn(puntoDeImpacto, -transform.forward, ImpactSurface.Soldier, finalDamage);
                 }
                 Expire();
@@ -621,6 +628,21 @@ namespace SP.Combat
         // llamaba con un color de sangre.
         static readonly Color ColorSangre = new Color(0.5f, 0.02f, 0.02f);
 
+        // #107/#108: el headshot mortal se tiene que NOTAR: chorro de sangre x3 con piezas mas grandes, destello blanco en la cabeza y un golpe
+        // seco y agudo (el ImpactoPesado de siempre con el tono subido).
+        static void EfectoDeHeadshotMortal(Vector3 punto)
+        {
+            int cantidad = Random.Range(14, 19);
+            for (int i = 0; i < cantidad; i++)
+            {
+                var dir = Random.insideUnitSphere;
+                dir.y = Mathf.Abs(dir.y) * 0.8f + 0.4f;
+                DebrisPool.Spawn(punto, dir.normalized * Random.Range(1.5f, 4.5f), ColorSangre, Random.Range(0.05f, 0.09f), Random.Range(1.2f, 2f));
+            }
+            SP.Presentation.ImpactFx.Spawn(punto, Color.white, 0.9f, 0.18f);
+            SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.ImpactoPesado, punto, 0.9f, 1f, SP.Presentation.PerfilEspacial.Disparo, 1.5f);
+        }
+
         static void SpawnSangre(Vector3 punto)
         {
             int cantidad = Random.Range(4, 7);
@@ -656,20 +678,36 @@ namespace SP.Combat
         static readonly Collider[] bufferExplosion = new Collider[48];
         static readonly HashSet<SP.Presentation.ObstacleMarker> marcasGolpeadas = new HashSet<SP.Presentation.ObstacleMarker>();
 
+        // WP8 (#078): las torres del cuartel (ObstacleMarker.SoloExplosiones) ignoran las balas y solo cobran esto. Vale mientras corre DanarObstaculos.
+        public static bool DanoDeExplosionEnCurso { get; private set; }
+        // WP8 (#078): una explosion a menos de esta distancia rompe una luminaria (reflector del cuartel, farola con lampara).
+        public const float AlcanceDeExplosionSobreLuminarias = 3.5f;
+
         static void DanarObstaculos(Vector3 point, float radius, int damage)
         {
             int n = Physics.OverlapSphereNonAlloc(point, radius, bufferExplosion, ~0, QueryTriggerInteraction.Ignore);
             marcasGolpeadas.Clear();
-            for (int i = 0; i < n; i++)
+            DanoDeExplosionEnCurso = true;
+            try
             {
-                var c = bufferExplosion[i];
-                if (c == null) continue;
-                var marca = c.GetComponentInParent<SP.Presentation.ObstacleMarker>();
-                if (marca == null || marca.IsCollapsed || !marcasGolpeadas.Add(marca)) continue;
-                float d = Vector3.Distance(c.ClosestPoint(point), point);
-                float k = 1f - Mathf.Clamp01(d / Mathf.Max(0.1f, radius));
-                marca.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * FactorDanoDeExplosionAObstaculos * Mathf.Lerp(0.35f, 1f, k))), point);
+                for (int i = 0; i < n; i++)
+                {
+                    var c = bufferExplosion[i];
+                    if (c == null) continue;
+                    var luminaria = c.GetComponentInParent<SP.Presentation.Luminaria>();
+                    if (luminaria != null)
+                    {
+                        if (Vector3.Distance(c.ClosestPoint(point), point) <= AlcanceDeExplosionSobreLuminarias) luminaria.TakeDamage(1000, point);
+                        continue;
+                    }
+                    var marca = c.GetComponentInParent<SP.Presentation.ObstacleMarker>();
+                    if (marca == null || marca.IsCollapsed || !marcasGolpeadas.Add(marca)) continue;
+                    float d = Vector3.Distance(c.ClosestPoint(point), point);
+                    float k = 1f - Mathf.Clamp01(d / Mathf.Max(0.1f, radius));
+                    marca.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * FactorDanoDeExplosionAObstaculos * Mathf.Lerp(0.35f, 1f, k))), point);
+                }
             }
+            finally { DanoDeExplosionEnCurso = false; }
         }
 
         public static void ExplodeAt(Vector3 point, float radius, int damage, int ownerId, TeamId? spareTeam, SP.Vehicles.Vehicle ignoreVehicle = null, float multiplicadorVsVehiculo = 1f)
@@ -742,7 +780,9 @@ namespace SP.Combat
                 // multiplicador >= 2) revienta de un impacto a cualquier vehiculo liviano (camionetas: <= 250 de vida).
                 if (multiplicadorVsVehiculo >= 2f && vehicle.Health != null && vehicle.Health.MaxHealth <= VidaMaximaDeVehiculoLiviano)
                     danoV = Mathf.Max(danoV, vehicle.Health.Current);
-                vehicle.TakeDamage(danoV, ownerId);
+                SP.Vehicles.Vehicle.DanoDeExplosionEnCurso = true;   // WP9b: el jefe solo siente explosiones (una bala directa hace 1)
+                try { vehicle.TakeDamage(danoV, ownerId); }
+                finally { SP.Vehicles.Vehicle.DanoDeExplosionEnCurso = false; }
             }
 
             EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, point));
@@ -795,16 +835,30 @@ namespace SP.Combat
         {
             float largo = Vector3.Distance(desde, hasta);
             int pasos = Mathf.Max(1, Mathf.CeilToInt(largo / Mathf.Max(0.05f, hitRadius)));
+            // Bug #094: contra enemigos la fase amplia mira mas lejos: la cabeza queda ~1 m ARRIBA del pivote del soldado y con
+            // hitRadius (1 m) una bala al casco no lo "veia" cerca. El cuerpo sigue decidiendo con su propio collider.
+            float rango = ownerTeam == TeamId.Player ? Mathf.Max(hitRadius, RangoAmpliadoParaCabeza) : hitRadius;
+            var previa = desde;
             for (int i = 1; i <= pasos; i++)
             {
                 var muestra = Vector3.Lerp(desde, hasta, i / (float)pasos);
-                var s = SpatialGrid.FindNearestInRange(muestra, hitRadius, predicadoObjetivo);
+                var s = SpatialGrid.FindNearestInRange(muestra, rango, predicadoObjetivo);
                 // La grilla es la fase AMPLIA: dice "hay alguien cerca".
-                // Quien decide si le dio es el cuerpo.
-                if (s != null && LeDioAlCuerpo(s, muestra)) { punto = muestra; return s; }
+                // Quien decide si le dio es la cabeza o el cuerpo.
+                if (s != null)
+                {
+                    var puntoDeTiro = muestra;
+                    if (LeDioAlCuerpo(s, previa, muestra, ref puntoDeTiro)) { punto = puntoDeTiro; return s; }
+                }
+                previa = muestra;
             }
             return null;
         }
+
+        // Alcance de la fase amplia (m desde el pivote del soldado) para que la caja de la cabeza entre en juego.
+        public const float RangoAmpliadoParaCabeza = 1.7f;
+        // Cuanto se sigue el rayo mas alla de la muestra que entro al cuerpo para ver si cruza la cabeza (grosor del soldado).
+        const float ProfundidadDelCuerpo = 1.0f;
 
         // Cuanto se le perdona a una bala. No es el tamaño del soldado:
         // es el margen del muestreo, que avanza a saltos de hitRadius por
@@ -827,24 +881,46 @@ namespace SP.Combat
         // La grilla sigue siendo la fase amplia (barata, por celdas): lo
         // que cambia es que ahora la ultima palabra la tiene el collider
         // del soldado, que es la misma forma que se ve en pantalla.
-        // FEATURE headshot: fraccion superior del collider del soldado que cuenta
-        // como "cabeza". No hay un hueso/zona de cabeza propia en el rig -- el
-        // collider entero es la mejor aproximacion disponible, y el 18% superior
-        // es donde cae la cabeza en un humanoide de pie sin exagerar la zona.
-        const float FraccionSuperiorCabeza = 0.18f;
+        // FEATURE headshot: lo decide la caja de la cabeza (HitboxCabeza), pegada al hueso Head.
         bool ultimoImpactoFueCabeza;
 
+        // #107/#108: el headshot del bando jugador sobre un enemigo mata al instante. Interruptor solo para los checks que miden varios tiros a la cabeza.
+        public static bool HeadshotMataAlInstante = true;
         public static int HeadshotsDelJugador { get; private set; }
+        public static Vector3 UltimoImpactoEnSoldado { get; private set; }   // donde pego la ultima bala a un soldado (checks)
+        public static bool UltimoImpactoFueCabeza { get; private set; }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ReiniciarHeadshots() => HeadshotsDelJugador = 0;
+        static void ReiniciarHeadshots() { HeadshotsDelJugador = 0; HeadshotMataAlInstante = true; }
 
         static void AnunciarHeadshot(Vector3 punto, bool mata)
         {
             HeadshotsDelJugador++;
             // Sonido + pulso; el texto va en pantalla bajo la mira (la etiqueta en el mundo era ilegible a distancia).
-            SP.Presentation.Feedback.Accion(SP.Presentation.SfxKind.ImpactoPesado, null, null,
-                new Color(1f, 0.25f, 0.2f), aviso: false, pulso: true, volumen: 0.8f);
+            // Bug #095: el golpe del headshot salia 2D (PlayUi2D). Ahora suena 3D en el punto del impacto (la posicion no agrega
+            // etiqueta ni pulso: texto null y pulso apagado, igual que antes).
+            SP.Presentation.Feedback.Accion(SP.Presentation.SfxKind.ImpactoPesado, null, punto,
+                new Color(1f, 0.25f, 0.2f), aviso: false, pulso: false, volumen: 0.8f);
             SP.UI.HeadshotPopup.Mostrar(mata);
+        }
+
+        // Bug #094: se prueba el TRAMO (previa->muestra), no solo la muestra. Primero la cabeza: si el rayo cruza su caja es
+        // impacto Y headshot aunque el cuerpo no se toque (el casco sobresale por encima del collider del cuerpo). Despues el
+        // cuerpo como siempre, y ahi nunca es headshot: un tiro al pecho no cruza la caja de la cabeza.
+        bool LeDioAlCuerpo(SP.Actors.Soldier victima, Vector3 previa, Vector3 muestra, ref Vector3 punto)
+        {
+            ultimoImpactoFueCabeza = false;
+            if (victima == null) return false;
+            if (victima.Team == TeamId.Enemy && ownerTeam == TeamId.Player)
+            {
+                var cabeza = HitboxCabeza.De(victima);
+                if (cabeza != null)
+                {
+                    var dir = muestra - previa;
+                    var fin = dir.sqrMagnitude > 0.0001f ? muestra + dir.normalized * ProfundidadDelCuerpo : muestra;
+                    if (cabeza.Cruza(previa, fin, RadioDeBala, out var pc)) { ultimoImpactoFueCabeza = true; punto = pc; return true; }
+                }
+            }
+            return LeDioAlCuerpo(victima, muestra);
         }
 
         bool LeDioAlCuerpo(SP.Actors.Soldier victima, Vector3 punto)
@@ -858,40 +934,9 @@ namespace SP.Combat
             var cercano = cuerpo.ClosestPoint(punto);
             if ((cercano - punto).sqrMagnitude > RadioDeBala * RadioDeBala) return false;
 
-            // BUG REAL: Collider.bounds es el AABB que cachea PhysX, y ese
-            // cache solo se refresca cuando corre un paso de fisica de
-            // verdad (Physics.Simulate / un FixedUpdate en Play mode). La
-            // suite headless mueve soldados con transform.position a mano
-            // en Edit mode, sin ningun paso de fisica -- Collider.bounds
-            // se quedaba con el AABB de donde el soldado nacio (spawneado
-            // en el origen antes de reposicionarlo), desfasado de su
-            // posicion real. ClosestPoint() arriba SI recalcula contra la
-            // geometria real (por eso el chequeo de radio funcionaba), pero
-            // el umbral de cabeza que le seguia usaba ese mismo bounds
-            // viejo: la "cabeza" quedaba a una altura que no tenia nada que
-            // ver con donde estaba el soldado de verdad, y CUALQUIER tiro
-            // (aunque apuntara al pecho) podia caer del lado de arriba del
-            // umbral corrido. Medido: en Fase 1, un tiro de nivel al pecho
-            // de un enemigo a la misma altura que quien dispara se
-            // registraba como headshot el 100% de las veces -- instakill
-            // en el primer impacto, sin que la IA llegara nunca a Attack.
-            //
-            // Renderer.bounds NO tiene este problema: se recalcula del
-            // transform real cada vez que se lo consulta, sin depender de
-            // ningun paso de fisica. Es la misma caja que se ve en
-            // pantalla, asi que sigue siendo la mejor aproximacion
-            // disponible para "donde esta la cabeza".
-            // Bug #044: headshot SOLO contra enemigos y con la caja propia de la cabeza (HitboxCabeza, pegada al hueso). A un
-            // aliado o al jugador nunca se le cuenta headshot.
-            if (victima.Team == TeamId.Enemy && ownerTeam == TeamId.Player)
-            {
-                var cabeza = HitboxCabeza.De(victima);
-                if (cabeza != null) { ultimoImpactoFueCabeza = cabeza.Toca(punto, RadioDeBala + 0.05f); return true; }
-                var renderer = victima.GetComponent<Renderer>();
-                Bounds cuerpoBounds = renderer != null ? renderer.bounds : cuerpo.bounds;
-                float alturaCabeza = cuerpoBounds.max.y - cuerpoBounds.size.y * FraccionSuperiorCabeza;
-                ultimoImpactoFueCabeza = punto.y >= alturaCabeza;
-            }
+            // El headshot ya NO se decide aca (Bug #094): lo resuelve la caja de la cabeza contra el tramo, arriba. Este es solo el
+            // cuerpo. (Historia: contra el 18% superior de Collider.bounds, cuyo AABB cachea PhysX y queda viejo si el soldado se
+            // movio a mano sin paso de fisica, CUALQUIER tiro al pecho salia headshot el 100% de las veces en la suite headless.)
             return true;
         }
 

@@ -101,6 +101,9 @@ namespace SP.Vehicles
                 if (c == null || c.transform.IsChildOf(vehiculo)) continue;
                 var marca = c.GetComponentInParent<SP.Presentation.ObstacleMarker>();
                 if (marca == null || marca.IsCollapsed) continue;
+                // Bug #090: rocas y edificios (vida de sobra) no se aplastan. Solo en la Operacion: otros niveles marcan asi sus
+                // muros para la carga del Asalto y siempre dejaron que el tanque los pase por encima.
+                if (!marca.EsDestruible && SP.Operacion.OperacionDirector.Instancia != null) continue;
                 marca.Demoler(vehiculo.position - dir * 0.8f, FuerzaDeAplaste);
                 GameLog.Line($"{vehiculo.name} aplasto un obstaculo a {Mathf.Abs(velocidad):0.0} m/s");
                 derribados++;

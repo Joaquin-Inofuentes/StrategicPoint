@@ -10,6 +10,7 @@ namespace SP.Interaction
     {
         string NombreParaOrden { get; }          // "PANEL PUESTO 1", "COMPUTADORA"
         string QuienDebe { get; }                // "FLANQUEADOR" o "CUALQUIER ALIADO"
+        string VerboDeUso { get; }               // lo que hace [E] aca: "MANTENÉ [E] PARA DESACTIVAR"
         Transform Raiz { get; }
         bool Completo { get; }
         bool Habilitado { get; }

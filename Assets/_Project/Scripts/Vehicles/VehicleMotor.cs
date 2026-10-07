@@ -24,6 +24,13 @@ namespace SP.Vehicles
 
         public float CurrentSpeed { get; private set; }
         public float MaxSpeed => maxSpeed;
+        // WP9b: velocidad maxima y aceleracion por codigo (el jefe patrulla a 4 m/s; la carrera la calcula del largo de la ruta).
+        public float Aceleracion => acceleration;
+        public void Configurar(float velocidadMaxima, float aceleracionNueva = -1f)
+        {
+            maxSpeed = Mathf.Max(0.5f, velocidadMaxima);
+            if (aceleracionNueva > 0f) acceleration = aceleracionNueva;
+        }
 
         // throttle: -1..1 (atrás/adelante). steer: -1..1 (izq/der).
         public void Drive(float throttle, float steer, float dt)

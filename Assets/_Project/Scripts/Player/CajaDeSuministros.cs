@@ -38,6 +38,14 @@ namespace SP.Player
         public const float RadioDeArsenal = 3.2f;
 
         public bool Disponible => Time.time >= disponibleDesde;
+        // WP9b: cada caja puede tener su propio tiempo de reposicion (las del patio del jefe se vuelven a llenar mas rapido).
+        public float SegundosPropios { get; set; } = SegundosDeReposicion;
+        public static CajaDeSuministros Crear(Vector3 pos, float segundosDeReposicion)
+        {
+            var c = Crear(pos);
+            c.SegundosPropios = segundosDeReposicion;
+            return c;
+        }
 
         // Crea una caja en el piso mas cercano a 'pos' (si algo la bloquea, prueba unos metros mas alla).
         public static CajaDeSuministros Crear(Vector3 pos)
@@ -124,7 +132,7 @@ namespace SP.Player
                 return;
             }
             Recogidas++;
-            disponibleDesde = Time.time + SegundosDeReposicion;
+            disponibleDesde = Time.time + SegundosPropios;
             string texto = "SUMINISTROS";
             if (granadasNuevas > 0) texto += $"  +{granadasNuevas} GRANADAS";
             if (vidaNueva > 0) texto += $"  +{vidaNueva} VIDA";
@@ -145,7 +153,8 @@ namespace SP.Player
         static void CrearEnMision()
         {
             var mision = SP.Mision.MisionDirector.Instancia;
-            WeaponHolder.ReservasActivas = mision != null;   // solo las misiones tienen municion limitada
+            // Solo las misiones y la Operacion (bug #095) tienen municion limitada.
+            WeaponHolder.ReservasActivas = mision != null || SP.Operacion.OperacionDirector.Instancia != null;
             if (mision == null || Todas.Count > 0) return;
             var plaza = mision.Plaza;
             Crear(new Vector3(9f, 0f, 8f));

@@ -61,7 +61,9 @@ namespace SP.Player
             if (Selection != null && Selection.Selected.Count > 0 && !PunteroSobreUiInteractiva(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero))
             {
                 if (r.Type == AimTargetType.Enemy) tipo = CursorTipo.Atacar;
-                else if (r.Type == AimTargetType.Vehicle || r.Type == AimTargetType.Torreta || r.Type == AimTargetType.Caido) tipo = CursorTipo.Interactuar;
+                // Bug #071: un vehiculo ENEMIGO (camioneta) se ataca; solo los propios o las torretas se "interactuan".
+                else if (r.Type == AimTargetType.Vehicle && r.Vehicle != null && r.Vehicle.Hostil(TeamId.Player)) tipo = CursorTipo.Atacar;
+                else if (r.Type == AimTargetType.Vehicle || r.Type == AimTargetType.Torreta || r.Type == AimTargetType.Caido || r.Type == AimTargetType.Radio) tipo = CursorTipo.Interactuar;
             }
             CursorContextual.Aplicar(tipo);
         }

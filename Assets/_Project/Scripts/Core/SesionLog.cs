@@ -28,6 +28,9 @@ namespace SP.Core
     public class SnapSoldado
     {
         public string nombre, equipo, rol, estadoIa, objetivo, vehiculo, asiento, arma;
+        // P10: lo que hace falta para continuar una partida (armas de la ranura, reservas por arma y granadas).
+        public string armas;
+        public int granadas = -1;
         public bool activo, vivo, poseido, agachado, enCobertura, quieto, pasivo;
         public int vida, vidaMax, municion;
         public Vector3 pos;
@@ -486,6 +489,8 @@ namespace SP.Core
                     agachado = s.Motor != null && s.Motor.IsCrouching,
                     municion = s.Weapon != null ? s.Weapon.CurrentAmmo : 0,
                     arma = s.Weapon != null ? s.Weapon.CurrentWeaponKind.ToString() : "",
+                    armas = s.Weapon != null ? s.Weapon.CapturarEstadoDeArmas() : "",
+                    granadas = s.Weapon != null ? s.Weapon.Granadas : -1,
                 };
                 if (b != null)
                 {
@@ -821,14 +826,24 @@ namespace SP.Core
                 if (!porNombre.TryGetValue(ss.nombre, out var s)) continue;
                 var occupied = s.Brain != null && s.Brain.MontadoEnVehiculo;
                 s.gameObject.SetActive(ss.activo);
-                if (!ss.activo) { ok++; continue; }
+                if (!ss.activo)
+                {
+                    // P10: un soldado inactivo (p. ej. dentro del tanque) tambien conserva sus armas y granadas.
+                    if (s.Weapon != null && !string.IsNullOrEmpty(ss.armas)) { s.Weapon.RestaurarEstadoDeArmas(ss.armas); if (ss.granadas >= 0) s.Weapon.ReponerGranadas(ss.granadas); }
+                    ok++; continue;
+                }
                 if (!occupied)
                 {
                     s.transform.position = ss.pos;
                     s.transform.rotation = Quaternion.Euler(0f, ss.yaw, 0f);
                 }
                 s.Health.RestaurarVida(ss.vivo ? ss.vida : 0);
-                if (s.Weapon != null) s.Weapon.RestaurarMunicion(ss.municion);
+                if (s.Weapon != null)
+                {
+                    if (!string.IsNullOrEmpty(ss.armas)) s.Weapon.RestaurarEstadoDeArmas(ss.armas);   // P10: ranura, reservas por arma
+                    s.Weapon.RestaurarMunicion(ss.municion);
+                    if (ss.granadas >= 0) s.Weapon.ReponerGranadas(ss.granadas);
+                }
                 if (s.Brain != null && ss.vivo && s.Team == TeamId.Player && !ss.poseido) { s.Brain.CancelOrder(); s.Brain.ReactivarNavegacion(); s.Brain.Quieto = ss.quieto; }
                 else if (s.Brain != null && ss.vivo) { s.Brain.ReactivarNavegacion(); }
                 if (s.Motor != null) s.Motor.SetCrouching(ss.agachado);

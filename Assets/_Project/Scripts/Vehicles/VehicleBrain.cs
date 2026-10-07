@@ -41,7 +41,8 @@ namespace SP.Vehicles
             bootstrapped = true;
             motor = GetComponent<VehicleMotor>();
             vehicle = GetComponent<Vehicle>();
-            turretAi = GetComponentInChildren<TurretAI>();
+            // La del canon (la metralleta con IA, bug #069, cuelga de otro pivote y no frena ni conduce nada).
+            foreach (var ai in GetComponentsInChildren<TurretAI>(true)) if (ai.Asiento == VehicleSeatRole.Gunner) { turretAi = ai; break; }
             WorldSystemsRegistry.Register(this);
         }
 

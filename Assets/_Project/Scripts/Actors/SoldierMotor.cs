@@ -61,8 +61,10 @@ namespace SP.Actors
         // "walk crouching" (ciclo de ~1,5 m/s) patinaban sobre el piso.
         public const float FactorDeVelocidadAgachado = 0.5f;
         public float SpeedMultiplier = 1f;
+        // Bug #079: multiplicador de velocidad de la FURIA (RachaDeBajas). Aparte de SpeedMultiplier porque la IA lo pisa en cada tick.
+        public float FactorDeBuff = 1f;
         public bool Atado { get; set; }
-        public float MoveSpeed => Atado ? 0f : moveSpeed * SpeedMultiplier * (Corriendo ? FactorDeCarrera : (IsCrouching ? FactorDeVelocidadAgachado : 1f));
+        public float MoveSpeed => Atado ? 0f : moveSpeed * SpeedMultiplier * FactorDeBuff * (Corriendo ? FactorDeCarrera : (IsCrouching ? FactorDeVelocidadAgachado : 1f));
 
         // [Shift]: correr. El jugador lo pide a pie y los aliados libres corren con el
         // (AjustesDeEscuadra.Correr). No se corre agachado ni en el aire.
@@ -206,11 +208,23 @@ namespace SP.Actors
         public static int DanioDeCaida(float metros) => metros <= AlturaSinDanio ? 0 : Mathf.CeilToInt((metros - AlturaSinDanio) * DanioPorMetro);
 
         // Despues de caminar: si el piso quedo mas de HuecoParaCaer por debajo de los pies, arranca la caida.
-        void RevisarBorde()
+        // Bug #126: un soldado que quedaba apoyado entre 0,05 y HuecoParaCaer (0,5 m) mas alto que su piso (bajo de un objeto, una trepada o
+        // una barricada) ni caia ni bajaba: levitaba para siempre a y=1,30. Ahora baja suave (descenso de escalon) hasta apoyarse.
+        public const float VelocidadDeDescensoDeEscalon = 6f, HuecoMinimoDeDescenso = 0.05f;
+        public static bool DescensoDeEscalonActivo = true;   // solo lo apagan los checks para reproducir el bug original
+
+        void RevisarBorde(float dt = 0f)
         {
             if (IsJumping || Vaulting) return;
             if (!BuscarPiso(transform.position, out float piso, 40f)) return;
-            if (transform.position.y - piso <= PivoteSobrePiso + HuecoParaCaer) return;
+            float hueco = transform.position.y - piso - PivoteSobrePiso;
+            if (DescensoDeEscalonActivo && hueco > HuecoMinimoDeDescenso && hueco <= HuecoParaCaer)
+            {
+                float baja = Mathf.Min(hueco, VelocidadDeDescensoDeEscalon * Mathf.Max(dt, 0.02f));
+                var p = transform.position; p.y -= baja; transform.position = p;
+                return;
+            }
+            if (hueco <= HuecoParaCaer) return;
             IsJumping = true; cayendo = true;
             groundY = piso + PivoteSobrePiso;
             alturaDePivote = PivoteSobrePiso;
@@ -346,8 +360,11 @@ namespace SP.Actors
             if (Vaulting || Retenido) return;
             if (worldDirection.sqrMagnitude > 1f) worldDirection.Normalize();
             transform.position += Resolve(worldDirection * MoveSpeed * dt);
-            RevisarBorde();
+            RevisarBorde(dt);
         }
+
+        // Para los checks: corre solo la revision de borde/escalon.
+        public void RevisarBordeParaPrueba(float dt) => RevisarBorde(dt);
 
         public void RotateYaw(float yawDeltaDegrees)
         {

@@ -121,11 +121,14 @@ namespace SP.Combat
         // a la cadera. Ahora el ADS es la forma MAS precisa de disparar: el cono se reduce a un 15 %, crece un 40 % por tiro y se
         // recupera al doble de velocidad. Lo fija PlayerInputDriver cada frame (0 = cadera, 1 = ADS completo) y caduca solo
         // (0,25 s) si nadie lo refresca, para que un soldado que el jugador suelta no quede "apuntando" para siempre.
-        public const float FactorApuntando = 0.15f, CrecimientoApuntando = 0.4f, RecuperacionApuntando = 2f;
+        // #110: "mantener click derecho: mucha mas precision, casi absoluta": 0,15 -> 0,03 (la metralleta, de corta, queda en 0,06). La transicion
+        // cadera->ADS ya es gradual (Rig.AdsBlendSuave alimenta SetApuntado).
+        public const float FactorApuntando = 0.03f, FactorApuntandoSmg = 0.06f, CrecimientoApuntando = 0.4f, RecuperacionApuntando = 2f;
         float apuntado01, apuntadoHasta = -1f;
         public void SetApuntado(float a01) { apuntado01 = Mathf.Clamp01(a01); apuntadoHasta = Time.time + 0.25f; }
         public float Apuntado01 => Time.time <= apuntadoHasta ? apuntado01 : 0f;
-        float MultiplicadorApuntando => Mathf.Lerp(1f, FactorApuntando, Apuntado01);
+        public float FactorApuntandoDelArma => CurrentWeaponKind == WeaponKind.Smg ? FactorApuntandoSmg : FactorApuntando;
+        float MultiplicadorApuntando => Mathf.Lerp(1f, FactorApuntandoDelArma, Apuntado01);
 
         public float SpreadDegEfectivo => spreadDeg * MultiplicadorPostura * MultiplicadorRol * MultiplicadorEnfoque * MultiplicadorTorretaFija * MultiplicadorApuntando;
         public float SpreadFraction01 => Mathf.Clamp01(SpreadDegEfectivo / MaxSpreadDeg);
@@ -152,6 +155,52 @@ namespace SP.Combat
         public int CurrentAmmo { get; private set; } = 8;
         // Cargar partida / volver a un bug: deja el cargador como estaba.
         public void RestaurarMunicion(int cargador) { CurrentAmmo = Mathf.Max(0, cargador); }
+
+        // P10 (guardar partida): ranura equipada, armas del loadout y reserva/cargador de cada una. Formato: "ranura|Rifle,Pistol,Heavy|k:ini:reserva:cargador;..."
+        // El cargador del arma equipada va aparte (CurrentAmmo, lo guarda SesionLog como "municion").
+        public string CapturarEstadoDeArmas()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.Append(CurrentLoadoutIndex).Append('|');
+            for (int i = 0; i < Loadout.Count; i++) { if (i > 0) sb.Append(','); sb.Append(Loadout[i]); }
+            sb.Append('|');
+            foreach (var k in Loadout)
+            {
+                int i = (int)k;
+                if (i < 0 || i >= reservaPorArma.Length) continue;
+                sb.Append(i).Append(':').Append(reservaInicializada[i] ? 1 : 0).Append(':').Append(reservaPorArma[i]).Append(':').Append(cargadorPorArma[i]).Append(';');
+            }
+            return sb.ToString();
+        }
+
+        public void RestaurarEstadoDeArmas(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return;
+            var partes = s.Split('|');
+            if (partes.Length < 3) return;
+            if (!int.TryParse(partes[0], out int ranura)) ranura = 0;
+            // 1) el loadout (los milicianos y quien recogio un arma lo tienen distinto del prefab) y el arma de la mano.
+            var kinds = new List<WeaponKind>();
+            foreach (var n in partes[1].Split(',')) if (System.Enum.TryParse(n, out WeaponKind k)) kinds.Add(k);
+            if (kinds.Count > 0) { Loadout.Clear(); Loadout.AddRange(kinds); }
+            if (Loadout.Count > 0) EquipFromLoadout(Mathf.Clamp(ranura, 0, Loadout.Count - 1));
+            // 2) reservas y cargadores guardados de cada arma (despues de equipar: equipar archiva el cargador del arma anterior).
+            foreach (var par in partes[2].Split(';'))
+            {
+                var c = par.Split(':');
+                if (c.Length < 4 || !int.TryParse(c[0], out int i) || i < 0 || i >= reservaPorArma.Length) continue;
+                int.TryParse(c[2], out int res); int.TryParse(c[3], out int carg);
+                reservaInicializada[i] = c[1] == "1";
+                reservaPorArma[i] = res;
+                cargadorPorArma[i] = carg;
+            }
+        }
+
+        public void RestaurarGranadas(int n) => Granadas = Mathf.Clamp(n, 0, GranadasMaximas);
+
+        // Solo para los checks: deja la reserva de un arma en un valor conocido.
+        public void FijarReservaParaPrueba(WeaponKind k, int balas) { int i = (int)k; InicializarReserva(k); reservaPorArma[i] = Mathf.Max(0, balas); }
+        public int ReservaDe(WeaponKind k) { int i = (int)k; InicializarReserva(k); return reservaPorArma[i]; }
         public int MagazineSize => magazineSize;
         public bool IsReloading { get; private set; }
         public float ReloadRemaining => IsReloading ? Mathf.Max(0f, reloadTimer) : 0f;
@@ -159,7 +208,9 @@ namespace SP.Combat
         // ---- Reservas de municion. Antes la municion era infinita. Ahora, en las misiones, el soldado que
         // maneja el jugador lleva 3 cargadores de reserva por arma; las cajas de suministros los reponen.
         // Los aliados/enemigos de la IA y las escenas de prueba/tutorial siguen con municion ilimitada.
-        public const int CargadoresDeReserva = 3;
+        // Bug #095: la Operacion arranca con 4 (OperacionDirector); las demas misiones y el tutorial con 3.
+        public const int CargadoresPorDefecto = 3;
+        public static int CargadoresDeReserva = CargadoresPorDefecto;
         public static bool ReservasActivas;                       // lo enciende CajaDeSuministros.CrearEnMision
         [System.NonSerialized] public bool LimitaMunicion;        // lo marca PlayerBrain.Possess
         readonly int[] reservaPorArma = new int[16];
@@ -195,12 +246,24 @@ namespace SP.Combat
         // loadout -- distinto de ReponerMunicion (caja de suministros), que
         // repone todo el arsenal de una. Sin reservas activas (fuera de
         // mision) no hay nada que sumar: la municion ya es ilimitada.
+        // Bug #095: las otras armas del loadout tambien se alimentan (un cargador cada una; antes solo la equipada, y el
+        // jugador volvia a la pistola o al cohete con la reserva en cero). Tope de 2x la reserva inicial para no acumular sin fin.
         public void AgregarMunicion(int cargadores = 1)
         {
             if (!UsaReservas) return;
-            InicializarReserva(CurrentWeaponKind);
-            reservaPorArma[(int)CurrentWeaponKind] += WeaponCatalog.Get(CurrentWeaponKind).MagazineSize * Mathf.Max(1, cargadores);
+            foreach (var k in Loadout)
+            {
+                InicializarReserva(k);
+                int i = (int)k;
+                int mag = WeaponCatalog.Get(k).MagazineSize;
+                int sumar = k == CurrentWeaponKind ? mag * Mathf.Max(1, cargadores) : mag;
+                int tope = mag * CargadoresDeReserva * 2;
+                reservaPorArma[i] = Mathf.Max(reservaPorArma[i], Mathf.Min(tope, reservaPorArma[i] + sumar));
+            }
         }
+
+        // Municion total del arma equipada (cargador + reserva) para el HUD; -1 si la municion es ilimitada.
+        public int MunicionTotal => UsaReservas ? CurrentAmmo + ReservaActual : -1;
 
         public bool MunicionCompleta()
         {
@@ -279,6 +342,7 @@ namespace SP.Combat
             }
             IsReloading = false;
             reloadTimer = 0f;
+            CortarAnimacionDeRecarga();
 
             ApplyWeaponVisualColor(color);
             // Cada arma tiene su propia forma (chica/larga/gruesa), no solo
@@ -452,6 +516,7 @@ namespace SP.Combat
             CurrentAmmo = magazineSize;
             IsReloading = false;
             reloadTimer = 0f;
+            CortarAnimacionDeRecarga();
         }
 
         // Arsenal (item 43): en una caja de suministros se puede cambiar el arma de la ranura 1 por otra del arsenal.
@@ -607,9 +672,13 @@ namespace SP.Combat
             if (IsReloading)
             {
                 reloadTimer -= dt;
+                // #132: la animacion sigue el progreso real de la recarga.
+                if (Application.isPlaying && owner != null && reloadDuration > 0f)
+                    SP.Presentation.AnimacionDeAccion.ProgresoDeRecarga(owner, 1f - Mathf.Clamp01(reloadTimer / reloadDuration), transform.position + transform.forward);
                 if (reloadTimer <= 0f)
                 {
                     IsReloading = false;
+                    CortarAnimacionDeRecarga();
                     if (UsaReservas)
                     {
                         InicializarReserva(CurrentWeaponKind);
@@ -649,7 +718,10 @@ namespace SP.Combat
             // (el patron acumulado hasta ahora), y recien despues crece
             // para el proximo -- si no, hasta el primer disparo de una
             // rafaga saldria desviado por su propio impacto.
-            var spreadDir = ApplySpread(direction, Mathf.Max(SpreadDegEfectivo, dispersionMinima * MultiplicadorRol));
+            float dispersionTiro = Mathf.Max(SpreadDegEfectivo, dispersionMinima * MultiplicadorRol);
+            // WP8 (#078): el enemigo que le tira a alguien que un reflector esta alumbrando apunta mejor (x0,75 de dispersion).
+            if (owner.Team == SP.Combat.TeamId.Enemy) dispersionTiro *= SP.Operacion.ReflectorVigia.FactorDeDispersionContraIluminado(owner.transform.position, direction);
+            var spreadDir = ApplySpread(direction, dispersionTiro);
             spreadDeg = Mathf.Min(MaxSpreadDeg, spreadDeg + SpreadGrowthPerShot * Mathf.Lerp(1f, CrecimientoApuntando, Apuntado01));
 
             var spawnPos = Muzzle != null ? Muzzle.position : origin;
@@ -708,13 +780,38 @@ namespace SP.Combat
             return rot * adelante;
         }
 
+        // #132: el sonido de recarga tiene que ACOMPANAR a la animacion. La animacion dura lo mismo que la recarga (antes 0,4 s contra 1,5-2,8 s) y
+        // el clip sintetico de cada arma (SfxSintetico.Recarga) ya esta armado en golpes (sacar cargador, meter, cerrojo) que terminan justo
+        // cuando el arma queda lista. El soldado que manejas lo oye en 2D y mas fuerte (antes 3D desde la boca del arma a 0,75: se oia poco en
+        // primera persona); el resto suena 3D como siempre.
+        public const float VolumenDeRecargaPropia = 0.95f, VolumenDeRecargaAjena = 0.75f;
+        public static string UltimoClipDeRecarga { get; private set; } = "";
+        public static bool UltimaRecargaFue2D { get; private set; }
+
         void StartReload()
         {
             IsReloading = true;
             reloadTimer = reloadDuration;
+            // Bug #067: animacion de recargar (la mano izquierda va al cargador). #132: dura toda la recarga.
+            if (Application.isPlaying && owner != null)
+                SP.Presentation.AnimacionDeAccion.Iniciar(owner, SP.Presentation.TipoAccion.Recargar, transform.position + transform.forward, reloadDuration);
             // Cada arma suena distinto al recargar (cargador, cerrojo, cartuchos, tapa de la caja...).
             if (Application.isPlaying)
-                SP.Presentation.AudioDirector.PlayClipAt(SP.Presentation.GenericSfx.GetWeaponReload(CurrentWeaponKind), Muzzle != null ? Muzzle.position : transform.position, 0.75f, 0.55f);
+            {
+                var clip = SP.Presentation.GenericSfx.GetWeaponReload(CurrentWeaponKind);
+                bool propia = owner != null && owner.Brain != null && owner.Brain.IsPossessedByPlayer;
+                UltimoClipDeRecarga = clip != null ? clip.name : "";
+                UltimaRecargaFue2D = propia;
+                if (propia) SP.Presentation.AudioDirector.PlayClipAt(clip, transform.position, VolumenDeRecargaPropia, 0.55f, SP.Presentation.PerfilEspacial.Ui);
+                else SP.Presentation.AudioDirector.PlayClipAt(clip, Muzzle != null ? Muzzle.position : transform.position, VolumenDeRecargaAjena, 0.55f);
+            }
+        }
+
+        // Cambiar de arma o reconfigurar el cargador corta la recarga: tambien la animacion.
+        void CortarAnimacionDeRecarga()
+        {
+            if (Application.isPlaying && owner != null && SP.Presentation.AnimacionDeAccion.TipoActivo(owner) == SP.Presentation.TipoAccion.Recargar)
+                SP.Presentation.AnimacionDeAccion.Terminar(owner);
         }
 
         // Sacar el arma (1/2/3, rueda o recoger una): roce de correa y el "clac" propio de cada una.

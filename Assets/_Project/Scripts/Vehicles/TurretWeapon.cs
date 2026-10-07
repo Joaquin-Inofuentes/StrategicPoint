@@ -26,7 +26,7 @@ namespace SP.Vehicles
         // apuntando activamente y un giro de 50 deg/s se siente roto.
         // Sigue siendo limitado: el peso del cañon es parte del diseño
         // ("que rote lento, que demore en tener la mira en el cursor").
-        [SerializeField] float playerTurnSpeedDegPerSec = 110f;
+        [SerializeField] float playerTurnSpeedDegPerSec = 170f;
         // BUG REAL: el cañon solo giraba en yaw (eje Y) -- el mouse.delta.y
         // (arriba/abajo) se leia y se tiraba, asi que un tanque nunca podia
         // apuntar a nada mas alto o mas bajo que su propia altura. Limites
@@ -108,7 +108,20 @@ namespace SP.Vehicles
         public float DesiredPitch { get; private set; }
         bool desiredPitchInit;
 
-        public float YawGapDeg => Mathf.DeltaAngle(transform.eulerAngles.y, DesiredYaw);
+        // Bug #091: el casco del tanque gira solo (130 grados por segundo) y la torreta es su hija, asi que giraba con el: el
+        // artillero corregia a 110 grados por segundo y la torreta quedaba arrastrada y oscilando. Ahora el yaw de MUNDO es la
+        // fuente de verdad (yawMundo) y se reaplica en LateUpdate despues de que el casco giro: la torreta queda estabilizada.
+        float yawMundo;
+        bool estabilizada;
+        // La vigencia del control se mide en FRAMES (no en segundos): un tiron largo de un frame (carga, editor) no debe tirar el
+        // giro pedido a medias. Pasados 3 frames sin que nadie la controle, la torreta deja de estar estabilizada.
+        int ultimoControl = -1000;
+        const int VigenciaDelControl = 3;
+        public float YawMundo => estabilizada ? yawMundo : transform.eulerAngles.y;
+        // Tope de la brecha entre lo pedido y donde esta el canon: pasado esto el camino corto se invertiria (giro al reves).
+        public const float BrechaMaxima = 170f;
+
+        public float YawGapDeg => Mathf.DeltaAngle(YawMundo, DesiredYaw);
         public bool IsOnTarget(float toleranceDeg = 4f) => Mathf.Abs(YawGapDeg) <= toleranceDeg;
 
         // eulerAngles.x devuelve 0..360; para un pitch chico negativo (p.ej.
@@ -135,10 +148,25 @@ namespace SP.Vehicles
             DesiredYaw = transform.eulerAngles.y;
         }
 
+        // Toma el yaw actual como fuente de verdad si hacia rato que nadie controlaba la torreta (arranque, o el casco la arrastro).
+        void Reanclar()
+        {
+            if (!estabilizada || Time.frameCount - ultimoControl > VigenciaDelControl)
+            {
+                yawMundo = transform.eulerAngles.y;
+                DesiredYaw = yawMundo;
+                estabilizada = true;
+            }
+            desiredYawInit = true;
+            ultimoControl = Time.frameCount;
+        }
+
         public void AddDesiredYaw(float delta)
         {
-            EnsureDesiredYaw();
-            DesiredYaw += delta;
+            Reanclar();
+            // La brecha (sin envolver) nunca pasa de BrechaMaxima: con 180 o mas el giro tomaria el camino corto opuesto.
+            float brecha = Mathf.DeltaAngle(yawMundo, DesiredYaw) + delta;
+            DesiredYaw = yawMundo + Mathf.Clamp(brecha, -BrechaMaxima, BrechaMaxima);
         }
 
         void EnsureDesiredPitch()
@@ -182,12 +210,12 @@ namespace SP.Vehicles
         public void TickPlayerAim(float dt)
         {
             if (!bootstrapped) Bootstrap();
-            EnsureDesiredYaw();
             EnsureDesiredPitch();
             if (vehicle != null && vehicle.IsDestroyed) return;
-            float newYaw = Mathf.MoveTowardsAngle(transform.eulerAngles.y, DesiredYaw, playerTurnSpeedDegPerSec * dt);
+            Reanclar();
+            yawMundo = Mathf.MoveTowardsAngle(yawMundo, DesiredYaw, playerTurnSpeedDegPerSec * dt);
             float newPitch = Mathf.MoveTowardsAngle(NormalizePitch(transform.eulerAngles.x), DesiredPitch, playerTurnSpeedDegPerSec * dt);
-            transform.rotation = Quaternion.Euler(newPitch, newYaw, 0f);
+            transform.rotation = Quaternion.Euler(newPitch, yawMundo, 0f);
         }
 
         void OnDestroy() => WorldSystemsRegistry.Unregister(this);
@@ -203,6 +231,13 @@ namespace SP.Vehicles
 
         void LateUpdate()
         {
+            // Estabilizacion (bug #091): el casco ya giro en este frame; se reimpone el yaw de mundo que quiere el operador.
+            if (estabilizada)
+            {
+                if (Time.frameCount - ultimoControl > VigenciaDelControl) estabilizada = false;
+                else if (vehicle == null || !vehicle.IsDestroyed)
+                    transform.rotation = Quaternion.Euler(NormalizePitch(transform.eulerAngles.x), yawMundo, 0f);
+            }
             if (!cuerpoBuscado)
             {
                 cuerpoBuscado = true;
@@ -226,7 +261,11 @@ namespace SP.Vehicles
 
         public void SetPool(ProjectilePool projectilePool) => pool = projectilePool;
 
-        public void RotateYaw(float yawDelta) => transform.Rotate(Vector3.up, yawDelta, Space.World);
+        public void RotateYaw(float yawDelta)
+        {
+            transform.Rotate(Vector3.up, yawDelta, Space.World);
+            if (estabilizada) yawMundo = transform.eulerAngles.y;
+        }
 
         // Apunta hacia un punto del mundo con velocidad de giro limitada
         // (turnSpeedDegPerSec): el cañón persigue el ángulo objetivo en
@@ -241,8 +280,9 @@ namespace SP.Vehicles
             if (dir.sqrMagnitude < 0.0001f) return;
 
             float desiredYaw = Quaternion.LookRotation(dir).eulerAngles.y;
-            float currentYaw = transform.eulerAngles.y;
-            float newYaw = Mathf.MoveTowardsAngle(currentYaw, desiredYaw, turnSpeedDegPerSec * dt);
+            Reanclar();
+            float newYaw = Mathf.MoveTowardsAngle(yawMundo, desiredYaw, turnSpeedDegPerSec * dt);
+            yawMundo = newYaw;
             // Pedido: "la torreta no se movia para arriba y abajo". La IA aplanaba el cañon a pitch 0 en cada frame: ahora
             // tambien ELEVA hacia el blanco (altura relativa + el pequeño angulo balistico que compensa la caida del obus).
             float horiz = dir.magnitude;
@@ -395,7 +435,7 @@ namespace SP.Vehicles
             bool esMetralleta = transform.parent != null && transform.parent.name == "MetralletaMount";
             if (esMetralleta)
             {
-                if (Application.isPlaying) SP.Presentation.AudioDirector.PlayClipAt(SP.Presentation.GenericSfx.GetWeaponShot(WeaponKind.Heavy), MuzzlePosition, 0.8f, 0.8f);
+                if (Application.isPlaying) SP.Presentation.AudioDirector.PlayClipAt(SP.Presentation.GenericSfx.GetWeaponShot(WeaponKind.Heavy), MuzzlePosition, 0.8f, 0.8f, SP.Presentation.PerfilEspacial.Disparo);
             }
             else
             {
@@ -417,7 +457,9 @@ namespace SP.Vehicles
             // igual: AudioListener.volume se aplica en vivo, asi que el
             // propio cañonazo tambien se atenua un poco -- que es lo que
             // hace un compresor real y suena bien.
-            SP.Presentation.AudioDucking.Duck(0.25f);
+            // WP2 (#072): bajado de 0.25 a 0.1. Con 0.25 el propio cañonazo se atenuaba a la mitad justo cuando tiene que
+            // tener mas graves (AudioListener.volume se aplica en vivo).
+            SP.Presentation.AudioDucking.Duck(0.1f);
 
             SpawnMuzzleDust(spawnPos);
             KickChassis();

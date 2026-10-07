@@ -62,6 +62,8 @@ namespace SP.Player
             if (d.sqrMagnitude > Radio * Radio) return;
 
             yo.Weapon.AgregarMunicion(1);
+            // Bug #067: el soldado se agacha a recogerla (0,6 s).
+            AnimacionDeAccion.Iniciar(yo, TipoAccion.RecogerMunicion, transform.position, 0.6f);
 
             // Pedido explicito: "no quiero texto, quiero visuales" -- antes
             // esto pasaba por Feedback.Accion(..., "+MUNICION", ...), que

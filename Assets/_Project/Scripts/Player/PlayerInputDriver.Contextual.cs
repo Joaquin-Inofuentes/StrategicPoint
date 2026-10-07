@@ -110,6 +110,15 @@ namespace SP.Player
                     return null;
 
                 case AimTargetType.Vehicle:
+                    // Bug #071: Q sobre un vehiculo ENEMIGO manda a los aliados a atacarlo (el de Asalto saca el lanzacohetes).
+                    if (aim.Vehicle != null && aim.Vehicle.Hostil(TeamId.Player))
+                    {
+                        var dest = DestinatariosDeOrden();
+                        if (dest.Count == 0) { RejectOrder("NADIE A QUIEN ORDENAR"); return null; }
+                        if (OrderService.IssueAttackVehicleOrderForSelection(dest, aim.Vehicle) == 0) { RejectOrder("NADIE PUEDE ATACARLO"); return null; }
+                        Avisar("ATAQUEN AL VEHICULO ENEMIGO");
+                        return "ATACAR VEHICULO";
+                    }
                     if (aim.Vehicle != null && !aim.Vehicle.IsDestroyed && aim.Vehicle.Bando == TeamId.Player && EjecutarOrdenRadial(MenuDeOrdenes.Tanque, 0)) return "SUBIR AL TANQUE";
                     return null;
             }

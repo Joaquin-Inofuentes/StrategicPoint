@@ -19,7 +19,7 @@ namespace SP.Core
     public static class CoberturasPuntuadas
     {
         public const float AlturaDePie = 1.3f;       // altura de la boca del arma parado
-        public const float AlturaAgachado = 0.65f;   // idem agachado
+        public const float AlturaAgachado = 0.85f;   // idem agachado (WP4: la boca agachada mide 0,85 sobre el piso, no 0,65)
         public const float AsomadaLateral = 0.6f;    // cuanto se corre al costado en una cobertura alta
 
         public struct Eleccion
@@ -51,7 +51,7 @@ namespace SP.Core
         // Bug #061: era 1,3 y con la vida llena la presion maxima es 1,3 (4 amenazas 1,0 + blanco cerca 0,3): un soldado sano no
         // se cubria NUNCA, aunque lo estuvieran mirando cuatro enemigos. Con 0,95 sano se cubre si lo ven 3+ y el blanco esta
         // cerca (o 4+), y herido (desde ~10% de vida perdida) con dos amenazas.
-        public static float UmbralDeCubrirse = 0.95f;
+        public static float UmbralDeCubrirse = 0.6f;   // WP4 (#074/#081): era 0,95 (con 0,6 se cubre un sano al que ven 2 enemigos de cerca, o un herido con una amenaza)
         public static float PesoTipoAlta = 1.2f;
         public static float PesoVida = 2.0f, PesoRecarga = 0.8f, PesoAmenaza = 0.25f, PesoCerca = 0.3f;
 
@@ -101,12 +101,19 @@ namespace SP.Core
             }
         }
 
+        // WP4: version por defecto = la v5 (DECIDIR + CICLO) + multitud (no apilarse en la misma cobertura) y sentido (el sano avanza, el herido
+        // retrocede): 100 + mascara.
+        public const int VersionNueva = 100 + (F_DECIDIR | F_CICLO | F_MULTITUD | F_SENTIDO);
+
         public static bool Usa(int version, int caracteristica) => version >= 1 && (Caracteristicas(version) & caracteristica) != 0;
 
         static Vector3 Plano(Vector3 v) { v.y = 0f; return v; }
 
+        // maxDistAlBlanco / minDistAlBlanco (WP4): filtran los candidatos por su distancia al blanco. "No alejarse" = max (distancia
+        // actual + margen); "no acercarse" (repliegue de un herido) = min.
         public static bool TryElegir(Vector3 desde, Soldier objetivo, Soldier quien, float radio, float rango, float vida01,
-                                     int version, bool recargando, Vector3? actual, out Eleccion eleccion)
+                                     int version, bool recargando, Vector3? actual, out Eleccion eleccion,
+                                     float maxDistAlBlanco = float.MaxValue, float minDistAlBlanco = 0f)
         {
             eleccion = default;
             var puntos = Coberturas.Puntos; var duenos = Coberturas.Duenos;
@@ -140,6 +147,7 @@ namespace SP.Core
                 if (d > radio) continue;
                 float dEn = Plano(p - posObj).magnitude;
                 if (dEn > rango * 1.05f || dEn < rango * 0.2f) continue;   // fuera de alcance / pegado al blanco
+                if (dEn > maxDistAlBlanco || dEn < minDistAlBlanco) continue;
                 if (quien != null && quien.Team == SP.Combat.TeamId.Enemy && Vegetacion.Dentro(p)) continue;
                 float nd = d / Mathf.Max(1f, radio);
                 float rf = Mathf.Clamp01(1f - Mathf.Abs(dEn - 0.7f * rango) / (0.7f * rango));
@@ -161,8 +169,8 @@ namespace SP.Core
                 float dEn = Plano(p - posObj).magnitude;
                 float rf = Mathf.Clamp01(1f - Mathf.Abs(dEn - 0.7f * rango) / (0.7f * rango));
 
-                bool losPie = Coberturas.HayLineaDeTiroDesde(p + Vector3.up * AlturaDePie, objetivo, quien);
-                bool losAgachado = (Usa(version, F_VIDA) || Usa(version, F_RECARGA)) ? Coberturas.HayLineaDeTiroDesde(p + Vector3.up * AlturaAgachado, objetivo, quien) : losPie;
+                bool losPie = Coberturas.HayLineaDeTiroAlPecho(p + Vector3.up * AlturaDePie, objetivo, quien);
+                bool losAgachado = (Usa(version, F_VIDA) || Usa(version, F_RECARGA)) ? Coberturas.HayLineaDeTiroAlPecho(p + Vector3.up * AlturaAgachado, objetivo, quien) : losPie;
                 bool alta = dueno != null && dueno.bounds.size.y >= 1.4f;
                 var frente = Coberturas.FrenteDe(p, dueno);
                 bool losAsomada = false;
@@ -170,7 +178,7 @@ namespace SP.Core
                 {
                     var derecha = Vector3.Cross(Vector3.up, frente).normalized;
                     if (Vector3.Dot(posObj - p, derecha) < 0f) derecha = -derecha;
-                    losAsomada = Coberturas.HayLineaDeTiroDesde(p + derecha * AsomadaLateral + Vector3.up * AlturaDePie, objetivo, quien);
+                    losAsomada = Coberturas.HayLineaDeTiroAlPecho(p + derecha * AsomadaLateral + Vector3.up * AlturaDePie, objetivo, quien);
                 }
                 bool puedeDisparar = losPie || losAsomada;
                 if (!puedeDisparar) continue;   // esconderse donde no se puede tirar es peor que quedarse al descubierto
@@ -193,15 +201,21 @@ namespace SP.Core
                 if (wMultitud > 0f || wSentido > 0f)
                 {
                     int vecinos = 0;
+                    bool ocupada = false;
                     var todos = ActorRegistry.All;
                     for (int j = 0; j < todos.Count; j++)
                     {
                         var s = todos[j];
                         if (s == null || s == quien || quien == null || s.Team != quien.Team || s.Health == null || !s.Health.IsAlive) continue;
-                        if (Plano(s.transform.position - p).sqrMagnitude < 1.8f * 1.8f) { vecinos++; continue; }
                         var b = s.Brain;
-                        if (b != null && (b.YendoACobertura || b.EnCobertura) && Plano(b.CoberturaPunto - p).sqrMagnitude < 1.2f * 1.2f) vecinos++;
+                        // WP4 (#086): un punto YA ocupado por un companero en cobertura no se elige: dos soldados queriendo el mismo punto se
+                        // quedaban apilados (uno ocupandolo, el otro tironeando contra la separacion).
+                        if (b != null && b.EnCobertura && Plano(b.CoberturaPunto - p).sqrMagnitude < 1.0f * 1.0f) { ocupada = true; break; }
+                        if (b != null && b.VaHaciaUnaCobertura && Plano(b.CoberturaElegida - p).sqrMagnitude < 1.0f * 1.0f) { ocupada = true; break; }
+                        if (Plano(s.transform.position - p).sqrMagnitude < 1.8f * 1.8f) { vecinos++; continue; }
+                        if (b != null && b.YendoACobertura && Plano(b.CoberturaPunto - p).sqrMagnitude < 1.2f * 1.2f) vecinos++;
                     }
+                    if (ocupada) continue;
                     score -= wMultitud * Mathf.Min(2, vecinos);
                     // Sentido: sano prefiere avanzar (cobertura hacia el enemigo), herido retroceder.
                     var haciaPunto = Plano(p - desde);

@@ -45,11 +45,37 @@ namespace SP.Vehicles
         // bien oscuro (carcasa quemada) en vez de su color normal.
         public bool IsDestroyed { get; private set; }
 
+        // WP9b (#097): fraccion de la vida maxima por debajo de la cual el vehiculo NO baja nunca (el jefe "queda con poca vida y nunca baja
+        // del 5 %"; el tanque de la carrera, del 20 %). 0 = sin piso. Reemplaza a la curacion "magica" que hacia el director.
+        public float PisoDeVida01 { get; set; }
+        public int PisoDeVida => PisoDeVida01 > 0f ? Mathf.CeilToInt(Health.MaxHealth * PisoDeVida01) : 0;
+
+        // WP9b (#097): filtro opcional del dano que recibe (el jefe solo siente cohetes y explosivos: una bala hace 1). Recibe el dano ya
+        // calculado por el proyectil y devuelve el que se aplica. null = sin filtro.
+        public Func<int, int> AjusteDeDano { get; set; }
+        // Verdadero mientras una EXPLOSION (cohete, granada, obus, carga) reparte dano a vehiculos: lo pone Projectile.ExplodeAt. Un golpe directo de bala no lo enciende.
+        public static bool DanoDeExplosionEnCurso { get; set; }
+
         public void TakeDamage(int amount, int attackerId)
         {
             if (SP.Core.ModoDios.Protege(Health)) return;   // [F4]
+            if (AjusteDeDano != null && amount > 0) amount = Mathf.Max(1, AjusteDeDano(amount));
+            int piso = PisoDeVida;
+            if (piso > 0 && Health.IsAlive)
+            {
+                // El piso se respeta antes de aplicar (no se baja del piso) y despues (la dificultad puede escalar el dano dentro de Health).
+                if (Health.Current <= piso) return;
+                amount = Mathf.Min(amount, Health.Current - piso);
+                // La dificultad escala el dano DENTRO de Health (segun quien pega): se descuenta aca para que el golpe ya escalado no pase del piso.
+                if (SP.Core.Dificultad.Activa)
+                {
+                    float k = Mathf.Max(0.01f, SP.Core.Dificultad.MultiplicadorDeDano(attackerId, Health));
+                    amount = Mathf.Max(1, Mathf.Min(amount, Mathf.FloorToInt((Health.Current - piso) / k)));
+                }
+            }
             bool wasAlive = Health.IsAlive;
             Health.TakeDamage(amount, attackerId);
+            if (piso > 0 && Health.IsAlive && Health.Current < piso) Health.Heal(piso - Health.Current);
 
             // El cacheo del color base tiene que pasar ANTES de publicar el
             // evento. El bus es sincrono: VehicleFxReactor pinta el chasis
@@ -67,6 +93,22 @@ namespace SP.Vehicles
             // del vehiculo sea la suya, no la de carne y hueso.
             if (wasAlive) EventBus.Instance.Publish(new VehicleDamagedEvent(this, amount, Health.Current, Health.MaxHealth));
             if (wasAlive && !Health.IsAlive) OnDestroyed();
+        }
+
+        // WP9b: deja la vida en esa fraccion (0..1) de la maxima, sin pasar por el dano (reparacion, reinicios).
+        public void PonerVida01(float f) => Health.RestaurarVida(Mathf.Clamp(Mathf.RoundToInt(Health.MaxHealth * Mathf.Clamp01(f)), 1, Health.MaxHealth));
+
+        // WP9b (#097): destruccion de GUION (la cinematica final). No respeta el modo dios, el piso ni el filtro: pasa por el camino normal
+        // (OnDestroyed: expulsa a los ocupantes, agonia, explosion final y torreta volando) pero con el bando del vehiculo neutralizado un instante.
+        public void DestruirPorGuion()
+        {
+            if (IsDestroyed) return;
+            PisoDeVida01 = 0f; AjusteDeDano = null;
+            var bandoPrevio = Bando;
+            Bando = SP.Combat.TeamId.Enemy;   // ModoDios.Protege solo cubre a los vehiculos del jugador
+            Health.Invulnerable = false;
+            TakeDamage(Health.MaxHealth + Health.Current + 1000, -1);
+            Bando = bandoPrevio;
         }
 
         // Antes esto apagaba todo y oscurecia el chasis en un SOLO frame:
@@ -208,8 +250,36 @@ namespace SP.Vehicles
             if (chassisRenderers != null)
                 for (int i = 0; i < chassisRenderers.Length; i++) if (chassisRenderers[i] != null) chassisRenderers[i].sharedMaterial.color = Color.Lerp(baseColors[i], Color.black, 0.85f);
 
-            SP.Presentation.ImpactFx.SpawnExplosion(transform.position + Vector3.up, 4f);
+            // Bug #072: bola de fuego 1,5 veces mas grande (4 a 6 m) y, en el tanque, tres explosiones escalonadas con chapas volando. La
+            // camioneta ya hace las suyas (OperacionAuto.Estallidos) y su crater, asi que aca no lo repite.
+            SP.Presentation.ImpactFx.SpawnExplosion(transform.position + Vector3.up, 6f, !EsAutonomo);
+            if (Application.isPlaying && !EsAutonomo)
+            {
+                SP.Presentation.DestruccionDeVehiculo.Chapas(transform.position + Vector3.up * 1.2f, UnityEngine.Random.Range(8, 11), 11f);
+                StartCoroutine(ExplosionesEscalonadas(transform.position + Vector3.up));
+            }
+            // Bug #072: la explosion final era muda. Estruendo con graves + chapa que se retuerce y cae. La camioneta ya suena por
+            // OperacionAuto.Estallidos (al morir), asi que no se duplica.
+            if (Application.isPlaying && GetComponent<SP.Operacion.OperacionAuto>() == null)
+            {
+                var pe = transform.position + Vector3.up;
+                SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.Explosion, pe, 1f, 1f);
+                SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.DestruccionVehiculo, pe, 0.9f, 0.95f);
+            }
             DetachTurret();
+        }
+
+        System.Collections.IEnumerator ExplosionesEscalonadas(Vector3 centro)
+        {
+            float[] esperas = { 0.18f, 0.16f };
+            float[] radios = { 4.5f, 5.2f };
+            for (int i = 0; i < esperas.Length; i++)
+            {
+                yield return new WaitForSeconds(esperas[i]);
+                var p = centro + new Vector3(UnityEngine.Random.Range(-1.4f, 1.4f), UnityEngine.Random.Range(0.1f, 0.9f), UnityEngine.Random.Range(-1.8f, 1.8f));
+                SP.Presentation.ImpactFx.SpawnExplosion(p, radios[i], false);
+                SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.Explosion, p, 0.8f, 0.9f);
+            }
         }
 
         // La destruccion del tanque no tenia una señal legible a
@@ -326,6 +396,20 @@ namespace SP.Vehicles
 
         public int Capacity => AllRoles.Length;
         public int OccupantCount => seats.Count;
+
+        // Bug #069/#071: la camioneta de la Operacion se mueve sola y no tiene tripulacion (OccupantCount == 0), asi que todos los
+        // buscadores la descartaban y los aliados no le disparaban. Un vehiculo es BLANCO HOSTIL para 'para' si es de otro bando,
+        // esta entero y tiene tripulacion real o es un auto autonomo de la Operacion.
+        int autonomo = -1;   // -1 sin resolver, 0 no, 1 si
+        public bool EsAutonomo
+        {
+            get
+            {
+                if (autonomo < 0) autonomo = GetComponent<SP.Operacion.OperacionAuto>() != null || GetComponent<SP.Operacion.HelicopteroEnemigo>() != null ? 1 : 0;
+                return autonomo == 1;
+            }
+        }
+        public bool Hostil(SP.Combat.TeamId para) => Bando != para && !IsDestroyed && (seats.Count > 0 || EsAutonomo);
         public bool HasAnyRoom => seats.Count < Capacity;
         public Soldier Driver => seats.TryGetValue(VehicleSeatRole.Driver, out var s) ? s : null;
         public Soldier Gunner => seats.TryGetValue(VehicleSeatRole.Gunner, out var s) ? s : null;

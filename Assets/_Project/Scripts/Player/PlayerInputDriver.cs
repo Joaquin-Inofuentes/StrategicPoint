@@ -78,7 +78,9 @@ namespace SP.Player
         // Requisito de accesibilidad basico y preferencia muy comun en
         // shooters: sin esto no habia forma de invertir el eje vertical.
         public bool InvertLookY { get; set; }
-        [SerializeField] float rtsPanSpeed = 56f;   // pedido explicito: x2 de nuevo (antes 28, que ya era x2 de 14)
+        // #116: x2 otra vez (56 -> 112). Const y no [SerializeField]: un valor serializado en la escena pisaria el nuevo.
+        public const float RtsPanSpeed = 112f;
+        float rtsPanSpeed => RtsPanSpeed;
         // (la sensibilidad del orbitado RTS, sensibilidadOrbitaRts, vive al principio de la clase para que
         // salga arriba de todo en el Inspector)
         // Pedido explicito: "si mantengo shift WASD se desplaza mas rapido".
@@ -540,6 +542,11 @@ namespace SP.Player
         // asaltador, o todos caidos de arranque), cae en Squad[0] como antes.
         Soldier SoldadoInicial()
         {
+            // #110: en la Operacion arrancas con el Flanqueador (Kes, metralleta de disparo continuo); Vega queda en la escuadra.
+            if (SP.Operacion.OperacionDirector.Instancia != null)
+                foreach (var s in Squad)
+                    if (s != null && s.Role == RoleType.Flanker && s.Health != null && s.Health.IsAlive)
+                        return s;
             foreach (var s in Squad)
                 if (s != null && s.Role == RoleType.Assault && s.Health != null && s.Health.IsAlive)
                     return s;
@@ -772,79 +779,18 @@ namespace SP.Player
             // return de UpdateInVehicle lo comía entero) -- ahora alterna
             // entre manejar en primera persona y ver el auto desde arriba
             // en RTS, sin bajarse ni perder el asiento.
-            if (KeyBindings.WasPressed(KeyBindings.AlternarVista) && !handlingDeath)
-            {
-                // Si Tab te saca de RTS a mitad de un arrastre de
-                // selección, el cuadrito quedaba prendido en pantalla
-                // para siempre (nada lo apagaba hasta el próximo drag
-                // completo en RTS, y para entonces ya no tenía sentido
-                // dónde estaba dibujado).
-                if (dragging)
-                {
-                    dragging = false;
-                    if (SelectionBox != null) SelectionBox.gameObject.SetActive(false);
-                }
+            if (KeyBindings.WasPressed(KeyBindings.AlternarVista) && !handlingDeath && !SP.Operacion.MandoTactico.BloqueaElCambioDeVista())
+                AlternarVista();
 
-                Rig.ToggleMode();
-                // Pedido explicito: sonido de transicion ("fiush") al
-                // cambiar entre FPS y RTS. 2D y canal Sfx: no es un sonido
-                // que ocurra en ningun punto del mundo, es feedback de UI
-                // de camara.
-                AudioDirector.PlayUi2D(SfxKind.CameraSwoosh, 0.6f, 0.7f);
-                // Marca que el jugador ya descubrio el cambio de modo, para
-                // que el recordatorio de GameplaySceneBootstrap no vuelva a
-                // aparecer nunca mas en ninguna partida futura.
-                PlayerPrefs.SetInt("sp_used_tab", 1);
-                PlayerPrefs.Save();
-
-                // RTS -> FPS con UNA sola unidad seleccionada: el jugador
-                // pasa a manejar a ESA, no vuelve al soldado que tenia antes.
-                // Con cero o varias seleccionadas no hay a quien elegir y se
-                // conserva el poseido de siempre. Va ANTES del chequeo de
-                // asiento de abajo: si la elegida va montada, TryPossess ya
-                // toma su asiento.
-                if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue)
-                {
-                    var elegido = SoldadoUnicoSeleccionado();
-                    if (elegido != null && elegido != Brain.Current) TryPossess(elegido);
-                }
-
-                // BUG REAL ("se maneja solo"): en RTS una orden a la escuadra
-                // incluye al soldado que venias manejando, y OrderService apaga su
-                // IsPossessedByPlayer y le deja un destino. Al volver a FPS nadie
-                // le devolvia el control: el cuerpo seguia caminando solo (o se
-                // bajaba del tanque). Ahora se reclama al cambiar a FPS.
-                if (Rig.Mode == ControlMode.Fps && Brain.Current != null) ReclamarControl(Brain.Current);
-
-                if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue && Brain.Current != null && Vehicle != null)
-                {
-                    var role = Vehicle.RoleOf(Brain.Current);
-                    if (role != null) EnterPossessedVehicleSeat(role.Value);
-                }
-
-                if (Rig.Mode == ControlMode.Rts)
-                {
-                    Vector3 focus = currentSeat.HasValue ? Vehicle.transform.position
-                        : Brain.Current != null ? Brain.Current.transform.position : Vector3.zero;
-                    // Restaura el paneo/zoom que el jugador dejo la ultima
-                    // vez que estuvo en RTS, en vez de recentrar siempre
-                    // en el poseido -- si no hay vista guardada (primera
-                    // vez), cae a centrar en foco como antes.
-                    Rig.RestoreOrSetRtsView(focus);
-                    CentrarRtsEnLaEscuadra();
-                }
-
-                if (ModeToast != null) ModeToast.Show(Rig.Mode == ControlMode.Rts ? "VISTA RTS" : "VISTA FPS");
-                // 184: el salto entre vista FPS y RTS era un corte
-                // seco. Un destello gris muy corto lo lee como una
-                // transicion. No va dentro de CameraRig.SetMode: eso
-                // tambien lo llama la secuencia de muerte, donde un
-                // flash encima de la camara de muerte seria un
-                // accidente visual.
-                SP.UI.ScreenFlashView.ModeChange();
-            }
+            // P7 (#120c): [C] cambia de aliado (toque = mas cercano; mantener = rombos resaltados y al soltar el mas centrado). Solo en FPS a pie.
+            var cambioAliado = CambioDeAliado.Asegurar(this);
+            if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue && !handlingDeath && Brain.Current != null && Brain.Current.Health.IsAlive)
+                cambioAliado.Actualizar(KeyBindings.IsPressed(KeyBindings.CambiarAliado), Time.unscaledDeltaTime);
+            else cambioAliado.Cancelar();
 
             if (Rig.Mode != ControlMode.Fps || currentSeat.HasValue || handlingDeath) EspecialSostenido = false;
+            // Revivir (bug #088): si dejo de llamarse UpdateRevivalHold (RTS, asiento, muerte) la animacion no queda pegada.
+            if (animRevivirPor != null && Time.time > reviviendoHasta + 0.05f) DetenerAnimacionDeRevivir();
             if (handlingDeath) return;
 
             if (currentSeat.HasValue)
@@ -1292,6 +1238,9 @@ namespace SP.Player
             var mandoMover = MandoFps.Mover;
             if (mandoMover.sqrMagnitude > 0f) move += f * mandoMover.y + r * mandoMover.x;
             if (TorretaFijaActiva) { move = Vector3.zero; destinoAuto = null; }
+            // Bug #088: mientras mantenes [E] sobre un caido el soldado queda clavado (ni camina, ni dispara) hasta soltar o revivirlo.
+            // El primer cuadro de [E] la deteccion del caido corre mas abajo que este movimiento: se la adelanta solo si [E] esta apretado.
+            if (MovimientoTrabadoPorRevivir || (KeyBindings.IsPressed(KeyBindings.Interactuar) && !currentSeat.HasValue && FindNearestDownedAlly() != null)) { move = Vector3.zero; destinoAuto = null; }
             if (PedidoDeCuracion.CurandoAlJugador(Brain.Current))
             {
                 if (kb.spaceKey.wasPressedThisFrame)
@@ -1343,7 +1292,7 @@ namespace SP.Player
             // recorrido) -- no colisiona porque son ramas mutuamente
             // excluyentes (UpdateFps vs UpdateRts).
             bool agacharHeld = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed || MandoFps.Agachar;
-            Brain.Current.Motor.SetCrouching(agacharHeld);
+            Brain.Current.Motor.SetCrouching(agacharHeld || ReviviendoActivo);   // revivir te arrodilla sobre el caido
             if (agacharHeld != agachadoAntes)
             {
                 agachadoAntes = agacharHeld;
@@ -1405,6 +1354,7 @@ namespace SP.Player
             UpdateVehicleMountIndicator(result);
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
             ultimoResultadoDeMira = result;
+            RecordarEnemigoApuntado(result);
             ActualizarPromptContextual(result);
             ActualizarMirilla(result);
             // [Ctrl]: habilidad especial de la clase que se maneja -- medico
@@ -1439,7 +1389,7 @@ namespace SP.Player
             // clickear una vez por bala incluso con un rifle. Ahora
             // mantener el boton dispara a la cadencia real del arma
             // (fireCooldown), que ya es distinta por WeaponKind.
-            if ((mouse != null && mouse.leftButton.isPressed) || MandoFps.Disparar)
+            if (((mouse != null && mouse.leftButton.isPressed) || MandoFps.Disparar) && !ReviviendoActivo)
             {
                 bool emptyBeforeFire = Brain.Current.Weapon.CurrentAmmo <= 0 && !Brain.Current.Weapon.IsReloading;
                 // El mismo punto que ya muestra la mira (result.Point): si
@@ -1632,6 +1582,7 @@ namespace SP.Player
                 UpdateRevivalHold(caidoCercano);
                 return;
             }
+            DetenerAnimacionDeRevivir();
             if (circuloRevivir != null && !DemolicionEnCurso) circuloRevivir.SetVisible(false);
 
             // Interacción por cercanía (no por puntería): subir al vehículo
@@ -1661,6 +1612,9 @@ namespace SP.Player
             // cartel: es lo que un TAP de [Q] va a disparar (ver TryInteractuarConMira),
             // asi que el jugador tiene que poder leer ANTES de tocar la tecla que hay
             // algo interactuable y que hace.
+            // Bug #083/#084: [E] frente a un muro sin poder demolerlo (rol equivocado o indestructible) dice por que.
+            if (nearVehicle == null && nearPickup == null && !(torretaCerca != null && torretaCerca.Libre) && !currentSeat.HasValue)
+                Demolicion.AvisarSiNoSePuede(Brain.Current, result, ray, KeyBindings.WasPressed(KeyBindings.Interactuar));
             var promptInteraccion = PromptDeInteraccion();
             SetInstructionText(promptInteraccion != null ? promptInteraccion + "  ·  [Q] mantener: radial de ordenes"
                 : nearVehicle != null ? "[E] Subir al vehiculo  ·  [Q] mantener: radial de ordenes"
@@ -1675,15 +1629,22 @@ namespace SP.Player
         public const float TiempoDeRevivir = 5f;
         CirculoDeProgreso circuloRevivir;
 
-        Soldier FindNearestDownedAlly()
+        // P7 (#120a): candidatos = TODO soldado del bando del poseido caido (escuadra y milicianos), no solo los de "Squad": los milicianos
+        // nunca estaban en esa lista, asi que el cartel de revivir salia (la mira detecta AimTargetType.Caido) pero [E] no hacia nada.
+        public static bool SoloEscuadraParaRevivir;   // SOLO checks (#120a): reproduce el comportamiento de antes (los milicianos nunca eran candidatos)
+        public Soldier FindNearestDownedAlly()
         {
-            if (Squad == null || Brain.Current == null) return null;
+            if (Brain.Current == null) return null;
             Soldier best = null;
             float bestDist = interactRadius;
-            foreach (var s in Squad)
+            var yo = Brain.Current;
+            var todos = ActorRegistry.All;
+            for (int i = 0; i < todos.Count; i++)
             {
-                if (s == null || s.Health == null || s.Health.IsAlive) continue;
-                float d = Vector3.Distance(Brain.Current.transform.position, s.transform.position);
+                var s = todos[i];
+                if (s == null || s == yo || s.Team != yo.Team || s.Role == RoleType.Civilian || s.Health == null || s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                if (SoloEscuadraParaRevivir && (Squad == null || !Squad.Contains(s))) continue;
+                float d = Vector3.Distance(yo.transform.position, s.transform.position);
                 if (d <= bestDist) { bestDist = d; best = s; }
             }
             return best;
@@ -1702,13 +1663,43 @@ namespace SP.Player
             return true;
         }
 
+        // Bug #088: revivir clava al soldado (sin caminar ni disparar) y lo arrodilla sobre el caido con la animacion de curar.
+        // Se activa tras 0,15 s de [E] mantenido, asi un toque suelto de [E] cerca de un caido no te agacha.
+        public const float RetardoDeBloqueoAlRevivir = 0.15f;
+        float reviviendoHasta;
+        float mantenidoHasta;   // [E] apretado frente a un caido: el movimiento se traba desde el primer cuadro (la agachada y la animacion esperan el retardo)
+        Soldier animRevivirPor;
+        public bool ReviviendoActivo => Time.time < reviviendoHasta;
+        public bool MovimientoTrabadoPorRevivir => Time.time < mantenidoHasta || ReviviendoActivo;
+        public bool AnimandoRevivir => animRevivirPor != null;
+
+        void DetenerAnimacionDeRevivir()
+        {
+            mantenidoHasta = 0f;
+            if (animRevivirPor == null) return;
+            CurandoAnimacion.Terminar(animRevivirPor);
+            animRevivirPor = null;
+            reviviendoHasta = 0f;
+        }
+
         void UpdateRevivalHold(Soldier caido)
         {
             SetInstructionText($"Mantener [E] para revivir a {caido.DisplayName}");
             if (!KeyBindings.IsPressed(KeyBindings.Interactuar))
             {
+                DetenerAnimacionDeRevivir();
                 if (circuloRevivir != null) circuloRevivir.SetVisible(false);
                 return;
+            }
+
+            var yo = Brain.Current;
+            if (animRevivirPor != null && animRevivirPor != yo) DetenerAnimacionDeRevivir();
+            mantenidoHasta = Time.time + 0.15f;
+            if (KeyBindings.HeldSeconds(KeyBindings.Interactuar) >= RetardoDeBloqueoAlRevivir)
+            {
+                reviviendoHasta = Time.time + 0.15f;
+                animRevivirPor = yo;
+                CurandoAnimacion.Tick(yo, caido, Time.deltaTime, orientar: false);
             }
 
             float progreso = KeyBindings.HeldSeconds(KeyBindings.Interactuar) / TiempoDeRevivir;
@@ -1717,6 +1708,7 @@ namespace SP.Player
 
             if (TryRevivir(caido, KeyBindings.IsHeld(KeyBindings.Interactuar, TiempoDeRevivir)))
             {
+                DetenerAnimacionDeRevivir();
                 if (circuloRevivir != null) circuloRevivir.SetVisible(false);
             }
         }
@@ -1811,7 +1803,7 @@ namespace SP.Player
                 {
                     medicoAccionSegundos = 0f;
                     if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
-                    Feedback.Accion(SfxKind.Revive, $"{caido.DisplayName} REANIMADO", caido.transform.position, Feedback.Ok, aviso: true, pulso: true, volumen: 0.8f);
+                    Feedback.Visual($"{caido.DisplayName} REANIMADO", caido.transform.position, Feedback.Ok, aviso: true, pulso: true);   // el sonido y los anillos los pone FeedbackDeRevivir (bug #089)
                 }
                 return;
             }
@@ -1851,13 +1843,16 @@ namespace SP.Player
         // Aliado vivo pero no al maximo de vida, mas cercano -- mismo patron que FindNearestDownedAlly.
         Soldier FindNearestWoundedAlly()
         {
-            if (Squad == null || Brain.Current == null) return null;
+            if (Brain.Current == null) return null;
             Soldier best = null;
             float bestDist = interactRadius;
-            foreach (var s in Squad)
+            var yo = Brain.Current;
+            var todos = ActorRegistry.All;
+            for (int i = 0; i < todos.Count; i++)
             {
-                if (!Herido(s)) continue;
-                float d = Vector3.Distance(Brain.Current.transform.position, s.transform.position);
+                var s = todos[i];
+                if (s == null || s == yo || s.Team != yo.Team || s.Role == RoleType.Civilian || !s.gameObject.activeInHierarchy || !Herido(s)) continue;   // P7: tambien milicianos
+                float d = Vector3.Distance(yo.transform.position, s.transform.position);
                 if (d <= bestDist) { bestDist = d; best = s; }
             }
             return best;
@@ -2204,7 +2199,7 @@ namespace SP.Player
             if (target != null)
             {
                 highlightedOriginalColor = SP.Presentation.CubeFxReactor.ReadTint(target);
-                Color hacia = result.Type == AimTargetType.Enemy ? TinteApuntadoEnemigo
+                Color hacia = result.Type == AimTargetType.Enemy || (result.Type == AimTargetType.Vehicle && result.Vehicle != null && result.Vehicle.Bando == TeamId.Enemy) ? TinteApuntadoEnemigo
                     : result.Type == AimTargetType.Ally ? TinteApuntadoAliado
                     : Color.white;
                 SP.Presentation.CubeFxReactor.WriteTint(target, Color.Lerp(highlightedOriginalColor, hacia, 0.65f));
@@ -2246,7 +2241,7 @@ namespace SP.Player
             // se le volvia a tocar el color), asi que apuntar a un enemigo
             // o a un aliado se veia identico. Ahora se recolorea cada vez
             // segun a que se apunta.
-            aimRing.SetColor(result.Type == AimTargetType.Enemy ? TinteApuntadoEnemigo
+            aimRing.SetColor(result.Type == AimTargetType.Enemy || (result.Type == AimTargetType.Vehicle && result.Vehicle != null && result.Vehicle.Bando == TeamId.Enemy) ? TinteApuntadoEnemigo
                 : result.Type == AimTargetType.Ally ? TinteApuntadoAliado
                 : AimRingColor);
         }
@@ -2394,6 +2389,104 @@ namespace SP.Player
         // el unico. Null en cualquier otro caso.
         // Bug #049: al pasar a RTS la camara queda centrada entre los soldados vivos de la escuadra (los que van en un
         // vehiculo cuentan por la posicion del vehiculo).
+        // El [Tab] (FPS <-> RTS). Aparte del Update para poder ejercerlo en los checks sin teclado.
+        public void AlternarVista()
+        {
+            // Si Tab te saca de RTS a mitad de un arrastre de
+            // selección, el cuadrito quedaba prendido en pantalla
+            // para siempre (nada lo apagaba hasta el próximo drag
+            // completo en RTS, y para entonces ya no tenía sentido
+            // dónde estaba dibujado).
+            if (dragging)
+            {
+                dragging = false;
+                if (SelectionBox != null) SelectionBox.gameObject.SetActive(false);
+            }
+
+            Rig.ToggleMode();
+            // Pedido explicito: sonido de transicion ("fiush") al
+            // cambiar entre FPS y RTS. 2D y canal Sfx: no es un sonido
+            // que ocurra en ningun punto del mundo, es feedback de UI
+            // de camara.
+            AudioDirector.PlayUi2D(SfxKind.CameraSwoosh, 0.6f, 0.7f);
+            // Marca que el jugador ya descubrio el cambio de modo, para
+            // que el recordatorio de GameplaySceneBootstrap no vuelva a
+            // aparecer nunca mas en ninguna partida futura.
+            PlayerPrefs.SetInt("sp_used_tab", 1);
+            PlayerPrefs.Save();
+
+            // RTS -> FPS con UNA sola unidad seleccionada: el jugador
+            // pasa a manejar a ESA, no vuelve al soldado que tenia antes.
+            // Con cero o varias seleccionadas no hay a quien elegir y se
+            // conserva el poseido de siempre. Va ANTES del chequeo de
+            // asiento de abajo: si la elegida va montada, TryPossess ya
+            // toma su asiento.
+            if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue)
+            {
+                var elegido = SoldadoUnicoSeleccionado();
+                if (elegido != null && elegido != Brain.Current) TryPossess(elegido);
+            }
+
+            // BUG REAL ("se maneja solo"): en RTS una orden a la escuadra
+            // incluye al soldado que venias manejando, y OrderService apaga su
+            // IsPossessedByPlayer y le deja un destino. Al volver a FPS nadie
+            // le devolvia el control: el cuerpo seguia caminando solo (o se
+            // bajaba del tanque). Ahora se reclama al cambiar a FPS.
+            // P7 (#120b): la radio es un rol. Si volves a FPS siendo el operador, pasas a manejar al aliado mas cercano y el operador queda
+            // como IA "OPERANDO LA RADIO" (el reloj sigue). Sin otro aliado vivo te quedas con el operador (se suelta con [E] mantenida 1 s).
+            if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue && SP.Operacion.MandoTactico.EsOperadorDeRadio(Brain.Current))
+            {
+                var relevo = SP.Operacion.MandoTactico.AliadoParaRelevar(Brain.Current);
+                if (relevo != null) TryPossess(relevo);
+                if (ModeToast != null) ModeToast.Show(relevo != null ? "EL OPERADOR SIGUE EN LA RADIO · CONTROLAS A " + relevo.DisplayName.ToUpperInvariant() : SP.Operacion.MandoTactico.TextoDeMantenerParaSoltar, 2.2f);
+            }
+
+            if (Rig.Mode == ControlMode.Fps && Brain.Current != null) ReclamarControl(Brain.Current);
+
+            if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue && Brain.Current != null && Vehicle != null)
+            {
+                var role = Vehicle.RoleOf(Brain.Current);
+                if (role != null) EnterPossessedVehicleSeat(role.Value);
+            }
+
+            if (Rig.Mode == ControlMode.Rts)
+            {
+                Vector3 focus = currentSeat.HasValue ? Vehicle.transform.position
+                    : Brain.Current != null ? Brain.Current.transform.position : Vector3.zero;
+                // Restaura el paneo/zoom que el jugador dejo la ultima
+                // vez que estuvo en RTS, en vez de recentrar siempre
+                // en el poseido -- si no hay vista guardada (primera
+                // vez), cae a centrar en foco como antes.
+                Rig.RestoreOrSetRtsView(focus);
+                CentrarRtsEnElPoseido(focus);   // #121 (antes: centro de la escuadra, bug #049)
+            }
+
+            if (ModeToast != null) ModeToast.Show(Rig.Mode == ControlMode.Rts ? "VISTA RTS" : "VISTA FPS");
+            // 184: el salto entre vista FPS y RTS era un corte
+            // seco. Un destello gris muy corto lo lee como una
+            // transicion. No va dentro de CameraRig.SetMode: eso
+            // tambien lo llama la secuencia de muerte, donde un
+            // flash encima de la camara de muerte seria un
+            // accidente visual.
+            SP.UI.ScreenFlashView.ModeChange();
+        }
+
+        // #116: paneo RTS (direccion en el plano local de la camara). Publico para medir la velocidad en los checks.
+        public void PanearRts(Vector3 direccion, bool rapido, float dt)
+        {
+            float velocidad = RtsPanSpeed * (rapido ? RtsPanShiftMultiplier : 1f);
+            Rig.Pan(Quaternion.Euler(0f, Rig.rtsYaw, 0f) * direccion.normalized * velocidad * dt);
+        }
+
+        // Costura de pruebas (#124): el editor sin foco no recibe [Q]/[E] reales como "isPressed" de forma fiable.
+        public static bool AlturaRtsPruebaE, AlturaRtsPruebaQ;
+
+        // #121: entrar a RTS centra en el soldado que estabas manejando (o el vehiculo), conservando zoom, giro e inclinacion.
+        public void CentrarRtsEnElPoseido(Vector3 foco)
+        {
+            if (Rig != null) Rig.CentrarRtsEn(foco, 0f);
+        }
+
         public void CentrarRtsEnLaEscuadra()
         {
             if (Rig == null || Squad == null) return;
@@ -2446,6 +2539,7 @@ namespace SP.Player
                 return false;
             }
             if (Brain.Current == target) return false;
+            if (SP.Operacion.MandoTactico.BloqueaLaPosesion()) return false;   // WP10 (#101): en la radio no se cambia de soldado
             if (torretaActual != null) SalirDeTorreta();
 
             // Pedido explicito: antes esto se rechazaba de plano ("esta
@@ -3034,7 +3128,11 @@ namespace SP.Player
                     {
                         mostrar = true; destacado = true;
                         ancla = ord.Raiz.position + Vector3.up * 2.6f;
-                        pista = $"[Q] ENVIAR AL {ord.QuienDebe}  ·  O ACERCATE Y MANTEN [{tecla}]";
+                        // Bug #083/#084: la pista decia siempre "ENVIAR AL ...", incluso al que SI puede operarlo. Ahora: si el que
+                        // manejas puede, [E]; si no, que rol hace falta y [Q] para mandarlo.
+                        pista = yo != null && ord.PuedeOperar(yo)
+                            ? $"{ord.VerboDeUso}  ·  O [Q] ENVIAR AL {ord.QuienDebe}"
+                            : $"DEBES SER {ord.QuienDebe}  ·  [Q] ENVIARLO";
                     }
                     else if (aim.HitTransform != null)
                     {
@@ -3102,9 +3200,17 @@ namespace SP.Player
             if (pan.sqrMagnitude > 0.0001f)
             {
                 bool shiftHeld = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
-                float velocidad = rtsPanSpeed * (shiftHeld ? RtsPanShiftMultiplier : 1f);
-                Rig.Pan(Quaternion.Euler(0f, Rig.rtsYaw, 0f) * pan.normalized * velocidad * Time.deltaTime);
+                PanearRts(pan, shiftHeld, Time.deltaTime);
             }
+
+            // #124: [Q] baja y [E] sube la camara RTS (la accion contextual de [Q] queda solo en FPS; la radio ya no se suelta con [E]).
+            float ejeAltura = 0f;
+            if (OrdenesMenu == null || !OrdenesMenu.Abierto)
+            {
+                if (KeyBindings.IsPressed(KeyBindings.Interactuar) || AlturaRtsPruebaE) ejeAltura += 1f;
+                if (KeyBindings.IsPressed(KeyBindings.CiclarPosesion) || AlturaRtsPruebaQ) ejeAltura -= 1f;
+            }
+            Rig.MoverAlturaRts(ejeAltura, Time.deltaTime);
 
             if (KeyBindings.WasPressed(KeyBindings.FocalizarRts))
             {
@@ -3163,7 +3269,7 @@ namespace SP.Player
             }
 
             string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
-            SetInstructionText($"[Arrastrar] seleccionar · [Shift+Click] sumar · [Click der.] mover la selección · [Ctrl+Click der.] trazar recorrido · [C] mantener: coberturas y rutas · [WASD] panear · [Shift] panear rápido · [Rueda] zoom al cursor · [TAB] vista FPS · {selectionLabel}");
+            SetInstructionText($"[Arrastrar] seleccionar · [Shift+Click] sumar · [Click der.] mover la selección · [Ctrl+Click der.] trazar recorrido · [C] mantener: coberturas y rutas · [WASD] panear · [Shift] panear rápido · [Q]/[E] bajar/subir cámara · [Rueda] zoom al cursor · [TAB] vista FPS · {selectionLabel}");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -3245,7 +3351,7 @@ namespace SP.Player
                 // cursor cayera justo sobre el PISO. Con el cursor sobre un aliado, un cuerpo caido, una torreta,
                 // un techo o un muro (o sobre nada), no pasaba absolutamente nada y no se avisaba. Ahora el
                 // destino es el piso que queda bajo el cursor, salvo enemigos y vehiculos (que tienen su propia orden).
-                if (!esCobertura && result.Type != AimTargetType.Ground && result.Type != AimTargetType.Enemy && result.Type != AimTargetType.Vehicle && result.Type != AimTargetType.Torreta
+                if (!esCobertura && result.Type != AimTargetType.Ground && result.Type != AimTargetType.Enemy && result.Type != AimTargetType.Vehicle && result.Type != AimTargetType.Torreta && result.Type != AimTargetType.Radio
                     && AimTargeting.PisoBajoRayo(screenRay, out var pisoBajoCursor))
                     result = new AimResult { Type = AimTargetType.Ground, Point = pisoBajoCursor };
 
@@ -3260,6 +3366,15 @@ namespace SP.Player
                     int cubiertos = IssueCoverOrderForSelection(Selection.Selected, result.Point,
                         result.Type == AimTargetType.Obstacle ? result.HitTransform : null);
                     if (cubiertos == 0) RejectOrder("NO HAY COBERTURA LIBRE AHI");
+                }
+                else if (result.Type == AimTargetType.Radio)
+                {
+                    // #119: clic derecho sobre la radio con soldados seleccionados = el primero que pueda va a operarla.
+                    var dir = SP.Operacion.OperacionDirector.Instancia;
+                    string motivoRadio = "NO SE PUEDE OPERAR LA RADIO AHORA";
+                    if (Selection.SelectedVehicle != null) RejectOrder("SELECCIONA UN SOLDADO PARA LA RADIO");
+                    else if (Selection.Selected.Count == 0) RejectOrder("NADIE SELECCIONADO: ELEGI QUIEN OPERA LA RADIO");
+                    else if (dir == null || !dir.OrdenarOperarLaRadio(Selection.Selected, out motivoRadio)) RejectOrder(motivoRadio);
                 }
                 else if (result.Type == AimTargetType.Torreta)
                 {
@@ -3312,6 +3427,11 @@ namespace SP.Player
                     // una por soldado (con 50 seleccionados eran 50 tonos
                     // superpuestos). El log ya lo emite el metodo de lote.
                     OrderService.IssueAttackOrderForSelection(Selection.Selected, result.Soldier);
+                }
+                // Bug #071: clic derecho sobre un vehiculo ENEMIGO = los seleccionados lo atacan (cursor Atacar).
+                else if (result.Type == AimTargetType.Vehicle && result.Vehicle != null && result.Vehicle.Hostil(TeamId.Player) && Selection.Selected.Count > 0)
+                {
+                    if (OrderService.IssueAttackVehicleOrderForSelection(Selection.Selected, result.Vehicle) == 0) RejectOrder("NADIE PUEDE ATACARLO");
                 }
                 else if (result.Type == AimTargetType.Vehicle && result.Vehicle.IsDestroyed)
                 {
@@ -3369,6 +3489,24 @@ namespace SP.Player
             // MUNDO correspondiente, sin tener que panear la camara hasta
             // ahi. Se chequea antes que el clic normal para que el clic
             // sobre el minimapa no sea interpretado como clic en el mundo.
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame && MinimapRef != null && Selection.Selected.Count == 0)
+            {
+                var minimapSel = MinimapRef.transform as RectTransform;
+                if (minimapSel != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(minimapSel, mouse.position.ReadValue(), null, out var localSel)
+                    && MinimapRef.TryMinimapPointToWorld(localSel, out var mundoSel))
+                {
+                    Soldier cercano = null; float mejor = 9f;
+                    var todos = ActorRegistry.All;
+                    for (int i = 0; i < todos.Count; i++)
+                    {
+                        var a = todos[i] as Soldier;
+                        if (a == null || a.Team != TeamId.Player || a.Role == RoleType.Civilian || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy) continue;
+                        float d = new Vector2(a.transform.position.x - mundoSel.x, a.transform.position.z - mundoSel.z).magnitude;
+                        if (d < mejor) { mejor = d; cercano = a; }
+                    }
+                    if (cercano != null) { Selection.SelectSingle(cercano); return; }
+                }
+            }
             if (mouse != null && mouse.leftButton.wasPressedThisFrame && MinimapRef != null && Selection.Selected.Count > 0)
             {
                 var minimapRt = MinimapRef.transform as RectTransform;
@@ -3565,6 +3703,8 @@ namespace SP.Player
             formationGhosts.Clear();
         }
 
+        public void AvisarRechazo(string reason) => RejectOrder(reason);
+
         void RejectOrder(string reason)
         {
             if (ModeToast != null) ModeToast.Show(reason, 1.2f);
@@ -3753,6 +3893,12 @@ namespace SP.Player
                 {
                     var ray = Rig.Cam.ScreenPointToRay(mousePos);
                     var result = Aim.Evaluate(ray, null);
+                    // #115: clic sobre el ROMBO de un aliado (marcador sobre su cabeza, que no tiene collider) = seleccionarlo.
+                    if (result.Type != AimTargetType.Ally && result.Type != AimTargetType.Vehicle)
+                    {
+                        var bajoRombo = AliadoBajoElRombo(mousePos);
+                        if (bajoRombo != null) result = new AimResult { Type = AimTargetType.Ally, Soldier = bajoRombo, Point = bajoRombo.transform.position, HitTransform = bajoRombo.transform };
+                    }
                     if (result.Type == AimTargetType.Ally)
                     {
                         if (shift) Selection.AddToSelection(result.Soldier);
@@ -3775,6 +3921,29 @@ namespace SP.Player
                     SelectAlliesInScreenRect(dragStart, mousePos, shift);
                 }
             }
+        }
+
+        // #115: aliado cuyo rombo (sobre la cabeza) cae a menos de RadioDeRomboPx del cursor. Publico para los checks.
+        public const float RadioDeRomboPx = 30f;
+        public Soldier AliadoBajoElRombo(Vector2 pantalla)
+        {
+            if (Rig == null || Rig.Cam == null) return null;
+            Soldier mejor = null; float mejorD = RadioDeRomboPx;
+            var todos = ActorRegistry.All;
+            for (int i = 0; i < todos.Count; i++)
+            {
+                var a = todos[i] as Soldier;
+                if (a == null || a.Team != TeamId.Player || a.Role == RoleType.Civilian || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy) continue;
+                if (SP.Operacion.MandoTactico.EsOperadorDeRadio(a)) continue;
+                foreach (var h in new[] { 0.8f, 2.4f })
+                {
+                    var sp = Rig.Cam.WorldToScreenPoint(a.transform.position + Vector3.up * h);
+                    if (sp.z < 0f) continue;
+                    float d = Vector2.Distance(new Vector2(sp.x, sp.y), pantalla);
+                    if (d < mejorD) { mejorD = d; mejor = a; }
+                }
+            }
+            return mejor;
         }
 
         // El cuadro de selección vive en un Canvas con CanvasScaler
@@ -3829,9 +3998,13 @@ namespace SP.Player
             bool first = !addToExisting;
             bool any = false;
 
-            foreach (var s in Squad)
+            // WP10 (#101): el recuadro alcanza a TODOS los aliados vivos (tambien a los milicianos que no estan en la lista Squad).
+            var aliados = ActorRegistry.All;
+            for (int ia = 0; ia < aliados.Count; ia++)
             {
-                if (s == null || s.Team != TeamId.Player || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                var s = aliados[ia];
+                if (s == null || s.Team != TeamId.Player || s.Role == RoleType.Civilian || s.Health == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                if (SP.Operacion.MandoTactico.EsOperadorDeRadio(s)) continue;   // el que esta en la radio no se arrastra con el recuadro
 
                 var sp = Rig.Cam.WorldToScreenPoint(s.transform.position);
                 if (sp.z < 0f) continue;

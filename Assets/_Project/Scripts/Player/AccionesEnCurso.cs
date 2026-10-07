@@ -45,11 +45,17 @@ namespace SP.Player
                 Restante = Mathf.Max(0f, restanteSegundos),
                 Estampa = Time.realtimeSinceStartup,
             };
+            // Bug #067: toda accion que se reporta aca tambien se anima (AnimacionDeAccion decide la postura segun el verbo).
+            var tipo = SP.Presentation.AnimacionDeAccion.TipoDeVerbo(verboEs);
+            if (tipo.HasValue)
+                SP.Presentation.AnimacionDeAccion.Tick(actor, objetivo != null ? objetivo.position : puntoObjetivo, tipo.Value, Time.deltaTime);
         }
 
         public static void Terminar(Soldier actor)
         {
-            if (actor != null) porActor.Remove(actor.Id);
+            if (actor == null) return;
+            porActor.Remove(actor.Id);
+            SP.Presentation.AnimacionDeAccion.Terminar(actor);
         }
 
         public static void Limpiar() => porActor.Clear();

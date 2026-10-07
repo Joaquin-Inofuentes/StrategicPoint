@@ -142,6 +142,7 @@ namespace SP.Player
         // Feedback: el medico ya llego y esta atendiendo (para sonar UNA vez al empezar) y cuando se
         // mostro el ultimo "+N" flotante.
         static bool atendiendo;
+        public static bool Atendiendo => atendiendo;   // el medico ya esta al lado y curando (lo leen los checks)
         static float proximoNumero;
 
         static void EmpezarAtencion(Vector3 donde, string texto)
@@ -257,12 +258,12 @@ namespace SP.Player
         public static Soldier BuscarEnfermero(Soldier herido)
         {
             var conRol = ActorRegistry.FindNearest(herido.transform.position,
-                s => s != herido && s.Team == herido.Team && s.Health != null && s.Health.IsAlive
+                s => s != herido && s.Team == herido.Team && s.Health != null && s.Health.IsAlive && s.gameObject.activeInHierarchy
                      && s.Role == RoleType.Medic && !OrderService.LoManejaElJugador(s));
             if (conRol != null) return conRol;
 
             return ActorRegistry.FindNearest(herido.transform.position,
-                s => s != herido && s.Team == herido.Team && s.Health != null && s.Health.IsAlive && s.Role != RoleType.Civilian
+                s => s != herido && s.Team == herido.Team && s.Health != null && s.Health.IsAlive && s.gameObject.activeInHierarchy && s.Role != RoleType.Civilian
                      && !OrderService.LoManejaElJugador(s));
         }
 
@@ -297,6 +298,12 @@ namespace SP.Player
 
         static Soldier medicoRetenido;
         static float proximoReSeguir;
+
+        static void SoltarRetenido()
+        {
+            if (retenido != null && retenido.Motor != null) retenido.Motor.Retenido = false;
+            retenido = null;
+        }
 
         static void Soltar()
         {
@@ -467,7 +474,7 @@ namespace SP.Player
                 var revivido = Herido;
                 Reanimacion.Ejecutar(revivido);   // ronda 13: camino unico
                 GameLog.Line($"{Enfermero.DisplayName} reanimo a {revivido.DisplayName}");
-                Feedback.Accion(SfxKind.Revive, "¡" + revivido.DisplayName.ToUpperInvariant() + " DE VUELTA!", revivido.transform.position, Feedback.Ok, aviso: true, pulso: true, volumen: 0.9f);
+                Feedback.Visual("¡" + revivido.DisplayName.ToUpperInvariant() + " DE VUELTA!", revivido.transform.position, Feedback.Ok, aviso: true, pulso: true);   // el sonido y los anillos los pone FeedbackDeRevivir (bug #089)
                 Cancelar();
                 return;
             }
@@ -486,7 +493,15 @@ namespace SP.Player
             // El herido de IA se planta apenas hay pedido (el poseido lo maneja el jugador: lo frena PlayerInputDriver). Medido:
             // si solo se plantaba con el medico cerca, el herido seguia cargando contra el enemigo y moria antes de que llegara.
             var poseidoAhora = PlayerInputDriver.Activo != null && PlayerInputDriver.Activo.Brain != null ? PlayerInputDriver.Activo.Brain.Current : null;
-            if (Herido != poseidoAhora) Retener(Herido);
+            if (Herido != poseidoAhora)
+            {
+                // WP4 (#087): un herido que se esta replegando NO se planta a la intemperie esperando al medico: se lo retiene solo si ya
+                // esta en cobertura o a 3 m o menos del medico (mientras tanto camina hacia el, ver AiBrain.Herido).
+                var hb = Herido.Brain;
+                bool seRepliega = hb != null && hb.EnRepliegue;
+                if (!seRepliega || hb.EnCobertura || d <= 3f) Retener(Herido);
+                else SoltarRetenido();
+            }
             else if (Herido == poseidoAhora) Soltar();
             // Histeresis: una vez atendiendo, recien se corta si se separan bastante (antes cada paso cruzaba el borde del
             // alcance y el "CURANDO…" con su sonido se repetia en bucle: bug #039).

@@ -19,8 +19,12 @@ namespace SP.Player
         {
             if (caido == null || caido.Health == null || caido.Health.IsAlive) return false;
 
-            int vida = Mathf.Max(1, Mathf.RoundToInt(caido.Health.MaxHealth * Mathf.Clamp01(fraccionDeVida)));
-            caido.Health.Initialize(caido.Id, vida);
+            // WP11: antes era Initialize(id, vida): con fraccion < 1 (la escuadra revive "a mitad de vida") el MAXIMO quedaba partido a la mitad
+            // para siempre (50 de 50 en lugar de 50 de 100). Se reinicia con el maximo y recien despues se baja la vida actual.
+            int max = caido.Health.MaxHealth;
+            int vida = Mathf.Max(1, Mathf.RoundToInt(max * Mathf.Clamp01(fraccionDeVida)));
+            caido.Health.Initialize(caido.Id, max);
+            if (vida < max) caido.Health.RestaurarVida(vida);
             caido.Motor.ResetMotionState();
             caido.SetBodyVisible(true);
 

@@ -38,6 +38,7 @@ namespace SP.Ai
             if (self == null || self.Weapon == null) return false;
             if (TickSupresion()) { /* agachado: puede seguir disparando */ }
             if (HuirDeGranada(dt)) return true;
+            if (AlejarseDeCargaArmada(dt)) return true;   // #106
             if (TickSuprimirOrdenado(dt)) return true;
             IntentarLanzarGranada();
             return false;

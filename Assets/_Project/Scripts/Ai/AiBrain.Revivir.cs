@@ -128,7 +128,7 @@ namespace SP.Ai
                     if (progresoCuracion >= SP.Player.PedidoDeCuracion.SegundosDeReanimar)
                     {
                         SP.Player.Reanimacion.Ejecutar(targetCuracion);
-                        SP.Presentation.Feedback.Accion(SP.Presentation.SfxKind.Revive, "¡" + targetCuracion.DisplayName.ToUpperInvariant() + " DE VUELTA!", targetCuracion.transform.position, SP.Presentation.Feedback.Ok, aviso: true, pulso: true, volumen: 0.9f);
+                        SP.Presentation.Feedback.Visual("¡" + targetCuracion.DisplayName.ToUpperInvariant() + " DE VUELTA!", targetCuracion.transform.position, SP.Presentation.Feedback.Ok, aviso: true, pulso: true);   // el sonido y los anillos los pone FeedbackDeRevivir (bug #089)
                         CancelarCuracionLocal();
                     }
                 }

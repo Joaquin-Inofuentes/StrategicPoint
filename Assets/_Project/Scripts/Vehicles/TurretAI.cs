@@ -14,6 +14,19 @@ namespace SP.Vehicles
     {
         [SerializeField] float range = 40f;
         [SerializeField] float retargetInterval = 0.4f;
+        // Bug #069: asiento que opera ESTA arma. Gunner = el canon (se aparta si hay alguien en ese asiento); Passenger1 = la
+        // metralleta, que opera quien este en ese asiento si es IA (si es el jugador, manda el mouse).
+        [SerializeField] VehicleSeatRole asiento = VehicleSeatRole.Gunner;
+        public VehicleSeatRole Asiento => asiento;
+        public void ConfigurarAsiento(VehicleSeatRole nuevo, float alcance)
+        {
+            asiento = nuevo;
+            range = alcance;
+        }
+        bool EsMetralleta => asiento != VehicleSeatRole.Gunner;
+        public int Disparos { get; private set; }
+        // WP9b (#097): el jefe (TanqueJefe) maneja su canon por su cuenta (cañonazo con aviso en el piso): la IA generica no dispara ni apunta.
+        public bool Silenciada { get; set; }
 
         // BALANCE: un canon enemigo perfecto (giro + linea de tiro = tiro instantaneo,
         // como era antes) no da tiempo a esquivar moviendose lateralmente. Ahora, apenas
@@ -96,7 +109,7 @@ namespace SP.Vehicles
         {
             if (!bootstrapped) Bootstrap();
             if (SP.Ai.AiBrain.IAPausada) return; // cinematica de apertura en curso: ver AiBrain.Tick()
-            if (turret == null) return;
+            if (turret == null || Silenciada) return;
 
             // BUG REAL: esto disparaba solo, sin nadie a bordo -- un
             // tanque vacio (sin conductor, artillero ni pasajero, de
@@ -114,16 +127,30 @@ namespace SP.Vehicles
                 return;
             }
 
+            // La metralleta la opera quien este en su asiento: si no hay nadie o es el jugador, la IA se aparta; si es un aliado
+            // (o un enemigo), dispara sola. No pasa por las reglas del canon (artillero / un solo tripulante).
+            Soldier operadorMg = null;
+            if (EsMetralleta)
+            {
+                operadorMg = vehicle.SoldierInSeat(asiento);
+                bool humano = operadorMg == null || (operadorMg.Brain != null && operadorMg.Brain.IsPossessedByPlayer)
+                    || operadorMg.Health == null || !operadorMg.Health.IsAlive;
+                if (humano) { target = null; targetVehicle = null; relojDeDisparo = 0f; return; }
+            }
+
             // Si hay un artillero de carne y hueso adentro, la IA se
             // aparta: el mouse de quien lo maneje manda (jugador o, si
             // algun dia hay un enemigo humano-controlado, ese enemigo).
             bool hasHumanGunner = vehicle.Gunner != null;
-            PublishControlChange(!hasHumanGunner);
-            if (hasHumanGunner)
+            if (!EsMetralleta)
             {
-                target = null;
-                relojDeDisparo = 0f;
-                return;
+                PublishControlChange(!hasHumanGunner);
+                if (hasHumanGunner)
+                {
+                    target = null;
+                    relojDeDisparo = 0f;
+                    return;
+                }
             }
 
             // BUG REAL reportado: con UN solo tripulante (el conductor,
@@ -140,7 +167,7 @@ namespace SP.Vehicles
             // ni humano ni otra IA -- asi que no debe apuntar ni disparar
             // nunca, este el vehiculo parado o en movimiento. Si el
             // jugador quiere usarla, cambia de asiento a mano (SwitchSeat).
-            if (vehicle.OccupantCount == 1)
+            if (!EsMetralleta && vehicle.OccupantCount == 1)
             {
                 PublishControlChange(false);
                 target = null;
@@ -154,11 +181,11 @@ namespace SP.Vehicles
             // que dispararle al equipo CONTRARIO al de su propia gente,
             // nunca a la propia -- amigo o enemigo lo decide la
             // tripulacion real, no una constante fija.
-            var crewTeam = vehicle.Occupants[0].Team;
+            var crewTeam = EsMetralleta ? operadorMg.Team : vehicle.Occupants[0].Team;
             var enemyTeam = crewTeam == TeamId.Player ? TeamId.Enemy : TeamId.Player;
 
             // Tanque hostil a la vista: se lo ataca primero.
-            if (targetVehicle != null && (targetVehicle.IsDestroyed || targetVehicle.OccupantCount == 0)) targetVehicle = null;
+            if (targetVehicle != null && !targetVehicle.Hostil(crewTeam)) targetVehicle = null;
             var previousTarget = target;
             retargetTimer -= dt;
             if (retargetTimer <= 0f || target == null || !target.Health.IsAlive || target.Team != enemyTeam)
@@ -176,14 +203,14 @@ namespace SP.Vehicles
                 targetVehicle = BuscarTanqueHostil(crewTeam);
 
             bool esEnemigo = crewTeam == TeamId.Enemy;
-            turret.SpreadDeg = esEnemigo ? DispersionCanonEnemigo : 0f;
+            turret.SpreadDeg = esEnemigo ? DispersionCanonEnemigo : (EsMetralleta ? 1.5f : 0f);
 
             if (targetVehicle != null)
             {
                 var puntoTanque = targetVehicle.transform.position + Vector3.up * 0.9f;
                 turret.AimAt(puntoTanque, dt);
                 bool listo = turret.IsAimedAt(puntoTanque) && HayLineaDeTiro(puntoTanque, targetVehicle.transform);
-                if (TicketDeDisparo(listo, esEnemigo, dt)) turret.TryFire();
+                if (TicketDeDisparo(listo, esEnemigo, dt) && turret.TryFire()) Disparos++;
                 return;
             }
 
@@ -198,7 +225,7 @@ namespace SP.Vehicles
             // pero ahora seria el tanque bombardeando la barricada que
             // tiene adelante mientras el enemigo mira.
             bool listoInfanteria = turret.IsAimedAt(aimPoint) && HayLineaDeTiro(aimPoint);
-            if (TicketDeDisparo(listoInfanteria, esEnemigo, dt)) turret.TryFire();
+            if (TicketDeDisparo(listoInfanteria, esEnemigo, dt) && turret.TryFire()) Disparos++;
         }
 
         // true = el canon dispara este tick. Tripulacion PROPIA (jugador): tiro
@@ -245,7 +272,7 @@ namespace SP.Vehicles
             for (int i = 0; i < Vehicle.Todos.Count; i++)
             {
                 var v = Vehicle.Todos[i];
-                if (v == null || v == vehicle || v.IsDestroyed || v.OccupantCount == 0 || v.Bando == crewTeam) continue;
+                if (v == null || v == vehicle || !v.Hostil(crewTeam)) continue;
                 float d = (v.transform.position - transform.position).sqrMagnitude;
                 if (d <= mejorD) { mejorD = d; mejor = v; }
             }

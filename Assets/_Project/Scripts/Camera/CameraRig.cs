@@ -46,6 +46,9 @@ namespace SP.CameraSystem
         [SerializeField] float rtsHeight = 30f;
         [SerializeField] float rtsMinHeight = 12f;
         [SerializeField] float rtsMaxHeight = 70f;
+        // #124: Q/E suben y bajan la camara RTS hasta 120 m (el valor serializado de la escena, 70, queda como minimo del tope).
+        public const float AlturaMaximaRts = 120f;
+        public float AlturaMinimaRts => rtsMinHeight;
         // Pedido explicito: "no quiero que sea ortogonal, quiero que sea
         // perspectiva". 90° puros (mirando derecho hacia abajo) en una
         // camara en perspectiva se ve IGUAL que ortografico -- sin angulo no
@@ -80,7 +83,7 @@ namespace SP.CameraSystem
             float distancia = rtsCurrentHeight / Mathf.Max(0.05f, Mathf.Cos(inclinacion * Mathf.Deg2Rad));
             inclinacion = Mathf.Clamp(inclinacion + deltaInclinacion, InclinacionOrbitaMin, InclinacionOrbitaMax);
             rtsInclinacionAdelante = inclinacion;
-            float altura = Mathf.Clamp(distancia * Mathf.Cos(inclinacion * Mathf.Deg2Rad), rtsMinHeight, rtsMaxHeight);
+            float altura = Mathf.Clamp(distancia * Mathf.Cos(inclinacion * Mathf.Deg2Rad), rtsMinHeight, AlturaMaximaRts);
             rtsCurrentHeight = altura;
             rtsTargetHeight = altura;
         }
@@ -409,8 +412,14 @@ namespace SP.CameraSystem
         float savedRtsYaw = 0f;
         float savedRtsInclinacion = -1f;
 
+        // WP10 (#101): mientras el operador esta en la radio de campana la vista tactica es obligatoria: ninguna ruta (Tab, posesion, roster, [Espacio])
+        // puede sacar la camara de RTS. Lo prende y lo apaga MandoTactico; las pruebas lo leen.
+        public static System.Func<bool> ProveedorDeRtsForzado;
+        public static bool RtsForzado => ProveedorDeRtsForzado != null && ProveedorDeRtsForzado();
+
         public void SetMode(ControlMode mode, Vector3? rtsFallbackCenter = null)
         {
+            if (RtsForzado && mode == ControlMode.Fps && Mode == ControlMode.Rts) return;
             adsBlend = 0f;   // al cambiar de vista se pierde el encuadre de mira: no se arrastra un apuntado colgado
             bool wasRts = Mode == ControlMode.Rts;
             bool goingToRts = mode == ControlMode.Rts;
@@ -493,7 +502,7 @@ namespace SP.CameraSystem
             rtsInclinacionAdelante = Mathf.Clamp(90f - Mathf.DeltaAngle(0f, euler.x), 0f, 75f);
             rtsYaw = euler.y;
 
-            float altura = Mathf.Clamp(pos.y, rtsMinHeight, rtsMaxHeight);
+            float altura = Mathf.Clamp(pos.y, rtsMinHeight, AlturaMaximaRts);
             Vector3 forward = Quaternion.Euler(RtsLookEuler) * Vector3.forward;
             float descenso = -forward.y;
             // El foco es donde el rayo de la camara toca el suelo; si la pose no mira hacia abajo, el punto de abajo.
@@ -533,7 +542,7 @@ namespace SP.CameraSystem
             foco = new Vector3(foco.x, 0f, foco.z);
             AcotarAlMapa(ref foco);
             rtsFocusPoint = foco;
-            float altura = Mathf.Clamp(Mathf.Max(rtsCurrentHeight, radio * 2.4f + 18f), rtsMinHeight, rtsMaxHeight);
+            float altura = Mathf.Clamp(Mathf.Max(rtsCurrentHeight, radio * 2.4f + 18f), rtsMinHeight, AlturaMaximaRts);
             rtsCurrentHeight = altura;
             rtsTargetHeight = altura;
             transform.rotation = Quaternion.Euler(RtsLookEuler);
@@ -885,8 +894,35 @@ namespace SP.CameraSystem
         // Ahora se acota al terreno de verdad, medido por NavService desde
         // los colliders de la escena. El campo serializado queda como
         // respaldo para una escena sin colliders.
+        // #116: zona jugable del momento (la pone el director de la Operacion mientras se defiende la ciudad); null = todo el mapa.
+        public static Rect? LimiteDePaneoRts;
+        public Vector3 PanTargetActual => panTargetInitialized ? panTarget : rtsFocusPoint;
+        public bool TieneVistaRtsGuardada => savedRtsFocus.HasValue && savedRtsHeight > 0f;
+
+        // #124: sube (+) o baja (-) la camara RTS con aceleracion suave. eje en [-1,1]; devuelve la velocidad vertical actual (u/s).
+        float velAlturaRts;
+        public const float VelocidadAlturaRts = 45f, AceleracionAlturaRts = 140f;
+        public float MoverAlturaRts(float eje, float dt)
+        {
+            if (Mode != ControlMode.Rts || IsTransitioning) { velAlturaRts = 0f; return 0f; }
+            velAlturaRts = Mathf.MoveTowards(velAlturaRts, Mathf.Clamp(eje, -1f, 1f) * VelocidadAlturaRts, AceleracionAlturaRts * dt);
+            if (Mathf.Abs(velAlturaRts) < 0.001f) return 0f;
+            float actual = rtsTargetHeight < 0f ? rtsCurrentHeight : rtsTargetHeight;
+            float nueva = Mathf.Clamp(actual + velAlturaRts * dt, rtsMinHeight, AlturaMaximaRts);
+            if (Mathf.Approximately(nueva, actual)) velAlturaRts = 0f;
+            rtsTargetHeight = nueva; zoomAnclado = false;
+            return velAlturaRts;
+        }
+
         void AcotarAlMapa(ref Vector3 punto)
         {
+            if (LimiteDePaneoRts.HasValue)
+            {
+                var r = LimiteDePaneoRts.Value;
+                punto.x = Mathf.Clamp(punto.x, r.xMin, r.xMax);
+                punto.z = Mathf.Clamp(punto.z, r.yMin, r.yMax);
+                return;
+            }
             if (SP.Core.NavService.TryArea(out var limites))
             {
                 punto.x = Mathf.Clamp(punto.x, limites.min.x, limites.max.x);
@@ -929,7 +965,7 @@ namespace SP.CameraSystem
         public void Zoom(float delta)
         {
             float raw = rtsCurrentHeight - delta;
-            float clamped = Mathf.Clamp(raw, rtsMinHeight, rtsMaxHeight);
+            float clamped = Mathf.Clamp(raw, rtsMinHeight, AlturaMaximaRts);
             ZoomAtLimit = Mathf.Abs(raw - clamped) > 0.001f;
             rtsCurrentHeight = clamped;
             rtsTargetHeight = clamped;
@@ -958,7 +994,7 @@ namespace SP.CameraSystem
             if (cam == null || Mode != ControlMode.Rts || IsTransitioning) { Zoom(delta); return; }
             if (rtsTargetHeight < 0f) rtsTargetHeight = rtsCurrentHeight;
             float raw = rtsTargetHeight - delta;
-            float clamped = Mathf.Clamp(raw, rtsMinHeight, rtsMaxHeight);
+            float clamped = Mathf.Clamp(raw, rtsMinHeight, AlturaMaximaRts);
             ZoomAtLimit = Mathf.Abs(raw - clamped) > 0.001f;
             rtsTargetHeight = clamped;
             zoomPixel = pantalla;

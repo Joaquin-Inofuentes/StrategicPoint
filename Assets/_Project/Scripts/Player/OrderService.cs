@@ -41,16 +41,38 @@ namespace SP.Player
         // de las entradas de orden pueda olvidarsela.
         public static bool LoManejaElJugador(Soldier s)
         {
+            if (s != null && SP.Operacion.MandoTactico.EsOperadorDeRadio(s)) return true;   // WP10 (#101): el de la radio no recibe ordenes
             return s != null && ManejadoAMano != null && ReferenceEquals(s, ManejadoAMano);
         }
 
-        static List<Soldier> AliveOnly(IEnumerable<Soldier> selection)
+        // WP10 (#101): el tutorial del mando se entera de que se ordeno atacar a un vehiculo (selection, vehiculo).
+        public static event System.Action<IReadOnlyList<Soldier>, Vehicle> AtaqueAVehiculoOrdenado;
+
+        // #117: cuantas veces se rechazo una orden por ser el destinatario el operador de la radio (para los checks) y el ultimo texto.
+        public static int RechazosPorOcupado { get; private set; }
+        public static string UltimoRechazoPorOcupado { get; private set; } = "";
+        static float ultimoAvisoOcupado = -10f;
+        public const string TextoOcupadoEnLaRadio = "ESTA OCUPADO EN LA RADIO";
+
+        static void AvisarOcupado(Soldier s)
+        {
+            RechazosPorOcupado++;
+            UltimoRechazoPorOcupado = (NombreCorto(s) + " " + TextoOcupadoEnLaRadio).Trim();
+            if (Time.unscaledTime - ultimoAvisoOcupado < 0.6f) return;
+            ultimoAvisoOcupado = Time.unscaledTime;
+            SP.UI.AlertQueue.Push(UltimoRechazoPorOcupado, SP.UI.AlertPriority.Alta, 2.2f);
+            if (s != null) Feedback.Accion(SfxKind.EmptyClick, UltimoRechazoPorOcupado, s.transform.position, Feedback.Warn, aviso: false, pulso: true, volumen: 0.5f);
+            PlayRejectSound();
+        }
+
+        static List<Soldier> AliveOnly(IEnumerable<Soldier> selection, bool avisar = false)
         {
             var list = new List<Soldier>();
             if (selection == null) return list;
             foreach (var s in selection)
             {
                 if (s == null || s.Health == null || !s.Health.IsAlive) continue;
+                if (avisar && SP.Operacion.MandoTactico.EsOperadorDeRadio(s)) { AvisarOcupado(s); continue; }
                 // Se filtra ACA y no en cada orden para que el conteo del
                 // lote sea honesto: si dice "3 soldados" tienen que moverse
                 // tres, y las posiciones de la formacion se reparten entre
@@ -382,12 +404,36 @@ namespace SP.Player
         public static void IssueAttackOrderForSelection(IEnumerable<Soldier> selection, Soldier enemy)
         {
             if (selection == null || enemy == null) return;
-            var list = AliveOnly(selection);
+            var list = AliveOnly(selection, true);
             if (list.Count == 0) return;
 
             for (int i = 0; i < list.Count; i++) IssueAttackOrder(list[i], enemy);
+            DianaDeObjetivo.Mostrar(enemy);   // bug #096: diana sobre el blanco mientras alguien lo ataque
 
             AnnounceBatch(list, $"Se dio la orden de atacar a {enemy.DisplayName}");
+        }
+
+        // Bug #069/#071: ordenar atacar un VEHICULO enemigo (la camioneta no tiene tripulacion: no es un Soldier). Los aliados a pie le
+        // disparan y el de ASALTO saca el lanzacohetes (AiBrain.TickAtaqueAVehiculo). Devuelve a cuantos se les dio la orden.
+        public static int IssueAttackVehicleOrderForSelection(IEnumerable<Soldier> selection, Vehicle vehiculo)
+        {
+            if (selection == null || vehiculo == null || !vehiculo.Hostil(TeamId.Player)) return 0;
+            var list = AliveOnly(selection, true);
+            if (list.Count == 0) return 0;
+            int n = 0;
+            for (int i = 0; i < list.Count; i++)
+            {
+                var brain = list[i].GetComponent<AiBrain>();
+                if (brain == null) continue;
+                brain.IsPossessedByPlayer = false;
+                brain.IssueAttackVehicleOrder(vehiculo);
+                n++;
+            }
+            if (n == 0) return 0;
+            OrderMarkerFx.Spawn(vehiculo.transform.position, OrderMarkerFx.AttackColor);
+            AnnounceBatch(list, $"Se dio la orden de atacar al vehiculo {vehiculo.name.Replace("(Clone)", "")}");
+            AtaqueAVehiculoOrdenado?.Invoke(list, vehiculo);
+            return n;
         }
 
         public static void IssueMoveOrderForSelection(IEnumerable<Soldier> selection, Vector3 point, bool queued = false)
@@ -405,7 +451,7 @@ namespace SP.Player
         // quede del lado del driver.
         public static void IssueFormationOrderForSelection(IEnumerable<Soldier> selection, Vector3 center, Vector3 forward, FormationKind kind = FormationKind.Cuadricula, bool queued = false)
         {
-            var list = AliveOnly(selection);
+            var list = AliveOnly(selection, true);
             if (list.Count == 0) return;
 
             // Se pasa FormationSpacing y no el default de la firma pura:
@@ -504,6 +550,37 @@ namespace SP.Player
                 soldier.transform.position, SP.Presentation.Feedback.Ok, aviso: false, pulso: true, volumen: 0.35f);
         }
 
+        // Texto del cartel agrupado: "KES TE SIGUE", "KES Y DOC TE SIGUEN", "KES, DOC Y VEGA TE SIGUEN".
+        // "Soldado_3_Doc" -> "DOC" (los soldados del nivel se llaman Soldado_N_Nombre).
+        public static string NombreCorto(Soldier s)
+        {
+            string n = s.DisplayName ?? s.name;
+            if (n.StartsWith("Soldado_")) { int i = n.LastIndexOf('_'); if (i >= 0 && i < n.Length - 1) n = n.Substring(i + 1); }
+            return n.ToUpperInvariant();
+        }
+
+        public static string TextoDeSeguimiento(IList<Soldier> soldados)
+        {
+            var nombres = new List<string>();
+            foreach (var s in soldados) if (s != null) nombres.Add(NombreCorto(s));
+            if (nombres.Count == 0) return "";
+            if (nombres.Count == 1) return nombres[0] + " TE SIGUE";
+            string ultimo = nombres[nombres.Count - 1];
+            nombres.RemoveAt(nombres.Count - 1);
+            return string.Join(", ", nombres) + " Y " + ultimo + " TE SIGUEN";
+        }
+
+        static void AvisoDeSeguimiento(IList<Soldier> soldados)
+        {
+            if (soldados == null || soldados.Count == 0) return;
+            var centro = Vector3.zero; int n = 0;
+            foreach (var s in soldados) if (s != null) { centro += s.transform.position; n++; }
+            if (n == 0) return;
+            centro /= n;
+            SP.Presentation.Feedback.Accion(SfxKind.FollowCall, TextoDeSeguimiento(soldados), centro, SP.Presentation.Feedback.Ok,
+                aviso: false, pulso: true, volumen: 0.35f);
+        }
+
         // BUG REAL ("los aliados se solapan al seguirme"): esto llamaba a
         // IssueFollowOrder para cada soldado con el MISMO lider y sin
         // ranura -- todos terminaban persiguiendo el mismo punto (el
@@ -545,8 +622,10 @@ namespace SP.Player
                 ranuras[i] = new Vector3(sign * row * FollowLateral, 0f, -(row - 1) * FollowSpacing);
             }
 
+            // #105: una sola etiqueta para todos ("KES Y DOC TE SIGUEN") en vez de un cartel por aliado, que se superponian.
             for (int i = 0; i < list.Count; i++)
-                IssueFollowOrder(list[i], leader, ranuras[i], forzarSegundos);
+                IssueFollowOrder(list[i], leader, ranuras[i], forzarSegundos, silencioso: true);
+            AvisoDeSeguimiento(list);
 
             OrderMarkerFx.Spawn(leader.transform.position, OrderMarkerFx.FollowColor);
             AnnounceBatch(list, list.Count == 1 ? "Se dio la orden de seguir a 1 soldado" : $"Se dio la orden de seguir a {list.Count} soldados");
@@ -663,7 +742,7 @@ namespace SP.Player
 
             // Tenia su propia copia del filtro de vivos, que se quedaba
             // afuera de cualquier regla nueva: ahora usa la de todos.
-            var list = AliveOnly(selection);
+            var list = AliveOnly(selection, true);
             if (list.Count == 0) return;
 
             for (int i = 0; i < list.Count; i++)

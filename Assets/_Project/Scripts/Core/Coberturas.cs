@@ -86,7 +86,11 @@ namespace SP.Core
                 Candidato(centro + new Vector3(0f, 0f, dz), solidos[i]);
                 Candidato(centro + new Vector3(0f, 0f, -dz), solidos[i]);
             }
-            Redibujar();
+            // WP11: las marcas celestes (un cilindro por punto: ~1200 objetos) solo se ven con [C] o el radial. Rehacerlas en cada Registrar
+            // (cada obstaculo que cae) costaba ~100 ms de tiron y dejaba miles de objetos inactivos en la escena. Ahora se tira la vieja y se
+            // arma la nueva recien cuando alguien pide verlas (MostrarMarcas(true)); si ya estaban a la vista, se rehace al momento.
+            BorrarRoot();
+            if (marcasVisibles) Redibujar();
             Version++;
             return puntos.Count;
         }
@@ -295,6 +299,26 @@ namespace SP.Core
                 quien != null ? quien.transform : null, objetivo.transform);
         }
 
+        // WP4 (#080/#081): UNA sola definicion de "se le puede tirar a ese soldado". La boca del arma queda a pivote+0,55 de pie y a
+        // pivote+0,05 agachado (medido); el blanco se mide al pecho (pivote+0,5 de pie, pivote+0,1 agachado). Antes el combate trazaba
+        // pivote a pivote (0,8 m) y la eleccion de cobertura miraba a 1,3 m contra la cabeza (pivote+1): contra una barricada de 1,05 m
+        // la IA decia "puedo disparar desde ahi" y al llegar su propio rayo decia "no veo". Asi significan lo mismo.
+        public const float AlturaDeLaBocaDePie = 0.5f;
+        public const float AlturaDeLaBocaAgachado = 0.1f;
+
+        public static Vector3 PuntoDeTiro(Soldier s)
+        {
+            bool agachado = s.Motor != null && s.Motor.IsCrouching;
+            return s.transform.position + Vector3.up * (agachado ? AlturaDeLaBocaAgachado : AlturaDeLaBocaDePie);
+        }
+
+        // Desde un punto cualquiera (p. ej. a 1,3 m sobre el piso de una cobertura) al pecho del objetivo.
+        public static bool HayLineaDeTiroAlPecho(Vector3 punto, Soldier objetivo, Soldier quien)
+        {
+            if (objetivo == null) return false;
+            return NavService.HayLineaDeTiro(punto, PuntoDeTiro(objetivo), quien != null ? quien.transform : null, objetivo.transform);
+        }
+
         // --- Marcarlas en el mapa ---
 
         static void BorrarRoot()
@@ -324,6 +348,7 @@ namespace SP.Core
                 var buscado = GameObject.Find(NombreDelRoot);
                 if (buscado != null) root = buscado.transform;
             }
+            if (visibles && root == null) { Redibujar(); return; }   // WP11: las marcas se arman al pedirlas (Redibujar ya las deja activas)
             if (root != null) root.gameObject.SetActive(visibles);
         }
 

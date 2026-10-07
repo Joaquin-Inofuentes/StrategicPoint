@@ -182,6 +182,7 @@ namespace SP.Core
         public static bool BlocksMovement(Collider c)
         {
             if (c == null || !c.enabled || c.isTrigger) return false;
+            if (c.GetComponent<SP.Operacion.RampaCaminable>() != null) return false;   // WP10: la rampa del campanario se camina, no es una pared
             if (!c.gameObject.activeInHierarchy) return false;
             var t = c.transform;
             if (t.GetComponentInParent<SP.Actors.Soldier>() != null) return false;

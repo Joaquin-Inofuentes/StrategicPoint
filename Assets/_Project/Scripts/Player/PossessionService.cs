@@ -15,6 +15,7 @@ namespace SP.Player
         public static bool Swap(PlayerBrain brain, Soldier target)
         {
             if (brain == null || target == null) return false;
+            if (brain.Current != null && brain.Current != target && SP.Operacion.MandoTactico.BloqueaLaPosesion()) return false;   // WP10 (#101): en la radio no se cambia de soldado
 
             int fromId = brain.Current != null ? brain.Current.Id : -1;
             if (!brain.Possess(target)) return false;

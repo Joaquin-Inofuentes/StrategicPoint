@@ -3,7 +3,9 @@ using UnityEngine;
 using SP.Actors;
 using SP.Combat;
 using SP.Core;
+using SP.Interaction;
 using SP.Presentation;
+using SP.Vehicles;
 
 namespace SP.Player
 {
@@ -41,10 +43,17 @@ namespace SP.Player
             return MarcadorApuntado(aim.HitTransform, aim.Point);
         }
 
+        // Vida con la que los builders marcan lo "indestructible" (edificios, rocas, muros de blockout).
+        public const int VidaIndestructible = 999999;
+        public const string MotivoIndestructible = "ESTO NO SE PUEDE DEMOLER";
+
         public static bool EsDemolible(ObstacleMarker m, out string motivo)
         {
             motivo = null;
             if (m == null || m.IsCollapsed || !m.gameObject.activeInHierarchy) { motivo = "NADA QUE DEMOLER"; return false; }
+            // Bug #083: en la Operacion lo indestructible (edificios, rocas) no se vuela con una carga. En SC_Gameplay y el tutorial
+            // los muros del blockout tambien tienen vida 999999 y SI se demuelen (es la habilidad del Asalto): ahi no se filtra.
+            if (m.MaxHealth >= VidaIndestructible && SP.Operacion.OperacionDirector.Instancia != null) { motivo = MotivoIndestructible; return false; }
             var col = m.GetComponent<Collider>();
             if (col == null) { motivo = "NO SE PUEDE DEMOLER"; return false; }
             var b = col.bounds;
@@ -59,6 +68,48 @@ namespace SP.Player
             var p = col.ClosestPoint(s.transform.position);
             var d = p - s.transform.position; d.y = 0f;
             return d.magnitude;
+        }
+
+        static float proximoAvisoE;
+
+        // Bug #083/#084: [E] frente a un muro y "no pasa nada". Se llama cada cuadro desde el driver (solo mira si [E] se apreto
+        // ESE cuadro y no hay otra cosa para hacer con [E]). Dice lo que falta: el rol (Asalto) o que eso no se puede demoler.
+        // Devuelve el texto mostrado (para las pruebas) o null.
+        public static string AvisarSiNoSePuede(Soldier yo, AimResult aim, Ray rayoDeMira, bool apretoE)
+        {
+            if (yo == null || !apretoE || Time.unscaledTime < proximoAvisoE) return null;
+            string texto = null;
+            var m = MarcadorDeLaMira(aim);
+            if (m != null)
+            {
+                if (DistanciaA(yo, m) > AlcanceMaximo * 2f) return null;
+                if (!EsDemolible(m, out string motivo)) texto = motivo;
+                else if (yo.Role != RoleType.Assault)
+                {
+                    // El cartel de rol lleva su propio enfriamiento.
+                    RolRequerido.Avisar(yo, RoleType.Assault, "DEMOLER ESTO");
+                    proximoAvisoE = Time.unscaledTime + 0.5f;
+                    return RolRequerido.UltimoTexto;
+                }
+            }
+            else if (yo.Role == RoleType.Assault && ApuntaAUnMuroSinMarcador(rayoDeMira, AlcanceMaximo * 2f)) texto = MotivoIndestructible;
+            if (texto == null) return null;
+            proximoAvisoE = Time.unscaledTime + 1.2f;
+            Feedback.Accion(SfxKind.EmptyClick, texto, null, Feedback.Warn, aviso: true, pulso: false, volumen: 0.4f);
+            return texto;
+        }
+
+        // El rayo de la mira pega en una pared (no suelo, no un actor ni un objeto con uso) a menos de 'alcance'.
+        static bool ApuntaAUnMuroSinMarcador(Ray rayo, float alcance)
+        {
+            if (!Physics.Raycast(rayo, out var hit, alcance + 4f, ~(1 << 2), QueryTriggerInteraction.Ignore)) return false;
+            var c = hit.collider;
+            if (c == null || hit.normal.y > 0.5f) return false;
+            if (c.GetComponentInParent<ObstacleMarker>() != null || c.GetComponentInParent<Soldier>() != null) return false;
+            if (c.GetComponentInParent<SP.Interaction.IInteractable>() != null || c.GetComponentInParent<TorretaFija>() != null) return false;
+            if (c.GetComponentInParent<Vehicle>() != null) return false;
+            var d = hit.point - rayo.origin; d.y = 0f;
+            return d.magnitude <= alcance + 3f;   // la camara va unos metros detras del soldado
         }
 
         // Aviso para el tutorial y las pruebas: se demolio este obstaculo.
@@ -193,10 +244,20 @@ namespace SP.Player
         }
 
         // Jugador: solo si esta agachado, quieto y apuntando a algo demolible a tiro de carga.
+        public static int AvisosDeNoSePuede;   // solo para los checks (#124)
         void ModoAutomatico(float dt)
         {
             if (driver == null) driver = PlayerInputDriver.Activo;
             if (driver == null) return;
+            // #124: en la vista RTS no se planta nada con [E]/agachado (la [E] sube la camara y el operador de la radio esta siempre agachado).
+            if (driver.Rig != null && driver.Rig.Mode == SP.CameraSystem.ControlMode.Rts)
+            {
+                if (cargando) cargando = false;
+                Progreso = 0f; objetivo = null;
+                driver.DemolicionEnCurso = false;
+                driver.OcultarProgresoDemolicion();
+                return;
+            }
 
             var aim = driver.UltimaMira;
             ObstacleMarker m = Demolicion.MarcadorDeLaMira(aim);
@@ -250,6 +311,7 @@ namespace SP.Player
             {
                 proximoAviso = Time.time + 1.2f;
                 string aviso = !demolible ? motivo : "ACERCATE AL MURO: ESTAS A " + distancia.ToString("0.0") + " m (MAX " + Demolicion.AlcanceMaximo.ToString("0.#") + " m)";
+                AvisosDeNoSePuede++;
                 Feedback.Accion(SfxKind.EmptyClick, aviso, null, Feedback.Warn, aviso: true, pulso: false, volumen: 0.4f);
             }
             if (!valido) objetivo = null;

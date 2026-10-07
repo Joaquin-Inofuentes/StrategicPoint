@@ -175,7 +175,9 @@ namespace SP.Ai
         //
         // Devuelve false si no hay ninguna que sirva, y ahi el llamador se
         // queda con el rodeo de siempre.
-        bool CubrirseDe(Soldier objetivo, float dt)
+        // WP4: radio de busqueda, tope de distancia al blanco (no alejarse) y factor del alcance con el que se mide la cobertura (la proactiva
+        // usa 0,9 para que el punto elegido quede DENTRO del alcance y al llegar Chase pase a Attack).
+        bool CubrirseDe(Soldier objetivo, float dt, float radio = RadioDeBusquedaDeCobertura, float maxDistAlBlanco = float.MaxValue, float factorRango = 1f)
         {
             relojDeCobertura += dt;
             if (!tieneCobertura || relojDeCobertura >= RefrescoDeCobertura)
@@ -189,8 +191,8 @@ namespace SP.Ai
                 elegida = Vector3.zero;
                 if (VersionDeCobertura >= 1)
                 {
-                    tieneCobertura = SP.Core.CoberturasPuntuadas.TryElegir(self.transform.position, objetivo, self, RadioDeBusquedaDeCobertura,
-                        EffectiveAttackRange, Vida01, VersionDeCobertura, Recargando, tieneCobertura ? coberturaElegida : (Vector3?)null, out var el);
+                    tieneCobertura = SP.Core.CoberturasPuntuadas.TryElegir(self.transform.position, objetivo, self, radio,
+                        EffectiveAttackRange * factorRango, Vida01, VersionDeCobertura, Recargando, tieneCobertura ? coberturaElegida : (Vector3?)null, out var el, maxDistAlBlanco);
                     if (tieneCobertura) elegida = el.punto;
                 }
                 else

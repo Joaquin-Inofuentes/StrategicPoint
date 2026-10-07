@@ -78,7 +78,7 @@ namespace SP.Mision
         // actores) en vez de dejarla del otro lado de un tronco.
         static readonly RaycastHit[] bufferCinematica = new RaycastHit[8];
 
-        static Vector3 EvitarObstruccion(Vector3 mira, Vector3 posDeseada)
+        public static Vector3 EvitarObstruccion(Vector3 mira, Vector3 posDeseada)
         {
             var delta = posDeseada - mira;
             float dist = delta.magnitude;
@@ -166,6 +166,7 @@ namespace SP.Mision
                 }
             SoldadosDeLaHorda = horda.Count;
 
+            SP.Presentation.MusicDirector.PrecargarVictoria();   // el himno se sintetiza en un hilo: listo antes del despegue (4,8 s)
             float t = 0f;
             var pool = ProjectilePool.Activo;
             float proximaTraza = 0f, proximoPolvo = 0f;
@@ -197,6 +198,8 @@ namespace SP.Mision
                 // despegue a los 4,8 s: sube, cabecea y sale hacia el oeste
                 if (t >= 4.8f)
                 {
+                    // Bug #093: himno de victoria con fade largo en el primer frame del despegue.
+                    if (!despego) SP.Presentation.MusicDirector.TocarVictoria();
                     despego = true;
                     heli.Volando = true;
                     float k = t - 4.8f;

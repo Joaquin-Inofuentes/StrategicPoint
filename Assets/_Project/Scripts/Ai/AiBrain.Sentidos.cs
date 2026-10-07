@@ -44,12 +44,48 @@ namespace SP.Ai
         }
 
         // La linea de tiro real (paredes), sin la regla de la vegetacion: sirve para no soltar al blanco mientras el enemigo sale del monte.
+        // Solo para MEDIR (checks): vuelve a la definicion anterior de la linea de tiro (pivote a pivote, 0,8 m) para ver el antes/despues de #080.
+        public static bool LineaDeTiroPivoteAPivote = false;
+
         bool VeFisicamente(Soldier objetivo)
         {
             if (objetivo == null || self == null) return false;
+            if (LineaDeTiroPivoteAPivote) return SP.Core.NavService.HayLineaDeTiro(self.transform.position, objetivo.transform.position, self.transform, objetivo.transform);
+            // WP4 (#080/#081): de la boca del arma PARADO (pivote+0,5) al pecho del blanco (pivote+0,5, o +0,1 si esta agachado). Es la misma
+            // definicion que usa la eleccion de cobertura (Coberturas.PuntoDeTiro / HayLineaDeTiroAlPecho): antes aca iba pivote a pivote
+            // (0,8 m) y una barricada de 1,05 m tapaba siempre el rayo aunque se pudiera disparar por encima.
             return SP.Core.NavService.HayLineaDeTiro(
-                self.transform.position, objetivo.transform.position,
+                self.transform.position + Vector3.up * SP.Core.Coberturas.AlturaDeLaBocaDePie, SP.Core.Coberturas.PuntoDeTiro(objetivo),
                 self.transform, objetivo.transform);
+        }
+
+        // WP4 (#080): a cielo abierto el soldado dispara agachado (presenta menos blanco) solo si desde agachado TAMBIEN ve al blanco; si
+        // no (una barricada baja delante) se para a disparar por encima. Se re-evalua cada 0,25 s.
+        bool PuedeDispararAgachado(float dt)
+        {
+            if (target == null) return true;
+            relojAgachado -= dt;
+            if (relojAgachado <= 0f)
+            {
+                relojAgachado = 0.25f;
+                agachadoVeAlBlanco = SP.Core.NavService.HayLineaDeTiro(
+                    self.transform.position + Vector3.up * SP.Core.Coberturas.AlturaDeLaBocaAgachado, SP.Core.Coberturas.PuntoDeTiro(target),
+                    self.transform, target.transform);
+            }
+            return agachadoVeAlBlanco;
+        }
+
+        // WP4 (#086): punto de ataque PERSONAL. Sobre la recta blanco-soldado, girada un abanico de +-30 grados fijo por Id, a 0,85 del alcance
+        // del blanco: los que vienen juntos terminan en un arco y no todos en el mismo punto.
+        Vector3 PuntoDeAtaque(Soldier t)
+        {
+            var desde = self.transform.position - t.transform.position; desde.y = 0f;
+            if (desde.sqrMagnitude < 0.25f) return t.transform.position;
+            float ang = ((self.Id * 37) % 61) - 30f;
+            var dir = Quaternion.Euler(0f, ang, 0f) * desde.normalized;
+            var p = t.transform.position + dir * (EffectiveAttackRange * 0.85f);
+            p.y = self.transform.position.y;
+            return p;
         }
 
         // Enemigo parado dentro de un arbusto o del bosque (solo en la partida principal).

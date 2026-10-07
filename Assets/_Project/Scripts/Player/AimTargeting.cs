@@ -7,7 +7,7 @@ using SP.Presentation;
 
 namespace SP.Player
 {
-    public enum AimTargetType { None, Ally, Enemy, Vehicle, Ground, Obstacle, Torreta, Caido, Recoger, Interactuar, Cubrirse }
+    public enum AimTargetType { None, Ally, Enemy, Vehicle, Ground, Obstacle, Torreta, Caido, Recoger, Interactuar, Cubrirse, Radio }
 
     public struct AimResult
     {
@@ -48,6 +48,11 @@ namespace SP.Player
 
             if (golpeo)
             {
+                // #119: en la vista RTS la radio de campana es un objetivo propio (cursor de interactuar, clic derecho = operarla).
+                var rigRts = SP.CameraSystem.CameraRig.Instance;
+                if (rigRts != null && rigRts.Mode == SP.CameraSystem.ControlMode.Rts && SP.Operacion.MandoTactico.EsParteDeLaRadio(hit.collider, hit.point))
+                    return new AimResult { Type = AimTargetType.Radio, Point = hit.point, HitTransform = hit.collider.transform };
+
                 var interactable = hit.collider.GetComponentInParent<SP.Interaction.IInteractable>();
                 if (interactable != null && interactable.CanInteract(PlayerInputDriver.Activo))
                     return new AimResult { Type = AimTargetType.Interactuar, Point = hit.point, HitTransform = (interactable as MonoBehaviour)?.transform };

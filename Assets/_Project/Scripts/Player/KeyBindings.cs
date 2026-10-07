@@ -64,6 +64,12 @@ namespace SP.Player
         public const string RadialEspacio = "radial_espacio";
         // Marca el instante actual como "bug" en el registro de sesion (ver SesionLog): foto del estado + camara. Tambien [8].
         public const string MarcarBug = "marcar_bug";
+        // WP9a (#097): pliega o despliega la lista de los 6 pasos de la operacion bajo el objetivo (la V no se usaba en ningun contexto).
+        public const string PlegarPasos = "plegar_pasos";
+        // P7 (#120c): [C] cambia de aliado (toque = el mas cercano; mantener = resalta los rombos de todos y al soltar se posee al mas centrado).
+        // Las coberturas del piso (VerTactico) pasaron a [T] y la ruta al objetivo (RutaAlObjetivo, mantener) a [I].
+        public const string CambiarAliado = "cambiar_aliado";
+        public const string VerRuta = "ver_ruta";
 
         // Valores de fabrica. Son EXACTAMENTE los que el juego ya usaba, de
         // modo que sin tocar nada el remapeo es invisible.
@@ -85,7 +91,9 @@ namespace SP.Player
             { CiclarPosesion, Key.Q },
             { CiclarPosesionAtras, Key.Z },
             { PoseerMasCercano, Key.None },   // heredada: [C] pasa a ser la vista tactica
-            { VerTactico, Key.C },
+            { VerTactico, Key.T },   // era [C]: P7 le dio [C] al cambio de aliado
+            { CambiarAliado, Key.C },
+            { VerRuta, Key.I },
             { AlternarVista, Key.Tab },
             { Controles, Key.H },
             // Pedido explicito: G -> T. Despues se pidio que [T] mande el
@@ -110,6 +118,7 @@ namespace SP.Player
             { RotarCamaraRts, Key.Backquote },
             { RadialEspacio, Key.Space },
             { MarcarBug, Key.U },
+            { PlegarPasos, Key.V },
         };
 
         static Dictionary<string, Key> current;

@@ -333,6 +333,8 @@ namespace SP.Player
                 case 2: // ATACAR
                 {
                     var dest = DestinatariosPorSub(sub, out quien);
+                    // Bug #096: el enemigo recien apuntado vale aunque la mira ya cayo al terreno (no para SUPRIMEN / GRANADA, que van a un punto).
+                    if (sub != MenuDeOrdenes.SubSuprimir && sub != MenuDeOrdenes.SubGranada) aim = ConMargenDeQ(aim, true);
                     Soldier objetivo = aim.Type == AimTargetType.Enemy ? aim.Soldier : null;
                     if (objetivo == null && yo != null)
                         objetivo = ActorRegistry.FindNearest(yo.transform.position, s => s.Team == TeamId.Enemy && s.Health != null && s.Health.IsAlive && (s.transform.position - yo.transform.position).sqrMagnitude < 100f * 100f);

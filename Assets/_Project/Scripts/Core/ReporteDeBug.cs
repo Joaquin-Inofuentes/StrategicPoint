@@ -40,7 +40,13 @@ namespace SP.Core
             return Instancia;
         }
 
-        void OnDestroy() { if (Instancia == this) { Instancia = null; Abierto = false; } }
+        void OnDestroy()
+        {
+            if (Instancia != this) return;
+            // #113: si la escena se descarga con el dialogo abierto, no dejar el juego congelado (casquillos y escombros "flotando").
+            if (Abierto) { Time.timeScale = escalaPrevia > 0f ? escalaPrevia : 1f; AudioListener.pause = audioPausadoPrevio; }
+            Instancia = null; Abierto = false;
+        }
 
         public static void Abrir()
         {

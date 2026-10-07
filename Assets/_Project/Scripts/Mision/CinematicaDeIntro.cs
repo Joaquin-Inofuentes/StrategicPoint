@@ -121,8 +121,11 @@ namespace SP.Mision
         // tono nuevo, asi suena a disparo de verdad y no a otro "bip" mas.
         static void SonarSalteoDeToma()
         {
+            // Bug #095: ya no es 2D. El disparo suena en el mundo, unos metros delante de la camara de la toma.
             var clip = GenericSfx.GetWeaponShot(WeaponKind.Rifle);
-            AudioDirector.Instance?.PlayFlat(clip, SfxChannel.Ui, 0.7f, 1f);
+            var cam = SP.Core.CamaraPrincipal.Actual;
+            if (cam == null) return;
+            AudioDirector.PlayClipAt(clip, cam.transform.position + cam.transform.forward * 6f, 0.7f, 1f, PerfilEspacial.Disparo);
         }
 
         void ArmarLienzo()

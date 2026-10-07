@@ -35,13 +35,14 @@ namespace SP.Ai
         // unicamente con la dificultad humanizada y heridos: en la practica nunca). Ahora tambien los aliados que no maneja el
         // jugador; la decision de si conviene cubrirse sigue siendo la ponderada (CoberturasPuntuadas.Presion).
         // Bug #061: radio de la cobertura "a mano" que se toma aun sin presion (ver TickCoberturaTactica).
-        public const float RadioDeCoberturaAMano = 8f;
+        // WP4 (#074/#081): era 8 m (const). Estatico para que el banco pueda medir un valor contra otro.
+        public static float RadioDeCoberturaAMano = 13f;
         bool BuscaCoberturaSolo => self != null && !SinCobertura && (CoberturaPropia || self.Team == TeamId.Enemy
             || (self.Team == TeamId.Player && self.Role != RoleType.Civilian && !IsPossessedByPlayer && !Pasivo));
 
         // Version de la eleccion de cobertura: 0 = la vieja (la mas cercana con linea de tiro), 1..5 = puntuacion ponderada
         // (ver CoberturasPuntuadas). El banco de duelos (CoberturaBench) la cambia por soldado para comparar iteraciones.
-        public static int DefaultVersionCobertura = 5;
+        public static int DefaultVersionCobertura = CoberturasPuntuadas.VersionNueva;   // WP4: v5 + F_MULTITUD | F_SENTIDO (antes 5)
         public int VersionCobertura = -1;
         public int VersionDeCobertura => VersionCobertura >= 0 ? VersionCobertura : DefaultVersionCobertura;
         public bool SinCobertura;       // banco de pruebas: el rival "sin IA de cobertura"
@@ -68,6 +69,20 @@ namespace SP.Ai
             coberturaPorOrden = true;
             yendoACobertura = true;
             enCobertura = false;
+        }
+
+        // WP4 (#085): los guardias arrancan YA en su cobertura (Operacion.Atrincherar): marcados enCobertura, agachados y con el ciclo
+        // oculto/asoma; en reposo se quedan ocultos (ver TickCicloCobertura).
+        public void TomarCoberturaInicial(Vector3 punto, Collider dueno)
+        {
+            if (!bootstrapped) Bootstrap();
+            coberturaPunto = punto;
+            coberturaDueno = dueno;
+            coberturaPorOrden = false;
+            yendoACobertura = false;
+            enCobertura = true;
+            EntrarEnCoberturaBase();
+            if (self.Motor != null) self.Motor.SetCrouching(true);
         }
 
         // Toda orden nueva del jugador suelta la cobertura y el "seguir solo".
@@ -180,9 +195,14 @@ namespace SP.Ai
             bool isReloading = self.Weapon != null && self.Weapon.IsReloading;
             bool isMagazineEmpty = self.Weapon != null && self.Weapon.CurrentAmmo <= 0;
 
-            relojSubStateCobertura -= dt;
+            // WP4 (#085): sin blanco (guardia atrincherado, aliado que ya termino el combate) la cobertura que eligio el propio soldado se
+            // queda oculta y quieta: no sube y baja cada segundo. La que ordeno el jugador mantiene el ciclo de siempre.
+            bool reposo = !coberturaPorOrden && target == null && State != AiState.Attack && State != AiState.Chase;
+            if (reposo) { subStateCobertura = CoverSubState.Hidden; relojSubStateCobertura = 0.4f; }
+            else relojSubStateCobertura -= dt;
 
-            if (subStateCobertura == CoverSubState.Peeking && isMagazineEmpty)
+            if (reposo) { }
+            else if (subStateCobertura == CoverSubState.Peeking && isMagazineEmpty)
             {
                 subStateCobertura = CoverSubState.Hidden;
                 if (self.Weapon != null) self.Weapon.Reload();
@@ -229,7 +249,7 @@ namespace SP.Ai
 
             Vector3 disp = targetPos - self.transform.position;
             disp.y = 0f;
-            if (disp.sqrMagnitude > 0.01f)
+            if (disp.sqrMagnitude > 0.01f && !(SeparandoseDeUnCompanero && disp.sqrMagnitude < 1f))   // WP4 (#086): sin tironear mientras se separa
             {
                 self.Motor.Move(disp.normalized, dt);
             }
@@ -368,21 +388,31 @@ namespace SP.Ai
                 // ...salvo (bug #061) una cobertura A MANO desde la que sigue disparando: cuesta poco y es lo que haria
                 // cualquiera. Medido en la ciudad: con 26 enemigos peleando se cubria 1, porque la escuadra (3) no alcanza
                 // para "presionar" a un enemigo sano.
-                if (!CoberturasPuntuadas.TryElegir(self.transform.position, target, self, RadioDeCoberturaAMano, EffectiveAttackRange, Vida01, version, Recargando, null, out var cerca)
+                if (!CoberturasPuntuadas.TryElegir(self.transform.position, target, self, RadioDeCoberturaAMano, EffectiveAttackRange, Vida01, version, Recargando, null, out var cerca, Herido ? float.MaxValue : dActual + 2f)
                     || !cerca.puedeDisparar) return false;
                 punto = cerca.punto; dueno = cerca.dueno;
             }
             else if (version >= 1)
             {
-                if (!CoberturasPuntuadas.TryElegir(self.transform.position, target, self, 12f, EffectiveAttackRange, Vida01, version, Recargando, null, out var el)) return false;
+                // WP4: un sano no se aleja del blanco para cubrirse (el herido si: se protege); el filtro va DENTRO de la eleccion para que
+                // no descarte la mejor por una peor que si sirve.
+                float tope = Herido ? float.MaxValue : dActual + 2f;
+                if (!CoberturasPuntuadas.TryElegir(self.transform.position, target, self, 12f, EffectiveAttackRange, Vida01, version, Recargando, null, out var el, tope)) return false;
                 punto = el.punto; dueno = el.dueno;
             }
             else if (!Coberturas.TryCoberturaDeTiro(self.transform.position, target, self, 12f,
                     EffectiveAttackRange * 0.45f, EffectiveAttackRange * 0.9f, out punto, out dueno)) return false;
             CoberturasElegidas++;
             // Solo si de verdad cambia algo: no correr 1 m, ni alejarse.
-            if ((punto - self.transform.position).sqrMagnitude < 1.5f * 1.5f) return false;
-            if (Vector3.Distance(punto, target.transform.position) > dActual + 2f) return false;
+            if ((punto - self.transform.position).sqrMagnitude < 1.5f * 1.5f)
+            {
+                // WP4: ya esta parado en la cobertura que eligio (la tomo en el camino o es su puesto): la ocupa de verdad (agachado y con el
+                // ciclo oculto/asoma) en vez de quedarse al descubierto a un paso de ella.
+                coberturaPunto = punto; coberturaDueno = dueno; coberturaPorOrden = false;
+                EntrarEnCoberturaTactica();
+                return false;
+            }
+            if (!Herido && Vector3.Distance(punto, target.transform.position) > dActual + 2f) return false;   // WP4: el herido si puede alejarse
 
             coberturaPunto = punto;
             coberturaDueno = dueno;
@@ -408,6 +438,7 @@ namespace SP.Ai
         static float ultimoAvisoDeSeguir = -99f;
         // Mas alla de esto el aliado "se fue del minimapa" y vuelve si o si (bug #16).
         public static float RadioDeRegresoForzado = 45f;
+        public static float RadioDeSeguirEnCombateCubierto = 25f;
         float proximoRegresoForzado, ultimoAvisoRegreso = -99f;
         public int RegresosForzados { get; private set; }
 
@@ -485,6 +516,11 @@ namespace SP.Ai
             bool libre = (State == AiState.Idle || State == AiState.Patrol || enCombateSinOrden) && !hasOrder && mountTarget == null;
             if (!libre || yendoACobertura) return;
             if (enCobertura && (coberturaPorOrden || !AjustesDeEscuadra.SeguirDesdeCobertura)) return;
+            // WP4 (#074): un aliado que pelea desde SU cobertura no la suelta por seguir al jugador mientras este no se aleje de verdad
+            // (antes, a mas de 12,5 m, salia corriendo a juntarse y se lanzaba al descubierto).
+            if (enCobertura && enCombateSinOrden && dist <= RadioDeSeguirEnCombateCubierto) return;
+            // Herido y replegandose (#087): no se lo arrastra de vuelta al lider hasta que termine el repliegue (salvo el regreso forzado).
+            if (enRepliegue) return;
             if (dist <= AjustesDeEscuadra.DistanciaParaSeguir) return;
 
             ComenzarSeguirAlJugador(lider);

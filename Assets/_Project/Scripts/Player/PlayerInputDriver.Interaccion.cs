@@ -87,10 +87,52 @@ namespace SP.Player
 
         // Q tocada: orden CONTEXTUAL segun lo que se apunta (ver PlayerInputDriver.Contextual.cs). Antes un toque solo no hacia
         // nada y hacia falta el doble toque; el doble toque sigue sirviendo (en terreno ya es seguir).
+        // Bug #096: "margen de 1 segundo para que Q ataque al enemigo que recien apuntaste". La mira salta de un enemigo al
+        // terreno en cuanto el cursor se corre un poco; sin esto, un Q tardio mandaba a SEGUIR en vez de atacar. Se recuerda el
+        // ultimo enemigo bajo la mira y vale un toque simple de Q sobre terreno/obstaculo durante MargenDeQ segundos.
+        public const float MargenDeQ = 1f;
+        Soldier ultimoEnemigoApuntado;
+        float ultimoEnemigoEn = -99f;
+        float ultimoToqueDeQEn = -99f;
+        public Soldier UltimoEnemigoApuntado => ultimoEnemigoApuntado;
+
+        void RecordarEnemigoApuntado(AimResult r)
+        {
+            if (r.Type != AimTargetType.Enemy || r.Soldier == null) return;
+            ultimoEnemigoApuntado = r.Soldier;
+            ultimoEnemigoEn = Time.unscaledTime;
+        }
+
+        // Para los checks y el codigo de prueba: simula que se apunto a este enemigo hace 'haceSegundos'.
+        public void RecordarEnemigoApuntadoHace(Soldier s, float haceSegundos)
+        {
+            ultimoEnemigoApuntado = s;
+            ultimoEnemigoEn = Time.unscaledTime - haceSegundos;
+        }
+
+        // Si lo apuntado ahora es "nada" (None/Ground/Cubrirse/Obstacle; NO aliados, caidos ni interactuables) y hace <= MargenDeQ
+        // se apuntaba a un enemigo que sigue vivo, devuelve ESE enemigo como si se lo estuviera apuntando. 'consumir' lo olvida,
+        // asi un segundo Q no lo vuelve a atacar.
+        AimResult ConMargenDeQ(AimResult aim, bool consumir)
+        {
+            if (ultimoEnemigoApuntado == null) return aim;
+            bool nada = aim.Type == AimTargetType.None || aim.Type == AimTargetType.Ground || aim.Type == AimTargetType.Cubrirse || aim.Type == AimTargetType.Obstacle;
+            bool vigente = Time.unscaledTime - ultimoEnemigoEn <= MargenDeQ;
+            var e = ultimoEnemigoApuntado;
+            if (!nada || !vigente || e.Health == null || !e.Health.IsAlive || !e.gameObject.activeInHierarchy) return aim;
+            if (consumir) ultimoEnemigoApuntado = null;
+            return new AimResult { Type = AimTargetType.Enemy, Soldier = e, Point = e.transform.position, HitTransform = e.transform };
+        }
+
         void AccionRapidaDeQ()
         {
             UltimaAccionRapida = null;
             var aim = aimCongelado ?? ultimoResultadoDeMira;
+            // El margen solo vale para un toque SIMPLE: si el toque anterior fue hace menos de VentanaDobleToque es el doble toque
+            // de SIGANME y manda la mira real (terreno = seguir), no el enemigo de hace un instante.
+            bool toqueSimple = Time.unscaledTime - ultimoToqueDeQEn > VentanaDobleToque;
+            ultimoToqueDeQEn = Time.unscaledTime;
+            if (toqueSimple) aim = ConMargenDeQ(aim, true);
             UltimaAccionRapida = AccionContextualDeQ(aim);
             SesionLog.Evento(System.FormattableString.Invariant($"Q CONTEXTUAL: {UltimaAccionRapida ?? "(nada)"} · apuntando a {aim.Type}{(aim.Soldier != null ? ":" + aim.Soldier.DisplayName : "")} en ({aim.Point.x:0.0},{aim.Point.z:0.0})"));
             if (UltimaAccionRapida == null && EsDobleToqueDeQ() && SeguirTodosSiOSi() > 0) UltimaAccionRapida = "SEGUIR TODOS";

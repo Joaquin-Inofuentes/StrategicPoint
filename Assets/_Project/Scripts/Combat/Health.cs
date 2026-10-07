@@ -121,6 +121,9 @@ namespace SP.Combat
         // civil desde que aparece hasta que el jugador llega a el (MisionDirector.TickRescatar).
         public bool Invulnerable { get; set; }
 
+        // WP10 (#101): multiplicador del dano recibido (1 = normal). El operador de la radio de campana recibe x0,5 mientras la usa.
+        public float FactorDeDano { get; set; } = 1f;
+
         public void TakeDamage(int amount, int attackerId) => TakeDamage(amount, attackerId, false);
 
         // headshot: instakill SOLO lo decide el llamador (Projectile), que ya sabe si
@@ -148,6 +151,8 @@ namespace SP.Combat
 
             // [F4] modo dios: el bando del jugador no recibe dano.
             if (Invulnerable || ModoDios.Protege(this)) return;
+
+            if (FactorDeDano != 1f) amount = Mathf.Max(1, Mathf.RoundToInt(amount * FactorDeDano));
 
             // Dificultad: potenciadores de dano segun quien pega y a quien (solo partida principal).
             if (Dificultad.Activa) amount = Mathf.Max(1, Mathf.RoundToInt(amount * Dificultad.MultiplicadorDeDano(attackerId, this)));
