@@ -23,7 +23,11 @@ namespace SP.Presentation
         public static bool Animando { get; private set; }
         public static int FilasMostradas { get; private set; }
 
-        public static IEnumerator Animar(GameObject panel, List<EstadisticasDeMision.Fila> filas, Text statsViejo, float yInicio)
+        // alfaFondo < 1 (bug #077: victoria de la Operacion, con la escena viva y en camara lenta detras): el fondo queda
+        // translucido y se agrega un degrade oscuro en el centro para que la tabla se lea sobre la escena.
+        public static float AlfaDeFondoUltimo { get; private set; } = 1f;
+
+        public static IEnumerator Animar(GameObject panel, List<EstadisticasDeMision.Fila> filas, Text statsViejo, float yInicio, float alfaFondo = 1f)
         {
             if (panel == null) yield break;
             Animando = true;
@@ -37,7 +41,10 @@ namespace SP.Presentation
 
             var fondo = panel.GetComponent<Image>();
             var colorFondo = fondo != null ? fondo.color : Color.clear;
-            colorFondo.a = 1f;   // tapa del todo el HUD (antes asomaban el objetivo y el minimapa)
+            colorFondo.a = Mathf.Clamp01(alfaFondo);   // por defecto 1: tapa del todo el HUD (antes asomaban el objetivo y el minimapa)
+            AlfaDeFondoUltimo = colorFondo.a;
+            Image degrade = null;
+            if (colorFondo.a < 0.99f) degrade = CrearDegrade(panel.transform);
             var titulo = panel.transform.Find("Title") as RectTransform;
             var grupoTitulo = Grupo(titulo);
             var reintentar = panel.transform.Find("RetryButton") as RectTransform;
@@ -89,6 +96,7 @@ namespace SP.Presentation
                 t += Time.unscaledDeltaTime;
                 float kf = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t / DuracionFondo));
                 if (fondo != null) fondo.color = new Color(colorFondo.r, colorFondo.g, colorFondo.b, colorFondo.a * kf);
+                if (degrade != null) degrade.color = new Color(0f, 0f, 0f, DegradeAlfa * kf);
                 float kt = Mathf.Clamp01((t - 0.2f) / 0.55f);
                 if (titulo != null)
                 {
@@ -140,6 +148,44 @@ namespace SP.Presentation
             }
             foreach (var b in botones) { b.alpha = 1f; b.interactable = true; b.blocksRaycasts = true; }
             Animando = false;
+        }
+
+        const float DegradeAlfa = 0.62f;
+        static Texture2D texturaDegrade;
+
+        // Manchon oscuro elíptico y suave detras de la tabla (primer hijo: queda debajo de todo el texto y los botones).
+        static Image CrearDegrade(Transform panel)
+        {
+            var viejo = panel.Find("DegradeDeLegibilidad");
+            if (viejo != null) Object.Destroy(viejo.gameObject);
+            if (texturaDegrade == null)
+            {
+                const int w = 128, h = 96;
+                texturaDegrade = new Texture2D(w, h, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave };
+                var px = new Color32[w * h];
+                for (int y = 0; y < h; y++)
+                    for (int x = 0; x < w; x++)
+                    {
+                        float nx = ((x + 0.5f) / w) * 2f - 1f, ny = ((y + 0.5f) / h) * 2f - 1f;
+                        float d = Mathf.Sqrt(nx * nx + ny * ny);
+                        float a = Mathf.SmoothStep(1f, 0f, Mathf.InverseLerp(0.35f, 1f, d));
+                        px[y * w + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(a * 255f));
+                    }
+                texturaDegrade.SetPixels32(px); texturaDegrade.Apply(false, true);
+            }
+            var go = new GameObject("DegradeDeLegibilidad", typeof(RectTransform), typeof(Image));
+            var rt = go.GetComponent<RectTransform>();
+            rt.SetParent(panel, false);
+            rt.SetAsFirstSibling();
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(1500f, 900f);
+            rt.anchoredPosition = new Vector2(0f, 10f);
+            var img = go.GetComponent<Image>();
+            img.sprite = Sprite.Create(texturaDegrade, new Rect(0, 0, texturaDegrade.width, texturaDegrade.height), new Vector2(0.5f, 0.5f), 100f);
+            img.color = new Color(0f, 0f, 0f, 0f);
+            img.raycastTarget = false;
+            return img;
         }
 
         static CanvasGroup Grupo(RectTransform rt)

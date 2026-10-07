@@ -38,6 +38,7 @@ namespace SP.Presentation
             if (n.Contains("shot")) return "DISPARO";
             if (n.Contains("death")) return "BAJA";
             if (n.Contains("knife")) return "CUCHILLO";
+            if (n.Contains("destruccion")) return "VEHICULO DESTRUIDO";
             return null;
         }
 

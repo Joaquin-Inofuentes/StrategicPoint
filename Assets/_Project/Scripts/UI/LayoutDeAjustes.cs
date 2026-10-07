@@ -79,7 +79,10 @@ namespace SP.UI
         {
             int h = SP.Core.Loc.Actual == SP.Core.Idioma.En ? 7 : 3;
             h = h * 31 + Mathf.RoundToInt(AjustesDeJuego.Escala * 100f);
-            foreach (var t in panel.GetComponentsInChildren<Text>(true)) if (t != null && t.text != null) h = h * 31 + t.text.GetHashCode();
+            // Los numeros de los sliders (*_Value) cambian en cada tic y no mueven ninguna fila: fuera de la firma, si no el panel se
+            // reacomodaba (y se corria) mientras se arrastraba un slider.
+            foreach (var t in panel.GetComponentsInChildren<Text>(true))
+                if (t != null && t.text != null && !t.name.EndsWith("_Value")) h = h * 31 + t.text.GetHashCode();
             return h;
         }
 

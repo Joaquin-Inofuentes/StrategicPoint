@@ -26,6 +26,7 @@ namespace SP.Presentation
             if (tutorialBtn != null) { tutorialBtn.onClick.AddListener(OnTutorialClicked); SP.UI.ButtonSfx.Attach(tutorialBtn); }
             if (playBtn != null) { playBtn.onClick.AddListener(OnPlayClicked); SP.UI.ButtonSfx.Attach(playBtn); }
             if (exitBtn != null) { exitBtn.onClick.AddListener(OnExitClicked); SP.UI.ButtonSfx.Attach(exitBtn); }
+            PrepararContinuar(canvasRoot, playBtn, tutorialBtn, exitBtn);
 
             confirmExitPanel = canvasRoot.Find("ConfirmExitPanel")?.gameObject;
             if (confirmExitPanel != null)
@@ -39,7 +40,62 @@ namespace SP.Presentation
 
         GameObject confirmExitPanel;
 
+        // ------------------------------------------------------------------
+        // P10 (#120): CONTINUAR. Aparece solo si hay una partida guardada valida de la Operacion (si el archivo esta roto o es de otra version
+        // no aparece y el aviso queda en el log). Se crea en runtime clonando JUGAR y se reacomoda la columna de botones.
+        // ------------------------------------------------------------------
+        Button botonContinuar;
+        public Button BotonContinuar => botonContinuar;
+
+        void PrepararContinuar(Transform raiz, Button jugar, Button tutorial, Button salir)
+        {
+            if (jugar == null || !PartidaGuardada.HayPartida()) return;
+            var info = PartidaGuardada.UltimaInfo();
+            var go = Instantiate(jugar.gameObject, raiz);
+            go.name = "ContinueButton";
+            go.GetComponent<Image>().color = new Color(0.9f, 0.62f, 0.2f);
+            var t = go.GetComponentInChildren<Text>(true);
+            if (t != null)
+            {
+                // Dos textos: el titulo del boton (un poco hacia arriba) y, debajo, "OBJETIVO n/6 · fecha" en chico (con una sola Text de dos
+                // lineas el renglon chico quedaba recortado).
+                t.text = "CONTINUAR";
+                t.rectTransform.offsetMin = new Vector2(t.rectTransform.offsetMin.x, t.rectTransform.offsetMin.y + 14f);
+                var subGO = new GameObject("Detalle", typeof(RectTransform), typeof(Text));
+                subGO.transform.SetParent(t.transform.parent, false);
+                var sub = subGO.GetComponent<Text>();
+                sub.font = t.font; sub.fontSize = 13; sub.fontStyle = FontStyle.Bold; sub.alignment = TextAnchor.LowerCenter; sub.raycastTarget = false;
+                sub.color = new Color(1f, 0.96f, 0.85f, 0.95f); sub.text = info.Texto;
+                sub.horizontalOverflow = HorizontalWrapMode.Overflow; sub.verticalOverflow = VerticalWrapMode.Overflow;
+                var srt = sub.rectTransform; srt.anchorMin = Vector2.zero; srt.anchorMax = Vector2.one; srt.offsetMin = new Vector2(0f, 5f); srt.offsetMax = Vector2.zero;
+            }
+            botonContinuar = go.GetComponent<Button>();
+            botonContinuar.onClick.RemoveAllListeners();
+            botonContinuar.onClick.AddListener(OnContinuarClicked);
+            SP.UI.ButtonSfx.Attach(botonContinuar);
+            // Columna: CONTINUAR, JUGAR, TUTORIAL, SALIR (el panel de fondo crece 70 hacia abajo).
+            Colocar(botonContinuar, 62f); Colocar(jugar, -8f); Colocar(tutorial, -78f); Colocar(salir, -148f);
+            var panel = raiz.Find("PanelBotones") as RectTransform;
+            if (panel != null) { panel.sizeDelta = new Vector2(panel.sizeDelta.x, panel.sizeDelta.y + 70f); panel.anchoredPosition = new Vector2(panel.anchoredPosition.x, panel.anchoredPosition.y - 35f); }
+        }
+
+        static void Colocar(Button b, float y)
+        {
+            if (b == null) return;
+            var rt = (RectTransform)b.transform;
+            rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, y);
+        }
+
+        public void OnContinuarClicked()
+        {
+            if (actionTaken) return;
+            actionTaken = true;
+            GameLog.Line("Se selecciono continuar la partida guardada");
+            if (!PartidaGuardada.Continuar()) actionTaken = false;
+        }
+
         void Start() => GameLog.Line("Pantalla de menu cargada");
+
 
         // Un doble click en Jugar (pasa seguido: el segundo click del
         // mouse cae antes de que la escena termine de cambiar) disparaba

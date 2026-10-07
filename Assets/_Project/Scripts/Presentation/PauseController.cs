@@ -57,16 +57,31 @@ namespace SP.Presentation
         bool buttonsWired;
 
         // Los carteles con canvas propio (pista de interaccion, acciones en curso, mision) van en ordenes 35-40 y quedaban
-        // ENCIMA de la pausa y de Configuraciones, que viven en el canvas del HUD (orden 0). Todo el arbol de la pausa pasa a
-        // un canvas anidado de orden 900 (el que ya suponia el comentario de InteractHintView).
+        // ENCIMA de la pausa y de Configuraciones. Ademas, mientras vivian en el canvas del HUD, el slider de "Tamano de HUD"
+        // (que cambia la resolucion de referencia de ESE canvas) agrandaba y corria la propia pantalla de Configuraciones bajo el
+        // mouse (bug #099). Todo el arbol de la pausa pasa a un Canvas RAIZ propio ("CanvasPausa", orden 900, 960x540 fijo) que
+        // el HUD no toca. Es de runtime: no se serializa en la escena.
+        public const string NombreCanvasPausa = "CanvasPausa";
+
         void SubirALaCapaDePausa()
         {
             if (!(transform is RectTransform)) return;
-            var cv = GetComponent<Canvas>();
-            if (cv == null) cv = gameObject.AddComponent<Canvas>();
-            cv.overrideSorting = true;
+            var actual = GetComponentInParent<Canvas>();
+            if (actual != null && actual.rootCanvas.gameObject.name == NombreCanvasPausa) return;   // ya esta en su canvas
+            var go = new GameObject(NombreCanvasPausa, typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var cv = go.GetComponent<Canvas>();
+            cv.renderMode = RenderMode.ScreenSpaceOverlay;
             cv.sortingOrder = 900;
-            if (GetComponent<UnityEngine.UI.GraphicRaycaster>() == null) gameObject.AddComponent<UnityEngine.UI.GraphicRaycaster>();
+            var cs = go.GetComponent<CanvasScaler>();
+            cs.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            cs.referenceResolution = BaseReferenceResolution;
+            cs.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            cs.matchWidthOrHeight = 0.5f;
+            // En la misma escena que el controlador (no en la activa, por si hay escenas aditivas).
+            if (gameObject.scene.IsValid() && gameObject.scene != go.scene) UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(go, gameObject.scene);
+            transform.SetParent(go.transform, false);
+            var rt = (RectTransform)transform;
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = rt.offsetMax = Vector2.zero;
         }
 
         void OnEnable()
@@ -203,11 +218,15 @@ namespace SP.Presentation
                 {
                     hudSlider.SetValueWithoutNotify(savedHudScale);
                     if (hudValueTxt != null) hudValueTxt.text = savedHudScale.ToString("0.00");
+                    // Mientras se arrastra solo cambia el numero: la resolucion de referencia (que re-escala TODO el HUD) se aplica
+                    // al soltar. Con teclado o mando no hay puntero apretado y se aplica en el acto.
+                    hudSliderRef = hudSlider;
                     hudSlider.onValueChanged.AddListener(v =>
                     {
-                        if (HudScaler != null) HudScaler.referenceResolution = BaseReferenceResolution / v;
-                        PlayerPrefs.SetFloat(PrefHudScale, v);
                         if (hudValueTxt != null) hudValueTxt.text = v.ToString("0.00");
+                        var arrastre = hudSlider.GetComponent<SP.UI.SliderDeAjuste>();
+                        if (arrastre != null && arrastre.Apretado) { hudPendiente = true; return; }
+                        AplicarEscalaDeHud(v);
                     });
                 }
 
@@ -254,6 +273,32 @@ namespace SP.Presentation
                     camFxToggle.onValueChanged.AddListener(v => SP.CameraSystem.CameraFxSettings.Enabled = v);
                 }
             }
+        }
+
+        Slider hudSliderRef;
+        bool hudPendiente, hudSoltadoConectado;
+
+        void AplicarEscalaDeHud(float v)
+        {
+            hudPendiente = false;
+            if (HudScaler != null) HudScaler.referenceResolution = BaseReferenceResolution / v;
+            PlayerPrefs.SetFloat(PrefHudScale, v);
+            PlayerPrefs.Save();
+        }
+
+        // Aplica el tamano de HUD pendiente (el que se dejo en el slider al soltar o al cerrar la pantalla a mitad de un arrastre).
+        void AplicarHudPendiente()
+        {
+            if (hudPendiente && hudSliderRef != null) AplicarEscalaDeHud(hudSliderRef.value);
+        }
+
+        void ConectarSoltadoDelHud()
+        {
+            if (hudSoltadoConectado || hudSliderRef == null) return;
+            var arrastre = hudSliderRef.GetComponent<SP.UI.SliderDeAjuste>();
+            if (arrastre == null) return;   // todavia sin vestir, se conecta en la proxima apertura
+            arrastre.Soltado += _ => AplicarHudPendiente();
+            hudSoltadoConectado = true;
         }
 
         // Mismo patron que el slider de Volumen de arriba (Find por nombre
@@ -328,12 +373,97 @@ namespace SP.Presentation
             escalaPrevia = Time.timeScale;
             Time.timeScale = 0f;
             pausePanel.SetActive(true);
+            PrepararBotonesDeGuardado();
             // El panel tiene que dibujarse ENCIMA de todo el HUD (la mision, el roster, el radial...), que
             // se crean despues y por eso quedaban tapando los menus. Y el audio se pausa de verdad: antes
             // timeScale=0 congelaba el juego pero la musica y los ambientes seguian sonando.
             transform.SetAsLastSibling();
             AudioListener.pause = true;
             GameLog.Line("Se puso en pausa el juego");
+        }
+
+        // ---------------------------------------------------------------- P10 (#120): guardar partida desde la pausa
+        // Los botones se crean en runtime (clonando CONTINUAR) solo en la Operacion; asi no hace falta rehacer las escenas.
+        Button botonGuardar, botonCargar;
+        Text notaDeGuardado;
+        public Button BotonGuardar => botonGuardar;
+        public Button BotonCargar => botonCargar;
+        public string TextoDeLaNota => notaDeGuardado != null ? notaDeGuardado.text : "";
+
+        void PrepararBotonesDeGuardado()
+        {
+            if (pausePanel == null || SP.Operacion.OperacionDirector.Instancia == null) return;
+            if (botonGuardar == null)
+            {
+                var cont = pausePanel.transform.Find("ContinueButton") as RectTransform;
+                if (cont == null) return;
+                botonGuardar = ClonarBoton(cont, "SaveButton", "GUARDAR PARTIDA", new Color(0.25f, 0.5f, 0.7f), OnGuardarClicked);
+                botonCargar = ClonarBoton(cont, "LoadButton", "CARGAR ÚLTIMO GUARDADO", new Color(0.4f, 0.4f, 0.6f), OnCargarClicked);
+                // Se reacomoda la columna: titulo arriba, CONTINUAR, GUARDAR, CARGAR y despues el resto.
+                var titulo = pausePanel.transform.Find("Title") as RectTransform;
+                if (titulo != null) titulo.anchoredPosition = new Vector2(0f, 200f);
+                Mover(pausePanel, "ContinueButton", 120f); Mover(pausePanel, "SaveButton", 58f); Mover(pausePanel, "LoadButton", -4f);
+                Mover(pausePanel, "SettingsButton", -66f); Mover(pausePanel, "ControlsButton", -128f); Mover(pausePanel, "MenuButton", -190f);
+                var ngo = new GameObject("NotaDeGuardado", typeof(RectTransform), typeof(Text));
+                ngo.transform.SetParent(pausePanel.transform, false);
+                notaDeGuardado = ngo.GetComponent<Text>();
+                notaDeGuardado.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); notaDeGuardado.fontSize = 13; notaDeGuardado.fontStyle = FontStyle.Bold;
+                notaDeGuardado.alignment = TextAnchor.MiddleCenter; notaDeGuardado.raycastTarget = false;
+                var nrt = notaDeGuardado.rectTransform; nrt.anchorMin = nrt.anchorMax = new Vector2(0.5f, 0.5f); nrt.anchoredPosition = new Vector2(0f, -240f); nrt.sizeDelta = new Vector2(760f, 30f);
+            }
+            RefrescarBotonesDeGuardado();
+        }
+
+        static void Mover(GameObject panel, string nombre, float y)
+        {
+            var rt = panel.transform.Find(nombre) as RectTransform;
+            if (rt != null) rt.anchoredPosition = new Vector2(rt.anchoredPosition.x, y);
+        }
+
+        Button ClonarBoton(RectTransform modelo, string nombre, string texto, Color color, UnityEngine.Events.UnityAction accion)
+        {
+            var go = Instantiate(modelo.gameObject, modelo.parent);
+            go.name = nombre;
+            go.GetComponent<Image>().color = color;
+            var t = go.GetComponentInChildren<Text>(true);
+            if (t != null) { t.text = texto; t.resizeTextForBestFit = true; t.resizeTextMinSize = 10; t.resizeTextMaxSize = t.fontSize; }
+            var b = go.GetComponent<Button>();
+            b.onClick.RemoveAllListeners();
+            b.onClick.AddListener(accion);
+            SP.UI.ButtonSfx.Attach(b);
+            return b;
+        }
+
+        // Guardar: habilitado salvo cinematica / en el aire / caido / subiendo al heli. Cargar: solo si hay partida valida.
+        public void RefrescarBotonesDeGuardado()
+        {
+            if (botonGuardar == null) return;
+            string bloqueo = PartidaGuardada.MotivoDeBloqueo();
+            botonGuardar.interactable = bloqueo == null;
+            bool hay = PartidaGuardada.HayPartida();
+            botonCargar.interactable = hay;
+            botonCargar.gameObject.SetActive(hay);
+            if (bloqueo != null) { notaDeGuardado.text = bloqueo; notaDeGuardado.color = new Color(1f, 0.55f, 0.4f); }
+            else { notaDeGuardado.text = PartidaGuardada.TextoDeCheckpoint; notaDeGuardado.color = new Color(0.7f, 0.78f, 0.9f); }
+        }
+
+        public void OnGuardarClicked()
+        {
+            string r = PartidaGuardada.GuardarManual();
+            GameLog.Line("Pausa: guardar partida -> " + r);
+            RefrescarBotonesDeGuardado();
+            if (notaDeGuardado != null && r == "PARTIDA GUARDADA") { notaDeGuardado.text = "PARTIDA GUARDADA · " + PartidaGuardada.UltimaInfo().Texto; notaDeGuardado.color = new Color(0.5f, 1f, 0.6f); }
+        }
+
+        bool cargaPedida;
+        public void OnCargarClicked()
+        {
+            if (cargaPedida) return;
+            if (!PartidaGuardada.HayPartida()) return;
+            cargaPedida = true;
+            GameLog.Line("Pausa: cargar ultimo guardado");
+            IsPaused = false;
+            PartidaGuardada.Continuar();
         }
 
         public void OnContinueClicked()
@@ -347,6 +477,7 @@ namespace SP.Presentation
             AudioListener.pause = false;
             Time.timeScale = escalaPrevia > 0.0001f ? escalaPrevia : 1f;
             escalaPrevia = 1f;
+            AplicarHudPendiente();
             if (settingsPanel != null) settingsPanel.SetActive(false);
             if (controlsPanel != null) controlsPanel.SetActive(false);
             if (confirmExitPanel != null) confirmExitPanel.SetActive(false);
@@ -365,26 +496,33 @@ namespace SP.Presentation
             // El menu de pausa se esconde mientras se ve Configuraciones: sus botones asomaban entre los dos paneles.
             if (IsPaused && pausePanel != null) pausePanel.SetActive(false);
             SP.UI.PanelAjustesExtra.Preparar(settingsPanel);
+            ConectarSoltadoDelHud();
             GameLog.Line("Se entro a configuraciones");
         }
 
         public void OnSettingsBackClicked()
         {
             if (settingsPanel == null || !settingsPanel.activeSelf) return;
+            AplicarHudPendiente();
             settingsPanel.SetActive(false);
             if (IsPaused && pausePanel != null) pausePanel.SetActive(true);
             GameLog.Line("Se salio de configuraciones");
         }
 
+        // Pantalla de CONTROLES (bug #100): tabla con scroll (SP.UI.TablaDeControles) en vez de un bloque de texto que se pisaba.
+        // El panel se agranda a 820x500 dentro del canvas de 540, se oculta REMAPEAR (a pedido) y VOLVER queda centrado.
+        // Hay que llamarlo con el panel ACTIVO: el layout de la tabla se calcula en el momento.
         void RefreshControlsList()
         {
-            if (controlsListTxt != null)
-            {
-                controlsListTxt.text = SP.UI.ControlsTable.FullText();
-                controlsListTxt.lineSpacing = 1.12f;   // el texto iba pegado al borde y con el interlineado apretado
-                var rt = controlsListTxt.rectTransform;
-                if (rt.offsetMin.x < 18f) { rt.offsetMin = new Vector2(20f, rt.offsetMin.y); rt.offsetMax = new Vector2(-20f, rt.offsetMax.y); }
-            }
+            if (controlsPanel == null) return;
+            var panel = (RectTransform)controlsPanel.transform;
+            panel.sizeDelta = new Vector2(820f, 500f);
+            if (controlsListTxt != null && controlsListTxt.gameObject.activeSelf) controlsListTxt.gameObject.SetActive(false);
+            var rebind = panel.Find("RebindButton");
+            if (rebind != null && rebind.gameObject.activeSelf) rebind.gameObject.SetActive(false);
+            var volver = panel.Find("BackButton") as RectTransform;
+            if (volver != null) volver.anchoredPosition = new Vector2(0f, -216f);
+            SP.UI.TablaDeControles.Asegurar(panel, 60f, 76f, 20f);
         }
 
         // Abre/cierra el panel de controles SIN pausar el juego -- para

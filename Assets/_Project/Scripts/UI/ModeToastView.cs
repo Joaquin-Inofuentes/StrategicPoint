@@ -13,6 +13,23 @@ namespace SP.UI
         CanvasGroup group;
         Coroutine routine;
 
+        // WP11: el aviso del modo ("VISTA TACTICA · DIRIGI A TU EQUIPO", "TORRETA EN AUTOMATICO"...) cae justo donde el HUD de la operacion pone el
+        // temporizador grande (arriba al centro): se encimaban ("90" bajo el aviso). Mientras el temporizador esta a la vista, el HUD pide subir el aviso
+        // por encima de el. Es un pedido por cuadro (no guarda nada): sin el HUD de la operacion el aviso queda donde lo puso la escena.
+        public const float SubidaPorTemporizador = 80f;
+        static bool subirPedido;
+        public static void SubirSobreElTemporizador(bool subir) { subirPedido = subir; }
+        RectTransform rt; Vector2 posBase; bool conBase, subido;
+
+        void Update()
+        {
+            if (rt == null) { rt = transform as RectTransform; if (rt == null) return; }
+            if (!conBase) { posBase = rt.anchoredPosition; conBase = true; }
+            if (subirPedido == subido) return;
+            subido = subirPedido;
+            rt.anchoredPosition = subido ? posBase + new Vector2(0f, SubidaPorTemporizador) : posBase;
+        }
+
         public void Bind(Text text, CanvasGroup canvasGroup)
         {
             label = text;

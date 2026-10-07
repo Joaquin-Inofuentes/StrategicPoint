@@ -182,8 +182,22 @@ namespace SP.UI
 
         // Se llama una sola vez, apenas se instancia la fila. Deja el
         // soldado atado de por vida (una fila nunca cambia de dueño).
-        public void Bind(Soldier soldier, int index)
+        // #115: fila de miliciano (aliado de la ciudad que no es de la escuadra).
+        public bool EsMilicia { get; private set; }
+        static readonly Color NormalMilicia = new Color(0.08f, 0.2f, 0.1f, 0.88f);
+
+        // Lo mismo que un clic simple sobre la fila (selecciona al soldado; en RTS recentra). Publico para los checks.
+        public void ClicSimple()
         {
+            if (Soldier == null || !alive) return;
+            var sc = SelectionController.Instance;
+            if (sc != null) sc.SelectSingle(Soldier);
+            if (CameraRig.Instance != null && CameraRig.Instance.Mode == ControlMode.Rts) CameraRig.Instance.RecenterOn(Soldier.transform.position);
+        }
+
+        public void Bind(Soldier soldier, int index, bool milicia = false)
+        {
+            EsMilicia = milicia;
             // BUG REAL: Soldier.Id se asigna en Bootstrap() (Awake), pero a
             // diferencia de Health/Motor/Weapon/Brain la propiedad Id NO se
             // auto-bootstrapea al leerla. RosterView arma las filas desde
@@ -212,6 +226,9 @@ namespace SP.UI
             // El rol no cambia en la vida de un soldado: alcanza con
             // asignarlo una vez aca en vez de en cada Refresh*.
             if (icon != null) icon.sprite = RoleIconFactory.For(soldier.Role);
+
+            var scSel = SelectionController.Instance;
+            if (scSel != null) foreach (var x in scSel.Selected) if (x == soldier) selected = true;
 
             RefreshLabel();
             RefreshHealthBar(soldier.Health != null ? soldier.Health.Current : 0, soldier.Health != null ? soldier.Health.MaxHealth : 0);
@@ -344,7 +361,7 @@ namespace SP.UI
             }
 
             var hp = Soldier.Health;
-            label.text = hp != null ? $"<size=12>{hp.Current}</size>" : "";
+            label.text = hp != null ? (EsMilicia ? $"<size=12>{hp.Current}</size>\n<size=9><color=#9fe3a0>MILICIA</color></size>" : $"<size=12>{hp.Current}</size>") : "";
             label.color = Color.white;
         }
 
@@ -363,7 +380,7 @@ namespace SP.UI
         void RefreshBackground()
         {
             if (background == null) return;
-            background.color = !alive ? DeadColor : possessed ? PossessedColor : selected ? SelectedColor : NormalColor;
+            background.color = !alive ? DeadColor : possessed ? PossessedColor : selected ? SelectedColor : (EsMilicia ? NormalMilicia : NormalColor);
 
             bool resaltar = alive && selected;
             if (marcoRaiz != null)
@@ -399,16 +416,7 @@ namespace SP.UI
                     CameraRig.Instance.SetMode(ControlMode.Fps);
                 }
             }
-            else
-            {
-                var sc = SelectionController.Instance;
-                if (sc != null) sc.SelectSingle(Soldier);
-
-                if (CameraRig.Instance != null && CameraRig.Instance.Mode == ControlMode.Rts)
-                {
-                    CameraRig.Instance.RecenterOn(Soldier.transform.position);
-                }
-            }
+            else ClicSimple();
         }
     }
 }

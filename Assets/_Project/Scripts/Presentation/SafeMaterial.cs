@@ -18,6 +18,20 @@ namespace SP.Presentation
     {
         static Material template;
 
+        // WP11 (diagnostico de fugas): si el editor pone un diccionario aca, cada material creado por las fabricas (SafeMaterial.Create, CreateLinea,
+        // DiamondGizmo.NuevoMaterial...) suma uno a quien lo pidio (los dos primeros metodos de la pila). Solo en el editor y apagado por defecto.
+        public static System.Collections.Generic.Dictionary<string, int> Origenes;
+
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        public static void RegistrarOrigen(int saltar = 2)
+        {
+            if (Origenes == null) return;
+            var st = new System.Diagnostics.StackTrace(saltar, false);
+            string k = "";
+            for (int i = 0; i < 2 && i < st.FrameCount; i++) { var m = st.GetFrame(i).GetMethod(); k += (i > 0 ? " <- " : "") + (m.DeclaringType != null ? m.DeclaringType.Name : "?") + "." + m.Name; }
+            Origenes.TryGetValue(k, out int n); Origenes[k] = n + 1;
+        }
+
         // EL AGUJERO QUE TENIA ESTO. Clonar el material del primitivo es
         // buena idea, pero no siempre devuelve el material de la pipeline
         // activa: cuando Unity todavia no resolvio URP para esa llamada,
@@ -76,6 +90,7 @@ namespace SP.Presentation
         // reflejos de ambiente que los tiñan de azul.
         public static Material Create(Color color)
         {
+            RegistrarOrigen();
             var mat = new Material(Template);
 
             // ESTO ES LO QUE FALTABA, y es la causa REAL del magenta que se
@@ -109,6 +124,7 @@ namespace SP.Presentation
         // LineRenderer (startColor/endColor) y el alfa; se usa el Unlit de URP solo si faltara.
         public static Material CreateLinea(Color color)
         {
+            RegistrarOrigen();
             var shader = Shader.Find("Sprites/Default");
             if (shader == null || !shader.isSupported) shader = Shader.Find("Universal Render Pipeline/Unlit");
             if (shader == null || !shader.isSupported) return Create(color);   // ultimo recurso: el de siempre

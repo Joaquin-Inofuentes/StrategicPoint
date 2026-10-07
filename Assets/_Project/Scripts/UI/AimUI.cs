@@ -432,7 +432,9 @@ namespace SP.UI
             _ => 0f,
         };
 
-        static readonly Color KillMarkerColor = new Color(1f, 0.85f, 0.15f);
+        // Bug #065: la baja la comunica MarcaDeImpacto (rojo/dorado, 8 rayas y anillo). El flash de la mira conserva el pico de
+        // tamaño pero pasa a blanco: el amarillo de antes competia con el dorado del headshot y con el rojo de la marca.
+        static readonly Color KillMarkerColor = new Color(1f, 1f, 1f);
         static readonly Color CriticalMarkerColor = new Color(1f, 0.45f, 0.05f);
         // Que fraccion de la vida maxima hace de un impacto un "critico".
         // Impacto, critico y baja son tres sucesos con consecuencias muy
@@ -583,7 +585,7 @@ namespace SP.UI
                     // silencio, pero el cartel no avisaba nada, como si
                     // sí fuera a funcionar.
                     CurrentPrompt = "";
-                    currentAimTint = result.Vehicle.IsDestroyed ? ObstacleTint : VehicleTint;
+                    currentAimTint = result.Vehicle.IsDestroyed ? ObstacleTint : (result.Vehicle.Bando == SP.Combat.TeamId.Enemy ? EnemyTint : VehicleTint);   // bug #071: vehiculo enemigo = mira roja
                     break;
                 case AimTargetType.Obstacle:
                     // Destructible = tiene ObstacleMarker (F1-F3, G1 ya lo

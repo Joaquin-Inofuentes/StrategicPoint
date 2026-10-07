@@ -18,6 +18,7 @@ namespace SP.Presentation
             public GameObject botiquin, anillo;
             public float t, proximaCruz;
             public Soldier herido;
+            public bool agachadoPrevio;   // postura del medico antes de empezar: Terminar la restaura (no pisa un agachado del jugador)
             public readonly List<(Transform tr, float vida)> cruces = new List<(Transform, float)>();
         }
 
@@ -26,6 +27,14 @@ namespace SP.Presentation
 
         public static bool Animando(Soldier medico) => medico != null && activos.ContainsKey(medico);
         public static int CrucesVivas(Soldier medico) => medico != null && activos.TryGetValue(medico, out var e) ? e.cruces.Count : 0;
+
+        // WP11: en Edit mode (la suite headless) Destroy no hace nada y tira un error por cada objeto; el anillo seguia ahi con su
+        // collider y bloqueaba al soldado curado. En Play se destruye al fin del cuadro como siempre.
+        static void Soltar(Object o)
+        {
+            if (o == null) return;
+            if (Application.isPlaying) Object.Destroy(o); else Object.DestroyImmediate(o);
+        }
 
         static Material Mat(ref Material m, Color c)
         {
@@ -38,7 +47,7 @@ namespace SP.Presentation
             var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
             go.name = nombre;
             var col = go.GetComponent<Collider>();
-            if (col != null) Object.Destroy(col);
+            if (col != null) Soltar(col);
             go.transform.SetParent(padre, false);
             go.transform.localScale = escala;
             go.transform.localPosition = posLocal;
@@ -50,7 +59,7 @@ namespace SP.Presentation
 
         static Estado Crear(Soldier medico, Soldier herido)
         {
-            var e = new Estado { herido = herido };
+            var e = new Estado { herido = herido, agachadoPrevio = medico.Motor != null && medico.Motor.IsCrouching };
             // Botiquin: caja blanca con una cruz roja (dos barras) en la cara.
             var raiz = new GameObject("Botiquin_Curando");
             raiz.transform.SetParent(medico.transform, false);
@@ -63,14 +72,15 @@ namespace SP.Presentation
             var anillo = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             anillo.name = "AnilloCuracion";
             var c2 = anillo.GetComponent<Collider>();
-            if (c2 != null) Object.Destroy(c2);
+            if (c2 != null) Soltar(c2);
             anillo.GetComponent<MeshRenderer>().sharedMaterial = Mat(ref matVerde, new Color(0.25f, 1f, 0.45f, 0.85f));
             anillo.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             e.anillo = anillo;
             return e;
         }
 
-        public static void Tick(Soldier medico, Soldier herido, float dt)
+        // orientar = false para el soldado que maneja el jugador: la camara sale de su rotacion y girarlo solo pelea con el mouse.
+        public static void Tick(Soldier medico, Soldier herido, float dt, bool orientar = true)
         {
             if (medico == null || herido == null) return;
             if (!activos.TryGetValue(medico, out var e) || e.botiquin == null || e.herido != herido)
@@ -81,12 +91,17 @@ namespace SP.Presentation
             }
             e.t += dt;
 
+            // Bug #067: al REVIVIR (el paciente esta caido) las manos hacen compresiones en el pecho (AnimacionDeAccion): el botiquin
+            // del curar solo sale cuando se cura a alguien herido.
+            bool revive = herido.Health != null && !herido.Health.IsAlive;
+            if (e.botiquin.activeSelf == revive) e.botiquin.SetActive(!revive);
+
             // El medico agachado mirando al herido (la IA del medico esta Pasiva mientras atiende, no pelea por la postura).
             if (medico.Motor != null)
             {
                 medico.Motor.SetCrouching(true);
                 var hacia = herido.transform.position - medico.transform.position; hacia.y = 0f;
-                if (hacia.sqrMagnitude > 0.01f)
+                if (orientar && hacia.sqrMagnitude > 0.01f)
                     medico.transform.rotation = Quaternion.Slerp(medico.transform.rotation, Quaternion.LookRotation(hacia), Mathf.Clamp01(dt * 8f));
             }
 
@@ -116,7 +131,7 @@ namespace SP.Presentation
             {
                 var (tr, vida) = e.cruces[i];
                 vida += dt;
-                if (tr == null || vida > 1.1f) { if (tr != null) Object.Destroy(tr.gameObject); e.cruces.RemoveAt(i); continue; }
+                if (tr == null || vida > 1.1f) { if (tr != null) Soltar(tr.gameObject); e.cruces.RemoveAt(i); continue; }
                 tr.position += Vector3.up * dt * 1.4f;
                 tr.localScale = Vector3.one * Mathf.Lerp(1f, 0.3f, vida / 1.1f);
                 var cam = SP.Core.CamaraPrincipal.Actual;
@@ -129,10 +144,10 @@ namespace SP.Presentation
         {
             if (medico == null || !activos.TryGetValue(medico, out var e)) return;
             activos.Remove(medico);
-            if (e.botiquin != null) Object.Destroy(e.botiquin);
-            if (e.anillo != null) Object.Destroy(e.anillo);
-            foreach (var (tr, _) in e.cruces) if (tr != null) Object.Destroy(tr.gameObject);
-            if (medico.Motor != null) medico.Motor.SetCrouching(false);
+            if (e.botiquin != null) Soltar(e.botiquin);
+            if (e.anillo != null) Soltar(e.anillo);
+            foreach (var (tr, _) in e.cruces) if (tr != null) Soltar(tr.gameObject);
+            if (medico.Motor != null) medico.Motor.SetCrouching(e.agachadoPrevio);
         }
     }
 

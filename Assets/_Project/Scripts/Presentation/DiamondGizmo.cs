@@ -111,8 +111,22 @@ namespace SP.Presentation
         // Material SOLIDO, sin luces: pedido explicito de "mucho contraste
         // con el ambiente", y estos rombos tienen que leerse igual de bien
         // en el modo noche/niebla del nivel que a pleno dia.
+        // WP11: un material por COLOR para quien no lo modifica despues (los iconos del minimapa: 459 obstaculos + 100 soldados creaban uno cada
+        // uno, HideAndDontSave, y nadie los liberaba: ~1000 materiales por sesion de Play que se acumulaban en el editor). El que lo pide NO debe
+        // cambiarle el color ni propiedades: para eso esta NuevoMaterial.
+        static readonly System.Collections.Generic.Dictionary<Color32, Material> compartidos = new System.Collections.Generic.Dictionary<Color32, Material>();
+        public static Material NuevoMaterialCompartido(Color color)
+        {
+            Color32 k = color;
+            if (compartidos.TryGetValue(k, out var m) && m != null) return m;
+            m = NuevoMaterial(color);
+            compartidos[k] = m;
+            return m;
+        }
+
         public static Material NuevoMaterial(Color color, bool zTestAlways = false)
         {
+            SafeMaterial.RegistrarOrigen();
             var shader = ResolverShaderUnlit();
             Material mat;
             if (shader != null)
@@ -178,6 +192,79 @@ namespace SP.Presentation
             tex.Apply(false, false);
             texturaEngranaje = tex;
             return tex;
+        }
+
+        // Bug #066: engranajes que giran sobre el actor y sobre el objetivo de una accion (EngranajesDeAccion). Son quads
+        // sueltos (sin rombo), asi que necesitan el engranaje con ALFA de verdad y un material transparente. 8 dientes,
+        // borde suavizado, agujero central; blanco para que el color lo ponga quien lo usa.
+        static Texture2D texturaEngranajeAlfa;
+        public static Texture2D TexturaEngranajeConAlfa()
+        {
+            if (texturaEngranajeAlfa != null) return texturaEngranajeAlfa;
+            const int lado = 128;
+            const int dientes = 8;
+            const float centro = lado * 0.5f;
+            const float radioExterior = lado * 0.48f;
+            const float radioValle = lado * 0.36f;
+            const float radioInterior = lado * 0.17f;
+            var tex = new Texture2D(lado, lado, TextureFormat.RGBA32, true) { hideFlags = HideFlags.HideAndDontSave, wrapMode = TextureWrapMode.Clamp };
+            var pix = new Color32[lado * lado];
+            for (int y = 0; y < lado; y++)
+            {
+                for (int x = 0; x < lado; x++)
+                {
+                    float dx = x + 0.5f - centro, dy = y + 0.5f - centro;
+                    float r = Mathf.Sqrt(dx * dx + dy * dy);
+                    float ang = Mathf.Atan2(dy, dx);
+                    // Dientes trapezoidales: el radio de borde sube y baja suave segun el angulo dentro de cada diente.
+                    float ciclo = Mathf.Repeat(ang / (Mathf.PI * 2f) * dientes, 1f);
+                    float k = Mathf.Clamp01((Mathf.Abs(ciclo - 0.5f) - 0.14f) / 0.12f);   // 1 en el valle, 0 en la punta del diente
+                    float radioDeBorde = Mathf.Lerp(radioExterior, radioValle, k);
+                    float a = Mathf.Clamp01(radioDeBorde - r + 0.5f) * Mathf.Clamp01(r - radioInterior + 0.5f);
+                    pix[y * lado + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(a * 255f));
+                }
+            }
+            tex.SetPixels32(pix);
+            tex.Apply(true, false);
+            texturaEngranajeAlfa = tex;
+            return tex;
+        }
+
+        // Material Unlit TRANSPARENTE con textura (alfa por vertice no hace falta: el color/alfa va por MaterialPropertyBlock).
+        public static Material NuevoMaterialTransparente(Color color, Texture textura, bool zTestAlways = false)
+        {
+            // El Unlit de URP no expone _ZTest (el flag de NuevoMaterial no hace nada ahi): para "siempre encima" se usa UI/Default,
+            // que si lo expone (unity_GUIZTestMode) y es transparente, sin luces y con textura y color (_Color).
+            if (zTestAlways)
+            {
+                var ui = Shader.Find("UI/Default");
+                if (ui != null && ui.isSupported)
+                {
+                    var m = new Material(ui) { hideFlags = HideFlags.HideAndDontSave, name = "M_SiempreVisible" };
+                    m.mainTexture = textura;
+                    m.color = color;
+                    m.SetInt("unity_GUIZTestMode", (int)CompareFunction.Always);
+                    m.renderQueue = (int)RenderQueue.Transparent + 500;
+                    return m;
+                }
+            }
+            var mat = NuevoMaterial(color, zTestAlways);
+            if (textura != null)
+            {
+                mat.mainTexture = textura;
+                if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", textura);
+            }
+            if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1f);
+            if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 0f);
+            if (mat.HasProperty("_SrcBlend")) mat.SetInt("_SrcBlend", (int)BlendMode.SrcAlpha);
+            if (mat.HasProperty("_DstBlend")) mat.SetInt("_DstBlend", (int)BlendMode.OneMinusSrcAlpha);
+            if (mat.HasProperty("_SrcBlendAlpha")) mat.SetInt("_SrcBlendAlpha", (int)BlendMode.One);
+            if (mat.HasProperty("_DstBlendAlpha")) mat.SetInt("_DstBlendAlpha", (int)BlendMode.OneMinusSrcAlpha);
+            if (mat.HasProperty("_ZWrite")) mat.SetInt("_ZWrite", 0);
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.renderQueue = zTestAlways ? (int)RenderQueue.Transparent + 500 : (int)RenderQueue.Transparent;   // siempre encima: va al final de la cola
+            mat.SetOverrideTag("RenderType", "Transparent");
+            return mat;
         }
 
         // Mismo material Unlit que NuevoMaterial, pero con el engranaje como

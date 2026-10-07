@@ -188,7 +188,7 @@ namespace SP.Presentation
         {
             string who = "ENEMIGO ABATIDO";   // pedido explicito: mismo texto para las bajas propias y de la escuadra (el color las distingue)
             if (GroupedKills > 1) return $"{who} x{GroupedKills}";
-            if (LastKillWasPlayer && Streak >= 3) return $"{who}   ·   RACHA {Streak}";
+            // Bug #079: el "RACHA n" salio de aca: las rachas las anuncia RachaDeBajas con sus carteles (DOBLE/TRIPLE/PENTA KILL y FURIA).
             return who;
         }
     }

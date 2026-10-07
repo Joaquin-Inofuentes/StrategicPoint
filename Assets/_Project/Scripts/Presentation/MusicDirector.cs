@@ -58,6 +58,107 @@ namespace SP.Presentation
         static AudioSource estrategiaSource;
         static AudioSource luchaSource;
         static bool fuentesListas;
+        static bool combateUltimo;
+
+        // ------------------------------------------------------------------
+        // WP2 (#093): musica de victoria y salvataje con fade largo.
+        // El himno se sintetiza en un hilo (PrecargarVictoria) y suena por una fuente 2D propia con ignoreListenerPause. Los
+        // fades corren con Time.unscaledDeltaTime desde un runner propio: la victoria pone timeScale 0, y ahi ni este Tick (lo
+        // llama WorldSimulationDriver.Step) ni nada escalado avanza.
+        // ------------------------------------------------------------------
+        public static bool VictoriaSonando { get; private set; }
+        public static bool VictoriaLista => himnoClip != null;
+        public static bool VictoriaGenerando => himnoClip == null && himnoTarea != null && !himnoTarea.IsCompleted;
+        // Volumen real de la fuente del himno (ya multiplicado por el canal Ambient del usuario).
+        public static float VolumenVictoria => victoriaSource != null ? victoriaSource.volume : 0f;
+        public static bool VictoriaReproduciendo => victoriaSource != null && victoriaSource.isPlaying;
+        // Mayor volumen entre los dos loops de combate/calma (para auditar que quedan en silencio).
+        public static float VolumenDeLoops => Mathf.Max(estrategiaSource != null ? estrategiaSource.volume : 0f, luchaSource != null ? luchaSource.volume : 0f);
+        // 1 = normal; baja a 0 durante la victoria (loops de combate; el ambiente baja a 0.25).
+        public static float FactorOtros { get; private set; } = 1f;
+        public const float VolumenDeVictoria = 0.95f;
+
+        static AudioClip himnoClip;
+        static System.Threading.Tasks.Task<float[]> himnoTarea;
+        static AudioSource victoriaSource;
+        static MusicaVictoriaRunner runnerVictoria;
+        static float victoriaT, victoriaFadeIn = 6f, otrosT, otrosFade = 4f;
+
+        // Empieza a calcular el himno en un hilo de fondo (idempotente). Llamarlo unos segundos antes de TocarVictoria.
+        public static void PrecargarVictoria()
+        {
+            if (himnoClip != null || himnoTarea != null) return;
+            himnoTarea = System.Threading.Tasks.Task.Run(() => SfxSintetico.HimnoEpicoDatos());   // #129: himno v2 (estereo, ~38 s)
+        }
+
+        public static void TocarVictoria(float fadeIn = 6f, float fadeOtros = 4f)
+        {
+            if (!Application.isPlaying) return;
+            PrecargarVictoria();
+            victoriaFadeIn = Mathf.Max(0.01f, fadeIn);
+            otrosFade = Mathf.Max(0.01f, fadeOtros);
+            victoriaT = 0f; otrosT = 0f;
+            VictoriaSonando = true;
+            if (victoriaSource != null) { victoriaSource.Stop(); victoriaSource.volume = 0f; victoriaSource.Play(); }
+            if (runnerVictoria == null)
+            {
+                var go = new GameObject("MusicaVictoria");
+                runnerVictoria = go.AddComponent<MusicaVictoriaRunner>();
+            }
+        }
+
+        // Corta el himno y devuelve el resto de la musica a la normalidad (reintentar, tests, cambio de escena).
+        public static void DetenerVictoria()
+        {
+            VictoriaSonando = false;
+            FactorOtros = 1f;
+            if (victoriaSource != null) { victoriaSource.Stop(); victoriaSource.volume = 0f; }
+        }
+
+        // Un paso del fade con tiempo NO escalado (lo llama MusicaVictoriaRunner.Update).
+        internal static void PasoVictoria(float dtReal)
+        {
+            if (!VictoriaSonando) return;
+            if (victoriaSource == null)
+            {
+                if (himnoClip == null)
+                {
+                    if (himnoTarea == null || !himnoTarea.IsCompleted) { otrosT += dtReal; AplicarOtros(); return; }
+                    if (himnoTarea.IsFaulted) { Debug.LogError("[MusicDirector] fallo el himno de victoria: " + himnoTarea.Exception?.GetBaseException().Message); VictoriaSonando = false; return; }
+                    himnoClip = SfxSintetico.ClipDelHimnoEpico(himnoTarea.Result);
+                }
+                var go = new GameObject("Victoria");
+                go.transform.SetParent(runnerVictoria != null ? runnerVictoria.transform : null, false);
+                victoriaSource = go.AddComponent<AudioSource>();
+                victoriaSource.clip = himnoClip;
+                victoriaSource.loop = false;
+                victoriaSource.spatialBlend = 0f;   // musica: 2D, no posicional
+                victoriaSource.playOnAwake = false;
+                victoriaSource.ignoreListenerPause = true;
+                victoriaSource.volume = 0f;
+                victoriaSource.Play();
+            }
+            victoriaT += dtReal;
+            otrosT += dtReal;
+            float p = Mathf.Clamp01(victoriaT / victoriaFadeIn);
+            float suave = p * p * (3f - 2f * p);
+            victoriaSource.volume = suave * VolumenDeVictoria * AudioDirector.GainFor(SfxChannel.Ambient);
+            AplicarOtros();
+        }
+
+        static void AplicarOtros()
+        {
+            FactorOtros = 1f - Mathf.Clamp01(otrosT / otrosFade);
+            if (Application.isPlaying) AplicarAAudioFuentes(combateUltimo);
+        }
+
+        internal static void AlDestruirRunner()
+        {
+            VictoriaSonando = false;
+            FactorOtros = 1f;
+            victoriaSource = null;
+            runnerVictoria = null;
+        }
 
         // Los estaticos sobreviven a "Enter Play Mode" sin domain reload:
         // sin este reset, GananciaLucha arrastraria el valor de la sesion
@@ -66,10 +167,17 @@ namespace SP.Presentation
         static void ResetOnLoad()
         {
             GananciaLucha = 0f;
+            CombateForzado = false;
             Atenuacion = 1f;
             fuentesListas = false;
             estrategiaSource = null;
             luchaSource = null;
+            VictoriaSonando = false;
+            FactorOtros = 1f;
+            himnoClip = null;
+            himnoTarea = null;
+            victoriaSource = null;
+            runnerVictoria = null;
         }
 
         // Se llama desde WorldSimulationDriver.Step, el mismo unico camino
@@ -89,8 +197,12 @@ namespace SP.Presentation
         // "Hay combate" = algun soldado vivo en Attack o Chase a menos de
         // AlcanceDeCombate metros de la camara (que es el mejor proxy de
         // "donde esta el jugador" sin acoplarse a FPS/RTS/vehiculo).
+        // #127: la cobertura de la extraccion pide la musica de combate al maximo aunque no haya nadie en Attack/Chase cerca de la camara.
+        public static bool CombateForzado;
+
         static bool HayCombateCerca()
         {
+            if (CombateForzado) return true;
             var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam == null) return false;
             var pos = cam.transform.position;
@@ -107,11 +219,12 @@ namespace SP.Presentation
         static void AplicarAAudioFuentes(bool combate)
         {
             AsegurarFuentes();
+            combateUltimo = combate;
             // Reusa el canal Ambient de AudioDirector como volumen maestro
             // de la musica: si el dia de mañana hay un slider de ambiente,
             // la musica lo respeta gratis, sin que este director tenga que
             // saber nada de PlayerPrefs.
-            float maestro = AudioDirector.GainFor(SfxChannel.Ambient) * VolumenBase * Atenuacion;
+            float maestro = AudioDirector.GainFor(SfxChannel.Ambient) * VolumenBase * Atenuacion * FactorOtros;
 
             // El progreso lineal (GananciaLucha) solo decide LA RAMPA en el
             // tiempo (por eso el test de Fases8a12 lo puede medir en
@@ -205,5 +318,12 @@ namespace SP.Presentation
             clip.SetData(samples, 0);
             return clip;
         }
+    }
+
+    // Avanza el fade del himno de victoria con tiempo no escalado (ver MusicDirector.TocarVictoria).
+    public class MusicaVictoriaRunner : MonoBehaviour
+    {
+        void Update() { MusicDirector.PasoVictoria(Time.unscaledDeltaTime); }
+        void OnDestroy() { MusicDirector.AlDestruirRunner(); }
     }
 }

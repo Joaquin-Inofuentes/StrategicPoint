@@ -54,6 +54,21 @@ namespace SP.Presentation
         static readonly ImpactFxPool spheres = new ImpactFxPool("ImpactFxPool", SphereBudget, CreateSphere);
         static readonly ImpactFxPool rings = new ImpactFxPool("ShockwaveRingPool", RingBudget, CreateRing);
 
+        // Anillos de REVIVIR (bug #089): pool propio, asi 3 anillos por revivido no le sacan el cupo a las explosiones. No cuenta en
+        // Budget/ActiveCount (los tests de arriba hablan de las esferas y los anillos de explosion).
+        public const int ReviveRingBudget = 8;
+        static readonly ImpactFxPool reviveRings = new ImpactFxPool("ReviveRingPool", ReviveRingBudget, CreateReviveRing);
+        public static int ReviveRingsActive => reviveRings.ActiveCount;
+        static Material materialDeAnillo;
+        static Material MaterialDeAnillo
+        {
+            get
+            {
+                if (materialDeAnillo == null) materialDeAnillo = SafeMaterial.CreateLinea(Color.white);
+                return materialDeAnillo;
+            }
+        }
+
         // --- Material compartido -------------------------------------
 
         static Material sharedMaterial;
@@ -140,6 +155,28 @@ namespace SP.Presentation
             return fx;
         }
 
+        // Anillo plano en el piso, con alfa por vertice (material sin luz que respeta el color de la linea).
+        static ImpactFx CreateReviveRing(Transform parent)
+        {
+            var go = new GameObject("ReviveRing");
+            go.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
+            go.transform.SetParent(parent, false);
+
+            var line = go.AddComponent<LineRenderer>();
+            line.loop = true;
+            line.useWorldSpace = true;
+            line.widthMultiplier = ReviveRingWidth;
+            line.positionCount = 48;
+            line.sharedMaterial = MaterialDeAnillo;
+            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            line.receiveShadows = false;
+            line.enabled = false;
+
+            var fx = go.AddComponent<ImpactFx>();
+            go.SetActive(false);
+            return fx;
+        }
+
         // Entrar en Play mode NO destruye los objetos de la escena, pero SI
         // reinicia los estaticos: el root creado en tiempo de edicion sigue
         // vivo mientras las listas que lo indexaban quedan vacias, y sus
@@ -154,6 +191,7 @@ namespace SP.Presentation
         {
             spheres.LimpiarTodo();
             rings.LimpiarTodo();
+            reviveRings.LimpiarTodo();
             DestroyOrphans();
         }
 
@@ -164,6 +202,7 @@ namespace SP.Presentation
                 if (fx == null) continue;
                 if (spheres != null && spheres.Contains(fx)) continue;
                 if (rings != null && rings.Contains(fx)) continue;
+                if (reviveRings != null && reviveRings.Contains(fx)) continue;
                 if (Application.isPlaying) Object.Destroy(fx.gameObject);
                 else Object.DestroyImmediate(fx.gameObject);
             }
@@ -176,6 +215,7 @@ namespace SP.Presentation
         {
             spheres.RecycleAll();
             rings.RecycleAll();
+            reviveRings.RecycleAll();
         }
 
         // --- API publica ---------------------------------------------
@@ -228,7 +268,12 @@ namespace SP.Presentation
         // un tamanio cosmetico fijo), y se achica bruscamente en vez de un
         // lerp parejo como el impacto chico normal -- crece rapido, aguanta
         // un instante en el pico, y colapsa de golpe.
-        public static void SpawnExplosion(Vector3 position, float radius)
+        public static void SpawnExplosion(Vector3 position, float radius) => SpawnExplosion(position, radius, true);
+
+        // Bug #072: el crater/decal quedaba en y = 0,02-0,04 y la calle esta en 0,08: la marca del obus estaba ENTERRADA. Ahora se mide el
+        // piso bajo el punto (asfalto incluido) y la marca y el anillo se apoyan encima; ademas queda un CRATER con borde (CraterPool).
+        // conCrater = false cuando varias explosiones seguidas caen en el mismo lugar (un vehiculo que revienta en tres tiempos).
+        public static void SpawnExplosion(Vector3 position, float radius, bool conCrater)
         {
             // Ronda 12: la esfera naranja era un placeholder. Ahora es una explosion de sprites reales (fuego, humo, tierra, chispas).
             // Si por algun motivo faltan los sprites (Resources), se cae a la esfera de antes.
@@ -243,8 +288,12 @@ namespace SP.Presentation
             // explosionRadius sobre el suelo y se queda ahi un instante: es
             // lo que permite aprender el alcance real y evitar el fuego
             // amigo.
-            SpawnShockwaveRing(position, radius);
-            DecalPool.Spawn(DecalKind.Crater, new Vector3(position.x, 0.02f, position.z), Vector3.up, radius * 1.4f);
+            float pisoY = Application.isPlaying ? DestruccionDeVehiculo.AlturaDelPiso(position) : 0f;
+            var anillo = rings.Take();
+            if (anillo != null) anillo.LaunchRing(new Vector3(position.x, pisoY + 0.06f, position.z), radius);
+            DecalPool.Spawn(DecalKind.Crater, new Vector3(position.x, Mathf.Max(pisoY, 0.02f), position.z), Vector3.up, radius * 1.4f);
+            if (conCrater && radius >= 3.5f && position.y - pisoY <= 2.5f)
+                CraterPool.Crear(position, pisoY, radius * 0.55f);
             SpawnDustCloud(position, radius);
 
             // Escombros del punto de impacto, del pool compartido.
@@ -262,6 +311,15 @@ namespace SP.Presentation
             fx.LaunchRing(new Vector3(center.x, 0.06f, center.z), radius);
         }
 
+        // Anillo de color que se expande desde 'radioInicial' hasta 'radioFinal' en 'duracion' segundos y se desvanece (alfa 0.9 a 0),
+        // plano sobre el piso. 'demora' lo escalona respecto de otros anillos. Va por su propio pool de ReviveRingBudget.
+        public static void SpawnShockwaveRing(Vector3 center, Color color, float radioFinal, float duracion, float demora = 0f, float radioInicial = 0.4f)
+        {
+            var fx = reviveRings.Take();
+            if (fx == null) return;
+            fx.LaunchReviveRing(center, color, radioInicial, radioFinal, Mathf.Max(0.05f, duracion), Mathf.Max(0f, demora));
+        }
+
         // Nube breve que ensucia la zona y se disipa. Va por el mismo
         // presupuesto de escombros para que no se acumule: una explosion no
         // puede costar mas que su cupo.
@@ -277,7 +335,7 @@ namespace SP.Presentation
 
         // --- Instancia ------------------------------------------------
 
-        enum FxMode { None, GrowShrink, Explode, Ring }
+        enum FxMode { None, GrowShrink, Explode, Ring, ReviveRing }
 
         FxMode mode;
         float age;
@@ -285,6 +343,10 @@ namespace SP.Presentation
         float duration;
         Vector3 ringCenter;
         float ringRadius;
+        float ringRadius0, ringDelay;
+        Color ringColor;
+        const float ReviveRingWidth = 0.28f;
+        const float ReviveRingAlpha = 0.9f;
 
         Renderer cachedRenderer;
         LineRenderer cachedLine;
@@ -351,6 +413,39 @@ namespace SP.Presentation
             DrawRing(line, center, 0f);
         }
 
+        void LaunchReviveRing(Vector3 center, Color color, float r0, float r1, float dur, float delay)
+        {
+            gameObject.SetActive(true);
+            var line = Line;
+            if (line == null) { Recycle(); reviveRings.Release(this); return; }
+            ringCenter = center;
+            ringRadius0 = r0;
+            ringRadius = r1;
+            duration = dur;
+            ringDelay = delay;
+            ringColor = color;
+            age = 0f;
+            mode = FxMode.ReviveRing;
+            line.enabled = false;   // en demora no se ve; el primer cuadro visible ya sale con el radio y el alfa correctos
+            DrawRing(line, center, r0);
+        }
+
+        void TickReviveRing()
+        {
+            var line = Line;
+            if (line == null) { Finish(); return; }
+            float t = age - ringDelay;
+            if (t < 0f) return;
+            float k = Mathf.Clamp01(t / duration);
+            if (!line.enabled) line.enabled = true;
+            float e = 1f - (1f - k) * (1f - k);   // sale rapido y frena: se lee como una onda
+            DrawRing(line, ringCenter, Mathf.Lerp(ringRadius0, ringRadius, e));
+            var c = ringColor; c.a = ReviveRingAlpha * (1f - k);
+            line.startColor = c; line.endColor = c;
+            line.widthMultiplier = Mathf.Lerp(ReviveRingWidth, ReviveRingWidth * 0.5f, k);
+            if (k >= 1f) Finish();
+        }
+
         const float GrowFraction = 0.35f;
 
         const float ExplodeGrowTime = 0.12f;
@@ -371,6 +466,7 @@ namespace SP.Presentation
                 case FxMode.GrowShrink: TickGrowShrink(); break;
                 case FxMode.Explode: TickExplode(); break;
                 case FxMode.Ring: TickRing(); break;
+                case FxMode.ReviveRing: TickReviveRing(); break;
             }
         }
 
@@ -459,9 +555,10 @@ namespace SP.Presentation
 
         void Finish()
         {
-            bool wasRing = mode == FxMode.Ring;
+            var anterior = mode;
             Recycle();
-            if (wasRing) rings.Release(this);
+            if (anterior == FxMode.ReviveRing) reviveRings.Release(this);
+            else if (anterior == FxMode.Ring) rings.Release(this);
             else spheres.Release(this);
         }
 

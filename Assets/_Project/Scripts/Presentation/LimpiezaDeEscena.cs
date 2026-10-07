@@ -56,6 +56,8 @@ namespace SP.Presentation
             // El cuarto pool. Medido: sin esto, 7 marcadores de orden de la
             // partida anterior quedaban pintados sobre el mapa nuevo.
             OrderMarkerFx.LimpiarTodo();
+            ChapaVolante.LimpiarTodo();
+            CraterPool.LimpiarTodo();   // bug #072
             KillCylinderFx.LimpiarTodo();
             // WorldTag (etiquetas flotantes de Feedback.Accion/Visual) y la vista de
             // trayectoria de granada: mismo problema, nunca enganchados a este
@@ -69,7 +71,7 @@ namespace SP.Presentation
 
         static readonly string[] NombresDeRoot =
         {
-            "DecalPool", "DebrisPool", "ImpactFxPool", "ShockwaveRingPool",
+            "DecalPool", "DebrisPool", "ImpactFxPool", "ShockwaveRingPool", "CraterPool", "ChapasPool",
             "OrderMarkerPool", SP.Core.Coberturas.NombreDelRoot,
             // WorldTag no tiene un root que las agrupe: cada instancia del pool
             // ES un root propio con ese nombre. TrayectoriaGranada es un singleton,

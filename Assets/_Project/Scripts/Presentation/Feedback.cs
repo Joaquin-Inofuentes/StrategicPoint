@@ -76,6 +76,11 @@ namespace SP.Presentation
     // desvanece. Pool chico y reciclado: nunca crece.
     public class WorldTag : MonoBehaviour
     {
+        public Vector3 Inicio => start;
+        public string Texto => mesh != null ? mesh.text : "";
+        public TextMesh Malla => mesh;
+        public static System.Collections.Generic.IReadOnlyList<WorldTag> Todas => pool;
+
         const int Budget = 20;
         static readonly List<WorldTag> pool = new List<WorldTag>();
         static int next;
@@ -109,9 +114,30 @@ namespace SP.Presentation
             else Object.DestroyImmediate(go);
         }
 
+        // Bug #105: varios carteles que nacen casi en el mismo lugar ("KES TE SIGUE", "DOC TE SIGUE"...) se superponian y no se leian.
+        // Si ya hay carteles recientes (nacidos hace menos de EdadParaApilar) a menos de RadioParaApilar m, el nuevo sube un renglon por cada uno.
+        public const float RadioParaApilar = 4f, EdadParaApilar = 0.8f;
+        public static bool ApilarActivo = true;   // solo lo apagan los checks para reproducir el bug original
+        static Vector3 ApilarSiSeSuperpone(Vector3 pos)
+        {
+            int n = 0;
+            float spacing = 0.7f;
+            var cam = SP.Core.CamaraPrincipal.Actual;
+            if (cam != null) spacing = 0.62f * Mathf.Clamp(Vector3.Distance(cam.transform.position, pos) * 0.09f, 0.7f, 4f);
+            for (int i = 0; i < pool.Count; i++)
+            {
+                var t = pool[i];
+                if (t == null || !t.gameObject.activeSelf || t.age > EdadParaApilar) continue;
+                var d = t.start - pos; d.y = 0f;
+                if (d.magnitude < RadioParaApilar) n++;
+            }
+            return n == 0 ? pos : pos + Vector3.up * (spacing * n);
+        }
+
         public static WorldTag Spawn(Vector3 pos, string text, Color color)
         {
             pool.RemoveAll(t => t == null);
+            if (ApilarActivo) pos = ApilarSiSeSuperpone(pos);
             WorldTag tag;
             if (pool.Count < Budget)
             {

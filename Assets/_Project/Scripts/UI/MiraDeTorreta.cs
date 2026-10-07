@@ -37,6 +37,8 @@ namespace SP.UI
         public static bool Visible => raiz != null && raiz.activeSelf;
         public static string TextoDelBlanco => textoBlanco != null && textoBlanco.gameObject.activeSelf ? textoBlanco.text : "";
         public static bool ApuntaAEnemigo { get; private set; }
+        public static TurretAimView.TipoDeImpacto EstadoDeCruceta { get; private set; }
+        public static Color ColorDeCruceta => cruceta != null ? cruceta.color : Color.clear;
         public static float VidaDelBlanco01 { get; private set; }
         public static float Recarga01 { get; private set; } = 1f;
         public static Vector2 PosicionRomboPx { get; private set; }
@@ -60,7 +62,7 @@ namespace SP.UI
             if (cruceta.enabled == periscopioActivo) cruceta.enabled = !periscopioActivo;
 
             // Que hay en el centro de la vista (el tubo mira donde mira la camara).
-            Soldier soldado = null; Vehicle auto = null;
+            Soldier soldado = null; Vehicle auto = null; SP.Presentation.ObstacleMarker marca = null;
             var origen = cam.transform.position;
             var dir = cam.transform.forward;
             int n = Physics.RaycastNonAlloc(origen, dir, golpes, 400f, ~0, QueryTriggerInteraction.Ignore);
@@ -74,6 +76,7 @@ namespace SP.UI
                 var v = h.collider.GetComponentInParent<Vehicle>();
                 mejor = h.distance;
                 soldado = s; auto = v;
+                marca = s == null && v == null ? h.collider.GetComponentInParent<SP.Presentation.ObstacleMarker>() : null;
             }
             float vida = 0f; string nombre = null; bool enemigo = false;
             if (soldado != null && soldado.Team == TeamId.Enemy && soldado.Health != null && soldado.Health.IsAlive)
@@ -87,7 +90,11 @@ namespace SP.UI
             ApuntaAEnemigo = enemigo;
             VidaDelBlanco01 = vida;
             // Bug #047: "quiero que cambie el cursor cuando apunto a un enemigo": la cruceta se pone roja y un poco mas grande.
+            // Bug #091: tres estados de la cruceta, como el anillo de impacto: rojo = enemigo, naranja = obstaculo destructible, el resto neutro.
+            bool destructible = !enemigo && marca != null && !marca.IsCollapsed && marca.EsDestruible;
             if (enemigo) cruceta.color = Enemigo;
+            else if (destructible) cruceta.color = TurretAimView.ColorDestructible;
+            EstadoDeCruceta = enemigo ? TurretAimView.TipoDeImpacto.Enemigo : destructible ? TurretAimView.TipoDeImpacto.Destructible : TurretAimView.TipoDeImpacto.Neutro;
             ((RectTransform)cruceta.transform).sizeDelta = Vector2.one * (enemigo ? 84f : 72f);
             anilloVida.SetVisible(enemigo);
             if (enemigo) anilloVida.SetProgreso(vida);

@@ -187,33 +187,41 @@ namespace SP.Presentation
             Cursor.visible = true;
         }
 
-        public void ShowVictory()
+        // Bug #077: congelar=false deja la escena viva detras (camara lenta x0,35 en vez de timeScale 0) y alfaFondo < 1 hace
+        // translucido el fondo de la pantalla. Los defaults conservan el comportamiento de siempre (SC_Gameplay, tutorial).
+        public const float TimeScaleLento = 0.35f;
+        public float AlfaFondoDeVictoria { get; private set; } = 1f;
+        public bool VictoriaCongelada { get; private set; } = true;
+
+        public void ShowVictory(bool congelar = true, float alfaFondo = 1f)
         {
             if (victoryPanel == null || shown) return;
             shown = true;
             GameLog.Line("Ganaste");
-            Time.timeScale = 0f;
+            VictoriaCongelada = congelar;
+            AlfaFondoDeVictoria = Mathf.Clamp01(alfaFondo);
+            Time.timeScale = congelar ? 0f : TimeScaleLento;
             ReleaseCursor();
             if (victoryStats == null) victoryStats = victoryPanel.transform.Find("Stats")?.GetComponent<Text>();
             if (victoryStats != null) victoryStats.text = BuildStatsText();
             victoryPanel.SetActive(true);
-            Animar(victoryPanel, victoryStats, true);
+            Animar(victoryPanel, victoryStats, true, AlfaFondoDeVictoria);
             GameLog.Line("Pantalla de ganar activa");
         }
 
         // Bug #064: entra con fundido, titulo animado y las estadisticas fila por fila (ver PantallaDeResultado). El foco del
         // teclado va a Reintentar recien cuando los botones terminan de aparecer.
-        void Animar(GameObject panel, Text statsViejo, bool victoria)
+        void Animar(GameObject panel, Text statsViejo, bool victoria, float alfaFondo = 1f)
         {
             if (!isActiveAndEnabled) { FocusRetryButton(panel); return; }
-            StartCoroutine(AnimarYEnfocar(panel, statsViejo, victoria));
+            StartCoroutine(AnimarYEnfocar(panel, statsViejo, victoria, alfaFondo));
         }
 
-        System.Collections.IEnumerator AnimarYEnfocar(GameObject panel, Text statsViejo, bool victoria)
+        System.Collections.IEnumerator AnimarYEnfocar(GameObject panel, Text statsViejo, bool victoria, float alfaFondo)
         {
             var filas = SP.Mision.EstadisticasDeMision.Filas(victoria);
             float y = victoria ? 92f : 64f;
-            yield return PantallaDeResultado.Animar(panel, filas, statsViejo, y);
+            yield return PantallaDeResultado.Animar(panel, filas, statsViejo, y, alfaFondo);
             FocusRetryButton(panel);
         }
 
@@ -230,6 +238,7 @@ namespace SP.Presentation
             if (defeatReason != null) defeatReason.text = string.IsNullOrEmpty(motivo) ? "" : SP.Core.Loc.T(motivo);
             if (defeatStats == null) defeatStats = defeatPanel.transform.Find("Stats")?.GetComponent<Text>();
             if (defeatStats != null) defeatStats.text = BuildStatsText();
+            PrepararBotonDeCarga();
             defeatPanel.SetActive(true);
             Animar(defeatPanel, defeatStats, false);
             GameLog.Line("Pantalla de perder activa");
@@ -241,6 +250,41 @@ namespace SP.Presentation
         // había arrancado el cambio de escena con el primero. Con esto
         // solo el primer click de cada uno hace algo.
         bool actionTaken;
+
+        // P10 (#120): en la derrota, si hay una partida guardada, CARGAR ULTIMO GUARDADO (debajo de SALIR). Se crea en runtime clonando SALIR.
+        Button botonCargar;
+        public Button BotonCargar => botonCargar;
+        void PrepararBotonDeCarga()
+        {
+            if (defeatPanel == null) return;
+            if (botonCargar == null)
+            {
+                var salir = defeatPanel.transform.Find("ExitButton") as RectTransform;
+                if (salir == null) return;
+                var go = Instantiate(salir.gameObject, salir.parent);
+                go.name = "LoadSaveButton";
+                go.GetComponent<Image>().color = new Color(0.3f, 0.4f, 0.6f);
+                var t = go.GetComponentInChildren<Text>(true);
+                if (t != null) { t.text = "CARGAR ÚLTIMO GUARDADO"; t.resizeTextForBestFit = true; t.resizeTextMinSize = 10; t.resizeTextMaxSize = t.fontSize; }
+                var rt = (RectTransform)go.transform;
+                rt.anchoredPosition = salir.anchoredPosition + new Vector2(0f, -(salir.sizeDelta.y + 12f));
+                botonCargar = go.GetComponent<Button>();
+                botonCargar.onClick.RemoveAllListeners();
+                botonCargar.onClick.AddListener(OnCargarGuardadoClicked);
+                SP.UI.ButtonSfx.Attach(botonCargar);
+            }
+            botonCargar.gameObject.SetActive(SP.Core.PartidaGuardada.HayPartida());
+        }
+
+        public void OnCargarGuardadoClicked()
+        {
+            if (actionTaken) return;
+            if (!SP.Core.PartidaGuardada.HayPartida()) return;
+            actionTaken = true;
+            GameLog.Line("Se selecciono cargar el ultimo guardado");
+            Time.timeScale = 1f;
+            SP.Core.PartidaGuardada.Continuar();
+        }
 
         public void OnRetryClicked()
         {

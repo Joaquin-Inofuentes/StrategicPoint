@@ -96,6 +96,10 @@ namespace SP.Presentation
             int obstaculosEnMinimapa = MinimapIcon.RegistrarObstaculos(MinimapIcon.ObstacleMinimapColor);
             if (obstaculosEnMinimapa > 0) GameLog.Line($"Se agregaron {obstaculosEnMinimapa} obstaculos al minimapa");
 
+            // Los muros, bordes y paredes del cuartel no llevan ObstacleMarker: su silueta se arma aparte (bug #065).
+            int siluetas = SiluetasDeMinimapa.Registrar();
+            if (siluetas > 0) GameLog.Line($"Se agregaron {siluetas} siluetas de muros al minimapa");
+
             int vehiculosLibres = MinimapIcon.RegistrarVehiculosLibres();
             if (vehiculosLibres > 0) GameLog.Line($"Se agregaron {vehiculosLibres} vehiculos libres al minimapa");
 

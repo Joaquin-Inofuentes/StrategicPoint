@@ -31,7 +31,7 @@ namespace SP.Presentation
         public Transform Target
         {
             get => target;
-            set { target = value; if (Application.isPlaying) DetectarTarget(); }
+            set { target = value; vehiculoResuelto = false; if (Application.isPlaying) DetectarTarget(); }
         }
         [SerializeField] float height = 55f;
         // El icono es un circulo chato: rotarlo no cambia nada visible.
@@ -100,11 +100,12 @@ namespace SP.Presentation
         AiBrain brainDetectado;
 
         SP.Vehicles.Vehicle vehiculoDetectado;
+        bool vehiculoResuelto;
         void DetectarTarget()
         {
             if (Target == null) return;
             soldierDetectado = Target.GetComponent<Soldier>();
-            vehiculoDetectado = Target.GetComponent<SP.Vehicles.Vehicle>();
+            vehiculoDetectado = Target.GetComponent<SP.Vehicles.Vehicle>(); vehiculoResuelto = true;
 
             if (soldierDetectado != null)
             {
@@ -123,7 +124,7 @@ namespace SP.Presentation
                 else ConvertirEnCirculo();
 
                 EnsureRenderer();
-                if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(color);
+                if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterialCompartido(color);
                 autoColoreado = true;
 
                 brainDetectado = Target.GetComponent<AiBrain>();
@@ -140,7 +141,7 @@ namespace SP.Presentation
                     color = vehiculoDetectado.Bando == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
                 }
                 EnsureRenderer();
-                if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(color);
+                if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterialCompartido(color);
                 return;
             }
         }
@@ -148,14 +149,15 @@ namespace SP.Presentation
         public void RepintarPorEquipo(bool forzar = false)
         {
             if (Target == null) return;
-            var vehicle = Target.GetComponent<SP.Vehicles.Vehicle>();
+            if (!vehiculoResuelto) { vehiculoDetectado = Target.GetComponent<SP.Vehicles.Vehicle>(); vehiculoResuelto = true; }   // WP11: cacheado (antes un GetComponent por icono por frame)
+            var vehicle = vehiculoDetectado;
             if (vehicle != null)
             {
                 Color color = Color.gray;
                 if (vehicle.Occupants.Count > 0)
                     color = vehicle.Bando == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
                 EnsureRenderer();
-                if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(color);
+                if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterialCompartido(color);
                 return;
             }
 
@@ -172,7 +174,7 @@ namespace SP.Presentation
             else ConvertirEnCirculo();
 
             EnsureRenderer();
-            if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(colorSoldier);
+            if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterialCompartido(colorSoldier);
             CrearOActualizarConoDeVision(colorSoldier);
         }
 
@@ -437,6 +439,11 @@ namespace SP.Presentation
         // cincuenta LateUpdate por frame solo para copiar una posicion.
         // Ahora lo llama WorldUiDirector desde un unico recorrido.
         // Devuelve false si el icono se destruyo por quedarse sin objetivo.
+        float ultimaX = float.NaN, ultimaZ = float.NaN, ultimaAltura = float.NaN;
+        // WP11: icono de algo que no es soldado ni vehiculo (obstaculo, panel...): el director lo actualiza solo en los pases de reevaluacion (4 Hz),
+        // no en cada frame. Solo cuando ya se resolvio el tipo del objetivo (en Play); si no, sigue el camino de siempre.
+        public bool EsEstatico => vehiculoResuelto && soldierDetectado == null && vehiculoDetectado == null && !CaidoParpadeando;
+        public bool UltimoRenderizado { get; set; }
         public bool TickFollow()
         {
             if (Target == null)
@@ -464,6 +471,7 @@ namespace SP.Presentation
                     if (directionMarker != null && directionMarker.gameObject.activeSelf) directionMarker.gameObject.SetActive(false);
                     AjustarEscalaAlZoom(1.35f + 0.35f * Mathf.Sin(Time.unscaledTime * 12f));
                     transform.position = new Vector3(Target.position.x, height + 1f, Target.position.z);
+                    ultimaAltura = float.NaN;   // al revivir hay que volver a escribir la altura normal
                     CaidoParpadeando = true;
                     return true;
                 }
@@ -485,7 +493,14 @@ namespace SP.Presentation
             // los discos coplanares se pisan entre si y "vos" quedabas
             // indistinguible de un aliado cualquiera debajo tuyo.
             float alturaIcono = height + (esPoseidoPintado ? 0.5f : 0f);
-            transform.position = new Vector3(Target.position.x, alturaIcono, Target.position.z);
+            // WP11: ~460 iconos de obstaculo (quietos) escribian su posicion cada frame (WorldUiDirector.LateUpdate era 1,4 ms constantes). Solo se
+            // escribe si el objetivo se movio; el resto sigue pasando por aca igual (muertes, niebla y color no cambian).
+            var posObjetivo = Target.position;
+            if (posObjetivo.x != ultimaX || posObjetivo.z != ultimaZ || alturaIcono != ultimaAltura)
+            {
+                ultimaX = posObjetivo.x; ultimaZ = posObjetivo.z; ultimaAltura = alturaIcono;
+                transform.position = new Vector3(posObjetivo.x, alturaIcono, posObjetivo.z);
+            }
             // Antes esto solo giraba el icono si ya era un triangulo
             // (enemigos): un aliado es un circulo simetrico que no
             // necesitaba rotar. El cono de vision SI necesita la rotacion
@@ -629,7 +644,7 @@ namespace SP.Presentation
             if (filtro == null) return false;
             filtro.sharedMesh = MallaTriangulo();
             EnsureRenderer();
-            if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterial(Color.white);
+            if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterialCompartido(Color.white);
 
             if (trianguloAnidadoInterior == null)
             {
@@ -648,7 +663,7 @@ namespace SP.Presentation
             var mr = trianguloAnidadoInterior.GetComponent<MeshRenderer>();
             if (mr != null)
             {
-                mr.sharedMaterial = DiamondGizmo.NuevoMaterial(colorInterior);
+                mr.sharedMaterial = DiamondGizmo.NuevoMaterialCompartido(colorInterior);
                 mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 mr.receiveShadows = false;
             }
@@ -843,6 +858,7 @@ namespace SP.Presentation
             var marcas = SP.Core.WorldSystemsRegistry.Obstacles;
             foreach (var marca in marcas)
             {
+                if (marca == null) continue;   // registro de una escena anterior (recarga de SC_Gameplay en la misma sesion)
                 var icon = Spawn(marca.transform, color, layer, radius);
                 icon.transform.SetParent(root, true);
                 // C2: cuadrado, no circulo -- lo interactuable se
@@ -883,7 +899,7 @@ namespace SP.Presentation
             // apaga los colores que no tengan componente azul (el rojo de
             // un enemigo, el gris claro de un obstaculo) justo cuando mas
             // contraste hace falta en el minimapa.
-            rend.sharedMaterial = DiamondGizmo.NuevoMaterial(color);
+            rend.sharedMaterial = DiamondGizmo.NuevoMaterialCompartido(color);
             rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             rend.receiveShadows = false;
 

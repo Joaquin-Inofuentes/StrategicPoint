@@ -161,7 +161,9 @@ namespace SP.UI
             var zonaPerilla = SP.Core.BuscarHijo.Ruta(srt, "Handle Slide Area") as RectTransform;
             if (zonaPerilla != null)
             {
-                zonaPerilla.anchorMin = Vector2.zero; zonaPerilla.anchorMax = Vector2.one;
+                // Alto CERO centrado: Slider.UpdateVisuals le pone al Handle anclas Y 0..1 y, con la zona estirada a todo el
+                // alto del slider, la perilla se deformaba (22x46). Con la zona de alto cero mide siempre sizeDelta (22x22).
+                zonaPerilla.anchorMin = new Vector2(0f, 0.5f); zonaPerilla.anchorMax = new Vector2(1f, 0.5f);
                 zonaPerilla.offsetMin = new Vector2(11f, 0f); zonaPerilla.offsetMax = new Vector2(-11f, 0f);
             }
             var perilla = SP.Core.BuscarHijo.Ruta(srt, "Handle Slide Area/Handle") as RectTransform;
@@ -171,7 +173,7 @@ namespace SP.UI
                 perilla.anchorMin = new Vector2(perilla.anchorMin.x, 0.5f); perilla.anchorMax = new Vector2(perilla.anchorMax.x, 0.5f);
                 perilla.sizeDelta = new Vector2(22f, 22f);
                 perillaIm = perilla.GetComponent<Image>();
-                if (perillaIm != null) { perillaIm.sprite = Circulo(); perillaIm.type = Image.Type.Simple; perillaIm.color = Color.white; perillaIm.raycastTarget = true; }
+                if (perillaIm != null) { perillaIm.sprite = Circulo(); perillaIm.type = Image.Type.Simple; perillaIm.preserveAspect = true; perillaIm.color = Color.white; perillaIm.raycastTarget = true; }
                 var n = SP.Core.BuscarHijo.Ruta(perilla, "Nucleo");
                 if (n == null)
                 {
@@ -285,6 +287,11 @@ namespace SP.UI
         float ultimoTic, destello;
         const float TramoDeTic = 0.05f;
 
+        // Para quien necesite aplicar el valor SOLO al soltar (tamano de HUD): Apretado dice si hay un puntero sobre la perilla y
+        // Soltado avisa al levantarlo (o si el slider se apaga a mitad del arrastre).
+        public bool Apretado => apretado;
+        public event System.Action<Slider> Soltado;
+
         public void Configurar(Slider s, Image pistaIm, RectTransform perillaRt, Image nucleoIm, Image chipIm, Text valorTx, Color acentoColor)
         {
             if (slider != null) slider.onValueChanged.RemoveListener(AlCambiar);
@@ -293,7 +300,12 @@ namespace SP.UI
             if (slider != null) slider.onValueChanged.AddListener(AlCambiar);
         }
 
-        void OnDisable() { encima = apretado = false; destello = 0f; Pintar(0f); }
+        void OnDisable()
+        {
+            bool estabaApretado = apretado;
+            encima = apretado = false; destello = 0f; Pintar(0f);
+            if (estabaApretado) Soltado?.Invoke(slider);
+        }
         void OnDestroy() { if (slider != null) slider.onValueChanged.RemoveListener(AlCambiar); }
 
         void AlCambiar(float _)
@@ -311,7 +323,7 @@ namespace SP.UI
         public void OnPointerEnter(PointerEventData e) { encima = true; AudioDirector.PlayUi2D(SfxKind.UiHover, 0.3f, 0.3f); }
         public void OnPointerExit(PointerEventData e) { encima = false; }
         public void OnPointerDown(PointerEventData e) { apretado = true; AudioDirector.PlayUi2D(SfxKind.UiClick, 0.45f, 0.8f); }
-        public void OnPointerUp(PointerEventData e) { apretado = false; AudioDirector.PlayUi2D(SfxKind.UiClick, 0.55f, 0.85f); }
+        public void OnPointerUp(PointerEventData e) { apretado = false; AudioDirector.PlayUi2D(SfxKind.UiClick, 0.55f, 0.85f); Soltado?.Invoke(slider); }
 
         void Update() => Pintar(Time.unscaledDeltaTime);
 

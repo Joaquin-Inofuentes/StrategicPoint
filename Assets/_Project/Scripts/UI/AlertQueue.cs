@@ -65,6 +65,7 @@ namespace SP.UI
         static AlertPriority currentPriority;
         static float currentUntil = float.NegativeInfinity;
 
+        public static readonly System.Collections.Generic.List<string> Historial = new System.Collections.Generic.List<string>();
         public static int PendingCount => count;
         public static bool IsBusy => Now() < currentUntil;
         public static AlertPriority CurrentPriority => currentPriority;
@@ -93,6 +94,8 @@ namespace SP.UI
         {
             if (string.IsNullOrEmpty(message)) return;
             if (seconds <= 0f) seconds = DefaultSeconds;
+            Historial.Add(message);   // solo para los checks
+            if (Historial.Count > 64) Historial.RemoveAt(0);
 
             PurgeStale(now);
 

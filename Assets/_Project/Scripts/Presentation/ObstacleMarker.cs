@@ -64,7 +64,22 @@ namespace SP.Presentation
         // Para obstaculos que se arman por codigo o por herramientas del nivel (compuertas blindadas, barricadas de cierre).
         public void ConfigurarVida(int vida) { maxHealth = Mathf.Max(1, vida); currentHealth = maxHealth; }
 
+        // Barril que estalla al ser tocado por el fuego (bug #090): mismo comportamiento que los de SC_Gameplay, armado por codigo.
+        public void ConfigurarExplosivo(float radio, int dano, float demora = 2.5f)
+        {
+            esExplosivo = true; radioExplosion = radio; danoExplosion = dano; demoraExplosion = demora;
+        }
+
+        // Obstaculo fuera de la malla de navegacion (el builder lo marca ignoreFromBuild, p.ej. lo que va sobre la calzada de la autopista):
+        // al caer no hay nada que rehacer, y asi aplastar una fila de barreras no dispara un rehorneado tras otro.
+        [SerializeField] bool sinNavMesh = false;
+        public void ConfigurarSinNavMesh() { sinNavMesh = true; }
+        public bool SinNavMesh => sinNavMesh;
+
         public int MaxHealth => maxHealth;
+        // Vida con la que el builder marca los muros, edificios y rocas que NO se pueden romper (ni a tiros, ni a cargas, ni con el tanque).
+        public const int Indestructible = 999999;
+        public bool EsDestruible => maxHealth < Indestructible;
         public int CurrentHealth => currentHealth < 0 ? maxHealth : currentHealth;
         public bool IsCollapsed { get; private set; }
 
@@ -119,10 +134,16 @@ namespace SP.Presentation
         Vector3? ultimoGolpe;
         float fuerzaDeRotura = 7f;
 
+        // WP8 (#078): las torres del cuartel solo se rompen con explosiones (cohete, granada, canon) o con una carga (Demoler): las balas no.
+        [SerializeField] bool soloExplosiones = false;
+        public bool SoloExplosiones => soloExplosiones;
+        public void ConfigurarSoloExplosiones() { soloExplosiones = true; }
+
         public void TakeDamage(int amount, Vector3? desde = null)
         {
             CacheIfNeeded();
             if (IsCollapsed) return;
+            if (soloExplosiones && !SP.Combat.Projectile.DanoDeExplosionEnCurso) return;
             if (desde.HasValue) ultimoGolpe = desde;
             Golpeado?.Invoke(this, amount);
 
@@ -191,9 +212,12 @@ namespace SP.Presentation
             // El obstaculo que se cayo abrio un paso que la grilla de
             // navegacion todavia cree cerrado: sin esto los soldados
             // seguirian rodeando un escombro que ya no existe.
-            SP.Core.NavService.Invalidate();
-            // El NavMesh del agent tambien se horneo con este muro en pie: se rehace en juego (si no, todos lo siguen rodeando).
-            SP.Core.NavMeshViva.Solicitar();
+            if (!sinNavMesh)
+            {
+                SP.Core.NavService.Invalidate();
+                // El NavMesh del agent tambien se horneo con este muro en pie: se rehace en juego (si no, todos lo siguen rodeando).
+                SP.Core.NavMeshViva.Solicitar();
+            }
             // Y por el mismo motivo, las coberturas que daba este obstaculo
             // ya no cubren de nada: sin reregistrar, la IA seguiria yendo a
             // esconderse detras de un escombro.

@@ -16,6 +16,50 @@ namespace SP.Presentation
     // aparte.
     public enum SfxChannel { Sfx, Ui, Ambient, Voice }
 
+    // WP2 (bugs #065/#095/#072): perfil espacial por voz. Hasta ahora TODAS las voces 3D del pool usaban el mismo rolloff
+    // lineal 5-90 m: un grito, un tiro y una explosion se atenuaban igual. Cada perfil fija min/max y la curva; el director
+    // los aplica a la voz al reproducir (se reescriben en CADA reproduccion, asi que no hace falta restablecerlos al liberar).
+    // La distorsion de los disparos NO vive aca: esta horneada en el clip (GenericSfx.GetWeaponShot, sufijo _dist).
+    public struct PerfilEspacial
+    {
+        public float min, max;
+        public AudioRolloffMode rolloff;
+        public bool plano;   // true = 2D (interfaz): se reproduce por PlayFlat
+
+        public PerfilEspacial(float min, float max, AudioRolloffMode rolloff, bool plano = false)
+        { this.min = min; this.max = max; this.rolloff = rolloff; this.plano = plano; }
+
+        // Lo de siempre: lineal 5-90 (las constantes globales que testea la suite headless no cambian).
+        public static readonly PerfilEspacial Base = new PerfilEspacial(AudioDirector.MinDistance, AudioDirector.MaxDistance, AudioRolloffMode.Linear);
+        public static readonly PerfilEspacial Voz = new PerfilEspacial(3f, 60f, AudioRolloffMode.Logarithmic);
+        public static readonly PerfilEspacial Disparo = new PerfilEspacial(5f, 120f, AudioRolloffMode.Logarithmic);
+        public static readonly PerfilEspacial Explosion = new PerfilEspacial(8f, 220f, AudioRolloffMode.Logarithmic);
+        public static readonly PerfilEspacial Ui = new PerfilEspacial(0f, 0f, AudioRolloffMode.Linear, true);
+
+        // Perfil por defecto de cada SfxKind cuando quien llama no pide uno (asi los puntos de llamada existentes lo heredan).
+        public static PerfilEspacial Para(SfxKind kind)
+        {
+            switch (kind)
+            {
+                case SfxKind.Death:
+                case SfxKind.Wounded:
+                case SfxKind.Logro:
+                    return Voz;
+                case SfxKind.Shoot:
+                case SfxKind.CannonCrack:
+                    return Disparo;
+                case SfxKind.Explosion:
+                case SfxKind.ImpactoPesado:
+                case SfxKind.CannonBody:
+                case SfxKind.TankFire:
+                case SfxKind.DestruccionVehiculo:
+                    return Explosion;
+                default:
+                    return Base;
+            }
+        }
+    }
+
     // Estado de una voz del pool, separado del AudioSource A PROPOSITO: asi
     // la decision de a quien robarle la voz (AudioDirector.SelectVictim) es
     // una funcion pura sobre datos planos y se puede verificar en Edit mode,
@@ -28,6 +72,12 @@ namespace SP.Presentation
         public float ExpiresAt;
     }
 
+    // QUE QUEDA EN 2D A PROPOSITO (bug #095, "todo 3D excepto la musica"): musica (MusicDirector: Estrategia, Lucha, Victoria; MisionDirector:
+    // Tension), ambiente (SonidosDeOperacion: lazo de viento), interfaz (PlayUi/PlayFlat: clics, radial, avisos), voces de orden (canal
+    // Voice), latido de poca vida, tono critico de la mirilla, tono de racha y los stingers de objetivo/cinematica (ObjetivoCumplido,
+    // BoardAll, CameraSwoosh, Logro de victoria), mas el tick suave (0.15) de la baja propia. Todo sonido DEL MUNDO va por PlayClip
+    // (3D, con PerfilEspacial). ChecksBugs065.Bug095a audita esta lista con las AudioSource reales durante un combate.
+    //
     // Punto central de reproduccion de sonido (items 186, 187, 189, 191 y 193).
     //
     // POR QUE UNA CLASE Y NO UN AudioMixer: el backlog pide "mezclador con
@@ -137,6 +187,22 @@ namespace SP.Presentation
             if (distance <= MinDistance) return 1f;
             if (distance >= MaxDistance) return 0f;
             return 1f - (distance - MinDistance) / (MaxDistance - MinDistance);
+        }
+
+        // Atenuacion segun el perfil de la voz (lineal o logaritmica; 0 pasado el maximo del perfil).
+        public static float Attenuation(float distance, PerfilEspacial p)
+        {
+            if (distance >= p.max) return 0f;
+            if (distance <= p.min) return 1f;
+            if (p.rolloff == AudioRolloffMode.Logarithmic) return p.min / distance;
+            return 1f - (distance - p.min) / (p.max - p.min);
+        }
+
+        // Igual que CutoffFor(distance) pero con el maximo del perfil (una explosion de 220 m no se apaga a los 90).
+        public static float CutoffFor(float distance, float max)
+        {
+            float k = Mathf.Clamp01(distance / Mathf.Max(1f, max));
+            return Mathf.Lerp(CutoffNear, CutoffFar, Mathf.Sqrt(k));
         }
 
         // El aire se come los agudos antes que los graves: un disparo lejano
@@ -385,12 +451,12 @@ namespace SP.Presentation
 
         public void Play(SfxKind kind, Vector3 position, float volume, float priority)
         {
-            PlayClip(GenericSfx.Get(kind), position, volume, priority);
+            PlayClip(GenericSfx.Get(kind), position, volume, priority, SfxChannel.Sfx, PerfilEspacial.Para(kind));
         }
 
         public void Play(SfxKind kind, Vector3 position, float volume)
         {
-            PlayClip(GenericSfx.Get(kind), position, volume, 1f);
+            PlayClip(GenericSfx.Get(kind), position, volume, 1f, SfxChannel.Sfx, PerfilEspacial.Para(kind));
         }
 
         // Overload por clip para los sonidos que no son un SfxKind, como el
@@ -402,11 +468,16 @@ namespace SP.Presentation
         // ambiente tambien tiene posicion (una fogata, un generador), asi
         // que el canal es un parametro y no una constante.
         public bool PlayClip(AudioClip clip, Vector3 position, float volume, float priority, SfxChannel channel)
+            => PlayClip(clip, position, volume, priority, channel, PerfilEspacial.Base);
+
+        // pitch <= 0 = variacion aleatoria de siempre (item 191); > 0 = tono pedido (la racha de bajas sube de tono).
+        public bool PlayClip(AudioClip clip, Vector3 position, float volume, float priority, SfxChannel channel, PerfilEspacial perfil, float pitch = 0f)
         {
             // La suite headless corre en Edit mode: nada que reproduzca
             // audio puede ejecutarse ahi.
             if (!Application.isPlaying) return false;
             if (clip == null) return false;
+            if (perfil.plano) return PlayFlat(clip, channel, volume, priority, pitch);
             if (channel == SfxChannel.Sfx) Subtitulos.Anunciar(clip, position);
 
             EnsureVoices();
@@ -418,7 +489,7 @@ namespace SP.Presentation
             if (finalVolume <= 0f) return false;
 
             float distance = DistanceToListener(position);
-            float audibility = volume * Attenuation(distance) * Mathf.Max(0f, priority);
+            float audibility = volume * Attenuation(distance, perfil) * Mathf.Max(0f, priority);
             if (audibility <= 0f) return false;   // ya esta fuera de rango
 
             float now = Now;
@@ -434,19 +505,25 @@ namespace SP.Presentation
 
             var lp = filters3D[slot];
             bool tapado = Ocluido(position);
-            if (lp != null) lp.cutoffFrequency = tapado ? Mathf.Min(CutoffFor(distance), OclusionCorte) : CutoffFor(distance);
+            float corte = CutoffFor(distance, perfil.max);
+            if (lp != null) lp.cutoffFrequency = tapado ? Mathf.Min(corte, OclusionCorte) : corte;
 
             src.transform.position = position;
             src.clip = clip;
             src.volume = tapado ? finalVolume * OclusionVolumen : finalVolume;
             UltimoSonidoTapado = tapado;
+            // Perfil espacial: se reescribe en cada reproduccion (la voz es del pool y la usa cualquiera).
+            src.spatialBlend = 1f;
+            src.rolloffMode = perfil.rolloff;
+            src.minDistance = perfil.min;
+            src.maxDistance = perfil.max;
             // Pista para la virtualizacion propia del motor, que es
             // independiente de la nuestra: en Unity 0 es la MAXIMA prioridad
             // y 255 la minima, por eso va invertido.
             src.priority = Mathf.Clamp(255 - Mathf.RoundToInt(Mathf.Clamp01(priority) * 255f), 0, 255);
 
-            float pitch = NextPitch();
-            src.pitch = pitch;   // ANTES de Play(), y con Play(), no PlayOneShot
+            float tono = pitch > 0f ? pitch : NextPitch();
+            src.pitch = tono;   // ANTES de Play(), y con Play(), no PlayOneShot
             src.Play();
             Registrar(clip);
 
@@ -454,13 +531,13 @@ namespace SP.Presentation
             // dividir por cero si alguna vez llega un pitch degenerado.
             voices3D[slot].Free = false;
             voices3D[slot].Audibility = audibility;
-            voices3D[slot].ExpiresAt = now + clip.length / Mathf.Max(0.01f, pitch);
+            voices3D[slot].ExpiresAt = now + clip.length / Mathf.Max(0.01f, tono);
             return true;
         }
 
         // Voz 2D: interfaz y ambiente. Sin posicion, sin filtro y sin
         // atenuacion, asi que la audibilidad es solo volumen por prioridad.
-        public bool PlayFlat(AudioClip clip, SfxChannel channel, float volume, float priority)
+        public bool PlayFlat(AudioClip clip, SfxChannel channel, float volume, float priority, float pitch = 0f)
         {
             if (!Application.isPlaying) return false;
             if (clip == null) return false;
@@ -488,14 +565,14 @@ namespace SP.Presentation
             src.volume = finalVolume;
             src.priority = Mathf.Clamp(255 - Mathf.RoundToInt(Mathf.Clamp01(priority) * 255f), 0, 255);
 
-            float pitch = NextPitch();
-            src.pitch = pitch;
+            float tono = pitch > 0f ? pitch : NextPitch();
+            src.pitch = tono;
             src.Play();
             Registrar(clip);
 
             voices2D[slot].Free = false;
             voices2D[slot].Audibility = audibility;
-            voices2D[slot].ExpiresAt = now + clip.length / Mathf.Max(0.01f, pitch);
+            voices2D[slot].ExpiresAt = now + clip.length / Mathf.Max(0.01f, tono);
             return true;
         }
 
@@ -512,11 +589,19 @@ namespace SP.Presentation
         // audio con AudioSource.PlayClipAtPoint o con un AudioSource por
         // entidad. Devuelven false si no hay director en la escena, para que
         // quien llama pueda decidir si le importa; nunca tiran.
+        // Sin perfil explicito, cada SfxKind hereda el suyo (PerfilEspacial.Para): voces 3-60 log, disparos 5-120 log,
+        // explosiones 8-220 log, el resto el lineal 5-90 de siempre.
         public static bool PlayAt(SfxKind kind, Vector3 position, float volume, float priority = 1f)
-            => Instance != null && Instance.PlayClip(GenericSfx.Get(kind), position, volume, priority);
+            => Instance != null && Instance.PlayClip(GenericSfx.Get(kind), position, volume, priority, SfxChannel.Sfx, PerfilEspacial.Para(kind));
+
+        public static bool PlayAt(SfxKind kind, Vector3 position, float volume, float priority, PerfilEspacial perfil, float pitch = 0f)
+            => Instance != null && Instance.PlayClip(GenericSfx.Get(kind), position, volume, priority, SfxChannel.Sfx, perfil, pitch);
 
         public static bool PlayClipAt(AudioClip clip, Vector3 position, float volume, float priority = 1f)
             => Instance != null && Instance.PlayClip(clip, position, volume, priority);
+
+        public static bool PlayClipAt(AudioClip clip, Vector3 position, float volume, float priority, PerfilEspacial perfil, float pitch = 0f)
+            => Instance != null && Instance.PlayClip(clip, position, volume, priority, SfxChannel.Sfx, perfil, pitch);
 
         public static bool PlayUi2D(SfxKind kind, float volume, float priority = 1f)
             => Instance != null && Instance.PlayUi(kind, volume, priority);

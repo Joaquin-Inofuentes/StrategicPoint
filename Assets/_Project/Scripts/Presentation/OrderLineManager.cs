@@ -10,14 +10,52 @@ namespace SP.Presentation
     // movimiento simple en RTS. El marcador (OrderMarkerFx) ya dice
     // DONDE hay un destino; esta linea dice DE QUIEN es, algo que con
     // varios soldados en movimiento simultaneo el marcador solo no
-    // puede responder. Mismo patron que AttackLineManager: revisa a
+    // puede responder. Mismo patron que AttackLineManager: revisa
     // todos cada frame y crea/reposiciona/borra las lineas solo.
+    //
+    // Bug #068: la linea blanca dura 3 s (no toda la orden): alfa 1 hasta los 2.5 s, se desvanece hasta 0 a los 3.0 s y despues se
+    // oculta aunque el soldado siga en camino. El reloj es por soldado y arranca de nuevo cuando cambia su destino.
     public class OrderLineManager : MonoBehaviour
     {
         // Blanca (pedido explicito: "quiero que sea blanca no gris o negra"), sin luz: ver SafeMaterial.CreateLinea.
         static readonly Color LineColor = new Color(1f, 1f, 1f, 0.9f);
 
-        readonly Dictionary<int, LineRenderer> lines = new Dictionary<int, LineRenderer>();
+        public const float SegundosCompleta = 2.5f;   // alfa 1
+        public const float SegundosTotales = 3.0f;    // desde aca esta oculta
+
+        sealed class Linea
+        {
+            public LineRenderer lr;
+            public Vector3 destino;
+            public float t0;
+            public float alfa = 1f;
+            public bool oculta;
+        }
+
+        readonly Dictionary<int, Linea> lines = new Dictionary<int, Linea>();
+        static OrderLineManager instancia;
+        public static OrderLineManager Instancia => instancia;
+
+        void OnEnable() { instancia = this; }
+        void OnDisable() { if (instancia == this) instancia = null; }
+
+        // Para la suite: estado de la linea de un soldado (false = no hay linea registrada).
+        public bool Estado(int soldadoId, out float alfa, out bool activa, out float edad)
+        {
+            alfa = 0f; activa = false; edad = 0f;
+            if (!lines.TryGetValue(soldadoId, out var l) || l == null) return false;
+            alfa = l.alfa;
+            activa = l.lr != null && l.lr.gameObject.activeSelf;
+            edad = Time.time - l.t0;
+            return true;
+        }
+
+        public static float AlfaSegunEdad(float edad)
+        {
+            if (edad <= SegundosCompleta) return 1f;
+            if (edad >= SegundosTotales) return 0f;
+            return 1f - (edad - SegundosCompleta) / (SegundosTotales - SegundosCompleta);
+        }
 
         void Update()
         {
@@ -39,21 +77,43 @@ namespace SP.Presentation
                     continue;
                 }
 
-                if (!lines.TryGetValue(soldier.Id, out var lr) || lr == null)
+                if (!lines.TryGetValue(soldier.Id, out var l) || l == null || l.lr == null)
                 {
-                    lr = CreateLine();
-                    lines[soldier.Id] = lr;
+                    l = new Linea { lr = CreateLine(), t0 = Time.time, destino = destination.Value };
+                    lines[soldier.Id] = l;
                 }
 
-                lr.SetPosition(0, soldier.transform.position + Vector3.up * 0.3f);
-                lr.SetPosition(1, destination.Value + Vector3.up * 0.05f);
+                // Destino nuevo: el reloj de los 3 s vuelve a empezar y la linea reaparece.
+                var dd = destination.Value - l.destino; dd.y = 0f;
+                if (dd.sqrMagnitude > 0.05f * 0.05f)
+                {
+                    l.destino = destination.Value;
+                    l.t0 = Time.time;
+                    l.oculta = false;
+                }
+
+                float edad = Time.time - l.t0;
+                l.alfa = AlfaSegunEdad(edad);
+                if (l.alfa <= 0f)
+                {
+                    if (!l.oculta) { l.oculta = true; l.lr.gameObject.SetActive(false); }
+                    continue;
+                }
+                if (l.oculta || !l.lr.gameObject.activeSelf) { l.oculta = false; l.lr.gameObject.SetActive(true); }
+
+                var c = LineColor; c.a = LineColor.a * l.alfa;
+                l.lr.startColor = c;
+                l.lr.endColor = c;
+                l.lr.SetPosition(0, soldier.transform.position + Vector3.up * 0.3f);
+                l.lr.SetPosition(1, destination.Value + Vector3.up * 0.05f);
             }
         }
 
         void RemoveLine(int actorId)
         {
-            if (!lines.TryGetValue(actorId, out var lr)) return;
+            if (!lines.TryGetValue(actorId, out var l)) return;
             lines.Remove(actorId);
+            var lr = l != null ? l.lr : null;
             if (lr == null) return;
 
             var mat = Application.isPlaying ? lr.material : lr.sharedMaterial;   // .material en Edit instancia y filtra un material

@@ -90,7 +90,8 @@ namespace SP.Presentation
         {
             if (!Application.isPlaying || !IsMe(evt.Vehicle) || !gameObject.activeInHierarchy) return;
             healthFraction = evt.MaxHealth > 0 ? (float)evt.RemainingHealth / evt.MaxHealth : 0f;
-            if (audioSource != null) audioSource.PlayOneShot(GenericSfx.Get(SfxKind.VehicleHit));
+            // Bug #095: antes un PlayOneShot en un AudioSource propio (sin pool ni ganancia de canal). Ahora por AudioDirector, 3D.
+            AudioDirector.PlayAt(SfxKind.VehicleHit, transform.position, 0.9f, 0.7f);
             // Restaura antes de cortar: si StopAllCoroutines mata un
             // SparkFlash a mitad, el chasis se quedaba pegado en el dorado
             // de chispa hasta el proximo impacto (o para siempre, si ese

@@ -3,6 +3,7 @@ using UnityEngine;
 using SP.Core;
 using SP.Actors;
 using SP.Ai;
+using SP.Combat;
 using SP.CameraSystem;
 
 namespace SP.Presentation
@@ -15,6 +16,27 @@ namespace SP.Presentation
         static readonly Color LineColor = new Color(0.9f, 0.15f, 0.12f);
 
         readonly Dictionary<int, LineRenderer> lines = new Dictionary<int, LineRenderer>();
+
+        // Bug #125: la linea roja se dibujaba a CUALQUIER objetivo trabado, sin tope de distancia (rayas kilometricas cruzando el mapa).
+        // Ahora: no se dibuja pasados DistanciaMaxima (o el rango efectivo del arma, lo que sea menor, con un piso de PisoDeRango para que
+        // el que persigue con arma corta no pierda la linea), ni si el enemigo no esta revelado para el bando jugador; y se desvanece en
+        // los ultimos MargenDeDesvanecido metros.
+        public const float DistanciaMaxima = 45f, MargenDeDesvanecido = 10f, PisoDeRango = 30f;
+        // Lineas activas al ultimo Update (para los checks).
+        public static int LineasActivas { get; private set; }
+        public static bool TopeActivo = true;   // solo lo apagan los checks para reproducir el bug original (sin tope)
+
+        // Decision pura (testeable): devuelve si se dibuja y con que opacidad (1 = plena; baja a 0 entre limite-margen y limite).
+        public static bool DebeDibujar(float distancia, float rangoDelArma, bool enemigoVisible, out float opacidad)
+        {
+            float limite = Mathf.Min(DistanciaMaxima, Mathf.Max(PisoDeRango, rangoDelArma));
+            opacidad = 0f;
+            if (!TopeActivo) { opacidad = 1f; return true; }
+            if (!enemigoVisible || distancia > limite) return false;
+            opacidad = Mathf.Clamp01((limite - distancia) / MargenDeDesvanecido);
+            opacidad = Mathf.Max(0.15f, opacidad);
+            return true;
+        }
 
         void Update()
         {
@@ -34,8 +56,10 @@ namespace SP.Presentation
             if (rig == null || rig.Mode != ControlMode.Rts)
             {
                 if (lines.Count > 0) RemoveAllLines();
+                LineasActivas = 0;
                 return;
             }
+            int activas = 0;
 
             foreach (var soldier in ActorRegistry.All)
             {
@@ -61,6 +85,17 @@ namespace SP.Presentation
                     continue;
                 }
 
+                // #125: tope de distancia y visibilidad (el enemigo, sea el que dispara o el blanco, tiene que estar revelado).
+                var blanco = brain.CurrentTarget;
+                var enemigo = soldier.Team == TeamId.Enemy ? soldier : (blanco.Team == TeamId.Enemy ? blanco : null);
+                bool visible = enemigo == null || InteligenciaDeEnemigos.EstaRevelado(enemigo.Id);
+                float dist = Vector3.Distance(soldier.transform.position, blanco.transform.position);
+                if (!DebeDibujar(dist, brain.EffectiveAttackRange, visible, out float opacidad))
+                {
+                    RemoveLine(soldier.Id);
+                    continue;
+                }
+
                 if (!lines.TryGetValue(soldier.Id, out var lr) || lr == null)
                 {
                     lr = CreateLine();
@@ -69,8 +104,16 @@ namespace SP.Presentation
 
                 lr.SetPosition(0, soldier.transform.position + Vector3.up * 0.5f);
                 lr.SetPosition(1, brain.CurrentTarget.transform.position + Vector3.up * 0.5f);
+                var col = new Color(LineColor.r, LineColor.g, LineColor.b, opacidad);
+                lr.startColor = col; lr.endColor = col;
+                lr.widthMultiplier = Mathf.Lerp(0.015f, 0.05f, opacidad);
+                activas++;
             }
+            LineasActivas = activas;
         }
+
+        // Para los checks: este soldado tiene una linea dibujada ahora mismo.
+        public bool TieneLinea(int soldadoId) => lines.TryGetValue(soldadoId, out var lr) && lr != null;
 
         void RemoveAllLines()
         {
@@ -103,7 +146,7 @@ namespace SP.Presentation
             lr.positionCount = 2;
             lr.widthMultiplier = 0.05f;
             lr.useWorldSpace = true;
-            lr.material = SafeMaterial.Create(LineColor);
+            lr.material = SafeMaterial.CreateLinea(LineColor);   // unlit y con alfa (el desvanecido de #125)
             lr.startColor = LineColor;
             lr.endColor = LineColor;
             return lr;

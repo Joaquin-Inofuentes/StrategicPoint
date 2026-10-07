@@ -21,7 +21,8 @@ namespace SP.Presentation
     // CameraSwoosh: transicion FPS<->RTS.
     // Ronda 7: Explosion (boom con cola), GrenadePin/Throw/Bounce, KnifeSwing/Hit, Jump/Land,
     // RadialOpen/Tick/Confirm/Cancel, HealStart/Done, Revive y BombPlant/Tick (ver SfxSintetico).
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire, TutKey, TutSub, TutStep, TutVictory, Explosion, GrenadePin, GrenadeThrow, GrenadeBounce, KnifeSwing, KnifeHit, Jump, Land, RadialOpen, RadialTick, RadialConfirm, RadialCancel, HealStart, HealDone, Revive, BombPlant, BombTick, AmmoPickup, Logro, ObjetivoCumplido, ImpactoPesado, BalaImpacto, Orugas, MotorCamioneta, AmbienteDesierto, RuedasCamioneta }
+    // WP2 (#072): DestruccionVehiculo = chapa que se retuerce y cae al final de un vehiculo (SfxSintetico.DestruccionVehiculo).
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire, TutKey, TutSub, TutStep, TutVictory, Explosion, GrenadePin, GrenadeThrow, GrenadeBounce, KnifeSwing, KnifeHit, Jump, Land, RadialOpen, RadialTick, RadialConfirm, RadialCancel, HealStart, HealDone, Revive, BombPlant, BombTick, AmmoPickup, Logro, ObjetivoCumplido, ImpactoPesado, BalaImpacto, Orugas, MotorCamioneta, AmbienteDesierto, RuedasCamioneta, DestruccionVehiculo, VidrioRoto }
 
     // Sonidos genéricos: primero busca grabaciones reales importadas bajo
     // Resources/Audio/Sfx/<Kind>/ (pedido explicito: "quita todos los
@@ -71,28 +72,153 @@ namespace SP.Presentation
 
         public static AudioClip Get(SfxKind kind)
         {
+            // WP2 (#072): la explosion y el cañon llevan un golpe de graves horneado (una sola voz: el pool es de 24).
+            bool conGraves = kind == SfxKind.Explosion || kind == SfxKind.CannonBody;
+            // #095: el disparo generico (helicoptero, tracers de la cinematica) tambien sale distorsionado como el de las armas.
+            bool disparo = kind == SfxKind.Shoot;
             var real = PickReal(kind.ToString());
-            if (real != null) return real;
+            if (real != null) return conGraves ? ConGraves(kind, real) : disparo ? Distorsionar(real) : real;
 
             if (cache.TryGetValue(kind, out var clip) && clip != null) return clip;
             clip = Generate(kind);
+            if (conGraves) clip = ConGraves(kind, clip);
+            else if (disparo) clip = Distorsionar(clip);
             cache[kind] = clip;
+            return clip;
+        }
+
+        // ------------------------------------------------------------------
+        // WP2: lectura y horneado de clips (distorsion de disparos y graves de explosion/cañon)
+        // ------------------------------------------------------------------
+        static readonly Dictionary<AudioClip, AudioClip> distorsionCache = new Dictionary<AudioClip, AudioClip>();
+        static readonly Dictionary<AudioClip, AudioClip> gravesCache = new Dictionary<AudioClip, AudioClip>();
+
+        // Tope de pico de los disparos distorsionados. La ganancia real se fija por RMS (ver Distorsionar): el saturador sube mucho la
+        // energia (medido: +5 a +10 dB en el clip normalizado al pico) y la distorsion tiene que dar caracter, no volumen.
+        public const float PicoDeDisparo = 0.9f;
+        public const float GananciaRmsDeDisparo = 1.4f;   // ~ +3 dB sobre el clip original
+        public const float DriveDeDisparo = 2.5f;
+        public const float RealceGravesDb = 4f;
+        public const float CorteGraves = 200f;
+
+        // Lee todas las muestras (intercaladas). Devuelve false si el clip aun no esta cargado o no admite GetData
+        // (en ese caso el llamador usa el clip original y vuelve a intentar la proxima vez, sin cachear el fallo).
+        static bool LeerMuestras(AudioClip clip, out float[] datos)
+        {
+            datos = null;
+            if (clip == null || clip.samples <= 0) return false;
+            if (clip.loadState == AudioDataLoadState.Unloaded) clip.LoadAudioData();
+            if (clip.loadState != AudioDataLoadState.Loaded) return false;
+            var d = new float[clip.samples * clip.channels];
+            if (!clip.GetData(d, 0)) return false;
+            datos = d;
+            return true;
+        }
+
+        // Mezcla a mono (promedio de canales). Para las capas que se suman en un solo clip mono.
+        static float[] AMono(float[] datos, int canales)
+        {
+            if (canales <= 1) return datos;
+            int n = datos.Length / canales;
+            var m = new float[n];
+            for (int i = 0; i < n; i++)
+            {
+                float a = 0f;
+                for (int c = 0; c < canales; c++) a += datos[i * canales + c];
+                m[i] = a / canales;
+            }
+            return m;
+        }
+
+        // Disparo con caracter: tanh(2.5 x) (saturacion de valvula), realce de graves de 1 polo (+4 dB bajo 200 Hz) y
+        // normalizacion al pico. Horneado UNA vez por clip: el costo en juego es cero.
+        static AudioClip Distorsionar(AudioClip src)
+        {
+            if (src == null) return null;
+            if (distorsionCache.TryGetValue(src, out var hecho) && hecho != null) return hecho;
+            if (!LeerMuestras(src, out var d)) return src;
+            int canales = Mathf.Max(1, src.channels), sr = src.frequency;
+            int n = d.Length / canales;
+            float a = 1f - Mathf.Exp(-2f * Mathf.PI * CorteGraves / sr);
+            float g = Mathf.Pow(10f, RealceGravesDb / 20f) - 1f;
+            var lp = new float[canales];
+            float pico = 0f, e0 = 0f;
+            for (int i = 0; i < d.Length; i++) e0 += d[i] * d[i];
+            for (int i = 0; i < n; i++)
+                for (int c = 0; c < canales; c++)
+                {
+                    float y = (float)System.Math.Tanh(DriveDeDisparo * d[i * canales + c]);
+                    lp[c] += a * (y - lp[c]);
+                    y += g * lp[c];
+                    d[i * canales + c] = y;
+                    float ay = y < 0f ? -y : y;
+                    if (ay > pico) pico = ay;
+                }
+            float e1 = 0f;
+            for (int i = 0; i < d.Length; i++) e1 += d[i] * d[i];
+            float k = pico > 0.0001f ? PicoDeDisparo / pico : 1f;
+            if (e1 > 0.0001f && e0 > 0.0001f) k = Mathf.Min(k, GananciaRmsDeDisparo * Mathf.Sqrt(e0 / e1));
+            for (int i = 0; i < d.Length; i++) d[i] *= k;
+            var clip = AudioClip.Create(src.name + "_dist", n, canales, sr, false);
+            clip.SetData(d, 0);
+            distorsionCache[src] = clip;
+            return clip;
+        }
+
+        // Explosion/cañon + golpe de graves (sub 60->28 Hz saturado; la explosion suma ademas el retumbo grave sintetico).
+        // Una sola voz, un solo clip: nombre "CannonBody+Sub" / "Explosion+Sub".
+        static AudioClip ConGraves(SfxKind kind, AudioClip baseClip)
+        {
+            if (baseClip == null) return null;
+            if (gravesCache.TryGetValue(baseClip, out var hecho) && hecho != null) return hecho;
+            if (!LeerMuestras(baseClip, out var d)) return baseClip;
+            int sr = baseClip.frequency;
+            var cuerpo = AMono(d, Mathf.Max(1, baseClip.channels));
+            float pico = 0f;
+            for (int i = 0; i < cuerpo.Length; i++) { float a = cuerpo[i] < 0f ? -cuerpo[i] : cuerpo[i]; if (a > pico) pico = a; }
+            float kc = pico > 0.0001f ? 1f / pico : 1f;
+            var sub = SfxSintetico.SubGolpeDatos(sr);
+            float[] retumbo = kind == SfxKind.Explosion ? SfxSintetico.RetumboDeExplosionDatos(sr) : null;
+            int n = Mathf.Max(cuerpo.Length, sub.Length);
+            if (retumbo != null) n = Mathf.Max(n, retumbo.Length);
+            var o = new float[n];
+            float pesoCuerpo = kind == SfxKind.Explosion ? 0.6f : 0.8f;
+            float pesoSub = kind == SfxKind.Explosion ? 1.6f : 1.5f;
+            for (int i = 0; i < n; i++)
+            {
+                float v = 0f;
+                if (i < cuerpo.Length) v += cuerpo[i] * kc * pesoCuerpo;
+                if (i < sub.Length) v += sub[i] * pesoSub;
+                if (retumbo != null && i < retumbo.Length) v += retumbo[i] * 0.9f;
+                o[i] = (float)System.Math.Tanh(v * 1.1f);
+            }
+            float p2 = 0f;
+            for (int i = 0; i < n; i++) { float a = o[i] < 0f ? -o[i] : o[i]; if (a > p2) p2 = a; }
+            float k2 = p2 > 0.0001f ? 0.95f / p2 : 1f;
+            for (int i = 0; i < n; i++) o[i] *= k2;
+            // Fundido de salida de 8 ms: el final de un clip que no termina en cero hace "click".
+            int fade = Mathf.Min(n, (int)(0.008f * sr));
+            for (int i = 0; i < fade; i++) o[n - 1 - i] *= (float)i / fade;
+            var clip = AudioClip.Create(kind == SfxKind.Explosion ? "Explosion+Sub" : "CannonBody+Sub", n, 1, sr, false);
+            clip.SetData(o, 0);
+            gravesCache[baseClip] = clip;
             return clip;
         }
 
         // Antes las tres armas sonaban exactamente igual al disparar: el
         // unico indicio de que arma tenias era mirar el HUD. Cada una
         // ahora tiene su propio timbre, en vez de compartir SfxKind.Shoot.
+        // WP2 (#095): todos los disparos salen con distorsion horneada (nombre "<clip>_dist", pico <= 0.95).
         public static AudioClip GetWeaponShot(WeaponKind kind)
         {
             var real = PickReal("Shot_" + kind);
-            if (real != null) return real;
+            if (real != null) return Distorsionar(real);
 
             if (weaponShotCache.TryGetValue(kind, out var clip) && clip != null) return clip;
             // El cohete no es un "pop": es golpe de carga + ignicion + el fiush de algo que se aleja.
             if (kind == WeaponKind.Rocket)
             {
-                clip = SfxSintetico.LanzamientoDeCohete();
+                clip = Distorsionar(SfxSintetico.LanzamientoDeCohete());
                 weaponShotCache[kind] = clip;
                 return clip;
             }
@@ -111,7 +237,7 @@ namespace SP.Presentation
                 case WeaponKind.Sniper: freq = 620f; duration = 0.2f; decay = 12f; break;
                 default: freq = 900f; duration = 0.08f; decay = 18f; break;
             }
-            clip = GenerateTone(freq, duration, decay, "Shot_" + kind);
+            clip = Distorsionar(GenerateTone(freq, duration, decay, "Shot_" + kind));
             weaponShotCache[kind] = clip;
             return clip;
         }
@@ -253,6 +379,8 @@ namespace SP.Presentation
                 case SfxKind.MotorCamioneta: return SfxSintetico.MotorCamioneta();
                 case SfxKind.RuedasCamioneta: return SfxSintetico.RuedasCamioneta();
                 case SfxKind.AmbienteDesierto: return SfxSintetico.AmbienteDesierto();
+                case SfxKind.DestruccionVehiculo: return SfxSintetico.DestruccionVehiculo();
+                case SfxKind.VidrioRoto: return SfxSintetico.VidrioRoto();
                 case SfxKind.GrenadePin: return SfxSintetico.GranadaSeguro();
                 case SfxKind.GrenadeThrow: return SfxSintetico.GranadaLanzada();
                 case SfxKind.GrenadeBounce: return SfxSintetico.GranadaRebote();

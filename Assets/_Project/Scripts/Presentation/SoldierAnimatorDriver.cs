@@ -103,14 +103,85 @@ namespace SP.Presentation
         IDisposable shotSub;
         IDisposable meleeSub;
         bool arrancado;
-        // Ronda 11 (punto 6): los clips de costado bajan la cadera y los pies quedan hasta 4 cm bajo el piso (medido: 0,089 contra 0,129
-        // en reposo). Se mide la altura del pie mas bajo respecto de la raiz mientras esta quieto y en el suelo, y despues se sube el
-        // modelo lo que falte, con suavizado.
-        Transform[] pies;
-        float pieEnReposo = float.NaN;
-        float elevacionDePies;
+        // Bug #092 ("el agachado se entierra"; de pie flotaba +0,13 m): el modelo se apoya SIEMPRE por los huesos de los pies, de pie
+        // y agachado. Se mide el punto mas bajo de ambos lados (punta, pie menos la suela, rodilla menos el hueso) contra el piso
+        // (pivote menos PivoteSobrePiso) y se sube o baja el modelo lo que falte para dejarlo a MargenDePiso. Siempre es
+        // base + objetivo (nunca += sobre lo ya aplicado) y se suaviza, asi un cambio de postura no pega un salto.
+        public const float MargenDePiso = 0.01f;
+        public const float TopeDeDesfase = 0.30f;   // medido: de pie -0,13, agachado quieto +0,125, agachado caminando hasta +0,24
+        public const float SuavizadoDelDesfase = 0.08f;
+        public const float SuavizadoAlSubir = 0.035f;
+        const float SuelaDelPie = 0.06f, HuesoDeRodilla = 0.08f;   // respaldo si la malla no es legible: el hueso queda a esta altura sobre la suela
+        static readonly HumanBodyBones[] HuesosDeApoyo =
+        {
+            HumanBodyBones.LeftToes, HumanBodyBones.RightToes,
+            HumanBodyBones.LeftFoot, HumanBodyBones.RightFoot,
+            HumanBodyBones.LeftLowerLeg, HumanBodyBones.RightLowerLeg,
+        };
+        static readonly float[] HolguraDeApoyo = { 0f, 0f, SuelaDelPie, SuelaDelPie, HuesoDeRodilla, HuesoDeRodilla };
+        Transform[] huesosDeApoyo;
+        Vector3[][] puntosDeSuela;   // por hueso: puntos de la suela en ejes del hueso (null = sin malla legible: respaldo por hueso)
+
+        // Puntos de suela por malla (todos los soldados de una clase comparten la malla). Se miden una vez con la pose de reposo.
+        static readonly System.Collections.Generic.Dictionary<Mesh, Vector3[][]> cacheDeSuelas = new System.Collections.Generic.Dictionary<Mesh, Vector3[][]>();
+        const float BandaDeSuela = 0.035f, CeldaDeSuela = 0.03f;
+        const int MaxPuntosPorHueso = 16;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarSuelas() => cacheDeSuelas.Clear();
+
+        // De los vertices que la malla pesa mayormente a un pie (o a los dedos) se toman los mas bajos EN LA POSE DE REPOSO (donde el
+        // modelo esta parado): son la suela. Con la pose viva de cada cuadro esos puntos dicen donde esta el talon, la punta y el
+        // costado del pie de verdad. Un punto fijo sobre el hueso fallaba al apoyar el talon o caminar de costado (hasta 10 cm
+        // enterrado) y la caja del hueso exagera la profundidad (flotaba 10 cm).
+        static Vector3[][] MedirSuelas(SkinnedMeshRenderer smr, Transform[] huesos)
+        {
+            var salida = new Vector3[huesos.Length][];
+            var malla = smr != null ? smr.sharedMesh : null;
+            if (malla == null || !malla.isReadable) return salida;
+            if (cacheDeSuelas.TryGetValue(malla, out var guardado)) return guardado;
+            var poses = malla.bindposes; var vs = malla.vertices; var pesos = malla.boneWeights; var rig = smr.bones;
+            for (int h = 0; h < huesos.Length; h++)
+            {
+                if (!EsPieODedos(HuesosDeApoyo[h]) || huesos[h] == null) continue;
+                int k = System.Array.IndexOf(rig, huesos[h]);
+                if (k < 0 || k >= poses.Length) continue;
+                var candidatos = new System.Collections.Generic.List<Vector3>();
+                float minY = float.MaxValue;
+                for (int i = 0; i < vs.Length && i < pesos.Length; i++)
+                {
+                    var w = pesos[i];
+                    float peso = (w.boneIndex0 == k ? w.weight0 : 0f) + (w.boneIndex1 == k ? w.weight1 : 0f)
+                               + (w.boneIndex2 == k ? w.weight2 : 0f) + (w.boneIndex3 == k ? w.weight3 : 0f);
+                    if (peso < 0.5f) continue;
+                    candidatos.Add(vs[i]);
+                    if (vs[i].y < minY) minY = vs[i].y;
+                }
+                if (candidatos.Count < 8) continue;   // menos de 8 vertices no es un pie
+                var celdas = new System.Collections.Generic.Dictionary<(int, int), Vector3>();
+                foreach (var v in candidatos)
+                {
+                    if (v.y > minY + BandaDeSuela) continue;
+                    var clave = (Mathf.RoundToInt(v.x / CeldaDeSuela), Mathf.RoundToInt(v.z / CeldaDeSuela));
+                    if (!celdas.TryGetValue(clave, out var previo) || v.y < previo.y) celdas[clave] = v;
+                }
+                var lista = new System.Collections.Generic.List<Vector3>();
+                foreach (var v in celdas.Values) { lista.Add(poses[k].MultiplyPoint3x4(v)); if (lista.Count >= MaxPuntosPorHueso) break; }
+                salida[h] = lista.ToArray();
+            }
+            cacheDeSuelas[malla] = salida;
+            return salida;
+        }
+
+        float desfaseDelModelo, velocidadDelDesfase;
+        bool desfaseInicializado;
         Vector3 modeloBase;
         bool modeloBaseTomada;
+        // Lecturas para las pruebas: el punto mas bajo medido (respecto del piso, ya con el desfase aplicado) y el desfase vigente.
+        public float AlturaMinimaDeApoyo { get; private set; } = float.NaN;
+        public float DesfaseDelModelo => desfaseDelModelo;
+
+        static bool EsPieODedos(HumanBodyBones b) => b == HumanBodyBones.LeftFoot || b == HumanBodyBones.RightFoot || b == HumanBodyBones.LeftToes || b == HumanBodyBones.RightToes;
 
         void Awake()
         {
@@ -265,21 +336,44 @@ namespace SP.Presentation
                 animator.SetLayerWeight(CapaMelee, pesoMelee);
         }
 
-        float AlturaDelPieMasBajo()
+        // Punto mas bajo de los huesos de apoyo, respecto del piso, con el desfase ACTUAL del modelo incluido.
+        bool MedirApoyo(out float alturaMinima)
         {
-            if (pies == null)
+            alturaMinima = float.NaN;
+            if (huesosDeApoyo == null)
             {
-                var lista = new System.Collections.Generic.List<Transform>();
-                foreach (var tr in animator.GetComponentsInChildren<Transform>(true))
-                {
-                    var n = tr.name.ToLowerInvariant();
-                    if (n.Contains("foot") || n.Contains("toe")) lista.Add(tr);
-                }
-                pies = lista.ToArray();
+                huesosDeApoyo = new Transform[HuesosDeApoyo.Length];
+                if (animator.isHuman)
+                    for (int i = 0; i < HuesosDeApoyo.Length; i++) huesosDeApoyo[i] = animator.GetBoneTransform(HuesosDeApoyo[i]);
+                puntosDeSuela = MedirSuelas(animator.GetComponentInChildren<SkinnedMeshRenderer>(true), huesosDeApoyo);
             }
+            float suelo = transform.position.y - SP.Actors.SoldierMotor.PivoteSobrePiso;
             float min = float.MaxValue;
-            for (int i = 0; i < pies.Length; i++) min = Mathf.Min(min, pies[i].position.y);
-            return min == float.MaxValue ? float.NaN : min - transform.position.y - elevacionDePies;
+            for (int i = 0; i < huesosDeApoyo.Length; i++)
+            {
+                var h = huesosDeApoyo[i];
+                if (h == null) continue;
+                float y;
+                var puntos = puntosDeSuela != null ? puntosDeSuela[i] : null;
+                if (puntos != null && puntos.Length > 0)
+                {
+                    // Suela real: el punto mas bajo con la pose de este cuadro.
+                    var m = h.localToWorldMatrix;
+                    y = float.MaxValue;
+                    for (int k = 0; k < puntos.Length; k++)
+                    {
+                        var p = puntos[k];
+                        float py = m.m10 * p.x + m.m11 * p.y + m.m12 * p.z + m.m13;
+                        if (py < y) y = py;
+                    }
+                }
+                else y = h.position.y - HolguraDeApoyo[i];
+                y -= suelo;
+                if (y < min) min = y;
+            }
+            if (min == float.MaxValue) return false;
+            alturaMinima = min;
+            return true;
         }
 
         void LateUpdate()
@@ -288,15 +382,30 @@ namespace SP.Presentation
             var modelo = animator.transform;
             if (modelo == transform) return;
             if (!modeloBaseTomada) { modeloBase = modelo.localPosition; modeloBaseTomada = true; }
-            float alturaPie = AlturaDelPieMasBajo();
-            if (float.IsNaN(alturaPie)) return;
-            bool quieto = velocidadSuavizada < 0.05f;
-            if (quieto && !soldier.Motor.IsJumping && !soldier.Motor.IsCrouching) pieEnReposo = alturaPie;
+            // El Animator es AlwaysAnimate (ArtBuilder): los huesos se actualizan aunque el soldado este fuera de cuadro.
+            float escalaY = modelo.parent != null ? Mathf.Max(0.0001f, modelo.parent.lossyScale.y) : 1f;
+            float aplicado = (modelo.localPosition.y - modeloBase.y);
             float objetivo = 0f;
-            if (!float.IsNaN(pieEnReposo) && !soldier.Motor.IsJumping && !soldier.Motor.IsCrouching && !quieto)
-                objetivo = Mathf.Clamp(pieEnReposo - alturaPie, 0f, 0.1f);
-            elevacionDePies = Mathf.MoveTowards(elevacionDePies, objetivo, 0.6f * Time.deltaTime);
-            var lp = modeloBase; lp.y += elevacionDePies;
+            // Sin compensar en el aire (salto, trepa), caido o muerto (el cuerpo tirado no se apoya de pie).
+            bool apoyado = soldier.Health != null && soldier.Health.IsAlive && !soldier.Motor.IsJumping && !soldier.Motor.Vaulting;
+            if (MedirApoyo(out float minimaActual))
+            {
+                AlturaMinimaDeApoyo = minimaActual;
+                if (apoyado)
+                {
+                    float sinDesfase = minimaActual - aplicado * escalaY;   // lo que midio el Animator antes de nuestro corrimiento
+                    objetivo = Mathf.Clamp((MargenDePiso - sinDesfase) / escalaY, -TopeDeDesfase, TopeDeDesfase);
+                }
+            }
+            if (!desfaseInicializado) { desfaseDelModelo = objetivo; velocidadDelDesfase = 0f; desfaseInicializado = true; }
+            else
+            {
+                // Hundirse se nota mucho mas que flotar un centimetro: si el cuerpo hay que SUBIRLO (pie bajo el piso) se sigue casi
+                // al instante; si hay que bajarlo (flota) se suaviza en SuavizadoDelDesfase. El paso agachado tiene un vaiven de ~12 cm.
+                float suavizado = objetivo > desfaseDelModelo ? SuavizadoAlSubir : SuavizadoDelDesfase;
+                desfaseDelModelo = Mathf.SmoothDamp(desfaseDelModelo, objetivo, ref velocidadDelDesfase, suavizado, float.PositiveInfinity, Time.deltaTime);
+            }
+            var lp = modeloBase; lp.y += desfaseDelModelo;
             modelo.localPosition = lp;
         }
     }

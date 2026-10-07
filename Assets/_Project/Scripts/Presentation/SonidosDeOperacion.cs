@@ -23,6 +23,7 @@ namespace SP.Presentation
         IDisposable subMuerte, subVehiculo;
         float ultimoLogro = -99f; int racha;
         AudioSource ambiente;
+        float ambienteBase = 0.5f;
         float proximoBarrido;
         readonly Dictionary<Vehicle, AudioSource> motores = new Dictionary<Vehicle, AudioSource>();
 
@@ -48,19 +49,29 @@ namespace SP.Presentation
         void OnDisable() { subMuerte?.Dispose(); subVehiculo?.Dispose(); }
 
         // ---- logro ----
+        // Bug #065: el "logro" de cada baja salia 2D (PlayOneShot2D, spatialBlend 0) y a volumen alto, asi que la muerte de un
+        // enemigo lejano sonaba "al lado". Ahora suena 3D en la posicion de la victima, con perfil de voz y bajo (0.35). Si la baja
+        // es del jugador queda ademas un tick de interfaz 2D muy suave (0.15): es feedback propio, no un sonido del mundo.
+        public const float VolumenDeLogro3D = 0.35f;
+        public const float VolumenDeTickPropio = 0.15f;
+
         void OnMuerte(EntityDiedEvent e)
         {
             var s = ActorRegistry.FindById(e.ActorId);
             if (s == null || s.Team != TeamId.Enemy || s.Role == RoleType.Civilian) return;
-            Logro(0.55f);
+            var d = SP.Player.PlayerInputDriver.Activo;
+            var yo = d != null && d.Brain != null ? d.Brain.Current : null;
+            bool propia = yo != null && s.Health != null && s.Health.LastAttackerId == yo.Id;
+            Logro(VolumenDeLogro3D, s.transform.position + Vector3.up * 1f, PerfilEspacial.Voz, propia);
         }
 
         void OnVehiculoDestruido(VehicleDestroyedEvent e)
         {
-            if (e.Vehicle != null && e.Vehicle.Bando == TeamId.Enemy) Logro(0.7f);
+            if (e.Vehicle != null && e.Vehicle.Bando == TeamId.Enemy)
+                Logro(VolumenDeLogro3D, e.Vehicle.transform.position + Vector3.up * 1f, PerfilEspacial.Explosion, false);
         }
 
-        void Logro(float volumen)
+        void Logro(float volumen, Vector3 posicion, PerfilEspacial perfil, bool propia)
         {
             if (!Application.isPlaying) return;
             racha = Time.unscaledTime - ultimoLogro < 3.5f ? Mathf.Min(racha + 1, 7) : 0;
@@ -68,7 +79,10 @@ namespace SP.Presentation
             Logros++;
             // Cada baja seguida sube medio tono: se siente como un combo.
             float pitch = Mathf.Pow(1.0595f, racha);
-            GenericSfx.PlayOneShot2D(GenericSfx.Get(SfxKind.Logro), volumen * AudioDirector.GainFor(SfxChannel.Sfx), pitch, "Logro");
+            var clip = GenericSfx.Get(SfxKind.Logro);
+            AudioDirector.PlayClipAt(clip, posicion, volumen, 0.6f, perfil, pitch);
+            if (propia && AudioDirector.Instance != null)
+                AudioDirector.Instance.PlayFlat(clip, SfxChannel.Ui, VolumenDeTickPropio, 0.5f, pitch);
         }
 
         // ---- ambiente ----
@@ -85,6 +99,7 @@ namespace SP.Presentation
                 inst.ambiente.spatialBlend = 0f;
                 inst.ambiente.playOnAwake = false;
             }
+            inst.ambienteBase = volumen;
             inst.ambiente.volume = volumen * AudioDirector.GainFor(SfxChannel.Ambient);
             if (!inst.ambiente.isPlaying) inst.ambiente.Play();
         }
@@ -99,6 +114,9 @@ namespace SP.Presentation
         {
             if (!Application.isPlaying) return;
             if (Time.unscaledTime >= proximoBarrido) { proximoBarrido = Time.unscaledTime + 0.75f; Barrer(); }
+            // Durante la musica de victoria el viento baja a un cuarto (el himno corre en timeScale 0: este Update es de reloj real).
+            if (ambiente != null && ambiente.isPlaying)
+                ambiente.volume = ambienteBase * AudioDirector.GainFor(SfxChannel.Ambient) * Mathf.Lerp(0.25f, 1f, MusicDirector.FactorOtros);
             float gain = AudioDirector.GainFor(SfxChannel.Sfx);
             VehiculosConSonido = 0;
             foreach (var kv in motores)

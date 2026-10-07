@@ -154,6 +154,9 @@ namespace SP.UI
             { KeyBindings.RotarCamaraRts, "Rotar camara (RTS)" },
             { KeyBindings.RadialEspacio, "Radial de ordenes (mantener, a pie)" },
             { KeyBindings.MarcarBug, "Marcar bug (foto del estado)" },
+            { KeyBindings.CambiarAliado, "Cambiar de aliado (toque / mantener)" },
+            { KeyBindings.VerRuta, "Ver la ruta al objetivo (mantener)" },
+            { KeyBindings.VerTactico, "Ver coberturas del piso (mantener)" },
         };
 
         public static string NameOf(string actionId) =>

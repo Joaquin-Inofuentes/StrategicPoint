@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using SP.Player;
 
@@ -59,6 +60,17 @@ namespace SP.UI
                     row.Bind(soldier, index);
                     index++;
                 }
+
+            // #115: los milicianos de la defensa (no estan en Squad) tambien tienen su fila: marca MILICIA, color propio y clic para seleccionar.
+            var milicianos = new List<SP.Actors.Soldier>(SP.Operacion.MandoTactico.Milicianos);
+            milicianos.Sort((a, b) => string.CompareOrdinal(a != null ? a.DisplayName : "", b != null ? b.DisplayName : ""));
+            foreach (var mil in milicianos)
+            {
+                if (mil == null || mil.Health == null || !mil.gameObject.activeInHierarchy) continue;
+                var row = Instantiate(rowPrefab, transform);
+                row.Bind(mil, index, true);
+                index++;
+            }
 
             // Pedido explicito: "al rescatar al civil que aparezca como otro
             // mas... quiero ver su vida e icono abajo a la izquierda porque

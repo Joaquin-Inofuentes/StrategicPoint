@@ -128,11 +128,26 @@ namespace SP.Presentation
                 UnityEngine.InputSystem.Keyboard.current.f10Key.wasPressedThisFrame)
                 Visible = !Visible;
 
+            // WP11: con las esferas apagadas (el estado normal: solo F10 las prende) este Update creaba una esfera por soldado, vehiculo y
+            // obstaculo (~560 GameObjects) y les hacia SetActive(false) CADA frame: 0,4 ms constantes para nada. Ahora no hace nada hasta que se
+            // prenden, y al apagarlas las esconde una sola vez. Las esferas se crean recien cuando hay que mostrarlas.
+            if (!Visible)
+            {
+                if (hayEsferasPrendidas)
+                {
+                    hayEsferasPrendidas = false;
+                    foreach (var kv in spheres) if (kv.Value != null) kv.Value.gameObject.SetActive(false);
+                }
+                return;
+            }
+            hayEsferasPrendidas = true;
             RefreshSoldiers();
             RefreshVehicles();
             RefreshObstacles();
             CleanupStale();
         }
+
+        bool hayEsferasPrendidas;
 
         void RefreshSoldiers()
         {

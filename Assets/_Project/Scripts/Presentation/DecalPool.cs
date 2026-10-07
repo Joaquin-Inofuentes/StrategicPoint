@@ -74,16 +74,26 @@ namespace SP.Presentation
             }
         }
 
+        static void AsegurarRoot()
+        {
+            if (root != null) return;
+            DestroyOrphans();   // barre TODOS los Transform de la escena (~25 ms): por eso se hace en el precalentado, no en el primer disparo
+            var rootGo = new GameObject("DecalPool");
+            rootGo.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild; // ver el comentario en DebrisPool
+            root = rootGo.transform;
+        }
+
+        // WP11: el primer agujero de bala del combate tardaba 27 ms (el barrido de huerfanos de arriba); ahora se paga durante la carga del nivel.
+        public static void Prewarm()
+        {
+            ResetIfStale();
+            AsegurarRoot();
+        }
+
         public static GameObject Spawn(DecalKind kind, Vector3 position, Vector3 normal, float size)
         {
             ResetIfStale();
-            if (root == null)
-            {
-                DestroyOrphans();
-                var rootGo = new GameObject("DecalPool");
-                rootGo.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild; // ver el comentario en DebrisPool
-                root = rootGo.transform;
-            }
+            AsegurarRoot();
             if (!pools.TryGetValue(kind, out var list)) { list = new List<GameObject>(); pools[kind] = list; }
             list.RemoveAll(x => x == null);
 

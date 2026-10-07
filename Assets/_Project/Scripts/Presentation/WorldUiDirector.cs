@@ -208,6 +208,9 @@ namespace SP.Presentation
                 var icon = minimapIcons[i];
                 if (icon == null) { minimapIcons.RemoveAt(i); continue; }
 
+                // WP11: los iconos de obstaculos (~460, quietos) se actualizan solo en los pases de reevaluacion.
+                if (!reevaluate && icon.EsEstatico) { if (icon.UltimoRenderizado) visible++; continue; }
+
                 // Si su objetivo desaparecio, el icono se destruye solo y
                 // ya no cuenta para nada este frame.
                 if (!icon.TickFollow()) continue;
@@ -219,7 +222,8 @@ namespace SP.Presentation
                 // optimizacion. Lo que se centraliza aca es su
                 // actualizacion y su consulta de niebla.
                 if (reevaluate && icon.FogEnabled) icon.ApplyFog(IsSpotted(icon.TargetPosition));
-                if (icon.IsRendered) visible++;
+                bool dibujado = icon.IsRendered; icon.UltimoRenderizado = dibujado;
+                if (dibujado) visible++;
             }
 
             // C1: etiquetas al pie, solo en RTS. Antes se usaba
@@ -301,8 +305,12 @@ namespace SP.Presentation
             }
         }
 
+        // WP10 (#101): el campanario de la ciudad revela a todos los enemigos en el minimapa mientras haya un soldado arriba.
+        public static bool RevelarEnemigos;
+
         bool IsSpotted(Vector3 worldPos)
         {
+            if (RevelarEnemigos) return true;
             float r = MinimapIcon.FogVisionRange;
             float r2 = r * r;
             for (int i = 0; i < fogObservers.Count; i++)

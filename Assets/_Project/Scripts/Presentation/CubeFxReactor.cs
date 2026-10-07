@@ -140,7 +140,8 @@ namespace SP.Presentation
             // Prioridad media-alta: un disparo es la senal mas util del
             // combate (te dice de donde te tiran) pero pierde contra una
             // muerte o el cañon, que son sucesos unicos.
-            AudioDirector.PlayClipAt(GenericSfx.GetWeaponShot(kind), flashPos, 0.9f, 0.6f);
+            // Perfil de disparo (5-120 m, logaritmico): lo que suena lejos se oye lejos y lo cercano pega (bug #095).
+            AudioDirector.PlayClipAt(GenericSfx.GetWeaponShot(kind), flashPos, 0.9f, 0.6f, PerfilEspacial.Disparo);
         }
 
         void OnDamage(DamageTakenEvent evt)
@@ -169,10 +170,12 @@ namespace SP.Presentation
             // ganancia del canal de efectos. Prioridad un poco por encima
             // del disparo: saber que le pegaste a alguien decide si seguis
             // tirandole o pasas al siguiente.
-            AudioDirector.PlayAt(SfxKind.Wounded, transform.position, 0.7f, 0.65f);
+            AudioDirector.PlayAt(SfxKind.Wounded, transform.position, 0.6f, 0.65f, PerfilEspacial.Voz);
             StopAllCoroutines();
             StartCoroutine(FlashAndPunch());
         }
+
+        public const float VolumenDeMuerte = 0.5f;
 
         void OnDeath(EntityDiedEvent evt)
         {
@@ -180,7 +183,8 @@ namespace SP.Presentation
             // Prioridad la mas alta de las tres: una muerte pasa UNA vez
             // por soldado, un disparo pasa varias veces por segundo. Si el
             // pool esta saturado, lo que tiene que sobrevivir es esto.
-            AudioDirector.PlayAt(SfxKind.Death, transform.position, 1f, 0.8f);
+            // Bug #065: la muerte sonaba "al lado" y fuerte. Ahora 3D con perfil de voz (3-60 m, logaritmico) y volumen 0.5.
+            AudioDirector.PlayAt(SfxKind.Death, transform.position, VolumenDeMuerte, 0.8f, PerfilEspacial.Voz);
 
             // Si la muerte llega en medio del flash de daño, StopAllCoroutines
             // corta el lerp a mitad de camino y el material queda pegado en

@@ -13,6 +13,8 @@ namespace SP.UI
         // Unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido.
         public static WeaponStatusView Activo { get; private set; }
         public static void ReiniciarActivo() => Activo = null;
+        public string Texto => label != null ? label.text : "";   // para los checks (#095)
+        public Font FuenteDelContador => label != null ? label.font : null;
         public void RegistrarActivo()
         {
             Activo = this;
@@ -199,8 +201,9 @@ namespace SP.UI
                 // obligaba a restar mentalmente cuanto quedaba de verdad.
                 // Ahora son dos: balas listas para disparar (el cargador) y
                 // el total que le queda al arma contando la reserva.
+                // Bug #095: "30 / 150" = cargador / TOTAL real (cargador + reserva); sin reservas (ilimitada) "30 / ∞".
                 string texto = weapon.CurrentAmmo.ToString();
-                if (weapon.UsaReservas) texto += $" / {weapon.ReservaActual}";
+                texto += weapon.UsaReservas ? $" / {weapon.MunicionTotal}" : " / ∞";
                 label.text = texto;
 
                 // El contador quedaba blanco fijo hasta llegar a cero, sin

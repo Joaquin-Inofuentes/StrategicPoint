@@ -272,16 +272,19 @@ namespace SP.Presentation
             return Cerrar(b, "HealDone", 0.6f);
         }
 
-        // Reanimacion: descarga electrica, golpe de pecho y campanita de vuelta a la vida.
+        // Reanimacion (bug #089, "sonido gratificante"): golpe grave de pecho (70 a 40 Hz), un suspiro de aire que se cierra
+        // (ruido con envolvente de campana y filtro que baja) y un acorde mayor ascendente Do-Mi-Sol con la octava brillando al final.
         public static AudioClip Reanimar()
         {
-            var b = Buffer(0.95f);
-            Ruido(b, 0f, 0.28f, 0.5f, 0.3f, 0.96f, 12f, 0.7f, 481, 0.002f);
-            Tono(b, 0.02f, 0.3f, 300f, 1300f, 5f, 0.4f, 0.5f, 0.02f);
-            Tunc(b, 0.3f, 1.2f, 482, 0.6f);
-            Tono(b, 0.45f, 0.45f, 880f, 880f, 6f, 0.5f, 0.3f, 0.005f);
-            Tono(b, 0.55f, 0.4f, 1320f, 1320f, 7f, 0.4f, 0.3f, 0.005f);
-            return Cerrar(b, "Revive", 0.7f);
+            var b = Buffer(1.8f);
+            Tono(b, 0f, 0.6f, 70f, 40f, 5.5f, 1.0f, 0.25f, 0.004f);
+            Ruido(b, 0f, 0.07f, 0.96f, 0.96f, 0.999f, 38f, 0.55f, 481, 0.001f);
+            Ruido(b, 0.12f, 0.6f, 0.55f, 0.93f, 0.99f, 0f, 0.5f, 482, 0f, true);
+            float[] acorde = { 523.25f, 659.25f, 783.99f };
+            for (int i = 0; i < acorde.Length; i++)
+                Tono(b, 0.38f + i * 0.12f, 1.1f, acorde[i], acorde[i], 3.2f, 0.55f, 0.18f, 0.012f);
+            Tono(b, 0.76f, 0.9f, 1046.5f, 1046.5f, 4f, 0.26f, 0.1f, 0.01f);
+            return Cerrar(b, "Revive", 0.8f);
         }
 
         // Carga plantada: tres pitidos agudos seguidos.

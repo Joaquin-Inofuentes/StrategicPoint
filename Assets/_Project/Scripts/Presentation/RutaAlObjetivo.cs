@@ -9,7 +9,7 @@ namespace SP.Presentation
     // linea del camino hacia el objetivo". A diferencia de
     // ObjectiveArrowIndicator (una flecha fija a los pies que siempre esta
     // prendida y solo señala en linea recta), esto es bajo demanda -- se
-    // mantiene [C] apretada -- y sigue el camino REAL del NavMesh (rodea
+    // mantiene [I] apretada (era [C], ver P7) -- y sigue el camino REAL del NavMesh (rodea
     // obstaculos, no atraviesa muros).
     public class RutaAlObjetivo : MonoBehaviour
     {
@@ -41,8 +41,8 @@ namespace SP.Presentation
 
         void Update()
         {
-            var kb = Keyboard.current;
-            bool sostenida = kb != null && kb.cKey.isPressed;
+            // P7: [C] ahora cambia de aliado; la ruta bajo demanda pasa a la tecla VerRuta ([I]).
+            bool sostenida = SP.Player.KeyBindings.IsPressed(SP.Player.KeyBindings.VerRuta);
             if (!sostenida) { if (linea.enabled) linea.enabled = false; return; }
 
             if (MisionDirector.Instancia == null) { linea.enabled = false; return; }

@@ -129,6 +129,7 @@ namespace SP.UI
             new ControlEntry("Ctrl", "agacharse (mantener)", ControlContext.FpsAPie),
             new ControlEntry("Espacio", "mantener: menú radial de órdenes (igual que mantener Q)", ControlContext.FpsAPie, SP.Player.KeyBindings.RadialEspacio),
             new ControlEntry("Q", "tocar apuntando: terreno = que te sigan, enemigo = atacar, aliado herido = curar, muro destructible = demoler, panel/computadora = enviar al que corresponde (mantener = radial)", ControlContext.FpsAPie, SP.Player.KeyBindings.CiclarPosesion),
+            new ControlEntry("E", "mantener 1 s mientras operás la radio: soltarla (el reloj del helicóptero se detiene; un toque NO la suelta)", ControlContext.FpsAPie, SP.Player.KeyBindings.Interactuar),
             new ControlEntry("E", "mantener frente a un muro (solo el ASALTO): plantar la carga y demoler. Si estás lejos de algo interactuable, avisa que te acerques", ControlContext.FpsAPie, SP.Player.KeyBindings.Interactuar),
             new ControlEntry("U / 8", "marcar un BUG: guarda foto del estado de todo + captura de cámara con un número para pedir que se retome desde ahí", Todos, SP.Player.KeyBindings.MarcarBug),
             new ControlEntry("F", "cuchillo: tajo rápido, sin balas (arco brillante y golpe sordo si conecta)", ControlContext.FpsAPie, SP.Player.KeyBindings.AtaqueCuchillo),
@@ -142,7 +143,9 @@ namespace SP.UI
 
             new ControlEntry("[ ]", "subir o bajar al soldado que manejas en el orden de la escuadra", ControlContext.FpsAPie),
             new ControlEntry(", .", "junto a una caja de suministros: cambiar el arma principal (arsenal)", ControlContext.FpsAPie),
-            new ControlEntry("C", "mantener: ver las coberturas del piso", Todos, SP.Player.KeyBindings.VerTactico),
+            new ControlEntry("C", "cambiar de aliado: tocar = poseer al más cercano · mantener = resaltar los rombos de todos (también a través de paredes) y al soltar pasás al más centrado", ControlContext.FpsAPie, SP.Player.KeyBindings.CambiarAliado),
+            new ControlEntry("T", "mantener: ver las coberturas del piso", Todos, SP.Player.KeyBindings.VerTactico),
+            new ControlEntry("I", "mantener: ruta punteada al objetivo (en la Operación la ruta aparece sola)", ControlContext.FpsAPie, SP.Player.KeyBindings.VerRuta),
             new ControlEntry("F4", "modo dios: nadie de tu bando recibe daño (otra vez para apagar)", Todos),
 
             new ControlEntry("Espacio", "frenar (mantener)", ControlContext.VehiculoConductor, SP.Player.KeyBindings.Frenar),
@@ -156,6 +159,7 @@ namespace SP.UI
             new ControlEntry("Espacio", "recentrar la cámara en la escuadra", ControlContext.Rts, SP.Player.KeyBindings.Recentrar),
             new ControlEntry("F", "focalizar en el seleccionado o poseído", ControlContext.Rts, SP.Player.KeyBindings.FocalizarRts),
             new ControlEntry("Rueda", "acercar y alejar la cámara hacia donde está el cursor", VistasRts),
+            new ControlEntry("Q / E", "bajar / subir la altura de la cámara táctica", VistasRts),
             new ControlEntry("`", "mantener: orbitar la cámara con el mouse (girar e inclinar)", VistasRts, SP.Player.KeyBindings.RotarCamaraRts),
 
             new ControlEntry("1 / 2 / 3", "seleccionar al soldado 1, 2 o 3 de la escuadra (también F1 / F2 / F3; Shift suma; doble toque lleva la cámara)", ControlContext.Rts),
@@ -168,6 +172,7 @@ namespace SP.UI
             new ControlEntry("J", "seleccionar solo a los heridos", ControlContext.Rts, SP.Player.KeyBindings.SeleccionarHeridos),
             new ControlEntry("N", "seleccionar a todos los del mismo tipo en pantalla", ControlContext.Rts, SP.Player.KeyBindings.SeleccionarMismoTipo),
 
+            new ControlEntry("V", "plegar y desplegar la lista de los pasos de la operación (bajo el objetivo)", Todos, SP.Player.KeyBindings.PlegarPasos),
             new ControlEntry("H", "abrir y cerrar esta lista de controles sin pausar el juego", Todos, SP.Player.KeyBindings.Controles),
             new ControlEntry("ESC", "pausa y libera el cursor; dentro de los menús vuelve un paso atrás", Todos),
             new ControlEntry("Clic", "capturar el cursor para poder mirar con el mouse", AsientosFps | ControlContext.FpsAPie)

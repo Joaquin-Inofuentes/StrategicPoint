@@ -23,6 +23,7 @@ namespace SP.Presentation
             SpriteFx.Precalentar();
             Fragmentador.Precalentar();
             DebrisPool.Prewarm();
+            DecalPool.Prewarm();
             ImpactFx.Prewarm();
             int sonidos = GenericSfx.Precargar();
             Resumen = $"sprites={sprites} sonidos={sonidos} ms={reloj.ElapsedMilliseconds}";

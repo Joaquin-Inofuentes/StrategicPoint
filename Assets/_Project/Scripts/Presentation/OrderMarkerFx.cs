@@ -469,8 +469,12 @@ namespace SP.Presentation
         bool esPlan;
         bool esDeCola;
         Vector3 puntoDeCola;
+        Vector3 puntoDeOrden;
         float proximoChequeo;
         float age;
+        float ageCola;
+        float tFinal;
+        bool finalizando;
         float duration;
 
         // Los campos privados de un MonoBehaviour no sobreviven a un domain
@@ -488,33 +492,150 @@ namespace SP.Presentation
         }
 
         GameObject customShape;
+        Transform quad;
+        MeshRenderer quadRend;
+        Color colorBase = Color.white;
+        float escalaBase = 1.3f;
 
+        // Bug #068: anillo de destino ANIMADO. El quad usa UN material compartido (ShapeMarkerFx.MaterialDeDestino) y el color/alfa de
+        // cada marcador va por MaterialPropertyBlock: ya no se clona un material en cada orden (antes cada reuso del marcador
+        // hacia Instantiate sin destruir el anterior = fuga).
         void EnsureCustomShape(Color color, float scale)
         {
             if (customShape == null)
             {
-                customShape = ShapeMarkerFx.CrearMarcador(color, scale);
+                customShape = new GameObject("MarcadorObjetivo");
+                customShape.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
                 customShape.transform.SetParent(transform, false);
                 customShape.transform.localPosition = Vector3.zero;
+                var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                q.name = "Quad";
+                q.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
+                var col = q.GetComponent<Collider>();
+                if (col != null) { if (Application.isPlaying) Destroy(col); else DestroyImmediate(col); }
+                q.transform.SetParent(customShape.transform, false);
+                quad = q.transform;
+                quadRend = q.GetComponent<MeshRenderer>();
+                quadRend.sharedMaterial = ShapeMarkerFx.MaterialDeDestino();
+                quadRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                quadRend.receiveShadows = false;
             }
-            else
+            else if (quad == null)
             {
-                // Update color
-                var quad = customShape.transform.Find("Quad");
-                if (quad != null) quad.GetComponent<MeshRenderer>().sharedMaterial = ShapeMarkerFx.MatCirculo(color);
-
-                // Update scale
-                if (quad != null) quad.transform.localScale = new Vector3(scale * 2f, scale * 2f, 1f);
+                quad = customShape.transform.Find("Quad");
+                quadRend = quad != null ? quad.GetComponent<MeshRenderer>() : null;
             }
+            colorBase = color;
+            escalaBase = scale;
+            AplicarAnillo(1f, AlfaInicial, 0f);
             customShape.SetActive(true);
+        }
+
+        public const float PeriodoDelAnillo = 1.2f;       // un ciclo de expansion
+        public const float GiroDelAnillo = 90f;           // grados por segundo
+        public const float EscalaFinalDelCiclo = 1.8f;
+        public const float AlfaInicial = 0.9f;
+        public const float DuracionDelPulsoFinal = 0.35f;
+        public const float VidaMaximaDelAnillo = 60f;     // red de seguridad: una orden que nunca se cumple no deja el anillo para siempre
+
+        // Estado visible (la suite lo lee).
+        public float EscalaActual { get; private set; }
+        public float AlfaActual { get; private set; }
+        public float AnguloActual { get; private set; }
+        public bool PulsoFinal => finalizando;
+        public Vector3 PuntoDeOrden => puntoDeOrden;
+
+        static MaterialPropertyBlock bloqueAnillo;
+
+        // escala relativa al radio base, alfa y angulo (grados) del giro.
+        void AplicarAnillo(float escala, float alfa, float angulo)
+        {
+            EscalaActual = escala; AlfaActual = alfa; AnguloActual = angulo;
+            if (quad == null) return;
+            float lado = escalaBase * 2f * escala;
+            quad.localScale = new Vector3(lado, lado, 1f);
+            quad.localRotation = Quaternion.Euler(90f, 0f, 0f) * Quaternion.Euler(0f, 0f, -angulo);
+            if (quadRend == null) return;
+            if (bloqueAnillo == null) bloqueAnillo = new MaterialPropertyBlock();
+            var c = colorBase; c.a = alfa;
+            quadRend.GetPropertyBlock(bloqueAnillo);
+            bloqueAnillo.SetColor(BaseColorId, c);
+            bloqueAnillo.SetColor(ColorId, c);
+            quadRend.SetPropertyBlock(bloqueAnillo);
+        }
+
+        // Marcador de cola: ancla fija, solo gira (todavia es un plan pendiente).
+        void AnimarCola(float dt)
+        {
+            ageCola += dt;
+            AplicarAnillo(1f, 0.85f, ageCola * GiroDelAnillo);
+        }
+
+        // Orden inmediata: el anillo gira, se expande de 1.0 a 1.8 en 1.2 s y se desvanece de 0.9 a 0, en bucle mientras la orden sigue
+        // en camino; al cumplirse (o cancelarse) hace un pulso final y se va.
+        void AnimarBucle(float dt)
+        {
+            age += dt;
+            if (!finalizando)
+            {
+                bool vencio = age >= VidaMaximaDelAnillo;
+                if (!vencio && age >= duration && Time.time >= proximoChequeo)
+                {
+                    proximoChequeo = Time.time + 0.15f;
+                    vencio = !HayOrdenPendienteEn(puntoDeOrden);
+                }
+                if (vencio) { finalizando = true; tFinal = 0f; }
+            }
+
+            if (finalizando)
+            {
+                tFinal += dt;
+                float k = Mathf.Clamp01(tFinal / DuracionDelPulsoFinal);
+                // Pulso final: el anillo salta un poco mas brillante y se abre rapido.
+                AplicarAnillo(Mathf.Lerp(1f, 2.3f, 1f - (1f - k) * (1f - k)), Mathf.Lerp(1f, 0f, k), age * GiroDelAnillo);
+                if (k >= 1f) { Recycle(); Release(this); }
+                return;
+            }
+
+            float c = Mathf.Repeat(age, PeriodoDelAnillo) / PeriodoDelAnillo;
+            float entrada = Mathf.Clamp01(c / 0.08f);
+            AplicarAnillo(Mathf.Lerp(1f, EscalaFinalDelCiclo, c), AlfaInicial * (1f - c) * entrada, age * GiroDelAnillo);
+        }
+
+        // Para la suite: el marcador activo mas cercano (en el plano) a un punto.
+        public static OrderMarkerFx MasCercanoA(Vector3 punto, float radio = 1.5f)
+        {
+            Purge();
+            OrderMarkerFx mejor = null; float md = radio * radio;
+            for (int i = 0; i < inUse.Count; i++)
+            {
+                var m = inUse[i];
+                if (m == null || !m.gameObject.activeInHierarchy) continue;
+                var d = m.transform.position - punto; d.y = 0f;
+                if (d.sqrMagnitude <= md) { md = d.sqrMagnitude; mejor = m; }
+            }
+            return mejor;
+        }
+
+        // Bug #068: en la Operacion el asfalto esta a y = 0.08, asi que un anillo fijo a y = 0.05 quedaba ENTERRADO (el destino no se veia).
+        // Se apoya sobre la malla de navegacion (que sigue al piso) y cae al 0.05 de siempre si no hay malla cerca (suite headless).
+        static float AlturaDelPiso(Vector3 p)
+        {
+            if (Application.isPlaying && UnityEngine.AI.NavMesh.SamplePosition(p, out var h, 1.6f, UnityEngine.AI.NavMesh.AllAreas))
+                return h.position.y + 0.06f;
+            return 0.05f;
         }
 
         void LaunchFading(Vector3 position, Color color, float durationSeconds)
         {
             gameObject.name = "OrderMarker";
             gameObject.SetActive(true);
-            transform.position = new Vector3(position.x, 0.05f, position.z);
+            transform.position = new Vector3(position.x, AlturaDelPiso(position), position.z);
 
+            esDeCola = false;
+            puntoDeOrden = position;
+            proximoChequeo = 0f;
+            finalizando = false;
             EnsureCustomShape(color, 1.3f);
             SetPipCount(0, color);
             
@@ -525,6 +646,7 @@ namespace SP.Presentation
             duration = Mathf.Max(0.01f, durationSeconds);
             age = 0f;
             fading = true;
+            AnimarBucle(0f);
         }
 
         void LaunchQueued(Vector3 position, Color color, int orderIndex)
@@ -534,8 +656,10 @@ namespace SP.Presentation
             puntoDeCola = position;
             esDeCola = true;
             esPlan = false;
+            finalizando = false;
+            ageCola = 0f;
             proximoChequeo = Time.time + 0.3f;
-            transform.position = new Vector3(position.x, 0.05f, position.z);
+            transform.position = new Vector3(position.x, AlturaDelPiso(position), position.z);
 
             EnsureCustomShape(color, 0.9f);
             SetPipCount(Mathf.Min(orderIndex, MaxPips), color);
@@ -549,33 +673,43 @@ namespace SP.Presentation
 
         // Los pips son hijos del marcador y se reusan CON el: se activan los
         // primeros `count` y se apagan los demas, en vez de crear y destruir
-        // cubos en cada orden. Se cuentan por transform.childCount y no por
-        // una lista cacheada porque los campos privados se pierden en el
-        // domain reload y los hijos no: la lista quedaria vacia con los
-        // cubos todavia colgando, y se duplicarian.
+        // cubos en cada orden. Se reconocen por nombre (y no por una lista
+        // cacheada) porque los campos privados se pierden en el domain reload y
+        // los hijos no: la lista quedaria vacia con los cubos todavia colgando,
+        // y se duplicarian.
+        // Bug #068: el anillo (MarcadorObjetivo) tambien es hijo del marcador. Antes este bucle recorria TODOS los hijos, asi que
+        // apagaba el anillo cuando count = 0 (la orden inmediata no mostraba nada) y le ponia a la fuerza la escala de un pip
+        // (0.12 x 12 x 0.12) cuando era una orden de cola. Ahora solo toca los pips.
+        const string NombreDelPip = "OrderMarkerPip";
+
         void SetPipCount(int count, Color color)
         {
-            while (transform.childCount < count) CreatePip();
+            int pips = 0;
+            for (int i = 0; i < transform.childCount; i++) if (transform.GetChild(i).name == NombreDelPip) pips++;
+            while (pips < count) { CreatePip(); pips++; }
 
+            int n = 0;
             for (int i = 0; i < transform.childCount; i++)
             {
                 var pip = transform.GetChild(i);
-                bool on = i < count;
+                if (pip.name != NombreDelPip) continue;
+                bool on = n < count;
                 if (pip.gameObject.activeSelf != on) pip.gameObject.SetActive(on);
-                if (!on) continue;
-
-                // El padre esta aplastado en Y (0.05), asi que una altura
-                // util en el mundo pide una escala local enorme en Y.
-                pip.localScale = new Vector3(0.12f, 12f, 0.12f);
-                pip.localPosition = new Vector3((i - (count - 1) * 0.5f) * 0.22f, 6f, 0f);
-                ApplyColor(pip.GetComponent<MeshRenderer>(), color);
+                if (on)
+                {
+                    // Marca vertical de 1.4 m de alto, una por numero de orden, repartidas a lo ancho del anillo.
+                    pip.localScale = new Vector3(0.1f, 1.4f, 0.1f);
+                    pip.localPosition = new Vector3((n - (count - 1) * 0.5f) * 0.22f, 0.7f, 0f);
+                    ApplyColor(pip.GetComponent<MeshRenderer>(), color);
+                }
+                n++;
             }
         }
 
         void CreatePip()
         {
             var pip = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            pip.name = "OrderMarkerPip";
+            pip.name = NombreDelPip;
             pip.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
             var col = pip.GetComponent<Collider>();
             if (col != null)
@@ -593,8 +727,10 @@ namespace SP.Presentation
 
         void Update()
         {
-            if (esDeCola && !esPlan)
+            if (esDeCola)
             {
+                AnimarCola(Time.deltaTime);
+                if (esPlan) return;
                 if (Time.time < proximoChequeo) return;
                 proximoChequeo = Time.time + 0.15f;
                 if (!HayOrdenPendienteEn(puntoDeCola))
@@ -605,15 +741,12 @@ namespace SP.Presentation
                 return;
             }
             if (!fading) return;
-            age += Time.deltaTime;
-            if (age < duration) return;
 
             // El test automatico (HeadlessTestRunner) dispara ordenes en Edit
             // mode, donde ni las corrutinas ni Update corren: alla el
             // marcador no llega nunca a este punto y lo unico que lo acota es
             // el tope duro del pool (o RecycleAll).
-            Recycle();
-            Release(this);
+            AnimarBucle(Time.deltaTime);
         }
 
         // No destruye: apaga y deja el marcador listo para el proximo uso.
@@ -624,7 +757,9 @@ namespace SP.Presentation
             fading = false;
             esPlan = false;
             esDeCola = false;
+            finalizando = false;
             age = 0f;
+            ageCola = 0f;
             // Si estaba haciendo de marcador de cola, deja de representar un
             // plan pendiente: sale de la lista publica antes de apagarse.
             QueuedMarkers.Remove(gameObject);
