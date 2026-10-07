@@ -76,6 +76,9 @@ namespace SP.Operacion
         bool IOrdenableAAliados.Completo => Completo;
         bool IOrdenableAAliados.Habilitado => Habilitado;
 
+        // Texto del verbo para el cartel de la mira: lo que hace [E] aca cuando el que mira puede operarlo.
+        public string VerboDeUso => modoSostener ? "MANTENÉ [E] PARA DESACTIVAR" : "APRETÁ [E] PARA OPERAR";
+
         public string GetPrompt(PlayerInputDriver player) => soloUnRol ? $"Enviar al {nombreDelRol} a {titulo.ToLowerInvariant()}" : $"Enviar a un aliado a {titulo.ToLowerInvariant()}";
         public bool CanInteract(PlayerInputDriver player) => Habilitado && !Completo;
         public void Interact(PlayerInputDriver player) { if (player != null) player.EnviarAInteractuar(this, 0); }
@@ -209,13 +212,18 @@ namespace SP.Operacion
                 if (!PuedeOperar(yo))
                 {
                     UltimoMensaje = $"SOLO EL {nombreDelRol} PUEDE DESACTIVARLO · APUNTALE Y TOCA [Q] PARA MANDARLO";
-                    if (hud != null) hud.Prompt(UltimoMensaje);
+                    // Mientras el cartel rojo de rol (AvisoCentral) esta en pantalla el prompt viejo sobra: decian lo mismo y se encimaban.
+                    if (hud != null && SP.Presentation.AvisoCentral.TextoActual == null) hud.Prompt(UltimoMensaje);
+                    // Bug #083/#084: apretar [E] con el rol equivocado no hacia nada. Ahora dice que rol hace falta.
+                    if (EToque() || EMantenida()) RolRequerido.Avisar(yo, rol, "DESACTIVAR " + titulo);
                 }
                 else
                 {
                     sosteniendo = EMantenida();
                     UltimoMensaje = $"MANTEN [E] PARA DESACTIVAR {titulo} · {Mathf.RoundToInt(Progreso01 * 100f)} %";
                     if (hud != null) hud.Prompt(UltimoMensaje, Progreso01);
+                    // El que mantiene [E] tambien se ve trabajando (igual que el aliado mandado con [Q]).
+                    if (sosteniendo) AccionesEnCurso.Reportar(yo, "DESACTIVANDO", transform.position, Progreso01, (1f - Progreso01) * duracion, transform);
                 }
             }
             // Si hay un aliado trabajando (mandado con [Q]) el progreso no decae aunque nadie mantenga [E].
@@ -233,7 +241,13 @@ namespace SP.Operacion
 
             if (Operador == null)
             {
-                bool cerca = yo != null && yo.Health.IsAlive && PuedeOperar(yo) && Distancia(yo) <= radio;
+                bool alLado = yo != null && yo.Health.IsAlive && Distancia(yo) <= radio;
+                if (alLado && !PuedeOperar(yo))
+                {
+                    if (EToque()) RolRequerido.Avisar(yo, rol, "OPERAR " + titulo);
+                    return;
+                }
+                bool cerca = alLado && PuedeOperar(yo);
                 if (cerca)
                 {
                     UltimoMensaje = Progreso01 > 0f ? $"[E] RETOMAR LA COMPUTADORA · {Mathf.RoundToInt(Progreso01 * 100f)} %" : "[E] INTERACTUAR CON LA COMPUTADORA (el soldado se queda 30 s)";

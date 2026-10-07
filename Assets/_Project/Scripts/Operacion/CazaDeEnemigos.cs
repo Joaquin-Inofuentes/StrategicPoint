@@ -75,6 +75,9 @@ namespace SP.Operacion
                 AliadoMasCercano(s.transform.position, out float d);
                 bool herido = s.Health.Current < s.Health.MaxHealth;
                 bool peleando = s.Brain != null && s.Brain.CurrentTarget != null;
+                // WP4 (#085): un guardia atrincherado se queda en su cobertura hasta VER a alguien o recibir dano; antes lo sacaba el solo
+                // hecho de que la escuadra pasara a menos de 38 m (aunque no lo viera).
+                if (s.Brain != null && s.Brain.Atrincherado && !herido && !peleando) continue;
                 if (d > RadioDeAlerta && !herido && !peleando) continue;
                 cazadores.Add(s);
                 // Avisa a su grupo.

@@ -30,6 +30,7 @@ namespace SP.Operacion
         public Transform boca;
 
         public Vehicle Vehiculo { get; private set; }
+        public void FijarVelocidadInicial(float v) { VelocidadActual = Mathf.Clamp(v, 0f, VelocidadMaxima); }
         public bool Muerto => Vehiculo != null && Vehiculo.IsDestroyed;
         public int Disparos { get; private set; }
         public int Embestidas { get; private set; }
@@ -51,7 +52,9 @@ namespace SP.Operacion
         // Bug #047: "velocidades reales". Antes aceleraba a 20 m/s² y llegaba a 37 m/s (135 km/h) para alcanzar al tanque,
         // y giraba 130°/s a cualquier velocidad (doblaba en seco como en rieles). Ahora: tope ~100 km/h, 5 m/s² (0-100 en
         // ~5,5 s, una camioneta cargada) y el giro limitado por la aceleracion lateral que aguantan las ruedas.
-        public const float VelocidadMaxima = 28f, Aceleracion = 5f, Frenada = 8f, AceleracionLateral = 7f;
+        // Bug #090: eran 28 m/s (1,6 veces el tanque): no habia como darles. Ahora 19 m/s: solo un poco mas rapidas que el tanque (~17,5).
+        public const float VelocidadMaxima = 19f, Aceleracion = 5f, Frenada = 8f, AceleracionLateral = 7f;
+        public const float FactorDeAlcance = 1.25f, FactorDeEmbestida = 1.35f, MargenDeAlcance = 3f;
 
         static float GiroMaximo(float v) => Mathf.Min(130f, Mathf.Rad2Deg * AceleracionLateral / Mathf.Max(1f, Mathf.Abs(v)) * 1.6f);
 
@@ -66,15 +69,18 @@ namespace SP.Operacion
             }
             lateralBase = Mathf.Max(3.5f, Mathf.Abs(offsetDeseado.x));
             faseZigzag = Random.value * 6.28f;
-            ElegirTactica();
+            ElegirTactica(tacticaInicial);
             PrepararEfectos();
         }
 
-        void ElegirTactica()
+        // Bug #073: el director manda a una parte de las camionetas a nacer por delante del tanque con la tactica Adelantar.
+        public Tactica? tacticaInicial;
+
+        void ElegirTactica(Tactica? forzada = null)
         {
             cambioDeTactica = Time.time + Random.Range(5f, 9f);
             float r = Random.value;
-            TacticaActual = r < 0.38f ? Tactica.Acosar : r < 0.62f ? Tactica.Flanquear : r < 0.82f ? Tactica.Adelantar : Tactica.Embestir;
+            TacticaActual = forzada ?? (r < 0.38f ? Tactica.Acosar : r < 0.62f ? Tactica.Flanquear : r < 0.82f ? Tactica.Adelantar : Tactica.Embestir);
             float lado = Random.value < 0.5f ? -1f : 1f;
             switch (TacticaActual)
             {
@@ -115,8 +121,8 @@ namespace SP.Operacion
             float vObj = motorObjetivo != null ? Mathf.Abs(motorObjetivo.CurrentSpeed) : 6f;
             // Iguala al tanque y corrige la distancia: si esta lejos acelera hasta ~2x, si esta pasada frena. Al embestir, un poco mas.
             float adelante = Vector3.Dot(aMeta, frente);
-            float tope = TacticaActual == Tactica.Embestir ? 2.1f : 1.9f;
-            float quiere = Mathf.Clamp(vObj + adelante * 0.8f, 0f, Mathf.Min(VelocidadMaxima, vObj * tope + 5f));
+            float tope = TacticaActual == Tactica.Embestir ? FactorDeEmbestida : FactorDeAlcance;
+            float quiere = Mathf.Clamp(vObj + adelante * 0.8f, 0f, Mathf.Min(VelocidadMaxima, vObj * tope + MargenDeAlcance));
             VelocidadActual = Mathf.MoveTowards(VelocidadActual, quiere, (quiere > VelocidadActual ? Aceleracion : Frenada) * dt);
 
             // Rumbo: hacia la meta cuando esta lejos, paralelo al tanque cuando esta cerca.

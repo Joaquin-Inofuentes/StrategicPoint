@@ -123,7 +123,7 @@ namespace SP.Operacion
             SpriteFx.Lanzar("muzzle_01", origen + dir * 0.25f, new Color(1f, 0.82f, 0.45f, 1f), 0.55f, 0.85f, 0.06f, Random.Range(0f, 360f), default, 0f, 6);
             SpriteFx.Lanzar("smoke_02", origen + dir * 0.4f, new Color(0.6f, 0.58f, 0.55f, 0.35f), 0.25f, 0.9f, 0.45f, Random.Range(-40f, 40f), dir * 1.5f + Vector3.up * 0.4f, 2.5f, 1);
             var clip = GenericSfx.GetWeaponShot(SP.Combat.WeaponKind.Heavy);
-            if (clip != null) AudioDirector.PlayClipAt(clip, origen, 0.75f, 0.9f);
+            if (clip != null) AudioDirector.PlayClipAt(clip, origen, 0.75f, 0.9f, PerfilEspacial.Disparo);
         }
 
         // Muerte: estallidos encadenados + escombros + sacudida; la carcasa queda ardiendo.
@@ -139,17 +139,31 @@ namespace SP.Operacion
             StartCoroutine(Estallidos(centro));
         }
 
+        static readonly string[] PiezasQueSeRompen = { "Cabina", "Capot", "Techo", "Caja_Piso" };
+
         System.Collections.IEnumerator Estallidos(Vector3 centro)
         {
-            float[] radios = { 4.2f, 3.0f, 3.6f };
+            // Bug #072: la bola de fuego es 1,5 veces mas grande que antes (4,2 / 3,0 / 3,6) y el primer estallido deja un crater.
+            float[] radios = { 6.3f, 4.5f, 5.4f };
             float[] esperas = { 0f, 0.16f, 0.22f };
             for (int i = 0; i < radios.Length; i++)
             {
                 if (esperas[i] > 0f) yield return new WaitForSeconds(esperas[i]);
                 var p = centro + (i == 0 ? Vector3.zero : new Vector3(Random.Range(-1.2f, 1.2f), Random.Range(0.2f, 1f), Random.Range(-1.5f, 1.5f)));
-                ImpactFx.SpawnExplosion(p, radios[i]);
+                ImpactFx.SpawnExplosion(p, radios[i], i == 0);
                 AudioDirector.PlayAt(SfxKind.Explosion, p, 1f, 1f);
-                if (i == 0) AudioDirector.PlayAt(SfxKind.ImpactoPesado, p, 1f, 1f);
+                if (i == 0)
+                {
+                    // Bug #072: la carroceria se parte (cabina, capot, techo y piso de la caja salen en trozos con fisica) y salen
+                    // 6 a 10 chapas que rebotan en el piso.
+                    var vis = visualCache;
+                    if (vis == null) foreach (Transform hijo in transform) if (hijo.name == "Visual") { vis = hijo; break; }
+                    DestruccionDeVehiculo.RomperPiezas(vis, PiezasQueSeRompen, p, 8f, 3);
+                    DestruccionDeVehiculo.Chapas(p, Random.Range(6, 11), 10f);
+                    AudioDirector.PlayAt(SfxKind.ImpactoPesado, p, 1f, 1f);
+                    // Bug #072: chapa que se retuerce y cae al destruirse la camioneta.
+                    AudioDirector.PlayAt(SfxKind.DestruccionVehiculo, p, 0.9f, 0.95f);
+                }
                 // Escombros de chapa oscura que vuelan y caen.
                 for (int k = 0; k < 10; k++)
                 {

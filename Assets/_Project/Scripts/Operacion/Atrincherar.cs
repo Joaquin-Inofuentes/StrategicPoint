@@ -30,7 +30,7 @@ namespace SP.Operacion
             if (enemigos == null) return 0;
             if (Coberturas.Cantidad == 0) Coberturas.Registrar();
             var tomados = new List<Vector3>();
-            var pendientes = new List<(Soldier s, Vector3 punto, Vector3 haciaAmenaza)>();
+            var pendientes = new List<(Soldier s, Vector3 punto, Vector3 haciaAmenaza, Collider dueno)>();
             bool creoBarricadas = false;
             int n = 0;
 
@@ -42,22 +42,22 @@ namespace SP.Operacion
                 if (hacia.sqrMagnitude < 0.01f) hacia = Vector3.back;
                 hacia.Normalize();
 
-                if (!MejorCobertura(pos, hacia, tomados, out var punto))
+                if (!MejorCobertura(pos, hacia, tomados, out var punto, out var dueno))
                 {
                     // Sin cobertura cerca: bolsas de arena delante del guardia, mirando a la amenaza. Si otro guardia ya quedo
                     // ahi (medido: dos guardias del puesto 1 terminaban en el mismo punto), se corre de costado.
                     var lado = Vector3.Cross(Vector3.up, hacia).normalized;
                     for (int intento = 0; intento < 6 && Ocupado(pos, tomados); intento++)
                         pos += lado * (intento % 2 == 0 ? 1f : -1f) * SeparacionEntreGuardias * (1 + intento / 2);
-                    CrearBarricada(pos + hacia * 1.15f, hacia);
+                    dueno = CrearBarricada(pos + hacia * 1.15f, hacia);
                     creoBarricadas = true;
                     punto = pos;
                 }
                 tomados.Add(punto);
-                pendientes.Add((s, punto, hacia));
+                pendientes.Add((s, punto, hacia, dueno));
             }
 
-            foreach (var (s, punto, hacia) in pendientes)
+            foreach (var (s, punto, hacia, dueno) in pendientes)
             {
                 var p = punto;
                 if (UnityEngine.AI.NavMesh.SamplePosition(p, out var h, 1.5f, UnityEngine.AI.NavMesh.AllAreas)) p = new Vector3(h.position.x, s.transform.position.y, h.position.z);
@@ -68,6 +68,9 @@ namespace SP.Operacion
                 s.Brain.SetPatrolRoute(new[] { s.transform.position, s.transform.position });
                 if (s.Motor != null) s.Motor.SetCrouching(true);
                 s.Brain.Atrincherado = true;
+                // WP4 (#085): ademas de agacharse queda EN la cobertura (enCobertura, punto y obstaculo): antes solo se agachaba y la IA no lo
+                // reconocia cubierto, asi que CazaDeEnemigos y el combate lo trataban como un soldado cualquiera al descubierto.
+                s.Brain.TomarCoberturaInicial(s.transform.position, dueno);
                 n++;
             }
 
@@ -82,9 +85,10 @@ namespace SP.Operacion
             return n;
         }
 
-        static bool MejorCobertura(Vector3 pos, Vector3 haciaAmenaza, List<Vector3> tomados, out Vector3 punto)
+        static bool MejorCobertura(Vector3 pos, Vector3 haciaAmenaza, List<Vector3> tomados, out Vector3 punto, out Collider dueno)
         {
             punto = pos;
+            dueno = null;
             float mejor = float.MaxValue;
             var puntos = Coberturas.Puntos;
             var duenos = Coberturas.Duenos;
@@ -98,7 +102,7 @@ namespace SP.Operacion
                 var haciaObstaculo = -Coberturas.FrenteDe(i);
                 if (Vector3.Dot(haciaObstaculo, haciaAmenaza) < AlineacionMinima) continue;
                 if (Ocupado(p, tomados)) continue;
-                if (d < mejor) { mejor = d; punto = p; }
+                if (d < mejor) { mejor = d; punto = p; dueno = duenos[i]; }
             }
             return mejor < float.MaxValue;
         }
@@ -138,7 +142,7 @@ namespace SP.Operacion
             return n;
         }
 
-        static void CrearBarricada(Vector3 centro, Vector3 haciaAmenaza)
+        static Collider CrearBarricada(Vector3 centro, Vector3 haciaAmenaza)
         {
             var raiz = new GameObject("Barricada_BolsasDeArena");
             raiz.transform.position = new Vector3(centro.x, 0f, centro.z);
@@ -169,6 +173,7 @@ namespace SP.Operacion
             obstaculo.shape = UnityEngine.AI.NavMeshObstacleShape.Box;
             obstaculo.size = col.size; obstaculo.center = col.center; obstaculo.carving = true;
             Barricadas++;
+            return col;
         }
     }
 }
