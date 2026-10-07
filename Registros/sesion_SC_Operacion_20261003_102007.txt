@@ -1,0 +1,747 @@
+# REGISTRO DE SESION - Strategic Point
+# escena=SC_Operacion fecha=2026-10-03 10:20:07 unity=6000.6.2f1 intervalo=5s
+# Formato: bloque cada 5 s (JUGADOR / ACCIONES / ALIADOS / ENEMIGOS / VEHICULOS / MISION) + lineas sueltas [EVENTO|ORDEN|BAJA|POSESION|BUG].
+# Para volver a un momento: SesionLog.RestaurarBug(n) (n = numero de bug marcado con [U] o [8]).
+
+[T+0000,0s juego=0000,0] EVENTO: FASE de la Operacion -> Infiltrar
+=== BLOQUE 1 [T+0007,1s juego=0000,0 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(-2,5,0,8,-372,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=Cubrirse
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(-2,5,0,8,-372,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-372,8) yaw=0 ia=Patrol obj=-
+  Soldado_3_Doc      Medic     hp=486/486 pos=(2,5,0,8,-373,6) yaw=0 ia=Patrol obj=-
+ENEMIGOS (32 vivos, 38 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-20,0,0,8,-312,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-12,0,0,8,-108,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-14,0,0,8,-262,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(3,0,0,8,-228,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-26,0,0,8,-282,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-52,0,5,8,-300,0) yaw=90 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(14,0,0,8,-262,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-12,0,0,8,-143,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-12,0,0,8,-236,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-4,0,0,8,-142,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(34,0,0,8,-296,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-8,0,0,8,-298,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(34,0,0,8,-322,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-34,0,0,8,-298,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(12,0,0,8,-236,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-34,0,0,8,-274,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(26,0,0,8,-284,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(12,0,0,8,-108,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(4,0,0,8,-177,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(10,0,0,8,-300,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-137,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(4,0,0,8,-142,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-102,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-172,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(52,0,5,8,-300,0) yaw=270 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-34,0,0,8,-324,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(4,0,0,8,-107,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(20,0,0,8,-310,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-4,0,0,8,-177,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-4,0,0,8,-107,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-286,0) yaw=180 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-3,0,0,8,-228,0) yaw=180 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Infiltrar
+  Operacion.reloj = 0.02
+  Operacion.puestoActual = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=False;progreso=0.00;completo=False;guardiasVivos=3
+  Operacion.puesto2 = abierto=False;progreso=0.00;completo=False;guardiasVivos=4
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 20
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+=== BLOQUE 2 [T+0012,1s juego=0002,4 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(-2,5,0,8,-372,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=Cubrirse
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(-2,5,0,8,-372,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-372,8) yaw=0 ia=Patrol obj=-
+  Soldado_3_Doc      Medic     hp=486/486 pos=(2,5,0,8,-373,6) yaw=0 ia=Patrol obj=-
+ENEMIGOS (32 vivos, 38 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-19,6,0,8,-315,9) yaw=98 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-9,4,0,8,-110,6) yaw=59 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-11,7,0,8,-266,3) yaw=94 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(4,8,0,8,-232,3) yaw=94 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-23,7,0,8,-286,3) yaw=94 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-52,0,5,8,-300,0) yaw=90 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(16,5,0,8,-266,4) yaw=94 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-9,3,0,8,-145,5) yaw=54 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-10,1,0,8,-240,3) yaw=94 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-2,8,0,8,-144,4) yaw=18 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(36,3,0,8,-300,4) yaw=95 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-5,7,0,8,-302,3) yaw=94 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(36,3,0,8,-326,4) yaw=95 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-30,4,0,8,-301,9) yaw=72 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(14,0,0,8,-240,3) yaw=94 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-30,4,0,8,-277,7) yaw=65 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(28,2,0,8,-288,3) yaw=94 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(14,8,0,8,-110,0) yaw=33 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(7,0,0,8,-179,0) yaw=29 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(12,1,0,8,-304,4) yaw=94 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-5,1,0,8,-142,6) yaw=135 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(7,0,0,8,-144,1) yaw=33 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(2,9,0,8,-103,4) yaw=13 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-5,0,0,8,-177,7) yaw=135 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(52,0,5,8,-300,0) yaw=270 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-31,9,0,8,-328,5) yaw=90 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(6,7,0,8,-109,3) yaw=44 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(22,2,0,8,-314,3) yaw=94 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-2,8,0,8,-179,4) yaw=18 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-1,2,0,8,-108,7) yaw=18 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(2,1,0,8,-290,3) yaw=94 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-1,2,0,8,-232,3) yaw=94 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Infiltrar
+  Operacion.reloj = 2.45
+  Operacion.puestoActual = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=False;progreso=0.00;completo=False;guardiasVivos=3
+  Operacion.puesto2 = abierto=False;progreso=0.00;completo=False;guardiasVivos=4
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 20
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0013,0s juego=0003,4] EVENTO: FASE de la Operacion -> Puestos (puesto 1)
+[T+0013,0s juego=0003,4] BAJA: Enemigo (Enemy/Medic) en (-6,0,-176,2) por ?
+[T+0013,0s juego=0003,4] BAJA: Enemigo (Enemy/Medic) en (8,2,-174,3) por ?
+[T+0013,0s juego=0003,4] BAJA: Enemigo (Enemy/Medic) en (-0,5,-176,8) por ?
+[T+0013,0s juego=0003,4] BAJA: Enemigo (Enemy/Medic) en (-6,0,-141,2) por ?
+[T+0013,0s juego=0003,4] BAJA: Enemigo (Enemy/Medic) en (8,2,-139,4) por ?
+[T+0013,0s juego=0003,4] BAJA: Enemigo (Enemy/Medic) en (-0,6,-141,9) por ?
+[T+0013,0s juego=0003,4] BAJA: Enemigo (Enemy/Medic) en (-8,7,-140,7) por ?
+[T+0016,1s juego=0004,8] ORDEN: Se dio la orden de seguir a 2 soldados -> Soldado_2_Kes, Soldado_3_Doc
+=== BLOQUE 3 [T+0017,1s juego=0005,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(-1,9,0,8,-155,3) yaw=4 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 3,8 m | disparos=0 | ordenes=1 | cambios de soldado=0 | bajas=7
+   orden: [0016,1s] Se dio la orden de seguir a 2 soldados -> Soldado_2_Kes, Soldado_3_Doc
+   baja: Enemigo (Enemy/Medic) en (-6,0,-176,2) por ?
+   baja: Enemigo (Enemy/Medic) en (8,2,-174,3) por ?
+   baja: Enemigo (Enemy/Medic) en (-0,5,-176,8) por ?
+   baja: Enemigo (Enemy/Medic) en (-6,0,-141,2) por ?
+   baja: Enemigo (Enemy/Medic) en (8,2,-139,4) por ?
+   baja: Enemigo (Enemy/Medic) en (-0,6,-141,9) por ?
+   baja: Enemigo (Enemy/Medic) en (-8,7,-140,7) por ?
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(-1,9,0,8,-155,3) yaw=4 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(-0,7,0,8,-156,4) yaw=3 ia=Follow obj=- sigueA=Soldado_1_Vega
+  Soldado_3_Doc      Medic     hp=486/486 pos=(-0,9,0,8,-159,4) yaw=329 ia=Follow obj=- sigueA=Soldado_1_Vega
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-15,0,0,8,-107,8) yaw=187 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(7,8,0,8,-107,2) yaw=171 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-3,0,0,8,-101,8) yaw=189 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(1,2,0,8,-104,9) yaw=256 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-6,9,0,8,-106,4) yaw=188 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 2.38
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0019,8s juego=0008,5] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 29,0 m (ruta parcial)
+[T+0019,8s juego=0008,5] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 28,9 m (ruta parcial)
+[T+0020,0s juego=0008,7] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 28,8 m (ruta parcial)
+[T+0020,0s juego=0008,7] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 29,8 m (ruta parcial)
+[T+0020,8s juego=0009,5] EVENTO: Soldado_2_Kes descarta objetivo inalcanzable Enemigo a 29,5 m (ruta parcial)
+[T+0020,8s juego=0009,5] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 28,4 m (ruta parcial)
+[T+0021,3s juego=0010,0] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 28,8 m (ruta parcial)
+[T+0021,4s juego=0010,1] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 27,6 m (ruta parcial)
+[T+0021,6s juego=0010,3] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 27,5 m (ruta parcial)
+=== BLOQUE 4 [T+0022,1s juego=0010,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(-0,5,0,8,-140,0) yaw=2 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 15,8 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(-0,5,0,8,-140,0) yaw=2 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(-6,8,0,8,-139,2) yaw=342 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(-7,2,0,8,-137,9) yaw=342 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,6,0,8,-112,8) yaw=170 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(7,0,0,8,-114,0) yaw=201 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(-2,7,0,8,-99,6) yaw=237 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(0,5,0,8,-113,7) yaw=235 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-113,5) yaw=187 ia=Chase obj=Soldado_2_Kes
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 7.39
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0022,6s juego=0011,3] EVENTO: Soldado_2_Kes descarta objetivo inalcanzable Enemigo a 27,8 m (ruta parcial)
+[T+0023,0s juego=0011,7] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 24,7 m (ruta parcial)
+[T+0023,4s juego=0012,1] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 26,9 m (ruta parcial)
+[T+0023,9s juego=0012,6] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 27,0 m (ruta parcial)
+[T+0023,9s juego=0012,6] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 31,6 m (ruta parcial)
+[T+0024,1s juego=0012,8] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 24,7 m (ruta parcial)
+[T+0024,3s juego=0013,0] EVENTO: Soldado_2_Kes descarta objetivo inalcanzable Enemigo a 24,2 m (ruta parcial)
+[T+0024,7s juego=0013,4] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 23,4 m (ruta parcial)
+[T+0024,9s juego=0013,6] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 25,8 m (ruta parcial)
+[T+0025,4s juego=0014,1] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 24,6 m (ruta parcial)
+[T+0025,8s juego=0014,5] EVENTO: Soldado_2_Kes descarta objetivo inalcanzable Enemigo a 21,1 m (ruta parcial)
+[T+0026,2s juego=0014,9] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 20,9 m (ruta parcial)
+[T+0027,1s juego=0015,8] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 26,3 m (ruta parcial)
+=== BLOQUE 5 [T+0027,1s juego=0015,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(-0,1,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,4 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(-0,1,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(2,1,0,8,-129,7) yaw=351 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(-7,7,0,8,-125,9) yaw=14 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-12,7,0,8,-104,9) yaw=278 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(7,0,0,8,-114,0) yaw=201 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(-0,1,0,8,-113,7) yaw=171 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(7,3,0,8,-105,5) yaw=7 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-0,7,0,8,-104,5) yaw=5 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 12.40
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0027,3s juego=0016,0] EVENTO: Soldado_2_Kes descarta objetivo inalcanzable Enemigo a 15,4 m (ruta parcial)
+[T+0027,7s juego=0016,4] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 13,4 m (ruta parcial)
+[T+0028,9s juego=0017,6] EVENTO: Soldado_2_Kes descarta objetivo inalcanzable Enemigo a 19,7 m (ruta parcial)
+[T+0029,5s juego=0018,2] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 13,3 m (ruta parcial)
+[T+0029,7s juego=0018,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 9,8 m (ruta parcial)
+[T+0031,5s juego=0020,2] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 27,5 m (ruta parcial)
+=== BLOQUE 6 [T+0032,1s juego=0020,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,1 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(-0,3,0,8,-116,6) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(-0,4,0,8,-116,0) yaw=83 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-113,4) yaw=139 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(7,0,0,8,-114,0) yaw=202 ia=Chase obj=Soldado_1_Vega
+  Enemigo            Medic     hp=135/135 pos=(3,3,0,8,-100,1) yaw=8 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,1,0,8,-113,4) yaw=186 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-113,4) yaw=182 ia=Chase obj=Soldado_3_Doc
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 17.40
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0032,4s juego=0021,1] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 7,1 m (ruta parcial)
+[T+0033,1s juego=0021,8] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 7,1 m (ruta parcial)
+[T+0033,5s juego=0022,2] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 2,6 m (ruta parcial)
+[T+0033,7s juego=0022,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 7,1 m (ruta parcial)
+[T+0034,7s juego=0023,4] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 7,1 m (ruta parcial)
+[T+0035,5s juego=0024,2] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 7,5 m (ruta parcial)
+[T+0035,7s juego=0024,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 14,3 m (ruta parcial)
+[T+0036,1s juego=0024,8] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 7,4 m (ruta parcial)
+[T+0036,5s juego=0025,2] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 2,1 m (ruta parcial)
+=== BLOQUE 7 [T+0037,1s juego=0025,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(-0,4,0,8,-116,0) yaw=83 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-113,4) yaw=139 ia=Chase obj=Soldado_1_Vega
+  Enemigo            Medic     hp=135/135 pos=(5,6,0,8,-114,0) yaw=265 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(-2,9,0,8,-100,8) yaw=113 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=188 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(-5,8,0,8,-112,9) yaw=127 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 22.41
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0037,2s juego=0025,9] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 27,5 m (ruta parcial)
+[T+0037,5s juego=0026,2] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 14,6 m (ruta parcial)
+[T+0038,5s juego=0027,2] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 6,3 m (ruta parcial)
+[T+0039,1s juego=0027,8] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 36,6 m (ruta parcial)
+=== BLOQUE 8 [T+0042,1s juego=0030,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(0,0,0,8,-116,0) yaw=86 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-14,6,0,8,-105,3) yaw=248 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(5,6,0,8,-114,0) yaw=265 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(0,9,0,8,-104,9) yaw=103 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=188 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(-6,6,0,8,-105,0) yaw=217 ia=Chase obj=Soldado_1_Vega
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 27.42
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0043,0s juego=0031,7] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 32,0 m (ruta parcial)
+[T+0043,9s juego=0032,5] EVENTO: Soldado_2_Kes descarta objetivo inalcanzable Enemigo a 2,0 m (sin acercarse)
+[T+0044,6s juego=0033,3] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 11,6 m (ruta parcial)
+[T+0045,3s juego=0034,0] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 7,5 m (ruta parcial)
+[T+0047,0s juego=0035,7] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 10,2 m (ruta parcial)
+=== BLOQUE 9 [T+0047,1s juego=0035,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(0,0,0,8,-116,0) yaw=86 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-9,2,0,8,-112,1) yaw=79 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(5,6,0,8,-114,0) yaw=265 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(-2,6,0,8,-101,9) yaw=166 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=188 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(-1,5,0,8,-111,8) yaw=104 ia=Chase obj=Soldado_2_Kes
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 32.42
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0047,4s juego=0036,1] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 13,7 m (ruta parcial)
+[T+0047,5s juego=0036,2] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 2,0 m (sin acercarse)
+[T+0048,0s juego=0036,7] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 5,9 m (sin acercarse)
+[T+0049,2s juego=0037,9] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 11,8 m (ruta parcial)
+[T+0051,0s juego=0039,7] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 31,5 m (ruta parcial)
+[T+0051,9s juego=0040,6] EVENTO: Soldado_2_Kes descarta objetivo inalcanzable Enemigo a 5,9 m (sin acercarse)
+=== BLOQUE 10 [T+0052,1s juego=0040,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(0,0,0,8,-116,0) yaw=86 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-114,0) yaw=165 ia=Chase obj=Soldado_1_Vega
+  Enemigo            Medic     hp=135/135 pos=(5,6,0,8,-114,0) yaw=265 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(-1,6,0,8,-106,4) yaw=73 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=188 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=145 ia=Chase obj=Soldado_2_Kes
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 37.42
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0054,1s juego=0042,8] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 2,0 m (sin acercarse)
+[T+0055,5s juego=0044,2] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 2,0 m (sin acercarse)
+[T+0056,0s juego=0044,7] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 5,9 m (sin acercarse)
+=== BLOQUE 11 [T+0057,1s juego=0045,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(0,0,0,8,-116,0) yaw=86 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-114,0) yaw=165 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(5,4,0,8,-114,0) yaw=270 ia=Chase obj=Soldado_1_Vega
+  Enemigo            Medic     hp=135/135 pos=(2,8,0,8,-103,7) yaw=32 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=188 ia=Chase obj=Soldado_1_Vega
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=145 ia=Chase obj=Soldado_3_Doc
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 42.43
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0058,0s juego=0046,7] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 26,4 m (ruta parcial)
+[T+0058,1s juego=0046,8] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 2,0 m (sin acercarse)
+[T+0059,2s juego=0047,9] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 12,0 m (ruta parcial)
+[T+0059,7s juego=0048,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 5,4 m (ruta parcial)
+[T+0060,7s juego=0049,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 9,7 m (ruta parcial)
+=== BLOQUE 12 [T+0062,1s juego=0050,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(0,0,0,8,-116,0) yaw=86 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-114,0) yaw=165 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(13,6,0,8,-111,8) yaw=81 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(1,1,0,8,-109,2) yaw=193 ia=Chase obj=Soldado_1_Vega
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=188 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=145 ia=Chase obj=Soldado_3_Doc
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 47.44
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0062,5s juego=0051,2] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 29,0 m (ruta parcial)
+[T+0064,9s juego=0053,6] EVENTO: Soldado_2_Kes descarta objetivo inalcanzable Enemigo a 2,0 m (sin acercarse)
+[T+0066,1s juego=0054,8] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 2,0 m (sin acercarse)
+=== BLOQUE 13 [T+0067,1s juego=0055,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(0,0,0,8,-116,0) yaw=86 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-114,0) yaw=165 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(7,8,0,8,-110,2) yaw=210 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(-2,6,0,8,-99,3) yaw=247 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=188 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=145 ia=Chase obj=Soldado_2_Kes
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 52.44
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0067,6s juego=0056,3] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 8,3 m (ruta parcial)
+[T+0070,7s juego=0059,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 2,0 m (sin acercarse)
+[T+0070,9s juego=0059,6] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 7,3 m (ruta parcial)
+[T+0071,6s juego=0060,3] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 6,5 m (ruta parcial)
+=== BLOQUE 14 [T+0072,2s juego=0060,8 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(0,0,0,8,-116,0) yaw=86 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-114,0) yaw=165 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(6,2,0,8,-114,0) yaw=215 ia=Chase obj=Soldado_1_Vega
+  Enemigo            Medic     hp=135/135 pos=(0,9,0,8,-110,9) yaw=196 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=188 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=145 ia=Chase obj=Soldado_2_Kes
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 57.45
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0072,7s juego=0061,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 3,0 m (ruta parcial)
+[T+0072,9s juego=0061,6] EVENTO: Soldado_2_Kes descarta objetivo inalcanzable Enemigo a 2,0 m (sin acercarse)
+[T+0073,1s juego=0061,8] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 7,3 m (sin acercarse)
+[T+0073,7s juego=0062,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 2,0 m (sin acercarse)
+[T+0073,7s juego=0062,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 26,8 m (ruta parcial)
+[T+0074,3s juego=0063,0] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 26,6 m (ruta parcial)
+=== BLOQUE 15 [T+0077,2s juego=0065,9 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(0,0,0,8,-116,0) yaw=86 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-114,0) yaw=165 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(14,6,0,8,-110,9) yaw=54 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(3,0,0,8,-104,7) yaw=356 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=188 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=145 ia=Chase obj=Soldado_3_Doc
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 62.45
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0078,8s juego=0067,5] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 2,0 m (sin acercarse)
+[T+0079,1s juego=0067,8] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 3,6 m (sin acercarse)
+[T+0079,1s juego=0067,8] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 14,5 m (ruta parcial)
+[T+0080,7s juego=0069,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 26,6 m (ruta parcial)
+[T+0081,1s juego=0069,8] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 7,3 m (sin acercarse)
+[T+0081,7s juego=0070,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 2,0 m (sin acercarse)
+=== BLOQUE 16 [T+0082,2s juego=0070,9 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(0,0,0,8,-116,0) yaw=86 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-114,0) yaw=165 ia=Chase obj=Soldado_1_Vega
+  Enemigo            Medic     hp=135/135 pos=(8,9,0,8,-104,9) yaw=249 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(-1,5,0,8,-107,0) yaw=168 ia=Chase obj=Soldado_3_Doc
+  Enemigo            Medic     hp=135/135 pos=(0,1,0,8,-113,4) yaw=211 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=145 ia=Chase obj=Soldado_1_Vega
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 67.46
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0082,6s juego=0071,3] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 7,9 m (ruta parcial)
+[T+0083,1s juego=0071,8] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 2,6 m (ruta parcial)
+[T+0083,1s juego=0071,8] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 10,8 m (ruta parcial)
+[T+0084,4s juego=0073,1] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 3,6 m (ruta parcial)
+[T+0085,7s juego=0074,3] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 27,5 m (ruta parcial)
+[T+0085,9s juego=0074,6] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 26,6 m (ruta parcial)
+[T+0087,1s juego=0075,8] EVENTO: Soldado_3_Doc descarta objetivo inalcanzable Enemigo a 2,0 m (sin acercarse)
+=== BLOQUE 17 [T+0087,2s juego=0075,9 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(0,0,0,8,-116,0) yaw=86 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-114,0) yaw=165 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(9,9,0,8,-112,0) yaw=84 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(-1,0,0,8,-109,3) yaw=348 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(7,2,0,8,-104,7) yaw=355 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=145 ia=Chase obj=Soldado_2_Kes
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 72.47
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0090,4s juego=0079,1] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 4,1 m (ruta parcial)
+[T+0090,8s juego=0079,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 14,9 m (ruta parcial)
+=== BLOQUE 18 [T+0092,2s juego=0080,9 | escena SC_Operacion] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0,0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega     Assault   hp=486/486 pos=(0,0,0,8,-140,0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes      Flanker   hp=486/486 pos=(0,0,0,8,-116,0) yaw=30 ia=Chase obj=Enemigo siguiendoAuto
+  Soldado_3_Doc      Medic     hp=486/486 pos=(0,0,0,8,-116,0) yaw=86 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (5 vivos, 58 en reserva):
+  Enemigo            Medic     hp=135/135 pos=(-7,0,0,8,-114,0) yaw=165 ia=Chase obj=Soldado_2_Kes
+  Enemigo            Medic     hp=135/135 pos=(14,1,0,8,-105,1) yaw=346 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,2,0,8,-99,0) yaw=278 ia=Patrol obj=-
+  Enemigo            Medic     hp=135/135 pos=(0,1,0,8,-113,5) yaw=188 ia=Chase obj=Soldado_1_Vega
+  Enemigo            Medic     hp=135/135 pos=(0,0,0,8,-114,0) yaw=145 ia=Chase obj=Soldado_2_Kes
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=900/900 pos=(0,0,0,7,22,0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Puestos
+  Operacion.reloj = 77.47
+  Operacion.puestoActual = 2
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puesto1 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto2 = abierto=True;progreso=1.00;completo=True;guardiasVivos=0
+  Operacion.puesto3 = abierto=False;progreso=0.00;completo=False;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.heli = activo=False;pos=330,0,70,0,380,0;aterrizo=False
+
+[T+0092,7s juego=0081,4] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_1_Vega a 26,6 m (ruta parcial)
+[T+0094,4s juego=0083,1] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_3_Doc a 12,8 m (ruta parcial)
+[T+0094,8s juego=0083,5] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 10,9 m (ruta parcial)
+[T+0094,9s juego=0083,6] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 2,5 m (ruta parcial)
+[T+0095,3s juego=0083,9] EVENTO: Soldado_2_Kes descarta objetivo inalcanzable Enemigo a 2,0 m (sin acercarse)
+[T+0095,9s juego=0084,6] EVENTO: Enemigo descarta objetivo inalcanzable Soldado_2_Kes a 13,4 m (ruta parcial)

@@ -1,0 +1,31 @@
+[28.3] === ITERACION 7 · 2026-10-03 16:22:38 · escena SC_Operacion ===
+[33.8] OK    NIVEL objetivo 1 | fase=Infiltrar reservaApuntada=False erroresNuevos=0 cazadores=0 · fase=Infiltrar puesto=1 reloj=3.4 yo=(-2.2,0.8,-373.0) vida=486 enemigos=32 aliados=3
+[37.4] OK    NIVEL objetivo 2 | fase=Puestos reservaApuntada=False erroresNuevos=0 cazadores=3 · fase=Puestos puesto=1 reloj=3.5 yo=(-2.2,0.8,-212.0) vida=486 enemigos=12 aliados=3
+[40.9] OK    NIVEL objetivo 3 | fase=CentroDeDatos reservaApuntada=False erroresNuevos=0 cazadores=3 · fase=CentroDeDatos puesto=4 reloj=3.5 yo=(-2.2,0.8,-98.0) vida=486 enemigos=0 aliados=3
+[46.9] OK    NIVEL objetivo 4 | fase=Huir reservaApuntada=False erroresNuevos=0 cazadores=9 · fase=Huir puesto=4 reloj=6.0 yo=(-2.2,0.8,8.0) vida=475 enemigos=6 aliados=3
+[53.0] OK    NIVEL objetivo 5 | fase=Resistir reservaApuntada=False erroresNuevos=0 cazadores=14 · fase=Resistir puesto=4 reloj=6.0 yo=(246.0,0.8,230.2) vida=475 enemigos=11 aliados=3
+[56.5] OK    NIVEL objetivo 6 | fase=Extraer reservaApuntada=False erroresNuevos=0 cazadores=14 · fase=Extraer puesto=4 reloj=3.5 yo=(315.8,0.8,214.0) vida=486 enemigos=11 aliados=3
+[66.0] OK    BUG 17/20/21 enemigos vienen a atacar | enemigos=11 movidos=6 acercados=6 peleando=3 cazadores=14 rumbos=70
+[68.5] OK    BUG 15/minimapa aliados visibles | camara=True ortho=110 aliadosConIcono=3/3 escalaMin=14.3 esperado>=12.9
+[75.7] OK    BUG 8 medico viene y cura al jugador | pedido=True curando=True vida 170->486/486 distMin=1.1 t=7.2s
+[75.7] OK    BUG 8 animacion de curar | animando=True cruces=True
+[75.7] OK    BUG 8 bloqueo + cartel AGUARDE | cartel=True noSeMovio=True
+[79.0] OK    BUG 8 ESPACIO detiene la curacion | llego=True cortada=True sigueCortada2.5s=True aviso="CURACION DETENIDA"
+[80.0] OK    BUG 8 una orden nueva libera al medico | activoAntes=True activoDespues=False
+[81.8] OK    BUG 10 indicador de caido + minimapa parpadea | marca=True texto="2 KES · REANIMAR · 12 m" iconoParpadea=True
+[87.8] OK    BUG 14 la orden de reanimar lo revive | orden=True vivo=True t=6.1s
+[87.8] OK    BUG 15 icono vuelve al revivir | icono=True parpadea=False
+[99.2] OK    BUG 12 vienen a rescatar al jugador caido | rescatista=Soldado_2_Kes revivido=True t=7.8s
+[99.2] OK    BUG 12 al revivir vuelve a primera persona | modo=Fps poseido=Soldado_1_Vega
+[121.7] OK    BUG 16 aliados lejanos vuelven si o si | distancia media 274m -> 155m en 22s, regresos forzados +12
+[121.7] OK    BUG 11 indicador de bug actual | indicador="[U] reportar BUG #035  · ultimo: #034"
+[123.9] OK    BUG U dialogo pausa + miniatura | abierto=True timeScale0=True miniatura=True teclaWnoMueve=True
+[123.9] OK    BUG U guarda json completo + captura | bug #35 (esperado #35) diagnostico=25 lineas ultimasLineas=29 png=True timeScaleDespues=1
+[124.5] OK    BUG U cancelar no gasta numero | proximo=36
+[129.5] OK    TANQUE cañon sube y baja (torreta nivelada) | pitchArriba=-25.0 pitchAbajo=10.0 cuerpoInclinado=0.0° limiteArriba=-25
+[129.5] OK    TANQUE modelo real (orugas/torreta/metralleta) | cuerpoReal=True metralletaReal=True
+[129.5] OK    TANQUE sonidos reales (orugas T-26 + cañonazo) | cañon=Canon_Howitzer_qubodup orugas=Orugas_T26_Parola_greatmganga chirrido=True
+[140.9] OK    FINAL fundido se retira (pantalla no queda apagada) | fase=Victoria fundidoActivo=False canvasFundido=destruido subidos=3 t=9.9s
+[140.9] OK    FINAL suena la subida | historialAudio=Revive,click_003,3yell4,3grunt5,RadialConfirm,SeatChange,SeatChange,SeatChange
+[140.9] errores de consola en la iteracion: 0
+RESULTADO: 28/28 OK · errores de consola=0
