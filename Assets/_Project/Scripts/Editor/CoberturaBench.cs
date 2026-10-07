@@ -21,7 +21,7 @@ namespace SP.EditorTools
     {
         const string PrefabAliado = "Assets/_Project/Prefabs/P_Soldier_Ally.prefab";
         const string PrefabEnemigo = "Assets/_Project/Prefabs/P_Soldier_Enemy.prefab";
-        static readonly Vector3 Centro = new Vector3(10f, 0f, -6f);
+        public static Vector3 Centro = new Vector3(10f, 0f, -6f);
         const float Fondo = 22f;   // distancia entre los dos grupos
         // Carriles libres entre los obstaculos (cada soldado ve de frente a su espejo y de costado se tapa con los muros).
         static readonly float[] Carriles = { -1f, 3.3f, 6.7f, 11.5f };
@@ -35,6 +35,8 @@ namespace SP.EditorTools
         public static int Tamano = 4;
         public static float Limite = 50f;
         public static int Rival = 0;   // version contra la que se mide cada fila (-1 = sin cobertura)
+        // WP4: ultimos resultados agregados de la ULTIMA fila (los lee ChecksBugs065.Bug081).
+        public static float UltimoAtaqueCubierto, UltimoRetroceso, UltimoRetrocesoPropio, UltimaDifVida; public static int UltimasGanadas, UltimasPerdidas, UltimasEmpatadas;
 
         static IEnumerator rutina;
         static readonly Stack<IEnumerator> pila = new Stack<IEnumerator>();
@@ -145,7 +147,14 @@ namespace SP.EditorTools
         {
             public int version; public bool ganaVersion, empate; public int vivosVersion, vivosOtra;
             public float vidaPerdidaVersion, vidaPerdidaOtra, seg; public int elecciones, cambios;
+            // WP4 (#081): del bando de la version medida. Tiempo en Attack, tiempo en Attack ya en cobertura y retroceso maximo de un soldado sano.
+            public float segAttack, segAttackCubierto, retrocesoMax, retrocesoPropioMax;
         }
+
+        // Retroceso de un soldado sano: cuanto se alejo de su blanco desde lo mas cerca que llego (se reinicia al cambiar de blanco).
+        class Seguimiento { public int blancoId = -1; public float minD = 999f; public float retroceso; public Vector3 posMin; public float retrocesoPropio; }
+        // retroceso = cuanto crecio la distancia al blanco desde lo mas cerca que llego (incluye que el BLANCO se aleje); retrocesoPropio = cuanto se
+        // desplazo EL SOLDADO desde el punto donde estuvo mas cerca (no cuenta lo que se mueva el blanco).
 
         static IEnumerator Pelear(int versionA, int versionB, int k, System.Action<Trial> fin)
         {
@@ -167,10 +176,27 @@ namespace SP.EditorTools
             foreach (var s in ladoE) s.Brain.Stance = CombatStance.Libre;
 
             float t0 = Time.time;
+            var lMed = aEsPlayer ? ladoP : ladoE;
+            var seg0 = new Dictionary<Soldier, Seguimiento>();
+            float tAtk = 0f, tAtkCub = 0f;
             int Contar(List<Soldier> l) { int n = 0; foreach (var s in l) if (s != null && s.Health.IsAlive) n++; return n; }
             while (Time.time - t0 < Limite)
             {
                 if (Contar(ladoP) == 0 || Contar(ladoE) == 0) break;
+                float dtf = Time.deltaTime;
+                foreach (var s in lMed)
+                {
+                    if (s == null || !s.Health.IsAlive || s.Brain == null) continue;
+                    if (s.Brain.State == AiState.Attack) { tAtk += dtf; if (s.Brain.EnCobertura) tAtkCub += dtf; }
+                    var bl = s.Brain.CurrentTarget;
+                    if (!seg0.TryGetValue(s, out var sg)) seg0[s] = sg = new Seguimiento();
+                    if (bl == null || s.Brain.Herido) { sg.blancoId = -1; sg.minD = 999f; continue; }
+                    float dd = Vector3.Distance(s.transform.position, bl.transform.position);
+                    if (sg.blancoId != bl.Id) { sg.blancoId = bl.Id; sg.minD = dd; sg.posMin = s.transform.position; }
+                    if (dd < sg.minD) { sg.minD = dd; sg.posMin = s.transform.position; }
+                    else sg.retrocesoPropio = Mathf.Max(sg.retrocesoPropio, Vector3.Distance(s.transform.position, sg.posMin));
+                    sg.retroceso = Mathf.Max(sg.retroceso, dd - sg.minD);
+                }
                 yield return null;
             }
             var lA = aEsPlayer ? ladoP : ladoE; var lB = aEsPlayer ? ladoE : ladoP;
@@ -183,9 +209,13 @@ namespace SP.EditorTools
             {
                 version = versionA, vivosVersion = vA, vivosOtra = vB,
                 ganaVersion = vB == 0 && vA > 0, empate = (vA > 0 && vB > 0) || (vA == 0 && vB == 0),
-                vidaPerdidaVersion = tot - hpA, vidaPerdidaOtra = tot - hpB, seg = Time.time - t0, elecciones = el, cambios = ca
+                vidaPerdidaVersion = tot - hpA, vidaPerdidaOtra = tot - hpB, seg = Time.time - t0, elecciones = el, cambios = ca,
+                segAttack = tAtk, segAttackCubierto = tAtkCub, retrocesoMax = MaxRetroceso(seg0), retrocesoPropioMax = MaxRetrocesoPropio(seg0)
             });
         }
+
+        static float MaxRetrocesoPropio(Dictionary<Soldier, Seguimiento> d) { float m = 0f; foreach (var kv in d) m = Mathf.Max(m, kv.Value.retrocesoPropio); return m; }
+        static float MaxRetroceso(Dictionary<Soldier, Seguimiento> d) { float m = 0f; foreach (var kv in d) m = Mathf.Max(m, kv.Value.retroceso); return m; }
 
         static IEnumerator Ejecutar()
         {
@@ -209,25 +239,26 @@ namespace SP.EditorTools
             int puntos = Coberturas.Registrar();
             sb.AppendLine($"Campo: {obstaculos.Count} obstaculos en espejo, {puntos} puntos de cobertura registrados. {Tamano} contra {Tamano}, {Trials} duelos por configuracion, tiempo x{Escala:0}.");
             sb.AppendLine();
-            sb.AppendLine("| Version | Dif. vida (prop. - rival) | Gana | Empata | Pierde | Vivos prop. | Vivos rival | Vida perdida prop. | Vida perdida rival | Segundos | Coberturas elegidas | Cambios |");
-            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|");
+            sb.AppendLine("| Version | Dif. vida (prop. - rival) | Gana | Empata | Pierde | Vivos prop. | Vivos rival | Vida perdida prop. | Vida perdida rival | Segundos | Coberturas elegidas | Cambios | % Attack cubierto | Retroceso max sano (m) | Retroceso propio max (m) |");
+            sb.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
             Time.timeScale = Escala;
 
             foreach (int v in Versiones)
             {
-                int gana = 0, empata = 0, pierde = 0; float vvA = 0, vvB = 0, hA = 0, hB = 0, seg = 0; int el = 0, ca = 0; var difs = new List<float>();
+                int gana = 0, empata = 0, pierde = 0; float vvA = 0, vvB = 0, hA = 0, hB = 0, seg = 0; int el = 0, ca = 0; float sAtk = 0, sCub = 0, retMax = 0, retPro = 0; var difs = new List<float>();
                 for (int k = 0; k < Trials; k++)
                 {
                     Progreso = $"version {v} vs {Rival} ({k + 1}/{Trials})";
                     Trial r = default;
                     yield return Pelear(v, Rival, k, x => r = x);
                     if (r.ganaVersion) gana++; else if (r.empate) empata++; else pierde++;
-                    difs.Add(r.vidaPerdidaOtra - r.vidaPerdidaVersion); vvA += r.vivosVersion; vvB += r.vivosOtra; hA += r.vidaPerdidaVersion; hB += r.vidaPerdidaOtra; seg += r.seg; el += r.elecciones; ca += r.cambios;
+                    difs.Add(r.vidaPerdidaOtra - r.vidaPerdidaVersion); vvA += r.vivosVersion; vvB += r.vivosOtra; hA += r.vidaPerdidaVersion; hB += r.vidaPerdidaOtra; seg += r.seg; el += r.elecciones; ca += r.cambios; sAtk += r.segAttack; sCub += r.segAttackCubierto; retMax = Mathf.Max(retMax, r.retrocesoMax); retPro = Mathf.Max(retPro, r.retrocesoPropioMax);
                     Limpiar();
                     yield return null;
                 }
                 float n = Trials; float media = 0f; foreach (var d in difs) media += d; media /= n; float var2 = 0f; foreach (var d in difs) var2 += (d - media) * (d - media); float ee = Mathf.Sqrt(var2 / Mathf.Max(1f, n - 1f) / n);
-                sb.AppendLine($"| v{v} vs v{Rival}{(v == Rival ? " (control)" : "")} | {media:+0;-0} ± {ee:0} | {gana} | {empata} | {pierde} | {vvA / n:0.0} | {vvB / n:0.0} | {hA / n:0} | {hB / n:0} | {seg / n:0} | {el / n:0.0} | {ca / n:0.0} |");
+                sb.AppendLine($"| v{v} vs v{Rival}{(v == Rival ? " (control)" : "")} | {media:+0;-0} ± {ee:0} | {gana} | {empata} | {pierde} | {vvA / n:0.0} | {vvB / n:0.0} | {hA / n:0} | {hB / n:0} | {seg / n:0} | {el / n:0.0} | {ca / n:0.0} | {(sAtk > 0.01f ? 100f * sCub / sAtk : 0f):0}% | {retMax:0.0} | {retPro:0.0} |");
+                UltimoAtaqueCubierto = sAtk > 0.01f ? 100f * sCub / sAtk : 0f; UltimoRetroceso = retMax; UltimoRetrocesoPropio = retPro; UltimaDifVida = media; UltimasGanadas = gana; UltimasPerdidas = pierde; UltimasEmpatadas = empata;
                 Informe = sb.ToString();
             }
 

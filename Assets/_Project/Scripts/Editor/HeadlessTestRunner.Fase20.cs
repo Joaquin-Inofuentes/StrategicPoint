@@ -36,7 +36,7 @@ namespace SP.EditorTools
                 Check("En calma NO revive antes de los 4 s (3 s)", !vega.Health.IsAlive && !EstadoDePartida.Revivio);
                 for (int i = 0; i < 12; i++) EstadoDePartida.Tick(0.1f);
                 Check("En calma la escuadra revive tras 4 s", vega.Health.IsAlive && kes.Health.IsAlive && doc.Health.IsAlive && EstadoDePartida.Revivio);
-                Check("Revive con la mitad de la vida", Mathf.Abs(vega.Health.Current - vega.Health.MaxHealth * 0.5f) <= 1f);
+                Check($"Revive con la mitad de la vida (vega {vega.Health.Current} de {vega.Health.MaxHealth})", Mathf.Abs(vega.Health.Current - vega.Health.MaxHealth * 0.5f) <= 1f);
                 ModoDios.Poner(godPrev);
                 EstadoDePartida.Reiniciar();
                 FullHeal(vega, kes, doc);
@@ -108,7 +108,7 @@ namespace SP.EditorTools
                     for (int i = 0; i < 200 && motorCaida.IsJumping; i++) { motorCaida.TickVertical(0.02f); Physics.SyncTransforms(); }
                     Check($"Termina apoyado en el piso (salto={motorCaida.IsJumping}, y={kes.transform.position.y:0.00}, caida={motorCaida.UltimaCaidaMetros:0.00})", !motorCaida.IsJumping && Mathf.Abs(kes.transform.position.y - 0.8f) < 0.05f);
                     int perdida = vidaAntes - kes.Health.Current;
-                    if (caso.esperaDanio) Check($"Una caida de {motorCaida.UltimaCaidaMetros:0.0} m resta {SoldierMotor.DanioDeCaida(motorCaida.UltimaCaidaMetros)} de vida", perdida == SoldierMotor.DanioDeCaida(motorCaida.UltimaCaidaMetros) && perdida > 50);
+                    if (caso.esperaDanio) Check($"Una caida de {motorCaida.UltimaCaidaMetros:0.0} m resta {SoldierMotor.DanioDeCaida(motorCaida.UltimaCaidaMetros)} de vida (perdio {perdida}, vida {kes.Health.Current})", perdida == SoldierMotor.DanioDeCaida(motorCaida.UltimaCaidaMetros) && perdida > 50);
                     else Check("Un escalon de 0,8 m no hace dano", perdida == 0);
                 }
             }

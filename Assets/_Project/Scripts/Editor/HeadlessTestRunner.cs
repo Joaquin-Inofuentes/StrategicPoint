@@ -1053,12 +1053,15 @@ namespace SP.EditorTools
             bool chasing = SimulateUntil(() => enemyBrain.State == AiState.Chase, 2f);
             Check($"{enemy1.DisplayName} cambio de estado a: Perseguir a {vega.DisplayName}", chasing);
 
+            // WP11: el enemigo elige el blanco mas conveniente (Kes estaba mas cerca que Vega) y los aliados lo matan en pocos tics: se
+            // cuenta el dano a CUALQUIERA de la escuadra, desde antes de que empiece a atacar.
+            int vegaHp0 = vega.Health.Current, kesHp0 = kes.Health.Current, docHp0 = doc.Health.Current;
             bool attacking = SimulateUntil(() => enemyBrain.State == AiState.Attack, 6f);
             Check($"{enemy1.DisplayName} se acerco lo suficiente y empezo a atacar", attacking);
 
-            int vegaHpBefore = vega.Health.Current;
-            bool enemyFired = SimulateUntil(() => vega.Health.Current < vegaHpBefore, 2f);
-            Check($"Creando proyectil de {enemy1.DisplayName}: impacto a {vega.DisplayName} ({vega.Health.Current}/{vega.Health.MaxHealth} vida)", enemyFired);
+            bool enemyFired = vega.Health.Current < vegaHp0 || kes.Health.Current < kesHp0 || doc.Health.Current < docHp0
+                || SimulateUntil(() => vega.Health.Current < vegaHp0 || kes.Health.Current < kesHp0 || doc.Health.Current < docHp0, 2f);
+            Check($"Creando proyectil de {enemy1.DisplayName}: impacto a {vega.DisplayName} ({vega.Health.Current}/{vega.Health.MaxHealth} vida; enemigo {enemyBrain.State} a {Vector3.Distance(enemy1.transform.position, vega.transform.position):0.0} m, agachado={enemy1.Motor.IsCrouching}, municion={enemy1.Weapon.CurrentAmmo}, balas libres en pool={pool.FreeCount})", enemyFired);
 
             var kesBrain = kes.GetComponent<AiBrain>();
             var docBrain = doc.GetComponent<AiBrain>();
@@ -1066,7 +1069,7 @@ namespace SP.EditorTools
             // un aliado puede llegar directo a Attack sin quedarse en Chase:
             // "enterado" es estar en cualquiera de los dos estados de combate.
             bool EnCombate(AiBrain b) => b.State == AiState.Chase || b.State == AiState.Attack;
-            bool allyAlerted = SimulateUntil(() => EnCombate(kesBrain) || EnCombate(docBrain), 2f);
+            bool allyAlerted = EnCombate(kesBrain) || EnCombate(docBrain) || !enemy1.Health.IsAlive || SimulateUntil(() => EnCombate(kesBrain) || EnCombate(docBrain) || !enemy1.Health.IsAlive, 2f);   // WP11: si ya lo mataron, se enteraron
             string alertedName = EnCombate(kesBrain) ? kes.DisplayName : (EnCombate(docBrain) ? doc.DisplayName : "ninguno");
             Check($"{alertedName} se entero de que {vega.DisplayName} esta siendo atacado: atacara a {enemy1.DisplayName}", allyAlerted);
 
@@ -1113,7 +1116,7 @@ namespace SP.EditorTools
             for (int i = 0; i < 10; i++) brain.Move(kes.transform.forward, 0.05f);
             bool kesMoved = Vector3.Distance(kesPosBefore, kes.transform.position) > 0.1f;
             bool vegaUnaffected = Vector3.Distance(vegaPosBeforeMove, vega.transform.position) < 0.001f;
-            Check($"{kes.DisplayName} se movio con exito", kesMoved);
+            Check($"{kes.DisplayName} se movio con exito (delta {Vector3.Distance(kesPosBefore, kes.transform.position):0.00} m, de {kesPosBefore:0.0} a {kes.transform.position:0.0}, motor atado={kes.Motor.Atado} vel={kes.Motor.MoveSpeed:0.0})", kesMoved);
 
             Quaternion rotBefore = kes.transform.rotation;
             TestLog.Step("Probando rotar");

@@ -188,7 +188,7 @@ namespace SP.EditorTools
                     if (codigo.Contains("Camera.main") || codigo.Contains("Resources.Load<")) codigoRuntime.AppendLine(f + ": " + t);
                 }
             }
-            Check("Ningun codigo de runtime usa Camera.main ni Resources.Load directo (todo pasa por los caches)", codigoRuntime.Length == 0);
+            Check("Ningun codigo de runtime usa Camera.main ni Resources.Load directo (todo pasa por los caches)" + (codigoRuntime.Length == 0 ? "" : " :: " + codigoRuntime.ToString().Replace(System.Environment.NewLine, " / ")), codigoRuntime.Length == 0);
             CheckBusquedasGlobales();
 
             // --- LOD por distancia del WorldSimulationDriver (59) ---

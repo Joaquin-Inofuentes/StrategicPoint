@@ -691,10 +691,14 @@ namespace SP.EditorTools
             foreach (var c in Object.FindObjectsByType<BoxCollider>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
                 if (c.isTrigger || c.name == "Ground") continue;
+                if (c.name.StartsWith("Campanario_")) continue;   // WP10: la plataforma y la rampa del campanario tienen que quedar caminables
                 if (c.GetComponentInParent<Soldier>() != null) continue;
                 if (c.GetComponentInParent<Vehicle>() != null) continue;
                 if (c.GetComponentInParent<SP.Combat.Projectile>() != null) continue;
                 if (c.bounds.size.y < 0.8f) continue;
+                // Bug #090: lo que va sobre la calzada de la autopista (barreras, barriles, cajas) no carva la malla: el tanque sigue su ruta por ella.
+                var marcaRuta = c.GetComponent<SP.Presentation.ObstacleMarker>();
+                if (marcaRuta != null && marcaRuta.SinNavMesh) continue;
                 if (c.GetComponent<Unity.AI.Navigation.NavMeshModifierVolume>() == null) volumenes++;
                 AgregarVolumenNoCaminable(c.gameObject);
             }

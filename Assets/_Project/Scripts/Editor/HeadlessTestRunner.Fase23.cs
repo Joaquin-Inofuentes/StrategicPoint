@@ -486,7 +486,7 @@ namespace SP.EditorTools
             soldier.Configure("TestSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
 
             torreta.Ocupar(soldier, out _);
-            Check("Torreta ocupada oculta el rombo", romboTorreta.Condicion() == false);
+            Check("Torreta ocupada oculta el rombo", romboTorreta != null && romboTorreta.Condicion() == false);   // WP11: sin el null-check la suite abortaba aca (en Edit mode no corre OnEnable y el rombo no existe)
 
             // Municion
             var pk = SP.Player.MunicionPickup.Crear(Vector3.zero);

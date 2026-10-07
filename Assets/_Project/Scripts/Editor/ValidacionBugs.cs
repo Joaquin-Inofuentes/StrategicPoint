@@ -177,7 +177,7 @@ namespace SP.EditorTools
             foreach (var x in Esperar(2f)) yield return x;
 
             // 1) Nivel completo: los 6 objetivos.
-            for (int o = 1; o <= 6; o++)
+            for (int o = 1; o <= OperacionDirector.TotalObjetivos; o++)
             {
                 int errAntes = errores.Count;
                 string r = OperacionPrueba.Arrancar(o);
@@ -185,13 +185,14 @@ namespace SP.EditorTools
                 bool reservaApuntada = false;
                 foreach (var s in ActorRegistry.All)
                     if (s != null && s.Brain != null && s.Brain.CurrentTarget != null && !s.Brain.CurrentTarget.gameObject.activeInHierarchy && !s.Brain.CurrentTarget.Brain.MontadoEnVehiculo) reservaApuntada = true;
-                bool faseOk = (int)d.Fase == o - 1 || (o == 6 && d.Fase == FaseOperacion.Extraer);
+                bool faseOk = OperacionDirector.Indice(d.Fase) == o - 1 || (o == OperacionDirector.TotalObjetivos && d.Fase == FaseOperacion.Extraer);
                 Resultado($"NIVEL objetivo {o}", faseOk && !reservaApuntada && errores.Count == errAntes,
                     Inv($"fase={d.Fase} reservaApuntada={reservaApuntada} erroresNuevos={errores.Count - errAntes} cazadores={CazaDeEnemigos.Cazadores} · {OperacionPrueba.Resumen()}"));
                 if (o == 4 || o == 5) Captura("nivel_obj" + o);
             }
 
             // 2) Bugs 17/20/21: los enemigos se mueven y vienen a buscar a la escuadra.
+            OperacionDirector.ResistirSinMando = true;   // WP10: bugs 17/20/21 miden el flujo viejo de Resistir (los enemigos vienen solos)
             OperacionPrueba.Arrancar(5);
             foreach (var x in Esperar(1.5f)) yield return x;
             {

@@ -248,7 +248,7 @@ namespace SP.EditorTools
             float apuntando = w.SpreadDegEfectivo;
             w.SetApuntado(0f);
             Check($"Apuntando (click derecho) la dispersion baja a {apuntando:0.00} grados desde {cadera:0.00} (<= 20 %)", cadera > 0.01f && apuntando <= cadera * 0.2f);
-            Check("El factor de precision al apuntar es 0,15 y el crecimiento por tiro cae a 0,4", Mathf.Approximately(WeaponHolder.FactorApuntando, 0.15f) && Mathf.Approximately(WeaponHolder.CrecimientoApuntando, 0.4f));
+            Check("El factor de precision al apuntar es 0,03 (#110: casi absoluta; antes 0,15) y el crecimiento por tiro cae a 0,4", Mathf.Approximately(WeaponHolder.FactorApuntando, 0.03f) && Mathf.Approximately(WeaponHolder.CrecimientoApuntando, 0.4f));
             w.SetApuntado(0.5f);
             float medio = w.SpreadDegEfectivo;
             w.SetApuntado(0f);
@@ -520,7 +520,7 @@ namespace SP.EditorTools
                     if (sl.transform.parent != sp) continue;   // solo los del panel (no los del desplegable)
                     if (sl.GetComponent<SP.UI.SliderDeAjuste>() == null) { sinSonido++; quien += sl.name + " "; }
                     var perilla = sl.handleRect != null ? sl.handleRect.GetComponent<Image>() : null;
-                    if (perilla == null || perilla.sprite == null || Mathf.Abs(sl.handleRect.sizeDelta.x - sl.handleRect.sizeDelta.y) > 0.5f) { sinCirculo++; quien += sl.name + "(perilla) "; }
+                    if (perilla == null || perilla.sprite == null || Mathf.Abs(sl.handleRect.rect.width - sl.handleRect.rect.height) > 0.5f) { sinCirculo++; quien += sl.name + "(perilla) "; }
                 }
                 foreach (var tg in sp.GetComponentsInChildren<Toggle>(true))
                     if (tg.transform.parent == sp && tg.GetComponent<SP.UI.InterruptorDeAjuste>() == null) { sinSonido++; quien += tg.name + " "; }

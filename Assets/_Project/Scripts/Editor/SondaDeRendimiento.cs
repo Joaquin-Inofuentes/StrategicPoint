@@ -112,5 +112,51 @@ namespace SP.EditorTools
             foreach (var kv in total.OrderByDescending(k => k.Value).Take(top)) sb.AppendLine($"{(kv.Value / frames).ToString("0.00", ci)}  {kv.Key}");
             return sb.ToString();
         }
+
+        // WP11: arbol (de arriba hacia abajo) de los frames mas lentos que NO son del editor (sin contar los frames donde EditorLoop es el grueso),
+        // mostrando solo los nodos de al menos minMs. Sirve para ver QUIEN llama a AddComponent / Instantiate en un tiron de 100 ms.
+        public static string Arbol(double minMs = 3, int cuantos = 2, int maxFrames = 400, int maxLineas = 60)
+        {
+            int primero = ProfilerDriver.firstFrameIndex, ultimo = ProfilerDriver.lastFrameIndex;
+            if (ultimo < 0) return "sin frames";
+            primero = Mathf.Max(primero, ultimo - maxFrames + 1);
+            var tiempos = new List<(int f, double ms)>();
+            for (int f = primero; f <= ultimo; f++)
+                using (var v = ProfilerDriver.GetHierarchyFrameDataView(f, 0, HierarchyFrameDataView.ViewModes.Default, HierarchyFrameDataView.columnTotalTime, false))
+                {
+                    if (v == null || !v.valid) continue;
+                    double editor = 0;
+                    var hs = new List<int>(); v.GetItemChildren(v.GetRootItemID(), hs);
+                    foreach (var h in hs) if (v.GetItemName(h) == "EditorLoop") editor = v.GetItemColumnDataAsDouble(h, HierarchyFrameDataView.columnTotalTime);
+                    tiempos.Add((f, v.frameTimeMs - editor));
+                }
+            var ci = CultureInfo.InvariantCulture; var sb = new StringBuilder();
+            foreach (var (f, ms) in tiempos.OrderByDescending(t => t.ms).Take(cuantos))
+            {
+                sb.AppendLine($"== frame {f}: {ms.ToString("0.0", ci)} ms sin EditorLoop");
+                using (var v = ProfilerDriver.GetHierarchyFrameDataView(f, 0, HierarchyFrameDataView.ViewModes.Default, HierarchyFrameDataView.columnTotalTime, false))
+                {
+                    int lineas = 0;
+                    void Rec(int id, int nivel)
+                    {
+                        if (lineas >= maxLineas) return;
+                        var hs = new List<int>(); v.GetItemChildren(id, hs);
+                        hs.Sort((a, b) => v.GetItemColumnDataAsDouble(b, HierarchyFrameDataView.columnTotalTime).CompareTo(v.GetItemColumnDataAsDouble(a, HierarchyFrameDataView.columnTotalTime)));
+                        foreach (var h in hs)
+                        {
+                            double t = v.GetItemColumnDataAsDouble(h, HierarchyFrameDataView.columnTotalTime);
+                            if (t < minMs) continue;
+                            string n = v.GetItemName(h);
+                            if (n == "EditorLoop") continue;
+                            sb.AppendLine(new string(' ', nivel * 2) + t.ToString("0.0", ci) + "  " + n + "  (propio " + v.GetItemColumnDataAsDouble(h, HierarchyFrameDataView.columnSelfTime).ToString("0.0", ci) + ")");
+                            lineas++;
+                            Rec(h, nivel + 1);
+                        }
+                    }
+                    Rec(v.GetRootItemID(), 0);
+                }
+            }
+            return sb.ToString();
+        }
     }
 }

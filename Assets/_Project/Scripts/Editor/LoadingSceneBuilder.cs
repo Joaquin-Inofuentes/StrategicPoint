@@ -50,8 +50,34 @@ namespace SP.EditorTools
             fondoRt.offsetMin = fondoRt.offsetMax = Vector2.zero;
 
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+            // P11 (#130): CARGANDO + barra + % viven en "Info" (centrado; el controlador lo corre a la derecha cuando hay mapa).
+            var infoGO = new GameObject("Info", typeof(RectTransform));
+            infoGO.transform.SetParent(canvasGO.transform, false);
+            var infoRt = (RectTransform)infoGO.transform;
+            infoRt.anchorMin = infoRt.anchorMax = new Vector2(0.5f, 0.5f);
+            infoRt.anchoredPosition = Vector2.zero; infoRt.sizeDelta = new Vector2(380f, 200f);
+
+            // Mapa del destino: marco + RawImage + capa donde el controlador dibuja el recorrido.
+            var marcoGO = new GameObject("MapaMarco", typeof(Image));
+            marcoGO.transform.SetParent(canvasGO.transform, false);
+            marcoGO.GetComponent<Image>().color = new Color(0.55f, 0.58f, 0.66f, 0.9f);
+            marcoGO.GetComponent<Image>().raycastTarget = false;
+            var marcoRt = marcoGO.GetComponent<RectTransform>();
+            marcoRt.anchorMin = marcoRt.anchorMax = new Vector2(0.5f, 0.5f);
+            marcoRt.anchoredPosition = new Vector2(-215f, 8f); marcoRt.sizeDelta = new Vector2(300f, 300f);
+            var mapaGO = new GameObject("Mapa", typeof(RawImage));
+            mapaGO.transform.SetParent(marcoGO.transform, false);
+            var mapaRaw = mapaGO.GetComponent<RawImage>(); mapaRaw.raycastTarget = false;
+            var mapaRt = mapaGO.GetComponent<RectTransform>();
+            mapaRt.anchorMin = Vector2.zero; mapaRt.anchorMax = Vector2.one; mapaRt.offsetMin = new Vector2(4f, 4f); mapaRt.offsetMax = new Vector2(-4f, -4f);
+            var capaGO = new GameObject("Recorrido", typeof(RectTransform));
+            capaGO.transform.SetParent(marcoGO.transform, false);
+            var capaRt = (RectTransform)capaGO.transform;
+            capaRt.anchorMin = Vector2.zero; capaRt.anchorMax = Vector2.one; capaRt.offsetMin = new Vector2(4f, 4f); capaRt.offsetMax = new Vector2(-4f, -4f);
+
             var textoGO = new GameObject("Texto", typeof(Text));
-            textoGO.transform.SetParent(canvasGO.transform, false);
+            textoGO.transform.SetParent(infoGO.transform, false);
             var texto = textoGO.GetComponent<Text>();
             texto.font = font;
             texto.text = "CARGANDO...";
@@ -66,7 +92,7 @@ namespace SP.EditorTools
             textoRt.sizeDelta = new Vector2(400f, 40f);
 
             var pistaGO = new GameObject("BarraFondo", typeof(Image));
-            pistaGO.transform.SetParent(canvasGO.transform, false);
+            pistaGO.transform.SetParent(infoGO.transform, false);
             pistaGO.GetComponent<Image>().color = new Color(0.16f, 0.18f, 0.23f);
             var pistaRt = pistaGO.GetComponent<RectTransform>();
             pistaRt.anchorMin = pistaRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -89,7 +115,7 @@ namespace SP.EditorTools
             // Pedido explicito: "que se vea el porcentaje de carga lentamente" --
             // numero debajo de la barra, mismo dorado que el relleno.
             var porcentajeGO = new GameObject("Porcentaje", typeof(Text));
-            porcentajeGO.transform.SetParent(canvasGO.transform, false);
+            porcentajeGO.transform.SetParent(infoGO.transform, false);
             var porcentaje = porcentajeGO.GetComponent<Text>();
             porcentaje.font = font;
             porcentaje.text = "0%";
@@ -103,16 +129,44 @@ namespace SP.EditorTools
             porcentajeRt.anchoredPosition = new Vector2(0f, -34f);
             porcentajeRt.sizeDelta = new Vector2(200f, 30f);
 
+            // Leyenda del recorrido (debajo de la barra, dentro de Info).
+            var leyendaGO = new GameObject("Leyenda", typeof(Text));
+            leyendaGO.transform.SetParent(infoGO.transform, false);
+            var leyenda = leyendaGO.GetComponent<Text>();
+            leyenda.font = font; leyenda.text = ""; leyenda.alignment = TextAnchor.UpperCenter; leyenda.fontSize = 14;
+            leyenda.color = new Color(0.78f, 0.82f, 0.9f); leyenda.raycastTarget = false;
+            leyenda.horizontalOverflow = HorizontalWrapMode.Wrap; leyenda.verticalOverflow = VerticalWrapMode.Overflow;
+            var leyendaRt = leyendaGO.GetComponent<RectTransform>();
+            leyendaRt.anchorMin = leyendaRt.anchorMax = new Vector2(0.5f, 0.5f);
+            leyendaRt.anchoredPosition = new Vector2(0f, -100f); leyendaRt.sizeDelta = new Vector2(340f, 70f);
+
             var controllerGO = new GameObject("LoadingScreen", typeof(LoadingScreenController));
             var controller = controllerGO.GetComponent<LoadingScreenController>();
             controller.barra = relleno;
             controller.textoPorcentaje = porcentaje;
+            controller.info = infoRt; controller.mapaContenedor = marcoRt; controller.mapaImagen = mapaRaw; controller.capaRecorrido = capaRt; controller.leyenda = leyenda;
+            controller.mapas = CargarMapas();
+            marcoGO.SetActive(false); leyenda.gameObject.SetActive(false);   // el controlador los enciende si el destino tiene mapa
 
             Directory.CreateDirectory("Assets/_Project/Scenes");
             EditorSceneManager.SaveScene(scene, ScenePath);
             RegisterInBuildSettings();
 
             Debug.Log("[LoadingSceneBuilder] Escena de carga construida en " + ScenePath);
+        }
+
+        // Un mapa por escena destino: los PNG/JSON que genera MapasDeCarga (menu "Strategic Point/Mapas de carga").
+        static MapaDeCarga[] CargarMapas()
+        {
+            var l = new List<MapaDeCarga>();
+            foreach (var e in new[] { "SC_Gameplay", "SC_Operacion" })
+            {
+                var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(MapasDeCarga.RutaPng(e));
+                var json = AssetDatabase.LoadAssetAtPath<TextAsset>(MapasDeCarga.RutaJson(e));
+                if (tex == null) { Debug.LogWarning("[LoadingSceneBuilder] Falta el mapa de " + e + ": generalo con Strategic Point > Mapas de carga"); continue; }
+                l.Add(new MapaDeCarga { escena = e, textura = tex, datos = json });
+            }
+            return l.ToArray();
         }
 
         // Igual que TutorialSceneBuilder.AgregarAlBuild: suma la escena si falta,

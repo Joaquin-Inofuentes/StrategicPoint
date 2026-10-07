@@ -150,6 +150,9 @@ namespace SP.EditorTools
             malla.SetUVs(0, uvs);
             malla.SetTriangles(tris, 0);
             malla.boneWeights = pesos.ToArray();
+            // #109: la transferencia por vertice deja caras con pesos mezclados mano/cadera; se sanean por cadena de huesos.
+            var nombresHueso = PielSoldadoAnalisis.NombresDeHueso();
+            int saneados = nombresHueso != null ? PielSoldadoAnalisis.Sanear(malla, nombresHueso) : 0;
             malla.bindposes = destino.bindposes;
             malla.RecalculateTangents();
             malla.RecalculateBounds();
@@ -157,7 +160,7 @@ namespace SP.EditorTools
             var ruta = $"{SalidaDir}/Mesh_{v.Nombre}.asset";
             if (AssetDatabase.LoadAssetAtPath<Mesh>(ruta) != null) AssetDatabase.DeleteAsset(ruta);
             AssetDatabase.CreateAsset(malla, ruta);
-            Debug.Log($"[SoldierVariantBuilder] {v.Nombre}: {verts.Count} vertices, escala {escala:F3}");
+            Debug.Log($"[SoldierVariantBuilder] {v.Nombre}: {verts.Count} vertices, escala {escala:F3}, pesos saneados {saneados}");
             return true;
         }
 

@@ -284,7 +284,9 @@ namespace SP.EditorTools
             // de cobertura como cualquier otro. Antes daba 4 porque el
             // vehiculo estaba explicitamente excluido de "esto es pared".
             var solidos = SP.Core.Coberturas.Solidos();
-            Check($"Los obstaculos solidos de la escena son los 4 Obstaculo_N + el vehiculo, ni el piso ni las armas tiradas ({solidos.Count})",
+            var nombresSolidos = new System.Text.StringBuilder();
+            foreach (var cs in solidos) nombresSolidos.Append(cs.name).Append('@').Append(cs.bounds.center.ToString("0.0")).Append(' ');
+            Check($"Los obstaculos solidos de la escena son los 4 Obstaculo_N + el vehiculo, ni el piso ni las armas tiradas ({solidos.Count}: {nombresSolidos})",
                 solidos.Count == 5);
 
             // El vehiculo (a diferencia de los 4 Obstaculo_N, cajas simples
@@ -1231,6 +1233,7 @@ namespace SP.EditorTools
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var metodoSetStateH2 = GetRequiredMethod(typeof(AiBrain), "SetState",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            SP.Core.InteligenciaDeEnemigos.Revelar(testigoH2.Id);   // #125: la linea roja solo se dibuja a enemigos revelados
             campoTargetH2.SetValue(doc.Brain, testigoH2);
             metodoSetStateH2.Invoke(doc.Brain, new object[] { AiState.Attack });
 

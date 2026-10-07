@@ -3,6 +3,8 @@ using Unity.AI.Navigation;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using SP.Actors;
+using SP.Operacion;
 using SP.Presentation;
 
 namespace SP.EditorTools
@@ -243,6 +245,120 @@ namespace SP.EditorTools
             Solido(g, "Farola_Poste", x, z, 0.3f, 6f, 0.3f, CementoOsc);
             Decor(g, "Farola_Cabeza", x, z, 1.1f, 0.3f, 0.7f, Lampara, 0f, 6f);
             if (conLuz) LuzDeFarola(g, new Vector3(x, 5.6f, z), color);
+        }
+
+        // ---------------------------------------------------------------
+        // 5. Ciudad chica
+        // ---------------------------------------------------------------
+        // Mueve a las esquinas de la plaza (poste y cabeza) las 4 farolas que Ciudad() deja pegadas a la H.
+        static void FarolasDeLaPlazaAEsquinas(Transform g, float cx, float cz)
+        {
+            float m = 17f - 1.2f;
+            // (x, z) de origen -> esquina destino (relativa al centro de la plaza).
+            var destinos = new (Vector2 origen, Vector2 esquina)[]
+            {
+                (new Vector2(313f, 228f), new Vector2(-m, -m)),
+                (new Vector2(331f, 228f), new Vector2(m, -m)),
+                (new Vector2(324f, 221f), new Vector2(m, m)),
+                (new Vector2(324f, 235f), new Vector2(-m, m)),
+            };
+            foreach (Transform t in g)
+            {
+                if (t.name != "Farola_Poste" && t.name != "Farola_Cabeza") continue;
+                foreach (var d in destinos)
+                {
+                    if (Mathf.Abs(t.position.x - d.origen.x) > 0.01f || Mathf.Abs(t.position.z - d.origen.y) > 0.01f) continue;
+                    t.position = new Vector3(cx + d.esquina.x, t.position.y, cz + d.esquina.y);
+                    break;
+                }
+            }
+        }
+
+        static Transform Ciudad(Transform padre, out OleadaDeReserva[] oleadas, out Transform plaza, out Transform helipad)
+        {
+            var g = Grupo(padre, "6_Ciudad");
+            const float cx = 322f, cz = 228f;
+            // Calles: principal (E-O) y transversal (N-S).
+            Pintura(g, "Calle_Principal", 321f, cz, 118f, 12f, Asfalto, 0f, 0f, 0.08f);
+            Pintura(g, "Calle_Transversal", cx, 230f, 12f, 122f, Asfalto, 0f, 0f, 0.08f);
+            Pintura(g, "Plaza", cx, cz, 34f, 34f, CementoOsc, 0f, 0.06f, 0.05f);
+            for (float x = 270f; x < 380f; x += 9f) if (Mathf.Abs(x - cx) > 20f) Pintura(g, "Linea_P", x, cz, 4f, 0.3f, Amarillo, 0f, 0.02f, 0.1f);
+            for (float z = 172f; z < 290f; z += 9f) if (Mathf.Abs(z - cz) > 20f) Pintura(g, "Linea_T", cx, z, 0.3f, 4f, Amarillo, 0f, 0.02f, 0.1f);
+            // Helipad pintado (anillo + H).
+            Pintura(g, "Helipad_Anillo_N", cx, cz + 8f, 16f, 0.8f, Amarillo, 0f, 0.11f, 0.05f);
+            Pintura(g, "Helipad_Anillo_S", cx, cz - 8f, 16f, 0.8f, Amarillo, 0f, 0.11f, 0.05f);
+            Pintura(g, "Helipad_Anillo_E", cx + 8f, cz, 0.8f, 16f, Amarillo, 0f, 0.11f, 0.05f);
+            Pintura(g, "Helipad_Anillo_O", cx - 8f, cz, 0.8f, 16f, Amarillo, 0f, 0.11f, 0.05f);
+            Pintura(g, "H_I", cx - 2.2f, cz, 0.9f, 6f, Amarillo, 0f, 0.11f, 0.05f);
+            Pintura(g, "H_D", cx + 2.2f, cz, 0.9f, 6f, Amarillo, 0f, 0.11f, 0.05f);
+            Pintura(g, "H_C", cx, cz, 4.4f, 0.9f, Amarillo, 0f, 0.11f, 0.05f);
+            // Entrada de la ciudad.
+            Rotulo(g, "BIENVENIDOS A\nPUEBLO CHICO", 262f, 6f, 228f, 90f, 1.3f, Color.white, AzulSenal, 18f, 3f);
+            Solido(g, "Poste_Entrada", 262f, 219f, 0.5f, 7.5f, 0.5f, CementoOsc);
+            Solido(g, "Poste_Entrada_2", 262f, 237f, 0.5f, 7.5f, 0.5f, CementoOsc);
+            // Casas (4 por cuadrante) y ayuntamiento.
+            float[][] casas =
+            {
+                new[]{280f,255f,12f,5f,10f}, new[]{298f,256f,10f,6f,12f}, new[]{284f,274f,14f,5f,9f}, new[]{302f,277f,10f,5f,10f},
+                new[]{344f,254f,12f,5f,10f}, new[]{362f,256f,12f,6f,12f}, new[]{350f,276f,10f,5f,10f}, new[]{368f,277f,12f,5f,9f},
+                new[]{282f,190f,12f,5f,10f}, new[]{300f,192f,12f,6f,10f}, new[]{284f,208f,10f,5f,9f}, new[]{302f,208f,10f,5f,10f},
+                new[]{344f,190f,12f,5f,10f}, new[]{362f,192f,12f,5f,10f}, new[]{348f,208f,12f,5f,9f}, new[]{368f,208f,10f,5f,10f},
+            };
+            var mats3 = new[] { Casa, CasaB, CasaC };
+            for (int i = 0; i < casas.Length; i++)
+            {
+                var c = casas[i];
+                Edificio(g, "Casa_" + (i + 1), c[0], c[1], c[2], c[3], c[4], mats3[i % 3]);
+                Decor(g, "Techo_" + (i + 1), c[0], c[1], c[2] + 0.6f, 0.5f, c[4] + 0.6f, Techo, 0f, c[3]);
+            }
+            Edificio(g, "Ayuntamiento", cx, 280f, 24f, 8f, 10f, CementoOsc);
+            Rotulo(g, "AYUNTAMIENTO", cx, 6f, 274.8f, 0f, 1.4f, Color.white, Rojo, 12f, 2f);
+            // Cobertura: autos abandonados, sacos y barriles en las calles.
+            Cubo(g, "Auto_Viejo_1", 296f, 224f, 2.2f, 1.5f, 4.6f, Mat("AutoViejo", new Color(0.4f, 0.45f, 0.5f)), 90f, 0f, true, 500);
+            Cubo(g, "Auto_Viejo_2", 346f, 232f, 2.2f, 1.5f, 4.6f, Mat("AutoViejo", new Color(0.4f, 0.45f, 0.5f)), 90f, 0f, true, 500);
+            Cubo(g, "Auto_Viejo_3", 319f, 252f, 2.2f, 1.5f, 4.6f, Mat("AutoViejo", new Color(0.4f, 0.45f, 0.5f)), 0f, 0f, true, 500);
+            Cubo(g, "Auto_Viejo_4", 325f, 200f, 2.2f, 1.5f, 4.6f, Mat("AutoViejo", new Color(0.4f, 0.45f, 0.5f)), 0f, 0f, true, 500);
+            Saco(g, "Saco_Plaza_1", 310f, 214f); Saco(g, "Saco_Plaza_2", 334f, 242f); Saco(g, "Saco_Plaza_3", 310f, 242f, false); Saco(g, "Saco_Plaza_4", 334f, 214f, false);
+            Saco(g, "Saco_Calle_1", 276f, 222f); Saco(g, "Saco_Calle_2", 372f, 234f);
+            Saco(g, "Saco_Calle_3", 316f, 176f, false); Saco(g, "Saco_Calle_4", 328f, 262f, false);
+            for (float z = 176f; z <= 280f; z += 26f) { Farola(g, 313f, z, false); Farola(g, 331f, z, false); }
+            for (float x = 270f; x <= 378f; x += 27f) { Farola(g, x, 221f, false); Farola(g, x, 235f, false); }
+            // Bug #050: las 4 farolas que rodeaban la H pasan a las esquinas de la plaza (34 x 34 m, 1,2 m hacia adentro) y cada
+            // esquina lleva su luz calida (antes dos luces sueltas en el medio). Se hace antes de AmpliarCiudad para que las luces
+            // de farola que genera esa ampliacion nazcan ya en las esquinas.
+            FarolasDeLaPlazaAEsquinas(g, cx, cz);
+            float m = 17f - 1.2f;
+            var luzPlaza = new Color(1f, 0.86f, 0.62f);
+            LuzPuntual(g, "Luz_Plaza_1", cx - m, 6.6f, cz - m, luzPlaza, 9f, 24f);
+            LuzPuntual(g, "Luz_Plaza_2", cx + m, 6.6f, cz - m, luzPlaza, 9f, 24f);
+            LuzPuntual(g, "Luz_Plaza_3", cx - m, 6.6f, cz + m, luzPlaza, 9f, 24f);
+            LuzPuntual(g, "Luz_Plaza_4", cx + m, 6.6f, cz + m, luzPlaza, 9f, 24f);
+            Rotulo(g, "PLAZA >>\nEXTRACCION", 306f, 5.2f, 228f, 90f, 1.2f, Color.black, Amarillo, 11f, 2.6f);
+            Solido(g, "Poste_Plaza_S", 306f, 222.2f, 0.4f, 6.8f, 0.4f, CementoOsc);
+            Solido(g, "Poste_Plaza_N", 306f, 233.8f, 0.4f, 6.8f, 0.4f, CementoOsc);
+
+            // Puntos de referencia.
+            var t1 = new GameObject("Plaza").transform; t1.SetParent(g, false); t1.position = new Vector3(cx, 0f, cz);
+            var t2 = new GameObject("Helipad").transform; t2.SetParent(g, false); t2.position = new Vector3(cx, 0.1f, cz);
+            plaza = t1; helipad = t2;
+
+            // Oleadas de la ciudad: en los extremos de las calles.
+            var res = Grupo(rReservas, "Ciudad");
+            var w1 = new List<Soldier>(); var w2 = new List<Soldier>(); var w3 = new List<Soldier>();
+            for (int i = 0; i < 5; i++) w1.Add(Enemigo("Reserva_Ciudad1_" + (i + 1), 372f + (i % 2) * 4f, 222f + i * 3f, 270f, res, false, 3f, true));
+            for (int i = 0; i < 5; i++) w2.Add(Enemigo("Reserva_Ciudad2_" + (i + 1), 316f + i * 3f, 284f + (i % 2) * 3f, 180f, res, false, 3f, true));
+            for (int i = 0; i < 6; i++) w3.Add(Enemigo("Reserva_Ciudad3_" + (i + 1), 316f + (i % 3) * 5f, 170f + (i / 3) * 4f, 0f, res, false, 3f, true));
+            var meta = new GameObject("Destino_Ciudad").transform; meta.SetParent(g, false); meta.position = new Vector3(cx, 0f, cz);
+            oleadas = new[]
+            {
+                new OleadaDeReserva { segundo = 2f, aviso = "OLEADA 1/3 · POR LA CALLE ESTE", soldados = w1.ToArray(), destino = meta },
+                new OleadaDeReserva { segundo = 14f, aviso = "OLEADA 2/3 · DESDE EL AYUNTAMIENTO", soldados = w2.ToArray(), destino = meta },
+                new OleadaDeReserva { segundo = 26f, aviso = "OLEADA 3/3 · POR LA CALLE SUR", soldados = w3.ToArray(), destino = meta },
+            };
+            AmpliarCiudad(g);
+            MandoDeLaCiudad(g);   // WP10 (#101): radio, sectores y sacos del mando
+            CierreDeLaCiudad(g);     // #116: muralla de edificios de relleno en los bordes
+            return g;
         }
     }
 }

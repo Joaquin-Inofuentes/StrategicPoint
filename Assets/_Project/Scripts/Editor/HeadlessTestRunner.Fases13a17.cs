@@ -136,7 +136,8 @@ namespace SP.EditorTools
             SP.Core.ModoDios.Poner(false);
 
             // --- Teclas nuevas ---
-            Check("[C] es la tecla de vista tactica (coberturas y rutas)", KeyBindings.Get(KeyBindings.VerTactico) == UnityEngine.InputSystem.Key.C);
+            // P7 (#120c): [C] pasa a cambiar de aliado; las coberturas del piso (vista tactica) pasan a [T] y la ruta al objetivo a [I].
+            Check("[T] es la tecla de vista tactica (coberturas); [C] cambia de aliado y [I] muestra la ruta", KeyBindings.Get(KeyBindings.VerTactico) == UnityEngine.InputSystem.Key.T && KeyBindings.Get(KeyBindings.CambiarAliado) == UnityEngine.InputSystem.Key.C && KeyBindings.Get(KeyBindings.VerRuta) == UnityEngine.InputSystem.Key.I);
             Check("La tabla de controles menciona F4 y la vista tactica", SP.UI.ControlsTable.FullText().Contains("F4") && SP.UI.ControlsTable.FullText().Contains("modo dios"));
 
             // --- Modo dios ---

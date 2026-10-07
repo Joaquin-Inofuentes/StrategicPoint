@@ -49,7 +49,7 @@ namespace SP.EditorTools
                 0.1f, 2.5f, "");
             var w2 = CrearWaypoint(raiz.transform, "2_ObjetivoCentro",
                 plaza + new Vector3(-14f, 9f, -18f), plaza,
-                3f, 3.5f, "Debes rescatar al rehen y luego volver al helicoptero");
+                3f, 3.5f, SubtituloDelObjetivo);
             var w3 = CrearWaypoint(raiz.transform, "3_Rehen",
                 refugioCivil + new Vector3(4f, 2.2f, 4f), refugioCivil,
                 2.5f, 2.2f, "");
@@ -72,6 +72,26 @@ namespace SP.EditorTools
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Debug.Log("[CinematicaIntro] 'CinematicaDeIntro' armado con 4 waypoints por defecto. Reubicalos a mano en la Scene view y despues usa 'Reconectar waypoints' (menu de contexto del componente) si agregas/borras/reordenas hijos.");
+        }
+
+        // #131: el rehen esta al FONDO de la base (norte), el helicoptero queda al inicio: el texto describe ese recorrido.
+        public const string SubtituloDelObjetivo = "El rehen esta al fondo de la base: rescatalo y vuelve al helicoptero";
+        public const string SubtituloViejo = "Debes rescatar al rehen y luego volver al helicoptero";
+
+        // Actualiza la escena abierta (SC_Gameplay) sin reconstruir la cinematica: cambia el subtitulo viejo y la guarda. Devuelve un resumen.
+        public static string ActualizarSubtitulos()
+        {
+            var sb = new System.Text.StringBuilder(); int cambiados = 0;
+            foreach (var w in Object.FindObjectsByType<CinematicaWaypoint>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                sb.Append(w.name + "=[" + w.subtitulo + "] ");
+                if (w.subtitulo != null && w.subtitulo.ToLowerInvariant().Contains("luego volver al helicoptero"))
+                {
+                    w.subtitulo = SubtituloDelObjetivo; EditorUtility.SetDirty(w); cambiados++;
+                }
+            }
+            if (cambiados > 0) { var sc = EditorSceneManager.GetActiveScene(); EditorSceneManager.MarkSceneDirty(sc); EditorSceneManager.SaveScene(sc); }
+            return "cambiados=" + cambiados + " | " + sb;
         }
 
         static CinematicaWaypoint CrearWaypoint(Transform padre, string nombre, Vector3 posicion, Vector3 mirarPunto, float segundosParaLlegar, float segundosDeEspera, string subtitulo)

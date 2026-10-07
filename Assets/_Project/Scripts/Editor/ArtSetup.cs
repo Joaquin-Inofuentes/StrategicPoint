@@ -593,8 +593,49 @@ namespace SP.EditorTools
             System.IO.Directory.CreateDirectory(MarchaDir);
             HornearGrupoDeMarcha("walking", ClipsDeMarchaACorregir);
             HornearGrupoDeMarcha("idle crouching aiming", ClipsAgachadoACorregir);
+            HornearReferenciaDeAgachado();
             AssetDatabase.SaveAssets();
             ReapuntarControladorAMarchaHorneada();
+        }
+
+        // Bug #092 ("el agachado se entierra"): la pose base del agachado, "idle crouching aiming", era el UNICO clip del
+        // grupo que seguia viviendo en la cache de Library (CorregirPisoDeAgachado hace SetEditorCurve sobre el FBX): en una
+        // build, o tras un reimport, volvia a su altura cruda y los pies quedaban bajo el piso. Se hornea a un .anim propio con
+        // RootT.y ABSOLUTO (AlturaDePisoObjetivoAgachado): hornear dos veces, o hacerlo sobre el clip crudo o sobre el ya
+        // corregido de la cache, converge al mismo valor.
+        static void HornearReferenciaDeAgachado()
+        {
+            const string nombre = "idle crouching aiming";
+            var origen = CargarClip(nombre);
+            if (origen == null || !TryPromedioRootTy(origen, out float alturaPropia)) return;
+            float delta = AlturaDePisoObjetivoAgachado - alturaPropia;
+
+            var copia = Object.Instantiate(origen);
+            copia.name = nombre;
+            if (Mathf.Abs(delta) >= 0.0005f)
+                foreach (var binding in AnimationUtility.GetCurveBindings(copia))
+                {
+                    if (binding.propertyName != "RootT.y") continue;
+                    var curva = AnimationUtility.GetEditorCurve(copia, binding);
+                    var keys = curva.keys;
+                    for (int k = 0; k < keys.Length; k++) keys[k].value += delta;
+                    curva.keys = keys;
+                    AnimationUtility.SetEditorCurve(copia, binding, curva);
+                }
+            AnimationUtility.SetAnimationClipSettings(copia, AnimationUtility.GetAnimationClipSettings(origen));
+
+            string ruta = RutaDeMarchaHorneado(nombre);
+            var existente = AssetDatabase.LoadAssetAtPath<AnimationClip>(ruta);
+            if (existente != null)
+            {
+                // No se reescribe si ya esta igual: este metodo corre en cada carga de dominio y no tiene que ensuciar el asset.
+                // Tambien se compara el NOMBRE: CreateAsset renombra el clip al del archivo ("idle_crouching_aiming") y CoverHologram
+                // busca la pose por "idle crouching aiming".
+                if (existente.name == nombre && TryPromedioRootTy(existente, out float alturaGuardada) && Mathf.Abs(alturaGuardada - AlturaDePisoObjetivoAgachado) < 0.0005f && Mathf.Abs(existente.length - origen.length) < 0.001f)
+                { Object.DestroyImmediate(copia); return; }
+                EditorUtility.CopySerialized(copia, existente); Object.DestroyImmediate(copia); EditorUtility.SetDirty(existente);
+            }
+            else AssetDatabase.CreateAsset(copia, ruta);
         }
 
         // El controlador YA CONSTRUIDO (AC_Soldado.controller) referencia los clips crudos del pack
@@ -624,6 +665,7 @@ namespace SP.EditorTools
             }
             Mapear(ClipsDeMarchaACorregir);
             Mapear(ClipsAgachadoACorregir);
+            Mapear(new[] { "idle crouching aiming" });
             if (mapa.Count == 0) return;
 
             bool algo = false;
@@ -671,6 +713,16 @@ namespace SP.EditorTools
                 var origen = CargarClip(nombre);
                 if (origen == null || !TryPromedioRootTy(origen, out float alturaPropia)) continue;
                 float delta = alturaReferencia - alturaPropia;
+
+                // P12: este metodo corre en CADA carga de dominio (entrar/salir de Play). Reescribir siempre los 20 .anim los reimportaba cada vez
+                // (Asset Pipeline Refresh de ~100 s con recarga forzada de dominio, y la correccion de la cache se perdia): si el horneado ya esta
+                // igual (altura de RootT.y, duracion, nombre y loop) no se toca.
+                string rutaActual = RutaDeMarchaHorneado(nombre);
+                var yaHorneado = AssetDatabase.LoadAssetAtPath<AnimationClip>(rutaActual);
+                if (yaHorneado != null && yaHorneado.name == nombre && TryPromedioRootTy(yaHorneado, out float alturaHorneada)
+                    && Mathf.Abs(alturaHorneada - alturaReferencia) < 0.0005f && Mathf.Abs(yaHorneado.length - origen.length) < 0.001f
+                    && AnimationUtility.GetAnimationClipSettings(yaHorneado).loopTime == AnimationUtility.GetAnimationClipSettings(origen).loopTime)
+                    continue;
 
                 var copia = Object.Instantiate(origen);
                 copia.name = nombre;

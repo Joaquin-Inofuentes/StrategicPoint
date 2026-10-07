@@ -18,7 +18,7 @@ namespace SP.EditorTools
     //     unity cmd eval --project-path <proyecto> -- "SP.EditorTools.OperacionPrueba.Arrancar(4)"
     //   o el script Tools/operacion_desde_objetivo.sh <objetivo> [puesto]   (abre la escena, entra en Play, salta y deja la foto)
     //
-    // Objetivos (los mismos numeros que el HUD): 1 Infiltrar · 2 Puestos de control (puesto 1..3) · 3 Centro de datos
+    // Objetivos (los mismos numeros que el HUD): 1 Infiltrar · 2 Muralla: volar los puestos (puesto 1 Oeste | 2 Este) · 3 Centro de datos
     //   4 Huir en el tanque · 5 Resistir en la ciudad · 6 Subir al helicoptero.
     //
     // Arrancar() deja hecho todo lo anterior (enemigos del cuartel fuera, puestos abiertos, etc.) y teletransporta a la escuadra.
@@ -34,17 +34,20 @@ namespace SP.EditorTools
 
         static readonly string[] Nombres = { "", "INFILTRAR EL CUARTEL", "PUESTOS DE CONTROL", "CENTRO DE DATOS", "HUIR EN EL TANQUE", "RESISTIR EN LA CIUDAD", "SUBIR AL HELICOPTERO" };
 
-        public static string Arrancar(int objetivo, int puesto = 1)
+        public static string Arrancar(int objetivo, int puesto = 1, int subfase = 0)
         {
             if (!Application.isPlaying) return "ERROR: el editor no esta en Play (SC_Operacion).";
             var d = OperacionDirector.Instancia;
             if (d == null) return "ERROR: no hay OperacionDirector (abri SC_Operacion).";
-            if (objetivo < 1 || objetivo > 6) return "ERROR: objetivo 1..6";
+            if (objetivo < 1 || objetivo > OperacionDirector.TotalObjetivos) return "ERROR: objetivo 1.." + OperacionDirector.TotalObjetivos;
+            PartidaGuardada.ModoPrueba = true;   // P10: las pruebas por CLI nunca tocan la partida guardada real del jugador
+            // WP9a (#097): la cinematica inicial bloquea todo el input; las pruebas la saltan siempre.
+            CinematicaDeOperacion.Saltar();
             ultimoObjetivo = objetivo;
-            var fase = (FaseOperacion)(objetivo - 1);
-            d.SaltarA(fase, true);
-            if (objetivo == 2 && puesto > 1) d.SaltarAPuesto(puesto - 1);
-            return $"Arrancado en objetivo {objetivo}: {Nombres[objetivo]}" + (objetivo == 2 ? $" (puesto {puesto})" : "") + " · " + Resumen();
+            var fase = OperacionDirector.Orden[objetivo - 1];
+            d.SaltarA(fase, true, subfase);
+            if (objetivo == 2) d.SaltarAPuesto(Mathf.Clamp(puesto, 1, OperacionDirector.TotalDePuestos) - 1);   // puesto 1 = Oeste, 2 = Este (con el Oeste ya volado)
+            return $"Arrancado en objetivo {objetivo}: {Nombres[objetivo]}" + (objetivo == 2 ? $" (puesto {(puesto == 2 ? "Este" : "Oeste")})" : "") + (subfase > 0 ? $" (subfase {subfase})" : "") + " · " + Resumen();
         }
 
         static string Inv(FormattableString f) => f.ToString(CultureInfo.InvariantCulture);
@@ -55,7 +58,7 @@ namespace SP.EditorTools
             if (d == null) return "sin director";
             var yo = SP.Player.PlayerInputDriver.Activo != null && SP.Player.PlayerInputDriver.Activo.Brain != null ? SP.Player.PlayerInputDriver.Activo.Brain.Current : null;
             var sb = new StringBuilder();
-            sb.Append(Inv($"fase={d.Fase} puesto={d.PuestoActual + 1} reloj={d.Reloj:0.0}"));
+            sb.Append(Inv($"fase={d.Fase} volados={d.PuestoActual} reloj={d.Reloj:0.0}"));
             if (yo != null) sb.Append(Inv($" yo=({yo.transform.position.x:0.0},{yo.transform.position.y:0.0},{yo.transform.position.z:0.0}) vida={yo.Health.Current}"));
             int en = 0, al = 0;
             foreach (var s in ActorRegistry.All)
@@ -91,7 +94,7 @@ namespace SP.EditorTools
             var sb = new StringBuilder();
             sb.AppendLine("| Objetivo | Resultado del salto | Bug/estado marcado | Estado a los " + seg.ToString("0") + " s |");
             sb.AppendLine("|---|---|---|---|");
-            for (int o = 1; o <= 6; o++)
+            for (int o = 1; o <= OperacionDirector.TotalObjetivos; o++)
             {
                 Progreso = "objetivo " + o;
                 string r = Arrancar(o);
