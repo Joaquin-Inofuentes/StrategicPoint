@@ -1,0 +1,542 @@
+# REGISTRO DE SESION - Strategic Point
+# escena=SC_Operacion fecha=2026-10-07 10:11:39 unity=6000.6.2f1 intervalo=5s
+# Formato: bloque cada 5 s (JUGADOR / ACCIONES / ALIADOS / ENEMIGOS / VEHICULOS / MISION) + lineas sueltas [EVENTO|ORDEN|BAJA|POSESION|BUG].
+# Para volver a un momento: SesionLog.RestaurarBug(n) (n = numero de bug marcado con [U] o [8]).
+
+[T+0000.0s juego=0000.0] EVENTO: FASE de la Operacion -> Infiltrar
+=== BLOQUE 1 [T+0008.5s juego=0000.0 | escena SC_Operacion] ===
+JUGADOR: (ninguno poseido)
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(-2.5,0.8,-372.0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(0.0,0.8,-372.8) yaw=0 ia=Patrol obj=-
+  Soldado_3_Doc            Medic     hp=486/486 pos=(2.5,0.8,-373.6) yaw=0 ia=Patrol obj=-
+ENEMIGOS (45 vivos, 70 en reserva):
+  Enemigo#1                Enemy     hp=135/135 pos=(26.2,0.8,-289.8) yaw=197 ia=Patrol obj=- cobertura agachado
+  Enemigo#2                Enemy     hp=135/135 pos=(34.2,0.8,-301.8) yaw=205 ia=Patrol obj=- cobertura agachado
+  Enemigo#3                Enemy     hp=135/135 pos=(-38.0,4.8,-172.3) yaw=180 ia=Patrol obj=- enVehiculo
+  Enemigo#4                Enemy     hp=135/135 pos=(53.0,0.8,-184.1) yaw=180 ia=Patrol obj=-
+  Enemigo#5                Enemy     hp=135/135 pos=(38.0,4.8,-172.3) yaw=180 ia=Patrol obj=- enVehiculo
+  Enemigo#9                Enemy     hp=135/135 pos=(-17.7,0.8,-270.5) yaw=170 ia=Patrol obj=- cobertura agachado
+  Enemigo#10               Enemy     hp=135/135 pos=(45.5,6.8,-272.0) yaw=270 ia=Patrol obj=- enVehiculo
+  Enemigo#11               Enemy     hp=135/135 pos=(6.3,0.8,-236.5) yaw=183 ia=Patrol obj=- cobertura agachado
+  Enemigo#12               Enemy     hp=135/135 pos=(-19.9,0.8,-284.9) yaw=167 ia=Patrol obj=- cobertura agachado
+  Enemigo#13               Enemy     hp=135/135 pos=(-10.0,0.8,-195.0) yaw=180 ia=Patrol obj=-
+  Enemigo#14               Enemy     hp=135/135 pos=(42.0,0.8,-287.8) yaw=206 ia=Patrol obj=- cobertura agachado
+  Enemigo#15               Enemy     hp=135/135 pos=(20.0,0.8,-126.7) yaw=180 ia=Patrol obj=-
+  Enemigo#16               Enemy     hp=135/135 pos=(-27.7,0.8,-278.5) yaw=164 ia=Patrol obj=- cobertura agachado
+  Enemigo#17               Enemy     hp=135/135 pos=(-20.0,0.8,-151.7) yaw=180 ia=Patrol obj=-
+  Enemigo#18               Enemy     hp=135/135 pos=(16.4,7.2,-231.4) yaw=211 ia=Patrol obj=- enVehiculo
+  Enemigo#19               Enemy     hp=135/135 pos=(-33.5,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#20               Enemy     hp=135/135 pos=(-56.6,7.2,-225.7) yaw=120 ia=Patrol obj=- enVehiculo
+  Enemigo#21               Enemy     hp=135/135 pos=(14.2,0.8,-322.3) yaw=195 ia=Patrol obj=- cobertura agachado
+  Enemigo#22               Enemy     hp=135/135 pos=(26.2,0.8,-230.4) yaw=190 ia=Patrol obj=- cobertura agachado
+  Enemigo#23               Enemy     hp=135/135 pos=(-22.5,7.2,-316.0) yaw=43 ia=Patrol obj=- enVehiculo
+  Enemigo#24               Enemy     hp=135/135 pos=(-42.0,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#25               Enemy     hp=135/135 pos=(-45.5,6.8,-232.0) yaw=90 ia=Patrol obj=- enVehiculo
+  Enemigo#26               Enemy     hp=135/135 pos=(42.5,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#27               Enemy     hp=135/135 pos=(10.0,0.8,-195.0) yaw=180 ia=Patrol obj=-
+  Enemigo#28               Enemy     hp=135/135 pos=(-29.8,0.8,-227.4) yaw=168 ia=Patrol obj=- cobertura agachado
+  Enemigo#29               Enemy     hp=135/135 pos=(9.0,0.8,-112.0) yaw=180 ia=Patrol obj=-
+  Enemigo#30               Enemy     hp=135/135 pos=(55.0,13.4,-228.0) yaw=270 ia=Patrol obj=- enVehiculo
+  Enemigo#31               Enemy     hp=135/135 pos=(-13.8,0.8,-322.3) yaw=165 ia=Patrol obj=- cobertura agachado
+  Enemigo#32               Enemy     hp=135/135 pos=(-29.7,0.8,-294.5) yaw=159 ia=Patrol obj=- cobertura agachado
+  Enemigo#33               Enemy     hp=135/135 pos=(-5.7,0.8,-236.5) yaw=177 ia=Patrol obj=- cobertura agachado
+  Enemigo#34               Enemy     hp=135/135 pos=(-53.0,0.8,-184.1) yaw=180 ia=Patrol obj=-
+  Enemigo#35               Enemy     hp=135/135 pos=(29.8,0.8,-325.9) yaw=209 ia=Patrol obj=- cobertura agachado
+  Enemigo#36               Enemy     hp=135/135 pos=(34.2,0.8,-274.0) yaw=199 ia=Patrol obj=- cobertura agachado
+  Enemigo#37               Enemy     hp=135/135 pos=(34.0,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#38               Enemy     hp=135/135 pos=(28.5,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#39               Enemy     hp=135/135 pos=(48.0,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#40               Enemy     hp=135/135 pos=(-28.0,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#41               Enemy     hp=135/135 pos=(-26.7,0.8,-266.5) yaw=166 ia=Patrol obj=- cobertura agachado
+  Enemigo#42               Enemy     hp=135/135 pos=(-47.5,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#43               Enemy     hp=135/135 pos=(36.2,0.8,-230.4) yaw=194 ia=Patrol obj=- cobertura agachado
+  Enemigo#44               Enemy     hp=135/135 pos=(22.2,0.8,-301.8) yaw=197 ia=Patrol obj=- cobertura agachado
+  Enemigo#45               Enemy     hp=135/135 pos=(-29.8,0.8,-318.5) yaw=151 ia=Patrol obj=- cobertura agachado
+  Enemigo#46               Enemy     hp=135/135 pos=(-23.7,0.8,-304.5) yaw=161 ia=Patrol obj=- cobertura agachado
+  Enemigo#47               Enemy     hp=135/135 pos=(56.7,7.2,-304.2) yaw=286 ia=Patrol obj=- enVehiculo
+  Enemigo#48               Enemy     hp=135/135 pos=(-56.5,13.4,-295.5) yaw=90 ia=Patrol obj=- enVehiculo
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Infiltrar
+  Operacion.reloj = 0.02
+  Operacion.puestoActual = 0
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puestoOeste = volado=False;mecha=0.00;guardiasVivos=5
+  Operacion.puestoEste = volado=False;mecha=0.00;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 28
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=True;pos=197.1,9.2,-224.0;aterrizo=False
+
+=== BLOQUE 2 [T+0013.5s juego=0000.6 | escena SC_Operacion] ===
+JUGADOR: (ninguno poseido)
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(-2.5,0.8,-372.0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(0.0,0.8,-372.8) yaw=0 ia=Patrol obj=-
+  Soldado_3_Doc            Medic     hp=486/486 pos=(2.5,0.8,-373.6) yaw=0 ia=Patrol obj=-
+ENEMIGOS (45 vivos, 70 en reserva):
+  Enemigo#1                Enemy     hp=135/135 pos=(26.2,0.8,-289.8) yaw=197 ia=Patrol obj=- cobertura agachado
+  Enemigo#2                Enemy     hp=135/135 pos=(34.2,0.8,-301.8) yaw=205 ia=Patrol obj=- cobertura agachado
+  Enemigo#3                Enemy     hp=135/135 pos=(-38.0,4.8,-172.3) yaw=180 ia=Patrol obj=- enVehiculo
+  Enemigo#4                Enemy     hp=135/135 pos=(53.0,0.8,-184.1) yaw=180 ia=Patrol obj=-
+  Enemigo#5                Enemy     hp=135/135 pos=(38.0,4.8,-172.3) yaw=180 ia=Patrol obj=- enVehiculo
+  Enemigo#9                Enemy     hp=135/135 pos=(-17.7,0.8,-270.5) yaw=170 ia=Patrol obj=- cobertura agachado
+  Enemigo#10               Enemy     hp=135/135 pos=(45.5,6.8,-272.0) yaw=270 ia=Patrol obj=- enVehiculo
+  Enemigo#11               Enemy     hp=135/135 pos=(6.3,0.8,-236.5) yaw=183 ia=Patrol obj=- cobertura agachado
+  Enemigo#12               Enemy     hp=135/135 pos=(-19.9,0.8,-284.9) yaw=167 ia=Patrol obj=- cobertura agachado
+  Enemigo#13               Enemy     hp=135/135 pos=(-10.0,0.8,-195.0) yaw=180 ia=Patrol obj=-
+  Enemigo#14               Enemy     hp=135/135 pos=(42.0,0.8,-287.8) yaw=206 ia=Patrol obj=- cobertura agachado
+  Enemigo#15               Enemy     hp=135/135 pos=(20.0,0.8,-126.7) yaw=180 ia=Patrol obj=-
+  Enemigo#16               Enemy     hp=135/135 pos=(-27.7,0.8,-278.5) yaw=164 ia=Patrol obj=- cobertura agachado
+  Enemigo#17               Enemy     hp=135/135 pos=(-20.0,0.8,-151.7) yaw=180 ia=Patrol obj=-
+  Enemigo#18               Enemy     hp=135/135 pos=(16.4,7.2,-231.4) yaw=211 ia=Patrol obj=- enVehiculo
+  Enemigo#19               Enemy     hp=135/135 pos=(-33.5,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#20               Enemy     hp=135/135 pos=(-56.6,7.2,-225.7) yaw=120 ia=Patrol obj=- enVehiculo
+  Enemigo#21               Enemy     hp=135/135 pos=(14.2,0.8,-322.3) yaw=195 ia=Patrol obj=- cobertura agachado
+  Enemigo#22               Enemy     hp=135/135 pos=(26.2,0.8,-230.4) yaw=190 ia=Patrol obj=- cobertura agachado
+  Enemigo#23               Enemy     hp=135/135 pos=(-22.5,7.2,-316.0) yaw=43 ia=Patrol obj=- enVehiculo
+  Enemigo#24               Enemy     hp=135/135 pos=(-42.0,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#25               Enemy     hp=135/135 pos=(-45.5,6.8,-232.0) yaw=90 ia=Patrol obj=- enVehiculo
+  Enemigo#26               Enemy     hp=135/135 pos=(42.5,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#27               Enemy     hp=135/135 pos=(10.0,0.8,-195.0) yaw=180 ia=Patrol obj=-
+  Enemigo#28               Enemy     hp=135/135 pos=(-29.8,0.8,-227.4) yaw=168 ia=Patrol obj=- cobertura agachado
+  Enemigo#29               Enemy     hp=135/135 pos=(9.0,0.8,-112.0) yaw=180 ia=Patrol obj=-
+  Enemigo#30               Enemy     hp=135/135 pos=(55.0,13.4,-228.0) yaw=270 ia=Patrol obj=- enVehiculo
+  Enemigo#31               Enemy     hp=135/135 pos=(-13.8,0.8,-322.3) yaw=165 ia=Patrol obj=- cobertura agachado
+  Enemigo#32               Enemy     hp=135/135 pos=(-29.7,0.8,-294.5) yaw=159 ia=Patrol obj=- cobertura agachado
+  Enemigo#33               Enemy     hp=135/135 pos=(-5.7,0.8,-236.5) yaw=177 ia=Patrol obj=- cobertura agachado
+  Enemigo#34               Enemy     hp=135/135 pos=(-53.0,0.8,-184.1) yaw=180 ia=Patrol obj=-
+  Enemigo#35               Enemy     hp=135/135 pos=(29.8,0.8,-325.9) yaw=209 ia=Patrol obj=- cobertura agachado
+  Enemigo#36               Enemy     hp=135/135 pos=(34.2,0.8,-274.0) yaw=199 ia=Patrol obj=- cobertura agachado
+  Enemigo#37               Enemy     hp=135/135 pos=(34.0,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#38               Enemy     hp=135/135 pos=(28.5,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#39               Enemy     hp=135/135 pos=(48.0,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#40               Enemy     hp=135/135 pos=(-28.0,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#41               Enemy     hp=135/135 pos=(-26.7,0.8,-266.5) yaw=166 ia=Patrol obj=- cobertura agachado
+  Enemigo#42               Enemy     hp=135/135 pos=(-47.5,0.8,-179.7) yaw=180 ia=Patrol obj=-
+  Enemigo#43               Enemy     hp=135/135 pos=(36.2,0.8,-230.4) yaw=194 ia=Patrol obj=- cobertura agachado
+  Enemigo#44               Enemy     hp=135/135 pos=(22.2,0.8,-301.8) yaw=197 ia=Patrol obj=- cobertura agachado
+  Enemigo#45               Enemy     hp=135/135 pos=(-29.8,0.8,-318.5) yaw=151 ia=Patrol obj=- cobertura agachado
+  Enemigo#46               Enemy     hp=135/135 pos=(-23.7,0.8,-304.5) yaw=161 ia=Patrol obj=- cobertura agachado
+  Enemigo#47               Enemy     hp=135/135 pos=(56.7,7.2,-304.2) yaw=286 ia=Patrol obj=- enVehiculo
+  Enemigo#48               Enemy     hp=135/135 pos=(-56.5,13.4,-295.5) yaw=90 ia=Patrol obj=- enVehiculo
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Infiltrar
+  Operacion.reloj = 0.63
+  Operacion.puestoActual = 0
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puestoOeste = volado=False;mecha=0.00;guardiasVivos=5
+  Operacion.puestoEste = volado=False;mecha=0.00;guardiasVivos=5
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 28
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=True;pos=169.5,9.2,-245.0;aterrizo=False
+
+[T+0016.7s juego=0003.7] EVENTO: FASE de la Operacion -> Resistir
+[T+0018.2s juego=0005.2] EVENTO: PARTIDA: guardada (auto: inicio objetivo 5) objetivo 5 fase Resistir
+=== BLOQUE 3 [T+0018.5s juego=0005.4 | escena SC_Operacion] ===
+JUGADOR: Soldado_2_Kes (Flanker) hp=486/486 pos=(246.0,0.8,230.2) yaw=90 pitch=0 modo=Fps asiento=- municion=24 apunta=Cubrirse
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(244.8,0.8,228.0) yaw=90 ia=Patrol obj=-
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(246.0,0.8,230.2) yaw=90 ia=Patrol obj=-
+  Soldado_3_Doc            Medic     hp=486/486 pos=(243.6,0.8,225.8) yaw=90 ia=Patrol obj=-
+ENEMIGOS (0 vivos, 115 en reserva):
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Resistir
+  Operacion.reloj = 1.79
+  Operacion.puestoActual = 2
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puestoOeste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.puestoEste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.milicianos = 
+  Operacion.relojEfectivo = 0.00
+  Operacion.radioTomada = False
+  Operacion.sectoresCaidos = 
+  Operacion.pasosMando = 
+  Operacion.operador = 
+  Operacion.primerIngreso = False
+  Operacion.unidadA = 
+  Operacion.unidadC = 
+  Operacion.ordenSector = 
+  Operacion.oleadasMandoHechas = 
+  Operacion.relojOleada = -1.00
+  Operacion.cuartelVivos = 0
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=True;pos=347.9,55.1,736.1;aterrizo=False
+
+=== BLOQUE 4 [T+0023.5s juego=0010.5 | escena SC_Operacion] ===
+JUGADOR: Soldado_2_Kes (Flanker) hp=486/486 pos=(246.0,0.8,230.2) yaw=90 pitch=0 modo=Fps asiento=- municion=24 apunta=Cubrirse
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(244.8,0.8,228.0) yaw=90 ia=Patrol obj=-
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(246.0,0.8,230.2) yaw=90 ia=Patrol obj=-
+  Soldado_3_Doc            Medic     hp=486/486 pos=(243.6,0.8,225.8) yaw=90 ia=Patrol obj=-
+ENEMIGOS (5 vivos, 112 en reserva):
+  Enemigo#59               Enemy     hp=180/180 pos=(378.3,0.8,180.9) yaw=288 ia=Patrol obj=-
+  Enemigo#68               Enemy     hp=180/180 pos=(373.4,0.8,210.4) yaw=281 ia=Patrol obj=-
+  Enemigo#97               Enemy     hp=180/180 pos=(372.9,0.8,271.6) yaw=250 ia=Patrol obj=-
+  Enemigo#119              Enemy     hp=180/180 pos=(355.1,0.8,229.0) yaw=268 ia=Patrol obj=-
+  Enemigo#120              Enemy     hp=180/180 pos=(368.6,0.8,229.8) yaw=273 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Resistir
+  Operacion.reloj = 6.79
+  Operacion.puestoActual = 2
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 0
+  Operacion.puestoOeste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.puestoEste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.milicianos = 
+  Operacion.relojEfectivo = 0.00
+  Operacion.radioTomada = False
+  Operacion.sectoresCaidos = 
+  Operacion.pasosMando = 
+  Operacion.operador = 
+  Operacion.primerIngreso = False
+  Operacion.unidadA = 
+  Operacion.unidadC = 
+  Operacion.ordenSector = 
+  Operacion.oleadasMandoHechas = 
+  Operacion.relojOleada = -1.00
+  Operacion.cuartelVivos = 0
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=True;pos=337.7,55.1,536.3;aterrizo=False
+
+=== BLOQUE 5 [T+0028.5s juego=0015.5 | escena SC_Operacion] ===
+JUGADOR: Soldado_2_Kes (Flanker) hp=486/486 pos=(246.0,0.8,230.2) yaw=90 pitch=0 modo=Fps asiento=- municion=24 apunta=Cubrirse
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(244.8,0.8,228.0) yaw=90 ia=Patrol obj=-
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(246.0,0.8,230.2) yaw=90 ia=Patrol obj=-
+  Soldado_3_Doc            Medic     hp=486/486 pos=(243.6,0.8,225.8) yaw=90 ia=Patrol obj=-
+ENEMIGOS (10 vivos, 110 en reserva):
+  Enemigo#52               Enemy     hp=180/180 pos=(358.8,0.8,248.3) yaw=264 ia=Patrol obj=-
+  Enemigo#59               Enemy     hp=180/180 pos=(354.4,0.8,187.0) yaw=289 ia=Patrol obj=-
+  Enemigo#68               Enemy     hp=180/180 pos=(364.4,0.8,214.8) yaw=279 ia=Patrol obj=-
+  Enemigo#69               Enemy     hp=180/180 pos=(368.2,0.8,213.7) yaw=270 ia=Patrol obj=-
+  Enemigo#97               Enemy     hp=180/180 pos=(349.4,0.8,262.9) yaw=250 ia=Patrol obj=-
+  Enemigo#119              Enemy     hp=180/180 pos=(345.6,0.8,226.2) yaw=269 ia=Patrol obj=-
+  Enemigo#120              Enemy     hp=180/180 pos=(353.8,0.8,231.0) yaw=272 ia=Patrol obj=-
+  Enemigo#121              Enemy     hp=180/180 pos=(303.2,0.8,282.4) yaw=224 ia=Patrol obj=-
+  Enemigo#122              Enemy     hp=180/180 pos=(318.1,0.8,285.4) yaw=233 ia=Patrol obj=-
+  Enemigo#123              Enemy     hp=180/180 pos=(324.2,0.8,171.1) yaw=307 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Resistir
+  Operacion.reloj = 11.81
+  Operacion.puestoActual = 2
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 0
+  Operacion.puestoOeste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.puestoEste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.milicianos = 
+  Operacion.relojEfectivo = 0.00
+  Operacion.radioTomada = False
+  Operacion.sectoresCaidos = 
+  Operacion.pasosMando = 
+  Operacion.operador = 
+  Operacion.primerIngreso = False
+  Operacion.unidadA = 
+  Operacion.unidadC = 
+  Operacion.ordenSector = 
+  Operacion.oleadasMandoHechas = 
+  Operacion.relojOleada = -1.00
+  Operacion.cuartelVivos = 0
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=True;pos=327.8,46.4,341.4;aterrizo=False
+
+[T+0030.2s juego=0017.2] BAJA: Enemigo (Enemy/Enemy) en (311.4,285.4) por ?
+[T+0031.9s juego=0018.9] BAJA: Enemigo (Enemy/Enemy) en (292.0,276.7) por ?
+=== BLOQUE 6 [T+0033.6s juego=0020.5 | escena SC_Operacion] ===
+JUGADOR: Soldado_2_Kes (Flanker) hp=486/486 pos=(246.0,0.8,230.2) yaw=90 pitch=0 modo=Fps asiento=- municion=24 apunta=Cubrirse
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=2
+   baja: Enemigo (Enemy/Enemy) en (311.4,285.4) por ?
+   baja: Enemigo (Enemy/Enemy) en (292.0,276.7) por ?
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(244.8,0.8,228.0) yaw=90 ia=Patrol obj=-
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(246.0,0.8,230.2) yaw=90 ia=Patrol obj=-
+  Soldado_3_Doc            Medic     hp=486/486 pos=(243.6,0.8,225.8) yaw=90 ia=Patrol obj=-
+ENEMIGOS (12 vivos, 108 en reserva):
+  Enemigo#52               Enemy     hp=180/180 pos=(333.9,0.8,245.6) yaw=264 ia=Patrol obj=-
+  Enemigo#59               Enemy     hp=180/180 pos=(350.4,0.8,194.6) yaw=286 ia=Patrol obj=-
+  Enemigo#68               Enemy     hp=180/180 pos=(339.5,0.8,218.9) yaw=279 ia=Patrol obj=-
+  Enemigo#69               Enemy     hp=180/180 pos=(343.2,0.8,215.3) yaw=275 ia=Patrol obj=-
+  Enemigo#70               Enemy     hp=180/180 pos=(343.2,0.8,295.2) yaw=236 ia=Patrol obj=-
+  Enemigo#72               Enemy     hp=174/180 pos=(291.1,0.8,286.4) yaw=214 ia=Patrol obj=-
+  Enemigo#97               Enemy     hp=162/180 pos=(326.9,0.8,255.2) yaw=249 ia=Patrol obj=-
+  Enemigo#119              Enemy     hp=180/180 pos=(342.1,0.8,228.2) yaw=268 ia=Patrol obj=-
+  Enemigo#120              Enemy     hp=180/180 pos=(353.8,0.8,231.9) yaw=272 ia=Patrol obj=-
+  Enemigo#123              Enemy     hp=180/180 pos=(305.6,0.8,186.2) yaw=307 ia=Patrol obj=-
+  Enemigo#124              Enemy     hp=180/180 pos=(300.1,0.8,184.9) yaw=305 ia=Patrol obj=-
+  Enemigo#125              Enemy     hp=180/180 pos=(265.3,0.8,289.5) yaw=203 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Resistir
+  Operacion.reloj = 16.82
+  Operacion.puestoActual = 2
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 0,1
+  Operacion.puestoOeste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.puestoEste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.milicianos = 
+  Operacion.relojEfectivo = 0.00
+  Operacion.radioTomada = False
+  Operacion.sectoresCaidos = 
+  Operacion.pasosMando = 
+  Operacion.operador = 
+  Operacion.primerIngreso = False
+  Operacion.unidadA = 
+  Operacion.unidadC = 
+  Operacion.ordenSector = 
+  Operacion.oleadasMandoHechas = 
+  Operacion.relojOleada = -1.00
+  Operacion.cuartelVivos = 0
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=True;pos=322.4,19.8,236.6;aterrizo=False
+
+[T+0034.1s juego=0021.0] BAJA: Enemigo (Enemy/Enemy) en (331.2,245.3) por ?
+=== BLOQUE 7 [T+0038.6s juego=0025.5 | escena SC_Operacion] ===
+JUGADOR: Soldado_2_Kes (Flanker) hp=486/486 pos=(246.0,0.8,230.2) yaw=90 pitch=0 modo=Fps asiento=- municion=24 apunta=Cubrirse
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=1
+   baja: Enemigo (Enemy/Enemy) en (331.2,245.3) por ?
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(247.9,0.8,226.4) yaw=116 ia=Chase obj=Enemigo
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(246.0,0.8,230.2) yaw=90 ia=Patrol obj=-
+  Soldado_3_Doc            Medic     hp=486/486 pos=(246.9,0.8,225.0) yaw=102 ia=Chase obj=Enemigo
+ENEMIGOS (15 vivos, 105 en reserva):
+  Enemigo#55               Enemy     hp=180/180 pos=(264.1,0.8,273.0) yaw=199 ia=Patrol obj=-
+  Enemigo#59               Enemy     hp=180/180 pos=(328.2,0.8,201.4) yaw=284 ia=Patrol obj=-
+  Enemigo#68               Enemy     hp=168/180 pos=(321.7,0.8,221.8) yaw=277 ia=Patrol obj=- agachado
+  Enemigo#69               Enemy     hp=180/180 pos=(318.3,0.8,216.3) yaw=269 ia=Patrol obj=-
+  Enemigo#70               Enemy     hp=180/180 pos=(322.5,0.8,285.4) yaw=234 ia=Patrol obj=-
+  Enemigo#72               Enemy     hp=174/180 pos=(277.9,0.8,278.9) yaw=207 ia=Patrol obj=-
+  Enemigo#97               Enemy     hp=162/180 pos=(312.6,0.8,246.7) yaw=251 ia=Patrol obj=-
+  Enemigo#100              Enemy     hp=180/180 pos=(298.7,0.8,297.3) yaw=161 ia=Patrol obj=-
+  Enemigo#101              Enemy     hp=180/180 pos=(260.9,0.8,274.1) yaw=203 ia=Patrol obj=-
+  Enemigo#119              Enemy     hp=162/180 pos=(320.2,0.8,227.7) yaw=265 ia=Patrol obj=-
+  Enemigo#120              Enemy     hp=180/180 pos=(353.8,0.8,232.6) yaw=270 ia=Patrol obj=-
+  Enemigo#123              Enemy     hp=180/180 pos=(288.4,0.8,193.3) yaw=312 ia=Patrol obj=-
+  Enemigo#124              Enemy     hp=180/180 pos=(286.2,0.8,196.6) yaw=303 ia=Patrol obj=-
+  Enemigo#125              Enemy     hp=180/180 pos=(255.8,0.8,276.8) yaw=199 ia=Patrol obj=-
+  Enemigo#126              Enemy     hp=180/180 pos=(350.0,0.8,286.1) yaw=243 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Resistir
+  Operacion.reloj = 21.83
+  Operacion.puestoActual = 2
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 0,1
+  Operacion.puestoOeste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.puestoEste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.milicianos = 
+  Operacion.relojEfectivo = 0.00
+  Operacion.radioTomada = False
+  Operacion.sectoresCaidos = 
+  Operacion.pasosMando = 
+  Operacion.operador = 
+  Operacion.primerIngreso = False
+  Operacion.unidadA = 
+  Operacion.unidadC = 
+  Operacion.ordenSector = 
+  Operacion.oleadasMandoHechas = 
+  Operacion.relojOleada = -1.00
+  Operacion.cuartelVivos = 0
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=True;pos=322.0,6.0,228.0;aterrizo=False
+
+[T+0038.7s juego=0025.7] BAJA: Enemigo (Enemy/Enemy) en (319.3,227.7) por ?
+[T+0040.5s juego=0027.4] BAJA: Enemigo (Enemy/Enemy) en (313.6,222.8) por ?
+[T+0040.7s juego=0027.7] EVENTO: FASE de la Operacion -> Extraer
+[T+0042.2s juego=0029.1] BAJA: Enemigo (Enemy/Enemy) en (353.8,232.2) por ?
+[T+0042.4s juego=0029.3] BAJA: Enemigo (Enemy/Enemy) en (299.6,218.4) por ?
+=== BLOQUE 8 [T+0043.6s juego=0030.5 | escena SC_Operacion] ===
+JUGADOR: (ninguno poseido)
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=4
+   baja: Enemigo (Enemy/Enemy) en (319.3,227.7) por ?
+   baja: Enemigo (Enemy/Enemy) en (313.6,222.8) por ?
+   baja: Enemigo (Enemy/Enemy) en (353.8,232.2) por ?
+   baja: Enemigo (Enemy/Enemy) en (299.6,218.4) por ?
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(269.4,0.8,220.2) yaw=90 ia=MovingToOrder obj=- pasivo ordenIr=(321.0,0.1,228.4)
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(257.5,0.8,230.3) yaw=89 ia=MovingToOrder obj=- pasivo ordenIr=(319.5,0.1,227.8)
+  Soldado_3_Doc            Medic     hp=486/486 pos=(268.6,0.8,220.4) yaw=94 ia=MovingToOrder obj=- pasivo ordenIr=(320.1,0.1,228.7)
+ENEMIGOS (11 vivos, 105 en reserva):
+  Enemigo#55               Enemy     hp=180/180 pos=(257.1,0.8,261.8) yaw=182 ia=Chase obj=Soldado_2_Kes
+  Enemigo#59               Enemy     hp=180/180 pos=(307.4,0.8,207.0) yaw=282 ia=Patrol obj=-
+  Enemigo#70               Enemy     hp=180/180 pos=(304.8,0.8,282.4) yaw=220 ia=Patrol obj=-
+  Enemigo#72               Enemy     hp=180/180 pos=(268.7,0.8,258.1) yaw=179 ia=Chase obj=Soldado_2_Kes
+  Enemigo#97               Enemy     hp=180/180 pos=(292.9,0.8,233.3) yaw=197 ia=Chase obj=Soldado_1_Vega
+  Enemigo#100              Enemy     hp=180/180 pos=(283.2,0.8,278.9) yaw=217 ia=Patrol obj=-
+  Enemigo#101              Enemy     hp=180/180 pos=(252.6,0.8,261.9) yaw=216 ia=Chase obj=Soldado_2_Kes
+  Enemigo#123              Enemy     hp=180/180 pos=(281.5,0.8,196.0) yaw=334 ia=Attack obj=Soldado_1_Vega cobertura agachado
+  Enemigo#124              Enemy     hp=180/180 pos=(283.5,0.8,203.1) yaw=3 ia=Attack obj=Soldado_1_Vega yendoACobertura
+  Enemigo#125              Enemy     hp=180/180 pos=(249.1,0.8,264.8) yaw=197 ia=Chase obj=Soldado_2_Kes
+  Enemigo#126              Enemy     hp=180/180 pos=(331.8,0.8,273.1) yaw=238 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Extraer
+  Operacion.reloj = 2.83
+  Operacion.puestoActual = 2
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 0,1
+  Operacion.puestoOeste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.puestoEste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.milicianos = 
+  Operacion.cuartelVivos = 0
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=True;pos=322.0,0.1,228.0;aterrizo=True
+
+[T+0044.3s juego=0031.3] BAJA: Enemigo (Enemy/Enemy) en (307.4,209.4) por ?
+[T+0046.3s juego=0033.2] BAJA: Enemigo (Enemy/Enemy) en (273.6,250.5) por ?
+[T+0048.3s juego=0035.2] BAJA: Enemigo (Enemy/Enemy) en (291.2,227.1) por ?
+=== BLOQUE 9 [T+0048.6s juego=0035.5 | escena SC_Operacion] ===
+JUGADOR: (ninguno poseido)
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=3
+   baja: Enemigo (Enemy/Enemy) en (307.4,209.4) por ?
+   baja: Enemigo (Enemy/Enemy) en (273.6,250.5) por ?
+   baja: Enemigo (Enemy/Enemy) en (291.2,227.1) por ?
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(294.4,0.8,220.3) yaw=90 ia=MovingToOrder obj=- pasivo ordenIr=(321.0,0.1,228.4)
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(282.3,0.8,230.2) yaw=80 ia=MovingToOrder obj=- pasivo ordenIr=(319.5,0.1,227.8)
+  Soldado_3_Doc            Medic     hp=486/486 pos=(293.6,0.8,220.3) yaw=90 ia=MovingToOrder obj=- pasivo ordenIr=(320.1,0.1,228.7)
+ENEMIGOS (8 vivos, 105 en reserva):
+  Enemigo#55               Enemy     hp=180/180 pos=(261.5,0.8,255.7) yaw=141 ia=Attack obj=Soldado_2_Kes cobertura agachado
+  Enemigo#70               Enemy     hp=180/180 pos=(291.4,0.8,272.6) yaw=217 ia=Patrol obj=-
+  Enemigo#100              Enemy     hp=180/180 pos=(269.8,0.8,267.2) yaw=189 ia=Chase obj=Soldado_2_Kes
+  Enemigo#101              Enemy     hp=180/180 pos=(254.2,0.8,261.8) yaw=175 ia=Chase obj=Soldado_2_Kes
+  Enemigo#123              Enemy     hp=180/180 pos=(284.4,0.8,203.1) yaw=358 ia=Chase obj=Soldado_1_Vega
+  Enemigo#124              Enemy     hp=180/180 pos=(288.9,0.8,203.1) yaw=18 ia=Attack obj=Soldado_1_Vega agachado
+  Enemigo#125              Enemy     hp=180/180 pos=(249.5,0.8,251.3) yaw=138 ia=Chase obj=Soldado_2_Kes
+  Enemigo#126              Enemy     hp=180/180 pos=(313.7,0.8,260.0) yaw=239 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Extraer
+  Operacion.reloj = 7.83
+  Operacion.puestoActual = 2
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 0,1
+  Operacion.puestoOeste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.puestoEste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.milicianos = 
+  Operacion.cuartelVivos = 0
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=True;pos=322.0,0.1,228.0;aterrizo=True
+
+[T+0052.0s juego=0039.0] BAJA: Enemigo (Enemy/Enemy) en (315.1,251.5) por ?
+=== BLOQUE 10 [T+0053.6s juego=0040.5 | escena SC_Operacion] ===
+JUGADOR: (ninguno poseido)
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=1
+   baja: Enemigo (Enemy/Enemy) en (315.1,251.5) por ?
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(296.7,0.8,220.3) yaw=90 ia=MovingToOrder obj=- pasivo ordenIr=(321.0,0.1,228.4)
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(295.8,0.8,232.5) yaw=80 ia=MovingToOrder obj=- pasivo ordenIr=(319.5,0.1,227.8)
+  Soldado_3_Doc            Medic     hp=486/486 pos=(296.6,0.8,220.3) yaw=90 ia=MovingToOrder obj=- pasivo ordenIr=(320.1,0.1,228.7)
+ENEMIGOS (7 vivos, 105 en reserva):
+  Enemigo#55               Enemy     hp=180/180 pos=(258.1,0.8,243.9) yaw=218 ia=Patrol obj=-
+  Enemigo#70               Enemy     hp=180/180 pos=(286.4,0.8,251.8) yaw=227 ia=Patrol obj=-
+  Enemigo#100              Enemy     hp=180/180 pos=(272.5,0.8,259.0) yaw=222 ia=Patrol obj=-
+  Enemigo#101              Enemy     hp=180/180 pos=(251.0,0.8,261.8) yaw=193 ia=Patrol obj=-
+  Enemigo#123              Enemy     hp=180/180 pos=(279.8,0.8,203.1) yaw=310 ia=Patrol obj=-
+  Enemigo#124              Enemy     hp=180/180 pos=(289.4,0.8,208.8) yaw=287 ia=Patrol obj=-
+  Enemigo#125              Enemy     hp=180/180 pos=(253.3,0.8,241.3) yaw=231 ia=Patrol obj=-
+VEHICULOS (1):
+  Tanque_Fuga          bando=Player hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[]
+MISION:
+  Operacion.fase = Extraer
+  Operacion.reloj = 12.84
+  Operacion.puestoActual = 2
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 0,1
+  Operacion.puestoOeste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.puestoEste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.milicianos = 
+  Operacion.cuartelVivos = 0
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=True;pos=322.0,9.3,228.0;aterrizo=True
+
