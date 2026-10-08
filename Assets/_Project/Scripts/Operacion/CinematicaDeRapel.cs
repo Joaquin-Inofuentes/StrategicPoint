@@ -13,10 +13,11 @@ using SP.UI;
 
 namespace SP.Operacion
 {
-    // P9 (#123): cinematica de APERTURA de la Operacion Cuartel, 5 s y frenetica: el helicoptero entra rasante y a fondo, frena en seco
-    // sobre la zona de inicio y los tres soldados bajan por cuerdas (rapel) hasta el piso; la escuadra queda en su sitio y el control
-    // pasa al jugador (Kes, ver #110). Tres tomas con corte seco: (1) piso, el helicoptero pasa rugiendo; (2) al costado del helicoptero,
-    // las cuerdas y los tres bajando; (3) a ras del piso, tocan tierra y el helicoptero se va. Sacudida de camara todo el tiempo.
+    // P9 (#123): cinematica de APERTURA de la Operacion Cuartel (~12,5 s): el helicoptero entra de frente a la camara, frena y se estaciona
+    // girando sobre la zona de inicio, y los tres soldados bajan por cuerdas (rapel) hasta el piso sin apuro; la escuadra queda en su sitio
+    // y el control pasa al jugador (Kes, ver #110). Cuatro tomas con corte seco: (1) a ras del piso, el helicoptero viene de frente y crece (de 0 a 2,6 s); (2) lateral, frena y se
+    // estaciona girando (hasta 5,8 s: el helicoptero se ve al menos 4 s seguidos); (3) al costado del helicoptero, las cuerdas y los tres bajando despacio; (4) a ras del piso, tocan tierra y el
+    // helicoptero se va. (Cuatro tomas: llegada de frente, lateral girando, bajada, salida.) El sonido del rotor sube de 0 a su maximo en 2 s y baja suave hasta el final. La camara NO tiembla (se sentia rara): solo movimientos suaves y un giro lento.
     //
     // Los soldados REALES no se mueven (siguen en su lugar de inicio con la IA pausada): se los oculta apagando sus renderers y bajan unas
     // COPIAS VISUALES (como la tripulacion del helicoptero, bug #076) con una pose procedural de rapel; al tocar el piso la copia se borra
@@ -34,18 +35,32 @@ namespace SP.Operacion
         // Costura de pruebas (el editor sin foco pierde los eventos de teclado).
         public static bool PruebaMantenerEspacio;
 
-        public const float Duracion = 5f;
+        public const float Duracion = 12.5f;
         public const float SegundosParaSaltar = 1f;
         public const float AlturaDeRapel = 11f;       // de la cabina al piso
-        const float FinDeToma1 = 1.45f, FinDeToma2 = 3.25f;
-        const float InicioDeCuerdas = 1.55f, SegundosDeBajada = 1.15f, EntreSoldados = 0.2f;
+        const float FinDeToma0 = 2.6f, FinDeToma1 = 5.8f, FinDeToma2 = 9.9f;   // cortes: viene de frente | lateral, frena y gira | bajan | se va
+        const float InicioDeCuerdas = 6.1f, SegundosDeBajada = 2.4f, EntreSoldados = 0.55f;
+        // Vuelo: tramo a toda velocidad hasta tFrenada, frenada con giro hasta tEstacionado, vuelo estacionario hasta tSalida.
+        // v4: el helicoptero entra mucho mas cerca (parte a ~120 m del punto de vuelo estacionario y frena desde el primer cuadro) para que se vea grande de t = 0 a ~5,8 s.
+        const float tFrenada = 0f, tEstacionado = 5.6f, tSalida = 10.3f, VelocidadDeCrucero = 42f, GiroDeLlegada = 30f;
+        const float AtrasDeToma1 = 12f, LateralDeToma1 = 4f, AlturaDeAproximacion = 16f;   // toma 1: camara a ras del piso sobre la linea de vuelo, detras de la escuadra (el helicoptero viene de frente, de arriba, y baja)
+        const float RotorMaximoEn = 2f;   // el sonido del rotor sube de 0 a su maximo exactamente a los 2 s y despues se apaga suave hasta el final
+
+        // Volumen del rotor (se multiplica en Helicoptero.VolumenExtra): fundido de entrada 0 -> 1 en RotorMaximoEn s y fundido de salida
+        // suave (smoothstep) hasta ~0 al final de la cinematica.
+        public static float VolumenDelRotorEn(float t)
+        {
+            if (t <= 0f) return 0f;
+            if (t < RotorMaximoEn) return Mathf.SmoothStep(0f, 1f, t / RotorMaximoEn);
+            return 1f - Mathf.SmoothStep(0f, 1f, (t - RotorMaximoEn) / (Duracion - RotorMaximoEn));
+        }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reiniciar() { Activa = false; YaVista = false; Instancia = null; PruebaMantenerEspacio = false; }
 
         // ---- Estado visible (para las pruebas) ----
         public float Tiempo { get; private set; }
-        public int Toma { get; private set; }                       // 1..3
+        public int Toma { get; private set; }                       // 1..4
         public float ProgresoDeSalto { get; private set; }
         public bool SaltadaPorElJugador { get; private set; }
         public static bool UltimaFueSaltada { get; private set; }   // la ultima que termino fue saltada por el jugador (para las pruebas: el objeto ya se destruyo)
@@ -53,6 +68,7 @@ namespace SP.Operacion
         public int CuerdasVisibles { get; private set; }
         public int CopiasColgando { get; private set; }
         public Vector3 PosicionDeCamara => camara != null ? camara.position : Vector3.zero;
+        public Camera Camara => cam;
         public IReadOnlyList<Soldier> Escuadra => escuadra;
 
         class Rapelista
@@ -170,7 +186,7 @@ namespace SP.Operacion
             if (heli != null && heliPrendido)
             {
                 heliPrendido = false;
-                if (scriptHeli != null) { scriptHeli.Volando = false; scriptHeli.DisparaCobertura = false; scriptHeli.PararRotor(); }
+                if (scriptHeli != null) { scriptHeli.Volando = false; scriptHeli.DisparaCobertura = false; scriptHeli.PararRotor(); scriptHeli.VolumenExtra = 1f; }   // el helicoptero se reusa en Resistir/Extraer: volumen normal
                 heli.position = heliPosOriginal; heli.rotation = heliRotOriginal;
                 heli.gameObject.SetActive(heliEstabaActivo);
             }
@@ -353,35 +369,45 @@ namespace SP.Operacion
             }
         }
 
-        // Posicion y cabeceo del helicoptero en el tiempo t: entra rasante por la popa a toda velocidad, frena en seco sobre la zona, se queda
-        // balanceandose mientras bajan los soldados y al final sale hacia adelante y arriba.
+        // Posicion y actitud del helicoptero en el tiempo t: cruza a toda velocidad (~58 m/s) rumbo a la zona, desde tFrenada frena en
+        // seco (la velocidad es continua, sin tirones) mientras GIRA hasta quedar de frente al rumbo final, se queda balanceandose despacio
+        // mientras bajan los soldados y al final sale hacia adelante y arriba.
         void PoseDelHeli(float t, out Vector3 pos, out Quaternion rot)
         {
-            const float tLlegada = 1.6f, tSalida = 3.9f;
-            Vector3 p; float pitch = 0f, roll = 0f;
-            if (t < tLlegada)
+            // Rumbo de llegada: el del rumbo final girado GiroDeLlegada grados (entra de costado a la linea de los soldados).
+            var llegada = (Quaternion.AngleAxis(-GiroDeLlegada, Vector3.up) * adelante).normalized;
+            float T = tEstacionado - tFrenada;
+            float dFrenada = 0.5f * VelocidadDeCrucero * T;                 // distancia que se recorre frenando con desaceleracion constante
+            Vector3 p; float pitch = 0f, roll = 0f; Quaternion yaw;
+            if (t < tEstacionado)
             {
-                float u = Mathf.Clamp01(t / tLlegada);
-                float d = 150f * Mathf.Pow(1f - u, 2.4f);
-                p = hover - adelante * d + Vector3.down * (3f * (1f - u));
-                pitch = 16f * (1f - u) - 10f * Mathf.Sin(u * Mathf.PI);      // nariz abajo a toda velocidad, flare al frenar
-                roll = Mathf.Sin(u * 9f) * 3f * (1f - u);
+                float d;                                                    // distancia que falta hasta el punto de vuelo estacionario
+                if (t < tFrenada) d = dFrenada + VelocidadDeCrucero * (tFrenada - t);
+                else { float s = (t - tFrenada) / T; d = dFrenada * (1f - s) * (1f - s); }
+                p = hover - llegada * d + Vector3.up * (AlturaDeAproximacion * Mathf.Clamp01(d / 140f));   // v4: llega alto (sobre los muros del valle) y baja hacia la zona
+                float giro = t < tFrenada ? 0f : Mathf.SmoothStep(0f, 1f, (t - tFrenada) / T);
+                yaw = Quaternion.LookRotation(llegada, Vector3.up) * Quaternion.Euler(0f, Mathf.Lerp(0f, GiroDeLlegada, giro), 0f);
+                float v = t < tFrenada ? 1f : Mathf.Clamp01(1f - (t - tFrenada) / T);      // 1 a toda velocidad, 0 estacionado
+                pitch = 14f * v - 9f * Mathf.Sin(Mathf.Clamp01((t - tFrenada) / T) * Mathf.PI);   // nariz abajo a fondo, levanta al frenar
+                roll = (t < tFrenada ? 0f : -9f * Mathf.Sin(giro * Mathf.PI));                    // se inclina hacia adentro del giro
             }
             else if (t < tSalida)
             {
-                float k = t - tLlegada;
-                p = hover + Vector3.up * (Mathf.Sin(k * 1.9f) * 0.25f) + derecha * (Mathf.Sin(k * 1.3f) * 0.2f);
-                pitch = Mathf.Sin(k * 2.1f) * 1.2f; roll = Mathf.Sin(k * 2.6f) * 2.2f;
+                float k = t - tEstacionado;
+                p = hover + Vector3.up * (Mathf.Sin(k * 1.1f) * 0.18f) + derecha * (Mathf.Sin(k * 0.8f) * 0.15f);
+                yaw = Quaternion.LookRotation(adelante, Vector3.up);
+                pitch = Mathf.Sin(k * 1.3f) * 0.9f; roll = Mathf.Sin(k * 1.6f) * 1.4f;
             }
             else
             {
                 float k = t - tSalida;
                 p = hover + adelante * (0.5f * 34f * k * k) + Vector3.up * (3f * k + 14f * k * k);
+                yaw = Quaternion.LookRotation(adelante, Vector3.up);
                 pitch = Mathf.Lerp(0f, 22f, Mathf.Clamp01(k / 0.6f));
                 roll = -6f * Mathf.Clamp01(k / 0.5f);
             }
             pos = p;
-            rot = Quaternion.LookRotation(adelante, Vector3.up) * Quaternion.Euler(pitch, 0f, roll);
+            rot = yaw * Quaternion.Euler(pitch, 0f, roll);
         }
 
         // Altura de la cabina: por donde salen las cuerdas (puerta derecha).
@@ -402,12 +428,12 @@ namespace SP.Operacion
                 if (!r.abajo && u < 1f)
                 {
                     float uu = Mathf.Clamp01(u);
-                    // Cae rapido y frena al llegar (descenso controlado): 1 - (1-u)^2.
-                    float e = 1f - (1f - uu) * (1f - uu);
+                    // Descenso controlado y parejo: arranca suave, baja sin apuro y frena al llegar.
+                    float e = uu * uu * (3f - 2f * uu);
                     float y = Mathf.Lerp(ancla.y - 1.9f, r.pisoY, e);
                     float lateral = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(uu / 0.35f));
                     var xz = Vector3.Lerp(new Vector3(ancla.x, 0f, ancla.z), new Vector3(r.aterrizaje.x, 0f, r.aterrizaje.z), lateral);
-                    float vaiven = Mathf.Sin(t * 9f + r.s.Id) * 4f * (1f - uu);
+                    float vaiven = Mathf.Sin(t * 3.2f + r.s.Id) * 3f * (1f - uu);
                     if (r.rig != null)
                     {
                         if (!r.rig.activeSelf) r.rig.SetActive(true);
@@ -467,40 +493,49 @@ namespace SP.Operacion
         void PonerCamara(float t)
         {
             if (camara == null) return;
-            Vector3 pos, mira; float roll = 0f, amp = 0.1f, fov = 62f;
+            Vector3 pos, mira; float roll = 0f, fov = 62f;
             var piso = new Vector3(centro.x, centro.y - 0.8f, centro.z);
-            if (t < FinDeToma1)
+            if (t < FinDeToma0)
             {
-                // Toma 1: a ras del piso, al costado de la trayectoria; sigue al helicoptero que entra rugiendo.
+                // Toma 1 (v4): a ras del piso, sobre la linea de vuelo y mirando HACIA el helicoptero, que viene de frente y crece (contrapicado).
+                // Camara quieta (sin temblor): solo la mirada lo sigue; el zoom abre de teleobjetivo (se ve grande desde el primer cuadro) a angular.
                 Toma = 1;
-                pos = piso + derecha * 30f - adelante * 10f + Vector3.up * 1.6f;   // campo abierto al costado (adelante hay un cartel que tapa)
-                mira = heli.position + Vector3.down * 1f;
-                roll = Mathf.Lerp(7f, -4f, t / FinDeToma1); amp = 0.16f; fov = Mathf.Lerp(74f, 58f, Mathf.Clamp01(t / FinDeToma1));
+                float k = Mathf.Clamp01(t / FinDeToma0);
+                pos = piso - adelante * AtrasDeToma1 + derecha * LateralDeToma1; pos.y = piso.y + 1.0f;
+                mira = heli.position;
+                roll = 0f; fov = Mathf.Lerp(28f, 50f, Mathf.SmoothStep(0f, 1f, k));
+            }
+            else if (t < FinDeToma1)
+            {
+                // Toma 2 (v4): lateral, a unos 25-30 m de la linea de vuelo; sigue al helicoptero mientras frena y gira sobre los soldados.
+                Toma = 2;
+                float k = Mathf.Clamp01((t - FinDeToma0) / (FinDeToma1 - FinDeToma0));
+                pos = piso + derecha * 37f - adelante * 41f + Vector3.up * 1.8f;   // al noreste, a ~27 m de la linea de vuelo: la vista al helicoptero no cruza los carteles de la entrada
+                mira = heli.position + Vector3.down * 0.4f;
+                roll = 0f; fov = Mathf.Lerp(44f, 34f, Mathf.SmoothStep(0f, 1f, k));
             }
             else if (t < FinDeToma2)
             {
-                // Toma 2: al costado de la puerta, mirando las cuerdas y a los tres bajando; orbita despacio.
-                Toma = 2;
+                // Toma 3: al costado de la puerta, mirando las cuerdas y a los tres bajando; orbita muy despacio.
+                Toma = 3;
                 float k = (t - FinDeToma1) / (FinDeToma2 - FinDeToma1);
                 float giro = Mathf.Lerp(-12f, 14f, k) * Mathf.Deg2Rad;
                 var lado = derecha * Mathf.Cos(giro) + adelante * Mathf.Sin(giro);
                 pos = piso + lado * 12f + Vector3.up * Mathf.Lerp(3.0f, 3.8f, k);
                 mira = piso + Vector3.up * 5.4f;
-                roll = Mathf.Lerp(-6f, 4f, k); amp = 0.07f; fov = 68f;
+                roll = Mathf.Lerp(-2f, 1.5f, k); fov = 68f;
             }
             else
             {
-                // Toma 3: a ras del piso, mirando hacia arriba: tocan tierra y el helicoptero se va.
-                Toma = 3;
+                // Toma 4: a ras del piso, mirando hacia arriba: tocan tierra y el helicoptero se va.
+                Toma = 4;
                 float k = (t - FinDeToma2) / (Duracion - FinDeToma2);
                 pos = piso - adelante * 5.5f + derecha * (-2.5f + 5f * k) + Vector3.up * 0.8f;
                 mira = Vector3.Lerp(piso + Vector3.up * 1.6f, heli.position, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((k - 0.15f) / 0.85f) * 0.8f));
-                roll = Mathf.Lerp(5f, -3f, k); amp = Mathf.Lerp(0.1f, 0.2f, k); fov = Mathf.Lerp(66f, 76f, k);
+                roll = Mathf.Lerp(1.5f, -1f, k); fov = Mathf.Lerp(66f, 74f, k);
             }
-            float n = t * 17f;
-            var sacudida = new Vector3(Mathf.PerlinNoise(n, 0.3f) - 0.5f, Mathf.PerlinNoise(n, 7.1f) - 0.5f, Mathf.PerlinNoise(n, 13.7f) - 0.5f) * 2f * amp;
-            camara.position = pos + sacudida;
-            camara.rotation = Quaternion.LookRotation((mira - camara.position).normalized, Vector3.up) * Quaternion.Euler(0f, 0f, roll + (Mathf.PerlinNoise(n, 21.3f) - 0.5f) * 5f * (amp / 0.1f));
+            camara.position = pos;
+            camara.rotation = Quaternion.LookRotation((mira - camara.position).normalized, Vector3.up) * Quaternion.Euler(0f, 0f, roll);
             if (cam != null) cam.fieldOfView = fov;
         }
 
@@ -519,8 +554,9 @@ namespace SP.Operacion
             if (heli == null || escuadra.Count == 0) { Terminar(); yield break; }
             // El helicoptero de la Operacion (esta apagado hasta Resistir): se lo enciende para la toma y se lo devuelve a su sitio al terminar.
             heliEstabaActivo = heli.gameObject.activeSelf; heliPosOriginal = heli.position; heliRotOriginal = heli.rotation;
+            if (scriptHeli != null) scriptHeli.VolumenExtra = 0f;   // antes de encenderlo: sin golpe de sonido al activar el helicoptero
             heli.gameObject.SetActive(true); heliPrendido = true;
-            if (scriptHeli != null) { scriptHeli.Volando = true; scriptHeli.RotorAFondo(); scriptHeli.DisparaCobertura = false; }
+            if (scriptHeli != null) { scriptHeli.Volando = true; scriptHeli.RotorAFondo(); scriptHeli.DisparaCobertura = false; scriptHeli.SilenciarYa(); }
             PoseDelHeli(0f, out var p0, out var r0); heli.SetPositionAndRotation(p0, r0);
             Tiempo = 0f; Toma = 1;
             bool cuerdasSonaron = false;
@@ -530,6 +566,7 @@ namespace SP.Operacion
                 Tiempo += dt;
                 PoseDelHeli(Tiempo, out var p, out var r);
                 heli.SetPositionAndRotation(p, r);
+                if (scriptHeli != null) scriptHeli.VolumenExtra = VolumenDelRotorEn(Tiempo);
                 if (!cuerdasSonaron && Tiempo >= InicioDeCuerdas)
                 {
                     cuerdasSonaron = true;
@@ -539,7 +576,7 @@ namespace SP.Operacion
                 PonerCamara(Tiempo);
                 // Negro: entra de negro (0,3 s), un parpadeo en cada corte y sale al final.
                 float a = Mathf.Clamp01(1f - Tiempo / 0.3f);
-                a = Mathf.Max(a, Parpadeo(Tiempo, FinDeToma1), Parpadeo(Tiempo, FinDeToma2));
+                a = Mathf.Max(a, Parpadeo(Tiempo, FinDeToma0), Parpadeo(Tiempo, FinDeToma1), Parpadeo(Tiempo, FinDeToma2));
                 if (negro != null) negro.color = new Color(0f, 0f, 0f, a);
                 if (RevisarSalto()) yield break;
                 yield return null;

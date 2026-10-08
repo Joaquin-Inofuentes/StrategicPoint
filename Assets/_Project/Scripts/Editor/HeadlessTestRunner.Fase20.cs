@@ -197,11 +197,14 @@ namespace SP.EditorTools
                         && kes.Brain.State != SP.Ai.AiState.Follow && doc.Brain.State != SP.Ai.AiState.Follow);
                     Check("Q toque NO abre el radial", !inputDriver.RadialAbierto);
                 }
+                // P12: desde el bug #054 un toque de Q sobre un aliado vivo lo POSEE (no manda a todos a seguir): la expectativa vieja ("doble toque mirando
+                // a un aliado = todos te siguen") era obsoleta y, al poseer a Kes, descolocaba todos los checks de Q siguientes. Se prueba el comportamiento
+                // vigente y se vuelve a Vega, el estado base del resto del bloque.
                 campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.Ally, Soldier = kes, Point = kes.transform.position, HitTransform = kes.transform });
                 kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
-                inputDriver.ResolverGestoDeQ(true, false, false); inputDriver.ResolverGestoDeQ(true, false, false);
-                Check("Q doble toque mirando a un aliado = TODOS te siguen, no solo ese", inputDriver.UltimaAccionRapida == "SEGUIR TODOS"
-                    && kes.Brain.State == SP.Ai.AiState.Follow && doc.Brain.State == SP.Ai.AiState.Follow);
+                inputDriver.ResolverGestoDeQ(true, false, false);
+                Check("Q toque mirando a un aliado vivo = lo POSEE (bug #054)", inputDriver.UltimaAccionRapida == "POSEER" && inputDriver.Brain.Current == kes);
+                inputDriver.Brain.Possess(vega);
                 campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.None });
                 kes.Brain.CancelOrder(); doc.Brain.CancelOrder();
                 inputDriver.ResolverGestoDeQ(true, false, false); inputDriver.ResolverGestoDeQ(true, false, false);

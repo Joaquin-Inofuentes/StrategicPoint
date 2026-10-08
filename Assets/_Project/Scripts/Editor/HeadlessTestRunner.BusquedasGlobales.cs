@@ -102,7 +102,10 @@ namespace SP.EditorTools
         // "crear si no existe" que se guardan en un campo. Ninguna puede correr por frame. Tope = las de hoy: solo baja.
         // Ronda 13: +3 por el ConfirmExitPanel del menu principal (MainMenuController.Awake), mismo patron de
         // arranque que el resto del presupuesto -- no corre por frame.
-        const int PresupuestoFindPorNombre = 118;
+        // P12 (tanda #104-#132): +6 por los Transform.Find de arranque de la tanda (botones GUARDAR/CARGAR de la pausa, derrota y menu --PauseController,
+        // GameOutcomeController, MainMenuController--, el estrado y la luz de silueta de TorreDestruible, la lente de Luminaria y el medico de apoyo del mando).
+        // Ninguno corre por frame (el segundo check de esta pareja lo vigila).
+        const int PresupuestoFindPorNombre = 124;
         static readonly Regex PatronFindPorNombre = new Regex(@"(?<!Shader)(?<!GameObject)(?<!Object)\.Find\(\s*[""\w]");
         static readonly Regex PatronMetodoPorFrame = new Regex(@"\b(void|bool|float|Vector\d)\s+(Update|LateUpdate|FixedUpdate|UpdateFrom|UpdateInVehicle|TickPlayerAim|Tick)\s*\(");
         static readonly Regex PatronCabeceraMetodo = new Regex(@"^\s*(public |private |protected |internal |static |override |virtual )*[\w<>\[\],\.?]+\s+\w+\s*\([^;]*\)\s*$");

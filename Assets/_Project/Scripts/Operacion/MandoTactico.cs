@@ -17,8 +17,8 @@ namespace SP.Operacion
     public static class MandoTactico
     {
         // ---- Constantes de diseno (las del plan) ----
-        public const float SegundosDeAnuncio = 8f;        // la oleada se anuncia 8 s antes de salir
-        public const float SegundosParaCaer = 6f;         // un sector amenazado y vacio cae a los 6 s
+        public const float SegundosDeAnuncio = 12f;       // la oleada se anuncia 12 s antes de salir (antes 8: Resistir era el unico pico duro)
+        public const float SegundosParaCaer = 10f;        // un sector amenazado y vacio cae a los 10 s (antes 6)
         public const float SegundosParaRecuperar = 4f;    // recuperarlo: aliados adentro durante 4 s
         public const int AliadosParaRecuperar = 2;
         // #122: 3 de escuadra + 4 milicianos = 7; menos el operador = 6 = 3 sectores x 2 aliados. (Todos los textos salen de estas constantes.)

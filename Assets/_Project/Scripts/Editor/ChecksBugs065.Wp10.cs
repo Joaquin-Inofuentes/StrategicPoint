@@ -24,7 +24,7 @@ namespace SP.EditorTools
     //         anillo guia marcan el paso 1; el boton del panel suelta la radio y vuelve a FPS con el reloj detenido; se retoma con [E] (sin forzar RTS).
     //   101b  pasos y reloj: 10 s con los pasos sin cumplir y el reloj efectivo no se mueve; las ordenes por API avanzan los pasos del panel y arranca el
     //         reloj; las unidades llegan a sus sectores; flecha de oleada anunciada.
-    //   101c  caida y recuperacion: sector amenazado y vacio cae a los 6 s, el reloj se pausa, 2 aliados 4 s lo recuperan y el reloj sigue.
+    //   101c  caida y recuperacion: sector amenazado y vacio cae a los 10 s (antes 6), el reloj se pausa, 2 aliados 4 s lo recuperan y el reloj sigue.
     //   101d  los aliados que llegan a un sector se cubren solos en <= 6 s (#074).
     //   101e  la cadena entera: 90 s efectivos (5 oleadas, camionetas, orden de ataque a vehiculo) -> Extraer -> Victoria; fps y milicianos que no suben.
     //   101f  reglas puras de MandoTactico (sin escena).
@@ -282,9 +282,9 @@ namespace SP.EditorTools
             float tRetiro = Time.realtimeSinceStartup;
             foreach (var x in W9bHasta(() => A.AliadosDentro == 0, 6f)) yield return x;
             float tVacio = Time.realtimeSinceStartup;
-            foreach (var x in W9bHasta(() => A.Caido, 15f)) yield return x;
+            foreach (var x in W9bHasta(() => A.Caido, 20f)) yield return x;
             float segVacio = Time.realtimeSinceStartup - tVacio;
-            W8Ok(ref ok, A.Caido && segVacio >= 5.0f && segVacio <= 7.5f, sb, $"A cae {segVacio:0.0} s despues de quedar vacio (6 +- 1,5)");
+            W8Ok(ref ok, A.Caido && segVacio >= 9.0f && segVacio <= 11.5f, sb, $"A cae {segVacio:0.0} s despues de quedar vacio (10 +- 1,5; ajuste de equilibrio, antes 6)");
             float r1 = d.RelojEfectivo;
             foreach (var x in Esperar(3.0f)) yield return x;
             W8Ok(ref ok, Mathf.Abs(d.RelojEfectivo - r1) < 0.06f && !d.RelojDelMandoCorre && d.MotivoDeLaPausa.Contains("SECTOR CAIDO"), sb, $"con A caido el reloj se pausa ({r1:0.00} -> {d.RelojEfectivo:0.00}), motivo='{d.MotivoDeLaPausa}'");
@@ -505,10 +505,10 @@ namespace SP.EditorTools
         static string Bug101f()
         {
             var sb = new StringBuilder(); bool ok = true;
-            W8Ok(ref ok, MandoTactico.SegundosDeAnuncio == 8f && MandoTactico.SegundosParaCaer == 6f && MandoTactico.SegundosParaRecuperar == 4f && MandoTactico.AliadosParaRecuperar == 2 && MandoTactico.FactorDeDanoDelOperador == 0.5f, sb, "constantes: 8 s de aviso, 6 s para caer, 4 s y 2 aliados para recuperar, dano x0,5");
+            W8Ok(ref ok, MandoTactico.SegundosDeAnuncio == 12f && MandoTactico.SegundosParaCaer == 10f && MandoTactico.SegundosParaRecuperar == 4f && MandoTactico.AliadosParaRecuperar == 2 && MandoTactico.FactorDeDanoDelOperador == 0.5f, sb, "constantes (ajuste de equilibrio 12 s / 10 s): 12 s de aviso, 10 s para caer, 4 s y 2 aliados para recuperar, dano x0,5");
             W8Ok(ref ok, MandoTactico.RelojCorre(4, true, false, 0) && !MandoTactico.RelojCorre(3, true, false, 0) && !MandoTactico.RelojCorre(4, false, false, 0) && !MandoTactico.RelojCorre(4, true, true, 0) && !MandoTactico.RelojCorre(4, true, false, 1), sb, "reloj: solo con pasos 1-4, radio, ningun sector caido y ningun amenazado vacio");
             W8Ok(ref ok, MandoTactico.MotivoDePausa(4, true, false, 0) == "" && MandoTactico.MotivoDePausa(2, true, false, 0).StartsWith("UBICA") && MandoTactico.MotivoDePausa(4, false, false, 0).StartsWith("RADIO") && MandoTactico.MotivoDePausa(4, true, true, 0).StartsWith("SECTOR CAIDO") && MandoTactico.MotivoDePausa(4, true, false, 2).StartsWith("SECTOR AMENAZADO"), sb, "motivos de pausa");
-            W8Ok(ref ok, !MandoTactico.DebeCaer(5.9f) && MandoTactico.DebeCaer(6f), sb, "cae a los 6 s");
+            W8Ok(ref ok, !MandoTactico.DebeCaer(9.9f) && MandoTactico.DebeCaer(10f), sb, "cae a los 10 s (ajuste de equilibrio, antes 6)");
             W8Ok(ref ok, MandoTactico.AliadosNecesarios(5) == 2 && MandoTactico.AliadosNecesarios(1) == 1 && MandoTactico.AliadosNecesarios(0) == 1, sb, "aliados necesarios: 2 (o los que queden)");
             W8Ok(ref ok, MandoTactico.SeRecupera(2, 4, 4f) && !MandoTactico.SeRecupera(1, 4, 9f) && !MandoTactico.SeRecupera(2, 4, 3.9f) && MandoTactico.SeRecupera(1, 1, 4f), sb, "se recupera con 2 aliados 4 s (con 1 vivo, basta 1)");
             W8Ok(ref ok, MandoTactico.TextoDeRecuperar().Contains(MandoTactico.AliadosParaRecuperar.ToString()) && MandoTactico.MotivoDePausa(4, true, true, 0).Contains(MandoTactico.AliadosParaRecuperar.ToString()), sb, "P7/#122: los textos de recuperar salen de la constante");

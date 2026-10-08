@@ -344,10 +344,12 @@ namespace SP.EditorTools
             ConfigurarCamaras();
             LevelBlockoutBuilder.AjustarAlcancesDeCombate();
             PostprocesoNocturno();
+            CiudadDeCubos(raiz);     // decorado del resto del mapa (antes de hornear: sus edificios llevan el volumen no caminable)
             LevelBlockoutBuilder.BakeNavMesh();
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
+            Debug.Log(ResumenCiudadDeCubos);
             Debug.Log($"[Operacion] Nivel listo: {contadorEnemigos} soldados enemigos, {raiz.GetComponentsInChildren<Transform>().Length} objetos de blockout, NavMesh horneado y escena guardada ({EscenaDestino}).");
         }
 

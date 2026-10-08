@@ -421,7 +421,10 @@ namespace SP.EditorTools
                 float d = W4DistMasCercano(s, TeamId.Player); if (d < distMinEscuadra) distMinEscuadra = d;
             }
             // Si algun guardia ya esta peleando (vio a alguien) CazaDeEnemigos avisa a su grupo a 16 m (diseno de #17/#20/#21): ahi si hay cazadores.
-            bool pasa = guardias >= 2 && enCob == guardias && puntoValido == guardias && (cazadores == 0 || distMinEscuadra <= 15f || peleando > 0);
+            // P12: con la escuadra cerca desde el inicio (los aliados te siguen solos, #105) algun guardia herido cambia de cobertura justo en el cuadro de la
+            // medicion: su punto queda a > 3 m un instante. Se tolera UN guardia en transito (maximo) solo si ya hay combate; en cobertura deben estar todos.
+            int tolerados = peleando > 0 ? 1 : 0;
+            bool pasa = guardias >= 2 && enCob == guardias && puntoValido >= guardias - tolerados && (cazadores == 0 || distMinEscuadra <= 15f || peleando > 0);
             if (!pasa) ok = false;
             sb.Append($"guardias atrincherados={guardias} enCobertura={enCob} (pide todos) coberturaPunto valido={puntoValido} agachados={agachados} cazadores={cazadores} peleando={peleando} escuadra mas cercana={distMinEscuadra:0.0}m sin cobertura: [{sinCob}]");
             OperacionPrueba.Arrancar(1);

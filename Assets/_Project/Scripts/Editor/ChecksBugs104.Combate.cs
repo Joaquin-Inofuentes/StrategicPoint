@@ -219,8 +219,8 @@ namespace SP.EditorTools
                 if (!esKes || !continuo) ok = false;
                 sb.Append($"poseido={yo.name} rol={yo.Role} arma={w.CurrentWeaponKind} (cadencia {espec.Cooldown:0.00} s){(esKes && continuo ? "" : " (MAL: se pide Kes con metralleta continua)")}; ");
 
-                // Reservas por dificultad: FACIL 8, MEDIO 6, DIFICIL 4 cargadores (ademas del cargador puesto), para el que manejas.
-                var esperado = new Dictionary<NivelDificultad, int> { { NivelDificultad.Facil, 8 }, { NivelDificultad.Medio, 6 }, { NivelDificultad.Dificil, 4 } };
+                // Reservas por dificultad (ajuste de equilibrio: CargadoresIniciales 4->6): FACIL 12, MEDIO 8, DIFICIL 6 cargadores (ademas del cargador puesto), para el que manejas.
+                var esperado = new Dictionary<NivelDificultad, int> { { NivelDificultad.Facil, 12 }, { NivelDificultad.Medio, 8 }, { NivelDificultad.Dificil, 6 } };
                 foreach (var kv in esperado)
                 {
                     Dificultad.Actual = kv.Key;

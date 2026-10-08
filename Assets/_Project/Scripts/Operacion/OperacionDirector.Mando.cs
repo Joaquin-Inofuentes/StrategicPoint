@@ -254,7 +254,7 @@ namespace SP.Operacion
                 go.SetActive(true);
                 var s = go.GetComponent<Soldier>();
                 if (s == null) { Destroy(go); continue; }
-                s.Configure(nombres[i], TeamId.Player, roles[i], 100);
+                s.Configure(nombres[i], TeamId.Player, roles[i], 160);   // ajuste de equilibrio: antes 100
                 if (s.Brain != null) { s.Brain.IsPossessedByPlayer = false; s.Brain.Atrincherado = false; s.Brain.Quieto = false; s.Brain.Pasivo = false; s.Brain.ReactivarNavegacion(); s.Brain.CancelOrder(); }
                 ApoyoEnElPiso.Apoyar(s.transform);
                 // Armas livianas: subfusil en la ranura principal (el medico lleva ademas su botiquin).
@@ -639,7 +639,11 @@ namespace SP.Operacion
             foreach (var o in oleadasMando)
             {
                 float t = o.TiempoDeLanzamiento(segundosDeResistencia);
-                if (!o.anunciada && RelojEfectivo >= t - MandoTactico.SegundosDeAnuncio) AnunciarOleada(o);
+                // Ajuste de equilibrio (aviso 8 -> 12 s): la oleada 1 sale a los ~11,7 s del reloj y su aviso caia en t < 0, o sea ANTES de que el reloj arranque
+                // (el reloj espera a que el jugador ubique a su equipo): el sector A quedaba amenazado y vacio desde el primer cuadro y caia a los 10 s. El aviso
+                // nunca sale antes de 0,5 s de reloj efectivo, como cuando eran 8 s (ahi caia en 3,7 s).
+                float tAviso = Mathf.Max(0.5f, t - MandoTactico.SegundosDeAnuncio);
+                if (!o.anunciada && RelojEfectivo >= tAviso) AnunciarOleada(o);
                 if (o.anunciada && !o.lanzada && RelojEfectivo >= t) LanzarOleada(o);
             }
         }

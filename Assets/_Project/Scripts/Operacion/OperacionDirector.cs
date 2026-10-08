@@ -158,14 +158,14 @@ namespace SP.Operacion
             Instancia = this;
             ResistirSinMando = false;
             AnuncioDeZonas.Desactivado = true;
-            // Bug #095: el HUD tiene que decir la municion total REAL, no "infinita": la Operacion usa reservas (4 cargadores por arma).
+            // Bug #095: el HUD tiene que decir la municion total REAL, no "infinita": la Operacion usa reservas (6 cargadores por arma en DIFICIL).
             WeaponHolder.CargadoresDeReserva = CargadoresPorDificultad();
             WeaponHolder.ReservasActivas = true;
         }
 
         // #110: reservas de municion por dificultad (el doble en FACIL, proporcional en MEDIO y DIFICIL). Aplica al soldado que manejas
         // (los aliados de la IA siguen sin limite hasta que los poseas: ahi heredan la reserva).
-        public const int CargadoresIniciales = 4;   // el valor de DIFICIL (base)
+        public const int CargadoresIniciales = 6;   // el valor de DIFICIL (base; antes 4: ajuste de equilibrio, Resistir era el unico pico duro)
         public static int CargadoresPorDificultad(NivelDificultad n)
         {
             switch (n)

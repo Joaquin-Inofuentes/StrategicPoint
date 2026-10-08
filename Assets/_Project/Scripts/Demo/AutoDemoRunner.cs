@@ -109,7 +109,9 @@ namespace SP.Presentation
 
             string fileName = $"step{stepCounter:00}_{stepName}.png";
             string dir = Path.Combine(Application.dataPath, "../DemoCaptures");
-            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            // P12: en un player la carpeta de instalacion puede ser de solo lectura: se cae a la carpeta de datos del usuario en vez de lanzar.
+            try { if (!Directory.Exists(dir)) Directory.CreateDirectory(dir); }
+            catch (System.Exception) { dir = Application.persistentDataPath; }
             string path = Path.Combine(dir, fileName);
 
             Texture2D shot = null;

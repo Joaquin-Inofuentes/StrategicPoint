@@ -104,6 +104,9 @@ namespace SP.Mision
         // La cinematica de salida lo baja con VolumenExtra mientras se aleja y al final lo apaga del todo.
         public float VolumenExtra { get; set; } = 1f;
         bool sonidoApagado;
+        public float VolumenDelRotor => sonido != null ? sonido.volume : 0f;   // volumen real del AudioSource (para las pruebas)
+        // Silencio inmediato: VolumenExtra = 0 y el AudioSource a 0 ya mismo (si el helicoptero ya existia, su AudioSource conserva el ultimo volumen hasta el proximo Update).
+        public void SilenciarYa() { VolumenExtra = 0f; if (sonido != null) sonido.volume = 0f; }
         public bool SonidoApagado => sonidoApagado || sonido == null || !sonido.isPlaying;
         public void ApagarSonido()
         {
@@ -147,7 +150,7 @@ namespace SP.Mision
             sonido.minDistance = 12f;
             sonido.maxDistance = 220f;
             sonido.rolloffMode = AudioRolloffMode.Linear;
-            sonido.volume = 0.35f;
+            sonido.volume = Mathf.Clamp01(VolumenExtra) <= 0f ? 0f : 0.35f;   // la cinematica de rapel lo enciende con VolumenExtra = 0: sin golpe de sonido al activarlo
             sonido.Play();
         }
 
@@ -562,6 +565,22 @@ namespace SP.Mision
             AlDisparar?.Invoke(this, p, boca, dir);
         }
 
+        // true si entre la boca del canon y el pecho del enemigo no hay nada solido (se ignoran los soldados y el propio helicoptero).
+        bool LineaDeTiroLibre(PivoteMetralleta p, Soldier s)
+        {
+            var origen = p.Boca.position; var destino = s.transform.position + Vector3.up * 0.9f;
+            var v = destino - origen; float dist = v.magnitude;
+            if (dist < 0.5f) return true;
+            int n = Physics.RaycastNonAlloc(origen, v / dist, bufferRayo, dist - 0.3f, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = bufferRayo[i].collider;
+                if (c == null || c.transform.IsChildOf(transform) || c.GetComponentInParent<Soldier>() != null) continue;
+                return false;
+            }
+            return true;
+        }
+
         Soldier BuscarObjetivo(PivoteMetralleta p)
         {
             Soldier mejor = null; float mejorD = RadioDeBlancoActual * RadioDeBlancoActual;
@@ -575,6 +594,7 @@ namespace SP.Mision
                 // Tiene que caer dentro del arco de este pivote (con margen de 8 grados).
                 float rumbo = p.RumboHacia(s.transform.position + Vector3.up * 0.9f, out _);
                 if (!p.EnArco(rumbo, 8f)) continue;
+                if (!LineaDeTiroLibre(p, s)) continue;   // las balas son reales: un edificio en el medio se las come (ciudad de cubos)
                 mejorD = d; mejor = s;
             }
             return mejor;
