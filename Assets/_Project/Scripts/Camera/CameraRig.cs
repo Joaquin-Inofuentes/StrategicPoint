@@ -925,8 +925,11 @@ namespace SP.CameraSystem
             }
             if (SP.Core.NavService.TryArea(out var limites))
             {
-                punto.x = Mathf.Clamp(punto.x, limites.min.x, limites.max.x);
-                punto.z = Mathf.Clamp(punto.z, limites.min.z, limites.max.z);
+                // Bug #203 ("hay un bloqueo de movimiento de camara molesto que me limita, quitalo"): el paneo ya no se frena en el borde del
+                // terreno; queda un margen de 400 m solo para no perderse en el infinito.
+                const float MargenLibre = 400f;
+                punto.x = Mathf.Clamp(punto.x, limites.min.x - MargenLibre, limites.max.x + MargenLibre);
+                punto.z = Mathf.Clamp(punto.z, limites.min.z - MargenLibre, limites.max.z + MargenLibre);
                 return;
             }
             punto.x = Mathf.Clamp(punto.x, -mapHalfExtent, mapHalfExtent);

@@ -86,6 +86,7 @@ namespace SP.Operacion
     // un cohete lento con aviso en el piso, adelantado al punto donde va a estar el tanque (1,3 s). Se los puede matar con el canon o la metralleta.
     public class EmboscadaDeCohetes : MonoBehaviour
     {
+        public const bool CohetesActivos = false;   // bug #202
         public Soldier[] tiradores;
         public const float DistanciaDeActivacion = 75f, SegundosDeAviso = 1.3f, SegundosEntreSalvas = 7f, SegundosEntreTiradores = 0.45f;
         public const int DanoDelCohete = 60;
@@ -138,6 +139,8 @@ namespace SP.Operacion
 
         void Update()
         {
+            // Bug #202 ("veo cohetes enemigos que no deberian estar, solo las metralletas"): las emboscadas del canadon ya no lanzan cohetes.
+            if (!CohetesActivos) return;
             if (!Armada || objetivo == null || objetivo.IsDestroyed || tiradores == null) return;
             if (CinematicaDeOperacion.IntroActiva || CineDeHuida.Activa) return;
             var tp = objetivo.transform.position;

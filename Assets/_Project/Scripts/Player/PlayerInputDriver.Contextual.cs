@@ -73,6 +73,20 @@ namespace SP.Player
             return true;
         }
 
+        // Bugs #197/#198: aliado (no el que manejas) herido o caido al que un medico puede atender desde la vista tactica.
+        public bool NecesitaCuracion(Soldier s) =>
+            s != null && s.Team == TeamId.Player && s.Health != null && s != (Brain != null ? Brain.Current : null) && (!s.Health.IsAlive || s.Health.Current < s.Health.MaxHealth);
+
+        public bool EnviarACurarDesdeRts(Soldier herido)
+        {
+            bool vivo = herido.Health.IsAlive;
+            bool ok = vivo ? PedidoDeCuracion.Solicitar(herido) : PedidoDeCuracion.SolicitarReanimar(herido);
+            if (!ok) { RejectOrder(vivo ? "NO HAY MEDICO PARA CURARLO" : "NADIE PUEDE REANIMARLO"); return false; }
+            Avisar((vivo ? "A CURAR A " : "A REANIMAR A ") + herido.DisplayName.ToUpperInvariant());
+            Feedback_OrdenConfirmada(herido.transform.position);
+            return true;
+        }
+
         void Feedback_OrdenConfirmada(Vector3 donde)
         {
             SP.Presentation.Feedback.Accion(SP.Presentation.SfxKind.RadialConfirm, null, donde, ColorDeCategoria[MenuDeOrdenes.Interactuar],

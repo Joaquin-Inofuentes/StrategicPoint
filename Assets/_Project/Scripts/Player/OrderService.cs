@@ -354,6 +354,25 @@ namespace SP.Player
         const float MediaAlturaDeSondeo = 0.5f;
         static readonly Collider[] BufferDestino = new Collider[16];
 
+        // Bug #196 ("quiero que no pase eso de destino bloqueado, que vayan a los alrededores"): si el punto cae sobre un solido, se busca el
+        // lugar libre MAS CERCANO (anillos de 1,5 a 12 m, 16 direcciones, sobre la malla de navegacion) y la orden va ahi.
+        public static bool TryResolveDestination(Vector3 point, out Vector3 resuelto)
+        {
+            resuelto = point;
+            if (IsValidDestination(point)) return true;
+            for (float r = 1.5f; r <= 12f; r += 1.5f)
+            {
+                for (int k = 0; k < 16; k++)
+                {
+                    float a = k * Mathf.PI * 2f / 16f;
+                    var c = point + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                    if (UnityEngine.AI.NavMesh.SamplePosition(c, out var h, 1.2f, UnityEngine.AI.NavMesh.AllAreas) && IsValidDestination(h.position))
+                    { resuelto = h.position; return true; }
+                }
+            }
+            return false;
+        }
+
         public static bool IsValidDestination(Vector3 point)
         {
             // ANTES SOLO MIRABA LOS ObstacleMarker, o sea los cuatro cubos

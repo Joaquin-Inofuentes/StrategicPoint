@@ -62,7 +62,12 @@ namespace SP.Actors
             if (matEnemigoVisible.HasProperty("_EmissionColor"))
             {
                 matEnemigoVisible.EnableKeyword("_EMISSION");
-                matEnemigoVisible.SetColor("_EmissionColor", new Color(0.30f, 0.07f, 0.05f));
+                // Bug #194 ("se rompieron las esteticas de los enemigos"): un brillo plano los dejaba como una silueta lisa. La emision usa la
+                // MISMA textura del trimsheet (aclara el dibujo sin borrarlo) y un color tenue.
+                if (matEnemigoVisible.HasProperty("_BaseMap") && matEnemigoVisible.GetTexture("_BaseMap") != null && matEnemigoVisible.HasProperty("_EmissionMap"))
+                    matEnemigoVisible.SetTexture("_EmissionMap", matEnemigoVisible.GetTexture("_BaseMap"));
+                matEnemigoVisible.SetColor("_EmissionColor", new Color(0.2f, 0.2f, 0.2f));
+                matEnemigoVisible.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
             }
             return matEnemigoVisible;
         }

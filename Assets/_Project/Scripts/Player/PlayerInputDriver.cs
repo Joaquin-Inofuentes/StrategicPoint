@@ -1350,6 +1350,7 @@ namespace SP.Player
             UpdateAimHighlight(result);
             UpdateAimRing(result);
             UpdateCoverPreview(kb, result);
+            TickGestoMoverAliado(kb, result, ray);   // bug #205
             UpdateVehicleMountIndicator(result);
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
             ultimoResultadoDeMira = result;
@@ -2429,6 +2430,8 @@ namespace SP.Player
                 var elegido = SoldadoElegidoParaTab();
                 if (elegido != null && elegido != Brain.Current) TryPossess(elegido);
             }
+            // Bug #206 ("me quedaron seleccionados en FPS"): la seleccion es del modo tactico; al pasar a FPS se limpia (anillos incluidos).
+            if (Rig.Mode == ControlMode.Fps && Selection != null) Selection.Clear();
 
             // BUG REAL ("se maneja solo"): en RTS una orden a la escuadra
             // incluye al soldado que venias manejando, y OrderService apaga su
@@ -3304,6 +3307,7 @@ namespace SP.Player
             if (OrdenesMenu != null && OrdenesMenu.Abierto) OrdenesMenu.MoverSeleccion(mouse.delta.ReadValue());
             else ultimoResultadoDeMira = resultRts;
             UpdateAimRing(resultRts);
+            TickGestoMoverAliado(kb, resultRts, screenRay);   // bug #205
             // Bug #189: con soldados seleccionados y el cursor sobre una cobertura se iluminan los puntos que tomarian.
             if (Selection.SelectedVehicle == null && Selection.Selected.Count > 0 && (resultRts.Type == AimTargetType.Obstacle || resultRts.Type == AimTargetType.Ground || resultRts.Type == AimTargetType.Cubrirse))
                 PrevisualizacionDeCoberturas.Mostrar(Selection.Selected, resultRts.Point, resultRts.Type == AimTargetType.Ground ? null : resultRts.HitTransform,
@@ -3369,6 +3373,9 @@ namespace SP.Player
                 // Bug #180: sobre un interactuable ordenable (computadora, panel, carga) la orden es operarlo.
                 var ordenableRts = Selection.SelectedVehicle == null ? OrdenableBajoRayoRts(screenRay) : null;
 
+                // Bug #197: clic derecho sobre un aliado herido o caido = el medico va a curarlo / reanimarlo (antes el clic caia en "mover").
+                var aliadoACurar = Selection.SelectedVehicle == null && (result.Type == AimTargetType.Ally || result.Type == AimTargetType.Caido) && NecesitaCuracion(result.Soldier) ? result.Soldier : null;
+
                 // Sobre una COBERTURA (el obstaculo o su disco celeste): la
                 // seleccion va a cubrirse, un punto para cada uno.
                 bool esCobertura = Selection.SelectedVehicle == null && Selection.Selected.Count > 0
@@ -3391,6 +3398,10 @@ namespace SP.Player
                 if (ordenableRts != null)
                 {
                     EnviarAInteractuarDesdeRts(ordenableRts);
+                }
+                else if (aliadoACurar != null)
+                {
+                    EnviarACurarDesdeRts(aliadoACurar);
                 }
                 else if (esCobertura)
                 {
@@ -3445,8 +3456,9 @@ namespace SP.Player
                         // Ordenar sobre un obstaculo no hacia nada y no
                         // avisaba: el soldado se trababa contra el borde y
                         // el jugador creia que la orden se habia dado.
-                        if (!OrderService.IsValidDestination(result.Point)) RejectOrder("DESTINO BLOQUEADO");
-                        else OrderService.IssueFormationOrderForSelection(Selection.Selected, result.Point, Vector3.forward, currentFormation, queued);
+                        // Bug #196: sobre un solido van al lugar libre mas cercano; solo se rechaza si no hay ninguno en 12 m.
+                        if (!OrderService.TryResolveDestination(result.Point, out var destinoLibre)) RejectOrder("DESTINO BLOQUEADO");
+                        else OrderService.IssueFormationOrderForSelection(Selection.Selected, destinoLibre, Vector3.forward, currentFormation, queued);
                     }
                 }
                 // IssueAttackOrder existia y funcionaba pero no estaba

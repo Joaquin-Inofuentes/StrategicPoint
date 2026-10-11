@@ -130,7 +130,12 @@ namespace SP.Combat
         public float FactorApuntandoDelArma => CurrentWeaponKind == WeaponKind.Smg ? FactorApuntandoSmg : FactorApuntando;
         float MultiplicadorApuntando => Mathf.Lerp(1f, FactorApuntandoDelArma, Apuntado01);
 
-        public float SpreadDegEfectivo => spreadDeg * MultiplicadorPostura * MultiplicadorRol * MultiplicadorEnfoque * MultiplicadorTorretaFija * MultiplicadorApuntando;
+        // Bug #195 ("al disparar no tiene nada de precision, deberia ser sobre donde apunto"): el soldado que MANEJA el jugador dispara a la cadera
+        // con solo el 35 % del cono (la rafaga sigue ensanchandose, pero poco): la bala cae donde marca la mira. Aliados y enemigos no cambian.
+        public const float FactorJugadorALaCadera = 0.35f;
+        float MultiplicadorJugador { get { var d = SP.Player.PlayerInputDriver.Activo; return d != null && d.Brain != null && owner != null && d.Brain.Current == owner ? FactorJugadorALaCadera : 1f; } }
+
+        public float SpreadDegEfectivo => spreadDeg * MultiplicadorJugador * MultiplicadorPostura * MultiplicadorRol * MultiplicadorEnfoque * MultiplicadorTorretaFija * MultiplicadorApuntando;
         public float SpreadFraction01 => Mathf.Clamp01(SpreadDegEfectivo / MaxSpreadDeg);
 
         public float CooldownRemaining => Mathf.Max(0f, cooldownTimer);

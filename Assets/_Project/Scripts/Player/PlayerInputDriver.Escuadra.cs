@@ -63,6 +63,8 @@ namespace SP.Player
                 if (r.Type == AimTargetType.Enemy) tipo = CursorTipo.Atacar;
                 // Bug #071: un vehiculo ENEMIGO (camioneta) se ataca; solo los propios o las torretas se "interactuan".
                 else if (r.Type == AimTargetType.Vehicle && r.Vehicle != null && r.Vehicle.Hostil(TeamId.Player)) tipo = CursorTipo.Atacar;
+                // Bug #198: el cursor cambia al apuntar a un aliado herido o caido (se lo puede curar).
+                else if ((r.Type == AimTargetType.Ally || r.Type == AimTargetType.Caido) && NecesitaCuracion(r.Soldier)) tipo = CursorTipo.Interactuar;
                 else if (r.Type == AimTargetType.Vehicle || r.Type == AimTargetType.Torreta || r.Type == AimTargetType.Caido || r.Type == AimTargetType.Radio) tipo = CursorTipo.Interactuar;
             }
             CursorContextual.Aplicar(tipo);

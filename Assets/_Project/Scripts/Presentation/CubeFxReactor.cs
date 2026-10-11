@@ -130,10 +130,14 @@ namespace SP.Presentation
             // crecer/achicar, solo que bien chico y bien rapido.
             var muzzle = soldier != null && soldier.Weapon != null ? soldier.Weapon.Muzzle : null;
             var flashPos = muzzle != null ? muzzle.position : transform.position;
-            ImpactFx.Spawn(flashPos, MuzzleFlashColor, 0.22f, 0.08f);
+            // Bug #204 ("cuando haga zoom desactiva los efectos de disparos del arma"): el fogonazo y el humo de la boca del arma que manejas
+            // tapaban la mira al apuntar; con zoom no se dibujan (el sonido y la bala siguen igual).
+            var yo = SP.Player.PlayerInputDriver.Activo;
+            bool propioConZoom = yo != null && yo.Brain != null && yo.Brain.Current == soldier && yo.Rig != null && yo.Rig.EstaConZoom;
+            if (!propioConZoom) ImpactFx.Spawn(flashPos, MuzzleFlashColor, 0.22f, 0.08f);
             // Bug #162: las metralletas del enemigo (artilleros de torre, soldados con subfusil) no mostraban particulas.
             bool automatica = kind == SP.Combat.WeaponKind.Smg || kind == SP.Combat.WeaponKind.Heavy;
-            if (automatica || soldier.Team == TeamId.Enemy)
+            if (!propioConZoom && (automatica || soldier.Team == TeamId.Enemy))
                 ImpactFx.SpawnMuzzleBlastLite(flashPos, muzzle != null ? muzzle.forward : transform.forward, kind == SP.Combat.WeaponKind.Heavy ? 0.8f : (automatica ? 0.55f : 0.4f),
                     soldier.Team == TeamId.Enemy ? new Color(1f, 0.5f, 0.25f, 1f) : (Color?)null);
 

@@ -163,8 +163,12 @@ namespace SP.Operacion
         }
 
         // Tres circulos en fila sobre la ruta por delante del tanque, donde va a estar cuando lleguen los cohetes.
+        // Bug #202 ("hay cohetes enemigos que no deberian estar, solo deberian estar las metralletas"): el helicoptero enemigo ya no suelta cohetes
+        // (ni sus circulos de aviso); sigue con las rafagas de metralleta.
+        public const bool CohetesActivos = false;
         void LanzarCohetes()
         {
+            if (!CohetesActivos) return;
             float v = motorTanque != null ? Mathf.Max(3f, motorTanque.CurrentSpeed) : 8f;
             var fwd = tanque.transform.forward; fwd.y = 0f; fwd.Normalize();
             var baseP = tanque.transform.position + fwd * (v * (SegundosDeAvisoDePasada + 0.15f));

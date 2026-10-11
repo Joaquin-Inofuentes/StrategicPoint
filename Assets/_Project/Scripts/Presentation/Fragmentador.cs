@@ -289,13 +289,18 @@ namespace SP.Presentation
                 bc.enabled = true; f.Asentado = false;
                 var rb = f.Cuerpo;
                 rb.isKinematic = false;
-                rb.mass = Mathf.Clamp(tamPieza.x * tamPieza.y * tamPieza.z * 400f, 2f, 900f);
+                rb.mass = Mathf.Clamp(tamPieza.x * tamPieza.y * tamPieza.z * 250f, 2f, 400f);
                 rb.linearDamping = 0.05f; rb.angularDamping = 0.25f;
                 f.gameObject.SetActive(true);
                 var dir = pos - origen; float dist = dir.magnitude;
                 dir = dist > 0.01f ? dir / dist : Random.onUnitSphere;
-                dir = (dir + Vector3.up * 0.55f + Random.insideUnitSphere * 0.25f).normalized;
-                float v = fuerza * 1.25f * Random.Range(0.55f, 1.2f) / (1f + dist * 0.12f);
+                // Bug #201 ("deberian saltar los pedazos para adelante y para atras"): la mitad de los trozos sale hacia el lado del golpe y la otra
+                // mitad hacia el lado opuesto del muro (eje fino), en vez de que todos se vayan para el mismo lado y queden apilados.
+                var lateral = rot * (c.normalized);
+                var normalMuro = rot * (tam.x <= tam.y && tam.x <= tam.z ? Vector3.right : (tam.y <= tam.z ? Vector3.up : Vector3.forward));
+                if (Random.value < 0.5f) normalMuro = -normalMuro;
+                dir = (normalMuro * 0.85f + lateral * 0.35f + dir * 0.25f + Vector3.up * 0.6f + Random.insideUnitSphere * 0.25f).normalized;
+                float v = fuerza * 1.6f * Random.Range(0.65f, 1.3f) / (1f + dist * 0.08f);
                 rb.linearVelocity = dir * v;
                 rb.angularVelocity = Random.insideUnitSphere * (v * 1.6f);
                 n++;

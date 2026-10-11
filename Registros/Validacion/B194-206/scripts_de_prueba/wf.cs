@@ -1,0 +1,9 @@
+var go = new UnityEngine.GameObject("ZzCam"); var c = go.AddComponent<UnityEngine.Camera>();
+c.fieldOfView = 40f; c.nearClipPlane = 0.1f; c.farClipPlane = 300f;
+c.clearFlags = UnityEngine.CameraClearFlags.SolidColor; c.backgroundColor = new UnityEngine.Color(0.05f,0.06f,0.1f);
+var rot = UnityEngine.Quaternion.Euler(__P__f, __W__f, 0f); go.transform.rotation = rot;
+go.transform.position = new UnityEngine.Vector3(__X__f, __Y__f, __Z__f) - rot * UnityEngine.Vector3.forward * __D__f;
+var rt = new UnityEngine.RenderTexture(1600,900,24); c.targetTexture = rt; c.Render(); UnityEngine.RenderTexture.active = rt;
+var t = new UnityEngine.Texture2D(1600,900,UnityEngine.TextureFormat.RGB24,false); t.ReadPixels(new UnityEngine.Rect(0,0,1600,900),0,0); t.Apply(); UnityEngine.RenderTexture.active = null;
+System.IO.File.WriteAllBytes("C:/_Proyectos privados/DV_C6_StrategicPoint/Registros/Validacion/B194-206/__N__.png", t.EncodeToPNG());
+UnityEngine.Object.Destroy(go); UnityEngine.Object.Destroy(rt); return "foto";
