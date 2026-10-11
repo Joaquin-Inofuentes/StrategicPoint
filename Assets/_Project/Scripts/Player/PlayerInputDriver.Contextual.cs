@@ -55,6 +55,36 @@ namespace SP.Player
             return hit.collider.GetComponentInParent<IOrdenableAAliados>();
         }
 
+        // Bug #215: clic derecho sobre un vehiculo propio = los seleccionados suben. Devuelve a cuantos mando.
+        public int MontarDesdeRts(AimResult result)
+        {
+            if (result.Vehicle == null || Selection == null) return 0;
+            if (!result.Vehicle.HasAnyRoom) { RejectOrder("VEHICULO LLENO"); return 0; }
+            var aSubir = new List<Soldier>();
+            foreach (var s in Selection.Selected)
+                if (s != null && s.Health.IsAlive && s.gameObject.activeInHierarchy && result.Vehicle.RoleOf(s) == null) aSubir.Add(s);
+            if (aSubir.Count == 0) { RejectOrder("NO HAY MAS ALIADOS PARA SUBIR"); return 0; }
+            OrderService.IssueMountOrderForSelection(aSubir, result.Vehicle);
+            return aSubir.Count;
+        }
+
+        // Bug #213: demoler desde RTS. Devuelve true si el clic era sobre un obstaculo demolible (se ordeno o se aviso por que no).
+        public bool DemolerDesdeRts(AimResult r)
+        {
+            if (Selection == null || Selection.SelectedVehicle != null || Selection.Selected.Count == 0) return false;
+            if (r.Type != AimTargetType.Obstacle) return false;
+            var marcador = Demolicion.MarcadorApuntado(r.HitTransform, r.Point);
+            if (marcador == null || !Demolicion.EsDemolible(marcador, out string motivo)) return false;
+            Soldier asalto = null;
+            foreach (var s in Selection.Selected)
+                if (s != null && s.Role == RoleType.Assault && s.Health != null && s.Health.IsAlive && s.gameObject.activeInHierarchy) { asalto = s; break; }
+            if (asalto == null) return false;   // sin asalto seleccionado: sigue el comportamiento de siempre (cubrirse)
+            var dem = asalto.GetComponent<DemoledorAsalto>() ?? asalto.gameObject.AddComponent<DemoledorAsalto>();
+            if (!dem.IniciarComoAliado(marcador, out motivo)) { RejectOrder(motivo); return true; }
+            Avisar(asalto.DisplayName.ToUpperInvariant() + " VA A DEMOLER");
+            return true;
+        }
+
         public bool EnviarAInteractuarDesdeRts(IOrdenableAAliados o)
         {
             if (o == null) return false;

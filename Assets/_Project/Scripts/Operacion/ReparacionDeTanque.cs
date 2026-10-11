@@ -103,7 +103,7 @@ namespace SP.Operacion
             float dt = Time.deltaTime;
             var kes = BuscarFlanqueador();
             if (kes != Reparador) { SoltarReparador(); Reparador = kes; }
-            if (Reparador == null) { Pausar("NO HAY FLANQUEADOR"); return; }
+            if (Reparador == null) { Pausar("NO HAY FRANCOTIRADOR"); return; }
 
             bool vivo = Reparador.Health != null && Reparador.Health.IsAlive;
             if (!vivo) { SoltarReparador(); Pausar("KES CAIDA · REVIVILA"); return; }

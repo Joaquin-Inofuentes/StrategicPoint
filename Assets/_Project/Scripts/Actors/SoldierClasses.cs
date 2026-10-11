@@ -8,7 +8,7 @@ namespace SP.Actors
     // marca sobre la cabeza.
     //
     //   ASALTO       fusil + pistola + LANZACOHETES (mira de mildots, x2,4)
-    //   FLANQUEADOR  metralleta + pistola + escopeta (rapido, corto alcance)
+    //   FRANCOTIRADOR (rol Flanker) metralleta (arranca con disparo continuo) + fusil de francotirador + pistola. Bug #210: escuadra = francotirador, asalto, medico
     //   MEDICO       fusil + pistola, y cura a los aliados heridos
     //
     // Los enemigos no tienen clase propia: se les reparte una variante segun su
@@ -26,7 +26,7 @@ namespace SP.Actors
         }
 
         static readonly Def Asalto = new Def { Nombre = "ASALTO", Malla = "Asalto", Loadout = new[] { WeaponKind.Rifle, WeaponKind.Pistol, WeaponKind.Rocket }, Color = new Color(1f, 0.55f, 0.2f) };
-        static readonly Def Flanqueador = new Def { Nombre = "FLANQUEADOR", Malla = "Flanqueador", Loadout = new[] { WeaponKind.Smg, WeaponKind.Pistol, WeaponKind.Shotgun }, Color = new Color(0.3f, 0.9f, 0.85f) };
+        static readonly Def Flanqueador = new Def { Nombre = "FRANCOTIRADOR", Malla = "Francotirador", Loadout = new[] { WeaponKind.Smg, WeaponKind.Sniper, WeaponKind.Pistol }, Color = new Color(0.3f, 0.9f, 0.85f) };
         static readonly Def Medico = new Def { Nombre = "MEDICO", Malla = "Medico", Loadout = new[] { WeaponKind.Rifle, WeaponKind.Pistol }, Color = new Color(0.45f, 1f, 0.5f) };
         static readonly Def Francotirador = new Def { Nombre = "FRANCOTIRADOR", Malla = "Francotirador", Loadout = new[] { WeaponKind.Sniper, WeaponKind.Pistol }, Color = new Color(0.7f, 0.8f, 1f) };
 

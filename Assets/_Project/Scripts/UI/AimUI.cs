@@ -82,6 +82,34 @@ namespace SP.UI
 
         public Color CurrentAimTintColor => currentAimTint;
 
+        static Sprite anilloConPunto;
+        static Sprite AnilloConPunto()
+        {
+            if (anilloConPunto != null) return anilloConPunto;
+            const int n = 64;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float r = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(n * 0.5f, n * 0.5f));
+                    float a = Mathf.Max(Mathf.Clamp01(1.6f - Mathf.Abs(r - 22f) + 0.5f), Mathf.Clamp01(5f - r + 0.5f));
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+                }
+            tex.SetPixels32(px); tex.Apply();
+            anilloConPunto = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+            anilloConPunto.hideFlags = HideFlags.HideAndDontSave;
+            return anilloConPunto;
+        }
+
+        public bool FormaInteractuable { get; private set; }
+        void MostrarFormaInteractuable(bool si)
+        {
+            if (crosshair == null || si == FormaInteractuable) return;
+            FormaInteractuable = si;
+            crosshair.sprite = si ? AnilloConPunto() : (cruceteActual != null ? cruceteActual : crosshair.sprite);
+        }
+
         void RecomputeCrosshairSize()
         {
             crosshairBaseSize = crosshairSpriteSize * crosshairUserScale * crosshairZoomMultiplier + Vector2.one * (crosshairSpreadFraction * 9f);
@@ -612,6 +640,14 @@ namespace SP.UI
                     currentAimTint = crosshairBaseColor;
                     break;
             }
+
+            // Bugs #208/#211/#213: al apuntar a algo interactuable la mira cambia de FORMA (anillo con punto), no solo de color.
+            bool interactuable = result.Type == AimTargetType.Interactuar || result.Type == AimTargetType.Recoger || result.Type == AimTargetType.Caido
+                || result.Type == AimTargetType.Torreta || result.Type == AimTargetType.Cubrirse || result.Type == AimTargetType.Radio
+                || (result.Type == AimTargetType.Ally)
+                || (result.Type == AimTargetType.Vehicle && result.Vehicle != null && !result.Vehicle.IsDestroyed && result.Vehicle.Bando != SP.Combat.TeamId.Enemy)
+                || (result.Type == AimTargetType.Obstacle && result.HitTransform != null && result.HitTransform.GetComponent<SP.Presentation.ObstacleMarker>() != null);
+            MostrarFormaInteractuable(interactuable);
 
             // Mejora pedida: "si te acercas a un enemigo q aparezca para apretar F para
             // cuchillo". Es POR PROXIMIDAD (el arco/alcance real de WeaponHolder.TryMelee),

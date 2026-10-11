@@ -88,7 +88,6 @@ namespace SP.Ai
                 self.Motor.SetCrouching(false);
                 self.Motor.SetRunning(false);
                 llego = MoverMirando(repliegueDestino, mira, umbral, dt);
-                VigilarProgreso(repliegueDestino, umbral, dt);
             }
             if (llego && repliegueEsCobertura && !enCobertura)
             {

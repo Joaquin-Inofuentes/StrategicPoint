@@ -58,14 +58,17 @@ namespace SP.Player
         void ActualizarCursorRts(AimResult r)
         {
             var tipo = CursorTipo.Normal;
-            if (Selection != null && Selection.Selected.Count > 0 && !PunteroSobreUiInteractiva(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero))
+            // Bug #208: el cursor cambia al apuntar a algo interactuable aunque todavia no haya nadie seleccionado.
+            if (!PunteroSobreUiInteractiva(Mouse.current != null ? Mouse.current.position.ReadValue() : Vector2.zero))
             {
                 if (r.Type == AimTargetType.Enemy) tipo = CursorTipo.Atacar;
                 // Bug #071: un vehiculo ENEMIGO (camioneta) se ataca; solo los propios o las torretas se "interactuan".
                 else if (r.Type == AimTargetType.Vehicle && r.Vehicle != null && r.Vehicle.Hostil(TeamId.Player)) tipo = CursorTipo.Atacar;
                 // Bug #198: el cursor cambia al apuntar a un aliado herido o caido (se lo puede curar).
                 else if ((r.Type == AimTargetType.Ally || r.Type == AimTargetType.Caido) && NecesitaCuracion(r.Soldier)) tipo = CursorTipo.Interactuar;
-                else if (r.Type == AimTargetType.Vehicle || r.Type == AimTargetType.Torreta || r.Type == AimTargetType.Caido || r.Type == AimTargetType.Radio) tipo = CursorTipo.Interactuar;
+                else if (r.Type == AimTargetType.Vehicle || r.Type == AimTargetType.Torreta || r.Type == AimTargetType.Caido || r.Type == AimTargetType.Radio || r.Type == AimTargetType.Interactuar || r.Type == AimTargetType.Recoger || r.Type == AimTargetType.Cubrirse) tipo = CursorTipo.Interactuar;
+                // Bug #213: un obstaculo destructible tambien (con alguien seleccionado se lo puede demoler).
+                else if (r.Type == AimTargetType.Obstacle && r.HitTransform != null && r.HitTransform.GetComponent<SP.Presentation.ObstacleMarker>() != null) tipo = CursorTipo.Interactuar;
             }
             CursorContextual.Aplicar(tipo);
         }

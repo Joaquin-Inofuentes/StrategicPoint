@@ -21,6 +21,7 @@ namespace SP.Presentation
         public static Sprite For(RoleType role) => role switch
         {
             RoleType.Medic => spriteCruz ??= AsSprite(cruz ??= BuildCruz()),
+            RoleType.Flanker => spriteMira ??= AsSprite(mira ??= BuildMira()),   // bug #210: el francotirador de la escuadra lleva la mira
             RoleType.Sniper => spriteMira ??= AsSprite(mira ??= BuildMira()),
             RoleType.Assault => spriteFlecha ??= AsSprite(flecha ??= BuildFlecha()),
             // Pedido explicito: "que aparezca... con icono de civil" -- antes

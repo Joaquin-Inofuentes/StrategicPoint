@@ -27,7 +27,7 @@ namespace SP.Interaction
             switch (rol)
             {
                 case RoleType.Assault: return "ASALTO";
-                case RoleType.Flanker: return "FLANQUEADOR";
+                case RoleType.Flanker: return "FRANCOTIRADOR";
                 case RoleType.Medic: return "MÉDICO";
                 case RoleType.Sniper: return "FRANCOTIRADOR";
                 case RoleType.Civilian: return "CIVIL";

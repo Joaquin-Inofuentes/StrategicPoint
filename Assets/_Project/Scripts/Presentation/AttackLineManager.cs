@@ -60,6 +60,7 @@ namespace SP.Presentation
                 return;
             }
             int activas = 0;
+            vistosEsteCuadro.Clear();
 
             foreach (var soldier in ActorRegistry.All)
             {
@@ -68,6 +69,7 @@ namespace SP.Presentation
                 // corre en Update() para cada soldado, cada frame -- con
                 // el registro ya cacheado en Soldier no hace falta pagar
                 // GetComponent otra vez para lo mismo.
+                vistosEsteCuadro.Add(soldier.Id);
                 var brain = soldier.Brain;
                 // Pedido explicito: la linea roja tiene que verse en cuanto
                 // el soldado TIENE un enemigo trabado (Chase/MovingToAttackOrder
@@ -77,7 +79,9 @@ namespace SP.Presentation
                 // "a quien" estaba mirando el soldado un instante antes.
                 bool hasEnemyLocked = brain != null && brain.CurrentTarget != null &&
                     (brain.State == AiState.Attack || brain.State == AiState.Chase || brain.State == AiState.MovingToAttackOrder) &&
-                    soldier.gameObject.activeInHierarchy;
+                    soldier.gameObject.activeInHierarchy &&
+                    // Bug #209: un soldado caido (o un blanco ya muerto) no lanza linea roja.
+                    soldier.Health != null && soldier.Health.IsAlive && brain.CurrentTarget.Health != null && brain.CurrentTarget.Health.IsAlive;
 
                 if (!hasEnemyLocked)
                 {
@@ -109,8 +113,14 @@ namespace SP.Presentation
                 lr.widthMultiplier = Mathf.Lerp(0.015f, 0.05f, opacidad);
                 activas++;
             }
+            // Bug #209: una linea cuyo dueño ya no existe (cuerpo retirado) no queda dibujada.
+            aQuitar.Clear();
+            foreach (var id in lines.Keys) if (!vistosEsteCuadro.Contains(id)) aQuitar.Add(id);
+            foreach (var id in aQuitar) RemoveLine(id);
             LineasActivas = activas;
         }
+        readonly HashSet<int> vistosEsteCuadro = new HashSet<int>();
+        readonly List<int> aQuitar = new List<int>();
 
         // Para los checks: este soldado tiene una linea dibujada ahora mismo.
         public bool TieneLinea(int soldadoId) => lines.TryGetValue(soldadoId, out var lr) && lr != null;

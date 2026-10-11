@@ -181,7 +181,8 @@ namespace SP.EditorTools
                 Destruible(g, "Jersey_I", pj.x + ladoJ.x * 8.4f, pj.y + ladoJ.y * 8.4f, 0.7f, 1.0f, 8f, Cemento, 180, yawJ);   // bug #090
                 Destruible(g, "Jersey_D", pj.x - ladoJ.x * 8.4f, pj.y - ladoJ.y * 8.4f, 0.7f, 1.0f, 8f, Cemento, 180, yawJ);
             }
-            ObstaculosDeLaRuta(g, pts);
+            // Bug #216: el camino de la huida queda limpio (sin obstaculos estaticos): solo los vehiculos enemigos.
+            // ObstaculosDeLaRuta(g, pts);
             CanadonPuenteYEmboscadas(g, pts);
             // Cartelera y senales de la autopista.
             Rotulo(g, $"AUTOPISTA ^\nCIUDAD ESTE {Mathf.RoundToInt(longitudTotal / 10f) * 10} m", -17.5f, 4.6f, 62f, 0f, 1.3f, Color.white, VerdeSenal, 12f, 3f);

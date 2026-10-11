@@ -3395,7 +3395,11 @@ namespace SP.Player
                     pidioOrden = false;
                 }
 
-                if (ordenableRts != null)
+                // Bug #213: clic derecho sobre un muro/cobertura demolible con un ASALTO seleccionado = el asalto va a demolerlo (antes caia en 'cubrirse').
+                bool demolerRts = ordenableRts == null && aliadoACurar == null && DemolerDesdeRts(result);
+
+                if (demolerRts) { }
+                else if (ordenableRts != null)
                 {
                     EnviarAInteractuarDesdeRts(ordenableRts);
                 }
@@ -3480,6 +3484,9 @@ namespace SP.Player
                 {
                     RejectOrder("VEHICULO DESTRUIDO");
                 }
+                // Bug #215: clic derecho sobre un vehiculo PROPIO (el tanque) = los seleccionados suben (antes solo andaba con la tecla [G]).
+                else if (result.Type == AimTargetType.Vehicle && result.Vehicle != null && Selection.Selected.Count > 0 && Selection.SelectedVehicle == null)
+                    MontarDesdeRts(result);
             }
 
             // Mismo criterio que la version FPS de [G] (ver GOrderOnVehicle):

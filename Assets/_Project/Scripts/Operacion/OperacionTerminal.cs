@@ -23,7 +23,7 @@ namespace SP.Operacion
         public float duracion = 4f;
         public bool soloUnRol;
         public RoleType rol = RoleType.Flanker;
-        public string nombreDelRol = "FLANQUEADOR";
+        public string nombreDelRol = "FRANCOTIRADOR";
         public float radio = 3.6f;
         public bool modoSostener = true;
         public bool decae = true;

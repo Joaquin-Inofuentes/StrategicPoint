@@ -343,7 +343,7 @@ namespace SP.Player
         static float proximoEscaneo;
 
         // El tutorial la apaga para que el jugador mande a curar el mismo.
-        public static bool AtencionAutomatica = true;
+        public static bool AtencionAutomatica = false;   // bug #210: el medico cura solo bajo pedido del jugador, no por su cuenta en plena accion
 
         // Ronda 13 (punto 8): en calma el medico revive por su cuenta a los aliados caidos (antes solo curaba heridos y la
         // escuadra solo revivia si caian TODOS). "Calma" = ningun enemigo a RadioDeCalma del medico ni del caido.

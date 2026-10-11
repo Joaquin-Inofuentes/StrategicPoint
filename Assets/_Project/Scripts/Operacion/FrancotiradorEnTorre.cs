@@ -200,7 +200,9 @@ namespace SP.Operacion
 
         void Update()
         {
-            if (!Application.isPlaying || soldado == null) return;
+            if (!Application.isPlaying) return;
+            // Bug #209: si el francotirador desaparecio del mundo (cuerpo retirado) su laser no se queda encendido apuntando a la nada.
+            if (soldado == null) { if (laser != null) laser.enabled = false; return; }
             if (laser == null) return;   // la torre cayo: TorreDestruible se llevo el laser junto con la raiz
             if (!Activo) { PonerLaser(false); return; }
             ReafirmarArma();

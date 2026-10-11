@@ -1,0 +1,1 @@
+var s = UnityEngine.GameObject.Find("Reserva_CD2_1"); var p = s.transform.position; return p.x.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " " + p.z.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture);

@@ -137,6 +137,15 @@ namespace SP.Player
         // Toda la escuadra viva te sigue, SI O SI: ignora la seleccion de RTS, la mira y lo que estuvieran haciendo
         // (IssueFollowOrder pisa cualquier orden, cola o cobertura). Solo se salta a los que estan dentro de un
         // vehiculo (bajarlos por sorpresa en marcha seria peor). Devuelve a cuantos les llego.
+        // Bug #218: "siganme" llega solo a los que estan cerca del jugador (los milicianos lejanos no cruzan el mapa hacia el).
+        public const float RadioDeSeguirme = 30f;
+        public static bool EstaCercaParaSeguirme(Soldier s, Soldier yo)
+        {
+            if (s == null || yo == null) return false;
+            var d = s.transform.position - yo.transform.position; d.y = 0f;
+            return d.sqrMagnitude <= RadioDeSeguirme * RadioDeSeguirme;
+        }
+
         public int SeguirTodosSiOSi()
         {
             var yo = Brain != null ? Brain.Current : null;
@@ -144,7 +153,7 @@ namespace SP.Player
             var todos = new List<Soldier>();
             foreach (var s in Squad)
                 if (s != null && s != yo && s.Health != null && s.Health.IsAlive && s.gameObject.activeInHierarchy
-                    && !(s.Brain != null && s.Brain.MontadoEnVehiculo)) todos.Add(s);
+                    && !(s.Brain != null && s.Brain.MontadoEnVehiculo) && EstaCercaParaSeguirme(s, yo)) todos.Add(s);
             if (todos.Count == 0) return 0;
             OrderService.IssueFollowOrderForSelection(todos, yo, SeguirForzadoSegundos);
             Avisar("SIGANME");
@@ -213,6 +222,8 @@ namespace SP.Player
                     return true;
                 case 3:
                     if (destinatarios.Count == 0 || Brain == null || Brain.Current == null) break;
+                    destinatarios = destinatarios.FindAll(d => EstaCercaParaSeguirme(d, Brain.Current));
+                    if (destinatarios.Count == 0) { RejectOrder("NADIE CERCA PARA SEGUIRTE"); return false; }
                     OrderService.IssueFollowOrderForSelection(destinatarios, Brain.Current, SeguirForzadoSegundos);
                     Avisar("SIGANME");
                     return true;

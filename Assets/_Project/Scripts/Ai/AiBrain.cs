@@ -79,6 +79,7 @@ namespace SP.Ai
         bool agentTieneDestino;
         int agentNavVersion;   // version de NavMeshViva con la que el agent planeo su ruta (si cambia, se replanifica)
 
+        float relojDeCadaver;
         Soldier self;
         Soldier target;
         Vector3 orderDestination;
@@ -196,43 +197,6 @@ namespace SP.Ai
         public int QueuedOrderCount => orderQueue.Count;
         public System.Collections.Generic.IEnumerable<Vector3> QueuedDestinations => orderQueue;
 
-        // --- Rodeo de obstaculos (NavService) ---
-        // Ruta calculada para esquivar el "Muro" y compañia. VACIA es el
-        // caso normal y significa "linea recta": el A* solo corre cuando
-        // la linea recta esta cortada, y solo al RECIBIR la orden, no por
-        // frame. Un mapa despejado paga exactamente lo mismo que antes.
-        readonly System.Collections.Generic.List<Vector3> path = new System.Collections.Generic.List<Vector3>();
-        int pathIndex;
-
-        public int RemainingPathPoints => Mathf.Max(0, path.Count - pathIndex);
-        public System.Collections.Generic.IReadOnlyList<Vector3> CurrentPath => path;
-
-        // Llegada a un waypoint INTERMEDIO. Mas flojo que arriveThreshold a
-        // proposito: exigirle 0.6 a cada esquina hace que el soldado frene
-        // y corrija en cada una en vez de doblar de largo.
-        const float WaypointArriveThreshold = 1.2f;
-
-        // Anti-atasco. La grilla se construye una vez y no sabe de cuerpos
-        // que se mueven; si algo lo deja trabado (una esquina, un obstaculo
-        // que aparecio despues), se recalcula la ruta UNA vez en vez de
-        // quedarse empujando la pared para siempre.
-        const float StuckSeconds = 1f;
-        const float StuckProgressSqr = 0.09f; // 30 cm
-        float stuckTimer;
-        Vector3 stuckAnchor;
-        bool repathed;
-
-        // BUG REAL reportado: al demoler el muro del bloque final, los
-        // aliados que ya estaban en camino (MovingToOrder) seguian
-        // bordeando por donde antes habia un obstaculo. PlanPathTo solo
-        // corre UNA vez por orden (ver AiBrain.Navegacion.cs); el rodeo
-        // periodico (AvanzarConRodeo, cada 0.5 s) se autocorrige solo, pero
-        // una orden de movimiento no pasa por ahi. Guardamos con que
-        // Version de NavService se planeo la ruta vigente; si un obstaculo
-        // se demuele (o aparece uno nuevo) de por medio, Version cambia y
-        // AdvanceTo la rehace de inmediato en vez de esperar el atasco.
-        int pathVersion = -1;
-
         // Ronda de patrulla: mientras no haya nada más que hacer (Patrol),
         // camina de waypoint en waypoint en loop. Se corta solo si el
         // sensado detecta un enemigo (como cualquier otra cosa en Patrol).
@@ -338,7 +302,8 @@ namespace SP.Ai
         {
             if (!AgentActivo) return;
             Vector3 pies = transform.position - Vector3.up * agent.baseOffset;
-            if ((agent.nextPosition - pies).sqrMagnitude > DesfaseMaximoDelAgente * DesfaseMaximoDelAgente)
+            var desfase = agent.nextPosition - pies; desfase.y = 0f;   // solo en el plano: una diferencia de altura sola no es motivo para reubicar al agent
+            if (desfase.sqrMagnitude > DesfaseMaximoDelAgente * DesfaseMaximoDelAgente)
             {
                 // Warp tambien escribe el transform aunque updatePosition este apagado (MEDIDO: los soldados quedaban en y=-6,4
                 // porque el pivote bajaba a los pies): el cuerpo vuelve a donde estaba.
@@ -840,6 +805,9 @@ namespace SP.Ai
             if (!self.Health.IsAlive)
             {
                 SetState(AiState.Dead);
+                // Bug #207: un cuerpo cuyo piso desaparecio (la torre se derrumbo debajo) no queda flotando en el aire: se lo apoya donde hay suelo.
+                relojDeCadaver += dt;
+                if (relojDeCadaver >= 0.5f) { relojDeCadaver = 0f; SP.Core.ApoyoEnElPiso.Apoyar(self.transform); }
                 return;
             }
 
@@ -1302,40 +1270,8 @@ namespace SP.Ai
                     // arriba acaba de validar.
                     if (attackMoveDestination.HasValue)
                     {
-                        // BUG REAL: a diferencia de todo otro consumidor de
-                        // path/pathIndex (AdvanceTo, que usan RodearHasta,
-                        // CubrirseDe y MovingToOrder), este attack-move
-                        // nunca llamaba a TickStuckWatch. Si algo bloqueaba
-                        // el tramo (un vehiculo que se cruzo, un obstaculo
-                        // nuevo) el soldado empujaba contra el con el
-                        // gatillo apretado, sin deteccion de atasco ni
-                        // replanificacion, por el resto del combate.
-                        TickStuckWatch(attackMoveDestination.Value, dt);
-
-                        // Si hay una ruta calculada (habia algo en el
-                        // medio), el que manda es el waypoint en curso y
-                        // no el destino final: caminar en linea recta
-                        // hacia el destino mientras se dispara es
-                        // exactamente lo que metia al soldado contra el
-                        // Muro con el gatillo apretado.
-                        bool onDetour = pathIndex < path.Count - 1;
-                        Vector3 amGoal = onDetour ? path[pathIndex] : attackMoveDestination.Value;
-
-                        Vector3 amDelta = amGoal - self.transform.position;
-                        amDelta.y = 0f;
-                        float amDist = amDelta.magnitude;
-
-                        if (onDetour)
-                        {
-                            if (amDist <= WaypointArriveThreshold) pathIndex++;
-                            else self.Motor.Move(amDelta / amDist, dt);
-                        }
-                        else if (amDist <= arriveThreshold)
-                        {
+                        if (AdvanceTo(attackMoveDestination.Value, arriveThreshold, dt, false))
                             attackMoveDestination = null;
-                            ClearPath();
-                        }
-                        else self.Motor.Move(amDelta / amDist, dt);
                     }
                     break;
             }
