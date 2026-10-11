@@ -221,7 +221,7 @@ namespace SP.Ai
 
             // Esperando la primera ruta: unos instantes quieto; si la cola del NavMesh tarda (muchos agentes, o una suite que simula sin frames
             // reales) se camina derecho al destino hasta que llegue la ruta.
-            if (agent.pathPending && !agent.hasPath)
+            if (agent.pathPending)
             {
                 pendienteSinRuta += dt;
                 if (pendienteSinRuta > 0.4f) self.Motor.MoveTowards(destination, threshold, dt);

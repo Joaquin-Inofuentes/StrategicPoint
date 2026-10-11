@@ -63,7 +63,7 @@ namespace SP.EditorTools
             var relKes = vega.transform.InverseTransformPoint(kes.transform.position);
             var relDoc = vega.transform.InverseTransformPoint(doc.transform.position);
             
-            Check("Uno esta a la derecha y otro a la izquierda", relKes.x * relDoc.x < 0f && Mathf.Abs(relKes.x) > 0.5f && Mathf.Abs(relDoc.x) > 0.5f);
+            Check($"Uno esta a la derecha y otro a la izquierda (kes {relKes.x:0.00},{relKes.z:0.00} doc {relDoc.x:0.00},{relDoc.z:0.00})", relKes.x * relDoc.x < 0f && Mathf.Abs(relKes.x) > 0.5f && Mathf.Abs(relDoc.x) > 0.5f);
             // Pedido explicito: la primera fila va AL COSTADO (visible en la
             // camara del jugador), no detras del hombro. z≈0, ya no < -0.5.
             Check("Ambos van a la par (Z≈0, no detras)", Mathf.Abs(relKes.z) < 0.5f && Mathf.Abs(relDoc.z) < 0.5f);

@@ -187,6 +187,8 @@ namespace SP.EditorTools
             {
                 inputDriver.Squad = new System.Collections.Generic.List<Soldier> { vega, kes, doc };
                 inputDriver.Brain.Possess(vega);
+                // Bug #218: "siganme" llega solo a los cercanos (30 m): la escuadra de la prueba se junta con el lider.
+                kes.transform.position = vega.transform.position + new Vector3(3f, 0f, 0f); doc.transform.position = vega.transform.position + new Vector3(-3f, 0f, 0f);
                 if (enemigo != null)
                 {
                     campoMira.SetValue(inputDriver, new AimResult { Type = AimTargetType.Enemy, Soldier = enemigo, Point = enemigo.transform.position, HitTransform = enemigo.transform });
