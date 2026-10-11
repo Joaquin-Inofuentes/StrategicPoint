@@ -319,6 +319,7 @@ namespace SP.Operacion
                     break;
                 case FaseOperacion.Huir:
                     // WP9b (#097): el tanque es un jefe enemigo (BLINDADO GOLIAT); las oleadas salen mientras Kes lo repara.
+                    RetirarCamionetasDelCentro();
                     PrepararHuida();
                     Aviso("DATOS DESCARGADOS\nEL ASALTO DEBE DEMOLER EL MURO DE LA SALIDA NORTE\nDESPUES AVANZA AL PATIO: UN BLINDADO ENEMIGO CUSTODIA LA FUGA");
                     break;

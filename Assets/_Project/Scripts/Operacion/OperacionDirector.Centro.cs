@@ -119,6 +119,21 @@ namespace SP.Operacion
 
         public int ParadasCorridas { get; private set; }
 
+        // Bug #184 ("quita los 4 vehiculos previos, no suman"): las camionetas de asalto del centro de datos que siguen en pie al empezar la huida
+        // se retiran: la fase de huida la juegan los autos de la oleada y el blindado, no esos restos.
+        public int RetirarCamionetasDelCentro()
+        {
+            int n = 0;
+            foreach (var a in camionetasDelCentro)
+            {
+                if (a == null) continue;
+                Destroy(a.gameObject);
+                n++;
+            }
+            camionetasDelCentro.Clear();
+            return n;
+        }
+
         void LanzarCamionetasDelCentro()
         {
             if (autoPlantilla == null || computadora == null) return;

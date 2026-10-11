@@ -25,7 +25,8 @@ namespace SP.Presentation
         public static readonly Color ColorMixto = new Color(0.5f, 0f, 0.8f, 1f); // violeta
         public static readonly Color ColorTorreta = new Color(1f, 0.5f, 0f, 1f); // naranja
         public static readonly Color ColorBotiquin = Color.green;
-        public static readonly Color ColorMunicion = Color.cyan; // azul claro
+        // Bug #192: antes cyan puro (muy contrastado contra el entorno nocturno); ahora un verde azulado apagado, de la mitad de tamaño y acostado en el piso.
+        public static readonly Color ColorMunicion = new Color(0.50f, 0.66f, 0.66f, 1f);
 
         static Mesh caraCompartida;
 

@@ -677,6 +677,18 @@ namespace SP.Player
         void ActualizarTorretaFija()
         {
             if (torretaActual != null && (Brain.Current == null || torretaActual.Ocupante != Brain.Current)) { torretaActual = null; }
+            // Bug #185 ("se trabo, no me deja salir"): al poseer a un aliado que YA estaba en la ametralladora (lo mandaron con "que lo monten") el
+            // conductor no sabia que estaba en una torreta, y [E] para salir no hacia nada. Se adopta la torreta que ocupa el soldado que manejas.
+            if (torretaActual == null && Brain.Current != null)
+            {
+                var ocupada = TorretaFija.De(Brain.Current);
+                if (ocupada != null && ocupada.Ocupante == Brain.Current)
+                {
+                    torretaActual = ocupada;
+                    Rig.ResetPitch();
+                    if (ModeToast != null) ModeToast.Show("AMETRALLADORA FIJA: apunta, dispara · [E] salir", 2.5f);
+                }
+            }
             if (torretaPendiente != null)
             {
                 if (!destinoAuto.HasValue) torretaPendiente = null;   // WASD lo cancelo

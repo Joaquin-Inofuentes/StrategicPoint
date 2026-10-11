@@ -46,6 +46,33 @@ namespace SP.Player
             return true;
         }
 
+        // Bug #180 ("no me deja interactuar desde RTS"): clic derecho sobre un interactuable (computadora, panel, carga) en la vista tactica
+        // manda al soldado SELECCIONADO que mejor sirva (el mas cercano que pueda); si ninguno de los seleccionados puede, al de la escuadra
+        // que corresponda. No hace falta que el jugador este cerca: CanInteract de IInteractable pide distancia y por eso no sirve aca.
+        public IOrdenableAAliados OrdenableBajoRayoRts(Ray ray)
+        {
+            if (!Physics.Raycast(ray, out var hit, 500f, ~0, QueryTriggerInteraction.Collide)) return null;
+            return hit.collider.GetComponentInParent<IOrdenableAAliados>();
+        }
+
+        public bool EnviarAInteractuarDesdeRts(IOrdenableAAliados o)
+        {
+            if (o == null) return false;
+            if (o.Completo) { RejectOrder("YA ESTA HECHO"); return false; }
+            if (!o.Habilitado) { RejectOrder("TODAVIA NO SE PUEDE"); return false; }
+
+            Soldier operador = null;
+            if (Selection.Selected.Count > 0) operador = o.ElegirOperador(new List<Soldier>(Selection.Selected));
+            if (operador == null) operador = o.ElegirOperador(DestinatariosPorSub(0, out _));
+            if (operador == null) { RejectOrder($"NADIE VIVO PUEDE ({o.QuienDebe})"); return false; }
+            if (!o.EnviarA(operador, out string motivo)) { RejectOrder(motivo ?? "NO SE PUEDE"); return false; }
+            Avisar($"{operador.DisplayName.ToUpperInvariant()} VA A {o.NombreParaOrden}");
+            GameLog.Line($"Orden (RTS): {operador.DisplayName} va a {o.NombreParaOrden}");
+            SesionLog.Orden("INTERACTUAR", operador, o.NombreParaOrden);
+            Feedback_OrdenConfirmada(o.Raiz != null ? o.Raiz.position : operador.transform.position);
+            return true;
+        }
+
         void Feedback_OrdenConfirmada(Vector3 donde)
         {
             SP.Presentation.Feedback.Accion(SP.Presentation.SfxKind.RadialConfirm, null, donde, ColorDeCategoria[MenuDeOrdenes.Interactuar],

@@ -12,6 +12,7 @@ namespace SP.Presentation
     public class SelectionRingManager : MonoBehaviour
     {
         static readonly Color RingColor = new Color(0.95f, 0.85f, 0.25f);
+        const float ElevacionDelAro = 0.12f;
 
         readonly Dictionary<int, SelectionRingFx> rings = new Dictionary<int, SelectionRingFx>();
         IDisposable sub;
@@ -81,10 +82,13 @@ namespace SP.Presentation
                 if (candidate == null) continue;
                 candidate.gameObject.SetActive(true);
                 candidate.Target = target;
+                candidate.ElevacionExtra = ElevacionDelAro;
                 candidate.SetColor(RingColor);
                 return candidate;
             }
-            return SelectionRingFx.Spawn(target, RingColor);
+            var nuevo = SelectionRingFx.Spawn(target, RingColor, 1.05f);   // bug #178: mas grande, que se vea alrededor del rombo
+            nuevo.ElevacionExtra = ElevacionDelAro;
+            return nuevo;
         }
 
         void Recycle(SelectionRingFx ring)

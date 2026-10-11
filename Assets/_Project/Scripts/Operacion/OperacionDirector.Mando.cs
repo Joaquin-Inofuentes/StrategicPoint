@@ -273,7 +273,7 @@ namespace SP.Operacion
             {
                 AlertQueue.Push($"LLEGARON {milicianosActivos.Count} MILICIANOS", AlertPriority.Alta, 3.2f);
                 AudioDirector.PlayUi2D(SfxKind.Order, 0.7f, 0.9f);
-                AudioDirector.PlayVoice2D(SfxKind.OrderBark, 0.8f, 0.85f);
+                AudioDirector.PlayVoice2D(SfxKind.OrderBark, 0.4f, 0.85f);
                 foreach (var m in milicianosActivos)
                     if (m != null) Feedback.Accion(SfxKind.Select, "MILICIA", m.transform.position, Feedback.Info, aviso: false, pulso: true, volumen: 0.3f);
             }
@@ -776,6 +776,9 @@ namespace SP.Operacion
             return s;
         }
 
+        // Bug #191: la camioneta de la oleada frena a esta distancia del centro del sector y tira desde ahi (antes llegaba hasta el sector).
+        public const float DistanciaDeParadaDeLaCamioneta = 26f;
+
         void LanzarCamionetaDeOleada(OleadaDelMando o, int sector)
         {
             if (autoPlantilla == null || plaza == null || sector < 0 || sector >= CallesDeCamioneta.Length) return;
@@ -790,7 +793,7 @@ namespace SP.Operacion
             go.name = $"Camioneta_Oleada{o.numero}";
             var a = go.GetComponent<OperacionAuto>();
             if (a == null) { Destroy(go); return; }
-            a.ConfigurarAsalto(parada);
+            a.ConfigurarAsalto(parada, DistanciaDeParadaDeLaCamioneta);
             o.vehiculos.Add(a);
             hubieronCamionetas = true;
             AlertQueue.Push("¡UNA CAMIONETA DE ASALTO! · CLIC DERECHO SOBRE ELLA PARA ATACARLA", AlertPriority.Alta, 3.5f);

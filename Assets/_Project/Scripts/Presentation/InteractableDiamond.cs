@@ -7,16 +7,20 @@ namespace SP.Presentation
         public System.Func<bool> Condicion;
         GameObject marcador;
         Material matInterior;
+        bool enSuelo;   // bug #192: el rombo de la municion caida va acostado en el piso, sin girar hacia la camara
 
-        public static InteractableDiamond Agregar(Transform padre, Vector3 localOffset, Color color)
+        public static InteractableDiamond Agregar(Transform padre, Vector3 localOffset, Color color, bool enSuelo = false, float escala = 1f)
         {
             var go = new GameObject("InteractableDiamond");
             go.transform.SetParent(padre, false);
             go.transform.localPosition = localOffset;
             var rombo = go.AddComponent<InteractableDiamond>();
+            rombo.enSuelo = enSuelo;
 
             rombo.marcador = new GameObject("Rombo");
             rombo.marcador.transform.SetParent(go.transform, false);
+            rombo.marcador.transform.localScale = Vector3.one * escala;
+            if (enSuelo) rombo.marcador.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
 
             DiamondGizmo.CrearCara("Borde", rombo.marcador.transform, 0.4f, DiamondGizmo.NuevoMaterial(Color.white));
             rombo.matInterior = DiamondGizmo.NuevoMaterial(color);
@@ -41,7 +45,7 @@ namespace SP.Presentation
             if (!visible) return;
 
             var cam = SP.Core.CamaraPrincipal.Actual;
-            if (cam != null) marcador.transform.rotation = cam.transform.rotation;
+            if (cam != null && !enSuelo) marcador.transform.rotation = cam.transform.rotation;
         }
 
         void OnDestroy()

@@ -338,11 +338,14 @@ namespace SP.Ai
                 PlanPathTo(meta);
                 return;
             }
+            // Bugs #177/#182/#186 ("se obstaculizan y no avanzan"): el 2do aviso ya no teletransporta ni replanifica a ciegas: da un paso al costado por
+            // el NavMesh (alternando de lado) para rodear al compañero que le tapa un cuello de botella; si el costado esta libre y camina, se destraba solo.
+            if (sinProgresoGolpes == 2 && IniciarDesvioLateral(meta)) return;
             // Segundo aviso en adelante: solo los aliados se reubican (un enemigo atascado no importa tanto y un salto seria visible).
             // Y solo siguiendo o yendo a un punto: en Chase/cobertura la meta es el enemigo y saltar junto a el seria absurdo.
             // Bug #170 ("siguen habiendo bugs de que los enemigos no pasan obstaculos"): un enemigo que ya fallo dos ventanas seguidas y esta lejos de
             // su meta no se queda empujando el muro: se lo rodea por el NavMesh o, si el jugador no lo ve, se lo reubica en el tramo caminable.
-            if (self.Team == SP.Combat.TeamId.Enemy && sinProgresoGolpes >= 2 && aMeta.magnitude > 6f && DesatascarEnemigo(meta)) return;
+            if (self.Team == SP.Combat.TeamId.Enemy && sinProgresoGolpes >= 3 && aMeta.magnitude > 6f && DesatascarEnemigo(meta)) return;
             if (self.Team != SP.Combat.TeamId.Player || (State != AiState.Follow && State != AiState.MovingToOrder)) { PlanPathTo(meta); return; }
             if (aMeta.magnitude < 5f) { sinProgresoGolpes = 0; return; }   // ya esta cerca: no hace falta saltar
             // A metro y medio de la meta, del lado de donde venia: si la meta es otro soldado (seguir, curar) antes quedaba
@@ -359,6 +362,47 @@ namespace SP.Ai
                 SincronizarAgente();
                 GameLog.Line($"{self.DisplayName} seguia trabado: se reubica junto a su destino {p}");
             }
+        }
+
+        // Paso lateral de ~1,5 s por el NavMesh: toma el rumbo de la ruta (o de la meta), elige un costado libre (alternando por Id y por aviso)
+        // y camina hacia un punto 1,5 m adelante y 1,4-2 m al costado. Devuelve false si ningun costado esta libre.
+        Vector3 desvioPunto;
+        float desvioHasta;
+        public int DesviosLateralesHechos { get; private set; }
+        bool IniciarDesvioLateral(Vector3 meta)
+        {
+            var pos = self.transform.position;
+            var dir = meta - pos; dir.y = 0f;
+            if (agent != null && agentTieneDestino && agent.hasPath) { var d2 = agent.steeringTarget - pos; d2.y = 0f; if (d2.sqrMagnitude > 0.01f) dir = d2; }
+            dir = dir.sqrMagnitude > 0.01f ? dir.normalized : self.transform.forward;
+            float lado = (((self.Id + DesviosLateralesHechos) & 1) == 0) ? 1f : -1f;
+            for (int intento = 0; intento < 2; intento++)
+            {
+                var lat = Quaternion.Euler(0f, 90f * lado, 0f) * dir;
+                var cand = pos + dir * 1.5f + lat * (1.4f + 0.3f * (DesviosLateralesHechos % 3));
+                if (UnityEngine.AI.NavMesh.SamplePosition(cand, out var h, 1.0f, UnityEngine.AI.NavMesh.AllAreas)
+                    && !UnityEngine.AI.NavMesh.Raycast(pos, h.position, out _, UnityEngine.AI.NavMesh.AllAreas))
+                {
+                    desvioPunto = new Vector3(h.position.x, pos.y, h.position.z);
+                    desvioHasta = Time.time + 1.5f;
+                    DesviosLateralesHechos++;
+                    GameLog.Line($"{self.DisplayName} trabado en un cuello de botella: da un paso al costado {desvioPunto}");
+                    return true;
+                }
+                lado = -lado;
+            }
+            return false;
+        }
+
+        // Si hay un desvio en curso, el cuerpo camina al punto del desvio en vez de seguir la esquina de la ruta. Devuelve true si este tick lo uso.
+        bool TickDesvioLateral(float dt)
+        {
+            if (desvioHasta <= 0f) return false;
+            var d = desvioPunto - self.transform.position; d.y = 0f;
+            if (Time.time >= desvioHasta || d.magnitude <= 0.3f) { desvioHasta = 0f; return false; }
+            self.Motor.LookTowards(desvioPunto, dt);
+            self.Motor.Move(d.normalized, dt);
+            return true;
         }
 
         // Adelanta al enemigo trabado hasta ~6 m por el camino real del NavMesh hacia su meta (o, sin camino, a un punto caminable cercano). Si el
@@ -396,7 +440,8 @@ namespace SP.Ai
             {
                 var v = cam.WorldToViewportPoint(self.transform.position + Vector3.up);
                 bool enPantalla = v.z > 0f && v.x > -0.05f && v.x < 1.05f && v.y > -0.05f && v.y < 1.05f;
-                if (enPantalla && SP.Core.NavService.HayLineaDeTiro(cam.transform.position, self.transform.position + Vector3.up, null, self.transform)) { PlanPathTo(meta); return false; }
+                // Hasta 4 ventanas (8 s) a la vista no se lo mueve; si sigue clavado igual, mejor un salto corto que un enemigo parado para siempre.
+                if (sinProgresoGolpes < 4 && enPantalla && SP.Core.NavService.HayLineaDeTiro(cam.transform.position, self.transform.position + Vector3.up, null, self.transform)) { PlanPathTo(meta); return false; }
             }
             var p = new Vector3(destino.Value.x, self.transform.position.y, destino.Value.z);
             self.transform.position = p;
@@ -429,6 +474,7 @@ namespace SP.Ai
         {
             EnsureAgent();
             VigilarProgreso(destination, threshold, dt);
+            if (TickDesvioLateral(dt)) return false;
             if (TryAdvanceWithAgent(destination, threshold, dt, out bool llegoConAgent))
                 return llegoConAgent;
 

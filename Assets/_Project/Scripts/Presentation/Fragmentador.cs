@@ -54,7 +54,7 @@ namespace SP.Presentation
 
     public static class Fragmentador
     {
-        public const int Cupo = 140;
+        public const int Cupo = 200;
         public const float SegundosDeHundido = 0.6f;
         public const int LayerSinRayos = 2;   // "Ignore Raycast": los rayos por defecto (apuntar, camara, vision) no los ven
 
@@ -236,7 +236,9 @@ namespace SP.Presentation
             var material = MaterialDe(objeto, out var tinte, out bool usarTinte);
             var mallasFrag = Mallas();
             JuntarUv(objeto);
-            if (piezas <= 0) piezas = Mathf.Clamp(Mathf.RoundToInt(tam.x * tam.y * tam.z * 2.2f) + 8, 9, 22);
+            // Bug #183 ("quedan como bloques estaticos, deberian separarse como una destruccion real"): los muros grandes se partian en <= 22 trozos enormes que se
+            // quedaban apilados como bloques; ahora se cortan en bastantes mas (hasta 48), mas chicos, y salen con mas empuje y giro.
+            if (piezas <= 0) piezas = Mathf.Clamp(Mathf.RoundToInt(tam.x * tam.y * tam.z * 3.5f) + 10, 10, 48);
 
             // Corte recursivo en espacio local de la caja: siempre se parte el trozo mas grande por su eje mas largo.
             var cajas = new List<(Vector3 c, Vector3 s)> { (Vector3.zero, tam) };
@@ -293,7 +295,7 @@ namespace SP.Presentation
                 var dir = pos - origen; float dist = dir.magnitude;
                 dir = dist > 0.01f ? dir / dist : Random.onUnitSphere;
                 dir = (dir + Vector3.up * 0.55f + Random.insideUnitSphere * 0.25f).normalized;
-                float v = fuerza * Random.Range(0.55f, 1.15f) / (1f + dist * 0.12f);
+                float v = fuerza * 1.25f * Random.Range(0.55f, 1.2f) / (1f + dist * 0.12f);
                 rb.linearVelocity = dir * v;
                 rb.angularVelocity = Random.insideUnitSphere * (v * 1.6f);
                 n++;

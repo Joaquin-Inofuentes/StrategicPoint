@@ -363,7 +363,8 @@ namespace SP.Combat
                 {
                     EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, transform.position));
                     PlayImpactSfx(EnvironmentHitKind.Ground, transform.position, 0.45f);
-                    ImpactCubes.Spawn(transform.position, Vector3.up, ImpactSurface.Ground, damage);
+                    if (esDeVehiculoEnemigo) ImpactFx.SpawnImpactoDeMetralla(transform.position, Vector3.up);   // bug #187
+                    else ImpactCubes.Spawn(transform.position, Vector3.up, ImpactSurface.Ground, damage);
                     DecalPool.Spawn(DecalKind.BulletHole, new Vector3(transform.position.x, 0.02f, transform.position.z), Vector3.up, 0.25f);
                 }
                 Expire();
@@ -477,7 +478,8 @@ namespace SP.Combat
 
             EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, clase, impacto.point));
             PlayImpactSfx(clase, impacto.point, 0.5f);
-            ImpactCubes.Spawn(impacto.point, impacto.normal,
+            if (esDeVehiculoEnemigo) ImpactFx.SpawnImpactoDeMetralla(impacto.point, impacto.normal);   // bug #187
+            else ImpactCubes.Spawn(impacto.point, impacto.normal,
                 marca != null ? ImpactSurface.Obstacle : ImpactSurface.Ground, damage);
             DecalPool.Spawn(DecalKind.BulletHole, impacto.point, impacto.normal, 0.22f);
 

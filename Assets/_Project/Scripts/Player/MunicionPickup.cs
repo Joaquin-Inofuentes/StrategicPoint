@@ -39,7 +39,7 @@ namespace SP.Player
             var pk = raiz.AddComponent<MunicionPickup>();
             pk.alturaBase = pos.y;
 
-            InteractableDiamond.Agregar(raiz.transform, Vector3.up * 0.8f, DiamondGizmo.ColorMunicion);
+            InteractableDiamond.Agregar(raiz.transform, Vector3.up * 0.15f, DiamondGizmo.ColorMunicion, true, 0.5f);
 
             return pk;
         }

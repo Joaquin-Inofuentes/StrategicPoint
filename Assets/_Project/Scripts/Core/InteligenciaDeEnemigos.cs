@@ -33,7 +33,6 @@ namespace SP.Core
         static void Reiniciar()
         {
             revelados.Clear();
-            lucesDeAtacante.Clear();
             subDano?.Dispose();
             subDano = EventBus.Instance.Subscribe<DamageTakenEvent>(AlRecibirDano);
         }
@@ -43,30 +42,10 @@ namespace SP.Core
             var yo = SP.Player.PlayerBrain.Activo != null ? SP.Player.PlayerBrain.Activo.Current : null;
             if (yo == null || evt.TargetId != yo.Id) return;
             var atacante = ActorRegistry.FindById(evt.AttackerId);
-            if (atacante != null && atacante.Team == TeamId.Enemy) { Revelar(atacante.Id); IluminarAlAtacante(atacante); }
+            if (atacante != null && atacante.Team == TeamId.Enemy) Revelar(atacante.Id);
         }
 
-        static readonly Dictionary<int, UnityEngine.GameObject> lucesDeAtacante = new Dictionary<int, UnityEngine.GameObject>();
-        public const string NombreLuzDeAtacante = "LuzDeAtacante";
-        public const float SegundosDeLuzDeAtacante = 7f;
-
-        // Bug #168 ("no veo al enemigo"): de noche el que te dispara (francotirador atrincherado, tirador en altura) es azul oscuro sobre fondo
-        // oscuro y no se lo encuentra aunque ya tenga rombo. Al herirte recibe una luz de rebote debil delante del pecho (la misma idea que la
-        // luz de silueta de las torres) que se apaga sola; si dispara otra vez se renueva. No atraviesa paredes: es luz, no un resaltado.
-        static void IluminarAlAtacante(Soldier atacante)
-        {
-            if (atacante == null || !UnityEngine.Application.isPlaying) return;
-            if (lucesDeAtacante.TryGetValue(atacante.Id, out var previa) && previa != null) UnityEngine.Object.Destroy(previa);
-            var go = new UnityEngine.GameObject(NombreLuzDeAtacante);
-            go.transform.SetParent(atacante.transform, false);
-            go.transform.localPosition = new UnityEngine.Vector3(0f, 0.55f, 1.1f);
-            var l = go.AddComponent<UnityEngine.Light>();
-            l.type = UnityEngine.LightType.Point; l.range = 9f; l.intensity = 4.2f;
-            l.color = new UnityEngine.Color(1f, 0.82f, 0.7f);
-            l.shadows = UnityEngine.LightShadows.None;
-            lucesDeAtacante[atacante.Id] = go;
-            UnityEngine.Object.Destroy(go, SegundosDeLuzDeAtacante);
-        }
+        // Bug #176: la luz de rebote sobre el que te dispara (bug #168) quedaba sobre el cadaver: se quita. El enemigo se ve por su brillo propio (SoldierLook).
 
         public static void Revelar(int enemigoId) => revelados.Add(enemigoId);
         public static bool EstaRevelado(int enemigoId) => revelados.Contains(enemigoId);

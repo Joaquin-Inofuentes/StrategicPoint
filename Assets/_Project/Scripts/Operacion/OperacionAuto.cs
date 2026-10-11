@@ -171,10 +171,14 @@ namespace SP.Operacion
         public float velocidadDeAsalto = 13f;
         float proximoBlanco;
 
-        public void ConfigurarAsalto(Vector3 punto)
+        // Bug #191 ("que el vehiculo enemigo no se acerque tanto, que se acerque un poco y ataque desde lejos"): 'distanciaDeParada' > 0 hace que frene a
+        // esa distancia del punto (no encima) y desde ahi dispare con la metralleta.
+        [HideInInspector] public float distanciaDeParada;
+        public void ConfigurarAsalto(Vector3 punto, float distanciaDeParada = 0f)
         {
             asalto = true;
             puntoDeAsalto = punto;
+            this.distanciaDeParada = distanciaDeParada;
             VelocidadActual = velocidadDeAsalto * 0.6f;
         }
 
@@ -196,9 +200,10 @@ namespace SP.Operacion
             var aMeta = puntoDeAsalto - transform.position; aMeta.y = 0f;
             float d = aMeta.magnitude;
             // Curva de velocidad: crucero lejos, frena en los ultimos 14 m (v ~ raiz de la distancia), quieta al llegar.
-            float quiere = d < 0.8f ? 0f : Mathf.Min(velocidadDeAsalto, Mathf.Sqrt(2f * 6f * Mathf.Max(0f, d - 0.6f)));
+            float dParada = Mathf.Max(0.6f, distanciaDeParada);
+            float quiere = d < Mathf.Max(0.8f, distanciaDeParada) ? 0f : Mathf.Min(velocidadDeAsalto, Mathf.Sqrt(2f * 6f * Mathf.Max(0f, d - dParada)));
             VelocidadActual = Mathf.MoveTowards(VelocidadActual, quiere, (quiere > VelocidadActual ? 7f : 12f) * dt);
-            if (d > 0.8f)
+            if (d > Mathf.Max(0.8f, distanciaDeParada))
             {
                 var rot = Quaternion.LookRotation(aMeta.normalized, Vector3.up);
                 Girar(rot, 70f, dt);

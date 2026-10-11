@@ -76,7 +76,7 @@ namespace SP.Ai
             float alcance = EffectiveVisionRange * AlcanceExtendido;
             foreach (var v in Vehicle.Todos)
             {
-                if (v == null || !v.Hostil(self.Team)) continue;
+                if (v == null || !v.Hostil(self.Team) || VehiculoDescartado(v)) continue;
                 float d = Vector3.Distance(self.transform.position, v.transform.position);
                 if (d > alcance || d >= mejorDist) continue;
                 if (!NavService.HayLineaDeTiro(self.transform.position, CentroDe(v), self.transform, v.transform)) continue;

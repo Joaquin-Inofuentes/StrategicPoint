@@ -3287,8 +3287,8 @@ namespace SP.Player
                 if (Mathf.Abs(scroll) > 0.01f) Rig.ZoomHaciaCursor(scroll * rtsZoomSpeed * 3f * Time.deltaTime, mouse.position.ReadValue());
             }
 
-            string selectionLabel = Selection.SelectedVehicle != null ? "vehiculo seleccionado" : $"{Selection.Selected.Count} seleccionados";
-            SetInstructionText($"[Arrastrar] seleccionar · [Shift+Click] sumar · [Click der.] mover la selección · [Ctrl+Click der.] trazar recorrido · [C] mantener: coberturas y rutas · [WASD] panear · [Shift] panear rápido · [Q]/[E] bajar/subir cámara · [Rueda] zoom al cursor · [TAB] vista FPS · {selectionLabel}");
+            // Bug #188: se quita el cartel de controles del RTS ("nadie lo lee"); los atajos siguen en la pausa > controles.
+            SetInstructionText("");
 
             if (mouse == null || Rig.Cam == null) return;
 
@@ -3304,6 +3304,11 @@ namespace SP.Player
             if (OrdenesMenu != null && OrdenesMenu.Abierto) OrdenesMenu.MoverSeleccion(mouse.delta.ReadValue());
             else ultimoResultadoDeMira = resultRts;
             UpdateAimRing(resultRts);
+            // Bug #189: con soldados seleccionados y el cursor sobre una cobertura se iluminan los puntos que tomarian.
+            if (Selection.SelectedVehicle == null && Selection.Selected.Count > 0 && (resultRts.Type == AimTargetType.Obstacle || resultRts.Type == AimTargetType.Ground || resultRts.Type == AimTargetType.Cubrirse))
+                PrevisualizacionDeCoberturas.Mostrar(Selection.Selected, resultRts.Point, resultRts.Type == AimTargetType.Ground ? null : resultRts.HitTransform,
+                    resultRts.Type == AimTargetType.Ground ? RadioCoberturaPiso : 0f);
+            else PrevisualizacionDeCoberturas.Ocultar();
             UpdateVehicleMountIndicatorRts(resultRts);
             ActualizarCursorRts(resultRts);
 
@@ -3361,6 +3366,9 @@ namespace SP.Player
                 // de varios tramos.
                 bool queued = kb.leftShiftKey.isPressed || kb.rightShiftKey.isPressed;
 
+                // Bug #180: sobre un interactuable ordenable (computadora, panel, carga) la orden es operarlo.
+                var ordenableRts = Selection.SelectedVehicle == null ? OrdenableBajoRayoRts(screenRay) : null;
+
                 // Sobre una COBERTURA (el obstaculo o su disco celeste): la
                 // seleccion va a cubrirse, un punto para cada uno.
                 bool esCobertura = Selection.SelectedVehicle == null && Selection.Selected.Count > 0
@@ -3380,7 +3388,11 @@ namespace SP.Player
                     pidioOrden = false;
                 }
 
-                if (esCobertura)
+                if (ordenableRts != null)
+                {
+                    EnviarAInteractuarDesdeRts(ordenableRts);
+                }
+                else if (esCobertura)
                 {
                     int cubiertos = IssueCoverOrderForSelection(Selection.Selected, result.Point,
                         result.Type == AimTargetType.Obstacle ? result.HitTransform : null);

@@ -56,7 +56,7 @@ namespace SP.Core
 
         // Bajada GLOBAL de dificultad (pedido explicito): en TODOS los niveles el enemigo hace la mitad de dano y los aliados
         // tienen el doble de vida. Se multiplica sobre el perfil de cada nivel, asi la diferencia entre FACIL/MEDIO/DIFICIL se mantiene.
-        public const float FactorDanoEnemigoGlobal = 0.5f;
+        public const float FactorDanoEnemigoGlobal = 0.9f;   // bug #181 ("hacen muy poco dano"): antes 0.5
         public const float FactorVidaAliadosGlobal = 2f;
 
         public static Perfil Datos(NivelDificultad n)
@@ -143,10 +143,11 @@ namespace SP.Core
             return m;
         }
 
+        // Bug #181: x2,0 con la vida llena (antes x1,35) y ~x0,9 a la mitad; sigue bajando hasta x0,18 con la vida casi nula.
         // Bug #157: "si tengo mucha vida los enemigos hacen mas dano y mientras mas baja mi vida hacen menos dano, asi los ultimos puntos de vida
         // duran muchisimo mas". Multiplica el dano que recibe el soldado que manejas segun su vida: x1,35 con la vida llena, ~x0,7 a la mitad,
         // ~x0,3 con el 10 % y x0,18 en el limite (los ultimos puntos aguantan ~5 veces mas golpes).
-        public const float FactorConVidaLlena = 1.35f, FactorConVidaCasiNula = 0.18f;
+        public const float FactorConVidaLlena = 2.0f, FactorConVidaCasiNula = 0.18f;
         public static float FactorPorVidaDelJugador(float fraccion)
             => Mathf.Lerp(FactorConVidaCasiNula, FactorConVidaLlena, Mathf.Pow(Mathf.Clamp01(fraccion), 1.3f));
     }

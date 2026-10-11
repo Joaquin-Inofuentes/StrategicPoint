@@ -33,7 +33,7 @@ namespace SP.Actors
             {
                 if (matAliado == null) matAliado = SP.Core.RecursosCache.Cargar<Material>("Soldados/MAT_Trimsheet_Aliado");
                 if (matEnemigo == null) matEnemigo = SP.Core.RecursosCache.Cargar<Material>("Soldados/MAT_Trimsheet_Enemigo");
-                var mat = def.Enemigo ? matEnemigo : matAliado;
+                var mat = def.Enemigo ? MaterialEnemigoVisible() : matAliado;
                 if (s.Role == RoleType.Civilian) mat = MaterialCivil();
                 smr.sharedMesh = malla;
                 if (mat != null) smr.sharedMaterial = mat;
@@ -49,6 +49,22 @@ namespace SP.Actors
             }
             if (s.Role == RoleType.Civilian) OcultarArma();
             Aplicado = true;
+        }
+
+        // Bugs #168/#175 ("sigo sin ver al enemigo"): de noche el trimsheet rojo oscuro se pierde contra el fondo. En vez de iluminar al que
+        // dispara (luz que quedaba sobre el cadaver, bug #176) el enemigo lleva un brillo propio tenue: se lo distingue siempre, sin luces sueltas.
+        static Material matEnemigoVisible;
+        static Material MaterialEnemigoVisible()
+        {
+            if (matEnemigoVisible != null) return matEnemigoVisible;
+            if (matEnemigo == null) return null;
+            matEnemigoVisible = new Material(matEnemigo) { name = "MAT_Trimsheet_Enemigo_Brillo" };
+            if (matEnemigoVisible.HasProperty("_EmissionColor"))
+            {
+                matEnemigoVisible.EnableKeyword("_EMISSION");
+                matEnemigoVisible.SetColor("_EmissionColor", new Color(0.30f, 0.07f, 0.05f));
+            }
+            return matEnemigoVisible;
         }
 
         static Material matCivil;

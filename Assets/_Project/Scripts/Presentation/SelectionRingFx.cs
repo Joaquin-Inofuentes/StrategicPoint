@@ -66,23 +66,14 @@ namespace SP.Presentation
         public static SelectionRingFx Spawn(Transform target, Color color, float radius = 0.75f)
         {
             SpawnCount++;
-            var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            go.name = "SelectionRing";
-            var col = go.GetComponent<Collider>();
-            if (col != null)
-            {
-                if (Application.isPlaying) Destroy(col);
-                else DestroyImmediate(col);
-            }
-
-            var rend = go.GetComponent<MeshRenderer>();
-            // Material COMPARTIDO y Shader.Find resuelto una sola vez. Antes
-            // cada anillo hacia su propio Shader.Find (de las llamadas mas
-            // caras del motor) y su propio new Material: seleccionar 50
-            // unidades eran 50 Shader.Find y 50 materiales, y el manager los
-            // destruia y recreaba en CADA cambio de seleccion.
-            rend.sharedMaterial = SharedMaterial;
-            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; // pedido explicito: cilindros sin sombra
+            // Bug #178 ("quiero que los seleccionados tengan un circulo en su base"): el cilindro chato con material Lit quedaba negro de noche y no se
+            // veia. Ahora es el aro plano sin iluminacion de AnilloDeAviso (transparente, no lo afecta la luz), tenido por vida del soldado.
+            var go = new GameObject("SelectionRing");
+            go.AddComponent<MeshFilter>().sharedMesh = SP.Operacion.AnilloDeAviso.MallaPlana();
+            var rend = go.AddComponent<MeshRenderer>();
+            rend.sharedMaterial = SP.Operacion.AnilloDeAviso.MaterialDeAro();
+            rend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            rend.receiveShadows = false;
 
             var fx = go.AddComponent<SelectionRingFx>();
             fx.SetColor(color);
@@ -96,6 +87,9 @@ namespace SP.Presentation
         // LateUpdate (no una corrutina) para que conviva con el pulso y
         // el tinte por vida que ese mismo LateUpdate ya recalcula cada
         // frame -- una corrutina que pintara el color seria pisada.
+        // Bug #178: por encima de los decals y el asfalto que el piso visible lleva sobre el collider (a 0,03 el aro quedaba tapado).
+        public float ElevacionExtra;
+        float proximaMedidaDePiso, pisoY = 0.03f;
         float ackFlashUntil;
         const float AckFlashDuration = 0.45f;
         public void FlashAcknowledge() => ackFlashUntil = Time.time + AckFlashDuration;
@@ -111,7 +105,13 @@ namespace SP.Presentation
 
             // A nivel del piso (no a la altura del centro del soldado, que
             // lo dejaba envolviendo la mitad del cubo en vez de estar abajo).
-            transform.position = new Vector3(Target.position.x, groundHeight, Target.position.z);
+            // Bug #178: el anillo a y fija (0,03) quedaba tapado por pisos elevados (patio del centro de datos, plataformas): se apoya en el piso real.
+            if (Time.time >= proximaMedidaDePiso)
+            {
+                proximaMedidaDePiso = Time.time + 0.25f + (System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this) & 7) * 0.01f;
+                pisoY = SP.Operacion.AnilloDeAviso.AlturaDelPisoEn(Target.position) + groundHeight + ElevacionExtra;
+            }
+            transform.position = new Vector3(Target.position.x, pisoY, Target.position.z);
 
             float k = (Mathf.Sin(Time.time * pulseSpeed) + 1f) * 0.5f;
             float radius = (baseRadius + pulseAmount * k) * 2f; // cylinder scale = diámetro
@@ -119,7 +119,7 @@ namespace SP.Presentation
             float ackRemaining = ackFlashUntil - Time.time;
             float ack = ackRemaining > 0f ? ackRemaining / AckFlashDuration : 0f;
             radius *= 1f + ack * 0.8f;
-            transform.localScale = new Vector3(radius, 0.03f, radius);
+            transform.localScale = new Vector3(radius, 1f, radius);
 
             if (trackedSoldier != null && trackedSoldier.Health != null)
             {

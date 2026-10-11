@@ -444,7 +444,9 @@ namespace SP.Ai
         float AmpliacionDeVisionActual => !Humanizada || visionRange < 5f ? 1f : AmpliacionDeVision * (self != null && self.Role == SP.Combat.RoleType.Sniper ? sniperAttackRangeMultiplier : 1f);
 
         float StanceVisionMultiplier =>
-            stance == CombatStance.Defensiva ? defensiveVisionMultiplier : 1f;
+            // Bug #190 ("mis soldados no disparan"): con 0,6 los que sostenian un sector en Defensiva veian a ~21 m mientras los enemigos los atacaban desde 30+;
+            // el piso de 0,9 los deja ver (y devolver el fuego) hasta casi donde alcanza su arma.
+            stance == CombatStance.Defensiva ? Mathf.Max(defensiveVisionMultiplier, 0.9f) : 1f;
 
         // RoleType.Sniper estaba declarado (Soldado_2_Kes nace con este rol
         // en SC_Gameplay) y no tenia NINGUN efecto de juego -- se comportaba
@@ -649,7 +651,9 @@ namespace SP.Ai
             if (self == null || Pasivo || !self.Health.IsAlive) return;
             // Mismo criterio que OnAnyDamage: si ya esta ocupado (Chase, Attack, con una orden propia) el tiro no lo
             // interrumpe; seguir al jugador (sin la parte forzada) cuenta como "sin nada que hacer".
-            if (!LibreParaAyudar) return;
+            // Bug #190: el que esta cubierto por orden (parado en su cobertura, sin blanco) TAMBIEN responde al tiroteo: se queda en su puesto
+            // (StanceAllowsPursuit lo frena) pero dispara apenas el enemigo entra en su alcance con linea de tiro.
+            if (!LibreParaAyudar && !(coberturaPorOrden && !Quieto && !orderIsAttack && mountTarget == null && (State == AiState.Idle || State == AiState.Patrol))) return;
 
             var shooter = ActorRegistry.FindById(evt.ShooterId);
             if (shooter == null || !shooter.Health.IsAlive || shooter.Team == self.Team) return;

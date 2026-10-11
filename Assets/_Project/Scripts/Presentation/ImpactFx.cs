@@ -254,6 +254,23 @@ namespace SP.Presentation
         // EnvironmentHitKind ya distinguia el vehiculo, pero el efecto era el
         // mismo que contra el suelo: no se percibia que el blindaje resiste.
         // Chispas rapidas que salen rebotadas, no polvo de tierra.
+        // Bug #187 ("que las explosiones del helicoptero y las mias se diferencien mucho: unas son metralleta, otras canon y explosiones"): el impacto
+        // de la metralleta enemiga (helicoptero, camionetas) es un chispazo chico y rojizo con chispas que saltan; no levanta cubos ni nube de polvo.
+        // Las explosiones del canon quedan grandes, con bola de fuego, escombros y el aro celeste de #162.
+        static readonly Color ChispaDeMetralla = new Color(1f, 0.38f, 0.12f, 1f);
+        public static void SpawnImpactoDeMetralla(Vector3 position, Vector3 surfaceNormal)
+        {
+            if (!Application.isPlaying) return;
+            if (surfaceNormal.sqrMagnitude < 0.0001f) surfaceNormal = Vector3.up;
+            Spawn(position, ChispaDeMetralla, 0.16f, 0.06f);
+            SpriteFx.Lanzar("flare_01", position + surfaceNormal * 0.05f, new Color(1f, 0.55f, 0.3f, 1f), 0.25f, 0.8f, 0.07f, Random.Range(0f, 360f), default, 0f, 8);
+            for (int i = 0; i < 4; i++)
+            {
+                var dir = Vector3.Slerp(surfaceNormal, Random.onUnitSphere, 0.6f).normalized;
+                DebrisPool.Spawn(position, dir * Random.Range(5f, 9f), ChispaDeMetralla, Random.Range(0.04f, 0.07f), 0.35f);
+            }
+        }
+
         public static void SpawnArmorSparks(Vector3 position, Vector3 surfaceNormal)
         {
             Spawn(position, ArmorSparkColor, 0.3f, 0.12f);
