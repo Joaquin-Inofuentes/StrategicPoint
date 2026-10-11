@@ -1310,13 +1310,13 @@ namespace SP.EditorTools
                 float surZ = ((Vector3)campoPanTarget.GetValue(rig)).z;
 
                 Check($"Paneo al Este se clampea dentro del mapa real ({esteX:0.0} <= {limitesMapa.max.x:0.0})",
-                    esteX <= limitesMapa.max.x + 0.01f);
+                    esteX <= limitesMapa.max.x + CameraRig.MargenLibrePublico + 0.01f);
                 Check($"Paneo al Oeste se clampea dentro del mapa real ({oesteX:0.0} >= {limitesMapa.min.x:0.0})",
-                    oesteX >= limitesMapa.min.x - 0.01f);
+                    oesteX >= limitesMapa.min.x - CameraRig.MargenLibrePublico - 0.01f);
                 Check($"Paneo al Norte se clampea dentro del mapa real ({norteZ:0.0} <= {limitesMapa.max.z:0.0})",
-                    norteZ <= limitesMapa.max.z + 0.01f);
+                    norteZ <= limitesMapa.max.z + CameraRig.MargenLibrePublico + 0.01f);
                 Check($"Paneo al Sur se clampea dentro del mapa real ({surZ:0.0} >= {limitesMapa.min.z:0.0})",
-                    surZ >= limitesMapa.min.z - 0.01f);
+                    surZ >= limitesMapa.min.z - CameraRig.MargenLibrePublico - 0.01f);
             }
 
             TestLog.Phase("FASE 10 FINALIZADA");

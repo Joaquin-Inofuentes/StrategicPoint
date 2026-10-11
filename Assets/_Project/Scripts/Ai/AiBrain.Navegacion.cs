@@ -19,7 +19,7 @@ namespace SP.Ai
         // Sin avanzar esta distancia en esta ventana (con la ruta ya calculada) = no puede llegar: se da la orden por cumplida donde llego.
         const float VentanaSinAvance = 2.5f;
         const float AvanceMinimoEnVentana = 0.3f;
-        float ventanaT;
+        float ventanaT, pendienteSinRuta;
         Vector3 ventanaAncla;
 
         public int RemainingPathPoints => AgentActivo && agent.hasPath ? 1 : 0;
@@ -169,6 +169,25 @@ namespace SP.Ai
             return true;
         }
 
+        // Solo para escenas SIN NavMesh (la suite headless): rodeo con la grilla de NavService. En el juego real siempre hay agent.
+        readonly System.Collections.Generic.List<Vector3> rodeoSinNavMesh = new System.Collections.Generic.List<Vector3>();
+        Vector3 rodeoDestino; int rodeoIndice; float rodeoReloj;
+        bool AvanzarSinNavMesh(Vector3 destination, float threshold, float dt)
+        {
+            rodeoReloj += dt;
+            if (rodeoReloj >= 0.5f || (rodeoDestino - destination).sqrMagnitude > 9f)
+            {
+                rodeoReloj = 0f; rodeoDestino = destination;
+                rodeoIndice = SP.Core.NavService.TryFindDetour(self.transform.position, destination, rodeoSinNavMesh) ? 1 : 0;
+            }
+            if (rodeoSinNavMesh.Count > 0 && rodeoIndice > 0 && rodeoIndice < rodeoSinNavMesh.Count - 1)
+            {
+                if (self.Motor.MoveTowards(rodeoSinNavMesh[rodeoIndice], 1.2f, dt)) rodeoIndice++;
+                return false;
+            }
+            return self.Motor.MoveTowards(destination, threshold, dt);
+        }
+
         // ------------------------------------------------------------------
         // Avance
         // ------------------------------------------------------------------
@@ -177,8 +196,7 @@ namespace SP.Ai
         bool AdvanceTo(Vector3 destination, float threshold, float dt, bool girar = true)
         {
             EnsureAgent();
-            if (!AgentActivo)
-                return self.Motor.MoveTowards(destination, threshold, dt);   // sin NavMesh bajo el soldado: derecho
+            if (!AgentActivo) return AvanzarSinNavMesh(destination, threshold, dt);
 
             SincronizarAgente();
 
@@ -201,7 +219,15 @@ namespace SP.Ai
                 agent.SetDestination(destination);
             }
 
-            if (agent.pathPending) return false;   // esperando la primera ruta: quieto un instante, sin tretas
+            // Esperando la primera ruta: unos instantes quieto; si la cola del NavMesh tarda (muchos agentes, o una suite que simula sin frames
+            // reales) se camina derecho al destino hasta que llegue la ruta.
+            if (agent.pathPending && !agent.hasPath)
+            {
+                pendienteSinRuta += dt;
+                if (pendienteSinRuta > 0.4f) self.Motor.MoveTowards(destination, threshold, dt);
+                return false;
+            }
+            pendienteSinRuta = 0f;
             if (agent.pathStatus == NavMeshPathStatus.PathInvalid)
                 return self.Motor.MoveTowards(destination, threshold, dt);
 

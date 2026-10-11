@@ -290,6 +290,7 @@ namespace SP.CameraSystem
             return focus - forward * t;
         }
 
+        public const float MargenLibrePublico = 400f;   // bug #203: el paneo puede pasarse del mapa hasta este margen
         public void AddPitch(float delta) => pitch = Mathf.Clamp(pitch + delta, -MaxPitch, MaxPitch);
         public void ResetPitch() => pitch = 0f;
 
@@ -927,7 +928,7 @@ namespace SP.CameraSystem
             {
                 // Bug #203 ("hay un bloqueo de movimiento de camara molesto que me limita, quitalo"): el paneo ya no se frena en el borde del
                 // terreno; queda un margen de 400 m solo para no perderse en el infinito.
-                const float MargenLibre = 400f;
+                const float MargenLibre = MargenLibrePublico;
                 punto.x = Mathf.Clamp(punto.x, limites.min.x - MargenLibre, limites.max.x + MargenLibre);
                 punto.z = Mathf.Clamp(punto.z, limites.min.z - MargenLibre, limites.max.z + MargenLibre);
                 return;
