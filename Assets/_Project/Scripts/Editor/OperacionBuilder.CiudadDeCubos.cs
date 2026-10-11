@@ -22,6 +22,7 @@ namespace SP.EditorTools
     public static partial class OperacionBuilder
     {
         public const string NombreCiudadDeCubos = "CiudadDeCubos";
+        public const float CiudadDesdeX = 205f, CiudadDesdeZ = 125f;
         public static string ResumenCiudadDeCubos { get; private set; } = "";
 
         // Parametros de la cuadricula: 9 x 9 manzanas de 70 m con calles de 16 m (paso 86 m).
@@ -66,6 +67,15 @@ namespace SP.EditorTools
                 return true;
             }
             public int Ocupadas() { int k = 0; foreach (var v in oc) if (v) k++; return k; }
+            // Marca como ocupado TODO lo que queda fuera del rectangulo dado (la ciudad solo puebla ese rectangulo).
+            public void OcuparFuera(float x0, float z0, float x1, float z1)
+            {
+                for (int i = 0; i < n; i++) for (int j = 0; j < n; j++)
+                {
+                    float cx = -Mitad + (i + 0.5f) * Celda, cz = -Mitad + (j + 0.5f) * Celda;
+                    if (cx < x0 || cx > x1 || cz < z0 || cz > z1) oc[i, j] = true;
+                }
+            }
         }
 
         static OcupacionCc LeerOcupacionCc(Transform op)
@@ -277,6 +287,8 @@ namespace SP.EditorTools
                 foreach (var m in mallasViejas) Object.DestroyImmediate(m);
             }
             var ocup = LeerOcupacionCc(padre);
+            // Pedido: "en la ruta que no sea ciudad sino desierto": la ciudad de cubos queda solo en el extremo NE (el final del recorrido).
+            ocup.OcuparFuera(CiudadDesdeX, CiudadDesdeZ, 400f, 400f);
             var usada = new OcupacionCc();      // lo que esta ciudad ya construyo (calles y lotes): las arboledas van en lo que queda libre
             var g = Grupo(padre, NombreCiudadDeCubos);
             var rnd = new System.Random(2026);

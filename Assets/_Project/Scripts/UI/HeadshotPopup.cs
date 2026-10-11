@@ -16,6 +16,7 @@ namespace SP.UI
         public static void Mostrar(bool mata)
         {
             if (!Application.isPlaying) return;
+            AvisoUnico.Mostrar(mata ? "¡HEADSHOT!" : "HEADSHOT", 1.1f, mata ? new Color(1f, 0.3f, 0.2f) : new Color(1f, 0.65f, 0.25f), AvisoUnico.PrioridadMedia);
             if (instancia == null) instancia = Crear();
             if (instancia.rutina != null) instancia.StopCoroutine(instancia.rutina);
             instancia.rutina = instancia.StartCoroutine(instancia.Golpe(mata));
@@ -27,6 +28,7 @@ namespace SP.UI
             var canvas = go.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 60;
+            canvas.enabled = false;   // se muestra en el texto unico de abajo al centro
             var escalador = go.AddComponent<CanvasScaler>();
             escalador.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             escalador.referenceResolution = new Vector2(1280f, 720f);

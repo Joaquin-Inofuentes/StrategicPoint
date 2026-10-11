@@ -90,6 +90,8 @@ namespace SP.EditorTools
             Check("Con UNO seleccionado, Tab lo posee (soldado unico = Kes)", inputDriver.SoldadoUnicoSeleccionado() == kes);
             seleccion.AddToSelection(doc);
             Check("Con dos seleccionados no se cambia de poseido", inputDriver.SoldadoUnicoSeleccionado() == null);
+            var paraTab = inputDriver.SoldadoElegidoParaTab();
+            Check("Bug #174: con varios seleccionados Tab entra a uno de ellos", paraTab == kes || paraTab == doc);
             seleccion.Clear();
 
             // --- El vehiculo sin NavMesh (Edit mode) sigue en linea recta ---

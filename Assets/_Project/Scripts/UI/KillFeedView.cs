@@ -39,9 +39,12 @@ namespace SP.UI
         // asi el orden es correcto por construccion y no por suerte.
         public void ShowKill()
         {
-            if (!Application.isPlaying || label == null) return;
-            if (routine != null) StopCoroutine(routine);
-            routine = StartCoroutine(PunchAndFade());
+            if (!Application.isPlaying) return;
+            var director = SP.Presentation.KillFeedbackDirector.Instance;
+            string txt = director != null ? director.FeedText() : "ENEMIGO ABATIDO";
+            bool mine = director != null && director.LastKillWasPlayer;
+            AvisoUnico.Mostrar(txt, 1.6f, mine ? new Color(1f, 0.4f, 0.3f) : new Color(0.6f, 0.8f, 1f), AvisoUnico.PrioridadBaja);
+            if (label != null) label.gameObject.SetActive(false);   // el cartel ya no se dibuja: va al texto unico de abajo al centro
         }
 
         IEnumerator PunchAndFade()

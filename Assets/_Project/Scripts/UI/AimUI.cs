@@ -228,20 +228,10 @@ namespace SP.UI
         public void UpdateAmmoWarning(SP.Combat.WeaponHolder weapon)
         {
             if (ammoWarningText == null || weapon == null) return;
-            if (weapon.IsReloading)
-            {
-                ammoWarningText.text = "RECARGANDO";
-                ammoWarningText.gameObject.SetActive(true);
-            }
-            else if (weapon.CurrentAmmo <= 0)
-            {
-                ammoWarningText.text = "SIN MUNICION";
-                ammoWarningText.gameObject.SetActive(true);
-            }
-            else
-            {
-                ammoWarningText.gameObject.SetActive(false);
-            }
+            ammoWarningText.gameObject.SetActive(false);   // va al texto unico de abajo al centro
+            if (weapon.IsReloading) { ammoWarningText.text = "RECARGANDO"; AvisoUnico.Fijo("municion", "RECARGANDO", new Color(1f, 0.75f, 0.3f)); }
+            else if (weapon.CurrentAmmo <= 0) { ammoWarningText.text = "SIN MUNICION"; AvisoUnico.Fijo("municion", "SIN MUNICION", new Color(1f, 0.4f, 0.3f)); }
+            else AvisoUnico.QuitarFijo("municion");
         }
 
         // La mirilla/cartel/paneles de info son puramente de puntería a
@@ -646,8 +636,9 @@ namespace SP.UI
             if (promptText != null)
             {
                 promptText.text = CurrentPrompt;
-                promptText.gameObject.SetActive(!string.IsNullOrEmpty(CurrentPrompt));
+                promptText.gameObject.SetActive(false);   // va al texto unico de abajo al centro
             }
+            if (string.IsNullOrEmpty(CurrentPrompt)) AvisoUnico.QuitarFijo("mira"); else AvisoUnico.Fijo("mira", CurrentPrompt, new Color(1f, 0.82f, 0.3f));
 
             // La mirilla en sí misma lleva el tinte de qué hay debajo (no
             // solo el cartel de texto), salvo mientras un flash de impacto
@@ -662,6 +653,9 @@ namespace SP.UI
 
         void UpdateSoldierInfo(AimResult result)
         {
+            // Pedido: apuntar a un aliado o enemigo ya NO muestra la descripcion (nombre, vida, arma, clase, estado).
+            if (soldierInfoPanel != null) soldierInfoPanel.SetActive(false);
+            if (true) return;
             if (soldierInfoPanel == null) return;
 
             bool show = (result.Type == AimTargetType.Ally || result.Type == AimTargetType.Enemy) && result.Soldier != null;

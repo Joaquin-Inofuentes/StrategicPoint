@@ -220,6 +220,23 @@ namespace SP.UI
                 fill.fillAmount = weapon.ReadinessFraction01;
                 fill.color = AjustesDeJuego.Adaptar(weapon.IsReloading ? new Color(0.95f, 0.6f, 0.2f) : new Color(0.4f, 0.85f, 0.45f));
             }
+            OcultarSobrantes();
+        }
+
+        // Bug #144: "quita la F y el icono de cuchillo, solo deja el icono del arma, la municion, las granadas y el icono; y quita la vida de alli
+        // porque ya se ve a la izquierda". La barra verde del pie (cooldown/recarga) y el cuchillo con su letra salen del panel; la granada
+        // queda sin la "G" y sube al lugar del cuchillo.
+        void OcultarSobrantes()
+        {
+            foreach (var n in new[] { "ExtrasCuchillo", "ExtrasCuchilloLabel", "ExtrasGranadaLabel", "BarBG" })
+            {
+                var t = transform.Find(n);
+                if (t != null && t.gameObject.activeSelf) t.gameObject.SetActive(false);
+            }
+            if (fill != null && fill.transform.parent != null && fill.transform.parent != transform && fill.transform.parent.gameObject.activeSelf)
+                fill.transform.parent.gameObject.SetActive(false);
+            if (extrasGranada != null) ((RectTransform)extrasGranada.transform).anchoredPosition = new Vector2(78f, 40f);
+            if (extrasGranadaCount != null) ((RectTransform)extrasGranadaCount.transform).anchoredPosition = new Vector2(110f, 40f);
         }
 
         // Pedido explicito: "intenta evitar textos" -- la barra ya no lleva

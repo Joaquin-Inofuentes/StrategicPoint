@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using UnityEngine;
 using SP.Core;
@@ -99,6 +99,11 @@ namespace SP.Presentation
             RestoreBaseColors();
             StopAllCoroutines();
             StartCoroutine(SparkFlash());
+            // Bug #162 ("no se ve el dano del tanque"): cada impacto suelta una bola de fuego con chispas sobre el casco y un anillo rojo.
+            var punto = transform.position + new Vector3(UnityEngine.Random.Range(-1.2f, 1.2f), UnityEngine.Random.Range(1.1f, 1.9f), UnityEngine.Random.Range(-1.6f, 1.6f));
+            ImpactFx.Spawn(punto, ImpactFx.ExplosionColor, 1.5f, 0.45f);
+            ImpactFx.SpawnArmorSparks(punto, Vector3.up);
+            ImpactFx.SpawnShockwaveRing(punto, ImpactFx.ExplosionEnemiga, 2.6f, 0.4f);
         }
 
         void OnDestroyedEvt(VehicleDestroyedEvent evt)
@@ -112,7 +117,7 @@ namespace SP.Presentation
             for (int i = 0; i < chassisRenderers.Length; i++)
                 if (HasMaterial(chassisRenderers[i])) chassisRenderers[i].sharedMaterial.color = SparkColor;
 
-            yield return new WaitForSeconds(0.12f);
+            yield return new WaitForSeconds(0.22f);
 
             RestoreBaseColors();
         }
@@ -161,13 +166,13 @@ namespace SP.Presentation
                 wreckSmokeRemaining -= Time.deltaTime;
                 shouldSmoke = wreckSmokeRemaining > 0f;
             }
-            else shouldSmoke = healthFraction < 0.6f;
+            else shouldSmoke = healthFraction < 0.85f;
             if (!shouldSmoke) return;
 
             smokeTimer -= Time.deltaTime;
             if (smokeTimer > 0f) return;
 
-            float damageFrac = vehicle.IsDestroyed ? 1f : Mathf.Clamp01(1f - healthFraction / 0.6f);
+            float damageFrac = vehicle.IsDestroyed ? 1f : Mathf.Clamp01(1f - healthFraction / 0.85f);
             smokeTimer = Mathf.Lerp(2.2f, 0.35f, damageFrac);
             SpawnSmokePuff();
         }

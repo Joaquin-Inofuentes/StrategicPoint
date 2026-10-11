@@ -247,7 +247,7 @@ namespace SP.Presentation
         // jerarquia entre armas. El danio ya viaja en el Projectile.
         public static void SpawnScaledByDamage(Vector3 position, Color color, int damage)
         {
-            float scale = Mathf.Lerp(0.35f, 1.4f, Mathf.InverseLerp(5f, 60f, damage));
+            float scale = Mathf.Lerp(0.35f, 1.4f, Mathf.InverseLerp(5f, 60f, damage)) * EscalaVisualDeImpacto;
             Spawn(position, color, 0.55f * scale, 0.35f);
         }
 
@@ -270,6 +270,32 @@ namespace SP.Presentation
         // un instante en el pico, y colapsa de golpe.
         public static void SpawnExplosion(Vector3 position, float radius) => SpawnExplosion(position, radius, true);
 
+        // Pedido: "al impactar que el efecto sea 2 veces mas grande". Solo el dibujo (fuego, humo, tierra, polvo): el radio de dano y el anillo
+        // que lo muestra no cambian.
+        public const float EscalaVisualDeImpacto = 2f;
+
+        // Pedido: "particulas de explosion del canon al salir". Fogonazo grande, destello, chorro de humo hacia adelante, chispas y polvo
+        // levantado si la boca esta cerca del piso. size 1 = canon de tanque chico; metralletas 0.4-0.6.
+        public static void SpawnMuzzleBlast(Vector3 pos, Vector3 dir, float size, Color? tinte = null)
+        {
+            if (!Application.isPlaying) return;
+            if (dir.sqrMagnitude < 0.0001f) dir = Vector3.forward;
+            dir.Normalize();
+            var c = tinte ?? new Color(1f, 0.8f, 0.4f, 1f);
+            SpriteFx.Lanzar("muzzle_01", pos + dir * 0.35f * size, c, 0.9f * size, 3.2f * size, 0.12f, Random.Range(0f, 360f), default, 0f, 7);
+            SpriteFx.Lanzar("flare_01", pos + dir * 0.2f * size, new Color(1f, 0.95f, 0.8f, 1f), 0.7f * size, 2.2f * size, 0.09f, 0f, default, 0f, 8);
+            for (int i = 0; i < 3; i++)
+                SpriteFx.Lanzar(i % 2 == 0 ? "smoke_02" : "smoke_01", pos + dir * (0.7f + 0.55f * i) * size, new Color(0.62f, 0.6f, 0.57f, 0.6f), 0.5f * size, 2.6f * size, Random.Range(0.8f, 1.3f), Random.Range(-40f, 40f), dir * (6f + 3f * i) * size + Vector3.up * 0.8f, 3f, 1);
+            int chispas = Mathf.Clamp(Mathf.RoundToInt(8 * size), 3, 12);
+            for (int i = 0; i < chispas; i++)
+            {
+                var d = (dir * 2f + Random.insideUnitSphere).normalized;
+                SpriteFx.Lanzar("spark_01", pos, new Color(1f, 0.85f, 0.4f, 1f), 0.4f * size, 0.08f, 0.35f, 0f, d * Random.Range(8f, 18f) * size, 3f, 6);
+            }
+            if (size >= 1f && pos.y < 3f)
+                SpriteFx.Lanzar("dirt_01", new Vector3(pos.x, 0.3f, pos.z) + dir * 1.5f * size, new Color(0.5f, 0.4f, 0.3f, 0.7f), 1f * size, 3.2f * size, 0.7f, Random.Range(-30f, 30f), dir * 3f, 2f, 2);
+        }
+
         // Bug #072: el crater/decal quedaba en y = 0,02-0,04 y la calle esta en 0,08: la marca del obus estaba ENTERRADA. Ahora se mide el
         // piso bajo el punto (asfalto incluido) y la marca y el anillo se apoyan encima; ademas queda un CRATER con borde (CraterPool).
         // conCrater = false cuando varias explosiones seguidas caen en el mismo lugar (un vehiculo que revienta en tres tiempos).
@@ -277,7 +303,7 @@ namespace SP.Presentation
         {
             // Ronda 12: la esfera naranja era un placeholder. Ahora es una explosion de sprites reales (fuego, humo, tierra, chispas).
             // Si por algun motivo faltan los sprites (Resources), se cae a la esfera de antes.
-            if (SpriteFx.Explosion(position, radius) == 0)
+            if (SpriteFx.Explosion(position, radius * EscalaVisualDeImpacto) == 0)
             {
                 var fx = spheres.Take();
                 if (fx != null) fx.LaunchExplosion(position, radius * 2f);
@@ -294,14 +320,44 @@ namespace SP.Presentation
             DecalPool.Spawn(DecalKind.Crater, new Vector3(position.x, Mathf.Max(pisoY, 0.02f), position.z), Vector3.up, radius * 1.4f);
             if (conCrater && radius >= 3.5f && position.y - pisoY <= 2.5f)
                 CraterPool.Crear(position, pisoY, radius * 0.55f);
-            SpawnDustCloud(position, radius);
+            SpawnDustCloud(position, radius * EscalaVisualDeImpacto);
 
             // Escombros del punto de impacto, del pool compartido.
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 18; i++)
             {
                 var dir = (Random.insideUnitSphere + Vector3.up).normalized;
-                DebrisPool.Spawn(position, dir * Random.Range(4f, 9f), new Color(0.4f, 0.32f, 0.24f), Random.Range(0.1f, 0.22f));
+                DebrisPool.Spawn(position, dir * Random.Range(5f, 12f), new Color(0.4f, 0.32f, 0.24f), Random.Range(0.18f, 0.4f));
             }
+        }
+
+        // Bug #162 ("quiero que las explosiones se diferencien las mias de las del enemigo"): aro y destello del color del bando que la causo.
+        // Las del jugador son celestes; las del enemigo, rojas. Un explosivo sin bando (null) no lleva marca.
+        public static readonly Color ExplosionPropia = new Color(0.3f, 0.85f, 1f), ExplosionEnemiga = new Color(1f, 0.2f, 0.1f);
+        public static void MarcarBando(Vector3 position, float radius, SP.Combat.TeamId? bando)
+        {
+            if (!Application.isPlaying || !bando.HasValue) return;
+            var c = bando.Value == SP.Combat.TeamId.Player ? ExplosionPropia : ExplosionEnemiga;
+            float pisoY = DestruccionDeVehiculo.AlturaDelPiso(position);
+            SpawnShockwaveRing(new Vector3(position.x, pisoY + 0.14f, position.z), c, Mathf.Max(2.2f, radius * 1.2f), 0.8f);
+            SpawnShockwaveRing(new Vector3(position.x, pisoY + 0.16f, position.z), c, Mathf.Max(1.2f, radius * 0.7f), 0.55f, 0.08f);
+            MuzzleLightPool.Flash(position + Vector3.up * 1.2f, c);
+        }
+
+        // Fogonazo barato para soldados y metralletas de torre (decenas por segundo): 3 sprites, tope de 5 por cuadro y nada a mas de 110 m.
+        static int cuadroDeFogonazo, fogonazosEnElCuadro;
+        public static void SpawnMuzzleBlastLite(Vector3 pos, Vector3 dir, float size, Color? tinte = null)
+        {
+            if (!Application.isPlaying) return;
+            if (Time.frameCount != cuadroDeFogonazo) { cuadroDeFogonazo = Time.frameCount; fogonazosEnElCuadro = 0; }
+            if (fogonazosEnElCuadro++ >= 5) return;
+            var cam = SP.Core.CamaraPrincipal.Actual;
+            if (cam != null && (cam.transform.position - pos).sqrMagnitude > 110f * 110f) return;
+            if (dir.sqrMagnitude < 0.0001f) dir = Vector3.forward;
+            dir.Normalize();
+            var c = tinte ?? new Color(1f, 0.8f, 0.4f, 1f);
+            SpriteFx.Lanzar("muzzle_01", pos + dir * 0.3f * size, c, 0.9f * size, 3f * size, 0.1f, Random.Range(0f, 360f), default, 0f, 7);
+            SpriteFx.Lanzar("flare_01", pos + dir * 0.15f * size, new Color(1f, 0.95f, 0.8f, 1f), 0.7f * size, 2f * size, 0.07f, 0f, default, 0f, 8);
+            SpriteFx.Lanzar("smoke_02", pos + dir * 0.8f * size, new Color(0.62f, 0.6f, 0.57f, 0.5f), 0.4f * size, 1.8f * size, 0.7f, Random.Range(-40f, 40f), dir * 5f * size + Vector3.up * 0.6f, 2.5f, 1);
         }
 
         public static void SpawnShockwaveRing(Vector3 center, float radius)

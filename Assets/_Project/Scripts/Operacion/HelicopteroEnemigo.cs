@@ -17,7 +17,7 @@ namespace SP.Operacion
     public class HelicopteroEnemigo : MonoBehaviour
     {
         public const string Nombre = "HALCON";
-        public const float SegundoDeEntrada = 25f, RadioDeOrbita = 45f, AlturaMinima = 18f, AlturaMaxima = 24f, VelocidadDeVuelo = 25f;
+        public const float SegundoDeEntrada = 60f, RadioDeOrbita = 45f, AlturaMinima = 18f, AlturaMaxima = 24f, VelocidadDeVuelo = 25f;
         public const float SegundosEntrePasadas = 8f, SegundosDeAvisoDePasada = 1.2f, SeparacionDeCohetes = 7f;
         public const int CohetesPorPasada = 3, DanoDeCohete = 80, DanoDeMetralla = 6;
         public const float RadioDeCohete = 4.5f, AlcanceDeMetralla = 70f;

@@ -158,16 +158,40 @@ namespace SP.Operacion
                 if (s == null || s.gameObject.activeSelf || s.Health == null || !s.Health.IsAlive) continue;
                 elegidos.Add(s);
             }
-            if (p.puerta != null) { var cuerpoPuerta = p.puerta.gameObject; cuerpoPuerta.SetActive(false); }   // la puerta lateral se abre (se apaga la hoja)
             var ola = new OleadaDeReserva
             {
-                aviso = $"¡CONTRAATAQUE POR LA PUERTA LATERAL DEL PUESTO {p.lado}!\nAGUANTA HASTA QUE EXPLOTE LA CARGA",
+                aviso = $"¡CONTRAATAQUE POR LA PUERTA DEL CUARTEL DE RESERVA DEL PUESTO {p.lado}!\nAGUANTA HASTA QUE EXPLOTE LA CARGA",
                 soldados = elegidos.ToArray(),
                 destino = null,
             };
-            Activar(ola, meta);
+            // Bug #158 ("aparecieron de la nada, quiero que aparezcan de un lugar logico"): salen del cuartel de reserva pegado al bunker, y su
+            // porton se levanta a la vista antes de que salgan.
+            StartCoroutine(AbrirPuertaYSalir(p, ola, meta));
             ContraatacantesActivados += elegidos.Count;
             GameLog.Line($"[Operacion] contraataque del puesto {p.lado}: {elegidos.Count} enemigos");
+        }
+
+        IEnumerator AbrirPuertaYSalir(PuestoDeVoladura p, OleadaDeReserva ola, Vector3 meta)
+        {
+            if (p.puerta != null)
+            {
+                var t = p.puerta;
+                var ini = t.position;
+                float alto = Mathf.Max(0.5f, t.lossyScale.y);
+                AudioDirector.PlayAt(SfxKind.VehicleHit, ini, 0.8f, 0.6f);
+                float k = 0f; bool salieron = false;
+                while (k < 1f)
+                {
+                    k += Time.deltaTime / 1.0f;
+                    t.position = ini + Vector3.up * (alto * 0.97f) * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(k));
+                    if (!salieron && k >= 0.55f) { salieron = true; Activar(ola, meta); }
+                    yield return null;
+                }
+                t.gameObject.SetActive(false);
+                t.position = ini;
+                if (!salieron) Activar(ola, meta);
+            }
+            else Activar(ola, meta);
         }
 
         void LanzarCamionetaDePuesto(PuestoDeVoladura p)

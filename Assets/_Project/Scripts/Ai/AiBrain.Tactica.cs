@@ -676,6 +676,7 @@ namespace SP.Ai
                     // Vision extendida: cono + linea de tiro.
                     if (!EnElCono(s) || !TieneLineaDeTiro(s)) continue;
                 }
+                else if (dist > 2.5f && !VeFisicamente(s)) continue;   // bug #145: "me ven a traves de obstaculos": sin pared en el medio, si no, no se lo detecta
                 float p = PuntajeDeObjetivo(s);
                 if (p < mejorPuntaje) { mejorPuntaje = p; mejor = s; }
             }

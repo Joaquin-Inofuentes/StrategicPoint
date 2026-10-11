@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -132,6 +132,8 @@ namespace SP.Operacion
             Cayendo = true;
             Cayo?.Invoke(this);
             QuitarSilueta();
+            var cRaiz = GetComponent<Collider>();   // trigger de la raiz (para que el radial ofrezca DEMOLER): ya no hace falta
+            if (cRaiz != null) cRaiz.enabled = false;
 
             // Hacia donde cae: hacia el centro del cuartel (el patio), no contra el muro perimetral.
             var basePos = transform.position;
@@ -251,7 +253,7 @@ namespace SP.Operacion
             go.transform.SetParent(s.transform, false);
             go.transform.localPosition = new Vector3(0f, 0.55f, 1.1f);
             var l = go.AddComponent<Light>();
-            l.type = LightType.Point; l.range = 5.5f; l.intensity = 2.2f;
+            l.type = LightType.Point; l.range = 9f; l.intensity = 4.2f;
             l.color = new Color(0.78f, 0.86f, 1f);
             l.shadows = LightShadows.None;
         }

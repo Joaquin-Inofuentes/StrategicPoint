@@ -131,6 +131,11 @@ namespace SP.Presentation
             var muzzle = soldier != null && soldier.Weapon != null ? soldier.Weapon.Muzzle : null;
             var flashPos = muzzle != null ? muzzle.position : transform.position;
             ImpactFx.Spawn(flashPos, MuzzleFlashColor, 0.22f, 0.08f);
+            // Bug #162: las metralletas del enemigo (artilleros de torre, soldados con subfusil) no mostraban particulas.
+            bool automatica = kind == SP.Combat.WeaponKind.Smg || kind == SP.Combat.WeaponKind.Heavy;
+            if (automatica || soldier.Team == TeamId.Enemy)
+                ImpactFx.SpawnMuzzleBlastLite(flashPos, muzzle != null ? muzzle.forward : transform.forward, kind == SP.Combat.WeaponKind.Heavy ? 0.8f : (automatica ? 0.55f : 0.4f),
+                    soldier.Team == TeamId.Enemy ? new Color(1f, 0.5f, 0.25f, 1f) : (Color?)null);
 
             // El disparo suena en la BOCA del arma, el mismo punto donde se
             // dibuja el fogonazo: antes salia del AudioSource del cubo, o

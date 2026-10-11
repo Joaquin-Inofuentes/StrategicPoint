@@ -81,6 +81,7 @@ namespace SP.Operacion
         // Entrada del objetivo 4: el tanque vuelve a su sitio como BLINDADO enemigo dormido, con su tripulacion adentro.
         void PrepararHuida()
         {
+            buscoMuroDeSalida = false; balizaDeMuroPuesta = false;
             EnTanque = false;
             TomaDelJefeActiva = false; TomaDelJefeHecha = false; ReparacionCompletada = false;
             CineDeHuida.Cancelar();
@@ -157,11 +158,28 @@ namespace SP.Operacion
 
         static readonly Color VerdeHuida = new Color(0.4f, 1f, 0.5f);
 
+        // Bug #159 ("este paso deberia estar bloqueado, deberia ser un muro a ser destruido para avanzar"): la salida norte del centro de datos
+        // es un muro (Muro_Salida_Norte) que el ASALTO demuele; mientras siga en pie la baliza lo marca a el y no al tanque.
+        ObstacleMarker muroDeSalida; bool buscoMuroDeSalida, balizaDeMuroPuesta;
+        bool MuroDeSalidaEnPie()
+        {
+            if (!buscoMuroDeSalida)
+            {
+                buscoMuroDeSalida = true;
+                var g = GameObject.Find("Muro_Salida_Norte");
+                muroDeSalida = g != null ? g.GetComponent<ObstacleMarker>() : null;
+            }
+            return muroDeSalida != null && !muroDeSalida.IsCollapsed && muroDeSalida.gameObject.activeInHierarchy;
+        }
+
         void TickAcercamiento()
         {
             var yo = Poseido();
+            bool muro = MuroDeSalidaEnPie();
+            if (muro && !balizaDeMuroPuesta) { balizaDeMuroPuesta = true; PonerBaliza("MURO DE SALIDA", new Color(1f, 0.62f, 0.25f), muroDeSalida.transform.position, null, 3f); }
+            else if (!muro && balizaDeMuroPuesta && tanque != null) { balizaDeMuroPuesta = false; PonerBaliza("BLINDADO", ColorDelJefe, tanque.transform.position, tanque.transform, 3f); }
             if (hud != null)
-                hud.Objetivo(TituloObjetivo(4, "HUIR EN EL TANQUE"), "Avanza al patio · hay un BLINDADO enemigo custodiando la fuga", 0f, ColorDelJefe);
+                hud.Objetivo(TituloObjetivo(4, "HUIR EN EL TANQUE"), muro ? "El ASALTO debe DEMOLER el muro de la salida norte (apuntalo y [Q] > DEMOLER) · despues avanza al patio" : "Avanza al patio · hay un BLINDADO enemigo custodiando la fuga", 0f, ColorDelJefe);
             if (TomaDelJefeActiva || yo == null || !yo.Health.IsAlive) return;
             if (yo.transform.position.z > ZParaLaToma) StartCoroutine(TomaDelJefe());
         }

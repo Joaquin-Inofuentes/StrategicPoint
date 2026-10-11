@@ -31,6 +31,7 @@ namespace SP.UI
             var canvas = go.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 58;
+            canvas.enabled = false;   // el cartel va al texto unico de abajo al centro (AvisoUnico)
             var sc = go.AddComponent<CanvasScaler>();
             sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             sc.referenceResolution = new Vector2(1920f, 1080f);
@@ -72,6 +73,7 @@ namespace SP.UI
         {
             if (!Application.isPlaying) return;
             var c = Asegurar();
+            SP.UI.AvisoUnico.Mostrar(texto, 1.6f, ColorDeNivel(nivelDeRacha), SP.UI.AvisoUnico.PrioridadAlta);
             c.titulo.text = texto;
             c.titulo.color = ColorDeNivel(nivelDeRacha);
             c.nivel = nivelDeRacha;
@@ -89,6 +91,7 @@ namespace SP.UI
             c.furiaVisible = !string.IsNullOrEmpty(c.textoFuria);
             c.furia.text = c.textoFuria;
             c.furia.gameObject.SetActive(c.furiaVisible);
+            if (c.furiaVisible) SP.UI.AvisoUnico.Fijo("furia", c.textoFuria, new Color(1f, 0.45f, 0.25f)); else SP.UI.AvisoUnico.QuitarFijo("furia");
         }
 
         public static bool Visible => instancia != null && instancia.titulo != null && instancia.titulo.gameObject.activeSelf && instancia.titulo.color.a > 0.01f;
@@ -105,6 +108,7 @@ namespace SP.UI
             if (titulo.gameObject.activeSelf) Pintar();
             if (furiaVisible)
             {
+                SP.UI.AvisoUnico.Fijo("furia", textoFuria, new Color(1f, 0.45f, 0.25f));
                 float p = 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f);
                 var col = Color.Lerp(new Color(1f, 0.25f, 0.15f), new Color(1f, 0.7f, 0.3f), p);
                 furia.color = col;

@@ -230,6 +230,25 @@ namespace SP.Presentation
             return tex;
         }
 
+        // Bug #174 ("quiero ver los rombos de los aliados aunque esten obstaculizados"): material que se dibuja SIEMPRE encima (sin test de
+        // profundidad, mismo UI/Default que usan los engranajes). Si el shader no existe cae al Unlit de siempre.
+        public static Material NuevoMaterialSiempreVisible(Color color, Texture textura = null)
+        {
+            var ui = Shader.Find("UI/Default");
+            if (ui != null && ui.isSupported)
+            {
+                var m = new Material(ui) { hideFlags = HideFlags.HideAndDontSave, name = "M_RomboSiempreVisible" };
+                if (textura != null) m.mainTexture = textura;
+                m.color = color;
+                m.SetInt("unity_GUIZTestMode", (int)CompareFunction.Always);
+                m.renderQueue = (int)RenderQueue.Transparent + 400;
+                return m;
+            }
+            var mat = NuevoMaterial(color);
+            if (textura != null) { mat.mainTexture = textura; if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", textura); }
+            return mat;
+        }
+
         // Material Unlit TRANSPARENTE con textura (alfa por vertice no hace falta: el color/alfa va por MaterialPropertyBlock).
         public static Material NuevoMaterialTransparente(Color color, Texture textura, bool zTestAlways = false)
         {

@@ -164,15 +164,16 @@ namespace SP.Operacion
 
         public const float PisoDeVidaDelTanque = 0.2f;
         public const float ProporcionDeAutosPorDelante = 0.3f;
-        public const float AparicionMin = 1f, AparicionMax = 2f;
+        public const int AutosSimultaneosBase = 2;   // constante: el campo serializado autosSimultaneos de SC_Operacion quedo con el 4 viejo
+        public const float AparicionMin = 3f, AparicionMax = 5f;   // Bug #172: antes 1-2 s (se destruian 30 autos en una huida)
 
-        // Bug #073: 4 camionetas a la vez (5 en Dificil: la dificultad escala con CantidadDeOleadas, tope +1).
+        // Bug #073/#172: 2 camionetas a la vez (3 en Dificil: la dificultad escala con CantidadDeOleadas, tope +1).
         public int AutosSimultaneosEfectivos
         {
             get
             {
                 float k = Mathf.Max(1f, Dificultad.Datos(Dificultad.Actual).CantidadDeOleadas);
-                return Mathf.Clamp(Mathf.RoundToInt(autosSimultaneos * k), autosSimultaneos, autosSimultaneos + 1);
+                return Mathf.Clamp(Mathf.RoundToInt(AutosSimultaneosBase * k), AutosSimultaneosBase, AutosSimultaneosBase + 1);
             }
         }
 
@@ -197,7 +198,7 @@ namespace SP.Operacion
             if (indiceRuta < rutaDelTanque.Length)
             {
                 float d = Plano(rutaDelTanque[indiceRuta].position, tanque.transform.position).magnitude;
-                if (d < 7f && indiceRuta < rutaDelTanque.Length - 1) { indiceRuta++; EmitirOrdenDeRuta(); }
+                if (d < 11f && indiceRuta < rutaDelTanque.Length - 1) { indiceRuta++; EmitirOrdenDeRuta(); }
                 else if (vb != null && !vb.HasOrder && indiceRuta < rutaDelTanque.Length - 1) { indiceRuta++; EmitirOrdenDeRuta(); }
                 else if (vb != null && !vb.HasOrder) EmitirOrdenDeRuta();
             }

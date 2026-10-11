@@ -15,12 +15,12 @@ namespace SP.Operacion
     // 25 s con la animacion de reparar (AnimacionDeAccion.Reparar + engranajes de AccionesEnCurso, WP5b). El jugador tiene que cubrirla:
     //   * el progreso se pausa si Kes esta caida ("KES CAIDA") o si hay un enemigo a 4 m o menos de ella ("¡KES BAJO FUEGO!");
     //   * si el jugador ES Kes, el que repara es el Flanqueador poseido: mantener [E] pegado al tanque (mismo componente, mismo progreso);
-    //   * la vida del tanque sube con el progreso (de 5 % a 70 %); al terminar el director lo pasa al bando del jugador.
+    //   * la vida del tanque sube con el progreso (de 5 % a 100 %); al terminar el director lo pasa al bando del jugador.
     public class ReparacionDeTanque : MonoBehaviour
     {
         public const float SegundosDeReparacion = 25f;
         public const float RadioParaTrabajar = 4.3f, DistanciaDeEnemigo = 4f;
-        public const float VidaInicial01 = 0.05f, VidaFinal01 = 0.70f;
+        public const float VidaInicial01 = 0.05f, VidaFinal01 = 1f;   // Bug #172: "la vida deberia estar al 100% desde el inicio de la huida e ir bajandose"
         public const string Verbo = "REPARANDO";
         public const string AvisoDeInicio = "¡Está casi entero! ¡Puedo repararlo, cubrime!";
 

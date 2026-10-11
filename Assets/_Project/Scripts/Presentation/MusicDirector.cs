@@ -199,10 +199,12 @@ namespace SP.Presentation
         // "donde esta el jugador" sin acoplarse a FPS/RTS/vehiculo).
         // #127: la cobertura de la extraccion pide la musica de combate al maximo aunque no haya nadie en Attack/Chase cerca de la camara.
         public static bool CombateForzado;
+        public static bool MusicaDeAccionActiva = false;
 
         static bool HayCombateCerca()
         {
             if (CombateForzado) return true;
+            if (!MusicaDeAccionActiva) return false;   // bug #144: "no deberia haber musica de accion"
             var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam == null) return false;
             var pos = cam.transform.position;

@@ -7,34 +7,33 @@
 
 | Evento | Publica | Escucha | Quien lo publica | Quien lo escucha |
 |---|---|---|---|---|
-| `AiStateChangedEvent` | 1 | 3 | `AiBrain.cs` | `EnemyAlertIndicatorView.cs`, `SquadStateIndicatorView.cs`, `RosterRowView.cs` |
-| `DamageTakenEvent` | 2 | 12 | `Health.cs`, `HeadlessTestRunner.Fase23.cs` | `AiBrain.cs`, `TeamCombatState.cs`, `InteligenciaDeEnemigos.cs`, `PlayerInputDriver.cs`, `CubeFxReactor.cs`, `FloatingDamageTextManager.cs` |
-| `EntityDiedEvent` | 1 | 8 | `Health.cs` | `MunicionPickup.cs`, `PlayerInputDriver.cs`, `SelectionController.cs`, `BattleManager.cs`, `CubeFxReactor.cs`, `KillFeedbackDirector.cs` |
+| `AiStateChangedEvent` | 1 | 4 | `AiBrain.cs` | `ChecksBugs065.Wp4.cs`, `EnemyAlertIndicatorView.cs`, `SquadStateIndicatorView.cs`, `RosterRowView.cs` |
+| `DamageTakenEvent` | 2 | 14 | `Health.cs`, `HeadlessTestRunner.Fase23.cs` | `AiBrain.cs`, `TeamCombatState.cs`, `InteligenciaDeEnemigos.cs`, `EstadisticasDeMision.cs`, `PlayerInputDriver.cs`, `CubeFxReactor.cs` |
+| `EntityDiedEvent` | 1 | 12 | `Health.cs` | `SesionLog.cs`, `EstadisticasDeMision.cs`, `MunicionPickup.cs`, `PlayerInputDriver.cs`, `SelectionController.cs`, `BattleManager.cs` |
 | `EnvironmentHitEvent` | 1 | 1 | `Projectile.cs` | `AimUI.cs` |
 | `GrenadeExplodedEvent` | 1 | 1 | `Granada.cs` | `TutorialManager.cs` |
-| `GrenadeThrownEvent` | 1 | 1 | `Granada.cs` | `TutorialManager.cs` |
-| `HeadshotEvent` | 1 | 0 | `Projectile.cs` | — ⚠ nadie lo escucha |
+| `GrenadeThrownEvent` | 1 | 2 | `Granada.cs` | `SoldierGrenadeAnim.cs`, `TutorialManager.cs` |
+| `HeadshotEvent` | 2 | 2 | `Projectile.cs`, `ChecksBugs065.Wp1.cs` | `EstadisticasDeMision.cs`, `MarcaDeImpacto.cs` |
 | `HealedEvent` | 3 | 1 | `Health.cs`, `EstadoDePartida.cs`, `RescateAutomatico.cs` | `RosterRowView.cs` |
 | `LuminariaRotaEvent` | 1 | 0 | `Luminaria.cs` | — ⚠ nadie lo escucha |
-| `MeleeAttackEvent` | 1 | 1 | `WeaponHolder.cs` | `TutorialManager.cs` |
-| `MoveOrderIssuedEvent` | 1 | 1 | `OrderService.cs` | `TutorialManager.cs` |
+| `MeleeAttackEvent` | 1 | 2 | `WeaponHolder.cs` | `SoldierAnimatorDriver.cs`, `TutorialManager.cs` |
+| `MoveOrderIssuedEvent` | 1 | 2 | `OrderService.cs` | `OperacionDirector.Mando.cs`, `TutorialManager.cs` |
 | `OrderAcknowledgedEvent` | 1 | 1 | `OrderService.cs` | `SelectionRingManager.cs` |
 | `OrderCompletedEvent` | 2 | 0 | `AiBrain.Navegacion.cs`, `AiBrain.cs` | — ⚠ nadie lo escucha |
-| `PossessionChangedEvent` | 1 | 3 | `PossessionService.cs` | `PossessedMarkerView.cs`, `RosterRowView.cs`, `SelectedSoldierUI.cs` |
+| `PossessionChangedEvent` | 1 | 4 | `PossessionService.cs` | `SesionLog.cs`, `PossessedMarkerView.cs`, `RosterRowView.cs`, `SelectedSoldierUI.cs` |
 | `ProjectileReturnedEvent` | 1 | 0 | `Projectile.cs` | — ⚠ nadie lo escucha |
 | `SelectionChangedEvent` | 1 | 4 | `SelectionController.cs` | `SelectionRingManager.cs`, `RosterRowView.cs`, `SelectedSoldierUI.cs`, `SelectionCountView.cs` |
-| `ShotFiredEvent` | 3 | 7 | `WeaponHolder.cs`, `HeadlessTestRunner.Fases8a12.cs`, `CinematicaDeVictoria.cs` | `AiBrain.cs`, `HeadlessTestRunner.Fase21.cs`, `PlayerInputDriver.cs`, `CubeFxReactor.cs`, `SoldierAnimatorDriver.cs`, `UnitLocatorCylinder.cs` |
+| `ShotFiredEvent` | 4 | 12 | `WeaponHolder.cs`, `HeadlessTestRunner.Fases8a12.cs`, `CinematicaDeVictoria.cs`, `OperacionDirector.TomaFinal.cs` | `AiBrain.cs`, `SesionLog.cs`, `ChecksBugs065.Wp4.cs`, `ChecksBugs065.Wp8.cs`, `HeadlessTestRunner.Fase21.cs`, `EstadisticasDeMision.cs` |
 | `SwapTargetClearedEvent` | 1 | 0 | `AimTargeting.cs` | — ⚠ nadie lo escucha |
 | `SwapTargetHighlightedEvent` | 1 | 0 | `AimTargeting.cs` | — ⚠ nadie lo escucha |
 | `TurretControlChangedEvent` | 1 | 1 | `TurretAI.cs` | `PlayerInputDriver.cs` |
-| `VehicleDamagedEvent` | 1 | 1 | `Vehicle.cs` | `VehicleFxReactor.cs` |
-| `VehicleDestroyedEvent` | 1 | 2 | `Vehicle.cs` | `PlayerInputDriver.cs`, `VehicleFxReactor.cs` |
+| `VehicleDamagedEvent` | 1 | 2 | `Vehicle.cs` | `VehicleFxReactor.cs`, `MarcaDeImpacto.cs` |
+| `VehicleDestroyedEvent` | 1 | 4 | `Vehicle.cs` | `EstadisticasDeMision.cs`, `PlayerInputDriver.cs`, `SonidosDeOperacion.cs`, `VehicleFxReactor.cs` |
 | `WeaponChangedEvent` | 1 | 1 | `WeaponHolder.cs` | `RosterRowView.cs` |
 | `WeaponPickedUpEvent` | 1 | 0 | `WeaponPickup.cs` | — ⚠ nadie lo escucha |
 
-## Eventos con un solo lado (7)
+## Eventos con un solo lado (6)
 
-- `HeadshotEvent`
 - `LuminariaRotaEvent`
 - `OrderCompletedEvent`
 - `ProjectileReturnedEvent`

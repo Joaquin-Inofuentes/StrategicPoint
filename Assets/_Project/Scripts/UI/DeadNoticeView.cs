@@ -54,6 +54,9 @@ namespace SP.UI
 
         void BeginShow(string message, float fadeSeconds)
         {
+            AvisoUnico.Mostrar(message, Mathf.Max(2f, fadeSeconds), null, AvisoUnico.PrioridadMedia);
+            AlertQueue.NotifyFinished();   // la cola de turnos pasa a AvisoUnico: este cartel ya no se dibuja
+            if (true) return;
             if (label == null || group == null) return;
             // Bug #039: "SOLDADO_3_DOC: NOS DISPARAN! A" -- el texto largo se cortaba. Ajuste por renglon y tamano automatico.
             label.horizontalOverflow = HorizontalWrapMode.Wrap;

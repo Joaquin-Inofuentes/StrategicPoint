@@ -124,8 +124,10 @@ namespace SP.Presentation
 
         void Update()
         {
+            // Bug #156 ("veo una esfera encima mio"): F10 abre el menu de trampas y ademas prendia estas esferas de depuracion. Ahora va con [Ctrl].
             if (UnityEngine.InputSystem.Keyboard.current != null &&
-                UnityEngine.InputSystem.Keyboard.current.f10Key.wasPressedThisFrame)
+                UnityEngine.InputSystem.Keyboard.current.f10Key.wasPressedThisFrame &&
+                UnityEngine.InputSystem.Keyboard.current.ctrlKey.isPressed)
                 Visible = !Visible;
 
             // WP11: con las esferas apagadas (el estado normal: solo F10 las prende) este Update creaba una esfera por soldado, vehiculo y

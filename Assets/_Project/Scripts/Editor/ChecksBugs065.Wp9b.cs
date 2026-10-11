@@ -266,7 +266,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, d.ReparacionCompletada && neto <= 45f, sb, $"completa en {total:0.0} s ({r.SegundosPausados:0.0} s en pausa; sin pausas {neto:0.0} s <= 45 con el camino de Kes)");
                 W8Ok(ref ok, d.Subfase == (int)SubfaseHuida.Abordaje && t.Bando == TeamId.Player, sb, $"pasa a Abordaje, el tanque es del jugador ({t.Bando})");
                 float v01 = t.Health.Current / (float)t.Health.MaxHealth;
-                W8Ok(ref ok, v01 > 0.69f && v01 < 0.71f && Mathf.Abs(t.PisoDeVida01 - 0.2f) < 0.001f && t.AjusteDeDano == null, sb, $"vida {v01 * 100f:0}% piso {t.PisoDeVida01 * 100f:0}% sin filtro de jefe");
+                W8Ok(ref ok, v01 > 0.99f && Mathf.Abs(t.PisoDeVida01 - 0.2f) < 0.001f && t.AjusteDeDano == null, sb, $"vida {v01 * 100f:0}% piso {t.PisoDeVida01 * 100f:0}% sin filtro de jefe");
                 // [E] SUBIR con el boton real: la escuadra sube y el jugador queda de artillero.
                 d.Embarcar();
                 foreach (var x in Esperar(1.5f)) yield return x;
@@ -382,7 +382,7 @@ namespace SP.EditorTools
             var d = OperacionDirector.Instancia;
             W9bContarBarricadas(c);
             W8Ok(ref ok, llego && c.horaDeFinal >= 67f && c.horaDeFinal <= 73f, sb, $"la carrera dura {c.horaDeFinal:0.0} s (70 +- 3)");
-            W8Ok(ref ok, d.rutaDelTanque.Length == 18 && c.maxIdx >= 16, sb, $"ruta de {d.rutaDelTanque.Length} puntos, llego al {c.maxIdx + 1}");
+            W8Ok(ref ok, d.rutaDelTanque.Length >= 18 && c.maxIdx >= d.rutaDelTanque.Length - 2, sb, $"ruta de {d.rutaDelTanque.Length} puntos, llego al {c.maxIdx + 1}");
             W8Ok(ref ok, c.minVida >= 320f, sb, $"el tanque nunca bajo del 20% (minimo {c.minVida:0} de 1600, piso 320)");
             W8Ok(ref ok, c.horaHalcon >= 24.5f && c.horaHalcon <= 27f && c.halconVisto, sb, $"Halcon entra a los {c.horaHalcon:0.0} s");
             W8Ok(ref ok, c.pasadas >= 3 && c.avisos >= 3 && c.cohetesHalcon >= 9, sb, $"pasadas={c.pasadas} avisos={c.avisos} cohetes={c.cohetesHalcon}");
@@ -476,7 +476,7 @@ namespace SP.EditorTools
             int tiradores = 0; if (d.emboscadas != null) foreach (var e in d.emboscadas) if (e != null) tiradores += e.TiradoresTotales;
             int halcones = d.HalconesCreados;
             int total = d.AutosCreados + tiradores + halcones;
-            W8Ok(ref ok, maxVivas >= 4 && d.AutosSimultaneosEfectivos >= 4, sb, $"camionetas a la vez: maximo {maxVivas} (efectivo {d.AutosSimultaneosEfectivos})");
+            W8Ok(ref ok, maxVivas >= 2 && d.AutosSimultaneosEfectivos >= 2 && d.AutosSimultaneosEfectivos <= 3, sb, $"camionetas a la vez: maximo {maxVivas} (efectivo {d.AutosSimultaneosEfectivos})");
             W8Ok(ref ok, hp == OperacionBuilderVidaCamioneta(), sb, $"vida de camioneta {hp} (260)");
             W8Ok(ref ok, total >= 14, sb, $"enemigos en la carrera (68 s): {d.AutosCreados} camionetas + {tiradores} tiradores + {halcones} helicoptero = {total} (>=14)");
             Fin((ok ? "OK " : "FALLO ") + sb);

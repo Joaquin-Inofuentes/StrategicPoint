@@ -255,6 +255,7 @@ namespace SP.Vehicles
             {
                 var rombo = InteractableDiamond.Agregar(go.transform, Vector3.up * 2f, DiamondGizmo.ColorTorreta);
                 rombo.Condicion = () => torreta.Ocupante == null;
+                SP.Operacion.EmplazamientoDeTorreta.Decorar(torreta);   // bug #171: sacos de arena y anillos que laten mientras esta libre
             }
             return torreta;
         }

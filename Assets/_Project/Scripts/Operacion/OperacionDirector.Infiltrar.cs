@@ -19,13 +19,48 @@ namespace SP.Operacion
     public partial class OperacionDirector
     {
         // ---- 1. cuartel ----
+        int torretasAvisadas;
+
+        // La baliza (y el rombo de objetivo) apunta a la torreta de artilleria que sigue en pie; con las dos caidas, al porton norte.
+        void BalizaDeInfiltrar()
+        {
+            TorreDestruible mejor = null;
+            if (torres != null)
+                foreach (var t in torres)
+                    if (t != null && t.tipo == TorreDestruible.Tipo.Torreta && !t.EstaCaida && (mejor == null || t.transform.position.z < mejor.transform.position.z)) mejor = t;
+            if (mejor != null) PonerBaliza("TORRETA", new Color(1f, 0.55f, 0.3f), mejor.transform.position, null);
+            else PonerBaliza("SALIDA NORTE", new Color(1f, 0.82f, 0.3f), portonCuartel != null ? portonCuartel.transform.position : transform.position, null);
+        }
+        float tAvisoDePaso;
         void TickInfiltrar()
         {
             int vivos = Vivos(enemigosCuartel);
-            if (hud != null) hud.Objetivo(TituloObjetivo(1, "INFILTRAR EL CUARTEL"), vivos > 0 ? $"Elimina a TODOS los soldados del cuartel · quedan {vivos}" : "Cuartel limpio: el porton norte se abre", 1f - (float)vivos / Mathf.Max(1, enemigosCuartel.Length), new Color(1f, 0.82f, 0.3f));
-            // WP8 (#078): la linea de estructuras. Destruirlas es opcional (el objetivo son los soldados), pero mata a quien esta arriba.
-            if (hud != null && vivos > 0) hud.Subobjetivos(LineaDeSubobjetivos(vivos));
-            if (vivos == 0) { AbrirPorton(); PuestoActual = 0; EntrarFase(FaseOperacion.Puestos); }
+            // Bug #139: "al querer pasar me resalte abajo que debo cumplir el objetivo primero": cerca del porton cerrado, un aviso explica que falta.
+            var yoPaso = PlayerInputDriver.Activo != null && PlayerInputDriver.Activo.Brain != null ? PlayerInputDriver.Activo.Brain.Current : null;
+            if (yoPaso != null && portonCuartel != null && portonCuartel.activeSelf && Time.time >= tAvisoDePaso)
+            {
+                var dp = portonCuartel.transform.position - yoPaso.transform.position; dp.y = 0f;
+                if (dp.magnitude < 15f)
+                {
+                    tAvisoDePaso = Time.time + 5f;
+                    AvisoUnico.Mostrar("PRIMERO CUMPLÍ EL OBJETIVO: DERRIBÁ LAS 2 TORRETAS DE ARTILLERÍA", 4f, new Color(1f, 0.7f, 0.3f), AvisoUnico.PrioridadAlta);
+                }
+            }
+            // Pedido: "primero debes detonar los 2 artilleros". Bug #169 ("es muy molesto tener que matar a todos los soldados, que solo sea destruir los 2 puestos"):
+            // el objetivo del cuartel es SOLO derribar las 2 torretas de artilleria (solo explosivos); los soldados que queden no bloquean el portón.
+            int torretas = TorresCaidas(TorreDestruible.Tipo.Torreta);
+            if (torretas != torretasAvisadas)
+            {
+                torretasAvisadas = torretas;
+                BalizaDeInfiltrar();
+                if (torretas > 0) AvisoUnico.Mostrar(torretas >= TorresDeTorreta ? "TORRETAS DESTRUIDAS · EL PORTÓN NORTE SE ABRE" : $"TORRETA DESTRUIDA {torretas}/{TorresDeTorreta}", 3.5f, new Color(1f, 0.7f, 0.3f), AvisoUnico.PrioridadAlta);
+            }
+            if (hud != null)
+            {
+                hud.Objetivo(TituloObjetivo(1, "DETONÁ LAS 2 TORRETAS"), $"Artillería antiaérea destruida {torretas}/{TorresDeTorreta} · solo explosivos (el ASALTO las demuele con [Q])", torretas / (float)TorresDeTorreta, new Color(1f, 0.55f, 0.3f));
+                if (torretas < TorresDeTorreta) hud.Subobjetivos(LineaDeSubobjetivos(vivos));
+            }
+            if (torretas >= TorresDeTorreta) { AbrirPorton(); PuestoActual = 0; EntrarFase(FaseOperacion.Puestos); }
         }
 
         public const int TorresDeFrancotirador = 2, TorresDeTorreta = 2, TotalDeReflectores = 4;

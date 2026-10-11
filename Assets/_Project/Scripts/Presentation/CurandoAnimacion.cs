@@ -197,6 +197,8 @@ namespace SP.Presentation
         public static void Mostrar(string mensaje, float segundos, Color? colorDeFondo = null)
         {
             var a = Asegurar();
+            SP.UI.AvisoUnico.Mostrar(mensaje, segundos, null, SP.UI.AvisoUnico.PrioridadAlta);
+            var cv = a.GetComponent<Canvas>(); if (cv != null) cv.enabled = false;   // el cartel no se dibuja: va al texto unico (el estado interno sigue para quien lo consulta)
             a.texto.text = mensaje;
             a.fondo.color = colorDeFondo ?? new Color(0.05f, 0.25f, 0.12f, 0.88f);
             a.fondo.gameObject.SetActive(true);

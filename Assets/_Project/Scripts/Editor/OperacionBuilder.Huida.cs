@@ -113,59 +113,73 @@ namespace SP.EditorTools
             // ciudad por el oeste. A ~17 m/s son ~52 s de trayecto frenetico.
             // WP9b-2 (#073/#097): 18 puntos, ~950 m, para ~70 s a ~14 m/s: recta de salida, CANADON en "S" (muros de roca de 10 m, 4 barricadas,
             // 2 cornisas con tiradores de cohetes), curva al oeste, PUENTE (-130,342)..(10,345) con trafico abandonado y recta final a la ciudad.
-            Vector2[] pts =
+            // Pedido: "el tanque con mas curvas y mas continuo, sin tantos zig zags". Los 18 puntos de control siguen siendo la guia (los indices 2..7
+            // son el canadon y 9..11 el puente), pero la S del canadon ahora es un barrido amplio (+-22 m en ~110 m, no +-30 m cada 33 m) y la
+            // ruta real es una curva spline (SubdivisionesDeRuta puntos por tramo): calzada, decorado y waypoints del tanque salen de ella.
+            Vector2[] ctrl =
             {
-                new Vector2(0f, 40f), new Vector2(0f, 105f), new Vector2(24f, 140f), new Vector2(-18f, 172f), new Vector2(22f, 205f),
-                new Vector2(-30f, 232f), new Vector2(-95f, 244f), new Vector2(-160f, 262f), new Vector2(-170f, 322f), new Vector2(-130f, 342f),
-                new Vector2(-55f, 349f), new Vector2(10f, 345f), new Vector2(100f, 332f), new Vector2(150f, 318f), new Vector2(190f, 298f),
-                new Vector2(222f, 268f), new Vector2(238f, 228f), new Vector2(262f, 228f),
+                new Vector2(0f, 40f), new Vector2(0f, 105f), new Vector2(14f, 142f), new Vector2(30f, 185f), new Vector2(10f, 225f),
+                new Vector2(-35f, 250f), new Vector2(-95f, 262f), new Vector2(-150f, 268f), new Vector2(-170f, 322f), new Vector2(-130f, 342f),
+                new Vector2(-55f, 349f), new Vector2(10f, 345f),
+                // Pedido: "que la ruta del tanque sea mas larga": tras el puente no va derecho a la ciudad; da un gran bucle por el desierto
+                // (norte, regreso al sudoeste, vuelta por el sur de los silos) y entra a la ciudad por el oeste. ~1300 m en total.
+                new Vector2(70f, 372f), new Vector2(128f, 362f), new Vector2(160f, 325f), new Vector2(140f, 282f), new Vector2(95f, 255f),
+                new Vector2(58f, 222f), new Vector2(55f, 178f), new Vector2(95f, 148f), new Vector2(150f, 142f), new Vector2(160f, 170f),
+                new Vector2(172f, 205f), new Vector2(200f, 230f), new Vector2(238f, 228f), new Vector2(262f, 228f),
             };
+            Vector2[] pts = SuavizarRuta(ctrl, SubdivisionesDeRuta);
             float longitudTotal = 0f;
             for (int q = 0; q < pts.Length - 1; q++) longitudTotal += (pts[q + 1] - pts[q]).magnitude;
             longitudTotal += 18f;   // del tanque (0,22) al primer punto
             var rutaRaiz = Grupo(g, "RutaTanque");
-            var ruta = new Transform[pts.Length];
-            for (int i = 0; i < pts.Length; i++)
+            // Waypoints del tanque: uno cada 2 puntos de la curva (~18 m), siempre con el ultimo.
+            var idxRuta = new List<int>();
+            for (int i = 0; i < pts.Length; i += 2) idxRuta.Add(i);
+            if (idxRuta[idxRuta.Count - 1] != pts.Length - 1) idxRuta.Add(pts.Length - 1);
+            var ruta = new Transform[idxRuta.Count];
+            for (int i = 0; i < idxRuta.Count; i++)
             {
                 var t = new GameObject("Ruta_" + (i + 1)).transform;
                 t.SetParent(rutaRaiz, false);
-                t.position = new Vector3(pts[i].x, 0.6f, pts[i].y);
+                t.position = new Vector3(pts[idxRuta[i]].x, 0.6f, pts[idxRuta[i]].y);
                 ruta[i] = t;
             }
-            float acumulado = 0f;
+            // Calzada: un tramo por segmento de la curva (con solape para que no queden cunas en el lado de afuera de la curva).
             for (int i = 0; i < pts.Length - 1; i++)
             {
                 var a = pts[i]; var b = pts[i + 1];
                 var d = b - a; float largo = d.magnitude;
                 float yaw = Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg;
                 var mid = (a + b) * 0.5f;
-                Pintura(g, "Asfalto_" + i, mid.x, mid.y, 14f, largo + 1.5f, Asfalto, yaw, 0f, 0.08f);
-                // Banquinas blancas y linea central discontinua.
+                Pintura(g, "Asfalto_" + i, mid.x, mid.y, 14f, largo + 3.5f, Asfalto, yaw, 0f, 0.08f);
                 var lado = new Vector2(d.y, -d.x).normalized;
-                Pintura(g, "Borde_I_" + i, mid.x + lado.x * 6.6f, mid.y + lado.y * 6.6f, 0.3f, largo, Blanco, yaw, 0.02f, 0.1f);
-                Pintura(g, "Borde_D_" + i, mid.x - lado.x * 6.6f, mid.y - lado.y * 6.6f, 0.3f, largo, Blanco, yaw, 0.02f, 0.1f);
-                var dn = d.normalized;
-                for (float s = 2f; s < largo - 2f; s += 9f)
-                {
-                    var p = a + dn * s;
-                    Pintura(g, "Linea", p.x, p.y, 0.3f, 4f, Amarillo, yaw, 0.02f, 0.1f);
-                }
-                // Farolas alternadas, defensa de cemento (con huecos) y senales de km.
-                for (float s = 10f; s < largo - 4f; s += 30f)
-                {
-                    var p = a + dn * s;
-                    float sign = ((int)((acumulado + s) / 30f) % 2 == 0) ? 1f : -1f;
-                    Farola(g, p.x + lado.x * 9.5f * sign, p.y + lado.y * 9.5f * sign, false, 7f, 120);   // bug #090: poste que cae
-                    var p2 = a + dn * (s + 15f);
-                    if (s + 15f < largo - 3f) FlechaPiso(g, p2.x, p2.y, yaw);
-                }
-                for (float s = 6f; s < largo - 6f; s += 22f)
-                {
-                    var p = a + dn * s;
-                    Destruible(g, "Jersey_I", p.x + lado.x * 8.4f, p.y + lado.y * 8.4f, 0.7f, 1.0f, 8f, Cemento, 180, yaw);   // bug #090
-                    Destruible(g, "Jersey_D", p.x - lado.x * 8.4f, p.y - lado.y * 8.4f, 0.7f, 1.0f, 8f, Cemento, 180, yaw);
-                }
-                acumulado += largo;
+                Pintura(g, "Borde_I_" + i, mid.x + lado.x * 6.6f, mid.y + lado.y * 6.6f, 0.3f, largo + 0.8f, Blanco, yaw, 0.02f, 0.1f);
+                Pintura(g, "Borde_D_" + i, mid.x - lado.x * 6.6f, mid.y - lado.y * 6.6f, 0.3f, largo + 0.8f, Blanco, yaw, 0.02f, 0.1f);
+            }
+            // Decorado por distancia recorrida (la curva tiene tramos cortos): linea central, farolas, flechas y defensas de cemento.
+            float largoRuta = longitudTotal - 18f;
+            for (float dd = 2f; dd < largoRuta - 2f; dd += 9f)
+            {
+                var pl = PuntoDeLaRuta(pts, dd, out var dl);
+                Pintura(g, "Linea", pl.x, pl.y, 0.3f, 4f, Amarillo, Mathf.Atan2(dl.x, dl.y) * Mathf.Rad2Deg, 0.02f, 0.1f);
+            }
+            for (float dd = 10f; dd < largoRuta - 4f; dd += 30f)
+            {
+                var pf = PuntoDeLaRuta(pts, dd, out var df);
+                var ladoF = new Vector2(df.y, -df.x);
+                float yawF = Mathf.Atan2(df.x, df.y) * Mathf.Rad2Deg;
+                float sign = ((int)(dd / 30f) % 2 == 0) ? 1f : -1f;
+                Farola(g, pf.x + ladoF.x * 9.5f * sign, pf.y + ladoF.y * 9.5f * sign, false, 7f, 120);   // bug #090: poste que cae
+                var p2 = PuntoDeLaRuta(pts, dd + 15f, out var d2);
+                FlechaPiso(g, p2.x, p2.y, Mathf.Atan2(d2.x, d2.y) * Mathf.Rad2Deg);
+            }
+            for (float dd = 6f; dd < largoRuta - 6f; dd += 22f)
+            {
+                var pj = PuntoDeLaRuta(pts, dd, out var dj);
+                var ladoJ = new Vector2(dj.y, -dj.x);
+                float yawJ = Mathf.Atan2(dj.x, dj.y) * Mathf.Rad2Deg;
+                Destruible(g, "Jersey_I", pj.x + ladoJ.x * 8.4f, pj.y + ladoJ.y * 8.4f, 0.7f, 1.0f, 8f, Cemento, 180, yawJ);   // bug #090
+                Destruible(g, "Jersey_D", pj.x - ladoJ.x * 8.4f, pj.y - ladoJ.y * 8.4f, 0.7f, 1.0f, 8f, Cemento, 180, yawJ);
             }
             ObstaculosDeLaRuta(g, pts);
             CanadonPuenteYEmboscadas(g, pts);
@@ -176,30 +190,16 @@ namespace SP.EditorTools
             Rotulo(g, "CANADON ^\nCUIDADO: CORNISAS", -17.5f, 3.8f, 92f, 0f, 1.2f, Color.black, Amarillo, 12f, 1.8f);
             Solido(g, "Poste_Canadon_O", -22.5f, 92f, 0.3f, 4f, 0.3f, CementoOsc);
             Solido(g, "Poste_Canadon_E", -12.5f, 92f, 0.3f, 4f, 0.3f, CementoOsc);
-            // Chevrons en cada curva cerrada y carteles de km cada ~200 m, a la derecha del sentido de la marcha.
-            float recorrido = 0f, proximoKm = 200f; int km = 1;
-            for (int i = 0; i < pts.Length - 1; i++)
+            // Carteles de km cada ~200 m, a la derecha del sentido de la marcha (la curva ya no tiene esquinas para chevrons).
+            int km = 1;
+            for (float dk = 200f; dk < largoRuta - 12f; dk += 200f)
             {
-                var d0 = pts[i + 1] - pts[i]; float l0 = d0.magnitude; var n0 = d0.normalized;
-                var der = new Vector2(n0.y, -n0.x);
-                if (i >= 1 && i < pts.Length - 2)
-                {
-                    var d1 = (pts[i + 2] - pts[i + 1]).normalized;
-                    if (Vector2.Angle(n0, d1) > 25f)
-                    {
-                        var esq = pts[i + 1] + (n0 - d1).normalized * 10.5f;   // por fuera de la curva
-                        Destruible(g, "Chevron_" + i, esq.x, esq.y, 0.4f, 2.4f, 2.4f, Naranja, 80);
-                    }
-                }
-                while (proximoKm >= recorrido && proximoKm < recorrido + l0 - 6f)
-                {
-                    var pk = pts[i] + n0 * (proximoKm - recorrido) + der * 11f;
-                    float yawK = Mathf.Atan2(-n0.x, n0.y) * Mathf.Rad2Deg + 180f;
-                    Rotulo(g, "KM " + km, pk.x, 2.6f, pk.y, yawK, 1.2f, Color.white, AzulSenal, 4f, 1.5f);
-                    Destruible(g, "Poste_Km" + km, pk.x, pk.y, 0.3f, 2.6f, 0.3f, CementoOsc, 60);
-                    km++; proximoKm += 200f;
-                }
-                recorrido += l0;
+                var pk0 = PuntoDeLaRuta(pts, dk, out var n0);
+                var pk = pk0 + new Vector2(n0.y, -n0.x) * 11f;
+                float yawK = Mathf.Atan2(-n0.x, n0.y) * Mathf.Rad2Deg + 180f;
+                Rotulo(g, "KM " + km, pk.x, 2.6f, pk.y, yawK, 1.2f, Color.white, AzulSenal, 4f, 1.5f);
+                Destruible(g, "Poste_Km" + km, pk.x, pk.y, 0.3f, 2.6f, 0.3f, CementoOsc, 60);
+                km++;
             }
             Rotulo(g, "CIUDAD >>\nEXTRACCION EN LA PLAZA", 232f, 4.8f, 206f, 90f, 1.3f, Color.white, VerdeSenal, 10f, 3f);
             Solido(g, "Poste_Ciudad_O", 232f, 201.4f, 0.4f, 6f, 0.4f, CementoOsc);
@@ -296,6 +296,29 @@ namespace SP.EditorTools
                     SobreLaCalzada(go);
                 }
             }
+            // Tramo largo del desierto (mas alla de los 700 m): mas obstaculos que aplastar, para que el trayecto no se vuelva un paseo.
+            float largoTotal = 0f; for (int q = 0; q < pts.Length - 1; q++) largoTotal += (pts[q + 1] - pts[q]).magnitude;
+            int extra = 0;
+            for (float dd = 700f; dd < largoTotal - 40f; dd += 58f, extra++)
+            {
+                var p = PuntoDeLaRuta(pts, dd, out var d);
+                float yaw = Mathf.Atan2(d.x, d.y) * Mathf.Rad2Deg;
+                var lado = new Vector2(d.y, -d.x);
+                switch (extra % 3)
+                {
+                    case 0: SobreLaCalzada(Destruible(rr, "Jersey_RutaB_" + extra, p.x + lado.x * 0.6f, p.y + lado.y * 0.6f, 8f, 1.0f, 0.7f, Cemento, 180, yaw)); break;
+                    case 1:
+                        for (int b = 0; b < 4; b++)
+                        {
+                            var pos = p + lado * (2.2f + (b % 2) * 0.95f) + d * ((b / 2) * 0.95f);
+                            var go = Destruible(rr, "Barril_B" + extra + "_" + b, pos.x, pos.y, 0.7f, 1.0f, 0.7f, Rojo, 40, yaw);
+                            go.GetComponent<ObstacleMarker>().ConfigurarExplosivo(3f, 45);
+                            SobreLaCalzada(go);
+                        }
+                        break;
+                    default: SobreLaCalzada(Destruible(rr, "Caja_RutaB_" + extra, p.x - lado.x * 0.9f, p.y - lado.y * 0.9f, 1.4f, 1.2f, 1.4f, Cobertura, 40, yaw)); break;
+                }
+            }
             // Cajas en el centro de la calzada.
             for (int k = 0; k < CajasDeRuta; k++)
             {
@@ -327,8 +350,29 @@ namespace SP.EditorTools
             return mejor;
         }
 
+        // Curva Catmull-Rom (uniforme) que pasa por todos los puntos de control, con "sub" puntos por tramo. El punto de control i queda en el
+        // indice i * sub de la curva.
+        public const int SubdivisionesDeRuta = 6;
+        static Vector2[] SuavizarRuta(Vector2[] c, int sub)
+        {
+            var r = new List<Vector2>();
+            for (int i = 0; i < c.Length - 1; i++)
+            {
+                var p0 = c[Mathf.Max(0, i - 1)]; var p1 = c[i]; var p2 = c[i + 1]; var p3 = c[Mathf.Min(c.Length - 1, i + 2)];
+                for (int k = 0; k < sub; k++)
+                {
+                    float t = (float)k / sub, t2 = t * t, t3 = t2 * t;
+                    r.Add(0.5f * ((2f * p1) + (-p0 + p2) * t + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 + (-p0 + 3f * p1 - 3f * p2 + p3) * t3));
+                }
+            }
+            r.Add(c[c.Length - 1]);
+            return r.ToArray();
+        }
+
+        // idx = indice del PUNTO DE CONTROL (2 = entrada del canadon, 7 = salida, 9..11 = puente).
         static float DistanciaAcumulada(Vector2[] pts, int idx)
         {
+            idx *= SubdivisionesDeRuta;
             float l = 0f;
             for (int i = 0; i < idx; i++) l += (pts[i + 1] - pts[i]).magnitude;
             return l;
@@ -338,8 +382,8 @@ namespace SP.EditorTools
         {
             var rg = Grupo(g, "Canadon");
             float ini = DistanciaAcumulada(pts, 2), fin = DistanciaAcumulada(pts, 7);
-            var roca = Mat("RocaCanadon", new Color(0.40f, 0.35f, 0.30f));
-            var rocaOsc = Mat("RocaCanadonOsc", new Color(0.30f, 0.27f, 0.24f));
+            var roca = Mat("RocaCanadon", new Color(0.66f, 0.48f, 0.31f));
+            var rocaOsc = Mat("RocaCanadonOsc", new Color(0.52f, 0.37f, 0.24f));
             // Muros de roca de 10 m a los dos lados: bloques de ~5 m cada 5,5 m, solo donde no pisan la calzada (distancia al eje >= 10 m).
             int n = 0;
             for (float d = ini; d <= fin; d += 5.5f)

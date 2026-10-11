@@ -126,6 +126,8 @@ namespace SP.UI
                 var vp = cam.WorldToViewportPoint(s.transform.position);
                 bool onScreen = vp.z > 0f && vp.x >= 0f && vp.x <= 1f && vp.y >= 0f && vp.y <= 1f;
                 if (onScreen) continue;   // si se ve, no hace falta flecha
+                // Pedido: "mucha menos UI": un aliado sano y a menos de 10 m no necesita flecha; las flechas ya no llevan texto.
+                if (s.Health.MaxHealth > 0 && (float)s.Health.Current / s.Health.MaxHealth > 0.6f && (s.transform.position - cam.transform.position).sqrMagnitude < 100f) continue;
 
                 var arrow = Arrows[used];
                 if (arrow == null) continue;
@@ -153,7 +155,7 @@ namespace SP.UI
                 // encuadre es justamente la informacion mas urgente.
                 float frac = s.Health.MaxHealth > 0 ? (float)s.Health.Current / s.Health.MaxHealth : 1f;
                 var et = Etiqueta(used);
-                et.gameObject.SetActive(true);
+                et.gameObject.SetActive(false);
                 var dirCam = s.transform.position - cam.transform.position;
                 et.text = $"{i + 1} · {dirCam.magnitude:0} m";
                 et.rectTransform.anchoredPosition = arrow.rectTransform.anchoredPosition - dir * 30f;

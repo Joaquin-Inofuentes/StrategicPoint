@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
@@ -682,7 +682,29 @@ namespace SP.EditorTools
             vol.area = AreaNoCaminable;
         }
 
-        internal static void BakeNavMesh()
+        // Bug #160/#166 (enemigos trabados): los props del kit de arte (sacos, escombros, autos) tienen colliders que NO son el cubo unitario (BoxCollider
+        // de otro tamano o MeshCollider) y quedaban fuera del carveo: la malla pasaba por encima/atraves y la fisica los frenaba. El volumen no caminable
+        // se arma en el espacio local del collider (centro/tamano exactos), asi respeta escala y giro.
+        static void AgregarVolumenDeCollider(Collider c)
+        {
+            var go = c.gameObject;
+            if (go.GetComponent<Unity.AI.Navigation.NavMeshModifierVolume>() != null) return;
+            Vector3 centro, tam;
+            switch (c)
+            {
+                case BoxCollider b: centro = b.center; tam = b.size; break;
+                case MeshCollider m when m.sharedMesh != null: centro = m.sharedMesh.bounds.center; tam = m.sharedMesh.bounds.size; break;
+                case CapsuleCollider k: centro = k.center; tam = new Vector3(k.radius * 2f, k.height, k.radius * 2f); break;
+                case SphereCollider sp: centro = sp.center; tam = Vector3.one * sp.radius * 2f; break;
+                default: return;
+            }
+            var ls = go.transform.lossyScale;
+            var margen = new Vector3(0.2f / Mathf.Max(0.01f, Mathf.Abs(ls.x)), 0.3f / Mathf.Max(0.01f, Mathf.Abs(ls.y)), 0.2f / Mathf.Max(0.01f, Mathf.Abs(ls.z)));
+            var vol = go.AddComponent<Unity.AI.Navigation.NavMeshModifierVolume>();
+            vol.center = centro; vol.size = tam + margen; vol.area = AreaNoCaminable;
+        }
+
+        internal static void BakeNavMesh(bool conProps = false)
         {
             var surface = Object.FindFirstObjectByType<Unity.AI.Navigation.NavMeshSurface>(FindObjectsInactive.Include);
             if (surface == null) { Debug.LogWarning("[Blockout] No hay NavMeshSurface."); return; }
@@ -701,6 +723,25 @@ namespace SP.EditorTools
                 if (marcaRuta != null && marcaRuta.SinNavMesh) continue;
                 if (c.GetComponent<Unity.AI.Navigation.NavMeshModifierVolume>() == null) volumenes++;
                 AgregarVolumenNoCaminable(c.gameObject);
+            }
+
+            if (conProps)
+            {
+                int props = 0;
+                foreach (var c in Object.FindObjectsByType<Collider>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                {
+                    if (c.isTrigger || c.name == "Ground" || c is TerrainCollider || c is WheelCollider) continue;
+                    if (c.GetComponentInParent<Soldier>() != null || c.GetComponentInParent<Vehicle>() != null || c.GetComponentInParent<SP.Combat.Projectile>() != null) continue;
+                    if (c.name.StartsWith("Campanario_") || c.GetComponent<Unity.AI.Navigation.NavMeshModifierVolume>() != null) continue;
+                    var mod = c.GetComponentInParent<Unity.AI.Navigation.NavMeshModifier>();
+                    if (mod != null && mod.ignoreFromBuild) continue;            // calzada de la autopista, decorado, "Pisable": no carvan
+                    var marca = c.GetComponentInParent<SP.Presentation.ObstacleMarker>();
+                    if (marca != null && marca.SinNavMesh) continue;
+                    if (c is BoxCollider bx && Mathf.Approximately(bx.size.x, 1f) && Mathf.Approximately(bx.size.y, 1f) && Mathf.Approximately(bx.size.z, 1f)) continue;   // cubos del blockout: ya tratados arriba
+                    if (c.bounds.size.y < 0.45f) continue;                       // piedras y pisos bajos: se pisan
+                    AgregarVolumenDeCollider(c); props++;
+                }
+                Debug.Log($"[Blockout] NavMesh: {props} volumenes no caminables para props con collider propio.");
             }
 
             foreach (var v in Object.FindObjectsByType<Vehicle>(FindObjectsInactive.Include, FindObjectsSortMode.None))

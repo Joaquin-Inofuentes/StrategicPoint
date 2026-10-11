@@ -90,7 +90,7 @@ namespace SP.Presentation
         // material compartido de una sesion de Play anterior podria quedar
         // referenciado como "fake null" si algo lo destruyo entre medio.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetearMaterialCompartido() { materialBordeCompartido = null; materialSombraCompartido = null; materialesPorColor.Clear(); materialesPorIcono.Clear(); }
+        static void ResetearMaterialCompartido() { materialBordeCompartido = null; materialSombraCompartido = null; materialesPorColor.Clear(); materialesPorIcono.Clear(); siempreVisiblePorClave.Clear(); }
 
         // Llamado desde ReinicioDeEstaticos (mismo patron que el resto de
         // los sistemas del proyecto): idempotente con ResetearMaterialCompartido.
@@ -107,7 +107,7 @@ namespace SP.Presentation
         // agrandan". El tamaño crece con la distancia a la camara (ocupa mas o menos lo mismo en pantalla a cualquier zoom),
         // el tuyo es amarillo y los seleccionados son mas grandes y laten.
         public const float EscalaRtsPorMetro = 1f / 26f, EscalaRtsMax = 6f, ExtraYo = 1.3f, ExtraSeleccionado = 1.3f;
-        bool yoPintado;
+        bool yoPintado, rombosApuntado;
         public float EscalaActual => marcador != null ? marcador.transform.localScale.x : 0f;
         public bool MarcadorVisible => marcador != null && marcador.activeSelf;
 
@@ -126,6 +126,18 @@ namespace SP.Presentation
         static readonly Dictionary<Color, Material> materialesPorColor = new Dictionary<Color, Material>();
         static readonly Dictionary<Texture, Material> materialesPorIcono = new Dictionary<Texture, Material>();
         Renderer rendInterior;
+
+        // Bug #174: los rombos de ALIADO se dibujan siempre encima (a traves de paredes y edificios). Los de enemigo siguen con test de
+        // profundidad: solo se ven si estan rereveladas por la inteligencia, y no tienen por que atravesar nada.
+        static readonly Dictionary<(Color, Texture), Material> siempreVisiblePorClave = new Dictionary<(Color, Texture), Material>();
+        static Material SiempreVisible(Color c, Texture t = null)
+        {
+            if (!siempreVisiblePorClave.TryGetValue((c, t), out var m) || m == null) { m = DiamondGizmo.NuevoMaterialSiempreVisible(c, t); siempreVisiblePorClave[(c, t)] = m; }
+            return m;
+        }
+        Renderer rendSombra, rendBorde, rendIcono;
+        Texture texturaIcono;
+        bool SiempreEncima => equipoPintado != TeamId.Enemy;
 
         static Material MaterialDeColor(Color c)
         {
@@ -148,8 +160,21 @@ namespace SP.Presentation
 
         void PintarInterior(Color c)
         {
-            materialInterior = MaterialDeColor(c);
+            materialInterior = SiempreEncima ? SiempreVisible(c) : MaterialDeColor(c);
             if (rendInterior != null) rendInterior.sharedMaterial = materialInterior;
+        }
+
+        // Sombra, borde e icono segun el equipo actual (el civil cambia de equipo despues de Instantiate).
+        void RefrescarMaterialesDeEquipo()
+        {
+            bool s = SiempreEncima;
+            if (rendSombra != null) rendSombra.sharedMaterial = s ? SiempreVisible(new Color(0.02f, 0.02f, 0.03f, 1f)) : MaterialSombra();
+            if (rendBorde != null) rendBorde.sharedMaterial = s ? SiempreVisible(ColorBorde) : MaterialBorde();
+            if (rendIcono != null)
+            {
+                materialIcono = s ? SiempreVisible(Color.white, texturaIcono) : MaterialDeIcono(texturaIcono);
+                rendIcono.sharedMaterial = materialIcono;
+            }
         }
 
         static float EscalaPara(float distancia, bool esEnemigo, bool soyYo)
@@ -223,11 +248,12 @@ namespace SP.Presentation
             // contra el asfalto claro y el cielo; negro + blanco + color se lee sobre cualquier fondo.
             var sombra = DiamondGizmo.CrearCara("Sombra", marcador.transform, TamanoBorde * 1.28f, MaterialSombra());
             sombra.transform.localPosition = new Vector3(0f, 0f, 0.02f);
+            rendSombra = sombra.GetComponent<Renderer>();
 
             // Fondo blanco primero (mas grande, sin offset): al ser mas
             // grande que el interior, siempre asoma como un contorno parejo
             // alrededor del rombo de color.
-            DiamondGizmo.CrearCara("Borde", marcador.transform, TamanoBorde, MaterialBorde());
+            rendBorde = DiamondGizmo.CrearCara("Borde", marcador.transform, TamanoBorde, MaterialBorde()).GetComponent<Renderer>();
 
             equipoPintado = soldier.Team;
             materialInterior = MaterialDeColor(equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado);
@@ -246,9 +272,13 @@ namespace SP.Presentation
             var iconoTex = equipoPintado == TeamId.Enemy
                 ? RoleIconFactory.WorldIconTextureForWeapon(SP.Actors.SoldierClasses.Para(soldier).Loadout is { Length: > 0 } lo ? lo[0] : WeaponKind.Rifle)
                 : RoleIconFactory.WorldIconTexture(soldier.Role);
+            texturaIcono = iconoTex;
             materialIcono = MaterialDeIcono(iconoTex);
             var icono = DiamondGizmo.CrearCara("Icono", marcador.transform, TamanoInterior * 0.72f, materialIcono);
             icono.transform.localPosition = new Vector3(0f, 0f, -0.03f);
+            rendIcono = icono.GetComponent<Renderer>();
+            RefrescarMaterialesDeEquipo();
+            PintarInterior(equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado);
 
             marcador.SetActive(false);
 
@@ -336,6 +366,7 @@ namespace SP.Presentation
                 if (soldier.Team != equipoPintado)
                 {
                     equipoPintado = soldier.Team;
+                    RefrescarMaterialesDeEquipo();
                     PintarInterior(yoPintado ? DiamondGizmo.ColorObjetivo : equipoPintado == TeamId.Enemy ? ColorEnemigo : ColorAliado);
                 }
 
@@ -356,7 +387,8 @@ namespace SP.Presentation
                     SP.Core.InteligenciaDeEnemigos.Revelar(soldier.Id);
 
                 // En RTS no hay "mira": el rombo no se apaga por quedar en el centro de la pantalla.
-                bool anguloOk = angulo > AnguloDeMira || EnRts();
+                // Los rombos de ALIADO ya no se apagan al apuntarles: apuntar al rombo y apretar [F] te pasa a ese aliado (AimTargeting).
+                bool anguloOk = angulo > AnguloDeMira || EnRts() || !esEnemigo;
                 bool inteligenciaOk = !esEnemigo || SP.Core.InteligenciaDeEnemigos.EstaRevelado(soldier.Id);
 
                 // Aliado en formacion (siguiendome) y pegado a mi: sin rombo,
@@ -376,6 +408,14 @@ namespace SP.Presentation
                 float dist = (transform.position - cam.transform.position).magnitude;
                 bool yo = soldier.Brain != null && soldier.Brain.IsPossessedByPlayer;
                 float e = EscalaPara(dist, soldier.Team == TeamId.Enemy, yo);
+                // Aliado bajo la mira: el rombo crece y late para mostrar que [F] lo posee.
+                if (!EnRts() && soldier.Team != TeamId.Enemy && !yo)
+                {
+                    float angMira = Vector3.Angle(cam.transform.forward, marcador.transform.position - cam.transform.position);
+                    bool apuntado = angMira <= SP.Player.AimTargeting.AnguloDelRombo && dist >= 6f;
+                    if (apuntado) e = Mathf.Max(e, 0.6f) * (1.5f + 0.12f * Mathf.Sin(Time.unscaledTime * 10f));
+                    if (apuntado != rombosApuntado) { rombosApuntado = apuntado; PintarInterior(apuntado ? DiamondGizmo.ColorObjetivo : ColorAliado); }
+                }
                 if (EnRts() && soldier.Team != TeamId.Enemy && EstaSeleccionado()) e *= ExtraSeleccionado * (1f + 0.08f * Mathf.Sin(Time.unscaledTime * 7f));
                 marcador.transform.localScale = Vector3.one * e;
             }

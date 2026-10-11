@@ -768,7 +768,7 @@ namespace SP.Player
             if (kb.f4Key.wasPressedThisFrame) AlternarModoDios();
             // Ronda 11: [F9] mata al soldado que manejas y [F10] revive a la escuadra caida (para probar si el medico viene).
             if (kb.f9Key.wasPressedThisFrame) ModeToast?.Show(ComandosDeDepuracion.Matar().ToUpperInvariant(), 1.5f);
-            if (kb.f10Key.wasPressedThisFrame) ModeToast?.Show(ComandosDeDepuracion.Revivir().ToUpperInvariant(), 1.5f);
+            if (kb.f10Key.wasPressedThisFrame && SP.Operacion.OperacionDirector.Instancia == null) ModeToast?.Show(ComandosDeDepuracion.Revivir().ToUpperInvariant(), 1.5f);   // en la Operacion F10 es el menu de trampas
             ActualizarVistaTactica();
 
             if (MinimapRef != null)
@@ -1136,7 +1136,7 @@ namespace SP.Player
             // un panel modal tapando toda la pantalla. El click quedaba
             // "comido" por este re-bloqueo en vez de llegarle al boton: se
             // veia como que Reintentar/Salir no respondian a nada.
-            bool modalShowing = (Outcome != null && Outcome.IsShowing) || (PauseRef != null && PauseRef.IsPaused);
+            bool modalShowing = (Outcome != null && Outcome.IsShowing) || (PauseRef != null && PauseRef.IsPaused) || SP.Operacion.MenuDeTrampas.Abierto;
             // Orbitando la camara RTS (tecla de rotar apretada) el cursor tambien se bloquea y se esconde.
             if (Rig.Mode != ControlMode.Rts || modalShowing) orbitandoRts = false;
             bool wantsLock = (Rig.Mode == ControlMode.Fps || orbitandoRts) && !modalShowing;
@@ -1296,8 +1296,7 @@ namespace SP.Player
             if (agacharHeld != agachadoAntes)
             {
                 agachadoAntes = agacharHeld;
-                Feedback.Accion(SfxKind.Crouch, agacharHeld ? "AGACHADO" : "DE PIE", Brain.Current.transform.position,
-                    Feedback.Info, aviso: false, pulso: false, volumen: 0.3f);
+                // bug #140: "el agachado y de pie quitalo y el sonido tambien": sin cartel ni sonido al cambiar de postura.
             }
 
             // G3: [Espacio] salta. No choca con el mismo [Espacio] de RTS
@@ -1454,7 +1453,11 @@ namespace SP.Player
             // distancia equipada -- es una accion aparte con su propio
             // enfriamiento (ver WeaponHolder.TryMelee), asi que funciona
             // igual sin importar si llevas rifle, pistola o pesada.
-            if (KeyBindings.WasPressed(KeyBindings.AtaqueCuchillo) && !(OrdenesMenu != null && OrdenesMenu.Abierto))
+            // Pedido: "los rombos de aliados para cambiar entre ellos: que apunte y me pueda cambiar a el". Con la mira sobre el rombo de un
+            // aliado (AimTargeting.AliadoBajoSuRombo), [F] pasa a manejarlo (en vez del cuchillo, que contra un aliado no tiene sentido).
+            if (KeyBindings.WasPressed(KeyBindings.AtaqueCuchillo) && result.Type == AimTargetType.Ally && result.Soldier != null && result.Soldier != Brain.Current && !(OrdenesMenu != null && OrdenesMenu.Abierto))
+                TryPossess(result.Soldier);
+            else if (KeyBindings.WasPressed(KeyBindings.AtaqueCuchillo) && !(OrdenesMenu != null && OrdenesMenu.Abierto))
                 Brain.Current.Weapon.TryMelee();
 
             ActualizarGranada(kb, ray, result);
@@ -2423,7 +2426,7 @@ namespace SP.Player
             // toma su asiento.
             if (Rig.Mode == ControlMode.Fps && !currentSeat.HasValue)
             {
-                var elegido = SoldadoUnicoSeleccionado();
+                var elegido = SoldadoElegidoParaTab();
                 if (elegido != null && elegido != Brain.Current) TryPossess(elegido);
             }
 
@@ -2520,6 +2523,25 @@ namespace SP.Player
             var s = Selection.Selected[0];
             if (s == null || s.Health == null || !s.Health.IsAlive || s.Team != TeamId.Player) return null;
             return s;
+        }
+
+        // Bug #174 ("en RTS selecciono varios y apreto Tab: debo poder entrar al FPS pero a cualquiera de los seleccionados"): con VARIOS seleccionados,
+        // si el soldado que ya manejabas es uno de ellos se queda; si no, se entra al seleccionado vivo mas cercano al punto que mira la camara RTS.
+        // Con uno solo es ese; sin seleccion (o ninguno vivo) devuelve null y se conserva el poseido de siempre.
+        public Soldier SoldadoElegidoParaTab()
+        {
+            var unico = SoldadoUnicoSeleccionado();
+            if (unico != null || Selection == null || Selection.Selected.Count < 2) return unico;
+            Soldier mejor = null; float dm = float.MaxValue;
+            var foco = Rig != null ? Rig.RtsFoco : Vector3.zero;
+            foreach (var s in Selection.Selected)
+            {
+                if (s == null || s.Health == null || !s.Health.IsAlive || s.Team != TeamId.Player) continue;
+                if (s == Brain.Current) return s;
+                var d = s.transform.position - foco; d.y = 0f;
+                if (d.sqrMagnitude < dm) { dm = d.sqrMagnitude; mejor = s; }
+            }
+            return mejor;
         }
 
         // Unico camino de posesion del jugador. Antes cada sitio hacia lo
@@ -2766,27 +2788,24 @@ namespace SP.Player
 
         string BuildFpsInstruction(AimResult result)
         {
+            // Pedido: "cuando apuntas a un aliado o enemigo te aparece una descripcion: quiero que no este" y "mucha menos UI". Al apuntar a
+            // aliados, enemigos, vehiculos, obstaculos o el piso ya no sale texto; solo lo que cambia lo que hacés (torreta fija, caido).
             switch (result.Type)
             {
                 case AimTargetType.Ally:
-                    return $"{result.Soldier.DisplayName}   ·   [Q] mantener: radial (poseer, ordenes)   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Enemy:
-                    return $"Enemigo: {result.Soldier.DisplayName}   ·   [Q] mantener: radial → ATACAR   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Vehicle:
-                    return "[Q] mantener: radial → TANQUE (subir / bajar / ir)   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Cubrirse:
                 case AimTargetType.Obstacle:
-                    if (Brain.Current != null && Brain.Current.Role == RoleType.Assault)
-                        return "Obstáculo   ·   [Ctrl] agachado y quieto 4 s: DEMOLER (a menos de 4,5 m)   ·   [Q] mantener: radial   ·   [Click] disparar";
-                    return "Obstáculo   ·   [Q] mantener: radial → CUBRIRSE / DEMOLER   ·   [Click] disparar   ·   [TAB] vista RTS";
                 case AimTargetType.Ground:
-                    return "[Q] mantener: radial → IR ALLI   ·   [Click der.] mandar el tanque aquí (si hay conductor)   ·   [Click] disparar   ·   [TAB] vista RTS";
+                    return "";
                 case AimTargetType.Torreta:
-                    return "[E] usar la ametralladora fija   ·   [Q] mantener: radial   ·   [TAB] vista RTS";
+                    return "[E] AMETRALLADORA FIJA";
                 case AimTargetType.Caido:
-                    return "Aliado caido   ·   [Q] mantener: radial → REANIMAR (si queda un medico)   ·   [E] mantener 5 s: reanimarlo vos   ·   [TAB] vista RTS";
+                    return "[E] MANTENER 5 s: REANIMAR";
                 default:
-                    return "[WASD] moverse   ·   [Shift] correr   ·   [Ctrl] agacharse   ·   [E] tocar: interactuar · mantener: habilidad de clase   ·   [F] cuchillo   ·   [G] granada   ·   [Click] disparar   ·   [Click der.] mantener: mirar por la mira   ·   [Q] mantener: radial   ·   [C] mantener: coberturas   ·   [TAB] vista RTS   ·   [F4] modo dios";
+                    // Los atajos basicos solo al arrancar (despues estan en pausa > controles).
+                    return Time.timeSinceLevelLoad < 40f ? "[WASD] MOVERSE   ·   [SHIFT] CORRER   ·   [Q] MANTENER: RADIAL" : "";
             }
         }
 

@@ -35,6 +35,30 @@ namespace SP.Player
 
         int lastHighlightedId = -1;
 
+        public const float AlturaDelRombo = 2.4f, AnguloDelRombo = 3.2f, DistanciaMaxDelRombo = 160f;
+
+        // Aliado vivo cuyo rombo (sobre la cabeza) esta bajo la mira, el mas centrado. Null si ninguno.
+        public static Soldier AliadoBajoSuRombo(Ray ray, Soldier excludeSelf)
+        {
+            Soldier mejor = null; float mejorAng = AnguloDelRombo;
+            var todos = ActorRegistry.All;
+            for (int i = 0; i < todos.Count; i++)
+            {
+                var s = todos[i];
+                if (s == null || s == excludeSelf || s.Team != TeamId.Player || s.Role == RoleType.Civilian || s.Health == null || !s.Health.IsAlive) continue;
+                if (!s.gameObject.activeInHierarchy) continue;
+                var v = s.transform.position + Vector3.up * AlturaDelRombo - ray.origin;
+                float d = v.magnitude;
+                if (d < 6f || d > DistanciaMaxDelRombo) continue;   // pegado a vos el rombo casi no se ve: ahi se apunta al cuerpo
+                float ang = Vector3.Angle(ray.direction, v);
+                if (ang >= mejorAng) continue;
+                // Bug #142: "unicamente para los aliados, si estan obstaculizados por objetos igual podre ver sus rombos y cambiar a ellos":
+                // el rombo del aliado se dibuja por encima de todo, asi que tambien se lo puede apuntar a traves de paredes.
+                mejor = s; mejorAng = ang;
+            }
+            return mejor;
+        }
+
         public AimResult Evaluate(Ray ray, Soldier excludeSelf)
         {
             Physics.SyncTransforms();
@@ -45,6 +69,12 @@ namespace SP.Player
             var caido = CaidoBajoRayo(ray, excludeSelf, golpeo ? hit.distance : maxDistance, out var puntoCaido);
             if (caido != null)
                 return new AimResult { Type = AimTargetType.Caido, Soldier = caido, Point = puntoCaido, HitTransform = caido.transform };
+
+            // Pedido: "los rombos de aliados para cambiar entre ellos: que apunte y me pueda cambiar a el". El rombo flota sobre la
+            // cabeza y a distancia el cuerpo es un punto: apuntar al ROMBO cuenta como apuntar al aliado (y [F] lo posee).
+            var bajoRombo = AliadoBajoSuRombo(ray, excludeSelf);
+            if (bajoRombo != null)
+                return new AimResult { Type = AimTargetType.Ally, Soldier = bajoRombo, Point = bajoRombo.transform.position + Vector3.up * AlturaDelRombo, HitTransform = bajoRombo.transform };
 
             if (golpeo)
             {

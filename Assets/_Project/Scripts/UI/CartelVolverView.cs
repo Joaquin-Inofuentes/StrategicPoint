@@ -111,6 +111,8 @@ namespace SP.UI
             lastDist = dist;
 
             bool debeMostrar = tiempoAlejandose >= 4f && dist > GetUmbral(dir.Fase);
+            if (debeMostrar) AvisoUnico.Fijo("volver", Loc.T("VUELVE AL OBJETIVO"), new Color(1f, 0.4f, 0.3f)); else AvisoUnico.QuitarFijo("volver");
+            if (true) return;   // el cartel (panel + flecha) ya no se dibuja: va al texto unico de abajo al centro
             
             float targetAlpha = debeMostrar ? 1f : 0f;
             if (Mathf.Abs(alpha - targetAlpha) > 0.01f)

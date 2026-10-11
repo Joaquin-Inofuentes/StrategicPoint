@@ -237,7 +237,7 @@ namespace SP.EditorTools
             l.transform.SetParent(g, false);
             l.transform.position = pos;
             var li = l.AddComponent<Light>();
-            li.type = LightType.Point; li.color = color; li.intensity = 7f; li.range = 16f; li.shadows = LightShadows.None;
+            li.type = LightType.Point; li.color = color; li.intensity = 7f; li.range = 16f; li.shadows = LightShadows.None;   // sombras: SombrasDeLuces (bug #138)
         }
 
         static void FarolaConLuz(Transform g, float x, float z, bool conLuz, Color color)

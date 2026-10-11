@@ -640,7 +640,7 @@ namespace SP.EditorTools
                     var th = d.tanque.Health; if (th != null) pisoTanque = Mathf.Min(pisoTanque, th.Current / (float)th.MaxHealth);
                     if (d.MaximoDeAutosVivos >= d.AutosSimultaneosEfectivos && vidaMax > 0 && Time.realtimeSinceStartup - t0 > 12f) break;
                 }
-                bool res = d.MaximoDeAutosVivos >= 4 && vidaMax == 260;
+                bool res = d.MaximoDeAutosVivos >= 2 && vidaMax == 260;
                 if (!res) ok = false;
                 sb.Append($"autos simultaneos max={d.MaximoDeAutosVivos} (objetivo {d.AutosSimultaneosEfectivos}), vida maxima de camioneta={vidaMax}, camionetas distintas vistas={visto.Count}, por delante={d.AutosPorDelante}, primera aparicion a los {primeraAparicion:0.0} s, vida minima del tanque={pisoTanque * 100f:0}% (piso {OperacionDirector.PisoDeVidaDelTanque * 100f:0}%){(res ? "" : "(MAL)")}; ");
             }

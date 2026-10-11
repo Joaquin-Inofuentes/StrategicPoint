@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using SP.Actors;
 using SP.Combat;
@@ -150,6 +150,27 @@ namespace SP.Operacion
             w.EquipWeapon(WeaponKind.Sniper, Dano, Cadencia, new Color(0.7f, 0.8f, 0.95f));
             w.ConfigurarCargador(60, 2.4f);
             if (laser == null) CrearLaser();
+            PonerDestelloDeMira();
+        }
+
+        // Bug #148/#151 ("no veo al francotirador"): de lejos y de noche no se distinguia. Luz roja de la mira, siempre encendida, sobre el tirador
+        // (parpadea apenas) + una luz de silueta mas fuerte (TorreDestruible.LuzDeSilueta): se lo ve desde el patio sin atravesar paredes.
+        void PonerDestelloDeMira()
+        {
+            if (soldado == null || soldado.transform.Find("DestelloDeMira") != null) return;
+            var go = new GameObject("DestelloDeMira");
+            go.transform.SetParent(soldado.transform, false);
+            go.transform.localPosition = new Vector3(0.12f, 1.45f, 0.55f);
+            var l = go.AddComponent<Light>();
+            l.type = LightType.Point; l.range = 7f; l.intensity = 3.2f; l.color = new Color(1f, 0.12f, 0.06f); l.shadows = LightShadows.None;
+            var punto = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            punto.name = "DestelloDeMira_Punto";
+            punto.transform.SetParent(go.transform, false);
+            punto.transform.localScale = Vector3.one * 0.16f;
+            Destroy(punto.GetComponent<Collider>());
+            var rd = punto.GetComponent<MeshRenderer>();
+            var mat = new Material(Shader.Find("Sprites/Default")) { color = new Color(1f, 0.15f, 0.08f, 1f) };
+            rd.sharedMaterial = mat; rd.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; rd.receiveShadows = false;
         }
 
         void CrearLaser()

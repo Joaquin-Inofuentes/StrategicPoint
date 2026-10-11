@@ -61,12 +61,14 @@ namespace SP.UI
             if (raiz == null) Construir();
             pulso = 0f;
             if (caja != null) caja.localScale = Vector3.one;
-            raiz.SetActive(true);
+            // Va al texto unico de abajo al centro (se queda mientras dure la espera).
+            SP.UI.AvisoUnico.FijoPermanente("respawn", "[ESPACIO] REAPARECER EN OTRO ALIADO", new Color(1f, 0.85f, 0.25f));
         }
 
         public static void Ocultar()
         {
             if (raiz != null) raiz.SetActive(false);
+            SP.UI.AvisoUnico.QuitarFijo("respawn");
         }
 
         // Llamado cada frame mientras dura la espera (PlayerInputDriver.

@@ -43,7 +43,7 @@ namespace SP.Operacion
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
             rt.pivot = new Vector2(0f, 1f);
             rt.anchoredPosition = new Vector2(20f, -20f);
-            rt.sizeDelta = new Vector2(360f, 118f);
+            rt.sizeDelta = new Vector2(330f, 52f);
             rt.localScale = Vector3.one * 0.8f;
 
             var filete = new GameObject("Filete", typeof(RectTransform), typeof(Image));
@@ -57,17 +57,18 @@ namespace SP.Operacion
 
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             h.fuenteHud = font;
-            h.titulo = Texto(go.transform, font, 14, new Vector2(0f, 43f), new Vector2(344f, 20f), new Color(1f, 0.82f, 0.3f));
-            h.detalle = Texto(go.transform, font, 16, new Vector2(0f, 8f), new Vector2(344f, 52f), Color.white);
-            h.detalle.horizontalOverflow = HorizontalWrapMode.Wrap;
+            h.titulo = Texto(go.transform, font, 13, new Vector2(0f, 13f), new Vector2(318f, 18f), new Color(1f, 0.82f, 0.3f));
+            h.detalle = Texto(go.transform, font, 14, new Vector2(0f, -7f), new Vector2(318f, 22f), Color.white);
+            h.detalle.horizontalOverflow = HorizontalWrapMode.Wrap; h.detalle.verticalOverflow = VerticalWrapMode.Truncate;
+            h.detalle.resizeTextForBestFit = true; h.detalle.resizeTextMinSize = 9; h.detalle.resizeTextMaxSize = 14;   // texto largo: se achica en vez de salirse del panel
 
             var fondoBarra = new GameObject("Barra", typeof(RectTransform), typeof(Image));
             fondoBarra.transform.SetParent(go.transform, false);
             fondoBarra.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.55f);
             h.barra = fondoBarra.GetComponent<RectTransform>();
             h.barra.anchorMin = h.barra.anchorMax = new Vector2(0.5f, 0.5f);
-            h.barra.anchoredPosition = new Vector2(0f, -45f);
-            h.barra.sizeDelta = new Vector2(324f, 7f);
+            h.barra.anchoredPosition = new Vector2(0f, -24f);
+            h.barra.sizeDelta = new Vector2(318f, 3f);
             h.relleno = Relleno(fondoBarra.transform, new Color(1f, 0.82f, 0.3f));
 
             // Temporizador grande al centro (resistir / trayecto).
@@ -175,7 +176,7 @@ namespace SP.Operacion
         public void Objetivo(string tit, string det, float progreso01, Color color)
         {
             if (titulo == null) return;
-            titulo.text = tit; detalle.text = det;
+            titulo.text = tit.Replace("OBJETIVO ", ""); detalle.text = det;
             relleno.sizeDelta = new Vector2(barra.sizeDelta.x * Mathf.Clamp01(progreso01), 0f);
             relleno.GetComponent<Image>().color = color;
         }
@@ -185,8 +186,8 @@ namespace SP.Operacion
         // Segunda linea chica del objetivo (debajo del panel). Vacia = se oculta.
         GameObject subRaiz, pasosRaiz;
         Text subTexto, pasosTexto;
-        public string TextoSubobjetivo => subRaiz != null && subRaiz.activeSelf ? subTexto.text : "";
-        public string TextoPasos => pasosRaiz != null && pasosRaiz.activeSelf ? pasosTexto.text : "";
+        public string TextoSubobjetivo => subTextoGuardado;
+        public string TextoPasos => pasosTextoGuardado;
 
         // Hijo del panel anclado al borde de abajo (las coordenadas locales ya llevan la escala 0.8 del panel).
         GameObject CrearLineaInferior(string nombre, int tam, float alto, TextAnchor ancla, out Text texto)
@@ -212,9 +213,12 @@ namespace SP.Operacion
             return g;
         }
 
+        // Pedido: UI minima arriba a la izquierda. La linea de subobjetivos y la lista de pasos ya no se dibujan (se guarda el texto).
+        string subTextoGuardado = "", pasosTextoGuardado = "";
         public void Subobjetivos(string linea)
         {
-            if (titulo == null) return;
+            subTextoGuardado = linea ?? "";
+            if (titulo == null || linea != null) return;
             if (string.IsNullOrEmpty(linea))
             {
                 if (subRaiz != null && subRaiz.activeSelf) { subRaiz.SetActive(false); AcomodarLineasInferiores(); }
@@ -239,7 +243,8 @@ namespace SP.Operacion
 
         public void Pasos(string[] pasos, int actual)
         {
-            if (titulo == null) return;
+            pasosTextoGuardado = pasos == null ? "" : string.Join(" | ", pasos);
+            if (titulo == null || pasos != null) return;
             if (pasos == null || pasos.Length == 0)
             {
                 pasosUltimos = null; pasoUltimo = -99;
@@ -390,11 +395,11 @@ namespace SP.Operacion
 
         public void Timer(string etiqueta, int segundos, Color color)
         {
-            if (timerGrupo == null) return;
             timerVisible = true;
-            timerEtiqueta.text = etiqueta; timerNumero.text = segundos.ToString(); timerNumero.color = color;
+            if (timerEtiqueta != null) { timerEtiqueta.text = etiqueta; timerNumero.text = segundos.ToString(); timerNumero.color = color; }
+            SP.UI.AvisoUnico.Fijo("timer", etiqueta + " " + segundos + " s", color);
         }
-        public void OcultarTimer() { timerVisible = false; if (timerGrupo != null) timerGrupo.alpha = 0f; }
+        public void OcultarTimer() { timerVisible = false; if (timerGrupo != null) timerGrupo.alpha = 0f; SP.UI.AvisoUnico.QuitarFijo("timer"); }
         // Bug #060: el cartel grande de fase y el temporizador se encimaban ("TANQUE DESTRUIDO / RESISTE 40 s" sobre "RESISTI 40").
         // Mientras hay cartel, el temporizador se aparta (se desvanece) y vuelve cuando el cartel se va.
         bool timerVisible;
@@ -402,39 +407,36 @@ namespace SP.Operacion
         // Se debe llamar CADA frame mientras haya que mostrarlo; deja de verse solo.
         public void Prompt(string texto, float progreso01 = -1f)
         {
-            if (prompt == null || string.IsNullOrEmpty(texto)) return;
+            if (string.IsNullOrEmpty(texto)) return;
             promptFrame = Time.frameCount;
-            prompt.text = texto;
-            if (!promptRaiz.activeSelf) promptRaiz.SetActive(true);
-            bool conBarra = progreso01 >= 0f;
-            if (barraPromptFondo.gameObject.activeSelf != conBarra) barraPromptFondo.gameObject.SetActive(conBarra);
-            if (conBarra) barraPromptRelleno.sizeDelta = new Vector2(barraPromptFondo.sizeDelta.x * Mathf.Clamp01(progreso01), 0f);
+            if (prompt != null) prompt.text = texto;
+            // Un solo texto (abajo al centro): el progreso va como porcentaje en la misma linea.
+            if (progreso01 >= 0f && !texto.Contains("%")) texto += " · " + Mathf.RoundToInt(Mathf.Clamp01(progreso01) * 100f) + " %";
+            SP.UI.AvisoUnico.Fijo("prompt", texto, new Color(0.7f, 1f, 0.75f));
         }
 
         public void Aviso(string texto, float segundos = 3.5f)
         {
-            if (aviso == null) return;
-            aviso.text = texto; avisoHasta = Time.unscaledTime + segundos;
+            if (aviso != null) aviso.text = texto;
+            avisoHasta = Time.unscaledTime + segundos;
+            SP.UI.AvisoUnico.Mostrar(texto, segundos, new Color(1f, 0.9f, 0.4f), SP.UI.AvisoUnico.PrioridadAlta);
         }
 
         void Update()
         {
             if (!CinematicaDeOperacion.IntroActiva && SP.Player.KeyBindings.WasPressed(SP.Player.KeyBindings.PlegarPasos)) AlternarPasos();
-            if (promptRaiz != null && promptRaiz.activeSelf && promptFrame < Time.frameCount - 1) promptRaiz.SetActive(false);
-            if (avisoGrupo != null)
-            {
-                float objetivoAlfa = Time.unscaledTime < avisoHasta ? 1f : 0f;
-                avisoGrupo.alpha = Mathf.MoveTowards(avisoGrupo.alpha, objetivoAlfa, Time.unscaledDeltaTime * 2.5f);
-            }
+            if (promptRaiz != null && promptRaiz.activeSelf) promptRaiz.SetActive(false);   // el prompt va en AvisoUnico
+            if (avisoGrupo != null) avisoGrupo.alpha = 0f;   // el aviso se muestra en AvisoUnico (abajo al centro)
             if (ilumGrupo != null)
             {
                 float objetivoIlum = ilumPedido ? 1f : 0f;
                 ilumGrupo.alpha = Mathf.MoveTowards(ilumGrupo.alpha, objetivoIlum, Time.unscaledDeltaTime * (ilumPedido ? 5f : 2.5f));
-                if (ilumTexto != null) ilumTexto.color = Color.Lerp(new Color(1f, 0.97f, 0.8f), new Color(1f, 0.55f, 0.35f), 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 8f));
+                if (ilumTexto != null) ilumTexto.color = new Color(1f, 0.97f, 0.8f, 0f);   // el texto va en AvisoUnico
+                if (ilumPedido) SP.UI.AvisoUnico.Fijo("iluminado", TextoDeIluminacion, new Color(1f, 0.6f, 0.4f));
             }
             bool alumbrado = SP.Operacion.ReflectorVigia.PoseidoIluminado;
             if (alumbrado || ilumRaiz != null) Iluminado(alumbrado);
-            if (timerGrupo != null) timerGrupo.alpha = timerVisible ? Mathf.Clamp01(1f - (avisoGrupo != null ? avisoGrupo.alpha : 0f) * 1.5f) : 0f;
+            if (timerGrupo != null) timerGrupo.alpha = 0f;   // el temporizador va en AvisoUnico
             SP.UI.ModeToastView.SubirSobreElTemporizador(timerVisible);   // WP11: el aviso del modo no se encima con el temporizador
         }
     }

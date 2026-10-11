@@ -20,10 +20,10 @@ namespace SP.Operacion
         public const float SegundosDeAnuncio = 12f;       // la oleada se anuncia 12 s antes de salir (antes 8: Resistir era el unico pico duro)
         public const float SegundosParaCaer = 10f;        // un sector amenazado y vacio cae a los 10 s (antes 6)
         public const float SegundosParaRecuperar = 4f;    // recuperarlo: aliados adentro durante 4 s
-        public const int AliadosParaRecuperar = 2;
+        public const int AliadosParaRecuperar = 1;   // pedido: "no importa con quien": con un soldado adentro alcanza
         // #122: 3 de escuadra + 4 milicianos = 7; menos el operador = 6 = 3 sectores x 2 aliados. (Todos los textos salen de estas constantes.)
         public const int CantidadDeMilicianos = 4;
-        public const int CantidadDeSectores = 3;
+        public const int CantidadDeSectores = 2;   // pedido: solo 2 posiciones a llenar (A calle norte, B mercado oeste)
         // Interruptores SOLO para los checks (reproducir el comportamiento de antes de P7 y medir el "despues"). En el juego quedan en su valor por defecto.
         public static int MilicianosAActivar = CantidadDeMilicianos;   // #122 (antes 2)
         public static bool RadioObligaARts;                             // #120b (antes la radio bloqueaba Tab y la posesion y forzaba RTS)
@@ -32,6 +32,10 @@ namespace SP.Operacion
         public const float FactorDeDanoDelOperador = 0.5f;
         public const float AlcanceDeLaRadio = 3.6f;       // distancia maxima a la radio para apretar [E]
         public const int PasosQueBloqueanElReloj = 4;     // mientras no se completan los pasos 1-4 el reloj no corre
+        // Bug #163 ("quita el tutorial de la derecha, que inicie ya ahora a lo bruto y solo deba cubrir los 2 puestos con cualquier soldado"): sin
+        // tutorial, sin pasos que bloqueen el reloj y sin radio que tomar. El reloj corre apenas empieza la fase y se frena solo si un sector
+        // amenazado esta vacio o cayo. false = el flujo de antes (las pruebas viejas lo prenden).
+        public static bool ModoDirecto = true;
 
         public static Soldier Operador { get; private set; }
         public static Soldier UltimoOperador { get; private set; }
@@ -50,7 +54,7 @@ namespace SP.Operacion
         static void Reiniciar()
         {
             Operador = null; UltimoOperador = null; RadioTomada = false; Milicianos.Clear();
-            PrimerIngresoHecho = false; MilicianosAActivar = CantidadDeMilicianos; RadioObligaARts = false; SoltarConToque = false;
+            PrimerIngresoHecho = false; MilicianosAActivar = CantidadDeMilicianos; RadioObligaARts = false; SoltarConToque = false; ModoDirecto = true;
             CameraRig.ProveedorDeRtsForzado = null;
             PosicionDeLaRadio = null;
             CameraRig.LimiteDePaneoRts = null;
@@ -115,13 +119,13 @@ namespace SP.Operacion
         // El reloj del helicoptero avanza solo si: se completaron los pasos de ubicacion, alguien esta en la radio, ningun sector esta caido y cada
         // sector amenazado tiene al menos un aliado adentro.
         public static bool RelojCorre(int pasosCompletos, bool enRadio, bool algunSectorCaido, int amenazadosSinAliados)
-            => pasosCompletos >= PasosQueBloqueanElReloj && enRadio && !algunSectorCaido && amenazadosSinAliados == 0;
+            => (ModoDirecto || (pasosCompletos >= PasosQueBloqueanElReloj && enRadio)) && !algunSectorCaido && amenazadosSinAliados == 0;
 
         // Motivo legible de la pausa ("" = el reloj corre).
         public static string MotivoDePausa(int pasosCompletos, bool enRadio, bool algunSectorCaido, int amenazadosSinAliados)
         {
-            if (!enRadio) return "RADIO ABANDONADA: EL RELOJ SE DETUVO";
-            if (pasosCompletos < PasosQueBloqueanElReloj) return "UBICA A TU EQUIPO PARA QUE EL HELICOPTERO SE ACERQUE";
+            if (!ModoDirecto && !enRadio) return "RADIO ABANDONADA: EL RELOJ SE DETUVO";
+            if (!ModoDirecto && pasosCompletos < PasosQueBloqueanElReloj) return "UBICA A TU EQUIPO PARA QUE EL HELICOPTERO SE ACERQUE";
             if (algunSectorCaido) return "SECTOR CAIDO: " + TextoDeRecuperar();
             if (amenazadosSinAliados > 0) return "SECTOR AMENAZADO SIN DEFENSORES: MANDA ALGUIEN";
             return "";

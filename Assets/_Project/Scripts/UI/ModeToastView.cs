@@ -64,8 +64,9 @@ namespace SP.UI
                 label.resizeTextForBestFit = true;
             }
             label.text = text;
-            if (routine != null) StopCoroutine(routine);
-            routine = StartCoroutine(FadeOut(fadeSeconds));
+            // Todos los avisos van al texto unico de abajo al centro (AvisoUnico); este cartel ya no se dibuja.
+            AvisoUnico.Mostrar(text, Mathf.Max(2.2f, fadeSeconds + 1f), null, AvisoUnico.PrioridadMedia);
+            if (group != null) group.alpha = 0f;
         }
 
         IEnumerator FadeOut(float duration)

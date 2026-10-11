@@ -21,13 +21,22 @@ namespace SP.UI
 
         public void Bind(Text text) => label = text;
 
+        // Pedido: "mucha menos UI": de la lista de atajos del contexto solo quedan los 3 primeros (el resto esta en la pausa > controles).
+        static string Resumir(string message)
+        {
+            var partes = message.Split(new[] { "   ·   " }, System.StringSplitOptions.RemoveEmptyEntries);
+            if (partes.Length <= 3) return message;
+            return string.Join("   ·   ", partes[0], partes[1], partes[2]);
+        }
+
         public void SetText(string message)
         {
             // `label` no se serializa (no es [SerializeField]): tras el
             // domain reload al entrar en Play mode queda null aunque Bind()
             // ya se haya llamado en editor, así que se re-busca sola.
             if (label == null) label = GetComponentInChildren<Text>(true);
-            if (label != null) label.text = message;
+            if (label != null) { label.text = message; label.enabled = false; }   // se muestra en el texto unico de abajo al centro
+            if (string.IsNullOrEmpty(message)) AvisoUnico.QuitarFijo("instruccion"); else AvisoUnico.FijoPermanente("instruccion", Resumir(message));
         }
     }
 }

@@ -201,6 +201,7 @@ namespace SP.Operacion
         {
             var boca = canon != null && canon.Muzzle != null ? canon.Muzzle.position : transform.position + Vector3.up * 2f;
             ImpactFx.Spawn(boca, new Color(1f, 0.75f, 0.35f), 0.9f, 0.14f);
+            ImpactFx.SpawnMuzzleBlast(boca, canon != null ? canon.transform.forward : transform.forward, 1.9f, new Color(1f, 0.55f, 0.2f, 1f));
             MuzzleLightPool.Flash(boca, new Color(1f, 0.75f, 0.35f));
             AudioDirector.PlayAt(SfxKind.CannonBody, boca, 1f, 0.95f);
             AudioDirector.PlayAt(SfxKind.CannonCrack, boca, 0.3f, 0.9f);
@@ -237,6 +238,7 @@ namespace SP.Operacion
                 dir = (dir + UnityEngine.Random.insideUnitSphere * 0.045f).normalized;
                 pool.Spawn(origen, dir, -3, TeamId.Enemy, DanoDeMetralla, new Color(1f, 0.4f, 0.2f));
                 MuzzleLightPool.Flash(origen, new Color(1f, 0.6f, 0.3f), 4f, 7f);
+                ImpactFx.SpawnMuzzleBlast(origen, dir, 0.9f, new Color(1f, 0.45f, 0.2f, 1f));
                 BalasDeMetralla++;
                 if ((BalasDeMetralla & 1) == 0) AudioDirector.PlayClipAt(GenericSfx.GetWeaponShot(WeaponKind.Heavy), origen, 0.7f, 0.8f, PerfilEspacial.Disparo);
             }

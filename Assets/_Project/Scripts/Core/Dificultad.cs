@@ -138,8 +138,16 @@ namespace SP.Core
                 // Golpe de origen desconocido (torreta, cañon, explosion sin duenio) contra tu bando: es del enemigo, tambien a la mitad.
                 if (atacante == null && v != null && v.Team == TeamId.Player && v.Role != RoleType.Civilian) m *= d.DanoEnemigos;
                 if (v != null && v.Brain != null && v.Brain.IsPossessedByPlayer && d.VidaJugador > 0f) m /= d.VidaJugador;
+                if (v != null && v.Brain != null && v.Brain.IsPossessedByPlayer && victima.MaxHealth > 0) m *= FactorPorVidaDelJugador((float)victima.Current / victima.MaxHealth);
             }
             return m;
         }
+
+        // Bug #157: "si tengo mucha vida los enemigos hacen mas dano y mientras mas baja mi vida hacen menos dano, asi los ultimos puntos de vida
+        // duran muchisimo mas". Multiplica el dano que recibe el soldado que manejas segun su vida: x1,35 con la vida llena, ~x0,7 a la mitad,
+        // ~x0,3 con el 10 % y x0,18 en el limite (los ultimos puntos aguantan ~5 veces mas golpes).
+        public const float FactorConVidaLlena = 1.35f, FactorConVidaCasiNula = 0.18f;
+        public static float FactorPorVidaDelJugador(float fraccion)
+            => Mathf.Lerp(FactorConVidaCasiNula, FactorConVidaLlena, Mathf.Pow(Mathf.Clamp01(fraccion), 1.3f));
     }
 }

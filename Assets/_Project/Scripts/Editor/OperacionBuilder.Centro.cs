@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using Unity.AI.Navigation;
 using UnityEditor;
@@ -35,6 +35,9 @@ namespace SP.EditorTools
             MuroX(est, "CD_Sur_E", 4f, 26f, -80f, 5f, 1.5f, Datos);
             MuroX(est, "CD_Norte_O", -26f, -4f, -40f, 5f, 1.5f, Datos);
             MuroX(est, "CD_Norte_E", 4f, 26f, -40f, 5f, 1.5f, Datos);
+            // Bug #159: la salida norte (detras de la computadora) estaba abierta. Ahora es un muro que el ASALTO tiene que demoler ([Q] > DEMOLER) para seguir.
+            Destruible(est, "Muro_Salida_Norte", 0f, -40f, 8f, 5f, 1.5f, Datos, 900);
+            Rotulo(est, "SALIDA NORTE · DEMOLER", 0f, 3.4f, -40.9f, 0f, 0.7f, Color.white, Naranja, 6.6f, 0.9f);
             MuroZ(est, "CD_Oeste_S", -26f, -80f, -62f, 5f, 1.5f, Datos);
             MuroZ(est, "CD_Oeste_N", -26f, -56f, -40f, 5f, 1.5f, Datos);
             MuroZ(est, "CD_Este_S", 26f, -80f, -62f, 5f, 1.5f, Datos);

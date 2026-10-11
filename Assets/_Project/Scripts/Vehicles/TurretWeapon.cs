@@ -415,6 +415,8 @@ namespace SP.Vehicles
             // mano (SP.Presentation.CubeFxReactor usa 0.22), acorde al
             // calibre.
             SP.Presentation.ImpactFx.Spawn(spawnPos, MuzzleFlashColor, 0.7f, 0.12f);
+            // Particulas de explosion al salir el proyectil (el canon grande, mucho; la metralleta coaxial, poco).
+            SP.Presentation.ImpactFx.SpawnMuzzleBlast(spawnPos, fireDir, transform.parent != null && transform.parent.name == "MetralletaMount" ? 0.95f : 1.7f);
             // Luz real de un par de frames: un destello plano no ilumina
             // nada, y con poca luz ambiente la diferencia de potencia
             // percibida es enorme.

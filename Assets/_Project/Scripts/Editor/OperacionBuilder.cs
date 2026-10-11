@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using Unity.AI.Navigation;
 using UnityEditor;
@@ -60,6 +60,7 @@ namespace SP.EditorTools
             }
             mat.SetColor("_BaseColor", c);
             mat.SetFloat("_Smoothness", 0.08f);
+            AplicarTextura(mat, clave, c, emision);   // textura procedural + normal si el material la tiene (OperacionBuilder.Arte.cs)
             if (emision > 0f)
             {
                 mat.EnableKeyword("_EMISSION");
@@ -86,7 +87,7 @@ namespace SP.EditorTools
             return m;
         }
 
-        static Material Suelo => Mat("Suelo", new Color(0.50f, 0.58f, 0.42f));
+        static Material Suelo => Mat("Suelo", Color.white);   // tierra (se texturiza en TexturarSuelo)
         static Material Asfalto => Mat("Asfalto", new Color(0.20f, 0.21f, 0.23f));
         static Material Cemento => Mat("Cemento", new Color(0.68f, 0.68f, 0.66f));
         static Material CementoOsc => Mat("CementoOsc", new Color(0.46f, 0.47f, 0.50f));
@@ -124,6 +125,13 @@ namespace SP.EditorTools
             go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             go.transform.localScale = new Vector3(w, h, d);
             go.GetComponent<MeshRenderer>().sharedMaterial = m;
+            float tileM = MetrosPorTile(m);
+            if (tileM > 0f)
+            {
+                var techoM = TechoDe(m);   // edificios altos: fachada con ventanas en los lados y otro material (hormigon) arriba
+                go.GetComponent<MeshFilter>().sharedMesh = MallaDeCaja(w, h, d, tileM, ((int)(x * 13.1f) ^ (int)(z * 7.7f) ^ (int)(y0 * 3f)) & 3, techoM != null);   // UV en metros: la textura no se estira
+                if (techoM != null) go.GetComponent<MeshRenderer>().sharedMaterials = new[] { m, techoM };
+            }
             if (!colision)
             {
                 Object.DestroyImmediate(go.GetComponent<BoxCollider>());
@@ -141,7 +149,11 @@ namespace SP.EditorTools
         static GameObject Solido(Transform p, string n, float x, float z, float w, float h, float d, Material m, float yaw = 0f, float y0 = 0f)
             => Cubo(p, n, x, z, w, h, d, m, yaw, y0, true, 0);
         static GameObject Edificio(Transform p, string n, float x, float z, float w, float h, float d, Material m)
-            => Cubo(p, n, x, z, w, h, d, m, 0f, 0f, true, Indestructible);
+        {
+            var go = Cubo(p, n, x, z, w, h, d, m, 0f, 0f, true, Indestructible);
+            edificiosCreados.Add(go.transform);   // OperacionBuilder.Decorado.cs los viste (ventanas, puerta, techo) al final
+            return go;
+        }
         // Obstaculo que se rompe (bug #090): el tanque lo aplasta, el canon lo revienta. vida > 0.
         static GameObject Destruible(Transform p, string n, float x, float z, float w, float h, float d, Material m, int vida, float yaw = 0f, float y0 = 0f)
             => Cubo(p, n, x, z, w, h, d, m, yaw, y0, true, vida);
@@ -156,8 +168,28 @@ namespace SP.EditorTools
             return go;
         }
         // Cobertura baja destructible.
+        // Bug #150 ("usa mucho mas estos sacos"): el cubo queda como colision/vida invisible y se viste con el prefab P_Env_Barricada_Sacos
+        // (2 hileras x 2 alturas, el prefab mide 3,7 x 0,67 x 0,36 m): todas las coberturas de sacos del nivel pasan a ser el modelo del kit de arte.
         static GameObject Saco(Transform p, string n, float x, float z, bool horizontal = true, int vida = 300)
-            => Cubo(p, n, x, z, horizontal ? 3f : 1f, 1.2f, horizontal ? 1f : 3f, Cobertura, 0f, 0f, true, vida);
+        {
+            var cubo = Cubo(p, n, x, z, horizontal ? 3f : 1f, 1.2f, horizontal ? 1f : 3f, Cobertura, 0f, 0f, true, vida);
+            var pf = PrefabDeArte("P_Env_Barricada_Sacos");
+            if (pf == null) return cubo;
+            cubo.GetComponent<MeshRenderer>().enabled = false;
+            // El cubo mide (3,1.2,1) o (1,1.2,3) y su pivote esta al centro: se compensa la escala del padre. Largo -> 3 m, alto 0,6 por capa, grosor 0,5 por hilera.
+            var ls = cubo.transform.localScale;
+            foreach (float lado in new[] { -0.25f, 0.25f })
+                for (int capa = 0; capa < 2; capa++)
+                {
+                    var inst = (GameObject)PrefabUtility.InstantiatePrefab(pf, cubo.transform);
+                    float yLocal = -0.5f + capa * (0.6f / ls.y);
+                    inst.transform.localPosition = horizontal ? new Vector3(0f, yLocal, lado / ls.z) : new Vector3(lado / ls.x, yLocal, 0f);
+                    inst.transform.localRotation = Quaternion.Euler(0f, horizontal ? 0f : 90f, 0f);
+                    inst.transform.localScale = new Vector3((horizontal ? 0.8f / ls.x : 0.8f / ls.z), 0.9f / ls.y, horizontal ? 1.4f / ls.z : 1.4f / ls.x);
+                    foreach (var c in inst.GetComponentsInChildren<Collider>()) Object.DestroyImmediate(c);
+                }
+            return cubo;
+        }
         static GameObject Pintura(Transform p, string n, float x, float z, float w, float d, Material m, float yaw = 0f, float y0 = 0.075f, float h = 0.045f)
             => Cubo(p, n, x, z, w, h, d, m, yaw, y0, false);
         static GameObject Decor(Transform p, string n, float x, float z, float w, float h, float d, Material m, float yaw = 0f, float y0 = 0f)
@@ -176,10 +208,21 @@ namespace SP.EditorTools
         static GameObject MuroZ(Transform p, string n, float x, float z0, float z1, float h = 4f, float grosor = 2f, Material m = null)
             => Solido(p, n, x, (z0 + z1) * 0.5f, grosor, h, z1 - z0, m ?? Cemento);
 
+        static bool RotuloDecorativo(string t)
+        {
+            foreach (var pref in new[] { "SECTOR", "BARRACA", "PATIO", "ARMERIA", "COMANDO", "COMEDOR", "PARQUE", "FRANCOTIRADOR", "TORRETA", "BRECHA", "^ PORTON", "ZONA MILITAR", "INFILTRATE", "AUTOPISTA", "BLINDADO", "CANADON", "CENTRO DE DATOS", "COMPUTADORA", "CORREDOR", "ENTRADA", "KM ", "MURALLA", "PORTON BLINDADO", "PUENTE", "SALIDA ^", "TANQUE", "ZONA DE APROXIMACION" })
+                if (t.StartsWith(pref)) return true;
+            if (t == "SALIDA") return true;
+            return false;
+        }
+
         // Cartel de texto en el mundo: placa + TextMesh. "yaw" = hacia donde MIRA quien lo lee (0 = mira al norte).
         static GameObject Rotulo(Transform p, string texto, float x, float y, float z, float yaw, float tam = 1f, Color? color = null, Material placa = null, float ancho = -1f, float alto = -1f)
         {
             if (fuente == null) fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            // Pedido: "mucha menos UI / textos que solapan": los carteles de decoracion del mundo ya no se construyen (queda un objeto vacio
+            // por si alguien usa el valor devuelto); solo sobreviven los que guian (porton, km, ciudad, cargas).
+            if (RotuloDecorativo(texto)) { var vacio = new GameObject("RotuloOmitido"); vacio.transform.SetParent(p, false); vacio.transform.position = new Vector3(x, y, z); return vacio; }
             var raizR = new GameObject("Rotulo_" + texto.Replace("\n", " ")).transform;
             raizR.SetParent(p, false);
             raizR.position = new Vector3(x, y, z);
@@ -225,7 +268,7 @@ namespace SP.EditorTools
                 l.transform.SetParent(p, false);
                 l.transform.position = new Vector3(x, alto - 0.4f, z);
                 var li = l.AddComponent<Light>();
-                li.type = LightType.Point; li.color = new Color(1f, 0.93f, 0.75f); li.intensity = 3.2f; li.range = 16f;
+                li.type = LightType.Point; li.color = new Color(1f, 0.93f, 0.75f); li.intensity = 3.2f; li.range = 16f; li.shadows = LightShadows.None;   // las sombras de las puntuales cercanas las activa SombrasDeLuces en juego (bug #138)
             }
         }
 
@@ -235,7 +278,7 @@ namespace SP.EditorTools
             l.transform.SetParent(p, false);
             l.transform.position = new Vector3(x, y, z);
             var li = l.AddComponent<Light>();
-            li.type = LightType.Point; li.color = c; li.intensity = intensidad; li.range = rango;
+            li.type = LightType.Point; li.color = c; li.intensity = intensidad; li.range = rango; li.shadows = LightShadows.None;   // sombras: SombrasDeLuces (bug #138)
         }
 
         // Flecha amarilla pintada en el piso (la senalizacion del camino): apunta hacia "yaw".
@@ -261,6 +304,7 @@ namespace SP.EditorTools
             if (!File.Exists(EscenaDestino)) AssetDatabase.CopyAsset(EscenaOrigen, EscenaDestino);
             var scene = EditorSceneManager.OpenScene(EscenaDestino, OpenSceneMode.Single);
             mats.Clear();
+            edificiosCreados.Clear();
             contadorEnemigos = 0;
 
             LimpiarEscena();
@@ -317,14 +361,14 @@ namespace SP.EditorTools
             dir.tanque = tanque;
             dir.rutaDelTanque = ruta;
             dir.autoPlantilla = autoPlantilla;
-            dir.segundosDeTrayecto = 70f;   // WP9b (#073): ruta larga de ~70 s
+            dir.segundosDeTrayecto = 95f;   // ruta de ~1300 m (antes 950 m / 70 s): misma velocidad, ~95 s
             dir.tripulacionDelJefe = tripulacionJefe;
             dir.oleadasDeReparacion = oleadasReparacion;
             dir.patrullaDelJefe = patrullaJefe;
             dir.cajasDeCohetes = cajasJefe;
             dir.halcon = halconPlantilla;
             dir.emboscadas = emboscadasEscena;
-            dir.autosSimultaneos = 4;
+            dir.autosSimultaneos = 2;
             dir.oleadasDeLaCiudad = oleadasCiudad;
             dir.segundosDeResistencia = 90f;   // WP10 (#101): reloj efectivo del mando (antes 40 s)
             dir.radioDeCampana = radioDeCampana;
@@ -345,7 +389,9 @@ namespace SP.EditorTools
             LevelBlockoutBuilder.AjustarAlcancesDeCombate();
             PostprocesoNocturno();
             CiudadDeCubos(raiz);     // decorado del resto del mapa (antes de hornear: sus edificios llevan el volumen no caminable)
-            LevelBlockoutBuilder.BakeNavMesh();
+            Ambiente(raiz, ruta);    // tierra, pasto, desierto con cactus y plantaciones, campamentos militares
+            Decorado(raiz, ruta);    // detalle de edificios y props del kit de arte (barricadas, cajas, autos quemados, arboles...)
+            LevelBlockoutBuilder.BakeNavMesh(true);
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
@@ -385,7 +431,7 @@ namespace SP.EditorTools
         static void LimpiarEscena()
         {
             string[] raices = { "Enemies", "Waypoints", "Vehicles", "Weapons", "Nivel_Blockout", "Blocking", "Arte", "ArteMundo", "Ambientacion",
-                                "PostProceso_Noche", "Estrategia", "Mision", "CinematicaDeIntro", "CinematicaOperacion", "Operacion", "TorretasDelCentro" };
+                                "PostProceso_Noche", "Estrategia", "Mision", "CinematicaDeIntro", "CinematicaOperacion", "Operacion", "TorretasDelCentro", "Terreno_Ambiente" };
             foreach (var g in UnityEngine.SceneManagement.SceneManager.GetActiveScene().GetRootGameObjects())
             {
                 if (System.Array.IndexOf(raices, g.name) >= 0) { Object.DestroyImmediate(g); continue; }

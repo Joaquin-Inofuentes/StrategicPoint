@@ -488,13 +488,14 @@ namespace SP.EditorTools
             {
                 string sub = hud != null ? hud.TextoSubobjetivo : "";
                 W8Ok(ref ok, sub.Contains("Torres 0/2") && sub.Contains("Torretas 0/2") && sub.Contains("Reflectores 0/4") && sub.Contains("Soldados restantes: 28"), sb, $"HUD subobjetivos '{sub}'");
-                // el objetivo se cumple con TODOS los soldados muertos (guardias, tiradores y operadores)
+                // Bug #169: el objetivo del cuartel se cumple con las 2 torretas derribadas, aunque queden soldados vivos
                 int muertos = 0;
-                foreach (var s in d.enemigosCuartel) { if (s == null) continue; ComandosDeDepuracion.Matar(s.Id); muertos++; }
+                int vivosAntes = 0; foreach (var s in d.enemigosCuartel) if (s != null && s.Health != null && s.Health.IsAlive) vivosAntes++;
+                foreach (var t in TorreDestruible.Todas) if (t != null && t.tipo == TorreDestruible.Tipo.Torreta) { t.CaerYa(); muertos++; }
                 var porton = d.portonCuartel;
                 float t0 = Time.realtimeSinceStartup;
                 while (Time.realtimeSinceStartup - t0 < 4f && d.Fase == FaseOperacion.Infiltrar) yield return null;
-                W8Ok(ref ok, d.Fase == FaseOperacion.Puestos, sb, $"matados {muertos}/28 -> fase {d.Fase}");
+                W8Ok(ref ok, d.Fase == FaseOperacion.Puestos && vivosAntes > 0, sb, $"torretas caidas {muertos} con {vivosAntes} soldados vivos -> fase {d.Fase}");
                 foreach (var x in Esperar(2.5f)) yield return x;
                 W8Ok(ref ok, porton != null && !porton.activeSelf, sb, $"porton hundido={(porton != null && !porton.activeSelf)}");
                 W8Ok(ref ok, hud == null || hud.TextoSubobjetivo == "" || !hud.TextoSubobjetivo.Contains("Torres"), sb, "la linea de subobjetivos del cuartel se limpia al cambiar de fase");

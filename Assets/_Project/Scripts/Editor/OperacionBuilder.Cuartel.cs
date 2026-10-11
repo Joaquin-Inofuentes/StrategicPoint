@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using Unity.AI.Navigation;
 using UnityEditor;
@@ -290,35 +290,51 @@ namespace SP.EditorTools
         // #104: el artillero se para sobre un estrado bajo para asomar entero por encima del parapeto.
         const float AlturaDelEstrado = 0.45f;
 
-        // Torreta vigia de 5 m: plataforma con una ametralladora fija y un artillero enemigo, arco de 120 grados hacia el patio.
+        // Torreta ANTIAEREA (bug #152/#153): nido bajo de hormigon con dos canones gemelos apuntando al cielo y un artillero. No se trepa (sin escalera,
+        // sin colision arriba): solo se destruye con explosivos o se DEMUELE con [Q] (collider disparador en la raiz, bug #154).
         static TorreDestruible TorreDeTorreta(Transform e, Transform en, string nombre, float x, float z, Material mat, List<Soldier> arriba)
         {
             var raizT = new GameObject(nombre);
             raizT.transform.SetParent(e, false);
             raizT.transform.position = new Vector3(x, 0f, z);
             var pivote = Grupo(raizT.transform, "Pivote");
-            const float h = 5f;
+            const float h = 1.1f;
             float yaw = Mathf.Atan2(-x, 0f) * Mathf.Rad2Deg;   // mira hacia el eje x = 0 (el patio): +90 si esta al oeste, -90 si esta al este
             if (Mathf.Abs(x) < 1f) yaw = 180f;
             var dir = Quaternion.Euler(0f, yaw, 0f) * Vector3.forward;
-            Cubo(pivote, "Torre_Pata", x, z, 3f, h, 3f, mat);
-            Decor(pivote, "Torre_Cinto", x, z, 3.5f, 0.35f, 3.5f, mat, 0f, 2.5f);
+            Pisable(Cubo(pivote, "Torre_Pata", x, z, 3.4f, h, 3.4f, mat));
+            Decor(pivote, "Torre_Cinto", x, z, 3.7f, 0.3f, 3.7f, Hormigon, 0f, 0.35f);
+            // Nido bajo: la plataforma y el parapeto son decorado sin colision (nadie sube: es una pieza antiaerea, no un mirador).
             Decor(pivote, "Torre_Plataforma", x, z, 5f, 0.5f, 5f, Techo, 0f, h);
             Decor(pivote, "Torre_Parapeto_N", x, z + 2.4f, 5f, AlturaDelParapeto, 0.4f, mat, 0f, h + 0.5f);
             Decor(pivote, "Torre_Parapeto_S", x, z - 2.4f, 5f, AlturaDelParapeto, 0.4f, mat, 0f, h + 0.5f);
             Decor(pivote, "Torre_Parapeto_O", x - 2.4f, z, 0.4f, AlturaDelParapeto, 5f, mat, 0f, h + 0.5f);
             Decor(pivote, "Torre_Parapeto_E", x + 2.4f, z, 0.4f, AlturaDelParapeto, 5f, mat, 0f, h + 0.5f);
+            Rotulo(pivote, "ANTIAEREA", x, 0.62f, z - 1.72f, 0f, 0.5f, Color.white, Rojo, 2.8f, 0.6f);
             // Ametralladora visual (tripode, cajon y canon) mirando hacia el patio.
             var arma = Grupo(pivote, "Ametralladora");
             Decor(arma, "MG_Tripode", x + dir.x * 0.4f, z + dir.z * 0.4f, 0.4f, 0.7f, 0.4f, MetalOsc, yaw, h + 0.5f);
             Decor(arma, "MG_Cajon", x + dir.x * 0.5f, z + dir.z * 0.5f, 0.35f, 0.35f, 0.8f, MetalOsc, yaw, h + 1.15f);
-            Decor(arma, "MG_Canon", x + dir.x * 1.35f, z + dir.z * 1.35f, 0.12f, 0.12f, 1.2f, Negro, yaw, h + 1.25f);
-            Rotulo(pivote, "TORRETA", x, 3.6f, z - 1.62f, 0f, 0.9f, Color.white, Naranja, 5f, 1.1f);
+            // Dos canones gemelos de 3,2 m inclinados 55 grados hacia el cielo (se arma de frente y se gira entera sobre el eje lateral).
+            var gAA = Grupo(arma, "Canones_AA");
+            var perpAA = new Vector3(dir.z, 0f, -dir.x);
+            foreach (float l in new[] { -0.2f, 0.2f })
+            {
+                float px = x + dir.x * 0.9f + perpAA.x * l, pz = z + dir.z * 0.9f + perpAA.z * l;
+                Decor(gAA, "AA_Tubo", px + dir.x * 1.2f, pz + dir.z * 1.2f, 0.13f, 0.13f, 3.2f, Negro, yaw, h + 1.2f);
+                Decor(gAA, "AA_Camisa", px + dir.x * 0.3f, pz + dir.z * 0.3f, 0.22f, 0.22f, 1.0f, MetalClaro, yaw, h + 1.17f);
+                Decor(gAA, "AA_Freno", px + dir.x * 2.75f, pz + dir.z * 2.75f, 0.2f, 0.2f, 0.3f, MetalOsc, yaw, h + 1.2f);
+            }
+            gAA.transform.RotateAround(new Vector3(x + dir.x * 0.9f, h + 1.2f, z + dir.z * 0.9f), perpAA, -55f);
+            DetalleDeTorreta(pivote, x, z, h, yaw, dir, mat);
             var marca = raizT.AddComponent<ObstacleMarker>();
             marca.ConfigurarVida(TorreDestruible.VidaTorreta);
             marca.ConfigurarSoloExplosiones();
             var torre = raizT.AddComponent<TorreDestruible>();
             torre.tipo = TorreDestruible.Tipo.Torreta; torre.pivote = pivote; torre.mediaBase = 1.5f; torre.AlturaDeLaCima = h + 0.5f;
+            // Bug #154: Demolicion.EsDemolible pide un Collider en el objeto con la marca; sin el, la radial no ofrecia DEMOLER. Disparador = no estorba.
+            var cd = raizT.AddComponent<BoxCollider>(); cd.isTrigger = true; cd.center = new Vector3(0f, 1.6f, 0f); cd.size = new Vector3(3.6f, 3.2f, 3.6f);
+            Pisable(raizT);
             float lado = x < 0f ? 4.5f : -4.5f;
             var s = TiradorEnSuelo(en, "Enemigo_Artillero_" + nombre.Substring(nombre.Length - 3), x + lado, z, yaw);
             var art = raizT.AddComponent<ArtilleroDeTorreta>();
@@ -327,6 +343,66 @@ namespace SP.EditorTools
             torre.ocupante = s;
             arriba.Add(s);
             return torre;
+        }
+
+        static GameObject Pisable(GameObject go)
+        {
+            var mod = go.GetComponent<NavMeshModifier>(); if (mod == null) mod = go.AddComponent<NavMeshModifier>();
+            mod.ignoreFromBuild = true;
+            return go;
+        }
+
+        // Pedido: "quiero su geometria ... mejoralo": la torreta de artilleria es ahora un puesto de cañon completo (todo cuelga del pivote: cae con la
+        // torre). Escudo de dos placas con tronera, cañon con camisa y freno de boca, cajones de municion con cinta, bolsas de arena en los tres
+        // lados traseros, techo de red de camuflaje sobre postes, escalera, antena y reflector chico.
+        static void DetalleDeTorreta(Transform pv, float x, float z, float h, float yaw, Vector3 dir, Material mat)
+        {
+            var perp = new Vector3(dir.z, 0f, -dir.x);
+            float baseY = h + AlturaDelParapeto;
+            Vector3 P(float f, float l) => new Vector3(x + dir.x * f + perp.x * l, 0f, z + dir.z * f + perp.z * l);   // f = hacia adelante, l = lateral
+            var mg = Grupo(pv, "Detalle");
+            // Escudo: dos placas con una tronera de 0,35 m para el cañon.
+            foreach (float l in new[] { -0.62f, 0.62f })
+            {
+                var q = P(1.8f, l);
+                Decor(mg, "Escudo", q.x, q.z, 0.9f, 1.15f, 0.12f, MetalOsc, yaw, baseY);
+                var q2 = P(1.8f, l * 1.55f); Decor(mg, "Escudo_Ala", q2.x, q2.z, 0.5f, 1.05f, 0.1f, MetalOsc, yaw + (l < 0f ? 28f : -28f), baseY);
+            }
+            var cab = P(1.8f, 0f); Decor(mg, "Escudo_Dintel", cab.x, cab.z, 0.4f, 0.12f, 0.14f, MetalOsc, yaw, baseY + 1.2f);
+            // Cañon: camisa refrigerante gruesa, tubo y freno de boca.
+            var camisa = P(1.05f, 0f); Decor(mg, "MG_Camisa", camisa.x, camisa.z, 0.24f, 0.24f, 0.8f, MetalClaro, yaw, baseY + 0.56f);
+            var freno = P(2.0f, 0f); Decor(mg, "MG_Freno", freno.x, freno.z, 0.22f, 0.22f, 0.3f, MetalOsc, yaw, baseY + 0.6f);
+            var mira = P(0.45f, 0.18f); Decor(mg, "MG_Mira", mira.x, mira.z, 0.1f, 0.18f, 0.3f, Negro, yaw, baseY + 1.0f);
+            // Cajones de municion con cinta hacia el arma.
+            foreach (float l in new[] { -0.95f, 0.95f })
+            {
+                var cj = P(0.5f, l); Decor(mg, "Cajon_Municion", cj.x, cj.z, 0.5f, 0.38f, 0.32f, OlivaOsc, yaw, baseY);
+                var cn = P(0.5f, l * 0.55f); Decor(mg, "Cinta", cn.x, cn.z, 0.5f, 0.05f, 0.09f, Cobertura, yaw + (l < 0f ? 20f : -20f), baseY + 0.5f);
+            }
+            // Bolsas de arena sobre el parapeto: atras y a los costados (el frente queda libre para tirar).
+            for (int i = -2; i <= 2; i++)
+            {
+                var a = P(-2.3f, i * 0.95f); Decor(mg, "Saco_Atras", a.x, a.z, 1.0f, 0.4f, 0.55f, Cobertura, yaw, baseY);
+            }
+            foreach (float l in new[] { -2.3f, 2.3f })
+                for (int i = 0; i < 3; i++)
+                {
+                    var a = P(-1.1f + i * 1.15f, l); Decor(mg, "Saco_Lado", a.x, a.z, 0.55f, 0.4f, 1.0f, Cobertura, yaw, baseY);
+                    if (i == 1) { var b = P(-0.55f, l); Decor(mg, "Saco_Lado_Alto", b.x, b.z, 0.5f, 0.38f, 0.95f, Cobertura, yaw, baseY + 0.4f); }
+                }
+            // Techo de red de camuflaje sobre cuatro postes (alto: no tapa el tiro).
+            foreach (float f in new[] { -2.3f, 2.3f }) foreach (float l in new[] { -2.3f, 2.3f })
+            {
+                var pp = P(f, l); Decor(mg, "Red_Poste", pp.x, pp.z, 0.12f, 3.3f, 0.12f, MetalOsc, 0f, baseY);
+            }
+            var rc = P(0f, 0f); Decor(mg, "Red_Camuflaje", rc.x, rc.z, 5.8f, 0.1f, 5.8f, RedCamuflaje, yaw, baseY + 3.3f);
+            Decor(mg, "Red_Faldon", P(-2.3f, 0f).x, P(-2.3f, 0f).z, 5.8f, 1.1f, 0.08f, RedCamuflaje, yaw, baseY + 2.2f);
+            // Sin escalera: la torreta antiaerea no se trepa (bug #152). Antena en una esquina.
+            var an = P(-2.2f, 2.2f); Decor(mg, "Antena", an.x, an.z, 0.06f, 4.2f, 0.06f, MetalClaro, 0f, baseY);
+            var lm = P(1.2f, -2.2f); Decor(mg, "Faro", lm.x, lm.z, 0.5f, 0.3f, 0.4f, Lampara, yaw, baseY + 1.2f);
+            Decor(mg, "Faro_Soporte", lm.x, lm.z, 0.08f, 1.2f, 0.08f, MetalOsc, 0f, baseY);
+            // Cinturon de hormigon en la base (la pata deja de verse como un cubo pelado).
+            Decor(mg, "Base_Zocalo", x, z, 3.9f, 0.7f, 3.9f, Hormigon);
         }
 
         // Reflector: torre de 6 m, plataforma, lampara (Luminaria + SpotLight) y operador.
@@ -371,7 +447,7 @@ namespace SP.EditorTools
             Object.DestroyImmediate(lente.GetComponent<BoxCollider>());
             var luz = lampara.AddComponent<Light>();
             luz.type = LightType.Spot; luz.range = 45f; luz.spotAngle = 18f; luz.innerSpotAngle = 12f; luz.intensity = 9f;
-            luz.color = new Color(1f, 0.96f, 0.84f); luz.shadows = LightShadows.None;
+            luz.color = new Color(1f, 0.96f, 0.84f); luz.shadows = LightShadows.Soft;   // bug #138: la luz no pasa a traves de obstaculos
             lampara.AddComponent<Luminaria>().Health = 1;
             var r = raizR.AddComponent<ReflectorVigia>();
             float lado = x < 0f ? 4f : -4f;

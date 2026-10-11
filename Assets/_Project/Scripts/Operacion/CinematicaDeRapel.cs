@@ -208,8 +208,7 @@ namespace SP.Operacion
             // Encadena en el mismo cuadro (sin un cuadro de HUD en el medio): la cinematica de los pasos vuelve a bloquear todo.
             if (d != null)
             {
-                if (seguir && !CinematicaDeOperacion.YaVista) CinematicaDeOperacion.Iniciar(d);
-                else d.AlTerminarIntro();
+                d.AlTerminarIntro();   // orden nuevo: primero el recorrido del nivel, despues el rapel
             }
         }
 
@@ -501,7 +500,7 @@ namespace SP.Operacion
                 // Camara quieta (sin temblor): solo la mirada lo sigue; el zoom abre de teleobjetivo (se ve grande desde el primer cuadro) a angular.
                 Toma = 1;
                 float k = Mathf.Clamp01(t / FinDeToma0);
-                pos = piso - adelante * AtrasDeToma1 + derecha * LateralDeToma1; pos.y = piso.y + 1.0f;
+                pos = piso - adelante * AtrasDeToma1 + derecha * LateralDeToma1; pos.y = piso.y + 5.2f;   // bug #136 ("esta solapado"): a 1 m del piso la camara quedaba bajo la red de camuflaje del campamento (3,7 m): negro total
                 mira = heli.position;
                 roll = 0f; fov = Mathf.Lerp(28f, 50f, Mathf.SmoothStep(0f, 1f, k));
             }
@@ -510,7 +509,7 @@ namespace SP.Operacion
                 // Toma 2 (v4): lateral, a unos 25-30 m de la linea de vuelo; sigue al helicoptero mientras frena y gira sobre los soldados.
                 Toma = 2;
                 float k = Mathf.Clamp01((t - FinDeToma0) / (FinDeToma1 - FinDeToma0));
-                pos = piso + derecha * 37f - adelante * 41f + Vector3.up * 1.8f;   // al noreste, a ~27 m de la linea de vuelo: la vista al helicoptero no cruza los carteles de la entrada
+                pos = piso + derecha * 37f - adelante * 41f + Vector3.up * 6.0f;   // al noreste, a ~27 m de la linea de vuelo: la vista al helicoptero no cruza los carteles de la entrada
                 mira = heli.position + Vector3.down * 0.4f;
                 roll = 0f; fov = Mathf.Lerp(44f, 34f, Mathf.SmoothStep(0f, 1f, k));
             }

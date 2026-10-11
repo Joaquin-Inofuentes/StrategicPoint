@@ -33,6 +33,11 @@
 | `MinimapCiclarTamano` | `minimap_ciclar_tamano` |
 | `FocalizarRts` | `focalizar_rts` |
 | `RotarCamaraRts` | `rotar_camara_rts` |
+| `RadialEspacio` | `radial_espacio` |
+| `MarcarBug` | `marcar_bug` |
+| `PlegarPasos` | `plegar_pasos` |
+| `CambiarAliado` | `cambiar_aliado` |
+| `VerRuta` | `ver_ruta` |
 
 ## Teclas leidas directamente, por archivo
 
@@ -41,12 +46,22 @@
 
 | Archivo | Teclas que nombra |
 |---|---|
+| `SesionLog.cs` | `StartsWith`, `Substring` |
+| `ChecksBugs065.Wp5a.cs` | `W` |
+| `ChecksBugs065.Wp6.cs` | `IsDestroyed` |
+| `ChecksBugs065.Wp9a.cs` | `D`, `Digit2`, `E`, `Enter`, `F`, `LeftShift`, `Q`, `R`, `Tab`, `W` |
+| `ChecksBugs104.Resistir.cs` | `C` |
+| `ChecksBugs104.Rts.cs` | `D` |
 | `HeadlessTestRunner.Fase18.cs` | `F` |
 | `HeadlessTestRunner.Fase19.cs` | `Replace` |
 | `HeadlessTestRunner.Fase21.cs` | `name`, `text`, `transform` |
-| `HeadlessTestRunner.Fases13a17.cs` | `C`, `F`, `G`, `None` |
+| `HeadlessTestRunner.Fases13a17.cs` | `C`, `F`, `G`, `I`, `None`, `T` |
 | `HeadlessTestRunner.cs` | `U` |
-| `KeyBindings.cs` | `B`, `Backquote`, `C`, `E`, `F`, `G`, `H`, `J`, `K`, `L`, `M`, `N`, `None`, `O`, `Q`, `R`, `Space`, `Tab` |
+| `ValidacionBugs.cs` | `Space`, `U`, `W` |
+| `ValidadorJugabilidad.cs` | `LeftShift` |
+| `EstadisticasDeMision.cs` | `Replace` |
+| `MenuDeTrampas.cs` | `Digit1`, `Digit2`, `Digit3`, `Digit4`, `Digit5`, `Digit6`, `Digit7` |
+| `KeyBindings.cs` | `B`, `Backquote`, `C`, `E`, `F`, `G`, `H`, `I`, `J`, `K`, `L`, `M`, `N`, `None`, `O`, `Q`, `R`, `Space` |
 | `PlayerInputDriver.cs` | `None` |
 | `TutorialAutoPlayer.Entrada.cs` | `A`, `D`, `Digit2`, `F`, `G`, `LeftCtrl`, `LeftShift`, `R`, `S`, `Tab`, `W` |
 | `TutorialAutoPlayer.Radial.cs` | `Digit2`, `Digit3`, `LeftCtrl`, `LeftShift` |

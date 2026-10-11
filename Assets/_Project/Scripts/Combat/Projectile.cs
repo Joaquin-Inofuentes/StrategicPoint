@@ -133,6 +133,10 @@ namespace SP.Combat
             // vuelo por el LookRotation de arriba) para que se lea la
             // trayectoria, no solo el punto de impacto.
             transform.localScale = new Vector3(RestScale, RestScale, RestScale * TraceStretch);
+            // Pedido: "los disparos de los vehiculos enemigos quiero verlos con mucho contraste". Trazadora al doble de gruesa, de un
+            // rojo-naranja saturado y con un halo grande que se lee de noche y de dia (ver ConfigurarHalo).
+            esDeVehiculoEnemigo = shooterTeam == TeamId.Enemy && (sourceVehicle != null || shooterId < 0);
+            if (esDeVehiculoEnemigo) transform.localScale = new Vector3(RestScale * 2.2f, RestScale * 2.2f, RestScale * TraceStretch * 1.6f);
             ownerId = shooterId;
             ownerTeam = shooterTeam;
             var miEquipo = shooterTeam;
@@ -152,8 +156,41 @@ namespace SP.Combat
             // se garantiza SIEMPRE (con blanco de base si no vino color),
             // y el tinte pedido se aplica encima si vino.
             AsegurarMaterial();
-            if (color.HasValue && cachedRenderer != null) cachedRenderer.sharedMaterial.color = color.Value;
+            if (color.HasValue && cachedRenderer != null) cachedRenderer.sharedMaterial.color = esDeVehiculoEnemigo ? ColorDeTrazadoraEnemiga : color.Value;
+            ConfigurarHalo(esDeVehiculoEnemigo);
         }
+
+        public static readonly Color ColorDeTrazadoraEnemiga = new Color(1f, 0.14f, 0.04f, 1f);
+        bool esDeVehiculoEnemigo;
+        public bool EsDeVehiculoEnemigo => esDeVehiculoEnemigo;
+        Transform halo; SpriteRenderer haloSr;
+
+        // Halo billboard (sprite "flare_01") que sigue a la bala: SIN padre (la bala tiene escala no uniforme y el halo gira hacia la camara).
+        void ConfigurarHalo(bool activo)
+        {
+            if (!activo) { if (halo != null && halo.gameObject.activeSelf) halo.gameObject.SetActive(false); return; }
+            if (halo == null)
+            {
+                var g = new GameObject("HaloDeTrazadora");
+                halo = g.transform; haloSr = g.AddComponent<SpriteRenderer>();
+                haloSr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; haloSr.receiveShadows = false; haloSr.sortingOrder = 9;
+            }
+            haloSr.sprite = SP.Presentation.SpritesReales.Obtener("flare_01");
+            haloSr.color = new Color(1f, 0.22f, 0.06f, 0.95f);
+            halo.localScale = Vector3.one * 2.6f;
+            halo.position = transform.position;
+            halo.gameObject.SetActive(haloSr.sprite != null);
+        }
+
+        void LateUpdate()
+        {
+            if (halo == null || !halo.gameObject.activeSelf) return;
+            halo.position = transform.position;
+            var cam = SP.Core.CamaraPrincipal.Actual;
+            if (cam != null) halo.rotation = cam.transform.rotation;
+        }
+
+        void OnDestroy() { if (halo != null) Destroy(halo.gameObject); }
 
         // El material se garantiza al DESPERTAR, no solo al disparar. Los
         // proyectiles del pool nacen todos juntos al arrancar la partida y
@@ -194,6 +231,8 @@ namespace SP.Combat
         public void OnDespawn()
         {
             active = false;
+            esDeVehiculoEnemigo = false;
+            if (halo != null) halo.gameObject.SetActive(false);
             gravity = 0f;
             ignoreVehicle = null;
             whizzPlayed = false;
@@ -796,6 +835,7 @@ namespace SP.Combat
             // Obus de tanque (radio grande): golpe seco y trueno extra, para que se sienta el peso del cañon.
             if (radius >= 4.5f) SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.ImpactoPesado, point, 1f, 1f);
             ImpactFx.SpawnExplosion(point, radius);
+            ImpactFx.MarcarBando(point, radius, spareTeam);   // bug #162: celeste = mia, roja = del enemigo
 
             // Una explosion cerca se veia pero no se SENTIA: la camara
             // quedaba perfectamente quieta al lado de una granada. La

@@ -16,11 +16,23 @@ namespace SP.Presentation
         public Rigidbody Cuerpo;
         public Vector3 Tam;
         public bool EnUso;
+        public bool Asentado;
+
+        // Bug #155: el trozo cae, rebota y se apila con colision; cuando se queda quieto pasa a ser puro decorado (sin colision) para que los
+        // soldados (y el tanque) caminen por encima del escombro en vez de trabarse en cada piedra.
+        void Asentar()
+        {
+            Asentado = true;
+            if (Cuerpo != null) { Cuerpo.linearVelocity = Vector3.zero; Cuerpo.angularVelocity = Vector3.zero; Cuerpo.isKinematic = true; }
+            var c = GetComponent<Collider>();
+            if (c != null) c.enabled = false;
+        }
 
         void Update()
         {
             if (!EnUso) return;
             Edad += Time.deltaTime;
+            if (!Asentado && Edad > 1.2f && Cuerpo != null && (Cuerpo.linearVelocity.sqrMagnitude < 0.8f || Edad > 3f)) Asentar();
             if (transform.position.y < -30f) { Liberar(); return; }
             float resto = Vida - Edad;
             if (resto <= Fragmentador.SegundosDeHundido)
@@ -34,6 +46,7 @@ namespace SP.Presentation
         public void Liberar()
         {
             EnUso = false;
+            Asentado = false;
             if (Cuerpo != null) { Cuerpo.linearVelocity = Vector3.zero; Cuerpo.angularVelocity = Vector3.zero; }
             gameObject.SetActive(false);
         }
@@ -271,7 +284,9 @@ namespace SP.Presentation
                 else mr.SetPropertyBlock(null);
                 var bc = f.GetComponent<BoxCollider>();
                 bc.size = Vector3.one; bc.center = Vector3.zero;
+                bc.enabled = true; f.Asentado = false;
                 var rb = f.Cuerpo;
+                rb.isKinematic = false;
                 rb.mass = Mathf.Clamp(tamPieza.x * tamPieza.y * tamPieza.z * 400f, 2f, 900f);
                 rb.linearDamping = 0.05f; rb.angularDamping = 0.25f;
                 f.gameObject.SetActive(true);

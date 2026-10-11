@@ -13,9 +13,9 @@ namespace SP.Ai
     // paredes). No se aplica a retenidos (curando/curados), ni a los montados o poseidos.
     public partial class AiBrain
     {
-        public const float RadioDeSeparacion = 1.5f;
-        public const float RadioDeSeparacionEnCobertura = 0.9f;   // en su cobertura se separa menos (no se lo saca del punto), pero tampoco se queda apilado
-        public const float PesoDeSeparacion = 1.3f;
+        public const float RadioDeSeparacion = 3.2f;   // bug #146 ("la IA enemiga se agrupa demasiado"): antes 1,5 m
+        public const float RadioDeSeparacionEnCobertura = 1.8f;   // en su cobertura se separa menos (no se lo saca del punto), pero tampoco se queda apilado
+        public const float PesoDeSeparacion = 1.7f;
         public static bool SeparacionActiva = true;
 
         static readonly List<Soldier> vecinosDeSeparacion = new List<Soldier>(8);

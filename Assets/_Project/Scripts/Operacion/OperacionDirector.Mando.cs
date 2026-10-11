@@ -99,8 +99,8 @@ namespace SP.Operacion
         {
             (new[] { 0 }, new[] { 6 }, 0, -1, 0.13f),
             (new[] { 1 }, new[] { 6 }, 0, -1, 0.31f),
-            (new[] { 2 }, new[] { 7 }, 1, 2, 0.50f),
-            (new[] { 0, 2 }, new[] { 5, 5 }, 0, -1, 0.68f),
+            (new[] { 0 }, new[] { 7 }, 1, 0, 0.50f),
+            (new[] { 0, 1 }, new[] { 5, 5 }, 0, -1, 0.68f),
             (new[] { 1 }, new[] { 8 }, 1, 1, 0.84f),
         };
 
@@ -109,7 +109,6 @@ namespace SP.Operacion
         {
             (new Vector2(-60f, 68f), new Vector2(-3f, 68f)),      // A: por la calle norte, desde el oeste
             (new Vector2(-56f, 66f), new Vector2(-55f, -2f)),     // B: por la calle oeste, desde el norte
-            (new Vector2(58f, -60f), new Vector2(57f, 3f)),      // C: por la calle este, desde el sur
         };
 
         [Serializable] struct Vacio { }
@@ -206,13 +205,17 @@ namespace SP.Operacion
             ActivarMilicianos(PartidaGuardada.Restaurando);   // P10: al continuar no se anuncia una llegada que ya ocurrio
             AsignarUnidades(yo);
             SuscribirMando();
-            TomarLaRadio(yo);
             CameraRig.LimiteDePaneoRts = LimiteDeLaZonaJugable;
-            GuiaDeMando.Asegurar();   // #114: flecha 3D + punteado del paso actual
-            var panelMando = PanelDeMando.Asegurar();
-            panelMando.Mostrar(true);
-            panelMando.AlSoltarRadio = () => SoltarLaRadio("RADIO ABANDONADA · EL RELOJ SE DETUVO", true);
-            AlertQueue.Push("VISTA TÁCTICA · DIRIGÍ A TU EQUIPO", AlertPriority.Alta, 3.5f);
+            if (!MandoTactico.ModoDirecto)
+            {
+                TomarLaRadio(yo);
+                GuiaDeMando.Asegurar();   // #114: flecha 3D + punteado del paso actual
+                var panelMando = PanelDeMando.Asegurar();
+                panelMando.Mostrar(true);
+                panelMando.AlSoltarRadio = () => SoltarLaRadio("RADIO ABANDONADA · EL RELOJ SE DETUVO", true);
+                AlertQueue.Push("VISTA TÁCTICA · DIRIGÍ A TU EQUIPO", AlertPriority.Alta, 3.5f);
+            }
+            else AlertQueue.Push("CUBRI LOS 2 PUESTOS · A Y B · CON CUALQUIER SOLDADO", AlertPriority.Alta, 3.5f);
             SesionLog.Evento($"MANDO: radio tomada por {yo.DisplayName}; unidades A={(UnidadA != null ? UnidadA.DisplayName : "-")} C={(UnidadC != null ? UnidadC.DisplayName : "-")} milicianos={milicianosActivos.Count}");
             if (ubicarSolos) UbicarLaEscuadraSola();
         }
@@ -494,7 +497,7 @@ namespace SP.Operacion
             else
             {
                 eSostenida = 0f;
-                if (yo != null && yo.Health.IsAlive && Time.time >= soltoLaRadioHasta && radioDeCampana != null && Plano(yo.transform.position, radioDeCampana.position).magnitude <= MandoTactico.AlcanceDeLaRadio)
+                if (!MandoTactico.ModoDirecto && yo != null && yo.Health.IsAlive && Time.time >= soltoLaRadioHasta && radioDeCampana != null && Plano(yo.transform.position, radioDeCampana.position).magnitude <= MandoTactico.AlcanceDeLaRadio)
                 {
                     if (hud != null) hud.Prompt("[E] RETOMAR LA RADIO · sin la radio el reloj no corre");
                     if (OperacionTerminal.EToque()) { TomarLaRadio(yo); }
@@ -526,6 +529,7 @@ namespace SP.Operacion
             TickPendientesDelMando();
             TickRumboDeLosAtacantes(dt);
             TickCoberturaAutomatica(dt);
+            TickPosturaEnSector(dt);
             TickCampanario();
             VolarHeli(Mathf.Clamp01(RelojEfectivo / Mathf.Max(1f, segundosDeResistencia)));
             ActualizarHudDelMando();
@@ -863,6 +867,39 @@ namespace SP.Operacion
             }
         }
 
+        // Bug #164 ("los milicianos avanzaron, no deberian avanzar solos sino quedarse en la cobertura"): quien esta dentro de un sector sin orden
+        // pasa a postura DEFENSIVA (no persigue mas alla de ~8 m de su puesto: dispara desde la cobertura). Al salir del sector vuelve a Libre.
+        readonly HashSet<Soldier> defensivosDelMando = new HashSet<Soldier>();
+        float proximaPostura;
+        void TickPosturaEnSector(float dt)
+        {
+            proximaPostura -= dt;
+            if (proximaPostura > 0f || sectoresDeDefensa == null) return;
+            proximaPostura = 0.5f;
+            var todos = ActorRegistry.All;
+            for (int i = 0; i < todos.Count; i++)
+            {
+                var a = todos[i];
+                if (a == null || a.Team != TeamId.Player || a.Role == RoleType.Civilian || a.Brain == null) continue;
+                var b = a.Brain;
+                bool vivo = a.Health != null && a.Health.IsAlive && a.gameObject.activeInHierarchy;
+                bool dentro = false;
+                if (vivo) foreach (var sec in sectoresDeDefensa) if (sec != null && sec.Contiene(a.transform.position)) { dentro = true; break; }
+                if (dentro && !b.IsPossessedByPlayer && !b.MontadoEnVehiculo && b.Stance == CombatStance.Libre && (b.EnCobertura || !b.TieneOrden))
+                {
+                    b.Stance = CombatStance.Defensiva;
+                    defensivosDelMando.Add(a);
+                }
+                else if ((!dentro || b.IsPossessedByPlayer) && defensivosDelMando.Remove(a) && b.Stance == CombatStance.Defensiva) b.Stance = CombatStance.Libre;
+            }
+        }
+
+        void SoltarPosturas()
+        {
+            foreach (var a in defensivosDelMando) if (a != null && a.Brain != null && a.Brain.Stance == CombatStance.Defensiva) a.Brain.Stance = CombatStance.Libre;
+            defensivosDelMando.Clear();
+        }
+
         static bool PuntoTomado(Vector3 p, Soldier yo, IReadOnlyList<Soldier> todos)
         {
             for (int i = 0; i < todos.Count; i++)
@@ -911,8 +948,9 @@ namespace SP.Operacion
         {
             switch (i)
             {
-                case 0: return UnidadA == null || (sel != null && sel.Count == 1 && sel[0] == UnidadA);
-                case 1: return UnidadA == null || (ordenSector.TryGetValue(UnidadA.Id, out int a) && a == 0);
+                // Pedido: "no importa con quien": cualquier soldado, cualquiera de los 2 sectores.
+                case 0: return sel != null && sel.Count == 1 && !MandoTactico.EsMiliciano(sel[0]);
+                case 1: return ordenSector.ContainsValue(0) || ordenSector.ContainsValue(1);
                 case 2:
                     {
                         if (milicianosActivos.Count == 0 || sel == null) return false;
@@ -922,10 +960,10 @@ namespace SP.Operacion
                 case 3:
                     {
                         bool todos = milicianosActivos.Count > 0;
-                        foreach (var m in milicianosActivos) if (m != null && m.Health.IsAlive && !(ordenSector.TryGetValue(m.Id, out int b) && b == 1)) todos = false;
+                        foreach (var m in milicianosActivos) if (m != null && m.Health.IsAlive && !(ordenSector.TryGetValue(m.Id, out int b) && b >= 0)) todos = false;
                         return todos;
                     }
-                case 4: return UnidadC == null || (ordenSector.TryGetValue(UnidadC.Id, out int c) && c == 2);
+                case 4: return ordenSector.ContainsValue(0) && ordenSector.ContainsValue(1);
             }
             return false;
         }
@@ -982,11 +1020,11 @@ namespace SP.Operacion
             int milicias = 0; foreach (var m in milicianosActivos) if (m != null && m.Health != null && m.Health.IsAlive) milicias++;
             return new[]
             {
-                new PanelDeMando.Paso { texto = $"SELECCIONÁ A {a}: CLIC EN SU ROMBO", clicIzq = true },
-                new PanelDeMando.Paso { texto = $"MANDALO AL SECTOR {Letra(0)}: CLIC DERECHO EN EL CÍRCULO {Letra(0)}", clicDer = true },
+                new PanelDeMando.Paso { texto = "SELECCIONÁ A UN SOLDADO: CLIC EN SU ROMBO", clicIzq = true },
+                new PanelDeMando.Paso { texto = $"MANDALO A UN SECTOR ({Letra(0)} O {Letra(1)}): CLIC DERECHO EN EL CÍRCULO", clicDer = true },
                 new PanelDeMando.Paso { texto = $"SELECCIONÁ A LOS {milicias} MILICIANOS: ARRASTRÁ UN RECUADRO", arrastre = true },
-                new PanelDeMando.Paso { texto = $"MANDALOS AL SECTOR {Letra(1)}: CLIC DERECHO EN EL CÍRCULO {Letra(1)}", clicDer = true },
-                new PanelDeMando.Paso { texto = $"{c} AL SECTOR {Letra(2)}: SELECCIONALO Y CLIC DERECHO EN EL CÍRCULO {Letra(2)}", clicIzq = true, clicDer = true },
+                new PanelDeMando.Paso { texto = "MANDALOS AL OTRO SECTOR: CLIC DERECHO EN EL CÍRCULO", clicDer = true },
+                new PanelDeMando.Paso { texto = "LOS DOS SECTORES CON ALGUIEN ADENTRO: CUALQUIER SOLDADO SIRVE", clicIzq = true, clicDer = true },
                 new PanelDeMando.Paso { texto = "LLEGÓ LA CAMIONETA: CLIC DERECHO SOBRE ELLA PARA ATACAR", clicDer = true },
             };
         }
@@ -1014,7 +1052,7 @@ namespace SP.Operacion
                 case 4:
                     {
                         if (UnidadC == null) return false;
-                        g.unidad = UnidadC; g.hayRuta = true; g.origen = UnidadC.transform.position; g.destino = Centro(2);
+                        g.unidad = UnidadC; g.hayRuta = true; g.origen = UnidadC.transform.position; g.destino = Centro(ordenSector.ContainsValue(0) && !ordenSector.ContainsValue(1) ? 1 : 0);
                         bool seleccionada = Seleccion(out var sel) && sel.Count == 1 && sel[0] == UnidadC;
                         g.flechaEn = seleccionada ? g.destino : UnidadC.transform.position + Vector3.up * 2.4f;
                         return true;
@@ -1100,6 +1138,12 @@ namespace SP.Operacion
                 hud.Objetivo(TituloObjetivo(5, "DIRIGIR LA DEFENSA"), sb.ToString(), RelojEfectivo / Mathf.Max(1f, segundosDeResistencia), color);
                 hud.Timer("HELICÓPTERO", seg, pausado ? new Color(1f, 0.3f, 0.25f) : (seg <= 10 ? new Color(0.45f, 1f, 0.55f) : Color.white));
             }
+            if (MandoTactico.ModoDirecto)
+            {
+                // Sin panel: el motivo de la pausa sale por el unico texto de abajo al centro.
+                if (pausado && MotivoDeLaPausa != "") SP.UI.AvisoUnico.Fijo("mandoPausa", MotivoDeLaPausa, new Color(1f, 0.4f, 0.3f)); else SP.UI.AvisoUnico.QuitarFijo("mandoPausa");
+                return;
+            }
             var panel = PanelDeMando.Asegurar();
             panel.Fijar(PasosParaElPanel(), pasoHecho, PasoActualDelMando);
             // Aviso del panel: sector caido > aliado caido > motivo de la pausa.
@@ -1134,6 +1178,8 @@ namespace SP.Operacion
         {
             DesuscribirMando();
             PanelDeMando.Quitar();
+            SoltarPosturas();
+            SP.UI.AvisoUnico.QuitarFijo("mandoPausa");
             FlechaDeOleada.QuitarTodas();
             WorldUiDirector.RevelarEnemigos = false;
             if (sectoresDeDefensa != null) foreach (var s in sectoresDeDefensa) if (s != null) s.Mostrar(false);
@@ -1146,13 +1192,13 @@ namespace SP.Operacion
         // Las unidades quedan ubicadas SOLAS en los sectores (subfase 1 pedida por Arrancar(5, _, 1)) y los pasos 1-5 hechos.
         void UbicarLaEscuadraSola()
         {
-            if (sectoresDeDefensa == null || sectoresDeDefensa.Length < 3) return;
+            if (sectoresDeDefensa == null || sectoresDeDefensa.Length < 2) return;
             Teletransportar(UnidadA, sectoresDeDefensa[0].Centro, 0f);
             for (int i = 0; i < milicianosActivos.Count; i++) Teletransportar(milicianosActivos[i], sectoresDeDefensa[1].Centro, (i - (milicianosActivos.Count - 1) * 0.5f) * 1.6f);
-            Teletransportar(UnidadC, sectoresDeDefensa[2].Centro, 0f);
+            Teletransportar(UnidadC, sectoresDeDefensa[0].Centro, 1.6f);
             if (UnidadA != null) ordenSector[UnidadA.Id] = 0;
             foreach (var m in milicianosActivos) if (m != null) ordenSector[m.Id] = 1;
-            if (UnidadC != null) ordenSector[UnidadC.Id] = 2;
+            if (UnidadC != null) ordenSector[UnidadC.Id] = 0;
             for (int i = 0; i < 5; i++) pasoHecho[i] = true;
         }
 

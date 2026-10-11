@@ -340,6 +340,9 @@ namespace SP.Ai
             }
             // Segundo aviso en adelante: solo los aliados se reubican (un enemigo atascado no importa tanto y un salto seria visible).
             // Y solo siguiendo o yendo a un punto: en Chase/cobertura la meta es el enemigo y saltar junto a el seria absurdo.
+            // Bug #170 ("siguen habiendo bugs de que los enemigos no pasan obstaculos"): un enemigo que ya fallo dos ventanas seguidas y esta lejos de
+            // su meta no se queda empujando el muro: se lo rodea por el NavMesh o, si el jugador no lo ve, se lo reubica en el tramo caminable.
+            if (self.Team == SP.Combat.TeamId.Enemy && sinProgresoGolpes >= 2 && aMeta.magnitude > 6f && DesatascarEnemigo(meta)) return;
             if (self.Team != SP.Combat.TeamId.Player || (State != AiState.Follow && State != AiState.MovingToOrder)) { PlanPathTo(meta); return; }
             if (aMeta.magnitude < 5f) { sinProgresoGolpes = 0; return; }   // ya esta cerca: no hace falta saltar
             // A metro y medio de la meta, del lado de donde venia: si la meta es otro soldado (seguir, curar) antes quedaba
@@ -356,6 +359,55 @@ namespace SP.Ai
                 SincronizarAgente();
                 GameLog.Line($"{self.DisplayName} seguia trabado: se reubica junto a su destino {p}");
             }
+        }
+
+        // Adelanta al enemigo trabado hasta ~6 m por el camino real del NavMesh hacia su meta (o, sin camino, a un punto caminable cercano). Si el
+        // jugador lo esta viendo no se lo mueve (un salto a la vista se nota): solo se rehace la ruta y se reintenta en la proxima ventana.
+        public int ReubicacionesDeEnemigo { get; private set; }
+        bool DesatascarEnemigo(Vector3 meta)
+        {
+            var desde = self.transform.position;
+            Vector3? destino = null;
+            var camino = new UnityEngine.AI.NavMeshPath();
+            if (UnityEngine.AI.NavMesh.SamplePosition(desde, out var h0, 3f, UnityEngine.AI.NavMesh.AllAreas)
+                && UnityEngine.AI.NavMesh.SamplePosition(meta, out var h1, 6f, UnityEngine.AI.NavMesh.AllAreas)
+                && UnityEngine.AI.NavMesh.CalculatePath(h0.position, h1.position, UnityEngine.AI.NavMesh.AllAreas, camino)
+                && camino.status == UnityEngine.AI.NavMeshPathStatus.PathComplete && camino.corners.Length >= 2)
+            {
+                float recorrido = 0f; var previo = camino.corners[0];
+                for (int i = 1; i < camino.corners.Length; i++)
+                {
+                    float seg = Vector3.Distance(previo, camino.corners[i]);
+                    if (recorrido + seg >= 6f) { destino = Vector3.Lerp(previo, camino.corners[i], Mathf.Clamp01((6f - recorrido) / Mathf.Max(0.01f, seg))); break; }
+                    recorrido += seg; previo = camino.corners[i]; destino = previo;
+                }
+            }
+            else
+            {
+                // Sin camino completo: un punto caminable a 4 m, en el semicirculo que mira a la meta.
+                var haciaMeta = meta - desde; haciaMeta.y = 0f;
+                var dir = haciaMeta.sqrMagnitude > 0.01f ? haciaMeta.normalized : self.transform.forward;
+                var lateral = Quaternion.Euler(0f, UnityEngine.Random.value < 0.5f ? -70f : 70f, 0f) * dir;
+                if (UnityEngine.AI.NavMesh.SamplePosition(desde + lateral * 4f, out var hl, 3f, UnityEngine.AI.NavMesh.AllAreas)) destino = hl.position;
+            }
+            if (!destino.HasValue) return false;
+            var cam = SP.Core.CamaraPrincipal.Actual;
+            if (cam != null)
+            {
+                var v = cam.WorldToViewportPoint(self.transform.position + Vector3.up);
+                bool enPantalla = v.z > 0f && v.x > -0.05f && v.x < 1.05f && v.y > -0.05f && v.y < 1.05f;
+                if (enPantalla && SP.Core.NavService.HayLineaDeTiro(cam.transform.position, self.transform.position + Vector3.up, null, self.transform)) { PlanPathTo(meta); return false; }
+            }
+            var p = new Vector3(destino.Value.x, self.transform.position.y, destino.Value.z);
+            self.transform.position = p;
+            SP.Core.ApoyoEnElPiso.Apoyar(self.transform);
+            sinProgresoAncla = self.transform.position;
+            sinProgresoGolpes = 1;
+            ReubicacionesDeEnemigo++;
+            ClearPath();
+            SincronizarAgente();
+            GameLog.Line($"{self.DisplayName} (enemigo) trabado contra un obstaculo: se lo adelanta por el NavMesh {p}");
+            return true;
         }
 
         // Si el cuerpo quedo en el margen del NavMesh pegado a un muro (o adentro de un solido), lo apoya sobre el punto caminable

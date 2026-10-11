@@ -3,6 +3,7 @@ using UnityEngine.AI;
 using SP.CameraSystem;
 using SP.Player;
 using SP.Presentation;
+using UnityEngine.UI;
 
 namespace SP.Operacion
 {
@@ -18,66 +19,100 @@ namespace SP.Operacion
         static GuiaDeObjetivo instancia;
         public static GuiaDeObjetivo Instancia => instancia;
 
-        Transform flecha;
-        MeshRenderer flechaRend;
-        LineRenderer ruta;
-        ObjectiveArrowIndicator flechaPies;
-        NavMeshPath camino;
-        float proximaRuta, t;
+        // Pedido: "un rombo de objetivo claro que ya no sea la linea en el piso". La ruta punteada, la flecha plana a los pies y la
+        // flecha 3D se sacaron: queda UN rombo amarillo con borde blanco sobre el objetivo y su distancia (pegado al borde si esta fuera de pantalla).
+        RectTransform rombo;
+        Image romboBorde, romboInterior;
+        Text romboTexto;
+        Canvas canvasRombo;
+        float t;
         static Texture2D texPunteado;
+        static Sprite spriteRombo;
 
         public bool Activa { get; private set; }
-        public bool RutaActiva => ruta != null && ruta.enabled && ruta.positionCount >= 2;
-        public int PuntosDeRuta => ruta != null && ruta.enabled ? ruta.positionCount : 0;
-        public bool FlechaVisible => flecha != null && flecha.gameObject.activeSelf;
-        public Vector3 PosicionDeLaFlecha => flecha != null ? flecha.position : Vector3.zero;
-        public bool FlechaDelPiesVisible => flechaPies != null && flechaPies.transform.childCount > 0 && flechaPies.transform.GetChild(0).gameObject.activeSelf;
+        public bool RutaActiva => false;
+        public int PuntosDeRuta => 0;
+        public bool FlechaVisible => rombo != null && rombo.gameObject.activeSelf;
+        public bool RomboVisible => FlechaVisible;
+        public string TextoDelRombo => romboTexto != null && FlechaVisible ? romboTexto.text : "";
+        public Vector2 PosicionDelRomboEnPantalla => rombo != null ? (Vector2)rombo.position : Vector2.zero;
+        public Vector3 PosicionDeLaFlecha => ObjetivoActual;
+        public bool FlechaDelPiesVisible => false;
         public Vector3 ObjetivoActual { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { instancia = null; texPunteado = null; }
+        static void Reiniciar() { instancia = null; texPunteado = null; spriteRombo = null; }
 
         public static GuiaDeObjetivo Asegurar()
         {
             if (!Application.isPlaying) return null;
             if (instancia != null) return instancia;
-            var go = new GameObject("GuiaDeObjetivo") { hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild };
+            // Restos de una sesion anterior (el rombo vive en un canvas propio): se borran para que no queden rombos congelados en pantalla.
+            foreach (var viejo in Resources.FindObjectsOfTypeAll<GameObject>())
+                if (viejo != null && viejo.name == "GuiaDeObjetivo") Destroy(viejo);
+            var go = new GameObject("GuiaDeObjetivo");   // sin DontSave: con esas banderas el editor lo deja huerfano al salir de Play y se acumulan rombos congelados
             instancia = go.AddComponent<GuiaDeObjetivo>();
             return instancia;
         }
 
         void Awake()
         {
-            camino = new NavMeshPath();
-            // Flecha 3D (apunta hacia abajo, al objetivo).
-            var f = new GameObject("FlechaGrande");
-            f.transform.SetParent(transform, false);
-            f.AddComponent<MeshFilter>().sharedMesh = MallaDeFlecha();
-            flechaRend = f.AddComponent<MeshRenderer>();
-            flechaRend.sharedMaterial = SafeMaterial.CreateLinea(Color.white);   // unlit, respeta el color de vertices
-            flechaRend.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            flechaRend.receiveShadows = false;
-            flecha = f.transform;
-            f.SetActive(false);
-            // Ruta punteada.
-            var r = new GameObject("RutaPunteada");
-            r.transform.SetParent(transform, false);
-            ruta = r.AddComponent<LineRenderer>();
-            var mat = SafeMaterial.CreateLinea(new Color(1f, 0.88f, 0.25f, 0.95f));
-            mat.mainTexture = Punteado();
-            ruta.sharedMaterial = mat;
-            ruta.widthMultiplier = 0.32f;
-            ruta.numCornerVertices = 2;
-            ruta.textureMode = LineTextureMode.Tile;
-            ruta.alignment = LineAlignment.TransformZ;
-            ruta.transform.rotation = Quaternion.Euler(90f, 0f, 0f);   // el ancho queda en el plano del piso (se ve desde arriba y en rasante)
-            ruta.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            ruta.receiveShadows = false;
-            ruta.useWorldSpace = true;
-            ruta.startColor = ruta.endColor = new Color(1f, 0.88f, 0.25f, 0.95f);
-            ruta.enabled = false;
-            flechaPies = ObjectiveArrowIndicator.Crear();
-            flechaPies.transform.SetParent(transform, false);
+            var cgo = new GameObject("RomboDeObjetivoCanvas", typeof(Canvas), typeof(CanvasScaler));
+            cgo.transform.SetParent(transform, false);
+            canvasRombo = cgo.GetComponent<Canvas>();
+            canvasRombo.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvasRombo.sortingOrder = 45;
+            var cs = cgo.GetComponent<CanvasScaler>();
+            cs.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            cs.referenceResolution = new Vector2(1920f, 1080f);
+            cs.matchWidthOrHeight = 0.5f;
+
+            var r = new GameObject("Rombo", typeof(RectTransform));
+            r.transform.SetParent(cgo.transform, false);
+            rombo = (RectTransform)r.transform;
+            rombo.anchorMin = rombo.anchorMax = Vector2.zero;
+            rombo.pivot = new Vector2(0.5f, 0.5f);
+            rombo.sizeDelta = new Vector2(64f, 64f);
+            var sp = SpriteDelRombo();
+            var b = new GameObject("Borde", typeof(RectTransform), typeof(Image));
+            b.transform.SetParent(r.transform, false);
+            romboBorde = b.GetComponent<Image>(); romboBorde.sprite = sp; romboBorde.color = Color.white; romboBorde.raycastTarget = false;
+            var brt = romboBorde.rectTransform; brt.anchorMin = Vector2.zero; brt.anchorMax = Vector2.one; brt.offsetMin = brt.offsetMax = Vector2.zero;
+            var inn = new GameObject("Interior", typeof(RectTransform), typeof(Image));
+            inn.transform.SetParent(r.transform, false);
+            romboInterior = inn.GetComponent<Image>(); romboInterior.sprite = sp; romboInterior.color = DiamondGizmo.ColorObjetivo; romboInterior.raycastTarget = false;
+            var irt = romboInterior.rectTransform; irt.anchorMin = irt.anchorMax = new Vector2(0.5f, 0.5f); irt.sizeDelta = new Vector2(44f, 44f);
+            var tg = new GameObject("Distancia", typeof(RectTransform), typeof(Text), typeof(Outline));
+            tg.transform.SetParent(r.transform, false);
+            romboTexto = tg.GetComponent<Text>();
+            romboTexto.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            romboTexto.fontSize = 22; romboTexto.fontStyle = FontStyle.Bold; romboTexto.alignment = TextAnchor.UpperCenter;
+            romboTexto.color = Color.white; romboTexto.raycastTarget = false;
+            romboTexto.horizontalOverflow = HorizontalWrapMode.Overflow; romboTexto.verticalOverflow = VerticalWrapMode.Overflow;
+            var trt = romboTexto.rectTransform; trt.anchorMin = trt.anchorMax = new Vector2(0.5f, 0f); trt.pivot = new Vector2(0.5f, 1f);
+            trt.anchoredPosition = new Vector2(0f, -2f); trt.sizeDelta = new Vector2(200f, 28f);
+            var o = tg.GetComponent<Outline>(); o.effectColor = new Color(0f, 0f, 0f, 0.95f); o.effectDistance = new Vector2(2f, -2f);
+            r.SetActive(false);
+        }
+
+        // Rombo lleno (el borde blanco y el interior amarillo comparten el sprite: solo cambia el tamano y el color).
+        static Sprite SpriteDelRombo()
+        {
+            if (spriteRombo != null) return spriteRombo;
+            const int n = 96;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { hideFlags = HideFlags.HideAndDontSave, wrapMode = TextureWrapMode.Clamp };
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float d = (Mathf.Abs(x + 0.5f - n * 0.5f) + Mathf.Abs(y + 0.5f - n * 0.5f)) / (n * 0.5f);
+                    float a = Mathf.Clamp01((1f - d) * (n * 0.5f) * 0.7f);
+                    px[y * n + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+                }
+            tex.SetPixels32(px); tex.Apply();
+            spriteRombo = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f);
+            spriteRombo.hideFlags = HideFlags.HideAndDontSave;
+            return spriteRombo;
         }
 
         void OnDestroy() { if (instancia == this) instancia = null; }
@@ -150,9 +185,7 @@ namespace SP.Operacion
         void Apagar()
         {
             Activa = false;
-            if (flecha != null && flecha.gameObject.activeSelf) flecha.gameObject.SetActive(false);
-            if (ruta != null && ruta.enabled) ruta.enabled = false;
-            if (flechaPies != null) flechaPies.Ocultar();
+            if (rombo != null && rombo.gameObject.activeSelf) rombo.gameObject.SetActive(false);
         }
 
         void Mostrar(Vector3 yo, Vector3 objetivo)
@@ -161,42 +194,24 @@ namespace SP.Operacion
             ObjetivoActual = objetivo;
             var plano = objetivo - yo; plano.y = 0f;
             float dist = plano.magnitude;
+            var cam = SP.Core.CamaraPrincipal.Actual;
+            bool ver = dist > DistanciaParaOcultarFlecha && cam != null;
+            if (rombo.gameObject.activeSelf != ver) rombo.gameObject.SetActive(ver);
+            if (!ver) return;
 
-            // Flecha 3D sobre el objetivo.
-            bool verFlecha = dist > DistanciaParaOcultarFlecha;
-            if (flecha.gameObject.activeSelf != verFlecha) flecha.gameObject.SetActive(verFlecha);
-            if (verFlecha)
-            {
-                var cam = SP.Core.CamaraPrincipal.Actual;
-                float dCam = cam != null ? Vector3.Distance(cam.transform.position, objetivo) : dist;
-                float escala = Mathf.Clamp(dCam * 0.035f, 1f, 4.5f) * (1f + 0.15f * Mathf.Sin(t * 7.5f));
-                float bob = 0.5f * Mathf.Sin(t * 3.2f) * escala;
-                flecha.position = new Vector3(objetivo.x, Mathf.Max(objetivo.y, 0f) + AlturaFlecha + bob, objetivo.z);
-                flecha.rotation = Quaternion.Euler(0f, t * 70f, 0f);
-                flecha.localScale = Vector3.one * escala;
-                var col = Color.Lerp(new Color(1f, 0.82f, 0.25f), new Color(1f, 0.55f, 0.15f), 0.5f + 0.5f * Mathf.Sin(t * 7.5f));
-                flechaRend.sharedMaterial.color = col;
-            }
-
-            // Flecha plana a los pies.
-            if (dist > DistanciaParaOcultarFlecha) flechaPies.Actualizar(yo, objetivo); else flechaPies.Ocultar();
-
-            // Ruta punteada por el NavMesh.
-            if (dist <= DistanciaParaOcultarRuta) { ruta.enabled = false; return; }
-            proximaRuta -= Time.deltaTime;
-            if (proximaRuta > 0f && ruta.enabled) return;
-            proximaRuta = IntervaloDeRuta;
-            if (!NavMesh.SamplePosition(yo, out var h0, 4f, NavMesh.AllAreas) || !NavMesh.SamplePosition(objetivo, out var h1, 10f, NavMesh.AllAreas)
-                || !NavMesh.CalculatePath(h0.position, h1.position, NavMesh.AllAreas, camino) || camino.corners.Length < 2)
-            {
-                ruta.enabled = false;
-                return;
-            }
-            var esq = camino.corners;
-            ruta.enabled = true;
-            ruta.positionCount = esq.Length;
-            for (int i = 0; i < esq.Length; i++) ruta.SetPosition(i, esq[i] + Vector3.up * 0.18f);
-            ruta.textureScale = new Vector2(1f / 0.9f, 1f);
+            // Sobre el objetivo (a la altura de la flecha de antes); fuera de pantalla o detras de la camara: pegado al borde.
+            var punto = new Vector3(objetivo.x, Mathf.Max(objetivo.y, 0f) + AlturaFlecha * 0.6f, objetivo.z);
+            var vp = cam.WorldToScreenPoint(punto);
+            float w = Screen.width, h = Screen.height, margen = 70f;
+            if (vp.z < 0f) { vp.x = w - vp.x; vp.y = h - vp.y; vp.x = vp.x < w * 0.5f ? margen : w - margen; vp.y = Mathf.Clamp(vp.y, margen, h - margen); }
+            vp.x = Mathf.Clamp(vp.x, margen, w - margen);
+            vp.y = Mathf.Clamp(vp.y, margen + 60f, h - margen);
+            if (vp.x > w * 0.80f && vp.y > h * 0.66f) vp.y = h * 0.66f;   // no tapar el minimapa (arriba a la derecha)
+            rombo.position = new Vector2(vp.x, vp.y);
+            float pulso = 1f + 0.1f * Mathf.Sin(t * 5f);
+            rombo.localScale = Vector3.one * pulso;
+            romboTexto.text = Mathf.RoundToInt(dist) + " m";
+            romboInterior.color = Color.Lerp(DiamondGizmo.ColorObjetivo, new Color(1f, 0.6f, 0.1f), 0.5f + 0.5f * Mathf.Sin(t * 5f));
         }
     }
 }

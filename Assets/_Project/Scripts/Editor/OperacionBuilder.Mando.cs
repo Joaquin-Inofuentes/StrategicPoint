@@ -30,7 +30,7 @@ namespace SP.EditorTools
         {
             ("A", "CALLE NORTE", 322f, 292f, new Vector2(-1f, 0f)),     // los enemigos llegan por el oeste de la calle norte
             ("B", "MERCADO OESTE", 272f, 228f, new Vector2(0f, 1f)),    // por el norte de la calle oeste
-            ("C", "CALLE ESTE", 372f, 228f, new Vector2(0f, -1f)),      // por el sur de la calle este
+            // Pedido: "solo 2 posiciones a llenar": el sector C (calle este) ya no existe.
         };
 
         static void MandoDeLaCiudad(Transform ciudad)

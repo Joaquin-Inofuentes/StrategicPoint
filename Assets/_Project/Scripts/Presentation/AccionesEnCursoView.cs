@@ -147,6 +147,7 @@ namespace SP.Presentation
                 t.gameObject.SetActive(false);
                 lineas[i] = t;
             }
+            hud.enabled = false;   // las lineas de estado ya no se dibujan abajo a la izquierda: van al texto unico (AvisoUnico)
         }
 
         // ---------------- barras en el mundo ----------------
@@ -258,7 +259,11 @@ namespace SP.Presentation
 
             // 1) la accion del soldado que manejas
             if (propio != null && AccionesEnCurso.De(propio, out var mia))
+            {
                 Poner(n++, Linea(mia, true));
+                SP.UI.AvisoUnico.Fijo("accion", Linea(mia, true), new Color(1f, 0.86f, 0.35f));   // texto unico de abajo al centro
+            }
+            else SP.UI.AvisoUnico.QuitarFijo("accion");
 
             // 2) las de tus aliados (IA), las mas urgentes primero no importa: son pocas
             for (int i = 0; i < acciones.Count && n < LineasMaximas; i++)

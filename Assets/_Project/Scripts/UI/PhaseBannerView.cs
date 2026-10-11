@@ -19,6 +19,20 @@ namespace SP.UI
             text.gameObject.SetActive(false);
         }
 
+        // El fondo opaco (FondoOpaco) es un hijo aparte del texto: en juego tampoco se dibuja.
+        void OcultarHijos()
+        {
+            for (int i = 0; i < transform.childCount; i++) transform.GetChild(i).gameObject.SetActive(false);
+        }
+
+        void OnEnable()
+        {
+            if (!Application.isPlaying) return;
+            if (label == null) label = GetComponentInChildren<Text>(true);
+            if (label != null) label.gameObject.SetActive(false);   // nunca se dibuja en juego: el texto va al aviso unico
+            OcultarHijos();
+        }
+
         void OnDisable()
         {
             StopAllCoroutines();
@@ -36,6 +50,8 @@ namespace SP.UI
             if (rt == null) rt = label.rectTransform;
 
             label.text = message;
+            AvisoUnico.Mostrar(message, holdSeconds + 1f, new Color(1f, 0.9f, 0.4f), AvisoUnico.PrioridadAlta);
+            if (Application.isPlaying) { label.gameObject.SetActive(false); OcultarHijos(); return; }   // en juego el cartel no se dibuja: va al texto unico de abajo al centro
             label.gameObject.SetActive(true);
 
             // BUG REAL ("hay textos que no se ven"): a diferencia de

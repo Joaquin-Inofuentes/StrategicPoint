@@ -89,7 +89,7 @@ namespace SP.Operacion
         public Transform[] rutaDelTanque;
         public GameObject autoPlantilla;
         public float segundosDeTrayecto = 70f;
-        public int autosSimultaneos = 4;   // bug #073: eran 3
+        public int autosSimultaneos = 2;   // bug #073: eran 3; bug #172 ("menos vehiculos enemigos, mas razonable"): ahora 2 (3 en Dificil)
 
         [Header("5. Ciudad y helicoptero")]
         public OleadaDeReserva[] oleadasDeLaCiudad;
@@ -225,8 +225,9 @@ namespace SP.Operacion
             // WP9a (#097): cinematica inicial con los pasos de la operacion. Bloquea todo hasta terminar (o hasta mantener [Espacio] 1 s).
             // P9 (#123): primero el rapel desde el helicoptero (5 s); al terminar encadena la cinematica de los pasos.
             if (continuando) return;
-            if (Application.isPlaying && !CinematicaDeRapel.YaVista) CinematicaDeRapel.Iniciar(this);
-            else if (Application.isPlaying && !CinematicaDeOperacion.YaVista) CinematicaDeOperacion.Iniciar(this);
+            // Orden nuevo: una sola camara recorre el nivel y despues cae el rapel.
+            if (Application.isPlaying && !CinematicaDeOperacion.YaVista) CinematicaDeOperacion.Iniciar(this);
+            else if (Application.isPlaying && !CinematicaDeRapel.YaVista) CinematicaDeRapel.Iniciar(this);
         }
 
         // Fin de un objetivo: el "flash" de un tajo (como cortar un zapallo) + campana de ping.
@@ -298,8 +299,8 @@ namespace SP.Operacion
             switch (f)
             {
                 case FaseOperacion.Infiltrar:
-                    PonerBaliza("SALIDA NORTE", new Color(1f, 0.82f, 0.3f), portonCuartel != null ? portonCuartel.transform.position : transform.position, null);
-                    Aviso("OPERACION CUARTEL\nINFILTRATE Y ELIMINA A TODOS");
+                    BalizaDeInfiltrar();
+                    Aviso("PRIMERO: DETONÁ LAS 2 TORRETAS DE ARTILLERÍA");
                     if (Application.isPlaying && !cuartelAtrincherado) { cuartelAtrincherado = true; AtrincherarGuardias(GuardiasDeSuelo(enemigosCuartel)); }
                     break;
                 case FaseOperacion.Puestos:
@@ -319,14 +320,20 @@ namespace SP.Operacion
                 case FaseOperacion.Huir:
                     // WP9b (#097): el tanque es un jefe enemigo (BLINDADO GOLIAT); las oleadas salen mientras Kes lo repara.
                     PrepararHuida();
-                    Aviso("DATOS DESCARGADOS\nAVANZA AL PATIO: UN BLINDADO ENEMIGO CUSTODIA LA FUGA");
+                    Aviso("DATOS DESCARGADOS\nEL ASALTO DEBE DEMOLER EL MURO DE LA SALIDA NORTE\nDESPUES AVANZA AL PATIO: UN BLINDADO ENEMIGO CUSTODIA LA FUGA");
                     break;
                 case FaseOperacion.Resistir:
                     if (MandoActivo)
                     {
                         // WP10 (#101): el objetivo 5 se juega desde la radio del ayuntamiento, en vista tactica.
                         IniciarLlegadaAlMando();
-                        Aviso("TANQUE DESTRUIDO\nANDA A LA RADIO DEL AYUNTAMIENTO Y DIRIGI LA DEFENSA");
+                        // Bug #163: "quita el tutorial de la derecha, que inicie ya ahora a lo bruto y solo deba cubrir los 2 puestos con cualquier soldado".
+                        if (MandoTactico.ModoDirecto && Application.isPlaying)
+                        {
+                            EntrarSubfase(1);
+                            Aviso("TANQUE DESTRUIDO\nCUBRI LOS 2 PUESTOS (A Y B) CON CUALQUIER SOLDADO");
+                        }
+                        else Aviso("TANQUE DESTRUIDO\nANDA A LA RADIO DEL AYUNTAMIENTO Y DIRIGI LA DEFENSA");
                     }
                     else
                     {
@@ -417,6 +424,36 @@ namespace SP.Operacion
             if (hud != null && (Fase == FaseOperacion.Infiltrar || Fase == FaseOperacion.CentroDeDatos)) hud.OcultarTimer();   // Puestos usa el timer para la mecha
             ActualizarPasos();
             TickAnilloDeSubida();
+            TickAlejamiento();
+        }
+
+        // Bug #161: "si me alejo un cartel vibrante abajo diga que debo volver, el mismo y unico cartel de textos" (AvisoUnico, abajo al centro).
+        // Igual que el CartelVolver del modo Mision: hay que ALEJARSE de verdad (4 s seguidos) y estar mas lejos del umbral de la fase.
+        float distanciaAlObjetivo, segundosAlejandose;
+        void TickAlejamiento()
+        {
+            var yo = Poseido();
+            bool sinAviso = yo == null || !yo.Health.IsAlive || EnTanque || SubiendoAlHeli || CinematicaDeOperacion.IntroActiva || CineDeHuida.Activa
+                || Fase == FaseOperacion.Victoria || Fase == FaseOperacion.Derrota || MandoTactico.EnRadio;
+            Vector3 objetivo = Vector3.zero; float umbral = 70f;
+            if (!sinAviso)
+            {
+                if (Fase == FaseOperacion.Resistir) { if (MandoActivo && Subfase < 1) sinAviso = true; else if (plaza != null) { objetivo = plaza.position; umbral = radioDeLaCiudad + 10f; } else sinAviso = true; }
+                else if (!GuiaPermitida(out objetivo))
+                {
+                    if (baliza != null) objetivo = baliza.Posicion; else sinAviso = true;
+                    umbral = Fase == FaseOperacion.Extraer ? 80f : 70f;
+                }
+            }
+            if (sinAviso) { segundosAlejandose = 0f; SP.UI.AvisoUnico.QuitarFijo("volver"); return; }
+            float dist = Plano(yo.transform.position, objetivo).magnitude;
+            float dt = Time.deltaTime;
+            if (dist > distanciaAlObjetivo + 0.5f * dt) segundosAlejandose += dt;
+            else if (dist < distanciaAlObjetivo - 0.5f * dt) segundosAlejandose = 0f;
+            distanciaAlObjetivo = dist;
+            if (segundosAlejandose >= 4f && dist > umbral)
+                SP.UI.AvisoUnico.FijoVibrante("volver", $"VOLVE AL OBJETIVO · {Mathf.RoundToInt(dist)} m", new Color(1f, 0.35f, 0.25f));
+            else SP.UI.AvisoUnico.QuitarFijo("volver");
         }
 
         // #105: la guia de objetivo (GuiaDeObjetivo) solo corre en las fases 1 a 4 y sigue a la baliza activa.
@@ -428,6 +465,7 @@ namespace SP.Operacion
             bool llegadaALaRadio = Fase == FaseOperacion.Resistir && MandoActivo && Subfase == 0;
             if (Indice(Fase) > Indice(FaseOperacion.Huir) && !llegadaALaRadio) return false;
             if (Fase == FaseOperacion.Huir && EnTanque) return false;
+            // Bug #143 ("falta senalizacion, un rombo o algo"): el rombo de objetivo se ve siempre, tambien con las torretas en pie.
             objetivo = baliza.Posicion;
             return true;
         }

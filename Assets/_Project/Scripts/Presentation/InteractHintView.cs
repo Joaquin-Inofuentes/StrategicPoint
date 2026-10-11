@@ -88,12 +88,13 @@ namespace SP.Presentation
         {
             var v = Asegurar();
             if (string.IsNullOrEmpty(mensaje)) { Ocultar(); return; }
-            if (!v.texto.gameObject.activeSelf) v.texto.gameObject.SetActive(true);
             if (v.texto.text != mensaje) v.texto.text = mensaje;
+            SP.UI.AvisoUnico.FijoPermanente("interactuar", mensaje);   // texto unico de abajo al centro
         }
 
         public static void Ocultar()
         {
+            SP.UI.AvisoUnico.QuitarFijo("interactuar");
             if (instancia != null && instancia.texto != null && instancia.texto.gameObject.activeSelf)
                 instancia.texto.gameObject.SetActive(false);
         }

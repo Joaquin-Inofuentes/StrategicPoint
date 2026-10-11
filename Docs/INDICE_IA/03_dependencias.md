@@ -11,6 +11,7 @@ flowchart LR
     Ai --> Actors
     Ai --> Combat
     Ai --> Core
+    Ai --> Player
     Ai --> Presentation
     Ai --> UI
     Ai --> Vehicles
@@ -21,7 +22,11 @@ flowchart LR
     Combat --> Presentation
     Combat --> Vehicles
     Core --> Actors
+    Core --> Ai
+    Core --> Camera
     Core --> Combat
+    Core --> Mision
+    Core --> Player
     Core --> Vehicles
     Demo --> Actors
     Demo --> Ai
@@ -35,13 +40,18 @@ flowchart LR
     Editor --> Camera
     Editor --> Combat
     Editor --> Core
+    Editor --> Interaction
     Editor --> Mision
     Editor --> Player
     Editor --> Presentation
     Editor --> Tutorial
     Editor --> UI
     Editor --> Vehicles
+    Interaction --> Actors
+    Interaction --> Combat
+    Interaction --> Core
     Interaction --> Player
+    Interaction --> Presentation
     Mision --> Actors
     Mision --> Ai
     Mision --> Combat
@@ -51,6 +61,18 @@ flowchart LR
     Mision --> Tutorial
     Mision --> UI
     Mision --> Vehicles
+    Operacion --> Actors
+    Operacion --> Ai
+    Operacion --> Camera
+    Operacion --> Combat
+    Operacion --> Core
+    Operacion --> Interaction
+    Operacion --> Mision
+    Operacion --> Player
+    Operacion --> Presentation
+    Operacion --> Tutorial
+    Operacion --> UI
+    Operacion --> Vehicles
     Player --> Actors
     Player --> Ai
     Player --> Camera
@@ -69,6 +91,9 @@ flowchart LR
     Presentation --> Player
     Presentation --> UI
     Presentation --> Vehicles
+    Simulacion --> Actors
+    Simulacion --> Combat
+    Simulacion --> Core
     Tutorial --> Actors
     Tutorial --> Ai
     Tutorial --> Camera
@@ -85,6 +110,7 @@ flowchart LR
     UI --> Mision
     UI --> Player
     UI --> Presentation
+    UI --> Tutorial
     UI --> Vehicles
     Vehicles --> Actors
     Vehicles --> Ai
@@ -97,20 +123,20 @@ flowchart LR
 
 | Subsistema | Depende de | Lo usan | Sus dependencias |
 |---|---|---|---|
-| Actors | 3 | 12 | Ai, Combat, Core |
-| Ai | 6 | 9 | Actors, Combat, Core, Presentation, UI, Vehicles |
-| Camera | 2 | 6 | Actors, Presentation |
-| Combat | 4 | 11 | Actors, Core, Presentation, Vehicles |
-| Core | 3 | 11 | Actors, Combat, Vehicles |
+| Actors | 3 | 15 | Ai, Combat, Core |
+| Ai | 7 | 11 | Actors, Combat, Core, Player, Presentation, UI, Vehicles |
+| Camera | 2 | 8 | Actors, Presentation |
+| Combat | 4 | 14 | Actors, Core, Presentation, Vehicles |
+| Core | 7 | 14 | Actors, Ai, Camera, Combat, Mision, Player, Vehicles |
 | Demo | 7 | 0 | Actors, Ai, Camera, Combat, Core, Player, Vehicles |
-| Editor | 11 | 0 | Actors, Ai, Camera, Combat, Core, Mision, Player, Presentation, Tutorial, UI, Vehicles |
-| Interaction | 1 | 1 | Player |
-| Mision | 9 | 3 | Actors, Ai, Combat, Core, Player, Presentation, Tutorial, UI, Vehicles |
-| Player | 9 | 7 | Actors, Ai, Camera, Combat, Core, Interaction, Presentation, UI, Vehicles |
-| Presentation | 9 | 9 | Actors, Ai, Camera, Combat, Core, Mision, Player, UI, Vehicles |
-| Tutorial | 8 | 2 | Actors, Ai, Camera, Combat, Core, Player, Presentation, Vehicles |
-| UI | 9 | 5 | Actors, Ai, Camera, Combat, Core, Mision, Player, Presentation, Vehicles |
-| Vehicles | 5 | 10 | Actors, Ai, Combat, Core, Presentation |
+| Editor | 12 | 0 | Actors, Ai, Camera, Combat, Core, Interaction, Mision, Player, Presentation, Tutorial, UI, Vehicles |
+| Interaction | 5 | 3 | Actors, Combat, Core, Player, Presentation |
+| Mision | 9 | 5 | Actors, Ai, Combat, Core, Player, Presentation, Tutorial, UI, Vehicles |
+| Player | 9 | 10 | Actors, Ai, Camera, Combat, Core, Interaction, Presentation, UI, Vehicles |
+| Presentation | 9 | 11 | Actors, Ai, Camera, Combat, Core, Mision, Player, UI, Vehicles |
+| Tutorial | 8 | 4 | Actors, Ai, Camera, Combat, Core, Player, Presentation, Vehicles |
+| UI | 10 | 6 | Actors, Ai, Camera, Combat, Core, Mision, Player, Presentation, Tutorial, Vehicles |
+| Vehicles | 5 | 11 | Actors, Ai, Combat, Core, Presentation |
 
 ## Como leerlo
 

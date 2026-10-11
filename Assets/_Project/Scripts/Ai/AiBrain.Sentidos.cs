@@ -81,9 +81,10 @@ namespace SP.Ai
         {
             var desde = self.transform.position - t.transform.position; desde.y = 0f;
             if (desde.sqrMagnitude < 0.25f) return t.transform.position;
-            float ang = ((self.Id * 37) % 61) - 30f;
+            float ang = ((self.Id * 37) % 121) - 60f;                 // bug #146: abanico de +-60 y cada uno a otra distancia (0,5..0,95 del alcance)
+            float fr = 0.5f + ((self.Id * 13) % 10) * 0.05f;
             var dir = Quaternion.Euler(0f, ang, 0f) * desde.normalized;
-            var p = t.transform.position + dir * (EffectiveAttackRange * 0.85f);
+            var p = t.transform.position + dir * (EffectiveAttackRange * fr);
             p.y = self.transform.position.y;
             return p;
         }

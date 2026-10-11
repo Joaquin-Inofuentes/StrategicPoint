@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.IO;
 using Unity.AI.Navigation;
 using UnityEditor;
@@ -177,9 +177,23 @@ namespace SP.EditorTools
             Decor(b, "Escalera_Riel_1", ex, z0 - 2.3f, 0.1f, 4f, 0.1f, MetalOsc, 0f, 0f);
             Decor(b, "Escalera_Riel_2", ex, z0 - 3.3f, 0.1f, 4f, 0.1f, MetalOsc, 0f, 0f);
             for (int k = 0; k < 6; k++) Decor(b, "Escalera_Peldano_" + k, ex, z0 - 2.8f, 0.1f, 0.08f, 1f, MetalOsc, 0f, 0.5f + k * 0.62f);
-            // Puerta lateral (la hoja se apaga cuando sale el contraataque).
-            var puerta = Decor(b, "Bunker_Puerta", xb + s * 5.06f, z0 - 2.85f, 0.2f, 2.6f, 2.0f, Naranja, 0f, 0f);
-            Rotulo(b, "PUERTA", xb + s * 5.2f, 3.1f, z0 - 2.85f, s > 0f ? 90f : 270f, 0.45f, Color.white, Negro, 2.6f, 0.7f);
+            // Bug #158 ("aparecieron de la nada"): el contraataque sale de un CUARTEL DE RESERVA pegado al bunker (cuarto hueco con techo, muro
+            // exterior, muro sur con un portón de 2,4 m). Antes las reservas nacian a la vista, en el aire libre junto a la muralla.
+            float hx(float dx) => xb + s * dx;
+            float zN = z0 - 1.5f, zS = z0 - 5.9f, zc2 = (zN + zS) * 0.5f, prof = zN - zS;
+            Solido(b, "Reserva_Muro_Exterior", hx(9.8f), zc2, 0.4f, 3.2f, prof + 0.4f, Hormigon);
+            Solido(b, "Reserva_Muro_Interior", hx(5.2f), (z0 - 4f + zS) * 0.5f, 0.4f, 3.2f, (z0 - 4f) - zS + 0.4f, Hormigon);
+            Solido(b, "Reserva_Muro_Sur_A", hx(5.9f), zS - 0.2f, 1.4f, 3.2f, 0.4f, Hormigon);
+            Solido(b, "Reserva_Muro_Sur_B", hx(9.3f), zS - 0.2f, 1.0f, 3.2f, 0.4f, Hormigon);
+            Decor(b, "Reserva_Dintel", hx(7.6f), zS - 0.2f, 2.6f, 0.6f, 0.45f, Hormigon, 0f, 2.6f);
+            Decor(b, "Reserva_Techo", hx(7.5f), zc2, 4.9f, 0.3f, prof + 0.9f, Techo, 0f, 3.2f);
+            Decor(b, "Reserva_Banco", hx(9.4f), zc2, 0.5f, 0.45f, 3.0f, MaderaVieja, 0f, 0f);
+            Decor(b, "Reserva_Cajon_1", hx(6.0f), z0 - 5.4f, 0.8f, 0.6f, 0.8f, OlivaOsc, 15f, 0f);
+            // Portón: hoja corrediza (AbrirPuertaYSalir la sube y la apaga). Decorado sin colision para que la malla de navegacion deje salir a la reserva.
+            var puerta = Decor(b, "Bunker_Puerta", hx(7.6f), zS - 0.12f, 2.4f, 2.6f, 0.2f, Naranja, 0f, 0f);
+            Rotulo(b, "RESERVA", hx(7.6f), 3.45f, zS - 0.45f, 0f, 0.6f, Color.white, Rojo, 3.4f, 0.8f);
+            LuzPuntual(b, "Luz_Reserva", hx(7.4f), 2.6f, zc2, new Color(1f, 0.62f, 0.3f), 1.6f, 7f);
+            LuzPuntual(b, "Luz_Porton", hx(7.6f), 3.1f, zS - 1.2f, new Color(1f, 0.55f, 0.2f), 1.8f, 6f);
             LuzPuntual(b, "Luz_Bunker", xb, 6.5f, z0 - 9f, new Color(1f, 0.9f, 0.7f), 3.4f, 22f);
 
             // Punto de carga: placa amarilla y negra en el piso, caja con LED y etiqueta.
@@ -219,12 +233,12 @@ namespace SP.EditorTools
             Jersey(zona, $"Jersey_Puesto_{cap}", xb + s * 15f, z0 - 16f, 8f);
             guardias.Add(Enemigo($"Enemigo_Puesto{cap}_5", xb + s * 15f, z0 - 14.1f, 180f, en, true, 2.5f));
 
-            // Reservas del contraataque: 6 detras de la puerta lateral, apagadas hasta que se coloca la carga.
+            // Reservas del contraataque: 6 dentro del cuartel de reserva, apagadas hasta que se coloca la carga.
             var rs = new List<Soldier>();
             for (int k = 0; k < 6; k++)
             {
-                float rx = xb + s * (7.5f + (k / 3) * 1.6f);
-                float rz = z0 - 3.5f - (k % 3) * 1.5f;
+                float rx = hx(6.8f + (k / 3) * 1.8f);
+                float rz = z0 - 1.9f - (k % 3) * 1.3f;
                 rs.Add(Enemigo($"Reserva_Puesto{cap}_{k + 1}", rx, rz, 180f, res, false, 3f, true));
             }
             var salida = new GameObject("Salida_Camioneta").transform; salida.SetParent(b, false); salida.position = new Vector3(s * 55f, 0.6f, -214f);

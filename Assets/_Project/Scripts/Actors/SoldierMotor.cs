@@ -97,7 +97,7 @@ namespace SP.Actors
         public bool Vaulting { get; private set; }
         public string UltimoMotivoDeTrepa { get; private set; } = "";
         Vector3 vaultDesde, vaultHasta;
-        float vaultT;
+        float vaultT, vaultSeg = SegundosDeTrepa, vaultArco = 0.35f;
 
         // Mide el obstaculo de enfrente (rodilla libre = nada que trepar, cabeza libre = hay espacio arriba) y, si su
         // borde cae entre las alturas trepables, arranca el movimiento. Devuelve si trepo.
@@ -119,9 +119,19 @@ namespace SP.Actors
             // Cabeza libre: nada a 1,5 m de altura entre el soldado y el borde.
             var cabeza = new Vector3(transform.position.x, pies + 1.5f, transform.position.z);
             if (SondearObstaculo(cabeza, adelante, AlcanceDeTrepa + 0.5f, out _)) { UltimoMotivoDeTrepa = "7"; return false; }
-            Vaulting = true; vaultT = 0f;
+            Vaulting = true; vaultT = 0f; vaultSeg = SegundosDeTrepa; vaultArco = 0.35f;
             vaultDesde = transform.position;
             vaultHasta = new Vector3(sobre.x, arriba.point.y + (transform.position.y - pies), sobre.z);
+            return true;
+        }
+
+        // Trepa guiada hasta un punto (escalera): sube/baja en linea recta, sin arco.
+        public bool IniciarTrepaVertical(Vector3 hasta, float segundos)
+        {
+            if (Vaulting || IsJumping) return false;
+            if (IsCrouching) SetCrouching(false);
+            Vaulting = true; vaultT = 0f; vaultSeg = Mathf.Max(0.2f, segundos); vaultArco = 0f;
+            vaultDesde = transform.position; vaultHasta = hasta;
             return true;
         }
 
@@ -141,10 +151,10 @@ namespace SP.Actors
 
         void TickTrepa()
         {
-            vaultT += Time.deltaTime / SegundosDeTrepa;
+            vaultT += Time.deltaTime / vaultSeg;
             float t = Mathf.Clamp01(vaultT);
             var p = Vector3.Lerp(vaultDesde, vaultHasta, t);
-            p.y += Mathf.Sin(t * Mathf.PI) * 0.35f;
+            p.y += Mathf.Sin(t * Mathf.PI) * vaultArco;
             transform.position = p;
             if (t >= 1f) Vaulting = false;
         }

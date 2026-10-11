@@ -121,6 +121,7 @@ namespace SP.Operacion
         void EfectoDeDisparo(Vector3 origen, Vector3 dir)
         {
             SpriteFx.Lanzar("muzzle_01", origen + dir * 0.25f, new Color(1f, 0.82f, 0.45f, 1f), 0.55f, 0.85f, 0.06f, Random.Range(0f, 360f), default, 0f, 6);
+            ImpactFx.SpawnMuzzleBlast(origen, dir, 1.05f, new Color(1f, 0.5f, 0.2f, 1f));
             SpriteFx.Lanzar("smoke_02", origen + dir * 0.4f, new Color(0.6f, 0.58f, 0.55f, 0.35f), 0.25f, 0.9f, 0.45f, Random.Range(-40f, 40f), dir * 1.5f + Vector3.up * 0.4f, 2.5f, 1);
             var clip = GenericSfx.GetWeaponShot(SP.Combat.WeaponKind.Heavy);
             if (clip != null) AudioDirector.PlayClipAt(clip, origen, 0.75f, 0.9f, PerfilEspacial.Disparo);
