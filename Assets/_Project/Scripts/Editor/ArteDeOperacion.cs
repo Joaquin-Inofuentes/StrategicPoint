@@ -81,7 +81,7 @@ namespace SP.EditorTools
                 if (EsPiso(clave, s, t)) { int n = VestirPiso(mr, clave); if (n > 0) { pisos++; modulos += n; } }
                 else if (EsMuro(clave, s)) { int n = VestirMuro(mr, clave); if (n > 0) { muros++; modulos += n; } }
                 else if (EsEdificio(clave, s)) { int n = VestirEdificio(mr, clave); if (n > 0) { edificios++; modulos += n; } }
-                else if (clave == "Roca_Canadon" || clave == "Cornisa")
+                else if (clave == "Roca_Canadon" || clave == "Cornisa" || (clave == "Roca" && mesh == "Cube"))
                 {
                     mf.sharedMesh = rocas[Mathf.Abs(Hash(t.name + (int)(t.position.x * 3f))) % rocas.Length]; rocasN++;
                 }
@@ -98,6 +98,7 @@ namespace SP.EditorTools
                 else if (clave == "Rack" && s.y > 2f) { mf.sharedMesh = s.x >= s.z ? rackX : rackZ; props++; }
                 else if (clave == "Silo") { mf.sharedMesh = silo; props++; }
                 else if (clave == "Auto_Abandonado" || clave == "Auto_Viejo") { int n = VestirAuto(mr); if (n > 0) { props++; modulos += n; } }
+                else if (clave.StartsWith("Caja_") && s.y >= 0.9f && Mathf.Min(s.x, s.z) >= 1.4f) { int n = VestirCajas(mr); if (n > 0) { props++; modulos += n; } }
                 else if (clave == "Barricada_Cemento") { int n = VestirBarricada(mr); if (n > 0) { props++; modulos += n; } }
             }
 
@@ -617,6 +618,23 @@ namespace SP.EditorTools
             var cubo = mr.transform; var s = cubo.localScale;
             var raiz = Raiz_(cubo, s);
             int n = Ajustar(raiz, "P_Env_Auto_Quemado", Vector3.zero, s, -s.y * 0.5f, s.x > s.z ? 90f : 0f);
+            if (n > 0) mr.enabled = false; else Object.DestroyImmediate(raiz.gameObject);
+            return n;
+        }
+
+        // Cajon de cobertura: pila de cajas de madera del kit que llena el cubo (cada caja con un giro distinto para que no parezca una grilla).
+        static int VestirCajas(MeshRenderer mr)
+        {
+            var cubo = mr.transform; var s = cubo.localScale;
+            var raiz = Raiz_(cubo, s); float suelo = -s.y * 0.5f; int n = 0;
+            int nx = Mathf.Max(1, Mathf.RoundToInt(s.x / 0.94f)), nz = Mathf.Max(1, Mathf.RoundToInt(s.z / 0.94f)), ny = Mathf.Max(1, Mathf.RoundToInt(s.y / 0.77f));
+            for (int ix = 0; ix < nx; ix++)
+                for (int iz = 0; iz < nz; iz++)
+                    for (int iy = 0; iy < ny; iy++)
+                    {
+                        var pos = new Vector3(-s.x * 0.5f + (ix + 0.5f) * s.x / nx, suelo + iy * s.y / ny, -s.z * 0.5f + (iz + 0.5f) * s.z / nz);
+                        if (Poner(raiz, "P_Env_Caja_Madera", pos, ((ix + iz * 2 + iy * 3) % 4) * 6f, new Vector3(s.x / nx / 0.94f, s.y / ny / 0.77f, s.z / nz / 0.94f)) != null) n++;
+                    }
             if (n > 0) mr.enabled = false; else Object.DestroyImmediate(raiz.gameObject);
             return n;
         }
