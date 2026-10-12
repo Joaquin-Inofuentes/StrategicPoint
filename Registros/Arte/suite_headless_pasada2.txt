@@ -1,0 +1,33 @@
+FALLO
+  - Bajar la ganancia de Sfx NO afecta a Ui
+  - Panel de info al apuntar a un enemigo muestra su vida ('')
+  - Y termina ATACANDO desde ahi, no solo parado (Patrol, vivo=True)
+  - Termina a menos de 1,5 m de una cobertura (9,00 m de (40.00, 0.00, 38.00)), no donde arranco
+  - Y desde ahi SI le puede disparar (False)
+  - Con un enemigo atacando a 10 m, la musica de lucha sube por encima de 0,8 en menos de 2 s (0,00)
+  - Pasados los 3 s, esta regenerando y ya subio de 60 (60 > 60, regenerando=False)
+  - PlayerInputDriver.cs ya no pasa de 3500 lineas
+  - Ningun codigo de runtime usa Camera.main ni Resources.Load directo (todo pasa por los caches) :: Assets/_Project/Scripts\Core\PruebaEnPlayer.cs: var c = Camera.main; if (c == null || objetivo == null) return; / Assets/_Project/Scripts\Core\PruebaEnPlayer.cs: var cam0 = Camera.main != null ? Camera.main.transform.position : Vector3.zero; / 
+  - Los Transform.Find por nombre no crecen (126 de 124)
+  - Las busquedas globales de escena no crecen (24 de 0)
+  - Todas las claves de LocTextos siguen existiendo en el tutorial o la mision (sin textos huerfanos)
+  - Analisis de audio: 95 sonidos sin recorte, DC, NaN, clics ni volumen extremo (Sfx_Orugas:CLIC_INICIO )
+  - En calma el medico reanima solo a un aliado caido (sin que nadie se lo pida) [enfermero nadie, target ninguno, dist 10,0]
+  - Soldado Soldado_2_Kes bien apoyado (dist: 0,300)
+  - Soldado Soldado_3_Doc bien apoyado (dist: 0,300)
+  - Soldado Soldado_1_Vega bien apoyado (dist: 0,300)
+  - 0 mallas en coberturas sin collider propio (hay 6)
+  - Alpha del impacto rojo sube al recibir dano
+  - Anclado abajo (anchorMin.y == 0)
+  - Posicion Y deja espacio para InstructionBannerView (> 78)
+  - Torreta vacia tiene rombo
+  - Torreta ocupada oculta el rombo
+  - CajaDeSuministros tiene rombo
+  - Un anillo del pool se activo en la posicion del atacante
+  - Despues de 1 clic, doc queda seleccionado
+  - RTS focus debe coincidir con pos (Focus: (4.94, 0.00, 15.81), Pos: (-64.00, 0.80, -57.00))
+  - Despues de doble clic, doc pasa a estar poseido
+  - RomboTanque existe
+  - Seguidor cercano (5m) copia agachado
+  - Uno esta a la derecha y otro a la izquierda (kes -39,71,-110,76 doc 0,43,-7,70)
+  - Ambos van a la par (Z≈0, no detras)

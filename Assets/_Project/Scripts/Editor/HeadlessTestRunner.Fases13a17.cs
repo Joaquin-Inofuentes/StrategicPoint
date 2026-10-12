@@ -576,7 +576,9 @@ namespace SP.EditorTools
             Check($"El aliado llega, entra en cobertura ({kes.Brain.State}) y queda AGACHADO", llego && kes.Motor.IsCrouching);
             var posLlegada = kes.transform.position;
             SimulateSeconds(2.5f);
-            Check($"Y SE QUEDA ahi (se movio {(kes.transform.position - posLlegada).magnitude:0.00} m en 2,5 s)",
+            Check($"Y SE QUEDA ahi (se movio {(kes.transform.position - posLlegada).magnitude:0.00} m en 2,5 s)"
+                  + $" [enCobertura={kes.Brain.EnCobertura} agachado={kes.Motor.IsCrouching} estado={kes.Brain.State} yendo={kes.Brain.YendoACobertura}"
+                  + $" vigente={SP.Core.Coberturas.Vigente(duenoCob)} orden={kes.Brain.TieneOrden} vida={kes.Health.Current}]",
                 kes.Brain.EnCobertura && kes.Motor.IsCrouching && (kes.transform.position - posLlegada).magnitude < 0.5f);
             Check($"Dio feedback al tomar la cobertura ({SP.Presentation.Feedback.UltimoTexto} / {SP.Presentation.Feedback.UltimoSonido})",
                 SP.Presentation.Feedback.Contador >= 1 && SP.Presentation.Feedback.UltimoSonido == SfxKind.CoverTake);

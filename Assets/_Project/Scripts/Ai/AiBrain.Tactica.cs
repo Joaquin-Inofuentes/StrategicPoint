@@ -195,9 +195,11 @@ namespace SP.Ai
             bool isReloading = self.Weapon != null && self.Weapon.IsReloading;
             bool isMagazineEmpty = self.Weapon != null && self.Weapon.CurrentAmmo <= 0;
 
-            // WP4 (#085): sin blanco (guardia atrincherado, aliado que ya termino el combate) la cobertura que eligio el propio soldado se
-            // queda oculta y quieta: no sube y baja cada segundo. La que ordeno el jugador mantiene el ciclo de siempre.
-            bool reposo = !coberturaPorOrden && target == null && State != AiState.Attack && State != AiState.Chase;
+            // WP4 (#085): sin blanco (guardia atrincherado, aliado que ya termino el combate) la cobertura se queda oculta y quieta: no
+            // sube y baja cada segundo. Vale tambien para la que ORDENO el jugador: antes se excluia, y sin nadie a quien tirarle el
+            // aliado pasaba ~0,35 s agachado y ~2,2 s parado asomandose (con vida llena), contra el "se agacha y se queda ahi" de la orden
+            // (y de #164). La vista de la IA no baja al agacharse, asi que oculto sigue detectando; con blanco el ciclo es el de siempre.
+            bool reposo = target == null && State != AiState.Attack && State != AiState.Chase;
             if (reposo) { subStateCobertura = CoverSubState.Hidden; relojSubStateCobertura = 0.4f; }
             else relojSubStateCobertura -= dt;
 
