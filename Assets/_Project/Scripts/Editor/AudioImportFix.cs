@@ -20,6 +20,9 @@ namespace SP.EditorTools
             "Shoot", "Shot_Rifle", "Shot_Pistol", "Shot_Smg", "Shot_Heavy", "Shot_Shotgun", "Shot_Sniper", "Shot_Rocket",
             "Explosion", "CannonBody", "Hit", "ImpactDirt", "ImpactMetal", "VehicleHit", "FootstepGrass", "FootstepConcrete",
             "GrenadeBounce", "EmptyClick", "Orugas", "OrugasChirrido",
+            // Grabaciones reales del 12/10 (Freesound CC0, ver CREDITS.txt): reemplazan sonidos sinteticos o de la pack sci-fi.
+            "BulletWhizz", "ImpactoPesado", "DestruccionVehiculo", "BalaImpacto", "ImpactStone",
+            "MotorCamioneta", "AmbienteDesierto",
         };
 
         [MenuItem("Strategic Point/Audio/Forzar mono en voces")]

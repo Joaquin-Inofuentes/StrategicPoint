@@ -75,8 +75,8 @@ Audio replacements added for Strategic Point (prototype, not for distribution).
 - Music/Tension.wav: generated procedurally by a script (drone + heartbeat + strings + clock);
   no third-party material.
 
-- Sfx/Explosion (explosionCrunch_000..004.ogg):
-  Kenney "Sci-fi Sounds" pack. CC0 (public domain). https://kenney.nl/assets/sci-fi-sounds
+- Sfx/Explosion: hasta el 11/10/2026 eran explosionCrunch_000..004.ogg del pack "Sci-fi Sounds" de Kenney (CC0); se
+  reemplazaron por explosiones reales (ver abajo, 12/10/2026) por pedido de "efectos de sonido mas acordes".
 
 - Sfx/GrenadeBounce (impactMetal_light_000..002.ogg):
   Kenney "Impact Sounds" pack (same pack already used for Sfx/ImpactMetal). CC0
@@ -91,3 +91,34 @@ Audio replacements added for Strategic Point (prototype, not for distribution).
   licencia incierta -- misma limitacion documentada para OrderBark (que quedo en
   ingles). Estos barks siguen sin clip real: caen al tono sintetico generado por
   codigo (ver GenericSfx/SfxSintetico) hasta que aparezca una fuente CC0 confiable.
+
+- Grabaciones reales del 12/10/2026 (pedido: "busca efectos de sonido mas acordes"). Todas CC0 (dominio publico) de
+  freesound.org, bajadas con permiso del usuario desde el CDN publico de previews (hq mp3, mismo metodo que el rotor y el
+  tanque), pasadas a mono 16 bit, recortadas, con fundidos y normalizadas al pico por script (los loops, con fundido cruzado y
+  arranque en un cruce por cero):
+  * Sfx/Explosion/Explosion_EOD_qubodup.wav -- "EOD Explosion" (https://freesound.org/people/qubodup/sounds/855798/)
+  * Sfx/Explosion/Explosion_Voladura_qubodup.wav -- "Blow Up Sound" (https://freesound.org/people/qubodup/sounds/855896/), cortada antes de la segunda onda
+  * Sfx/Explosion/Explosion_Blast_qubodup.wav -- "Blast" (https://freesound.org/people/qubodup/sounds/855893/)
+    (las tres: voladuras reales de material explosivo de videos de EOD del ejercito de EE.UU.)
+  * Sfx/Shoot/Shoot_M240_1..4_qubodup.wav -- ametralladora M240 real: "Machine Gun Single Shot"
+    (https://freesound.org/people/qubodup/sounds/854347/) y los tres tiros de "Machine Gun 3 Shot Burst"
+    (https://freesound.org/people/qubodup/sounds/854343/), cada uno con una cola corta. Metralla del helicoptero y MG enemiga (#187).
+  * Sfx/BulletWhizz/BulletWhizz_Real_qubodup.wav -- "Real Bullet Flyby Sound" (https://freesound.org/people/qubodup/sounds/855248/)
+  * Sfx/ImpactoPesado/ImpactoPesado_Obus_qubodup.wav -- "howitzer_gun_impacts_1" (https://freesound.org/people/qubodup/sounds/67468/)
+  * Sfx/DestruccionVehiculo/DestruccionVehiculo_FuegoYChapa_qubodup.wav -- "Fire Explosion"
+    (https://freesound.org/people/qubodup/sounds/855898/) con "Clank Car Crash Collision"
+    (https://freesound.org/people/qubodup/sounds/151624/) superpuesto a los 0,25 s
+  * Sfx/BalaImpacto/BalaImpacto_Metal_qubodup.wav -- "Fast Collision" (https://freesound.org/people/qubodup/sounds/332056/)
+  * Sfx/ImpactDirt/ImpactDirt_Tierra_1..2_worthahep88.wav -- "Single Rock hit Dirt.wav" de worthahep88
+    (https://freesound.org/people/worthahep88/sounds/319222/), grabado para simular balas en tierra
+    (reemplaza a impactGeneric_light_003/004 de Kenney)
+  * Sfx/ImpactStone/ImpactStone_Rebote_1..4_cedarstudios.wav -- "ricochet.mp3" de cedarstudios
+    (https://freesound.org/people/cedarstudios/sounds/148840/), un rebote por variante
+  * Sfx/MotorCamioneta/MotorCamioneta_Diesel_ReadeOnly.wav -- "engine_idle_loop.wav" de ReadeOnly
+    (https://freesound.org/people/ReadeOnly/sounds/186935/)
+  * Sfx/AmbienteDesierto/AmbienteDesierto_Viento_DarkShroom.wav -- "desert_wind.wav" de DarkShroom
+    (https://freesound.org/people/DarkShroom/sounds/645305/), tramo de 8 a 25 s, 22,05 kHz
+  - Sfx/Shoot/Shoot_Marlin336.wav (Free Firearm Sound Library) salio de Shoot: un fusil de palanca no sonaba a ametralladora.
+  - Se probo tambien un cargador real (qubodup 855601) para las recargas y se descarto: las recargas sinteticas estan armadas
+    golpe a golpe con la duracion de la animacion de cada arma (WeaponCatalog.ReloadDuration) y un clip suelto de 1 s las desincroniza.
+  - Audicion antes/despues: Registros/Audio/Audicion_SFX_antes_despues_2026-10-12.wav (+ _indice.txt).
