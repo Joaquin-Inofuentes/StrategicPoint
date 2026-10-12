@@ -1,0 +1,21 @@
+Pasada 2 de arte (ArteDeOperacion.Pasada2.cs) - medidas
+=======================================================
+Resumen de la corrida:
+  125 edificios vestidos (52 torres de "Relleno" nuevas), 117 techos con equipos (aire, tanques, casetas, ventilaciones, antenas),
+  90 surcos con matas, 2 patas de torre reticuladas; suelo: 650 manchas (nucleo + anillo suave), 24 huellas de vehiculo,
+  399 piedras en 110 grupos, 80 arbustos y 12 crateres, en 35 sectores combinados.
+
+Render offscreen de la camara del juego (1920x1080, cenital a 60 m), mediana de 41 renders, cache caliente:
+  vista                 con todo   sin suelo nuevo   sin techos nuevos   sin ningun arte
+  base (0,-260)         4,0-4,4    4,1               4,0                 3,4  ms
+  ciudad (340,220)      4,5-4,6    4,5               4,6                 3,8  ms
+  desierto (-150,200)   2,6-2,7    2,6               2,7                 2,5  ms
+  => todo el arte (pasadas 1+2) cuesta 0,1-1,0 ms por vista; lo nuevo de la pasada 2, <= 0,4 ms.
+  (Una medicion previa sin calentar/mediana dio 5-17 ms: ruido de los primeros renders, no se usa.)
+
+Peso en disco de lo generado:
+  Op_Suelo.asset 4,0 MB (35 sectores). Techos = instancias de 5 mallas compartidas (sin asset propio).
+  Primer intento (una malla combinada por edificio + suelo con caras sueltas) pesaba 22,8 MB: descartado.
+
+Suite headless (3 corridas tras el cambio de la IA): 32 fallas, el mismo conjunto que la base previa al arte.
+  La intermitente "Y SE QUEDA ahi" (cobertura ordenada, 2 de 3 corridas antes del arreglo) ya no aparece.

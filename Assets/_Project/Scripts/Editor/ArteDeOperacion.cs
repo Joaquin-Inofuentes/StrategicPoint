@@ -22,7 +22,7 @@ namespace SP.EditorTools
     //  - Rocas / barreras: se cambia la malla del MeshFilter por una procedural; collider y escala no se tocan.
     //
     // Idempotente: cada corrida borra los hijos "ArteOp" de la anterior y vuelve a vestir. No toca colliders ni NavMesh.
-    public static class ArteDeOperacion
+    public static partial class ArteDeOperacion
     {
         const string Dir = "Assets/_Project/Prefabs/ArteMundo/";
         const string Raiz = "ArteOp";
@@ -47,6 +47,7 @@ namespace SP.EditorTools
         public static string Vestir()
         {
             cache.Clear();
+            contenedoresLimpios.Clear();
             var escena = SceneManager.GetActiveScene();
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include))
                 if (t != null && t.name == Raiz)
@@ -61,8 +62,9 @@ namespace SP.EditorTools
             var baranda = MallaBaranda(false); var barandaX = MallaBaranda(true);
             var contX = MallaContenedor(true); var contZ = MallaContenedor(false); var camX = MallaCamion(true); var camZ = MallaCamion(false);
             var rackX = MallaRack(true); var rackZ = MallaRack(false); var silo = MallaSilo();
+            PrepararTechos();
 
-            int pisos = 0, muros = 0, edificios = 0, rocasN = 0, barreras = 0, barandas = 0, props = 0, modulos = 0;
+            int pisos = 0, muros = 0, edificios = 0, rocasN = 0, barreras = 0, barandas = 0, props = 0, modulos = 0, surcos = 0, torres = 0;
             foreach (var mr in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
                 if (mr == null || !mr.enabled) continue;
@@ -70,15 +72,17 @@ namespace SP.EditorTools
                 if (mf == null || mf.sharedMesh == null) continue;
                 string mesh = mf.sharedMesh.name;
                 bool propia = mesh.StartsWith("Op_RocaCanadon_") || mesh.StartsWith("Op_Jersey") || mesh.StartsWith("Op_Baranda") || mesh.StartsWith("Op_Contenedor")
-                              || mesh.StartsWith("Op_Camion") || mesh.StartsWith("Op_Rack") || mesh == "Op_Silo";
-                if (mesh != "Cube" && !propia) continue;
+                              || mesh.StartsWith("Op_Camion") || mesh.StartsWith("Op_Rack") || mesh == "Op_Silo" || mesh.StartsWith("Op_Surco") || mesh.StartsWith("Op_TorrePata");
                 var t = mr.transform;
+                string clave = Regex.Replace(t.name, @"[\s_()0-9]+$", "");
+                bool relleno = clave == "Relleno" && mesh.StartsWith("Caja_");    // torres de fondo de la ciudad: malla propia de caja con ventanas
+                if (mesh != "Cube" && !propia && !relleno) continue;
                 if (t.GetComponentInParent<SP.Actors.Soldier>() != null) continue;
                 var s = t.localScale;
                 if ((t.lossyScale - s).sqrMagnitude > 0.01f) continue;   // el cubo vive bajo un padre escalado: no se viste
-                string clave = Regex.Replace(t.name, @"[\s_()0-9]+$", "");
 
-                if (EsPiso(clave, s, t)) { int n = VestirPiso(mr, clave); if (n > 0) { pisos++; modulos += n; } }
+                if (relleno) { int n = VestirEdificio(mr, clave, false); if (n > 0) { edificios++; modulos += n; } }
+                else if (EsPiso(clave, s, t)) { int n = VestirPiso(mr, clave); if (n > 0) { pisos++; modulos += n; } }
                 else if (EsMuro(clave, s)) { int n = VestirMuro(mr, clave); if (n > 0) { muros++; modulos += n; } }
                 else if (EsEdificio(clave, s)) { int n = VestirEdificio(mr, clave); if (n > 0) { edificios++; modulos += n; } }
                 else if (clave == "Roca_Canadon" || clave == "Cornisa" || (clave == "Roca" && mesh == "Cube"))
@@ -100,12 +104,16 @@ namespace SP.EditorTools
                 else if (clave == "Auto_Abandonado" || clave == "Auto_Viejo") { int n = VestirAuto(mr); if (n > 0) { props++; modulos += n; } }
                 else if (clave.StartsWith("Caja_") && s.y >= 0.9f && Mathf.Min(s.x, s.z) >= 1.4f) { int n = VestirCajas(mr); if (n > 0) { props++; modulos += n; } }
                 else if (clave == "Barricada_Cemento") { int n = VestirBarricada(mr); if (n > 0) { props++; modulos += n; } }
+                else if (clave == "Surco") { if (VestirSurco(mr)) surcos++; }
+                else if (clave == "Torre_Pata") { if (VestirTorrePata(mr)) torres++; }
             }
+            string suelo = VestirSuelo();
+            LimpiarSurcosViejos();
 
             AssetDatabase.SaveAssets();
             EditorSceneManager.MarkSceneDirty(escena);
             EditorSceneManager.SaveScene(escena);
-            Resumen = $"{pisos} pisos con losetas, {muros} muros y {edificios} edificios vestidos con {modulos} modulos del kit, {rocasN} rocas, {barreras} barreras jersey, {barandas} barandas y {props} props (contenedores, camiones, racks, silos, autos, barricadas)";
+            Resumen = $"{pisos} pisos con losetas, {muros} muros y {edificios} edificios vestidos con {modulos} modulos del kit ({techosN} techos con equipos), {rocasN} rocas, {barreras} barreras jersey, {barandas} barandas, {props} props (contenedores, camiones, racks, silos, autos, barricadas), {surcos} surcos con plantas, {torres} patas de torre reticuladas; suelo: {suelo}";
             Debug.Log("[ArteDeOperacion] " + Resumen);
             return Resumen;
         }
@@ -237,6 +245,10 @@ namespace SP.EditorTools
             raiz.SetParent(cubo, false);
             raiz.localPosition = Vector3.zero; raiz.localRotation = Quaternion.identity;
             raiz.localScale = new Vector3(1f / s.x, 1f / s.y, 1f / s.z);
+            // El horneado del editor (LevelBlockoutBuilder) junta MALLAS VISUALES: sin esto, volver a hornear meteria pilares, puas,
+            // equipos de techo y arbustos en la navegacion. Los cubos ya marcan lo no caminable con sus NavMeshModifierVolume.
+            var mod = raiz.gameObject.AddComponent<Unity.AI.Navigation.NavMeshModifier>();
+            mod.ignoreFromBuild = true; mod.applyToChildren = true;
             return raiz;
         }
 
@@ -247,7 +259,8 @@ namespace SP.EditorTools
             var inst = (GameObject)PrefabUtility.InstantiatePrefab(g, raiz);
             foreach (var c in inst.GetComponentsInChildren<Collider>(true)) Object.DestroyImmediate(c);
             foreach (var r in inst.GetComponentsInChildren<Renderer>(true)) r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            GameObjectUtility.SetStaticEditorFlags(inst, StaticEditorFlags.BatchingStatic);
+            // SIN BatchingStatic: casi todo lo vestido cuelga de un ObstacleMarker, que achata el cubo al dañarlo; una malla metida
+            // en un lote estatico queda congelada en su forma original y el muro "dañado" se veria entero.
             var t = inst.transform;
             t.localPosition = pos; t.localRotation = Quaternion.Euler(0f, yaw, 0f); t.localScale = escala;
             return t;
@@ -325,7 +338,7 @@ namespace SP.EditorTools
         }
 
         // Edificio: el cubo sigue dibujandose; se le suman zocalo, cornisa, parapeto, pilares de esquina y puerta.
-        static int VestirEdificio(MeshRenderer mr, string clave)
+        static int VestirEdificio(MeshRenderer mr, string clave, bool conPuerta = true)
         {
             var cubo = mr.transform; var s = cubo.localScale;
             var raiz = Raiz_(cubo, s);
@@ -350,13 +363,14 @@ namespace SP.EditorTools
                 if (H >= 3f && Poner(raiz, "P_Mod_Muro_Recto", En(0f, suelo + H, -0.28f), yaw, new Vector3(anchoMod, 0.7f / MH, 1.2f)) != null) n++;
                 // puerta en la cara que mira al camino central
                 bool carasPuerta = aX ? (lado == 0 && s.x >= 6f) : (s.z >= 6f && ((sign > 0f) == (cubo.position.x < 4f)));
-                if (carasPuerta && H >= 3f)
+                if (conPuerta && carasPuerta && H >= 3f)
                     if (Poner(raiz, "P_Mod_Muro_Puerta", En(0f, suelo, 0.18f), yaw, new Vector3(1f, Mathf.Min(H * 0.62f, 3.3f) / 5f, 1.1f)) != null) n++;
             }
             // pilares de esquina
             foreach (float sx in new[] { -1f, 1f })
                 foreach (float sz in new[] { -1f, 1f })
                     if (Poner(raiz, "P_Mod_Muro_Pilar", new Vector3(sx * (s.x * 0.5f + 0.08f), suelo, sz * (s.z * 0.5f + 0.08f)), 0f, new Vector3(1.7f, (H + 0.1f) / MH, 1.7f)) != null) n++;
+            n += VestirTecho(raiz, mr, s);
             if (n == 0) Object.DestroyImmediate(raiz.gameObject);
             return n;
         }
