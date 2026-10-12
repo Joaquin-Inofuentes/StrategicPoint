@@ -47,6 +47,7 @@ namespace SP.Presentation
 
         public static void Register(MinimapIcon v) { if (v != null && !minimapIcons.Contains(v)) minimapIcons.Add(v); }
         public static void Unregister(MinimapIcon v) => minimapIcons.Remove(v);
+        public static IReadOnlyList<MinimapIcon> MinimapIcons => minimapIcons;   // los habilitados; el diagnostico de SesionLog los cuenta sin barrer
 
         public static void Register(PossessedMarkerView v) { if (v != null && !possessedMarkers.Contains(v)) possessedMarkers.Add(v); }
         public static void Unregister(PossessedMarkerView v) => possessedMarkers.Remove(v);

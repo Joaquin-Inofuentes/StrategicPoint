@@ -410,13 +410,21 @@ namespace SP.EditorTools
             Check("Loc traduce un aviso de mision", SP.Core.Loc.Ingles("EL CIVIL MURIO") == "THE CIVILIAN DIED");
             Check("Loc traduce un texto largo del tutorial con tildes y flechas", SP.Core.Loc.Ingles("Q → POSICIÓN → SÍGANME") == "Q → POSITION → FOLLOW ME");
             {
-                // Sin deriva: cada clave de la tabla del tutorial tiene que seguir existiendo en el codigo del tutorial o la mision.
-                string codigoTexto = "";
-                foreach (var f in new[] { "Tutorial/TutorialManager.cs", "Mision/MisionDirector.cs", "Mision/MisionHud.cs", "Tutorial/VictoriaTutorial.cs", "Mision/CinematicaDeVictoria.cs" })
-                    codigoTexto += System.IO.File.ReadAllText("Assets/_Project/Scripts/" + f);
-                int sinUso = 0;
-                foreach (var kv in SP.Core.LocTextos.Tutorial) if (!codigoTexto.Contains(kv.Key.Replace("\\", "\\\\"))) sinUso++;
-                Check("Todas las claves de LocTextos siguen existiendo en el tutorial o la mision (sin textos huerfanos)", sinUso == 0);
+                // Sin deriva: cada clave de la tabla del tutorial tiene que seguir existiendo en el codigo de runtime. Antes se
+                // buscaba solo en 5 archivos fijos (tutorial y mision) y las 7 claves que marcaba como huerfanas se usan de verdad
+                // en archivos que la lista no tenia (AntenaDeRadio, IndicadorDeExposicion, EstadoDePartida, CartelVolverView,
+                // MenuDeOrdenes, CinematicaDeIntro...). Ahora se busca en todo el runtime menos la propia tabla.
+                var codigoTexto = new System.Text.StringBuilder();
+                foreach (var f in System.IO.Directory.GetFiles("Assets/_Project/Scripts", "*.cs", System.IO.SearchOption.AllDirectories))
+                {
+                    var ruta = f.Replace("\\", "/");
+                    if (ruta.Contains("/Editor/") || ruta.EndsWith("/LocTextos.cs")) continue;
+                    codigoTexto.Append(System.IO.File.ReadAllText(f));
+                }
+                string todoElCodigo = codigoTexto.ToString();
+                var huerfanas = new List<string>();
+                foreach (var kv in SP.Core.LocTextos.Tutorial) if (!todoElCodigo.Contains(kv.Key.Replace("\\", "\\\\"))) huerfanas.Add(kv.Key);
+                Check("Todas las claves de LocTextos se usan en algun codigo de runtime (sin textos huerfanos)" + (huerfanas.Count == 0 ? "" : ": " + string.Join(" | ", huerfanas)), huerfanas.Count == 0);
             }
         }
     }

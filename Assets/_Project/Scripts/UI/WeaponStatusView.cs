@@ -106,6 +106,7 @@ namespace SP.UI
         {
             label = text;
             fill = fillImage;
+            sobrantesOcultos = false;   // otra barra: volver a ocultar lo que sobra en el proximo UpdateFrom
         }
 
         void OnDisable() { if (Activo == this) Activo = null; }
@@ -226,8 +227,13 @@ namespace SP.UI
         // Bug #144: "quita la F y el icono de cuchillo, solo deja el icono del arma, la municion, las granadas y el icono; y quita la vida de alli
         // porque ya se ve a la izquierda". La barra verde del pie (cooldown/recarga) y el cuchillo con su letra salen del panel; la granada
         // queda sin la "G" y sube al lugar del cuchillo.
+        // Se llama desde UpdateFrom (cada cuadro), pero las piezas solo se arman en Bind/EnsureExtras: basta con ocultarlas una vez
+        // por armado. Antes hacia 4 Transform.Find por nombre en cada cuadro.
+        bool sobrantesOcultos;
         void OcultarSobrantes()
         {
+            if (sobrantesOcultos) return;
+            sobrantesOcultos = true;
             foreach (var n in new[] { "ExtrasCuchillo", "ExtrasCuchilloLabel", "ExtrasGranadaLabel", "BarBG" })
             {
                 var t = transform.Find(n);
@@ -324,6 +330,7 @@ namespace SP.UI
         {
             if (extrasCuchillo == null)
             {
+                sobrantesOcultos = false;   // puede crear el cuchillo y su "F": hay que volver a ocultarlos
                 var t = transform.Find("ExtrasCuchillo");
                 extrasCuchillo = t != null ? t.GetComponent<Image>()
                     : CrearIconoExtra(transform, "ExtrasCuchillo", HudIconFactory.Cuchillo(), new Vector2(78f, 54f));
@@ -336,6 +343,7 @@ namespace SP.UI
 
             if (extrasGranada == null)
             {
+                sobrantesOcultos = false;   // idem con la "G" de la granada
                 var t = transform.Find("ExtrasGranada");
                 extrasGranada = t != null ? t.GetComponent<Image>()
                     : CrearIconoExtra(transform, "ExtrasGranada", HudIconFactory.Granada(), new Vector2(78f, 18f));

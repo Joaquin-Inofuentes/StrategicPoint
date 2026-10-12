@@ -12,13 +12,17 @@ namespace SP.Presentation
         public const int MaximoDePuntuales = 8;
         readonly List<Light> puntuales = new List<Light>(80);
         float proximo, proximaBusqueda;
+        static SombrasDeLuces instancia;   // lo crea solo Crear(): con la referencia alcanza, sin barrer la escena
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void Reiniciar() { instancia = null; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Crear()
         {
-            if (FindFirstObjectByType<SombrasDeLuces>() != null) return;
+            if (instancia != null) return;
             var go = new GameObject("SombrasDeLuces") { hideFlags = HideFlags.HideInHierarchy };
-            go.AddComponent<SombrasDeLuces>();
+            instancia = go.AddComponent<SombrasDeLuces>();
         }
 
         void Update()

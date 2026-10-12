@@ -394,8 +394,8 @@ namespace SP.Core
             foreach (var s in enemigos) sb.AppendLine(LineaSoldado(s));
 
             // VEHICULOS
-            var vs = FindObjectsByType<Vehicle>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
-            sb.AppendLine($"VEHICULOS ({vs.Length}):");
+            var vs = Vehicle.Todos;   // los activos (alta en OnEnable): este bloque corre cada 5 s, sin barrer la escena
+            sb.AppendLine($"VEHICULOS ({vs.Count}):");
             foreach (var v in vs)
             {
                 var occ = new List<string>();
@@ -580,14 +580,14 @@ namespace SP.Core
             d.Add($"CAIDOS: marcasVisibles={(ind != null ? ind.MarcasVisibles : 0)}");
             // Minimapa.
             var mm = SP.UI.MinimapFollow.Activo;
-            var iconos = FindObjectsByType<SP.Presentation.MinimapIcon>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var iconos = SP.Presentation.WorldUiDirector.MinimapIcons;   // los habilitados (alta en OnEnable)
             int parpadeando = 0;
-            foreach (var ic in iconos) if (ic.CaidoParpadeando) parpadeando++;
+            foreach (var ic in iconos) if (ic != null && ic.CaidoParpadeando) parpadeando++;
             var mcam = mm != null ? mm.MinimapCamera : null;
-            d.Add($"MINIMAPA: activo={(mm != null)} sigueA={(mm != null && mm.Target != null ? mm.Target.name : "-")} ortho={(mcam != null ? mcam.orthographicSize : 0f):0.0} camaraActiva={(mcam != null && mcam.enabled)} iconos={iconos.Length} parpadeando={parpadeando} agrandado={(mm != null && mm.Agrandado)}");
+            d.Add($"MINIMAPA: activo={(mm != null)} sigueA={(mm != null && mm.Target != null ? mm.Target.name : "-")} ortho={(mcam != null ? mcam.orthographicSize : 0f):0.0} camaraActiva={(mcam != null && mcam.enabled)} iconos={iconos.Count} parpadeando={parpadeando} agrandado={(mm != null && mm.Agrandado)}");
             // Vehiculos: torretas.
-            foreach (var t in FindObjectsByType<TurretWeapon>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
-                d.Add($"TORRETA {t.transform.root.name}/{t.transform.parent?.name}: pitch={t.PitchActual:0.0} (limites {t.MinPitch:0}/{t.MaxPitch:0}) yaw={t.transform.eulerAngles.y:0} calor={t.Heat:0.00}");
+            foreach (var t in WorldSystemsRegistry.TurretWeapons)
+                if (t != null && t.gameObject.activeInHierarchy) d.Add($"TORRETA {t.transform.root.name}/{t.transform.parent?.name}: pitch={t.PitchActual:0.0} (limites {t.MinPitch:0}/{t.MaxPitch:0}) yaw={t.transform.eulerAngles.y:0} calor={t.Heat:0.00}");
             NavDiag(d);
         }
 

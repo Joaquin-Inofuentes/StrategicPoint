@@ -446,7 +446,12 @@ namespace SP.Ai
 
         public bool SiguiendoAlJugador => seguirAuto;
 
-        void TickSeguirAlJugador()
+        // Velocidad del lider medida entre ticks (solo horizontal). Por encima de esto se lo considera "en marcha".
+        const float VelocidadDeLiderEnMarcha = 0.5f;
+        Vector3 posLiderAnterior;
+        Soldier liderMedido;
+
+        void TickSeguirAlJugador(float dt)
         {
             // BUG REAL: el civil (Pasivo=true, "no reacciona a nada, solo
             // sigue ordenes") quedaba afuera de este chequeo -- este
@@ -469,6 +474,12 @@ namespace SP.Ai
             var d = lider.transform.position - self.transform.position;
             d.y = 0f;
             float dist = d.magnitude;
+
+            var paso = lider.transform.position - posLiderAnterior;
+            paso.y = 0f;
+            bool liderEnMarcha = liderMedido == lider && dt > 0f && paso.magnitude / dt > VelocidadDeLiderEnMarcha;
+            posLiderAnterior = lider.transform.position;
+            liderMedido = lider;
 
             // Bug #16: "si los aliados desaparecen de la visibilidad del minimapa, si o si vienen hacia mi; les costo mucho venir y
             // se distraen con un enemigo". Mas lejos que RadioDeRegresoForzado vuelven SI O SI: seguimiento forzado (no se
@@ -497,7 +508,11 @@ namespace SP.Ai
             {
                 bool enCombate = State == AiState.Chase || State == AiState.Attack || State == AiState.MovingToAttackOrder;
                 if (State != AiState.Follow && !enCombate) { seguirAuto = false; return; }
-                if (State == AiState.Follow && dist <= AjustesDeEscuadra.DistanciaParaDetenerse) DejarDeSeguirAuto();
+                // Se suelta al llegar cerca SOLO si el lider esta quieto. BUG REAL: la ranura de la formacion (al costado, a
+                // DistanciaLateralFormacion = 2,5 m) cae dentro de DistanciaParaDetenerse (4 m): el aliado llegaba a su lugar,
+                // se soltaba ahi mismo, quedaba parado mientras el jugador seguia caminando y recien volvia a seguirlo a 12,5 m.
+                // Nunca iba "a mis lados, visible" (pedido de la formacion lateral); medido en Play: 4 a 8 m atras.
+                if (State == AiState.Follow && dist <= AjustesDeEscuadra.DistanciaParaDetenerse && !liderEnMarcha) DejarDeSeguirAuto();
                 return;
             }
 

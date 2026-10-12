@@ -316,6 +316,9 @@ namespace SP.Vehicles
         readonly Dictionary<VehicleSeatRole, Soldier> seats = new Dictionary<VehicleSeatRole, Soldier>();
         readonly Dictionary<Soldier, Coroutine> mountAnimations = new Dictionary<Soldier, Coroutine>();
         readonly Dictionary<Soldier, Vector3> mountTrueScale = new Dictionary<Soldier, Vector3>();
+        // Escala del soldado al subir, para devolversela al bajar. mountTrueScale no sirve para eso: la animacion de
+        // subida la borra al terminar, y en Edit mode ni se llena.
+        readonly Dictionary<Soldier, Vector3> escalaAlSubir = new Dictionary<Soldier, Vector3>();
 
         public bool IsMountAnimating(Soldier soldier) => mountAnimations.ContainsKey(soldier);
 
@@ -565,6 +568,7 @@ namespace SP.Vehicles
             // ahi se desactiva. En Edit mode (la suite headless corre
             // Mount() sin Play) StartCoroutine no funciona -- se mantiene
             // el camino sincronico de siempre para no romper esos tests.
+            if (!escalaAlSubir.ContainsKey(soldier)) escalaAlSubir[soldier] = soldier.transform.localScale;
             if (Application.isPlaying && !instantaneo)
             {
                 if (!mountTrueScale.ContainsKey(soldier)) mountTrueScale[soldier] = soldier.transform.localScale;
@@ -777,7 +781,11 @@ namespace SP.Vehicles
                 soldier.transform.SetParent(padre, true);
                 padreAnterior.Remove(soldier);
             }
-            soldier.transform.localScale = Vector3.one;
+            // Se devuelve la escala que tenia al subir, no (1,1,1) fijo: los soldados del juego estan en 1, pero el cubo de
+            // la suite headless (P_Soldier_Base) lleva su altura en la escala (0,9 x 1,6 x 0,9) y quedaba de 1 m de alto despues
+            // de cada bajada -- con los pies 0,30 por encima del piso y las alturas de tiro corridas en todas las fases siguientes.
+            soldier.transform.localScale = escalaAlSubir.TryGetValue(soldier, out var escala) ? escala : Vector3.one;
+            escalaAlSubir.Remove(soldier);
             // Antes todos bajaban exactamente al mismo punto (derecha del
             // chasis), sin importar el asiento -- con varios ocupantes
             // quedaban superpuestos o dentro del chasis. Cada asiento

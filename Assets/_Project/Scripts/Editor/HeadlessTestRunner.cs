@@ -1394,13 +1394,26 @@ namespace SP.EditorTools
             Check("NextPitch varia entre llamadas (no es una constante)", pitchVaria);
 
             // --- AudioDirector.GainFor/SetGain: canales independientes ---
+            // GainFor devuelve canal x MAESTRO (decision D8 de la Ronda 14). Antes se esperaba 0,3 y 1 exactos, lo que solo
+            // pasaba con el volumen general del usuario al 100 % (en esta maquina esta en 0,91). Se fija el maestro en 1 para
+            // medir solo los canales, y al final se le devuelven al usuario sus tres valores: SetGain/SetMasterGain escriben
+            // PlayerPrefs, y la prueba vieja le dejaba Sfx y Ui en 1 cada vez que corria la suite.
+            float maestroPrevio = SP.Presentation.AudioDirector.GainFor((SP.Presentation.SfxChannel)(-1));   // canal invalido = el maestro solo
+            float sfxPrevio = PlayerPrefs.GetFloat("sp_volume_sfx", 1f), uiPrevio = PlayerPrefs.GetFloat("sp_volume_ui", 1f);
+            SP.Presentation.AudioDirector.SetMasterGain(1f);
             SP.Presentation.AudioDirector.SetGain(SP.Presentation.SfxChannel.Sfx, 1f);
             SP.Presentation.AudioDirector.SetGain(SP.Presentation.SfxChannel.Ui, 1f);
             SP.Presentation.AudioDirector.SetGain(SP.Presentation.SfxChannel.Sfx, 0.3f);
             Check("Bajar la ganancia de Sfx NO afecta a Ui",
                 Mathf.Approximately(SP.Presentation.AudioDirector.GainFor(SP.Presentation.SfxChannel.Sfx), 0.3f)
                 && Mathf.Approximately(SP.Presentation.AudioDirector.GainFor(SP.Presentation.SfxChannel.Ui), 1f));
-            SP.Presentation.AudioDirector.SetGain(SP.Presentation.SfxChannel.Sfx, 1f);
+            SP.Presentation.AudioDirector.SetMasterGain(0.5f);
+            Check("El volumen general escala a todos los canales (Sfx 0,3 x maestro 0,5 = 0,15; Ui 0,5)",
+                Mathf.Approximately(SP.Presentation.AudioDirector.GainFor(SP.Presentation.SfxChannel.Sfx), 0.15f)
+                && Mathf.Approximately(SP.Presentation.AudioDirector.GainFor(SP.Presentation.SfxChannel.Ui), 0.5f));
+            SP.Presentation.AudioDirector.SetGain(SP.Presentation.SfxChannel.Sfx, sfxPrevio);
+            SP.Presentation.AudioDirector.SetGain(SP.Presentation.SfxChannel.Ui, uiPrevio);
+            SP.Presentation.AudioDirector.SetMasterGain(maestroPrevio);
 
             // --- WaypointGraph / FlowField: rodea obstaculos, no se cuelga ---
             var wallGraph = new SP.Core.WaypointGraph();
@@ -1567,17 +1580,20 @@ namespace SP.EditorTools
                 }
             }
 
-            // 65: vida del enemigo visible en el panel de info al apuntarle.
+            // 65: antes el panel de info mostraba "[Enemigo] nombre · Vida x/y" al apuntarle. Pedido posterior del usuario
+            // (aplicado en 1dc49a1, lote de bugs #168-#174, ver AimUI.UpdateSoldierInfo): apuntar a un aliado o enemigo ya
+            // NO muestra la descripcion. La vida del enemigo apuntado sigue a la vista en el circulo central (lo prueba
+            // "#6 / B3" en Fases8a12); aca se verifica que el panel de texto quede apagado.
             if (aimUiRef != null)
             {
                 var enemyForAimCheck = ActorRegistry.FindNearest(vega.transform.position, s => s.Team == TeamId.Enemy && s.Health.IsAlive);
                 if (enemyForAimCheck != null)
                 {
                     aimUiRef.UpdateFromAimResult(new AimResult { Type = AimTargetType.Enemy, Soldier = enemyForAimCheck, Point = enemyForAimCheck.transform.position });
-                    var infoPanelField = GetRequiredField(typeof(AimUI), "soldierInfoText", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                    var infoText = ((Text)infoPanelField.GetValue(aimUiRef))?.text ?? "";
-                    Check($"Panel de info al apuntar a un enemigo muestra su vida ('{infoText}')",
-                        infoText.Contains("Vida") && infoText.Contains("[Enemigo]"));
+                    var infoPanelField = GetRequiredField(typeof(AimUI), "soldierInfoPanel", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var infoPanel = (GameObject)infoPanelField.GetValue(aimUiRef);
+                    Check("Al apuntar a un enemigo ya no aparece el panel de descripcion (pedido aplicado en el lote #168-#174)",
+                        infoPanel != null && !infoPanel.activeSelf);
                 }
             }
 

@@ -274,10 +274,15 @@ namespace SP.EditorTools
         }
 
         // ---------------------------------------------------------------- 8
+        // Bug #210: "el medico no debe curar en tiempo de accion. Solo bajo pedido". Antes esta prueba exigia que en calma
+        // el medico reanimara solo a un caido; desde #210 la atencion automatica queda apagada de fabrica
+        // (PedidoDeCuracion.AtencionAutomatica = false) y el medico va SOLO cuando el jugador se lo pide. El resto (con un
+        // enemigo cerca no hay calma, el tutorial apaga la reanimacion en calma) sigue con la atencion automatica prendida
+        // a mano, porque mide la regla de calma en si y el tutorial la sigue usando.
         static void Fase21_MedicoEnCalma(Soldier vega, Soldier kes, Soldier doc, GameObject soldierPrefab, Color colorEnemy, ProjectilePool pool)
         {
             PedidoDeCuracion.Cancelar();
-            PedidoDeCuracion.AtencionAutomatica = true;
+            PedidoDeCuracion.AtencionAutomatica = false;   // valor de fabrica desde #210
             PedidoDeCuracion.ReanimarEnCalma = true;
 
             vega.transform.position = new Vector3(-60f, 0.8f, -60f);
@@ -287,10 +292,15 @@ namespace SP.EditorTools
             doc.Brain.CancelOrder();
             Check("Hay calma en el lugar de la prueba", PedidoDeCuracion.HayCalma(kes.transform.position) && PedidoDeCuracion.HayCalma(doc.transform.position));
             Matar(kes);
-            bool revivio = SimulateUntil(() => kes.Health.IsAlive, 30f);
-            Check($"En calma el medico reanima solo a un aliado caido (sin que nadie se lo pida) [enfermero {(PedidoDeCuracion.Enfermero != null ? PedidoDeCuracion.Enfermero.DisplayName : "nadie")}, target {(doc.Brain.CurrentTarget != null ? doc.Brain.CurrentTarget.DisplayName : "ninguno")}, dist {Vector3.Distance(doc.transform.position, kes.transform.position):0.0}]", revivio);
+            SimulateSeconds(6f);
+            Check($"#210: en calma y sin pedido del jugador, el medico NO reanima por su cuenta [enfermero {(PedidoDeCuracion.Enfermero != null ? PedidoDeCuracion.Enfermero.DisplayName : "nadie")}]",
+                !kes.Health.IsAlive && PedidoDeCuracion.Enfermero == null);
+            bool pedido = PedidoDeCuracion.SolicitarReanimar(kes);
+            bool revivio = pedido && SimulateUntil(() => kes.Health.IsAlive, 30f);
+            Check($"#210: a pedido del jugador el medico SI va y reanima al caido [pedido {pedido}, enfermero {(PedidoDeCuracion.Enfermero != null ? PedidoDeCuracion.Enfermero.DisplayName : "nadie")}, dist {Vector3.Distance(doc.transform.position, kes.transform.position):0.0}]", revivio);
             Check("El medico dejo de estar 'pasivo' al terminar", doc.Brain != null && !doc.Brain.Pasivo);
             PedidoDeCuracion.Cancelar();
+            PedidoDeCuracion.AtencionAutomatica = true;   // la regla de calma de abajo se mide con la atencion automatica prendida
 
             // Con un enemigo cerca NO reanima.
             var enemigo = SpawnSoldier(soldierPrefab, "F21_Enemigo", TeamId.Enemy, RoleType.Enemy, kes.transform.position + new Vector3(10f, 0f, 0f), colorEnemy, pool, 500);

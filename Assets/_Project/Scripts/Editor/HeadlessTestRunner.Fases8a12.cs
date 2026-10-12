@@ -399,6 +399,13 @@ namespace SP.EditorTools
             float distInicial = Vector3.Distance(kes.transform.position, blanco.transform.position);
             bool tiroAlEmpezar = kes.Brain.TieneLineaDeTiro(blanco);
 
+            // Bug #145 ("me ven a traves de obstaculos"): la IA ya no detecta a quien no ve fisicamente, y este blanco esta
+            // escondido detras del obstaculo a proposito (ver el check de "SIN linea de tiro"). Antes Kes lo "sentia" igual
+            // por estar dentro de su rango de vision; ahora se quedaba patrullando sin enterarse. Lo que si sigue valiendo es
+            // reaccionar al que te dispara aunque no se lo vea (AiBrain.OnAnyDamage): el blanco le tira primero, con el
+            // mismo evento que publica Health.TakeDamage (sin restarle vida, para no depender del modo dios de esta fase).
+            EventBus.Instance.Publish(new DamageTakenEvent(kes.Id, blanco.Id, 1, kes.Health.Current));
+
             for (int i = 0; i < 400; i++) SimStep(0.05f);
 
             float aLaCobertura = float.MaxValue;
@@ -409,7 +416,7 @@ namespace SP.EditorTools
                 if (d < aLaCobertura) { aLaCobertura = d; masCercana = p; }
             }
             bool tiroAlFinal = kes.Brain.TieneLineaDeTiro(blanco);
-            Check($"Y termina ATACANDO desde ahi, no solo parado ({kes.Brain.State}, vivo={kes.Health.IsAlive})",
+            Check($"Y termina ATACANDO desde ahi, no solo parado ({kes.Brain.State}, vivo={kes.Health.IsAlive}, blanco={(kes.Brain.CurrentTarget != null ? kes.Brain.CurrentTarget.name : "-")}, poseido={kes.Brain.IsPossessedByPlayer}, pos {kes.transform.position}, vision {kes.Brain.EffectiveVisionRange:0.0} m)",
                 kes.Brain.State == AiState.Attack && kes.Health.IsAlive);
             Check($"Arranca a {distInicial:0.0} m del enemigo y SIN linea de tiro (verificacion de la propia prueba)",
                 distInicial > 12f && !tiroAlEmpezar);
@@ -1195,14 +1202,25 @@ namespace SP.EditorTools
             metodoSetState.Invoke(testigoLucha.Brain, new object[] { AiState.Attack });
             testigoLucha.Brain.IsPossessedByPlayer = true; // congela el estado forzado: Tick() nunca corre y no lo pisa
 
+            // Bug #144: "el enemigo me ve y se acciona la musica de accion... no deberia haber musica de accion". Desde ahi la
+            // musica de lucha por cercania queda apagada de fabrica (MusicDirector.MusicaDeAccionActiva = false; solo la
+            // fuerza la extraccion con CombateForzado, #127). Primero se verifica eso, y despues, con la perilla prendida a
+            // mano, que el mecanismo de subida rapida siga funcionando por si se lo vuelve a activar.
+            bool musicaDeAccionPrevia = MusicDirector.MusicaDeAccionActiva;
+            MusicDirector.MusicaDeAccionActiva = false;
+            SimulateSeconds(2f);
+            Check($"#144: con un enemigo atacando a 10 m NO arranca la musica de lucha ({MusicDirector.GananciaLucha:0.00})",
+                MusicDirector.GananciaLucha < 0.01f);
+            MusicDirector.MusicaDeAccionActiva = true;
             bool subioRapido = SimulateUntil(() => MusicDirector.GananciaLucha > 0.8f, 2f);
-            Check($"Con un enemigo atacando a 10 m, la musica de lucha sube por encima de 0,8 en menos de 2 s ({MusicDirector.GananciaLucha:0.00})",
+            Check($"Con la musica de accion prendida a mano, un enemigo atacando a 10 m la sube por encima de 0,8 en menos de 2 s ({MusicDirector.GananciaLucha:0.00})",
                 subioRapido);
 
             testigoLucha.Health.TakeDamage(9999, -1);
             bool bajoDeNuevo = SimulateUntil(() => MusicDirector.GananciaLucha < 0.05f, 3f);
             Check($"Al morir el enemigo, la musica de lucha vuelve a bajar ({MusicDirector.GananciaLucha:0.00})",
                 bajoDeNuevo);
+            MusicDirector.MusicaDeAccionActiva = musicaDeAccionPrevia;
 
             UnityEngine.Object.DestroyImmediate(testigoLucha.gameObject);
             camTransform.position = posOriginalCamara;
@@ -1343,7 +1361,12 @@ namespace SP.EditorTools
             Check($"El rifle queda como el de mayor dps sostenido (rifle {dpsRifle:0.0} > pesada {dpsPesada:0.0} > pistola {dpsPistola:0.0})",
                 dpsRifle > dpsPesada && dpsPesada > dpsPistola);
 
-            TestLog.Phase("FASE 11 - Tarea: autocuracion 3 s despues del ultimo golpe");
+            // El pedido original era "pasado 3 segundos despues de accion se empieza a curar". Despues el usuario pidio
+            // "tiempo de calma x3 para curarse" (pedido 23 de la Ronda 14, tarea T-28, decision D9): la espera paso a
+            // 9 s (Health.SegundosSinDanoParaRegenerar). La prueba sigue la constante en vez de un 3 fijo.
+            float espera = SP.Combat.Health.SegundosSinDanoParaRegenerar;
+            TestLog.Phase($"FASE 11 - Tarea: autocuracion {espera:0} s despues del ultimo golpe");
+            Check($"La espera para regenerar es de 9 s (pedido 23 de la Ronda 14: calma x3; hoy {espera:0.0} s)", Mathf.Approximately(espera, 9f));
 
             vega.gameObject.SetActive(true);
             vega.Brain.CancelOrder();
@@ -1354,12 +1377,12 @@ namespace SP.EditorTools
             Check($"Recien golpeado (100 -> {vega.Health.Current}), todavia no regenera ({vega.Health.IsRegenerating})",
                 vega.Health.Current == 60 && !vega.Health.IsRegenerating);
 
-            SimulateSeconds(2f);
-            Check($"A los 2 s de gracia AUN no subio ({vega.Health.Current} == 60, regenerando={vega.Health.IsRegenerating})",
+            SimulateSeconds(espera - 1f);
+            Check($"A los {espera - 1f:0} s de gracia AUN no subio ({vega.Health.Current} == 60, regenerando={vega.Health.IsRegenerating})",
                 vega.Health.Current == 60 && !vega.Health.IsRegenerating);
 
-            SimulateSeconds(1.5f); // total 3.5 s: ya cruzo el umbral de 3 s
-            Check($"Pasados los 3 s, esta regenerando y ya subio de 60 ({vega.Health.Current} > 60, regenerando={vega.Health.IsRegenerating})",
+            SimulateSeconds(1.5f); // total espera + 0,5 s: ya cruzo el umbral
+            Check($"Pasados los {espera:0} s, esta regenerando y ya subio de 60 ({vega.Health.Current} > 60, regenerando={vega.Health.IsRegenerating})",
                 vega.Health.Current > 60 && vega.Health.IsRegenerating);
 
             int vidaAlRegolpear = vega.Health.Current;
@@ -1367,7 +1390,7 @@ namespace SP.EditorTools
             Check($"Un golpe nuevo apaga la regeneracion al instante ({vega.Health.IsRegenerating})",
                 !vega.Health.IsRegenerating);
             SimulateSeconds(1f);
-            Check($"Y no vuelve a subir antes de esperar los 3 s de nuevo ({vega.Health.Current} <= {vidaAlRegolpear - 5})",
+            Check($"Y no vuelve a subir antes de esperar los {espera:0} s de nuevo ({vega.Health.Current} <= {vidaAlRegolpear - 5})",
                 vega.Health.Current <= vidaAlRegolpear - 5);
 
             bool llegoAFull = SimulateUntil(() => vega.Health.Current >= vega.Health.MaxHealth, 20f);

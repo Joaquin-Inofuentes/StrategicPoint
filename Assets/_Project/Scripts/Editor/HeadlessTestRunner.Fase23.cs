@@ -30,6 +30,36 @@ namespace SP.EditorTools
             Fase23_FormacionLateral(vega, kes, doc);
         }
 
+        // La suite corre en Edit mode, donde Unity NO llama Awake/OnEnable/OnDisable a un MonoBehaviour comun (ver
+        // CameraRig.EnsureInstanceForTests): un componente recien agregado queda sin inicializar, sin suscribirse al EventBus
+        // ni registrarse en su singleton. Estas pruebas arman sus componentes a mano, asi que se les simula el ciclo de Play.
+        // Fuera de Edit mode no hacen nada (Unity ya lo hizo). Apagar va antes de cada DestroyImmediate: en Edit mode tampoco
+        // corre OnDisable, y sin el la suscripcion al EventBus quedaria viva apuntando a un objeto destruido.
+        // soloAwake: para un componente de la escena de la suite que solo hay que dar de alta en su singleton, sin
+        // suscribirlo a eventos que despues nadie daria de baja.
+        static void Arrancar(MonoBehaviour mb, bool soloAwake = false)
+        {
+            if (Application.isPlaying || mb == null) return;
+            const System.Reflection.BindingFlags f = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+            mb.GetType().GetMethod("Awake", f, null, System.Type.EmptyTypes, null)?.Invoke(mb, null);
+            if (!soloAwake) mb.GetType().GetMethod("OnEnable", f, null, System.Type.EmptyTypes, null)?.Invoke(mb, null);
+        }
+
+        static void Apagar(MonoBehaviour mb)
+        {
+            if (Application.isPlaying || mb == null) return;
+            const System.Reflection.BindingFlags f = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic;
+            mb.GetType().GetMethod("OnDisable", f, null, System.Type.EmptyTypes, null)?.Invoke(mb, null);
+        }
+
+        // PlayerBrain.Activo es un singleton: una prueba que registra su propio cerebro tiene que devolverle el lugar al de la
+        // escena, si no las pruebas siguientes (roster, agachado) ven un cerebro ya destruido.
+        static void VolverAlCerebro(SP.Player.PlayerBrain previo)
+        {
+            SP.Player.PlayerBrain.ReiniciarActivo();
+            if (previo != null) previo.Registrar();
+        }
+
         static void Fase23_FormacionLateral(SP.Actors.Soldier vega, SP.Actors.Soldier kes, SP.Actors.Soldier doc)
         {
             TestLog.Step("Probando Fase23_FormacionLateral: primera fila al costado (visible en camara), no detras");
@@ -48,25 +78,51 @@ namespace SP.EditorTools
             kes.transform.position = new Vector3(2.5f, 0, -1.5f);
             doc.transform.position = new Vector3(-2.5f, 0, -1.5f);
             
+            // Cancelar lo que quedo de pruebas anteriores de esta misma fase: Fase23_SinCartelCobertura le da a Kes una orden
+            // de cobertura y no la suelta, y una cobertura ORDENADA no se abandona para seguir al lider (medido: Kes se
+            // quedaba en Idle mientras Vega se alejaba 100 m). CancelOrder suelta la cobertura y el ALTO.
+            kes.Brain.CancelOrder();
+            doc.Brain.CancelOrder();
             var setState = typeof(SP.Ai.AiBrain).GetMethod("SetState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             setState.Invoke(kes.Brain, new object[] { SP.Ai.AiState.Idle });
             setState.Invoke(doc.Brain, new object[] { SP.Ai.AiState.Idle });
 
+            // Lo que se mide es la formacion, no el combate: con los enemigos de patrulla de la escena de la suite activos,
+            // Kes veia a uno en el camino de 100 m y se iba a perseguirlo (Chase), y el check fallaba por eso. Se apagan
+            // los enemigos vivos durante la prueba y se vuelven a prender al final.
+            var enemigosApagados = new System.Collections.Generic.List<GameObject>();
+            foreach (var e in SP.Core.ActorRegistry.All)
+                if (e != null && e.Team == SP.Combat.TeamId.Enemy && e.gameObject.activeSelf) { e.gameObject.SetActive(false); enemigosApagados.Add(e.gameObject); }
+            SP.Core.ActorRegistry.Invalidate();
+
             SP.Ai.WorldSimulationDriver.Step(0.1f);
 
-            for (int i = 0; i < 200; i++)
+            var rastro = new System.Text.StringBuilder();
+            // 14 s a 5 m/s = 70 m: el piso de la escena de la suite termina en z=80 y la grilla de navegacion esta bloqueada
+            // desde z=86. Con los 100 m de antes Vega salia del mapa, las ranuras laterales quedaban bloqueadas y los dos
+            // caian a la linea central 3 m atras (medido: perfectos al costado hasta z=85, cerrados detras desde ahi).
+            for (int i = 0; i < 140; i++)
             {
                 vega.transform.position += Vector3.forward * (5f * 0.1f); // 5m/s
                 SP.Ai.WorldSimulationDriver.Step(0.1f);
+                if (i % 40 == 0)
+                {
+                    var rk = vega.transform.InverseTransformPoint(kes.transform.position);
+                    var rd = vega.transform.InverseTransformPoint(doc.transform.position);
+                    rastro.Append($" t{i / 10f:0.0}s vega.z={vega.transform.position.z:0} kes({rk.x:0.0},{rk.z:0.0}) {kes.Brain.State} doc({rd.x:0.0},{rd.z:0.0}) {doc.Brain.State};");
+                }
             }
+            foreach (var e in enemigosApagados) e.SetActive(true);
+            SP.Core.ActorRegistry.Invalidate();
             
             var relKes = vega.transform.InverseTransformPoint(kes.transform.position);
             var relDoc = vega.transform.InverseTransformPoint(doc.transform.position);
             
-            Check($"Uno esta a la derecha y otro a la izquierda (kes {relKes.x:0.00},{relKes.z:0.00} doc {relDoc.x:0.00},{relDoc.z:0.00})", relKes.x * relDoc.x < 0f && Mathf.Abs(relKes.x) > 0.5f && Mathf.Abs(relDoc.x) > 0.5f);
+            string Estado(SP.Actors.Soldier s) => $"{s.Brain.State}{(s.Brain.IsPossessedByPlayer ? " poseido" : "")}{(s.Health.IsAlive ? "" : " muerto")} sigue={(s.Brain.FollowTarget != null ? s.Brain.FollowTarget.name : "-")} blanco={(s.Brain.CurrentTarget != null ? s.Brain.CurrentTarget.name : "-")}";
+            Check($"Uno esta a la derecha y otro a la izquierda (kes {relKes.x:0.00},{relKes.z:0.00} [{Estado(kes)}] doc {relDoc.x:0.00},{relDoc.z:0.00} [{Estado(doc)}])", relKes.x * relDoc.x < 0f && Mathf.Abs(relKes.x) > 0.5f && Mathf.Abs(relDoc.x) > 0.5f);
             // Pedido explicito: la primera fila va AL COSTADO (visible en la
             // camara del jugador), no detras del hombro. z≈0, ya no < -0.5.
-            Check("Ambos van a la par (Z≈0, no detras)", Mathf.Abs(relKes.z) < 0.5f && Mathf.Abs(relDoc.z) < 0.5f);
+            Check($"Ambos van a la par (Z≈0, no detras; kes z={relKes.z:0.00} doc z={relDoc.z:0.00}) rastro:{rastro}", Mathf.Abs(relKes.z) < 0.5f && Mathf.Abs(relDoc.z) < 0.5f);
             
             SP.Ai.AjustesDeEscuadra.Lider = prevLider;
             SP.Ai.AjustesDeEscuadra.DistanciaLateralFormacion = prevLat;
@@ -91,6 +147,7 @@ namespace SP.EditorTools
             vehGo.SetActive(false);
             var veh = vehGo.AddComponent<SP.Vehicles.Vehicle>();
             vehGo.SetActive(true);
+            Arrancar(veh);   // Vehicle.OnEnable crea el RomboTanque
             
             var mr = vehGo.transform.Find("RomboTanque");
             Material mat = null;
@@ -123,6 +180,7 @@ namespace SP.EditorTools
                 Object.DestroyImmediate(sol1Go);
                 Object.DestroyImmediate(sol2Go);
             }
+            Apagar(veh);   // OnDisable lo saca de Vehicle.Todos y de WorldSystemsRegistry
             Object.DestroyImmediate(vehGo);
         }
 
@@ -151,6 +209,16 @@ namespace SP.EditorTools
                 return;
             }
 
+            // El roster habla con tres singletons que en Play dan de alta sus Awake y en Edit mode quedan vacios:
+            // SelectionController.Instance (clic simple), CameraRig.Instance (centrar / pasar a FPS) y PlayerBrain.Activo
+            // (doble clic = poseer). Se apuntan a los de la escena de la suite y al final se deja todo como estaba.
+            var cerebroPrevio = SP.Player.PlayerBrain.Activo;
+            var poseidoPrevio = inputDriver.Brain != null ? inputDriver.Brain.Current : null;
+            var modoPrevio = inputDriver.Rig.Mode;
+            Arrancar(inputDriver.Selection, soloAwake: true);
+            SP.CameraSystem.CameraRig.EnsureInstanceForTests(inputDriver.Rig);
+            if (inputDriver.Brain != null) inputDriver.Brain.Registrar();
+
             inputDriver.Rig.SetMode(SP.CameraSystem.ControlMode.Rts);
 
             var rosterRowGo = new GameObject("TestRosterRow");
@@ -162,14 +230,21 @@ namespace SP.EditorTools
                 button = UnityEngine.EventSystems.PointerEventData.InputButton.Left
             };
             
-            // Simular primer click
+            // Simular primer click. El doble clic se detecta por Time.unscaledTime - lastClickTime <= 0,3 s, con
+            // lastClickTime arrancando en 0: en Edit mode Time.unscaledTime vuelve a cero con cada recompilacion y casi no
+            // avanza (medido: 4 y 13 s con el editor abierto hace una hora), asi que el PRIMER clic podia contar como doble
+            // (poseia y pasaba a FPS en vez de seleccionar). Se fija "ultimo clic hace mucho", que es lo que pasa en Play.
+            typeof(SP.UI.RosterRowView).GetField("lastClickTime", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)
+                .SetValue(rosterRow, float.NegativeInfinity);
             rosterRow.OnPointerClick(eventData);
             
             Check("Despues de 1 clic, doc queda seleccionado", inputDriver.Selection.Selected.Contains(doc) && inputDriver.Selection.Selected.Count == 1);
             
+            // RecenterOn fija el DESTINO del paneo (panTarget) y la camara se desliza hasta ahi en los cuadros siguientes
+            // (CameraRig.LateUpdate): RtsFocus recien coincide despues de varios cuadros, tambien en Play. Se compara el destino.
             Vector3 pos = doc.transform.position;
-            Vector3 focus = inputDriver.Rig.RtsFocus;
-            Check($"RTS focus debe coincidir con pos (Focus: {focus}, Pos: {pos})", Mathf.Abs(focus.x - pos.x) < 0.1f && Mathf.Abs(focus.z - pos.z) < 0.1f);
+            Vector3 focus = inputDriver.Rig.PanTargetActual;
+            Check($"RTS focus debe coincidir con pos (destino del paneo: {focus}, Pos: {pos})", Mathf.Abs(focus.x - pos.x) < 0.1f && Mathf.Abs(focus.z - pos.z) < 0.1f);
             
             // Simular segundo click rapido (doble click)
             rosterRow.OnPointerClick(eventData);
@@ -177,6 +252,10 @@ namespace SP.EditorTools
             Check("Despues de doble clic, la camara pasa a FPS", inputDriver.Rig.Mode == SP.CameraSystem.ControlMode.Fps);
             Check("Despues de doble clic, doc pasa a estar poseido", SP.Player.PlayerBrain.Activo != null && SP.Player.PlayerBrain.Activo.Current == doc);
             
+            // Doc poseido no corre su IA (y la prueba de formacion de mas abajo lo necesita siguiendo a Vega).
+            if (poseidoPrevio != null && inputDriver.Brain.Current != poseidoPrevio) SP.Player.PossessionService.Swap(inputDriver.Brain, poseidoPrevio);
+            inputDriver.Rig.SetMode(modoPrevio);
+            VolverAlCerebro(cerebroPrevio);
             Object.DestroyImmediate(rosterRowGo);
         }
 
@@ -190,16 +269,23 @@ namespace SP.EditorTools
             // Dummy attacker and player
             var attackerGo = new GameObject("TestAttacker");
             attackerGo.transform.position = new Vector3(10, 0, 10);
+            // Con Health, el Bootstrap del soldado (al leer su Id) lo da de alta en ActorRegistry, que es donde el anillo
+            // busca al atacante por Id. Sin Health, Bootstrap tira un LogError y el atacante nunca aparece.
+            attackerGo.AddComponent<SP.Combat.Health>();
             var attacker = attackerGo.AddComponent<SP.Actors.Soldier>();
             
             var playerGo = new GameObject("TestPlayer");
+            playerGo.AddComponent<SP.Combat.Health>();
             var player = playerGo.AddComponent<SP.Actors.Soldier>();
             
+            Arrancar(ringManager);   // Awake arma el pool de anillos, OnEnable se suscribe al dano
+
             var brainGo = new GameObject("TestBrain");
             var brain = brainGo.AddComponent<SP.Player.PlayerBrain>();
+            var cerebroPrevio = SP.Player.PlayerBrain.Activo;
             brain.Registrar();
             brain.Possess(player);
-            
+
             // Send event
             SP.Core.EventBus.Instance.Publish(new SP.Core.DamageTakenEvent(player.Id, attacker.Id, 10, 90));
             
@@ -216,7 +302,11 @@ namespace SP.EditorTools
             }
             
             Check("Un anillo del pool se activo en la posicion del atacante", foundActive);
-            
+
+            Apagar(ringManager);
+            VolverAlCerebro(cerebroPrevio);
+            SP.Core.ActorRegistry.Unregister(attacker);   // en Edit mode tampoco corre el OnDestroy que lo da de baja
+            SP.Core.ActorRegistry.Unregister(player);
             Object.DestroyImmediate(ringManagerGo);
             Object.DestroyImmediate(attackerGo);
             Object.DestroyImmediate(playerGo);
@@ -277,6 +367,10 @@ namespace SP.EditorTools
             TestLog.Step("Probando Fase23_PiesEnElPiso: los soldados deberian estar en el piso y no flotar");
             var soldados = Object.FindObjectsByType<SP.Actors.Soldier>(FindObjectsInactive.Include);
             var buffer = new RaycastHit[16];
+            // Physics.autoSyncTransforms esta apagado: las fases anteriores mueven a los soldados por transform y, sin
+            // sincronizar, collider.bounds y el raycast pueden ver la posicion fisica vieja. En Play se sincroniza en cada
+            // paso de fisica. (El 0,30 que daban Vega, Kes y Doc era otra cosa: Vehicle.Dismount les dejaba la escala en 1.)
+            Physics.SyncTransforms();
             foreach (var s in soldados)
             {
                 if (s == null) continue;
@@ -289,19 +383,20 @@ namespace SP.EditorTools
                 int n = Physics.RaycastNonAlloc(desde, Vector3.down, buffer, 24f, ~0, QueryTriggerInteraction.Ignore);
                 float piso = float.NegativeInfinity;
                 bool hay = false;
+                string nombrePiso = "";
                 for (int i = 0; i < n; i++)
                 {
                     var c = buffer[i].collider;
                     if (c == null || c == col || c.transform.IsChildOf(s.transform)) continue;
                     float y = buffer[i].point.y;
                     if (y > col.bounds.min.y + 0.3f) continue;
-                    if (y > piso) { piso = y; hay = true; }
+                    if (y > piso) { piso = y; hay = true; nombrePiso = c.name; }
                 }
 
                 if (hay)
                 {
                     float dist = Mathf.Abs(col.bounds.min.y - piso);
-                    Check($"Soldado {s.name} bien apoyado (dist: {dist:0.000})", dist < 0.03f);
+                    Check($"Soldado {s.name} bien apoyado (dist: {dist:0.000}; pies y={col.bounds.min.y:0.00}, piso '{nombrePiso}' y={piso:0.00}, pos {s.transform.position}, rot {s.transform.eulerAngles}, escala {s.transform.lossyScale}, {col.GetType().Name} {col.bounds.size})", dist < 0.03f);
                 }
                 else
                 {
@@ -348,18 +443,24 @@ namespace SP.EditorTools
             TestLog.Step("Probando Fase23_CoberturasConCollider: verificar mallas de coberturas con collider propio");
             var solidos = SP.Core.Coberturas.Solidos();
             int count = 0;
+            var sinCollider = new System.Text.StringBuilder();
             foreach (var c in solidos)
             {
+                // El blindado tambien cuenta como solido de cobertura, pero sus mallas (casco, torreta, cañon) no llevan
+                // collider propio a proposito: el vehiculo choca y recibe tiros con su propio casco e HitboxDeImpacto. Igual
+                // que en Fase23_ColliderSinMalla, los vehiculos quedan fuera.
+                if (c.GetComponentInParent<SP.Vehicles.Vehicle>() != null) continue;
                 var meshes = c.GetComponentsInChildren<MeshRenderer>(true);
                 foreach (var m in meshes)
                 {
                     if (m.GetComponent<Collider>() == null)
                     {
                         count++;
+                        sinCollider.Append(c.name).Append('/').Append(m.name).Append(' ');
                     }
                 }
             }
-            Check($"0 mallas en coberturas sin collider propio (hay {count})", count == 0);
+            Check($"0 mallas en coberturas sin collider propio (hay {count}: {sinCollider})", count == 0);
         }
         static void Fase23_HudMunicion()
         {
@@ -454,7 +555,7 @@ namespace SP.EditorTools
             brain.Possess(soldier);
 
             view.Bind(img, brain);
-            go.SetActive(true); // Triggers OnEnable
+            Arrancar(view);   // OnEnable arma la capa roja (RedImpact) y se suscribe al dano
 
             float alpha0 = view.CurrentRedAlpha;
             Check("Alpha inicial del impacto rojo es 0", alpha0 == 0f);
@@ -464,6 +565,7 @@ namespace SP.EditorTools
             float alpha1 = view.CurrentRedAlpha;
             Check("Alpha del impacto rojo sube al recibir dano", alpha1 > 0f);
             
+            Apagar(view);
             Object.DestroyImmediate(go);
             Object.DestroyImmediate(brainGo);
             Object.DestroyImmediate(soldierGo);
@@ -477,7 +579,13 @@ namespace SP.EditorTools
             var goTorreta = new GameObject("TestTorreta");
             var torreta = SP.Vehicles.TorretaFija.Instalar(goTorreta);
             var romboTorreta = goTorreta.GetComponentInChildren<SP.Presentation.InteractableDiamond>();
-            Check("Torreta vacia tiene rombo", romboTorreta != null && romboTorreta.Condicion() == true);
+            // TorretaFija.Instalar y CajaDeSuministros.Crear arman el rombo SOLO en Play (if Application.isPlaying): en
+            // Edit mode instalar no debe dejar rombos guardados en la escena. Asi que en la suite (Edit mode) se verifica
+            // eso, y la parte de Play (rombo visible, se oculta al ocupar) queda para cuando la suite corre en Play.
+            if (!Application.isPlaying)
+                Check("Fuera de Play, instalar una torreta no deja un rombo en la escena (se arma en Play)", romboTorreta == null);
+            else
+                Check("Torreta vacia tiene rombo", romboTorreta != null && romboTorreta.Condicion() == true);
 
             var soldierGo = new GameObject("TestSoldier");
             soldierGo.AddComponent<SP.Combat.Health>();
@@ -486,7 +594,8 @@ namespace SP.EditorTools
             soldier.Configure("TestSoldier", SP.Combat.TeamId.Player, SP.Combat.RoleType.Assault, 100);
 
             torreta.Ocupar(soldier, out _);
-            Check("Torreta ocupada oculta el rombo", romboTorreta != null && romboTorreta.Condicion() == false);   // WP11: sin el null-check la suite abortaba aca (en Edit mode no corre OnEnable y el rombo no existe)
+            if (Application.isPlaying)
+                Check("Torreta ocupada oculta el rombo", romboTorreta != null && romboTorreta.Condicion() == false);
 
             // Municion
             var pk = SP.Player.MunicionPickup.Crear(Vector3.zero);
@@ -496,7 +605,10 @@ namespace SP.EditorTools
             // Caja
             var caja = SP.Player.CajaDeSuministros.Crear(Vector3.zero);
             var romboCaja = caja.GetComponentInChildren<SP.Presentation.InteractableDiamond>();
-            Check("CajaDeSuministros tiene rombo", romboCaja != null);
+            if (!Application.isPlaying)
+                Check("Fuera de Play, la caja de suministros no deja un rombo en la escena (se arma en Play)", romboCaja == null);
+            else
+                Check("CajaDeSuministros tiene rombo", romboCaja != null);
 
             Object.DestroyImmediate(goTorreta);
             Object.DestroyImmediate(soldierGo);
@@ -516,12 +628,13 @@ namespace SP.EditorTools
             txtGo.transform.SetParent(go.transform);
 
             view.Bind(txt);
-            go.SetActive(true); // Triggers OnEnable and calls Diagramador.AcomodarSelectionCount
+            Arrancar(view);   // OnEnable llama a Diagramador.AcomodarSelectionCount
 
             Check("Anclado abajo (anchorMin.y == 0)", rt.anchorMin.y == 0f);
             Check("Anclado al centro (anchorMin.x == 0.5)", rt.anchorMin.x == 0.5f);
             Check("Posicion Y deja espacio para InstructionBannerView (> 78)", rt.anchoredPosition.y >= 78f + SP.UI.Diagramador.Aire);
 
+            Apagar(view);
             Object.DestroyImmediate(go);
         }
         static void Fase23_AgachadoContagio()
@@ -557,6 +670,10 @@ namespace SP.EditorTools
 
             var brainGo = new GameObject("TestBrain");
             var brain = brainGo.AddComponent<SP.Player.PlayerBrain>();
+            // AiBrain.TickAgachadoContagio copia la postura del soldado de PlayerBrain.Activo: en Play este cerebro se
+            // registra en su Awake, en Edit mode hay que hacerlo a mano.
+            var cerebroPrevio = SP.Player.PlayerBrain.Activo;
+            brain.Registrar();
             brain.Possess(playerSoldier);
 
             followerSoldier.Brain.IssueFollowOrder(playerSoldier);
@@ -593,6 +710,7 @@ namespace SP.EditorTools
             Check("Seguidor cercano se para al pararse el jugador", !followerSoldier.Motor.IsCrouching);
             Check("Seguidor en cobertura NO se para (excepcion)", coverFollowerSoldier.Motor.IsCrouching);
 
+            VolverAlCerebro(cerebroPrevio);
             UnityEngine.Object.DestroyImmediate(goPlayer);
             UnityEngine.Object.DestroyImmediate(goFollower);
             UnityEngine.Object.DestroyImmediate(goFarFollower);

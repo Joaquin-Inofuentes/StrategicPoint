@@ -38,6 +38,22 @@ namespace SP.EditorTools
             { "Mision/MisionDirector.cs", 1 },         // Casas(): cachea el resultado (nunca uno vacio) y solo se llama al crear un enemigo, no por frame
             { "UI/MenuDeOrdenes.cs", 1 },              // AsegurarEnEscena: una vez al arrancar, busca el canvas del HUD
             { "UI/AjustesDeJuego.cs", 1 },             // AplicarEscala: al cambiar la escala de interfaz
+            // Deuda #11 (12/10): los que quedaron tras pasar a registros SesionLog (Vehicle.Todos, MinimapIcons, TurretWeapons),
+            // MenuDeTrampas/SombrasDeLuces.Crear (instancia estatica) y el muro del jefe (WorldSystemsRegistry.Obstacles).
+            { "Core/SesionLog.cs", 4 },                // guardables cada 30 s (IEstadoGuardable no tiene registro); vehiculos con inactivos en Capturar (bug/guardado) y 2 en Restaurar: a pedido
+            { "Core/PruebaEnPlayer.cs", 1 },           // prueba de build por CLI: una vez al final, junta los carteles a fotografiar
+            { "Operacion/CineDeHuida.cs", 1 },         // Bloquear(): una vez al empezar la cinematica, apaga los canvas del HUD (no hay registro de Canvas)
+            { "Operacion/CinematicaDeOperacion.cs", 1 }, // idem
+            { "Operacion/CinematicaDeRapel.cs", 1 },   // idem
+            { "Operacion/OperacionDirector.TomaFinal.cs", 1 }, // OcultarHudDeLaToma: una vez al entrar a la toma final, mismo barrido de canvas
+            { "Operacion/OperacionDirector.cs", 1 },   // Start: una vez, corrige el rol de los enemigos incluidos los inactivos (ActorRegistry.Rebarrer los bootstrapea y les daria Id antes de tiempo)
+            { "Operacion/GuiaDeObjetivo.cs", 1 },      // Asegurar(): al crear la instancia, borra rombos huerfanos de una sesion anterior (mismo patron que ImpactFx)
+            { "Operacion/OperacionTextoMundo.cs", 2 }, // carteles TextMesh: cada 1 s y cada 1,5 s los primeros 6 s; sin registro de TextMesh (Demolicion/Feedback/TutorialBeacon los crean en Play)
+            { "Presentation/MinimapIcon.cs", 1 },      // BuscarPorTarget: al armar el icono de una unidad y al subir/bajar de un vehiculo; incluye inactivos que WorldUiDirector no tiene
+            { "Presentation/SombrasDeLuces.cs", 1 },   // luces puntuales cada 4 s (sin registro de Light); el orden por distancia corre aparte cada 0,4 s sobre la lista
+            { "Simulacion/SimulacionBatallaBootstrap.cs", 1 }, // Start: una vez, prende el PerfHud de la escena de simulacion
+            { "UI/HeadshotPopup.cs", 1 },              // Crear(): una vez, copia la fuente del HUD al armar el cartel
+            { "UI/TurretAimView.cs", 1 },              // AsegurarAnillo: solo si el anillo llego nulo (bug #091), despues queda cacheado
         };
 
         static readonly Regex PatronBusquedaGlobal = new Regex(@"GameObject\.Find\(|FindObjectsByType|FindAnyObjectByType|FindFirstObjectByType|Resources\.FindObjectsOfTypeAll");
@@ -105,7 +121,11 @@ namespace SP.EditorTools
         // P12 (tanda #104-#132): +6 por los Transform.Find de arranque de la tanda (botones GUARDAR/CARGAR de la pausa, derrota y menu --PauseController,
         // GameOutcomeController, MainMenuController--, el estrado y la luz de silueta de TorreDestruible, la lente de Luminaria y el medico de apoyo del mando).
         // Ninguno corre por frame (el segundo check de esta pareja lo vigila).
-        const int PresupuestoFindPorNombre = 124;
+        // Lote #168-#174 y #144: +2 -- FrancotiradorEnTorre.PonerDestelloDeMira (una vez, al equipar la mira) y
+        // WeaponStatusView.OcultarSobrantes (esconde las piezas que #144 saco del panel; corria en cada cuadro desde
+        // UpdateFrom y ahora una sola vez por armado del panel, guardado por flag). El detector de "por frame" de abajo no
+        // lo veia porque el Find esta en un metodo propio, no en el cuerpo de UpdateFrom.
+        const int PresupuestoFindPorNombre = 126;
         static readonly Regex PatronFindPorNombre = new Regex(@"(?<!Shader)(?<!GameObject)(?<!Object)\.Find\(\s*[""\w]");
         static readonly Regex PatronMetodoPorFrame = new Regex(@"\b(void|bool|float|Vector\d)\s+(Update|LateUpdate|FixedUpdate|UpdateFrom|UpdateInVehicle|TickPlayerAim|Tick)\s*\(");
         static readonly Regex PatronCabeceraMetodo = new Regex(@"^\s*(public |private |protected |internal |static |override |virtual )*[\w<>\[\],\.?]+\s+\w+\s*\([^;]*\)\s*$");

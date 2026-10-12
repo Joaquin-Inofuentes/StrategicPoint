@@ -166,8 +166,9 @@ namespace SP.Operacion
             if (!buscoMuroDeSalida)
             {
                 buscoMuroDeSalida = true;
-                var g = GameObject.Find("Muro_Salida_Norte");
-                muroDeSalida = g != null ? g.GetComponent<ObstacleMarker>() : null;
+                // El muro es un ObstacleMarker (Destruible del OperacionBuilder): se toma del registro, que tiene los activos, como antes GameObject.Find.
+                foreach (var o in SP.Core.WorldSystemsRegistry.Obstacles)
+                    if (o != null && o.name == "Muro_Salida_Norte") { muroDeSalida = o; break; }
             }
             return muroDeSalida != null && !muroDeSalida.IsCollapsed && muroDeSalida.gameObject.activeInHierarchy;
         }

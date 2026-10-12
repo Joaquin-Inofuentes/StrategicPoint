@@ -28,15 +28,17 @@ namespace SP.Operacion
         float tMensaje;
         GUIStyle estilo, estiloTitulo;
 
+        static MenuDeTrampas instancia;   // lo crea solo Crear(): con la referencia alcanza, sin barrer la escena
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { Abierto = false; }
+        static void Reiniciar() { Abierto = false; instancia = null; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Crear()
         {
-            if (FindFirstObjectByType<MenuDeTrampas>() != null) return;
+            if (instancia != null) return;
             var go = new GameObject("MenuDeTrampas");
-            go.AddComponent<MenuDeTrampas>();
+            instancia = go.AddComponent<MenuDeTrampas>();
             DontDestroyOnLoad(go);
         }
 

@@ -820,7 +820,7 @@ namespace SP.Ai
             // Tactica: vigilar la cobertura, seguir al jugador si se aleja,
             // revisar si hay un blanco mejor.
             TickCobertura(dt);
-            TickSeguirAlJugador();
+            TickSeguirAlJugador(dt);
             TickAgachadoContagio();
             TickRetarget(dt);
             TickCicloCobertura(dt);
