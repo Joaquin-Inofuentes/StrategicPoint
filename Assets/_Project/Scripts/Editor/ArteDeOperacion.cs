@@ -62,7 +62,7 @@ namespace SP.EditorTools
             var contX = MallaContenedor(true); var contZ = MallaContenedor(false); var camX = MallaCamion(true); var camZ = MallaCamion(false);
             var rackX = MallaRack(true); var rackZ = MallaRack(false); var silo = MallaSilo();
 
-            int muros = 0, edificios = 0, rocasN = 0, barreras = 0, barandas = 0, props = 0, modulos = 0;
+            int pisos = 0, muros = 0, edificios = 0, rocasN = 0, barreras = 0, barandas = 0, props = 0, modulos = 0;
             foreach (var mr in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
             {
                 if (mr == null || !mr.enabled) continue;
@@ -78,7 +78,8 @@ namespace SP.EditorTools
                 if ((t.lossyScale - s).sqrMagnitude > 0.01f) continue;   // el cubo vive bajo un padre escalado: no se viste
                 string clave = Regex.Replace(t.name, @"[\s_()0-9]+$", "");
 
-                if (EsMuro(clave, s)) { int n = VestirMuro(mr, clave); if (n > 0) { muros++; modulos += n; } }
+                if (EsPiso(clave, s, t)) { int n = VestirPiso(mr, clave); if (n > 0) { pisos++; modulos += n; } }
+                else if (EsMuro(clave, s)) { int n = VestirMuro(mr, clave); if (n > 0) { muros++; modulos += n; } }
                 else if (EsEdificio(clave, s)) { int n = VestirEdificio(mr, clave); if (n > 0) { edificios++; modulos += n; } }
                 else if (clave == "Roca_Canadon" || clave == "Cornisa")
                 {
@@ -103,7 +104,7 @@ namespace SP.EditorTools
             AssetDatabase.SaveAssets();
             EditorSceneManager.MarkSceneDirty(escena);
             EditorSceneManager.SaveScene(escena);
-            Resumen = $"{muros} muros y {edificios} edificios vestidos con {modulos} modulos del kit, {rocasN} rocas, {barreras} barreras jersey, {barandas} barandas y {props} props (contenedores, camiones, racks, silos, autos, barricadas)";
+            Resumen = $"{pisos} pisos con losetas, {muros} muros y {edificios} edificios vestidos con {modulos} modulos del kit, {rocasN} rocas, {barreras} barreras jersey, {barandas} barandas y {props} props (contenedores, camiones, racks, silos, autos, barricadas)";
             Debug.Log("[ArteDeOperacion] " + Resumen);
             return Resumen;
         }
@@ -111,6 +112,90 @@ namespace SP.EditorTools
         // ------------------------------------------------------------------
         // Clasificacion
         // ------------------------------------------------------------------
+        // Pisos y calles planas (cubos finos alineados a los ejes): se cubren de losetas del kit con relieve real.
+        static readonly Regex rePiso = new Regex(@"^(Patio_|Piso|CD_Piso|Plaza|Asfalto_Corredor|Camino|Calle)", RegexOptions.Compiled);
+        static bool EsPiso(string clave, Vector3 s, Transform t)
+        {
+            if (!rePiso.IsMatch(clave) || s.y > 0.7f || Mathf.Min(s.x, s.z) < 3f) return false;
+            float yaw = Mathf.Repeat(t.eulerAngles.y, 90f);
+            if (yaw > 0.5f && yaw < 89.5f) return false;                      // solo alineados a los ejes
+            return Mathf.Abs(t.eulerAngles.x) < 0.5f && Mathf.Abs(t.eulerAngles.z) < 0.5f;
+        }
+
+        [System.Serializable] sealed class CeldaTrim { public string name; public int[] rgb; public float[] uv_center; }
+        [System.Serializable] sealed class MapaTrim { public CeldaTrim[] cells; }
+        static MapaTrim mapaTrim;
+        static readonly Dictionary<string, Material> tintes = new Dictionary<string, Material>();
+
+        // Color de zona del cubo: la celda del trimsheet a la que apunta su material (offset del _BaseMap) -> rgb.
+        static Color ColorDeZona(Material m)
+        {
+            if (m == null || !m.HasProperty("_BaseMap")) return new Color(0.5f, 0.5f, 0.5f);
+            if (mapaTrim == null)
+                mapaTrim = JsonUtility.FromJson<MapaTrim>(File.ReadAllText("Assets/ARTS/SP_Arte/Trimsheet_1024_map.json"));
+            var off = m.GetTextureOffset("_BaseMap");
+            CeldaTrim mejor = null; float md = 1e9f;
+            foreach (var c in mapaTrim.cells)
+            {
+                float d = (c.uv_center[0] - off.x) * (c.uv_center[0] - off.x) + (c.uv_center[1] - off.y) * (c.uv_center[1] - off.y);
+                if (d < md) { md = d; mejor = c; }
+            }
+            if (mejor == null || md > 0.002f) { var bc = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : Color.gray; return bc; }
+            return new Color(mejor.rgb[0] / 255f, mejor.rgb[1] / 255f, mejor.rgb[2] / 255f);
+        }
+
+        // Copia de MAT_Trimsheet teñida con el color de la zona (las losetas conservan el relieve y el reparto de celdas del kit).
+        static Material TinteDeZona(Material zona)
+        {
+            string key = zona != null ? zona.name : "neutro";
+            if (tintes.TryGetValue(key, out var hecho) && hecho != null) return hecho;
+            var baseMat = AssetDatabase.LoadAssetAtPath<Material>("Assets/_Project/Materials/ArteMundo/MAT_Trimsheet.mat");
+            string ruta = "Assets/_Project/Materials/ArteMundo/MAT_Trimsheet_Zona_" + key + ".mat";
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(ruta);
+            if (mat == null) { mat = new Material(baseMat); AssetDatabase.CreateAsset(mat, ruta); }
+            var c = ColorDeZona(zona);
+            // las celdas de concreto del kit rondan 0,55 de luminosidad: se escala para que el resultado quede cerca del color de la zona
+            float k = 1f / 0.55f;
+            var tinte = new Color(Mathf.Clamp(c.r * k, 0.35f, 1.5f), Mathf.Clamp(c.g * k, 0.35f, 1.5f), Mathf.Clamp(c.b * k, 0.35f, 1.5f), 1f);
+            mat.SetColor("_BaseColor", tinte); mat.SetColor("_Color", tinte);
+            EditorUtility.SetDirty(mat);
+            tintes[key] = mat;
+            return mat;
+        }
+
+        // Cubre un piso con losetas (cuadricula exacta). El cubo deja de dibujarse; su collider queda igual.
+        static int VestirPiso(MeshRenderer mr, string clave)
+        {
+            var cubo = mr.transform; var s = cubo.localScale;
+            bool calle = clave.StartsWith("Calle") || clave.StartsWith("Camino") || clave.StartsWith("Asfalto");
+            int nx = Mathf.Max(1, Mathf.RoundToInt(s.x / 3.83f)), nz = Mathf.Max(1, Mathf.RoundToInt(s.z / 3.83f));
+            if (nx * nz > 900) return 0;                                      // pisos gigantes: se dejan como estan
+            var raiz = Raiz_(cubo, s);
+            float cx = s.x / nx, cz = s.z / nz, yBase = s.y * 0.5f - 0.16f;   // el plano de la loseta queda apenas bajo la cara del cubo: las lineas de calle y flechas siguen viendose
+            var mat = TinteDeZona(mr.sharedMaterial);
+            int hash = Mathf.Abs(Hash(cubo.name + cubo.position.x.ToString("0")));
+            int n = 0;
+            for (int ix = 0; ix < nx; ix++)
+                for (int iz = 0; iz < nz; iz++)
+                {
+                    int h = (hash + ix * 7 + iz * 13 + ix * iz) % 10;
+                    string prefab;
+                    if (calle) prefab = "P_Mod_Piso_Asfalto";
+                    else if (clave.StartsWith("CD_Piso") || clave.StartsWith("Plaza")) prefab = "P_Mod_Piso_Baldosa";
+                    else prefab = h < 6 ? "P_Mod_Piso_Concreto" : h < 8 ? "P_Mod_Piso_ConcretoRoto" : h < 9 ? "P_Mod_Piso_ConcretoRoto_Var90" : "P_Mod_Piso_ConcretoRoto_Var180";
+                    var g = P(prefab); if (g == null) continue;
+                    var rs = g.GetComponentsInChildren<Renderer>(true); if (rs.Length == 0) continue;
+                    var b = rs[0].bounds; for (int i = 1; i < rs.Length; i++) b.Encapsulate(rs[i].bounds);
+                    var pos = new Vector3(-s.x * 0.5f + (ix + 0.5f) * cx, yBase, -s.z * 0.5f + (iz + 0.5f) * cz);
+                    var t = Poner(raiz, prefab, pos, 0f, new Vector3(cx / Mathf.Max(0.01f, b.size.x), 1f, cz / Mathf.Max(0.01f, b.size.z)));
+                    if (t == null) continue;
+                    foreach (var r in t.GetComponentsInChildren<Renderer>(true)) r.sharedMaterial = mat;
+                    n++;
+                }
+            if (n > 0) mr.enabled = false; else Object.DestroyImmediate(raiz.gameObject);
+            return n;
+        }
+
         static bool EsMuro(string clave, Vector3 s)
         {
             switch (clave)

@@ -99,6 +99,7 @@ namespace SP.Presentation
         }
 
         MeshRenderer rend;
+        Renderer[] arte;   // hijos de "ArteOp": el cubo ya no se dibuja y los modulos del kit lo reemplazan; el tinte de dano tiene que llegarles tambien
         Color baseColor;
         Vector3 baseScale;
         bool cached;
@@ -109,6 +110,8 @@ namespace SP.Presentation
             cached = true;
             rend = GetComponent<MeshRenderer>();
             if (rend != null) baseColor = rend.sharedMaterial.color;
+            var raizArte = transform.Find("ArteOp");
+            if (raizArte != null) arte = raizArte.GetComponentsInChildren<Renderer>(true);
             baseScale = transform.localScale;
             if (currentHealth < 0) currentHealth = maxHealth;
         }
@@ -175,6 +178,12 @@ namespace SP.Presentation
             Collapse();
         }
 
+        void Tinte(Color c)
+        {
+            CubeFxReactor.WriteTint(rend, c);
+            if (arte != null) foreach (var r in arte) CubeFxReactor.WriteTint(r, c);
+        }
+
         void ApplyStageLook(int stage)
         {
             if (rend == null) return;
@@ -183,7 +192,7 @@ namespace SP.Presentation
             // arde) no le pisa el tinte de fuego con el oscurecimiento
             // normal -- se oscurece EL FUEGO, no el color de base.
             var colorBase = EstaEncendido ? ColorFuego : baseColor;
-            CubeFxReactor.WriteTint(rend, Color.Lerp(colorBase, Color.black, darken));
+            Tinte(Color.Lerp(colorBase, Color.black, darken));
 
             float squash = 1f - stage * 0.12f;
             transform.localScale = new Vector3(baseScale.x, baseScale.y * squash, baseScale.z);
@@ -229,7 +238,7 @@ namespace SP.Presentation
             EstaEncendido = true;
             temporizadorExplosion = demoraExplosion;
             if (!Encendidos.Contains(this)) Encendidos.Add(this);
-            if (rend != null) CubeFxReactor.WriteTint(rend, ColorFuego);
+            if (rend != null) Tinte(ColorFuego);
         }
 
         // Estalla sola por el timer, no por quedarse sin vida -- un barril
