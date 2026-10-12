@@ -92,8 +92,12 @@ namespace SP.Operacion
 
         void Pintar(float t)
         {
+            // Defensa: tras cargar una partida o recompilar en Play el bloque puede faltar (no se serializa) y los anillos pueden haberse destruido.
+            if (anillos == null || rendsAnillos == null) return;
+            if (bloque == null) bloque = new MaterialPropertyBlock();
             for (int i = 0; i < anillos.Length; i++)
             {
+                if (anillos[i] == null || rendsAnillos[i] == null) continue;
                 // Cada anillo nace chico y se expande hasta RadioDelAnillo mientras se desvanece; el segundo va a medio ciclo del primero.
                 float ciclo = Mathf.Repeat(t * FrecuenciaDeLatido * 0.5f + i * 0.5f, 1f);
                 float escala = Mathf.Lerp(0.35f, 1f, ciclo) * RadioDelAnillo * 2f;
