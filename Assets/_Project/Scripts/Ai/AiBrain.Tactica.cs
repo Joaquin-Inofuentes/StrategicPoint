@@ -124,8 +124,16 @@ namespace SP.Ai
             SP.Player.PedidoDeCuracion.SoltarSiEsElEnfermero(self);
             LiberarCobertura();
             seguirAuto = false;
+            mantienePosicion = false;
             if (Quieto) Quieto = false;
         }
+
+        // BUG REAL (RTS): una orden de mover a mas de DistanciaParaSeguir (12,5 m) del jugador se deshacia sola. Al llegar, el aliado
+        // quedaba "libre" y TickSeguirAlJugador lo mandaba de vuelta con el lider: caminaba hasta el punto y volvia (medido en Play: ordenado
+        // a 12 m, llegaba y regresaba a 4 m del lider en ~2 s). Ahora el punto al que lo mandaste es donde se queda, hasta una orden nueva
+        // (cualquiera pasa por NuevaOrden) o hasta que el jugador se aleje mas que RadioDeRegresoForzado (45 m: ahi vuelve si o si).
+        bool mantienePosicion;
+        public bool MantienePosicion => mantienePosicion;
 
         // Feedback de deteccion: el enemigo que ve a la escuadra marca un "!"
         // rojo sobre su cabeza y suena un aviso (limitado para no saturar).
@@ -530,7 +538,7 @@ namespace SP.Ai
             // estar montando un vehiculo, o una cobertura pedida a mano
             // (coberturaPorOrden) -- eso solo se suelta con otra orden.
             bool enCombateSinOrden = (State == AiState.Chase || State == AiState.Attack) && !orderIsAttack;
-            bool libre = (State == AiState.Idle || State == AiState.Patrol || enCombateSinOrden) && !hasOrder && mountTarget == null;
+            bool libre = (State == AiState.Idle || State == AiState.Patrol || enCombateSinOrden) && !hasOrder && mountTarget == null && !mantienePosicion;
             if (!libre || yendoACobertura) return;
             if (enCobertura && (coberturaPorOrden || !AjustesDeEscuadra.SeguirDesdeCobertura)) return;
             // WP4 (#074): un aliado que pelea desde SU cobertura no la suelta por seguir al jugador mientras este no se aleje de verdad

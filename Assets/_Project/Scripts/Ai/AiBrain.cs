@@ -1028,6 +1028,7 @@ namespace SP.Ai
 
                         EventBus.Instance.Publish(new OrderCompletedEvent(self.Id));
                         hasOrder = false;
+                        mantienePosicion = self.Team == SP.Combat.TeamId.Player && !orderIsAttack;   // ver TickSeguirAlJugador: el punto ordenado se respeta
                         SetState(AiState.Patrol);
                     }
                     break;

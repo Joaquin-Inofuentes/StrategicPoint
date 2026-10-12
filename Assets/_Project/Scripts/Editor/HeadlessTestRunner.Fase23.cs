@@ -28,6 +28,7 @@ namespace SP.EditorTools
             Fase23_RomboSinOclusion();
             Fase23_AgachadoContagio();
             Fase23_FormacionLateral(vega, kes, doc);
+            Fase23_OrdenDeMoverSeRespeta(vega, kes);
         }
 
         // La suite corre en Edit mode, donde Unity NO llama Awake/OnEnable/OnDisable a un MonoBehaviour comun (ver
@@ -127,6 +128,46 @@ namespace SP.EditorTools
             SP.Ai.AjustesDeEscuadra.Lider = prevLider;
             SP.Ai.AjustesDeEscuadra.DistanciaLateralFormacion = prevLat;
             SP.Ai.AjustesDeEscuadra.DistanciaAtrasFormacion = prevAtr;
+        }
+
+
+        // BUG REAL (RTS): un aliado mandado a mas de DistanciaParaSeguir del lider llegaba y volvia solo con el lider (auto-seguir).
+        // Ahora se queda donde se le ordeno (MantienePosicion) y solo vuelve si el lider se aleja mas que RadioDeRegresoForzado.
+        static void Fase23_OrdenDeMoverSeRespeta(SP.Actors.Soldier vega, SP.Actors.Soldier kes)
+        {
+            TestLog.Step("Probando Fase23_OrdenDeMoverSeRespeta: el aliado ordenado lejos del lider se queda en su punto");
+            var prevLider = SP.Ai.AjustesDeEscuadra.Lider;
+            var prevSeguir = SP.Ai.AjustesDeEscuadra.DistanciaParaSeguir;
+            SP.Ai.AjustesDeEscuadra.Lider = vega;
+            SP.Ai.AjustesDeEscuadra.DistanciaParaSeguir = 12.5f;
+            vega.transform.position = Vector3.zero;
+            kes.transform.position = new Vector3(2.5f, 0, -1.5f);
+            kes.Brain.CancelOrder();
+            var setState = typeof(SP.Ai.AiBrain).GetMethod("SetState", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            setState.Invoke(kes.Brain, new object[] { SP.Ai.AiState.Idle });
+            var enemigosApagados = new System.Collections.Generic.List<GameObject>();
+            foreach (var e in SP.Core.ActorRegistry.All)
+                if (e != null && e.Team == SP.Combat.TeamId.Enemy && e.gameObject.activeSelf) { e.gameObject.SetActive(false); enemigosApagados.Add(e.gameObject); }
+            SP.Core.ActorRegistry.Invalidate();
+
+            var destino = new Vector3(20f, 0f, 0f);   // a 20 m del lider: mas que DistanciaParaSeguir
+            SP.Player.OrderService.IssueMoveOrder(kes, destino);
+            for (int i = 0; i < 100; i++) SP.Ai.WorldSimulationDriver.Step(0.1f);   // 10 s
+            float dMeta = Vector3.Distance(new Vector3(kes.transform.position.x, 0f, kes.transform.position.z), destino);
+            Check($"Llego al punto ordenado y se quedo ahi (a {dMeta:0.0} m, estado {kes.Brain.State}, mantiene={kes.Brain.MantienePosicion})", dMeta < 3f && kes.Brain.MantienePosicion && kes.Brain.State != SP.Ai.AiState.Follow);
+
+            vega.transform.position = new Vector3(0f, 0f, 60f);   // el lider se va mas de RadioDeRegresoForzado (45 m)
+            // En Edit mode Time.time no avanza: el enfriamiento del regreso forzado (proximoRegresoForzado) que dejo una prueba anterior no vence nunca.
+            typeof(SP.Ai.AiBrain).GetField("proximoRegresoForzado", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).SetValue(kes.Brain, -1f);
+            for (int i = 0; i < 40; i++) SP.Ai.WorldSimulationDriver.Step(0.1f);
+            Check($"Si el lider se aleja mas de 45 m, vuelve con el (estado {kes.Brain.State})", kes.Brain.State == SP.Ai.AiState.Follow);
+
+            kes.Brain.CancelOrder();
+            Check("Una orden nueva suelta el anclaje", !kes.Brain.MantienePosicion);
+            foreach (var e in enemigosApagados) e.SetActive(true);
+            SP.Core.ActorRegistry.Invalidate();
+            SP.Ai.AjustesDeEscuadra.Lider = prevLider;
+            SP.Ai.AjustesDeEscuadra.DistanciaParaSeguir = prevSeguir;
         }
 
                 // Deshabilitado: probaba UnitLocatorCylinder.IgnorarOclusion, una
