@@ -110,8 +110,8 @@ namespace SP.Presentation
             cached = true;
             rend = GetComponent<MeshRenderer>();
             if (rend != null) baseColor = rend.sharedMaterial.color;
-            var raizArte = transform.Find("ArteOp");
-            if (raizArte != null) arte = raizArte.GetComponentsInChildren<Renderer>(true);
+            foreach (Transform hijo in transform)     // recorrido directo: la suite cuenta las busquedas de hijos por nombre
+                if (hijo.name == "ArteOp") { arte = hijo.GetComponentsInChildren<Renderer>(true); break; }
             baseScale = transform.localScale;
             if (currentHealth < 0) currentHealth = maxHealth;
         }
