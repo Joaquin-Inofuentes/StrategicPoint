@@ -1,0 +1,79 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
+using UnityEditor;
+using UnityEngine;
+using SP.Actors;
+using SP.Combat;
+using SP.Core;
+
+namespace SP.EditorTools
+{
+    // TEMPORAL (validacion 175-193): mide en juego tiros por equipo, impactos contra paredes y atascos de un grupo.
+    public static class ZzMedir
+    {
+        public static int[] disparos = new int[2];
+        public static int[] impactosObstaculo = new int[2];
+        static IDisposable s1, s2;
+        class Pista { public Soldier s; public Vector3 meta; public Vector3 ult; public float tUlt; public float parado; public float maxParado; public bool llego; public float tLlego; }
+        static readonly List<Pista> pistas = new List<Pista>();
+        static float t0; static bool corriendo; static float ultimoMuestreo;
+        public static float duracion;
+
+        public static void Contar()
+        {
+            s1?.Dispose(); s2?.Dispose();
+            disparos[0] = disparos[1] = 0; impactosObstaculo[0] = impactosObstaculo[1] = 0;
+            s1 = EventBus.Instance.Subscribe<ShotFiredEvent>(e => { var a = ActorRegistry.FindById(e.ShooterId); if (a != null) disparos[(int)a.Team]++; });
+            s2 = EventBus.Instance.Subscribe<EnvironmentHitEvent>(e => { var a = ActorRegistry.FindById(e.ShooterId); if (a != null && e.Kind == EnvironmentHitKind.Obstacle) impactosObstaculo[(int)a.Team]++; });
+        }
+
+        public static void Seguir(IEnumerable<Soldier> grupo, Vector3 meta)
+        {
+            pistas.Clear();
+            foreach (var s in grupo) pistas.Add(new Pista { s = s, meta = meta, ult = s.transform.position, tUlt = Time.time });
+            t0 = Time.time; ultimoMuestreo = t0;
+            if (!corriendo) { corriendo = true; EditorApplication.update += Tick; }
+        }
+
+        static void Tick()
+        {
+            if (!Application.isPlaying) { EditorApplication.update -= Tick; corriendo = false; return; }
+            if (Time.time - ultimoMuestreo < 0.5f) return;
+            ultimoMuestreo = Time.time; duracion = Time.time - t0;
+            foreach (var p in pistas)
+            {
+                if (p.s == null || !p.s.Health.IsAlive) continue;
+                var pos = p.s.transform.position;
+                float dMeta = Vector2.Distance(new Vector2(pos.x, pos.z), new Vector2(p.meta.x, p.meta.z));
+                if (!p.llego && dMeta < 4f) { p.llego = true; p.tLlego = Time.time - t0; }
+                if (p.llego) continue;
+                if (Time.time - p.tUlt >= 3f)
+                {
+                    float mov = Vector2.Distance(new Vector2(pos.x, pos.z), new Vector2(p.ult.x, p.ult.z));
+                    if (mov < 0.6f) p.parado += 3f; else p.parado = 0f;
+                    if (p.parado > p.maxParado) p.maxParado = p.parado;
+                    p.ult = pos; p.tUlt = Time.time;
+                }
+            }
+        }
+
+        public static string Resultado()
+        {
+            var sb = new StringBuilder();
+            sb.Append("t=" + duracion.ToString("0.0") + "s ");
+            int llegaron = 0; float peor = 0f;
+            foreach (var p in pistas)
+            {
+                if (p.s == null) continue;
+                var pos = p.s.transform.position;
+                float d = Vector2.Distance(new Vector2(pos.x, pos.z), new Vector2(p.meta.x, p.meta.z));
+                if (p.llego) llegaron++;
+                if (p.maxParado > peor) peor = p.maxParado;
+                sb.Append("[" + p.s.name + (p.llego ? " llego a " + p.tLlego.ToString("0") + "s" : " a " + d.ToString("0.0") + "m") + " parado_max=" + p.maxParado.ToString("0") + "s] ");
+            }
+            sb.Append("| llegaron=" + llegaron + "/" + pistas.Count + " peor_parada=" + peor.ToString("0") + "s | tiros aliados=" + disparos[0] + " enemigos=" + disparos[1] + " | impactos a obstaculos aliados=" + impactosObstaculo[0] + " enemigos=" + impactosObstaculo[1]);
+            return sb.ToString();
+        }
+    }
+}

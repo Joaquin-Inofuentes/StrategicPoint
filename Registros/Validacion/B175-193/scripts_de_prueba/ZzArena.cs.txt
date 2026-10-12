@@ -1,0 +1,145 @@
+using System.Collections.Generic;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.AI;
+using Unity.AI.Navigation;
+using SP.Actors;
+using SP.Combat;
+using SP.Core;
+using SP.Presentation;
+
+namespace SP.EditorTools
+{
+    // TEMPORAL (validacion de bugs 175-193): arma en Play una arena con la distribucion de las capturas de referencia
+    // (plaza con setos/bancos/casas, granja con galpon/toldos/cajones), hornea su NavMesh y deja crear soldados.
+    public static class ZzArena
+    {
+        public static Vector3 Origen = new Vector3(700f, 0f, 700f);
+        static GameObject raiz;
+        static readonly List<GameObject> vivos = new List<GameObject>();
+
+        static Material Mat(Color c)
+        {
+            var sh = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            var m = new Material(sh); m.color = c;
+            if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", c);
+            return m;
+        }
+
+        static GameObject Caja(string n, Vector3 centroLocal, Vector3 tam, Color c, int vida = 0, float yaw = 0f)
+        {
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = n; go.transform.SetParent(raiz.transform, false);
+            go.transform.position = Origen + centroLocal + Vector3.up * tam.y * 0.5f;
+            go.transform.localScale = tam;
+            go.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            go.GetComponent<Renderer>().sharedMaterial = Mat(c);
+            if (vida > 0)
+            {
+                var m = go.AddComponent<ObstacleMarker>();
+                var so = new SerializedObject(m);
+                so.FindProperty("maxHealth").intValue = vida;
+                so.ApplyModifiedPropertiesWithoutUndo();
+            }
+            return go;
+        }
+
+        public static string Construir(int variante)
+        {
+            Limpiar();
+            raiz = new GameObject("ZzArena");
+            var suelo = Caja("Suelo", new Vector3(0, -1f, 0), new Vector3(150f, 1f, 150f), variante == 1 ? new Color(0.45f, 0.43f, 0.40f) : new Color(0.50f, 0.42f, 0.32f));
+            suelo.transform.position = Origen + Vector3.down * 0.5f;
+            var teja = new Color(0.55f, 0.32f, 0.25f);
+            var pared = new Color(0.72f, 0.70f, 0.62f);
+            var seto = new Color(0.20f, 0.38f, 0.18f);
+            var banco = new Color(0.65f, 0.15f, 0.12f);
+            var madera = new Color(0.45f, 0.33f, 0.20f);
+            var lona = new Color(0.30f, 0.45f, 0.30f);
+            if (variante == 1)
+            {
+                // PLAZA (captura 1): casas al norte y al oeste, setos paralelos en el centro, bancos, estatua.
+                Caja("Casa_N1", new Vector3(-22, 0, 34), new Vector3(14, 6, 9), pared);
+                Caja("Casa_N2", new Vector3(8, 0, 34), new Vector3(16, 6, 9), pared);
+                Caja("Casa_E", new Vector3(42, 0, 8), new Vector3(9, 6, 16), pared);
+                Caja("Casa_O", new Vector3(-40, 0, 6), new Vector3(10, 6, 20), teja);
+                Caja("Casa_SE", new Vector3(30, 0, -28), new Vector3(22, 5, 9), teja);
+                Caja("Seto_1", new Vector3(-6, 0, 6), new Vector3(1.2f, 1.3f, 18), seto, 400);
+                Caja("Seto_2", new Vector3(-6, 0, -16), new Vector3(1.2f, 1.3f, 14), seto, 400);
+                Caja("Seto_N", new Vector3(10, 0, 22), new Vector3(30, 1.3f, 1.2f), seto, 400);
+                for (int i = 0; i < 6; i++) Caja("Banco_" + i, new Vector3(-12 + i * 7, 0, 18), new Vector3(2.2f, 0.7f, 0.7f), banco, 200);
+                Caja("Banco_a", new Vector3(14, 0, -2), new Vector3(0.7f, 0.7f, 2.2f), banco, 200);
+                Caja("Banco_b", new Vector3(20, 0, 4), new Vector3(0.7f, 0.7f, 2.2f), banco, 200, 20f);
+                Caja("Muro_bajo", new Vector3(8, 0, -14), new Vector3(10, 1.1f, 0.8f), pared, 300);
+                var est = GameObject.CreatePrimitive(PrimitiveType.Cylinder); est.name = "Estatua"; est.transform.SetParent(raiz.transform, false);
+                est.transform.position = Origen + new Vector3(0, 2f, 28); est.transform.localScale = new Vector3(1.4f, 2f, 1.4f);
+                est.GetComponent<Renderer>().sharedMaterial = Mat(new Color(0.35f, 0.35f, 0.35f));
+            }
+            else
+            {
+                // GRANJA (captura 3): galpon largo, toldos, cajones, muro perimetral, tractor.
+                Caja("Galpon", new Vector3(-18, 0, -14), new Vector3(34, 5, 10), madera, 0, 25f);
+                Caja("Casa_1", new Vector3(8, 0, 36), new Vector3(12, 5, 8), pared);
+                Caja("Casa_2", new Vector3(32, 0, 30), new Vector3(10, 5, 8), pared);
+                Caja("Muro_O", new Vector3(-40, 0, 10), new Vector3(1, 2.5f, 46), teja, 500);
+                Caja("Toldo_1", new Vector3(-26, 0, 14), new Vector3(6, 2.4f, 4), lona, 250, 35f);
+                Caja("Toldo_2", new Vector3(20, 0, -6), new Vector3(8, 2.2f, 4.5f), lona, 250, 8f);
+                Caja("Toldo_3", new Vector3(-4, 0, -26), new Vector3(5, 2.2f, 3.5f), lona, 250, -20f);
+                Caja("Tractor", new Vector3(2, 0, 18), new Vector3(3f, 2f, 4.5f), new Color(0.8f, 0.35f, 0.1f), 350);
+                for (int i = 0; i < 6; i++) Caja("Cajon_" + i, new Vector3(-8 + i * 3.2f, 0, -2 + (i % 2) * 2.4f), new Vector3(1.3f, 1.2f, 1.3f), madera, 150, i * 17f);
+                Caja("Troncos", new Vector3(26, 0, 14), new Vector3(8, 1.2f, 2.2f), madera, 200);
+            }
+            // La superficie va en la RAIZ: con CollectObjects.Children sobre un objeto vacio la arena quedaba sin NavMesh.
+            var s = raiz.AddComponent<NavMeshSurface>();
+            s.collectObjects = CollectObjects.Children;
+            s.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
+            Physics.SyncTransforms();
+            s.BuildNavMesh();
+            Coberturas.Registrar();
+            return "arena " + variante + " lista, navmesh=" + (s.navMeshData != null);
+        }
+
+        public static string Soldado(bool aliado, string nombre, RoleType rol, Vector3 local, float yaw)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(aliado ? "Assets/_Project/Prefabs/P_Soldier_Ally.prefab" : "Assets/_Project/Prefabs/P_Soldier_Enemy.prefab");
+            var p = Origen + local;
+            if (NavMesh.SamplePosition(p, out var h, 8f, NavMesh.AllAreas)) p = h.position;
+            var go = Object.Instantiate(prefab, p + Vector3.up * 0.8f, Quaternion.Euler(0f, yaw, 0f));   // pivote al centro del cuerpo: con 0,1 nacian hundidos 0,7 m
+            go.name = nombre; vivos.Add(go);
+            var so = go.GetComponent<Soldier>();
+            so.Configure(nombre, aliado ? TeamId.Player : TeamId.Enemy, rol, 486);
+            var pool = Object.FindAnyObjectByType<ProjectilePool>();
+            if (so.Weapon != null && pool != null) so.Weapon.SetPool(pool);
+            if (so.Brain != null) so.Brain.ConfigurarAlcances(aliado ? 20f : 22f, aliado ? 12f : 13f);
+            return nombre;
+        }
+
+        static NavMeshSurface superficie;
+        public static string Muro(string n, Vector3 centroLocal, Vector3 tam, int vida = 0)
+        {
+            Caja(n, centroLocal, tam, new Color(0.62f, 0.60f, 0.55f), vida);
+            return n;
+        }
+        public static void Rehornear()
+        {
+            Physics.SyncTransforms();
+            var s = raiz.GetComponentInChildren<NavMeshSurface>();
+            s.BuildNavMesh();
+            Coberturas.Registrar();
+        }
+
+        public static void LimpiarSoldados()
+        {
+            foreach (var g in vivos) if (g != null) Object.DestroyImmediate(g);
+            vivos.Clear();
+        }
+
+        public static void Limpiar()
+        {
+            foreach (var g in vivos) if (g != null) Object.DestroyImmediate(g);
+            vivos.Clear();
+            if (raiz != null) Object.DestroyImmediate(raiz);
+            raiz = null;
+        }
+    }
+}

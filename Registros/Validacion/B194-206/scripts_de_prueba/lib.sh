@@ -1,5 +1,5 @@
 P="C:/_Proyectos privados/DV_C6_StrategicPoint"
-U() { unity command eval --timeout 100 --caller plugin --skill unity-cli "$1" 2>&1 | tail -1 | cut -c1-${2:-220}; }
+U() { unity command eval --timeout 100 --caller plugin --skill unity-cli "$1" 2>&1 | grep -a "^eval" | head -1 | cut -c1-${2:-220}; }
 UF() { U "$(cat $1)" ${2:-220}; }
 cam() { U "$(sed "s/__H__/$1/g; s/__X__/$2/; s/__Z__/$3/" /tmp/e/cam.cs)" 120; }
 cap() { U "UnityEngine.ScreenCapture.CaptureScreenshot(\"$P/Registros/Validacion/B194-206/$1.png\"); return 1;" 60 >/dev/null; sleep 1.2; }

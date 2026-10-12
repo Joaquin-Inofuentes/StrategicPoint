@@ -9,7 +9,7 @@ unity command editor_play --caller plugin --skill unity-cli >/dev/null 2>&1; sle
 # ---------- #194 (Infiltrar: de noche, con enemigos)
 U 'return SP.EditorTools.OperacionPrueba.Arrancar(1);' 80 >/dev/null; sleep 4
 r=$(UF /tmp/e2/i194.cs 300 | R); log "### #194 enemigo de cerca: $r"
-U 'var p=(UnityEngine.Vector3)System.AppDomain.CurrentDomain.GetData("zzE"); var ci=System.Globalization.CultureInfo.InvariantCulture; return p.x.ToString("0.0",ci)+" "+p.y.ToString("0.0",ci)+" "+p.z.ToString("0.0",ci);' 80 | R > /tmp/e2/pe.txt; read PX PY PZ < /tmp/e2/pe.txt
+U 'var p=(UnityEngine.Vector3)System.AppDomain.CurrentDomain.GetData("zzE"); var ci=System.Globalization.CultureInfo.InvariantCulture; return p.x.ToString("0.0",ci)+" "+p.y.ToString("0.0",ci)+" "+p.z.ToString("0.0",ci);' 300 | R > /tmp/e2/pe.txt; read PX PY PZ < /tmp/e2/pe.txt
 wf $D/194_enemigo_de_cerca_frente $PX 1.0 $PZ 8 0 4.5
 wf $D/194_enemigo_de_cerca_costado $PX 1.0 $PZ 8 90 4.5
 # ---------- base: centro de datos
