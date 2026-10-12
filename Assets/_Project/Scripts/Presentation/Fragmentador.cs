@@ -47,7 +47,9 @@ namespace SP.Presentation
         {
             EnUso = false;
             Asentado = false;
-            if (Cuerpo != null) { Cuerpo.linearVelocity = Vector3.zero; Cuerpo.angularVelocity = Vector3.zero; }
+            // Un trozo ya asentado es kinematico (Asentar): Unity avisa por cada velocidad que se le asigna y el aviso salia en cada
+            // trozo liberado. Su velocidad ya es cero; al volver a lanzarlo se le saca lo kinematico antes de darle la suya.
+            if (Cuerpo != null && !Cuerpo.isKinematic) { Cuerpo.linearVelocity = Vector3.zero; Cuerpo.angularVelocity = Vector3.zero; }
             gameObject.SetActive(false);
         }
     }
