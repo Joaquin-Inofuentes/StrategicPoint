@@ -134,16 +134,45 @@ namespace SP.Presentation
 
             if (vehiculoDetectado != null)
             {
-                ConvertirEnCuadrado();
-                Color color = Color.gray;
-                if (vehiculoDetectado.Occupants.Count > 0)
-                {
-                    color = vehiculoDetectado.Bando == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
-                }
-                EnsureRenderer();
-                if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterialCompartido(color);
+                ConvertirEnCuadrado();   // como siempre: el icono de un vehiculo es un cuadrado (salvo el tuyo, ver PintarVehiculo)
+                PintarVehiculo(vehiculoDetectado);
                 return;
             }
+        }
+
+        // Bug #224 ("el minimapa se bugeo: no me veo a mi, deberia tener un icono especial yo como tanque y los enemigos"): con el jugador
+        // dentro de un vehiculo su soldado queda oculto y el tanque se veia como un cuadrado azul igual al de cualquier aliado.
+        //   * el vehiculo que maneja el jugador: TRIANGULO amarillo (el color "yo") que gira con el vehiculo;
+        //   * vehiculo aliado con gente: cuadrado azul; enemigo con gente: cuadrado rojo; vacio: gris.
+        bool vehiculoMioPintado, vehiculoPintado, formaGuardada, eraCuadrado;
+        int ocupantesPintados = -1;
+        bool EsDelJugador(SP.Vehicles.Vehicle v)
+        {
+            foreach (var o in v.Occupants) if (o != null && o.Brain != null && o.Brain.IsPossessedByPlayer) return true;
+            return false;
+        }
+
+        void PintarVehiculo(SP.Vehicles.Vehicle v)
+        {
+            bool mio = EsDelJugador(v);
+            if (vehiculoPintado && mio == vehiculoMioPintado && v.Occupants.Count == ocupantesPintados && selfRenderer != null && selfRenderer.sharedMaterial != null) return;
+            vehiculoPintado = true; vehiculoMioPintado = mio; ocupantesPintados = v.Occupants.Count;
+            Color color = Color.gray;
+            if (mio) color = DiamondGizmo.ColorObjetivo;
+            else if (v.Occupants.Count > 0) color = v.Bando == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
+            // La forma solo cambia por "yo" (triangulo); al dejar de serlo vuelve a la que tenia (cuadrado o disco, segun como se armo el icono).
+            if (mio)
+            {
+                if (!formaGuardada) { formaGuardada = true; eraCuadrado = esCuadrado; }
+                ConvertirEnTriangulo(); esCuadrado = false;
+            }
+            else if (formaGuardada)
+            {
+                formaGuardada = false; esTriangulo = false;
+                if (eraCuadrado) ConvertirEnCuadrado(); else ConvertirEnCirculo();
+            }
+            EnsureRenderer();
+            if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterialCompartido(color);
         }
 
         public void RepintarPorEquipo(bool forzar = false)
@@ -151,15 +180,7 @@ namespace SP.Presentation
             if (Target == null) return;
             if (!vehiculoResuelto) { vehiculoDetectado = Target.GetComponent<SP.Vehicles.Vehicle>(); vehiculoResuelto = true; }   // WP11: cacheado (antes un GetComponent por icono por frame)
             var vehicle = vehiculoDetectado;
-            if (vehicle != null)
-            {
-                Color color = Color.gray;
-                if (vehicle.Occupants.Count > 0)
-                    color = vehicle.Bando == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
-                EnsureRenderer();
-                if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterialCompartido(color);
-                return;
-            }
+            if (vehicle != null) { PintarVehiculo(vehicle); return; }
 
             if (soldierDetectado == null) return;
             bool poseidoAhora = soldierDetectado.Team != TeamId.Enemy && soldierDetectado.Brain != null && soldierDetectado.Brain.IsPossessedByPlayer;
@@ -372,6 +393,7 @@ namespace SP.Presentation
 
         // Aliado caido: el icono parpadea en el minimapa (ver TickFollow).
         public bool CaidoParpadeando { get; private set; }
+        bool ocultoPorVehiculo;
 
         // Bug: "en el minimapa no se ven mis aliados". El radio visible del minimapa es de 110 m (OrthoSizeMinimo) y el icono de
         // un soldado medía 4 m: 3 px de un minimapa de 150 px. Los iconos de SOLDADOS se escalan con el zoom real de la camara del
@@ -487,12 +509,26 @@ namespace SP.Presentation
                 if (selfRenderer != null) selfRenderer.enabled = true;
                 if (conoDeVision != null) conoDeVision.gameObject.SetActive(true);
             }
+            // Un soldado propio dentro de un vehiculo no dibuja su icono: el del vehiculo (amarillo si lo manejas) ya dice donde esta.
+            if (soldierDetectado != null && Application.isPlaying && soldierDetectado.Team == TeamId.Player)
+            {
+                bool montado = soldierDetectado.Brain != null && soldierDetectado.Brain.MontadoEnVehiculo;
+                if (montado != ocultoPorVehiculo)
+                {
+                    ocultoPorVehiculo = montado;
+                    EnsureRenderer();
+                    if (selfRenderer != null) selfRenderer.enabled = !montado;
+                    if (conoDeVision != null) conoDeVision.gameObject.SetActive(!montado);
+                }
+                if (montado) return true;
+            }
+            if (vehiculoDetectado != null && Application.isPlaying) { PintarVehiculo(vehiculoDetectado); AjustarEscalaAlZoom(vehiculoMioPintado ? 1.5f : 1.1f); }
             if (soldierDetectado != null && Application.isPlaying) AjustarEscalaAlZoom(1f);
             // El poseido se dibuja un poco mas alto que el resto: con la
             // escuadra pegada al jugador (caso comun al arrancar la mision)
             // los discos coplanares se pisan entre si y "vos" quedabas
             // indistinguible de un aliado cualquiera debajo tuyo.
-            float alturaIcono = height + (esPoseidoPintado ? 0.5f : 0f);
+            float alturaIcono = height + (esPoseidoPintado ? 0.5f : 0f) + (vehiculoMioPintado ? 1f : 0f);
             // WP11: ~460 iconos de obstaculo (quietos) escribian su posicion cada frame (WorldUiDirector.LateUpdate era 1,4 ms constantes). Solo se
             // escribe si el objetivo se movio; el resto sigue pasando por aca igual (muertes, niebla y color no cambian).
             var posObjetivo = Target.position;

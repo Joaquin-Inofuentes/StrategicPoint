@@ -25,6 +25,18 @@ namespace SP.Ai
         // Bug #229: 1 = ráfagas normales. Los milicianos usan 2 (ráfagas del doble de largo y pausas ~40 % mas cortas).
         public const int FactorDeRafagaMiliciano = 2;
         public int FactorDeRafaga = 1;
+        public const float ProbabilidadDeAgacharseEntreRafagas = 0.5f;
+        float agachadoAlAzarRestante;
+
+        // Postura agachada "tactica" a cielo abierto (en cobertura ya la maneja el ciclo oculto/asoma): mientras recarga el arma
+        // y durante una parte de las pausas entre rafagas. Se llama una vez por tick en Attack.
+        bool AgachadoTactico(float dt)
+        {
+            if (agachadoAlAzarRestante > 0f) agachadoAlAzarRestante -= dt;
+            if (self == null || self.Weapon == null) return false;
+            if (self.Weapon.IsReloading) return true;
+            return agachadoAlAzarRestante > 0f;
+        }
 
         // Multiplicadores de alcance de la partida principal (ver EffectiveAttackRange / EffectiveVisionRange).
         // Los soldados del nivel traen 22/13 (enemigo) y 20/12 (aliado): con estos factores llegan a ~40/35 m.
@@ -70,7 +82,13 @@ namespace SP.Ai
 
             if (!self.Weapon.TryFire(self.transform.position, direccion, DispersionMinima)) return false;
             rafagaRestante--;
-            if (rafagaRestante <= 0) pausaRestante = Random.Range(PausaMin, PausaMax) / (FactorDeRafaga > 1 ? 1.6f : 1f);
+            if (rafagaRestante <= 0)
+            {
+                pausaRestante = Random.Range(PausaMin, PausaMax) / (FactorDeRafaga > 1 ? 1.6f : 1f);
+                // Bug #227 ("que se agachen al recargar o de manera aleatoria"): a veces se agacha durante la pausa entre rafagas.
+                // Corto (<= 0,5 s) para que el parpadeo de la linea de tiro no lo saque de Attack (histeresis de 0,6 s).
+                if (!enCobertura && Random.value < ProbabilidadDeAgacharseEntreRafagas) agachadoAlAzarRestante = Mathf.Min(pausaRestante, 0.5f);
+            }
             return true;
         }
 

@@ -1199,7 +1199,7 @@ namespace SP.Ai
                     else if (enCobertura)
                         self.Motor.SetCrouching(true);
                     else
-                        self.Motor.SetCrouching(PuedeDispararAgachado(dt));   // WP4 (#080): a cielo abierto agachado solo si desde agachado se ve al blanco
+                        self.Motor.SetCrouching(AgachadoTactico(dt) || PuedeDispararAgachado(dt));   // WP4 (#080): a cielo abierto agachado solo si desde agachado se ve al blanco; #227: ademas al recargar y al azar entre rafagas
 
                     self.Motor.LookTowards(target.transform.position, dt);
                     self.Weapon.Tick(dt);

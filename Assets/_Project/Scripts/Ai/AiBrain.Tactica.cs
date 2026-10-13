@@ -36,7 +36,7 @@ namespace SP.Ai
         // jugador; la decision de si conviene cubrirse sigue siendo la ponderada (CoberturasPuntuadas.Presion).
         // Bug #061: radio de la cobertura "a mano" que se toma aun sin presion (ver TickCoberturaTactica).
         // WP4 (#074/#081): era 8 m (const). Estatico para que el banco pueda medir un valor contra otro.
-        public static float RadioDeCoberturaAMano = 13f;
+        public static float RadioDeCoberturaAMano = 18f;   // bug #227 ("que usen las coberturas"): antes 13 m; medido en el blockout, solo el 21 % de los soldados en combate estaba cubierto
         bool BuscaCoberturaSolo => self != null && !SinCobertura && (CoberturaPropia || self.Team == TeamId.Enemy
             || (self.Team == TeamId.Player && self.Role != RoleType.Civilian && !IsPossessedByPlayer && !Pasivo));
 
@@ -381,7 +381,7 @@ namespace SP.Ai
 
             relojTactico -= dt;
             if (relojTactico > 0f) return false;
-            relojTactico = 1.2f + (self.Id % 5) * 0.15f;
+            relojTactico = 0.7f + (self.Id % 5) * 0.1f;   // #227: antes 1,2 s + 0,15 por Id: tardaban en decidir cubrirse
 
             float dActual = Vector3.Distance(self.transform.position, target.transform.position);
             // Decision ponderada: sano y sin presion NO se cubre (cubrirse cuesta fuego: solo dispara mientras asoma)...
