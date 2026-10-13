@@ -42,7 +42,7 @@ namespace SP.Operacion
             }
             if (modo == Modo.Resistir) return;
 
-            var outcome = Object.FindFirstObjectByType<GameOutcomeController>();
+            var outcome = GameOutcomeController.Activo;
             if (outcome == null) return;
 
             if (modo == Modo.ConRehen && rehen != null)
