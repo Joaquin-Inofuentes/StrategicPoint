@@ -119,7 +119,7 @@ namespace SP.UI
         public System.Action AlSoltarRadio;
         public bool BotonSoltarVisible => botonSoltar != null && botonSoltar.gameObject.activeSelf;
         public void MostrarBotonSoltar(bool si) { if (botonSoltar != null && botonSoltar.gameObject.activeSelf != si) botonSoltar.gameObject.SetActive(si); }
-        public void PulsarBotonSoltar() { if (botonSoltar != null && botonSoltar.gameObject.activeSelf) botonSoltar.onClick.Invoke(); }
+        public void PulsarBotonSoltar() { if (botonSoltar != null && botonSoltar.gameObject.activeSelf) botonSoltar.onClick?.Invoke(); }
 
         // Pone la lista de pasos. "hechos" marca los completados; "actual" es el paso en amarillo (-1 = ninguno).
         public void Fijar(IList<Paso> pasos, IList<bool> hechos, int actual)

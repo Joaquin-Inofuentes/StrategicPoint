@@ -64,7 +64,7 @@ namespace SP.Core
                 // Caso comun: un solo suscriptor, sin GetInvocationList (sin asignar memoria).
                 try
                 {
-                    action.Invoke(evt);
+                    action?.Invoke(evt);
                 }
                 catch (Exception e)
                 {

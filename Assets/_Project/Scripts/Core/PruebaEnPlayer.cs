@@ -36,7 +36,7 @@ namespace SP.Core
             public Transform objetivo;
             void LateUpdate()
             {
-                var c = Camera.main; if (c == null || objetivo == null) return;
+                var c = SP.Core.CamaraPrincipal.Actual; if (c == null || objetivo == null) return;
                 c.transform.position = objetivo.position - objetivo.forward * 9f + Vector3.up * 0.5f;
                 c.transform.rotation = Quaternion.LookRotation(objetivo.position - c.transform.position, Vector3.up);
             }
@@ -83,7 +83,7 @@ namespace SP.Core
             // Carteles: se apunta la camara a los 4 TextMesh mas cercanos al jugador y se fotografian (para ver letras mezcladas).
             var mir = gameObject.AddComponent<Mirador>();
             var textos = new System.Collections.Generic.List<TextMesh>();
-            var cam0 = Camera.main != null ? Camera.main.transform.position : Vector3.zero;
+            var cam0 = SP.Core.CamaraPrincipal.Actual != null ? SP.Core.CamaraPrincipal.Actual.transform.position : Vector3.zero;
             foreach (var tm in FindObjectsByType<TextMesh>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)) if (tm.text != null && tm.text.Trim().Length >= 5 && tm.GetComponent<MeshRenderer>() != null && tm.GetComponent<MeshRenderer>().bounds.size.x > 2.5f) textos.Add(tm);
             textos.Sort((a, b) => Vector3.Distance(a.transform.position, cam0).CompareTo(Vector3.Distance(b.transform.position, cam0)));
             int desajustados = 0; var fuenteUsada = textos.Count > 0 ? textos[0].font : null;
