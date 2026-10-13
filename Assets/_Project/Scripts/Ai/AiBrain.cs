@@ -511,6 +511,7 @@ namespace SP.Ai
         void SetState(AiState next)
         {
             if (State == next) return;
+            if (next == AiState.Attack) relojTactico = Mathf.Min(relojTactico, 0.15f);   // #227: al empezar a tirar decide su cobertura YA, no hasta 0,9 s despues
             // La cobertura elegida vale para la persecucion en curso. Si el
             // soldado sale de Chase (llego, lo perdio, le dieron una orden),
             // arrastrarla al proximo combate lo mandaria a esconderse detras
