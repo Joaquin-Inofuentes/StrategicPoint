@@ -8,6 +8,7 @@ using Unity.AI.Navigation;
 using SP.Actors;
 using SP.Ai;
 using SP.Combat;
+using SP.Operacion;
 using SP.Player;
 using SP.Presentation;
 using SP.Vehicles;
@@ -228,6 +229,16 @@ namespace SP.EditorTools
             EditorUtility.SetDirty(v);
         }
 
+        static void Objetivo(BlockoutObjetivo.Modo modo, string titulo, string texto, string zona, float radio, Vehicle tanque = null, Soldier rehen = null)
+        {
+            var g = new GameObject("Objetivo_Logica");
+            g.transform.SetParent(raiz, false);
+            var o = g.AddComponent<BlockoutObjetivo>();
+            o.modo = modo; o.titulo = titulo; o.texto = texto; o.radio = radio; o.vehiculoQueHayQueDestruir = tanque; o.rehen = rehen;
+            var z = zona != null ? GameObject.Find(zona) : null;
+            o.zona = z != null ? z.transform : null;
+        }
+
         // ---------------------------------------------------------------- base comun
         static List<Soldier> escuadra;
         static Vehicle blindado;
@@ -371,7 +382,7 @@ namespace SP.EditorTools
             Cubo("Contenedor_1", "Contenedor", -24f, 12f, 6f, 2.8f, 2.5f); Cubo("Contenedor_2", "Contenedor", 22f, 14f, 2.5f, 2.8f, 6f); Cubo("Contenedor_3", "Contenedor", -10f, 30f, 6f, 2.8f, 2.5f);
             Cob(10f, 8f); Cob(-4f, 16f, false); Cob(16f, 24f); Cob(-18f, 22f, false);
             Plataforma("Torre_Vigia", 0f, 24f, 8f, 8f, 3f);
-            Rampa("Rampa_Torre_O", 0f, 14f, 3f, 8f, 3f, 0f);   // sube de sur a norte hasta la torre
+            Rampa("Rampa_Torre_O", 0f, 12f, 3f, 8f, 3f, 0f);   // sube de sur a norte hasta la torre
             Cubo("Parapeto_Torre", "Cobertura", 0f, 27.5f, 8f, 1f, 1f, 3f, false);
             Muro("Muro_Trasero_O", -45f, -4f, 36f); Muro("Muro_Trasero_E", 4f, 45f, 36f);
             Zona("Objetivo_Radio", "Objetivo", 0f, 42f, 12f, 10f);
@@ -384,6 +395,7 @@ namespace SP.EditorTools
             Enemigo("Enemigo_Vigia_Torre", RoleType.Sniper, 0f, 24f, 3f);
             Enemigo("Enemigo_Flanker_O", RoleType.Flanker, -34f, 28f, 0f, Rect(-34f, 28f, 3f, 6f)); Enemigo("Enemigo_Flanker_E", RoleType.Flanker, 34f, 30f, 0f, Rect(34f, 30f, 3f, 6f));
             Enemigo("Enemigo_Radio", RoleType.Enemy, 0f, 40f);
+            Objetivo(BlockoutObjetivo.Modo.LlegarALaZona, "TOMA LA RADIO", "cruza el fortin hasta la zona amarilla", "Objetivo_Radio", 6f);
             return Cerrar("SC_Blockout_01", "Asalto: brechas. Medico: fosos. Francotirador: contra la torre. Gancho: 3 formas de entrar (puerta / brechas / flancos).");
         }
 
@@ -413,7 +425,7 @@ namespace SP.EditorTools
             // Nidos enemigos con rampa TRASERA (norte): (22,10) y (-22,35).
             Plataforma("Nido_Enemigo_E", 22f, 10f, 6f, 6f, 3.5f); Rampa("Rampa_Nido_E", 22f, 21f, 3f, 8f, 3.5f, 180f);
             Plataforma("Nido_Enemigo_O", -22f, 35f, 6f, 6f, 3.5f); Rampa("Rampa_Nido_O", -22f, 46f, 3f, 8f, 3.5f, 180f);
-            Cubo("Parapeto_E", "Cobertura", 22f, 12f, 6f, 1f, 1f, 3.5f, false); Cubo("Parapeto_O", "Cobertura", -22f, 37f, 6f, 1f, 1f, 3.5f, false);
+            Cubo("Parapeto_E", "Cobertura", 22f, 8f, 6f, 1f, 1f, 3.5f, false); Cubo("Parapeto_O", "Cobertura", -22f, 33f, 6f, 1f, 1f, 3.5f, false);
             Zona("Zona_Enemiga", "ZonaEnemiga", 0f, 20f, 50f, 70f);
             // Deposito.
             Cubo("Deposito_Edificio", "Casa", 0f, 66f, 14f, 5f, 8f); Cubo("Deposito_Caja1", "Contenedor", -10f, 58f, 4f, 2.8f, 2.5f); Cubo("Deposito_Caja2", "Contenedor", 10f, 60f, 4f, 2.8f, 2.5f);
@@ -423,6 +435,7 @@ namespace SP.EditorTools
             Enemigo("Enemigo_Guardia_O1", RoleType.Enemy, -26f, 31f); Enemigo("Enemigo_Guardia_O2", RoleType.Enemy, -18f, 31f);
             Enemigo("Enemigo_Deposito_1", RoleType.Enemy, -6f, 54f, 0f, Rect(-6f, 54f, 6f, 3f)); Enemigo("Enemigo_Deposito_2", RoleType.Enemy, 6f, 56f, 0f, Rect(6f, 56f, 6f, 3f)); Enemigo("Enemigo_Deposito_3", RoleType.Enemy, 0f, 50f);
             Enemigo("Enemigo_Flanker_O", RoleType.Flanker, -32f, 10f, 0f, Rect(-32f, 20f, 1.5f, 25f)); Enemigo("Enemigo_Flanker_E", RoleType.Flanker, 32f, 40f, 0f, Rect(32f, 20f, 1.5f, 25f));
+            Objetivo(BlockoutObjetivo.Modo.LlegarALaZona, "LLEGA AL DEPOSITO", "atraviesa el valle hasta la zona amarilla", "Objetivo_Deposito", 7f);
             return Cerrar("SC_Blockout_02", "Francotirador: nido aliado vs 2 nidos enemigos. Torreta fija a mitad. Flankers por los corredores. Gancho: duelo de alturas.");
         }
 
@@ -435,8 +448,8 @@ namespace SP.EditorTools
             Letrero("CONVOY BLINDADO\nObjetivo: destruir el TANQUE ENEMIGO y llegar al DEPOSITO", 0f, -68f, 7f);
             blindado.transform.position = new Vector3(0f, 0.6f, -70f);
             // Muralla de la carretera con muro DEBIL al centro (lo rompe el blindado) y paso de infanteria por el oeste.
-            Muro("Barricada_O", -32f, -8f, -40f, 3f); Muro("Barricada_Brecha", -8f, 8f, -40f, 3f, 2f, "Brecha", 400); Muro("Barricada_E", 8f, 32f, -40f, 3f);
-            Cubo("Paso_Peatonal_Cob", "Cobertura", -29f, -37f, 3f, 1.2f, 1f, 0f, true, 300);
+            Muro("Barricada_O1", -32f, -26f, -40f, 3f); Muro("Barricada_O2", -20f, -8f, -40f, 3f); Muro("Barricada_Brecha", -8f, 8f, -40f, 3f, 2f, "Brecha", 400); Muro("Barricada_E", 8f, 32f, -40f, 3f);
+            Cubo("Paso_Peatonal_Cob", "Cobertura", -23f, -35f, 1f, 1.2f, 3f, 0f, true, 300);   // paso de infanteria x -26..-20 (el blindado no cabe)
             Torreta("Torreta_Brecha", -14f, -50f, 0f); Cubo("Sacos_Torreta", "Cobertura", -14f, -47.5f, 5f, 0.9f, 1f, 0f, true, 300);
             Letrero("TORRETA FIJA: cubre la brecha", -14f, -50f, 4f, 0.4f);
             // Carretera central con barreras y coches.
@@ -455,7 +468,8 @@ namespace SP.EditorTools
             Enemigo("Enemigo_Vigia_O", RoleType.Sniper, -24f, 54f, 3f); Enemigo("Enemigo_Vigia_E", RoleType.Sniper, 24f, 54f, 3f);
             Enemigo("Enemigo_Contenedor_O", RoleType.Enemy, -14f, 64f); Enemigo("Enemigo_Contenedor_E", RoleType.Enemy, 14f, 64f);
             Enemigo("Enemigo_Camino_1", RoleType.Enemy, -9f, 0f, 0f, Rect(-9f, 0f, 3f, 12f)); Enemigo("Enemigo_Camino_2", RoleType.Enemy, 9f, 12f, 0f, Rect(9f, 12f, 3f, 12f));
-            Enemigo("Enemigo_Flanker_O", RoleType.Flanker, -26f, 20f, 0f, Rect(-26f, 10f, 2f, 20f)); Enemigo("Enemigo_Deposito", RoleType.Enemy, 0f, 78f);
+            Enemigo("Enemigo_Flanker_O", RoleType.Flanker, -26f, 20f, 0f, Rect(-26f, 10f, 2f, 20f)); Enemigo("Enemigo_Deposito", RoleType.Enemy, 0f, 73f);
+            Objetivo(BlockoutObjetivo.Modo.LlegarALaZona, "ROMPE EL CONVOY", "destruye el tanque enemigo y llega al deposito", "Objetivo_Deposito", 8f, GameObject.Find("Tanque_Enemigo").GetComponent<Vehicle>());
             return Cerrar("SC_Blockout_03", "Vehiculo: romper la brecha y cruzar el puente. Torreta fija cubre la brecha. Gancho: duelo de blindados y puente obligado.");
         }
 
@@ -480,7 +494,7 @@ namespace SP.EditorTools
             Cubo("Plaza_Muro_S_O", "Muro", -4f, -6f, 4f, 1.6f, 1f, 0f, true, 400); Cubo("Plaza_Muro_S_E", "Muro", 4f, -6f, 4f, 1.6f, 1f, 0f, true, 400);
             Zona("Objetivo_Rehen", "Objetivo", 0f, 0f, 10f, 10f); Letrero("REHEN", 0f, 0f, 4f, 0.6f);
             // Azotea con rampa en la esquina NE (francotirador enemigo) y barricadas en las calles.
-            Plataforma("Azotea_NE", 28f, 28f, 14f, 12f, 5f); Rampa("Rampa_Azotea", 28f, 15f, 3f, 9f, 5f, 0f);
+            Plataforma("Azotea_NE", 28f, 28f, 14f, 12f, 5f); Rampa("Rampa_Azotea", 28f, 13f, 3f, 9f, 5f, 0f);
             Cob(-14f, -14f); Cob(14f, -14f, false); Cob(-14f, 14f, false); Cob(14f, 14f); Cob(0f, -22f); Cob(-22f, 0f, false); Cob(22f, 0f, false); Cob(0f, 22f);
             Zona("Zona_Enemiga", "ZonaEnemiga", 0f, 0f, 70f, 70f);
             // Rehen: civil del equipo aliado que sigue al jugador una vez liberado.
@@ -492,6 +506,7 @@ namespace SP.EditorTools
             Enemigo("Enemigo_Plaza_1", RoleType.Enemy, -3f, 4f); Enemigo("Enemigo_Plaza_2", RoleType.Enemy, 3f, 4f);
             Enemigo("Enemigo_Flanker_1", RoleType.Flanker, -40f, 10f, 0f, Rect(-40f, 10f, 3f, 24f)); Enemigo("Enemigo_Flanker_2", RoleType.Flanker, 10f, -40f, 0f, Rect(10f, -40f, 24f, 3f));
             Enemigo("Enemigo_Flanker_3", RoleType.Flanker, 40f, 0f, 0f, Rect(40f, 0f, 3f, 24f));
+            Objetivo(BlockoutObjetivo.Modo.ConRehen, "RESCATA AL REHEN", "llega a la plaza y vuelve con el a la zona azul", "Zona_Aliada", 9f, null, civil);
             return Cerrar("SC_Blockout_04", "Civil: el rehen se une al escuadron. Medico: curar en el regreso. Flankers por la periferia. Gancho: ir y volver con el rehen herido.");
         }
 
@@ -504,8 +519,8 @@ namespace SP.EditorTools
             Letrero("ASEDIO DE LA COLINA\nObjetivo: resistir y eliminar a los atacantes desde la cima", 0f, -8f, 11f);
             // Colina en 3 terrazas (el techo de cada una se camina) con rampas sur y norte que arrancan sobre la terraza de abajo.
             Plataforma("Terraza_1", 0f, 0f, 36f, 36f, 1.5f); Plataforma("Terraza_2", 0f, 0f, 24f, 24f, 3f); Plataforma("Terraza_3", 0f, 0f, 14f, 14f, 4.5f);
-            Rampa("Rampa_S1", 0f, -28f, 5f, 10f, 1.5f, 0f); Rampa("Rampa_S2", 0f, -18f, 5f, 6f, 1.5f, 0f, 1.5f); Rampa("Rampa_S3", 0f, -12f, 5f, 6f, 1.5f, 0f, 3f);
-            Rampa("Rampa_N1", 0f, 28f, 5f, 10f, 1.5f, 180f); Rampa("Rampa_N2", 0f, 18f, 5f, 6f, 1.5f, 180f, 1.5f); Rampa("Rampa_N3", 0f, 12f, 5f, 6f, 1.5f, 180f, 3f);
+            Rampa("Rampa_S1", 0f, -28f, 5f, 10f, 1.5f, 0f); Rampa("Rampa_S2", 0f, -18f, 5f, 6f, 1.5f, 0f, 1.5f); Rampa("Rampa_S3", 0f, -12f, 5f, 5f, 1.5f, 0f, 3f);
+            Rampa("Rampa_N1", 0f, 28f, 5f, 10f, 1.5f, 180f); Rampa("Rampa_N2", 0f, 18f, 5f, 6f, 1.5f, 180f, 1.5f); Rampa("Rampa_N3", 0f, 12f, 5f, 5f, 1.5f, 180f, 3f);
             Torreta("Torreta_Cima_O", -5f, 2f, 180f, 4.5f); Torreta("Torreta_Cima_E", 5f, 2f, 180f, 4.5f);
             Letrero("TORRETAS FIJAS (E)", 0f, 3f, 9f, 0.5f);
             Cubo("Sacos_Cima_N", "Cobertura", 0f, 6.5f, 10f, 0.9f, 1f, 4.5f, false); Zona("Zona_Curacion", "Curacion", 0f, 3f, 6f, 3f, 4.5f);
@@ -516,7 +531,7 @@ namespace SP.EditorTools
                 float a = i * Mathf.PI * 2f / 12f, r = 30f;
                 Cubo("Roca_Anillo", "Cobertura", Mathf.Cos(a) * r, Mathf.Sin(a) * r, 3f, 1.4f, 2f, 0f, true, 500, -a * Mathf.Rad2Deg);
             }
-            Plataforma("Nido_Norte", 0f, 46f, 8f, 6f, 3.5f); Rampa("Rampa_Nido", 0f, 38f, 3f, 7f, 3.5f, 0f);
+            Plataforma("Nido_Norte", 0f, 46f, 8f, 6f, 3.5f); Rampa("Rampa_Nido", 0f, 36f, 3f, 7f, 3.5f, 0f);
             Zona("Zona_Enemiga", "ZonaEnemiga", 0f, 40f, 80f, 24f);
             // Tres frentes: oeste, este y norte. Rondas cortas hacia la colina; vision 22 los hace asediar al verla.
             Enemigo("Enemigo_Vigia_Norte", RoleType.Sniper, 0f, 46f, 3.5f);
@@ -524,6 +539,14 @@ namespace SP.EditorTools
             Enemigo("Enemigo_Este_1", RoleType.Enemy, 44f, 4f, 0f, Rect(40f, 4f, 6f, 6f)); Enemigo("Enemigo_Este_2", RoleType.Enemy, 44f, -6f, 0f, Rect(40f, -6f, 6f, 6f)); Enemigo("Enemigo_Este_3", RoleType.Enemy, 48f, 0f);
             Enemigo("Enemigo_Norte_1", RoleType.Enemy, -10f, 36f, 0f, Rect(-10f, 36f, 6f, 4f)); Enemigo("Enemigo_Norte_2", RoleType.Enemy, 10f, 36f, 0f, Rect(10f, 36f, 6f, 4f));
             Enemigo("Enemigo_Flanker_O", RoleType.Flanker, -30f, 30f, 0f, Rect(-30f, 30f, 6f, 6f)); Enemigo("Enemigo_Flanker_E", RoleType.Flanker, 30f, 30f, 0f, Rect(30f, 30f, 6f, 6f));
+            // Segunda oleada: salen de los bordes y su ronda sube hasta el anillo de rocas al pie de la colina (asedio de verdad).
+            Enemigo("Enemigo_Oleada_N1", RoleType.Enemy, -22f, 52f, 0f, new[] { new Vector2(-22f, 52f), new Vector2(-10f, 28f), new Vector2(-22f, 52f) });
+            Enemigo("Enemigo_Oleada_N2", RoleType.Enemy, 22f, 52f, 0f, new[] { new Vector2(22f, 52f), new Vector2(10f, 28f), new Vector2(22f, 52f) });
+            Enemigo("Enemigo_Oleada_O1", RoleType.Enemy, -52f, 20f, 0f, new[] { new Vector2(-52f, 20f), new Vector2(-28f, 8f), new Vector2(-52f, 20f) });
+            Enemigo("Enemigo_Oleada_O2", RoleType.Enemy, -52f, -22f, 0f, new[] { new Vector2(-52f, -22f), new Vector2(-28f, -10f), new Vector2(-52f, -22f) });
+            Enemigo("Enemigo_Oleada_E1", RoleType.Enemy, 52f, 20f, 0f, new[] { new Vector2(52f, 20f), new Vector2(28f, 8f), new Vector2(52f, 20f) });
+            Enemigo("Enemigo_Oleada_E2", RoleType.Enemy, 52f, -22f, 0f, new[] { new Vector2(52f, -22f), new Vector2(28f, -10f), new Vector2(52f, -22f) });
+            Objetivo(BlockoutObjetivo.Modo.Resistir, "RESISTE EN LA CIMA", "elimina a todos los atacantes", null, 0f);
             return Cerrar("SC_Blockout_05", "Torretas fijas en la cima. Medico: zona de curacion en la cima. Francotirador enemigo en el nido norte. Gancho: defensa en altura con 3 frentes.");
         }
     }
