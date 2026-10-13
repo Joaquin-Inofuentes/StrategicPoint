@@ -36,6 +36,10 @@ namespace SP.Ai
         // jugador; la decision de si conviene cubrirse sigue siendo la ponderada (CoberturasPuntuadas.Presion).
         // Bug #061: radio de la cobertura "a mano" que se toma aun sin presion (ver TickCoberturaTactica).
         // WP4 (#074/#081): era 8 m (const). Estatico para que el banco pueda medir un valor contra otro.
+        // #227: cuanto mas lejos del blanco que hoy puede quedar la cobertura elegida (antes 1-2 m: descartaba coberturas utiles, medido en los blockouts 2 y 4).
+        public const float MargenParaCubrirse = 4f;
+        // La ultima busqueda de cobertura no encontro ninguna desde la que se pueda tirar: a cielo abierto se agacha mas seguido (ver Disparo).
+        bool sinCoberturaAMano;
         public static float RadioDeCoberturaAMano = 18f;   // bug #227 ("que usen las coberturas"): antes 13 m; medido en el blockout, solo el 21 % de los soldados en combate estaba cubierto
         bool BuscaCoberturaSolo => self != null && !SinCobertura && (CoberturaPropia || self.Team == TeamId.Enemy
             || (self.Team == TeamId.Player && self.Role != RoleType.Civilian && !IsPossessedByPlayer && !Pasivo));
@@ -381,7 +385,7 @@ namespace SP.Ai
 
             relojTactico -= dt;
             if (relojTactico > 0f) return false;
-            relojTactico = 0.7f + (self.Id % 5) * 0.1f;   // #227: antes 1,2 s + 0,15 por Id: tardaban en decidir cubrirse
+            relojTactico = 0.5f + (self.Id % 5) * 0.08f;   // #227: antes 1,2 s + 0,15 por Id: tardaban en decidir cubrirse
 
             float dActual = Vector3.Distance(self.transform.position, target.transform.position);
             // Decision ponderada: sano y sin presion NO se cubre (cubrirse cuesta fuego: solo dispara mientras asoma)...
@@ -398,20 +402,21 @@ namespace SP.Ai
                 // ...salvo (bug #061) una cobertura A MANO desde la que sigue disparando: cuesta poco y es lo que haria
                 // cualquiera. Medido en la ciudad: con 26 enemigos peleando se cubria 1, porque la escuadra (3) no alcanza
                 // para "presionar" a un enemigo sano.
-                if (!CoberturasPuntuadas.TryElegir(self.transform.position, target, self, RadioDeCoberturaAMano, EffectiveAttackRange, Vida01, version, Recargando, null, out var cerca, Herido ? float.MaxValue : dActual + 2f)
-                    || !cerca.puedeDisparar) return false;
+                if (!CoberturasPuntuadas.TryElegir(self.transform.position, target, self, RadioDeCoberturaAMano, EffectiveAttackRange, Vida01, version, Recargando, null, out var cerca, Herido ? float.MaxValue : dActual + MargenParaCubrirse)
+                    || !cerca.puedeDisparar) { sinCoberturaAMano = true; return false; }
                 punto = cerca.punto; dueno = cerca.dueno;
             }
             else if (version >= 1)
             {
                 // WP4: un sano no se aleja del blanco para cubrirse (el herido si: se protege); el filtro va DENTRO de la eleccion para que
                 // no descarte la mejor por una peor que si sirve.
-                float tope = Herido ? float.MaxValue : dActual + 2f;
-                if (!CoberturasPuntuadas.TryElegir(self.transform.position, target, self, 12f, EffectiveAttackRange, Vida01, version, Recargando, null, out var el, tope)) return false;
+                float tope = Herido ? float.MaxValue : dActual + MargenParaCubrirse;
+                if (!CoberturasPuntuadas.TryElegir(self.transform.position, target, self, RadioDeCoberturaAMano, EffectiveAttackRange, Vida01, version, Recargando, null, out var el, tope)) { sinCoberturaAMano = true; return false; }
                 punto = el.punto; dueno = el.dueno;
             }
             else if (!Coberturas.TryCoberturaDeTiro(self.transform.position, target, self, 12f,
                     EffectiveAttackRange * 0.45f, EffectiveAttackRange * 0.9f, out punto, out dueno)) return false;
+            sinCoberturaAMano = false;
             CoberturasElegidas++;
             // Solo si de verdad cambia algo: no correr 1 m, ni alejarse.
             if ((punto - self.transform.position).sqrMagnitude < 1.5f * 1.5f)
@@ -422,7 +427,7 @@ namespace SP.Ai
                 EntrarEnCoberturaTactica();
                 return false;
             }
-            if (!Herido && Vector3.Distance(punto, target.transform.position) > dActual + 2f) return false;   // WP4: el herido si puede alejarse
+            if (!Herido && Vector3.Distance(punto, target.transform.position) > dActual + MargenParaCubrirse) return false;   // WP4: el herido si puede alejarse
 
             coberturaPunto = punto;
             coberturaDueno = dueno;

@@ -1147,7 +1147,7 @@ namespace SP.Ai
                             chaseSinLineaT = 0f;
                             // WP4 (#074/#081): "todos deben buscar cobertura para disparar". Antes de avanzar a cielo abierto se busca una
                             // cobertura a mano desde la que se pueda tirar y que no aleje del blanco (el herido si puede alejarse).
-                            if (BuscaCoberturaSolo && CubrirseDe(target, dt, RadioDeCoberturaAMano, Herido ? float.MaxValue : d + 1f, 0.9f)) break;
+                            if (BuscaCoberturaSolo && CubrirseDe(target, dt, RadioDeCoberturaAMano, Herido ? float.MaxValue : d + MargenParaCubrirse - 1f, 0.9f)) break;
                             // Con linea de tiro, el acercamiento de siempre. WP4 (#086): cada soldado se acerca por SU rumbo (abanico de
                             // +-30 grados segun su Id) y no todos al mismo punto.
                             Vector3 puntoDeAtaque = PuntoDeAtaque(target);
@@ -1169,7 +1169,7 @@ namespace SP.Ai
                             // ninguna a mano se cae al rodeo de siempre,
                             // que es lo que arreglo el caso del Muro.
                             if (VigilarInalcanzable(d, dt)) break;   // el blanco esta del otro lado de algo que no se puede cruzar: se lo suelta
-                            if (!CubrirseDe(target, dt, RadioDeBusquedaDeCobertura, Herido ? float.MaxValue : d + 2f))   // WP4 (#081): sin alejarse
+                            if (!CubrirseDe(target, dt, RadioDeBusquedaDeCobertura, Herido ? float.MaxValue : d + MargenParaCubrirse))   // WP4 (#081): sin alejarse
                                 RodearHasta(target.transform.position, dt);
                         }
                     }

@@ -156,7 +156,7 @@ namespace SP.Core
             if (candidatos.Count == 0) return false;
             // Solo se evalua en serio (rayos) a los mejores por puntaje barato.
             candidatos.Sort((a, b) => b.pre.CompareTo(a.pre));
-            int tope = Mathf.Min(candidatos.Count, 8);
+            int tope = Mathf.Min(candidatos.Count, 12);   // #227: era 8
 
             float mejor = float.MinValue; bool hay = false;
             for (int k = 0; k < tope; k++)

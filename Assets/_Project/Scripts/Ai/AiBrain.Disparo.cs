@@ -87,7 +87,7 @@ namespace SP.Ai
                 pausaRestante = Random.Range(PausaMin, PausaMax) / (FactorDeRafaga > 1 ? 1.6f : 1f);
                 // Bug #227 ("que se agachen al recargar o de manera aleatoria"): a veces se agacha durante la pausa entre rafagas.
                 // Corto (<= 0,5 s) para que el parpadeo de la linea de tiro no lo saque de Attack (histeresis de 0,6 s).
-                if (!enCobertura && Random.value < ProbabilidadDeAgacharseEntreRafagas) agachadoAlAzarRestante = Mathf.Min(pausaRestante, 0.5f);
+                if (!enCobertura && Random.value < (sinCoberturaAMano ? 1f : ProbabilidadDeAgacharseEntreRafagas)) agachadoAlAzarRestante = Mathf.Min(pausaRestante, 0.5f);
             }
             return true;
         }
