@@ -274,6 +274,9 @@ namespace SP.Player
                                 boardable.Add(s);
                         if (boardable.Count > 0)
                         {
+                            // Bug #223 ("en RTS no me deja mandar a que se suba a la torreta"): faltaba mandarlo CAMINANDO (el radial si lo hacia): la
+                            // corrutina solo espera a que llegue y el soldado se quedaba donde estaba.
+                            OrderService.IssueMoveOrder(boardable[0], result.Torreta.transform.position);
                             StartCoroutine(EsperarYMontarTorreta(boardable[0], result.Torreta));
                             Avisar(boardable[0].DisplayName.ToUpperInvariant() + " VA A LA TORRETA");
                         }

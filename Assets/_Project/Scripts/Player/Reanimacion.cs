@@ -28,6 +28,12 @@ namespace SP.Player
             caido.Motor.ResetMotionState();
             caido.SetBodyVisible(true);
 
+            // Bug #230/#231 ("se entierran al ser revividos"): al morir el pivote baja a y=0 (collider apagado) y el revivido quedaba con la
+            // base del collider 0,8 m bajo el piso. Se enciende el collider y se lo apoya de nuevo en el piso (ignora cuerpos y triggers).
+            var colRevivido = caido.GetComponent<Collider>();
+            if (colRevivido != null && !colRevivido.enabled) colRevivido.enabled = true;
+            ApoyoEnElPiso.Apoyar(caido.transform);
+
             // El cuerpo que el jugador manejaba al morir sigue "poseido" mientras la camara esta en RTS o en otro soldado:
             // se suelta para que la IA vuelva a obedecer. Si el jugador lo sigue manejando en primera persona (camara de
             // muerte, se vuelve a FPS solo) se conserva.

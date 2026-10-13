@@ -47,6 +47,7 @@ namespace SP.EditorTools
         public static string Vestir()
         {
             cache.Clear();
+            ordenDePiso = 0;
             contenedoresLimpios.Clear();
             var escena = SceneManager.GetActiveScene();
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include))
@@ -56,6 +57,17 @@ namespace SP.EditorTools
                     if (dueno != null) dueno.enabled = true;      // el cubo vuelve a dibujarse hasta que se lo vuelva a vestir
                     Object.DestroyImmediate(t.gameObject);
                 }
+
+            // Bug #221 ("no se ven los muros"): un muro con el cubo apagado y SIN su ArteOp (se perdio el arte pero el cubo siguio apagado) quedaba
+            // invisible para siempre: el bucle de abajo salta los renderers apagados. Se vuelven a encender para que se vistan de nuevo.
+            foreach (var huerfano in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            {
+                if (huerfano == null || huerfano.enabled || huerfano.GetComponent<Collider>() == null) continue;
+                var mfh = huerfano.GetComponent<MeshFilter>();
+                if (mfh == null || mfh.sharedMesh == null || mfh.sharedMesh.name != "Cube" || huerfano.transform.Find(Raiz) != null) continue;
+                string claveH = Regex.Replace(huerfano.transform.name, @"[\s_()0-9]+$", "");
+                if (EsMuro(claveH, huerfano.transform.localScale)) huerfano.enabled = true;
+            }
 
             var rocas = MallasDeRoca();
             var jerseyX = MallaJersey(true); var jerseyZ = MallaJersey(false);
@@ -173,6 +185,9 @@ namespace SP.EditorTools
         }
 
         // Cubre un piso con losetas (cuadricula exacta). El cubo deja de dibujarse; su collider queda igual.
+        // Bug #225 ("se solapan los asfaltos de las calles"): 22 pares de pisos/calles quedaban coplanares (misma altura) y las losetas se peleaban
+        // el pixel (z-fighting). Cada piso sube una fraccion distinta (calles +5 cm sobre patios) sin pasar de la cara del cubo.
+        static int ordenDePiso;
         static int VestirPiso(MeshRenderer mr, string clave)
         {
             var cubo = mr.transform; var s = cubo.localScale;
@@ -180,7 +195,7 @@ namespace SP.EditorTools
             int nx = Mathf.Max(1, Mathf.RoundToInt(s.x / 3.83f)), nz = Mathf.Max(1, Mathf.RoundToInt(s.z / 3.83f));
             if (nx * nz > 900) return 0;                                      // pisos gigantes: se dejan como estan
             var raiz = Raiz_(cubo, s);
-            float cx = s.x / nx, cz = s.z / nz, yBase = s.y * 0.5f - 0.16f;   // el plano de la loseta queda apenas bajo la cara del cubo: las lineas de calle y flechas siguen viendose
+            float cx = s.x / nx, cz = s.z / nz, yBase = s.y * 0.5f - 0.16f + (calle ? 0.05f : 0f) + (ordenDePiso++ % 24) * 0.002f;   // el plano de la loseta queda apenas bajo la cara del cubo: las lineas de calle y flechas siguen viendose
             var mat = TinteDeZona(mr.sharedMaterial);
             int hash = Mathf.Abs(Hash(cubo.name + cubo.position.x.ToString("0")));
             int n = 0;

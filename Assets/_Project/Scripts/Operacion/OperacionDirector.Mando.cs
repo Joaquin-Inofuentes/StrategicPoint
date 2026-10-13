@@ -260,9 +260,11 @@ namespace SP.Operacion
                 s.Configure(nombres[i], TeamId.Player, roles[i], 160);   // ajuste de equilibrio: antes 100
                 if (s.Brain != null) { s.Brain.IsPossessedByPlayer = false; s.Brain.Atrincherado = false; s.Brain.Quieto = false; s.Brain.Pasivo = false; s.Brain.ReactivarNavegacion(); s.Brain.CancelOrder(); }
                 ApoyoEnElPiso.Apoyar(s.transform);
-                // Armas livianas: subfusil en la ranura principal (el medico lleva ademas su botiquin).
+                // Bug #229 ("que los milicianos tengan AK-47 con mas rafaga"): fusil (el AK) en la ranura principal y rafagas del doble de largo
+                // con pausas mas cortas (el medico lleva ademas su botiquin).
                 var w = s.Weapon;
-                if (w != null && w.Loadout.Count > 0) { w.Loadout[0] = WeaponKind.Smg; w.EquipFromLoadout(0); w.ReponerMunicion(); }
+                if (w != null && w.Loadout.Count > 0) { w.Loadout[0] = WeaponKind.Rifle; w.EquipFromLoadout(0); w.ReponerMunicion(); }
+                if (s.Brain != null) s.Brain.FactorDeRafaga = AiBrain.FactorDeRafagaMiliciano;
                 MandoTactico.Milicianos.Add(s);
                 milicianosActivos.Add(s);
             }

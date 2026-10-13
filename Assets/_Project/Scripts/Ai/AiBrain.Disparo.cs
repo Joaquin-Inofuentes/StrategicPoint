@@ -22,6 +22,9 @@ namespace SP.Ai
         public const float PausaMin = 0.4f, PausaMax = 0.9f;
         public const int RafagaMin = 3, RafagaMax = 5;
         public const float FraccionDeHerido = 0.5f;
+        // Bug #229: 1 = ráfagas normales. Los milicianos usan 2 (ráfagas del doble de largo y pausas ~40 % mas cortas).
+        public const int FactorDeRafagaMiliciano = 2;
+        public int FactorDeRafaga = 1;
 
         // Multiplicadores de alcance de la partida principal (ver EffectiveAttackRange / EffectiveVisionRange).
         // Los soldados del nivel traen 22/13 (enemigo) y 20/12 (aliado): con estos factores llegan a ~40/35 m.
@@ -63,11 +66,11 @@ namespace SP.Ai
                 reaccionPendiente = false;
             }
             if (pausaRestante > 0f) { pausaRestante -= dt; return false; }
-            if (rafagaRestante <= 0) rafagaRestante = Random.Range(RafagaMin, RafagaMax + 1);
+            if (rafagaRestante <= 0) rafagaRestante = Random.Range(RafagaMin, RafagaMax + 1) * Mathf.Max(1, FactorDeRafaga);
 
             if (!self.Weapon.TryFire(self.transform.position, direccion, DispersionMinima)) return false;
             rafagaRestante--;
-            if (rafagaRestante <= 0) pausaRestante = Random.Range(PausaMin, PausaMax);
+            if (rafagaRestante <= 0) pausaRestante = Random.Range(PausaMin, PausaMax) / (FactorDeRafaga > 1 ? 1.6f : 1f);
             return true;
         }
 
