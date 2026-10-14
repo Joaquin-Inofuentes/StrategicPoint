@@ -393,7 +393,7 @@ namespace SP.EditorTools
             lejanos = 0; int visibles = 0;
             var aliados = new List<Vector3>();
             foreach (var s in ActorRegistry.All) if (s != null && s.Team == TeamId.Player && s.Health.IsAlive && s.gameObject.activeInHierarchy) aliados.Add(s.transform.position);
-            foreach (var ic in UnityEngine.Object.FindObjectsByType<MinimapIcon>(FindObjectsSortMode.None))
+            foreach (var ic in UnityEngine.Object.FindObjectsByType<MinimapIcon>())
             {
                 if (!ic.FogEnabled) continue;
                 var p = ic.TargetPosition; bool lejos = true;

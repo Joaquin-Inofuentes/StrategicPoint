@@ -635,7 +635,7 @@ namespace SP.EditorTools
 
             // --- Seguir al jugador cuando se aleja ---
             AjustesDeEscuadra.AsegurarEnEscena();
-            var ajustes = UnityEngine.Object.FindFirstObjectByType<AjustesDeEscuadra>(FindObjectsInactive.Include);
+            var ajustes = UnityEngine.Object.FindAnyObjectByType<AjustesDeEscuadra>(FindObjectsInactive.Include);
             ajustes.distanciaParaSeguir = 25f; ajustes.distanciaParaDetenerse = 8f;
             ajustes.Aplicar();
             vega.transform.position = new Vector3(-60f, 0.8f, -60f);

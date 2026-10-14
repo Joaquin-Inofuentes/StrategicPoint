@@ -197,7 +197,7 @@ namespace SP.Presentation
 
         internal static void DestroyOrphans()
         {
-            foreach (var fx in Object.FindObjectsByType<ImpactFx>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var fx in Object.FindObjectsByType<ImpactFx>(FindObjectsInactive.Include))
             {
                 if (fx == null) continue;
                 if (spheres != null && spheres.Contains(fx)) continue;

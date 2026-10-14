@@ -67,7 +67,7 @@ namespace SP.EditorTools
             bool diosAntes = ModoDios.Activo; ModoDios.Poner(true);
             var vega = Escuadrista(RoleType.Assault); var kes = Escuadrista(RoleType.Flanker);
             CargaExplosiva panel = null;   // WP9a: el unico objeto con rol exclusivo es la carga del puesto (solo el ASALTO)
-            foreach (var t in UnityEngine.Object.FindObjectsByType<CargaExplosiva>(FindObjectsSortMode.None))
+            foreach (var t in UnityEngine.Object.FindObjectsByType<CargaExplosiva>())
                 if (t.Habilitado && !t.EstaPlantada && (panel == null || t.transform.position.x < panel.transform.position.x)) panel = t;
             if (vega == null || kes == null || panel == null) { ModoDios.Poner(diosAntes); Fin($"FALLO faltan piezas: vega={(vega != null)} kes={(kes != null)} carga={(panel != null)}"); yield break; }
             try
@@ -124,7 +124,7 @@ namespace SP.EditorTools
 
                 // E) Demolicion: indestructible (Operacion) = "ESTO NO SE PUEDE DEMOLER"; destructible + rol equivocado = "DEBES SER ASALTO".
                 ObstacleMarker indes = null, sacos = null;
-                foreach (var m in UnityEngine.Object.FindObjectsByType<ObstacleMarker>(FindObjectsSortMode.None))
+                foreach (var m in UnityEngine.Object.FindObjectsByType<ObstacleMarker>())
                 {
                     if (!m.gameObject.activeInHierarchy || m.IsCollapsed || m.GetComponent<Collider>() == null) continue;
                     if (m.MaxHealth >= Demolicion.VidaIndestructible && indes == null) indes = m;
@@ -186,7 +186,7 @@ namespace SP.EditorTools
             if (d == null) return "(sin driver)";
             var m = typeof(PlayerInputDriver).GetMethod("ActualizarPromptContextual", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             m.Invoke(d, new object[] { new SP.Player.AimResult { Type = AimTargetType.Interactuar, HitTransform = panel.transform, Point = panel.transform.position } });
-            var v = UnityEngine.Object.FindFirstObjectByType<InteractHintView>(FindObjectsInactive.Include);
+            var v = UnityEngine.Object.FindAnyObjectByType<InteractHintView>(FindObjectsInactive.Include);
             if (v == null) return "(sin vista)";
             var campo = typeof(InteractHintView).GetField("texto", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             var t = campo != null ? campo.GetValue(v) as UnityEngine.UI.Text : null;
@@ -355,7 +355,7 @@ namespace SP.EditorTools
                 int revives = 0; foreach (var n in AudioDirector.Historial) if (n == "Revive") revives++;
                 // La voz que suena es 3D.
                 bool tresD = false; float blend = -1f;
-                foreach (var src in UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None))
+                foreach (var src in UnityEngine.Object.FindObjectsByType<AudioSource>())
                     if (src.isPlaying && src.clip != null && src.clip.name == "Revive") { blend = src.spatialBlend; tresD = src.spatialBlend > 0.9f; }
                 // 3) Geometria de los anillos a mitad de camino: planos en el piso (+0.05), radio entre 0.4 y 3.0, alfa decreciente.
                 var radios = new List<float>(); var alfas = new List<float>(); var alturas = new List<float>();

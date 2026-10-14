@@ -63,7 +63,7 @@ namespace SP.EditorTools
             bool diosAntes = ModoDios.Activo; ModoDios.Poner(true);
             var vega = Escuadrista(RoleType.Assault); var kes = Escuadrista(RoleType.Flanker);
             CargaExplosiva panel = null;   // WP9a: la carga del puesto (solo el ASALTO) es el objetivo de la accion
-            foreach (var t in UnityEngine.Object.FindObjectsByType<CargaExplosiva>(FindObjectsSortMode.None))
+            foreach (var t in UnityEngine.Object.FindObjectsByType<CargaExplosiva>())
                 if (t.Habilitado && !t.EstaPlantada && (panel == null || t.transform.position.x < panel.transform.position.x)) panel = t;
             if (vega == null || panel == null || EngranajesDeAccion.Instancia == null)
             {

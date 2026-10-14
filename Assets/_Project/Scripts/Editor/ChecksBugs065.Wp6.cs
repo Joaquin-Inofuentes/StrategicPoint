@@ -189,7 +189,7 @@ namespace SP.EditorTools
 
                 // WP9b: la ruta nueva pasa por un canadon con muros de roca de 10 m; el anillo de este check mide contra SU muro, asi que se apagan las
                 // rocas (si no, segun por donde vaya el tanque a los 20 s, el obus cae contra una roca y el check dependia del azar).
-                foreach (var rc in UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None)) if (rc != null && rc.name.StartsWith("Roca_Canadon_", StringComparison.Ordinal)) rc.gameObject.SetActive(false);
+                foreach (var rc in UnityEngine.Object.FindObjectsByType<Transform>()) if (rc != null && rc.name.StartsWith("Roca_Canadon_", StringComparison.Ordinal)) rc.gameObject.SetActive(false);
                 // WP11: el tanque sigue su ruta (VehicleBrain.Tick lo llama el WorldSimulationDriver, desactivar el componente no lo frena) y en cada corrida
                 // pasa por un lugar distinto: el anillo caia sobre los Jersey reales de la autopista en vez de sobre el muro de prueba (flaky). Se lo deja
                 // casi quieto (0,5 m/s) para d) y e): lo que se mide es el anillo contra el muro, no la conduccion.
@@ -197,7 +197,7 @@ namespace SP.EditorTools
                 if (motorTanque != null) motorTanque.Configurar(0.5f);
                 // d) anillo contra un muro de prueba: se apoya en la superficie, vibra y es blanco; con vida (Jersey) pasa a naranja.
                 Material mat = null;
-                foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None)) if (r.name.StartsWith("Jersey_Ruta_", StringComparison.Ordinal)) { mat = r.sharedMaterial; break; }
+                foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>()) if (r.name.StartsWith("Jersey_Ruta_", StringComparison.Ordinal)) { mat = r.sharedMaterial; break; }
                 muro = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 muro.name = "Jersey_PruebaAnillo";
                 muro.transform.localScale = new Vector3(40f, 10f, 1f);
@@ -314,7 +314,7 @@ namespace SP.EditorTools
                     foreach (var a in AutosVivos()) vMax = Mathf.Max(vMax, a.VelocidadActual);
                 }
                 int jerseys = 0, otros = 0, indestructibles = 0; var nombres = new HashSet<string>();
-                foreach (var m in UnityEngine.Object.FindObjectsByType<ObstacleMarker>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                foreach (var m in UnityEngine.Object.FindObjectsByType<ObstacleMarker>(FindObjectsInactive.Include))
                 {
                     if (!m.IsCollapsed) continue;
                     if (!m.EsDestruible) { indestructibles++; nombres.Add(m.name); continue; }

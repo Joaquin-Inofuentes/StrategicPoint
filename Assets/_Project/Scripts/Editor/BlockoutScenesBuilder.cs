@@ -249,14 +249,14 @@ namespace SP.EditorTools
             HeadlessTestRunner.BuildDemoScene();
 
             // Vaciar el mundo de demo: obstaculos, bidones, patrullas y sus rondas (los iconos huerfanos del minimapa tambien).
-            foreach (var o in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var o in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include))
             {
                 if (o == null) continue;
                 string n = o.name;
                 if (o.parent == null && (n.StartsWith("Obstaculo_") || n.StartsWith("Bidon_") || n.StartsWith("Enemigo_Patrulla_") || n == "Enemigo_Demo" || n == "PatrolRoute"))
                     Object.DestroyImmediate(o.gameObject);
             }
-            foreach (var i in Object.FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var i in Object.FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include))
                 if (i != null && i.Target == null) Object.DestroyImmediate(i.gameObject);
 
             raiz = new GameObject("Nivel_" + nombre).transform;
@@ -269,10 +269,10 @@ namespace SP.EditorTools
             surface.collectObjects = CollectObjects.All;
             surface.useGeometry = UnityEngine.AI.NavMeshCollectGeometry.PhysicsColliders;
 
-            pool = Object.FindFirstObjectByType<ProjectilePool>();
+            pool = Object.FindAnyObjectByType<ProjectilePool>();
             escuadra = new List<Soldier>();
             Soldier vega = null;
-            foreach (var s in Object.FindObjectsByType<Soldier>(FindObjectsSortMode.None))
+            foreach (var s in Object.FindObjectsByType<Soldier>())
                 if (s.Team == TeamId.Player) { escuadra.Add(s); if (s.name.Contains("Vega")) vega = s; }
             prefabSoldado = PrefabUtility.GetCorrespondingObjectFromSource(vega.gameObject);
             string[] orden = { "Vega", "Kes", "Doc" };
@@ -283,7 +283,7 @@ namespace SP.EditorTools
             blindado = Object.FindFirstObjectByType<Vehicle>();
             blindado.transform.position = spawnEscuadra + new Vector3(8f, 0.6f, -2f);
             blindado.transform.rotation = Quaternion.identity;
-            foreach (var p in Object.FindObjectsByType<WeaponPickup>(FindObjectsSortMode.None))
+            foreach (var p in Object.FindObjectsByType<WeaponPickup>())
                 p.transform.position = spawnEscuadra + new Vector3(-6f + (p.name.EndsWith("Rifle") ? 0f : p.name.EndsWith("Pistola") ? 1.2f : 2.4f), 0.4f, 4f);
 
             Zona("Zona_Aliada", "ZonaAliada", spawnEscuadra.x, spawnEscuadra.z, 14f, 10f, spawnEscuadra.y);
@@ -295,7 +295,7 @@ namespace SP.EditorTools
             LevelBlockoutBuilder.AjustarAlcancesDeCombate();
 
             // Enlazar la lista de enemigos en todo componente que la tenga (BattleManager, estado de mision...).
-            foreach (var mb in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var mb in Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
             {
                 if (mb == null) continue;
                 var f = mb.GetType().GetField("Enemies", BindingFlags.Public | BindingFlags.Instance);
@@ -306,7 +306,7 @@ namespace SP.EditorTools
 
             PersistirMateriales();
             Physics.SyncTransforms();
-            Object.FindFirstObjectByType<NavMeshSurface>().BuildNavMesh();
+            Object.FindAnyObjectByType<NavMeshSurface>().BuildNavMesh();
             SP.Core.NavService.Invalidate(); SP.Core.ActorRegistry.Invalidate();
 
             var escena = SceneManager.GetActiveScene();
@@ -319,7 +319,7 @@ namespace SP.EditorTools
         static void PersistirMateriales()
         {
             var copias = new Dictionary<Material, Material>();
-            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include))
             {
                 if (r.GetComponent<TextMesh>() != null) continue;
                 var mats = r.sharedMaterials; bool cambio = false;

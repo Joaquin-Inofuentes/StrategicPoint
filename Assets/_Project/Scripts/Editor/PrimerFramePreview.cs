@@ -31,7 +31,7 @@ namespace SP.EditorTools
             var scene = EditorSceneManager.GetActiveScene();
             if (scene.name != "SC_Gameplay") { Debug.LogWarning("[PrimerFrame] Abri SC_Gameplay primero."); return; }
 
-            var driver = Object.FindFirstObjectByType<PlayerInputDriver>(FindObjectsInactive.Include);
+            var driver = Object.FindAnyObjectByType<PlayerInputDriver>(FindObjectsInactive.Include);
             Soldier primero = driver != null && driver.Squad != null && driver.Squad.Count > 0 ? driver.Squad[0] : null;
             if (primero == null) { Debug.LogWarning("[PrimerFrame] No hay escuadra."); return; }
 
@@ -57,7 +57,7 @@ namespace SP.EditorTools
 
         static void Minimapa(Soldier primero)
         {
-            var mf = Object.FindFirstObjectByType<MinimapFollow>(FindObjectsInactive.Include);
+            var mf = Object.FindAnyObjectByType<MinimapFollow>(FindObjectsInactive.Include);
             if (mf == null) return;
             mf.Target = primero.transform;
             mf.AplicarTamanoInicial();
@@ -68,7 +68,7 @@ namespace SP.EditorTools
 
         static void Hud(Soldier primero)
         {
-            var salud = Object.FindFirstObjectByType<PlayerHealthView>(FindObjectsInactive.Include);
+            var salud = Object.FindAnyObjectByType<PlayerHealthView>(FindObjectsInactive.Include);
             if (salud != null)
             {
                 var t = salud.GetComponentInChildren<Text>(true);
@@ -77,7 +77,7 @@ namespace SP.EditorTools
                 if (fill != null && fill.GetComponent<Image>() != null) fill.GetComponent<Image>().fillAmount = 1f;
             }
 
-            var arma = Object.FindFirstObjectByType<WeaponStatusView>(FindObjectsInactive.Include);
+            var arma = Object.FindAnyObjectByType<WeaponStatusView>(FindObjectsInactive.Include);
             if (arma != null)
             {
                 WeaponStatusUiPipeline.ConstruirLayoutCompleto(arma.gameObject);
@@ -96,11 +96,11 @@ namespace SP.EditorTools
                 if (fill != null && fill.GetComponent<Image>() != null) fill.GetComponent<Image>().fillAmount = 1f;
             }
 
-            var mision = Object.FindFirstObjectByType<MissionStatusView>(FindObjectsInactive.Include);
+            var mision = Object.FindAnyObjectByType<MissionStatusView>(FindObjectsInactive.Include);
             if (mision != null)
             {
                 int enemigos = 0, escuadra = 0;
-                foreach (var s in Object.FindObjectsByType<Soldier>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                foreach (var s in Object.FindObjectsByType<Soldier>(FindObjectsInactive.Exclude))
                 {
                     if (s.Health == null || !s.Health.IsAlive) continue;
                     if (s.Team == SP.Combat.TeamId.Enemy) enemigos++; else escuadra++;
@@ -116,11 +116,11 @@ namespace SP.EditorTools
         {
             var scene = EditorSceneManager.GetActiveScene();
             if (scene.name != "SC_Gameplay") { Debug.LogWarning("[PrimerFrame] Abri SC_Gameplay primero."); return; }
-            var driver = Object.FindFirstObjectByType<PlayerInputDriver>(FindObjectsInactive.Include);
+            var driver = Object.FindAnyObjectByType<PlayerInputDriver>(FindObjectsInactive.Include);
             Soldier primero = driver != null && driver.Squad != null && driver.Squad.Count > 0 ? driver.Squad[0] : null;
             if (primero == null) { Debug.LogWarning("[PrimerFrame] No hay escuadra."); return; }
             Roster(driver);
-            var arma = Object.FindFirstObjectByType<WeaponStatusView>(FindObjectsInactive.Include);
+            var arma = Object.FindAnyObjectByType<WeaponStatusView>(FindObjectsInactive.Include);
             if (arma != null)
             {
                 arma.EnsureExtras();
@@ -175,7 +175,7 @@ namespace SP.EditorTools
 
         static void Roster(PlayerInputDriver driver)
         {
-            var roster = Object.FindFirstObjectByType<RosterView>(FindObjectsInactive.Include);
+            var roster = Object.FindAnyObjectByType<RosterView>(FindObjectsInactive.Include);
             if (roster == null || driver.Squad == null) return;
 
             var prefab = new SerializedObject(roster).FindProperty("rowPrefab").objectReferenceValue as RosterRowView;
@@ -209,7 +209,7 @@ namespace SP.EditorTools
 
         static void Cartel()
         {
-            var fase = Object.FindFirstObjectByType<PhaseBannerView>(FindObjectsInactive.Include);
+            var fase = Object.FindAnyObjectByType<PhaseBannerView>(FindObjectsInactive.Include);
             if (fase == null) return;
             var t = fase.GetComponentInChildren<Text>(true);
             if (t == null) return;

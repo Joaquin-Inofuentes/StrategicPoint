@@ -23,7 +23,7 @@ namespace SP.EditorTools
         static List<AudioSource> FuentesSonando()
         {
             var l = new List<AudioSource>();
-            foreach (var a in UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            foreach (var a in UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Exclude))
                 if (a != null && a.isPlaying && a.clip != null) l.Add(a);
             return l;
         }
@@ -349,7 +349,7 @@ namespace SP.EditorTools
             OperacionPrueba.Arrancar(4);
             foreach (var x in Esperar(2f)) yield return x;
             TurretWeapon canon = null;
-            foreach (var t in UnityEngine.Object.FindObjectsByType<TurretWeapon>(FindObjectsSortMode.None))
+            foreach (var t in UnityEngine.Object.FindObjectsByType<TurretWeapon>())
                 if (t != null && t.transform.parent != null && t.transform.parent.name != "MetralletaMount" && t.isActiveAndEnabled && t.Muzzle != null) { canon = t; break; }
             if (canon == null) { Fin("FALLO no encontre el cañon del tanque (TurretWeapon)"); yield break; }
             bool dispara = false;

@@ -328,7 +328,7 @@ namespace SP.EditorTools
         static void W9bContarBarricadas(W9bCarrera c)
         {
             c.barricadas = 0;
-            foreach (var m in UnityEngine.Object.FindObjectsByType<SP.Presentation.ObstacleMarker>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var m in UnityEngine.Object.FindObjectsByType<SP.Presentation.ObstacleMarker>(FindObjectsInactive.Include))
                 if (m != null && m.name.StartsWith("Barricada_", StringComparison.Ordinal) && (m.IsCollapsed || !m.gameObject.activeInHierarchy)) c.barricadas++;
         }
 

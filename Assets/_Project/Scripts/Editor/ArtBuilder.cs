@@ -611,7 +611,7 @@ namespace SP.EditorTools
 
         static void NormalizarSoldadosDeEscena()
         {
-            foreach (var s in Object.FindObjectsByType<SP.Actors.Soldier>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var s in Object.FindObjectsByType<SP.Actors.Soldier>(FindObjectsInactive.Include))
             {
                 var t = s.transform;
                 if (EsUniforme(t.localScale)) continue;
@@ -779,7 +779,7 @@ namespace SP.EditorTools
         // propio collider, que es el mismo volumen que usa SoldierMotor.
         static void ApoyarSoldadosEnElPiso()
         {
-            foreach (var s in Object.FindObjectsByType<SP.Actors.Soldier>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var s in Object.FindObjectsByType<SP.Actors.Soldier>(FindObjectsInactive.Include))
             {
                 var col = s.GetComponent<BoxCollider>();
                 if (col == null) continue;

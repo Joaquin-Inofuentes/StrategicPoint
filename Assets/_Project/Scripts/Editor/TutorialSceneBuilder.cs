@@ -86,7 +86,7 @@ namespace SP.EditorTools
                     if (icon != null && icon.Target == null) Object.DestroyImmediate(icon.gameObject);
                 }
 
-            var driver = Object.FindFirstObjectByType<SP.Player.PlayerInputDriver>();
+            var driver = Object.FindAnyObjectByType<SP.Player.PlayerInputDriver>();
             if (driver != null)
             {
                 var so = new SerializedObject(driver);
@@ -95,7 +95,7 @@ namespace SP.EditorTools
                 so.ApplyModifiedPropertiesWithoutUndo();
             }
             // Cartel de mision del primer frame (PrimerFramePreview): el tutorial no lo usa.
-            var fase = Object.FindFirstObjectByType<SP.UI.PhaseBannerView>(FindObjectsInactive.Include);
+            var fase = Object.FindAnyObjectByType<SP.UI.PhaseBannerView>(FindObjectsInactive.Include);
             if (fase != null)
             {
                 var t = fase.GetComponentInChildren<UnityEngine.UI.Text>(true);
@@ -107,7 +107,7 @@ namespace SP.EditorTools
                     if (link != null && link.Fondo != null) link.Fondo.SetActive(false);
                 }
             }
-            var bm = Object.FindFirstObjectByType<BattleManager>();
+            var bm = Object.FindAnyObjectByType<BattleManager>();
             if (bm != null)
             {
                 var so = new SerializedObject(bm);
@@ -123,7 +123,7 @@ namespace SP.EditorTools
         // ---------------------------------------------------------------
         static void PrepararTerreno()
         {
-            var terrain = Object.FindFirstObjectByType<Terrain>();
+            var terrain = Object.FindAnyObjectByType<Terrain>();
             if (terrain == null) { Debug.LogWarning("[Tutorial] No hay Terrain."); return; }
 
             AssetDatabase.DeleteAsset(TerrenoTutorial);
@@ -387,7 +387,7 @@ namespace SP.EditorTools
             var sistemas = GameObject.Find("Systems");
 
             // El tutorial da sus propios carteles.
-            var boot = Object.FindFirstObjectByType<GameplaySceneBootstrap>();
+            var boot = Object.FindAnyObjectByType<GameplaySceneBootstrap>();
             if (boot != null)
             {
                 boot.esTutorial = true;
@@ -429,7 +429,7 @@ namespace SP.EditorTools
         [MenuItem("Strategic Point/Tutorial/Asegurar catalogo en la escena abierta")]
         public static void AsegurarCatalogo()
         {
-            var cat = Object.FindFirstObjectByType<CatalogoDelTutorial>(FindObjectsInactive.Include);
+            var cat = Object.FindAnyObjectByType<CatalogoDelTutorial>(FindObjectsInactive.Include);
             if (cat == null)
             {
                 var go = new GameObject("CatalogoDelTutorial");

@@ -219,7 +219,7 @@ namespace SP.Core
             bool any = false;
             Bounds area_ = default;
 
-            var colliders = Object.FindObjectsByType<Collider>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var colliders = Object.FindObjectsByType<Collider>(FindObjectsInactive.Exclude);
             foreach (var c in colliders)
             {
                 if (c == null || c.isTrigger) continue;

@@ -271,7 +271,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, File.Exists(ruta) && File.Exists(ruta + ".bak") && !File.Exists(ruta + ".tmp"), sb, "escritura atomica: archivo + .bak, sin .tmp");
             // Los botones de la pausa: con un archivo roto no se ofrece cargar.
             File.WriteAllText(ruta, "basura");
-            var pc = UnityEngine.Object.FindFirstObjectByType<PauseController>(FindObjectsInactive.Include);
+            var pc = UnityEngine.Object.FindAnyObjectByType<PauseController>(FindObjectsInactive.Include);
             pc.ShowPause();
             yield return null;
             W8Ok(ref ok, pc.BotonCargar != null && !pc.BotonCargar.gameObject.activeSelf, sb, "pausa: con el archivo roto el boton CARGAR no aparece");
@@ -294,7 +294,7 @@ namespace SP.EditorTools
             UnityEngine.SceneManagement.SceneManager.LoadScene("SC_MainMenu");
             yield return null; yield return null;
             foreach (var x in Esperar(0.8f)) yield return x;
-            var mm = UnityEngine.Object.FindFirstObjectByType<MainMenuController>(FindObjectsInactive.Include);
+            var mm = UnityEngine.Object.FindAnyObjectByType<MainMenuController>(FindObjectsInactive.Include);
             W8Ok(ref ok, mm != null && mm.BotonContinuar != null && mm.BotonContinuar.gameObject.activeInHierarchy, sb, "con partida valida aparece CONTINUAR");
             string txt = mm != null && mm.BotonContinuar != null ? string.Join(" ", System.Array.ConvertAll(mm.BotonContinuar.GetComponentsInChildren<UnityEngine.UI.Text>(true), q => q.text)) : "";
             W8Ok(ref ok, txt.Contains("OBJETIVO 4/6"), sb, "el boton dice el objetivo: '" + txt.Replace("\n", " ") + "'");
@@ -304,14 +304,14 @@ namespace SP.EditorTools
             UnityEngine.SceneManagement.SceneManager.LoadScene("SC_MainMenu");
             yield return null; yield return null;
             foreach (var x in Esperar(0.8f)) yield return x;
-            mm = UnityEngine.Object.FindFirstObjectByType<MainMenuController>(FindObjectsInactive.Include);
+            mm = UnityEngine.Object.FindAnyObjectByType<MainMenuController>(FindObjectsInactive.Include);
             W8Ok(ref ok, mm != null && mm.BotonContinuar == null, sb, "con el archivo roto no aparece CONTINUAR");
             // Sin archivo: tampoco.
             PartidaGuardada.Borrar();
             UnityEngine.SceneManagement.SceneManager.LoadScene("SC_MainMenu");
             yield return null; yield return null;
             foreach (var x in Esperar(0.8f)) yield return x;
-            mm = UnityEngine.Object.FindFirstObjectByType<MainMenuController>(FindObjectsInactive.Include);
+            mm = UnityEngine.Object.FindAnyObjectByType<MainMenuController>(FindObjectsInactive.Include);
             W8Ok(ref ok, mm != null && mm.BotonContinuar == null, sb, "sin archivo no aparece CONTINUAR");
             Dificultad.Actual = prevDif;
             Fin((ok ? "OK " : "FALLO ") + sb);
@@ -529,7 +529,7 @@ namespace SP.EditorTools
             LimpiarPartidasDePrueba(); PartidaGuardada.AutoguardadoActivo = false;
             OperacionPrueba.Arrancar(3);
             foreach (var x in Esperar(2f)) yield return x;
-            var pc = UnityEngine.Object.FindFirstObjectByType<PauseController>(FindObjectsInactive.Include);
+            var pc = UnityEngine.Object.FindAnyObjectByType<PauseController>(FindObjectsInactive.Include);
             if (pc == null) { Fin("FALLO no hay PauseController"); yield break; }
             ModoDios.Poner(false);
             pc.ShowPause();

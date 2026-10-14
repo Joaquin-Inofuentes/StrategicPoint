@@ -262,7 +262,7 @@ namespace SP.EditorTools
             surcosUsados.Clear();
             // Las casas de la ciudad tienen la losa del techo como cubo aparte ("Techo", "Techo_A"...): esa es la cara de arriba real.
             techosSueltos.Clear();
-            foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsSortMode.None))
+            foreach (var r in Object.FindObjectsByType<MeshRenderer>())
                 if (r.enabled && r.name.StartsWith("Techo")) techosSueltos.Add(r);
         }
 
@@ -435,7 +435,7 @@ namespace SP.EditorTools
         static string VestirSuelo()
         {
             Transform ground = null, losa = null;
-            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsSortMode.None))
+            foreach (var t in Object.FindObjectsByType<Transform>())
             {
                 if (t.name == "Ground" && t.GetComponent<MeshRenderer>() != null) ground = t;
                 else if (t.name == "Losa_Arena" && t.GetComponent<MeshRenderer>() != null) losa = t;
@@ -467,14 +467,14 @@ namespace SP.EditorTools
             }
             void Ocupar(float x, float z, float r) => Marcar(new Bounds(new Vector3(x, 0f, z), new Vector3(r * 2f, 0f, r * 2f)), 0f);
 
-            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            foreach (var r in Object.FindObjectsByType<Renderer>())
             {
                 if (!r.enabled || r.transform == ground || r.transform == losa || r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer) continue;
                 var b = r.bounds;
                 if (b.size.x > 250f || b.size.z > 250f || b.min.y > ySuelo + 3f) continue;   // horizonte y montañas / lamparas y techos en el aire
                 Marcar(b, 1.2f);
             }
-            foreach (var c in Object.FindObjectsByType<Collider>(FindObjectsSortMode.None))
+            foreach (var c in Object.FindObjectsByType<Collider>())
             {
                 if (!c.enabled || c.transform == ground) continue;
                 var b = c.bounds;

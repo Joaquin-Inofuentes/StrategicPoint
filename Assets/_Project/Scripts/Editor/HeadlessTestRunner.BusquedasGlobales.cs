@@ -100,18 +100,18 @@ namespace SP.EditorTools
         static void ReRegistrarServiciosDeLaSuite(PlayerInputDriver inputDriver, ProjectilePool pool)
         {
             inputDriver.Registrar(); inputDriver.Brain.Registrar(); pool.Registrar();
-            var outcome = UnityEngine.Object.FindFirstObjectByType<SP.Presentation.GameOutcomeController>(); if (outcome != null) outcome.Registrar();
-            var roster = UnityEngine.Object.FindFirstObjectByType<SP.UI.RosterView>(); if (roster != null) roster.RegistrarActivo();
-            var mini = UnityEngine.Object.FindFirstObjectByType<SP.UI.MinimapFollow>();
+            var outcome = UnityEngine.Object.FindAnyObjectByType<SP.Presentation.GameOutcomeController>(); if (outcome != null) outcome.Registrar();
+            var roster = UnityEngine.Object.FindAnyObjectByType<SP.UI.RosterView>(); if (roster != null) roster.RegistrarActivo();
+            var mini = UnityEngine.Object.FindAnyObjectByType<SP.UI.MinimapFollow>();
             if (mini != null)
             {
                 mini.RegistrarActivo();
                 var marco = GameObject.Find("MinimapBorder"); if (marco != null) mini.Marco = marco.GetComponent<RectTransform>();   // en runtime viene serializado
             }
-            var arma = UnityEngine.Object.FindFirstObjectByType<SP.UI.WeaponStatusView>(); if (arma != null) arma.RegistrarActivo();
-            var dios = UnityEngine.Object.FindFirstObjectByType<SP.UI.ModoDiosView>(); if (dios != null) dios.RegistrarActivo();
-            var menu = UnityEngine.Object.FindFirstObjectByType<SP.UI.MenuDeOrdenes>(FindObjectsInactive.Include); if (menu != null) menu.RegistrarActivo();
-            var ajustes = UnityEngine.Object.FindFirstObjectByType<SP.Ai.AjustesDeEscuadra>(FindObjectsInactive.Include); if (ajustes != null) ajustes.RegistrarActivo();
+            var arma = UnityEngine.Object.FindAnyObjectByType<SP.UI.WeaponStatusView>(); if (arma != null) arma.RegistrarActivo();
+            var dios = UnityEngine.Object.FindAnyObjectByType<SP.UI.ModoDiosView>(); if (dios != null) dios.RegistrarActivo();
+            var menu = UnityEngine.Object.FindAnyObjectByType<SP.UI.MenuDeOrdenes>(FindObjectsInactive.Include); if (menu != null) menu.RegistrarActivo();
+            var ajustes = UnityEngine.Object.FindAnyObjectByType<SP.Ai.AjustesDeEscuadra>(FindObjectsInactive.Include); if (ajustes != null) ajustes.RegistrarActivo();
         }
 
         // Busquedas por nombre en la jerarquia (Transform.Find): quedan las de arranque (OnEnable/Awake/Ensure*) y las

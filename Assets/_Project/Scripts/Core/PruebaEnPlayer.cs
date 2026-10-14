@@ -84,7 +84,7 @@ namespace SP.Core
             var mir = gameObject.AddComponent<Mirador>();
             var textos = new System.Collections.Generic.List<TextMesh>();
             var cam0 = CamaraPrincipal.Actual != null ? CamaraPrincipal.Actual.transform.position : Vector3.zero;
-            foreach (var tm in FindObjectsByType<TextMesh>(FindObjectsInactive.Exclude, FindObjectsSortMode.None)) if (tm.text != null && tm.text.Trim().Length >= 5 && tm.GetComponent<MeshRenderer>() != null && tm.GetComponent<MeshRenderer>().bounds.size.x > 2.5f) textos.Add(tm);
+            foreach (var tm in FindObjectsByType<TextMesh>(FindObjectsInactive.Exclude)) if (tm.text != null && tm.text.Trim().Length >= 5 && tm.GetComponent<MeshRenderer>() != null && tm.GetComponent<MeshRenderer>().bounds.size.x > 2.5f) textos.Add(tm);
             textos.Sort((a, b) => Vector3.Distance(a.transform.position, cam0).CompareTo(Vector3.Distance(b.transform.position, cam0)));
             int desajustados = 0; var fuenteUsada = textos.Count > 0 ? textos[0].font : null;
             var mpb = new MaterialPropertyBlock();

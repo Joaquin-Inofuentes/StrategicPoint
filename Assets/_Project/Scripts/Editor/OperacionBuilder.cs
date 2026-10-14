@@ -576,7 +576,7 @@ namespace SP.EditorTools
         // El PlayerInputDriver guarda "su" vehiculo (campo serializado): sin esto no puede subir a ningun tanque.
         static void ConectarVehiculoDelJugador(Vehicle v)
         {
-            var driver = Object.FindFirstObjectByType<SP.Player.PlayerInputDriver>(FindObjectsInactive.Include);
+            var driver = Object.FindAnyObjectByType<SP.Player.PlayerInputDriver>(FindObjectsInactive.Include);
             if (driver == null) { Debug.LogWarning("[Operacion] No hay PlayerInputDriver."); return; }
             var so = new SerializedObject(driver);
             var p = so.FindProperty("Vehicle");

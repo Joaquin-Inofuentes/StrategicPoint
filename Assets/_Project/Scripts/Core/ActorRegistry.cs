@@ -105,7 +105,7 @@ namespace SP.Core
         // falta certeza absoluta (la suite lo usa entre escenarios).
         public static void Rebarrer()
         {
-            var found = UnityEngine.Object.FindObjectsByType<Soldier>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var found = UnityEngine.Object.FindObjectsByType<Soldier>(FindObjectsInactive.Include);
             foreach (var s in found)
             {
                 if (s == null) continue;

@@ -462,7 +462,7 @@ namespace SP.EditorTools
         static void Fase23_ColliderSinMalla()
         {
             TestLog.Step("Probando Fase23_ColliderSinMalla: verificar que no haya colliders fisicos invisibles");
-            var colliders = Object.FindObjectsByType<Collider>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var colliders = Object.FindObjectsByType<Collider>(FindObjectsInactive.Include);
             int count = 0;
             foreach (var c in colliders)
             {

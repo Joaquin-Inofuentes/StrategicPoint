@@ -137,7 +137,7 @@ public static class TerrainSetupHelper
         tData.terrainLayers = new TerrainLayer[] { layerGrass, layerDirt };
 
         // 6. Buscar o instanciar el GameObject de Terrain en la escena
-        Terrain terrain = Object.FindFirstObjectByType<Terrain>();
+        Terrain terrain = Object.FindAnyObjectByType<Terrain>();
         GameObject terrainGO;
         if (terrain == null)
         {
@@ -276,7 +276,7 @@ public static class TerrainSetupHelper
     public static void EnsureGameplaySceneAndCapture()
     {
         var scene = UnityEditor.SceneManagement.EditorSceneManager.OpenScene("Assets/_Project/Scenes/SC_Gameplay.unity", UnityEditor.SceneManagement.OpenSceneMode.Single);
-        var surface = Object.FindFirstObjectByType<Unity.AI.Navigation.NavMeshSurface>();
+        var surface = Object.FindAnyObjectByType<Unity.AI.Navigation.NavMeshSurface>();
         var border = GameObject.Find("MinimapBorder");
         var rt = border != null ? border.GetComponent<RectTransform>() : null;
         var agent = Object.FindFirstObjectByType<UnityEngine.AI.NavMeshAgent>();
@@ -295,7 +295,7 @@ public static class TerrainSetupHelper
         var vega = GameObject.Find("Soldado_1_Vega")?.GetComponent<SP.Actors.Soldier>();
         var kes = GameObject.Find("Soldado_2_Kes")?.GetComponent<SP.Actors.Soldier>();
         var doc = GameObject.Find("Soldado_3_Doc")?.GetComponent<SP.Actors.Soldier>();
-        var inputDriver = Object.FindFirstObjectByType<SP.Player.PlayerInputDriver>();
+        var inputDriver = Object.FindAnyObjectByType<SP.Player.PlayerInputDriver>();
 
         Debug.Log($"[DIAGNOSE] vega={vega != null}, kes={kes != null}, doc={doc != null}, inputDriver={inputDriver != null}");
         if (kes != null)

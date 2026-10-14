@@ -46,7 +46,7 @@ namespace SP.Presentation
 
         static void DestroyOrphans()
         {
-            foreach (var m in Object.FindObjectsByType<KillCylinderFx>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var m in Object.FindObjectsByType<KillCylinderFx>(FindObjectsInactive.Include))
             {
                 if (m == null || all.Contains(m)) continue;
                 if (Application.isPlaying) Object.Destroy(m.gameObject);

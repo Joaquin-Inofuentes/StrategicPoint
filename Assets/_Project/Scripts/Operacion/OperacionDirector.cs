@@ -206,7 +206,7 @@ namespace SP.Operacion
             SuscribirPuestos();
             GuardarTanqueInicial();
             // El prefab P_Soldier_Enemy trae rol Medic: todos los enemigos del nivel figuraban (y se comportaban) como medicos.
-            foreach (var s in FindObjectsByType<Soldier>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var s in FindObjectsByType<Soldier>(FindObjectsInactive.Include))
                 if (s.Team == TeamId.Enemy && s.Role != RoleType.Enemy) s.SetRole(RoleType.Enemy);
             if (heli != null)
             {

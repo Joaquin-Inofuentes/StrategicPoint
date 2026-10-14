@@ -114,14 +114,14 @@ namespace SP.EditorTools
 
             // 1) componentes dentro de los limites del cuartel
             int tf = 0, tt = 0, rf = 0, fuera = 0;
-            foreach (var t in UnityEngine.Object.FindObjectsByType<TorreDestruible>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var t in UnityEngine.Object.FindObjectsByType<TorreDestruible>(FindObjectsInactive.Include))
             {
                 if (!W8EnLimitesDelCuartel(t.transform.position)) fuera++;
                 if (t.tipo == TorreDestruible.Tipo.Francotirador) tf++; else tt++;
                 var mk = t.GetComponent<ObstacleMarker>();
                 if (mk == null || !mk.SoloExplosiones || mk.MaxHealth != (t.tipo == TorreDestruible.Tipo.Francotirador ? TorreDestruible.VidaFrancotirador : TorreDestruible.VidaTorreta)) { ok = false; sb.Append("marca de " + t.name + " mal; "); }
             }
-            foreach (var r in UnityEngine.Object.FindObjectsByType<ReflectorVigia>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var r in UnityEngine.Object.FindObjectsByType<ReflectorVigia>(FindObjectsInactive.Include))
             {
                 if (!W8EnLimitesDelCuartel(r.transform.position)) fuera++;
                 rf++;

@@ -425,7 +425,7 @@ namespace SP.Core
             {
                 proximaBusquedaDeGuardables = Time.unscaledTime + 30f;
                 guardables.Clear();
-                foreach (var m in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                foreach (var m in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
                     if (m is IEstadoGuardable gg) guardables.Add(gg);
             }
             foreach (var g in guardables)
@@ -500,7 +500,7 @@ namespace SP.Core
                 }
                 e.soldados.Add(ss);
             }
-            foreach (var v in FindObjectsByType<Vehicle>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var v in FindObjectsByType<Vehicle>(FindObjectsInactive.Include))
             {
                 var sv = new SnapVehiculo
                 {
@@ -807,7 +807,7 @@ namespace SP.Core
             var kv = new Dictionary<string, string>();
             foreach (var p in e.mision) kv[p.k] = p.v;
             int misiones = 0;
-            foreach (var m in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var m in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
             {
                 if (!(m is IEstadoGuardable g)) continue;
                 var mio = new Dictionary<string, string>();
@@ -852,7 +852,7 @@ namespace SP.Core
             sb.Append($"soldados={ok}/{e.soldados.Count} ");
 
             var vs = new Dictionary<string, Vehicle>();
-            foreach (var v in FindObjectsByType<Vehicle>(FindObjectsInactive.Include, FindObjectsSortMode.None)) if (!vs.ContainsKey(v.name)) vs[v.name] = v;
+            foreach (var v in FindObjectsByType<Vehicle>(FindObjectsInactive.Include)) if (!vs.ContainsKey(v.name)) vs[v.name] = v;
             int okv = 0;
             foreach (var sv in e.vehiculos)
             {

@@ -394,7 +394,7 @@ namespace SP.EditorTools
             }
             // Todos los TextMesh del nivel: ninguno con el shader que ignora la profundidad.
             int malos = 0, total = 0;
-            foreach (var t in Object.FindObjectsByType<TextMesh>(FindObjectsSortMode.None))
+            foreach (var t in Object.FindObjectsByType<TextMesh>())
             {
                 var r = t.GetComponent<MeshRenderer>(); total++;
                 if (r != null && r.sharedMaterial != null && r.sharedMaterial.shader.name == "GUI/Text Shader") malos++;

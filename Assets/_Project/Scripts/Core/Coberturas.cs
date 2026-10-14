@@ -43,7 +43,7 @@ namespace SP.Core
         public static List<Collider> Solidos()
         {
             var lista = new List<Collider>();
-            var todos = Object.FindObjectsByType<Collider>(FindObjectsSortMode.None);
+            var todos = Object.FindObjectsByType<Collider>();
             for (int i = 0; i < todos.Length; i++)
             {
                 var c = todos[i];

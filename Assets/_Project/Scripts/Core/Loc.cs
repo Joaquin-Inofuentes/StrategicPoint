@@ -164,7 +164,7 @@ namespace SP.Core
         {
             int n = 0;
             bool aIngles = Loc.Actual == Idioma.En;
-            foreach (var t in UnityEngine.Object.FindObjectsByType<Text>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var t in UnityEngine.Object.FindObjectsByType<Text>(FindObjectsInactive.Include))
             {
                 if (t == null) continue;
                 var id = t;

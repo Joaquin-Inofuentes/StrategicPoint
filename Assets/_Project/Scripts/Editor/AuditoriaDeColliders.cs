@@ -10,7 +10,7 @@ namespace SP.EditorTools
         [MenuItem("Strategic Point/Auditar colliders sin malla")]
         public static void Auditar()
         {
-            var colliders = FindObjectsByType<Collider>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var colliders = FindObjectsByType<Collider>(FindObjectsInactive.Include);
             
             var invisibleColliders = new List<Collider>();
             foreach (var c in colliders)

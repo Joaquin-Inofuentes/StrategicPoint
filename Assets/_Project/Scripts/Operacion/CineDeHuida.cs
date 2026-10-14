@@ -87,7 +87,7 @@ namespace SP.Operacion
             if (Camara == null && driver != null && driver.Rig != null) Camara = driver.Rig.Cam;
             if (Camara != null) CampoDeVisionOriginal = Camara.fieldOfView;
             canvasApagados.Clear();
-            foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            foreach (var c in FindObjectsByType<Canvas>())
             {
                 if (c == null || !c.enabled || c.renderMode == RenderMode.WorldSpace) continue;
                 if (lienzo != null && c.gameObject == lienzo) continue;

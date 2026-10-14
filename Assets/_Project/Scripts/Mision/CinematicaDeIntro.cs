@@ -47,7 +47,7 @@ namespace SP.Mision
 
         void OcultarHudCompartidoConPausa()
         {
-            foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            foreach (var cv in FindObjectsByType<Canvas>())
             {
                 if (cv == null || cv.gameObject == lienzo || cv.renderMode == RenderMode.WorldSpace) continue;
                 if (EsCanvasDeMenuDedicado(cv)) continue;
@@ -67,7 +67,7 @@ namespace SP.Mision
         // filas leyendo PlayerInputDriver.Activo, y con el driver aun apagado el roster quedaba vacio.
         void RestaurarHudOcultado()
         {
-            foreach (var cv in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            foreach (var cv in FindObjectsByType<Canvas>())
                 if (cv != null && cv.gameObject != lienzo && cv.renderMode != RenderMode.WorldSpace) cv.enabled = true;
             foreach (var go in ocultadosPorCinematica)
                 if (go != null) go.SetActive(true);

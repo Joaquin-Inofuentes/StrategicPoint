@@ -60,7 +60,7 @@ namespace SP.EditorTools
 
             // Bug #221 ("no se ven los muros"): un muro con el cubo apagado y SIN su ArteOp (se perdio el arte pero el cubo siguio apagado) quedaba
             // invisible para siempre: el bucle de abajo salta los renderers apagados. Se vuelven a encender para que se vistan de nuevo.
-            foreach (var huerfano in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            foreach (var huerfano in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude))
             {
                 if (huerfano == null || huerfano.enabled || huerfano.GetComponent<Collider>() == null) continue;
                 var mfh = huerfano.GetComponent<MeshFilter>();
@@ -77,7 +77,7 @@ namespace SP.EditorTools
             PrepararTechos();
 
             int pisos = 0, muros = 0, edificios = 0, rocasN = 0, barreras = 0, barandas = 0, props = 0, modulos = 0, surcos = 0, torres = 0;
-            foreach (var mr in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            foreach (var mr in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude))
             {
                 if (mr == null || !mr.enabled) continue;
                 var mf = mr.GetComponent<MeshFilter>();

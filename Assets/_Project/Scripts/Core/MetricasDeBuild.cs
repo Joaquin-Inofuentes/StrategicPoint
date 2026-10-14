@@ -85,9 +85,9 @@ namespace SP.Core
                 sb.AppendLine($"heap_gestionado_MB={(GC.GetTotalMemory(false) / 1048576f).ToString("0.0", ci)}");
                 sb.AppendLine($"memoria_total_asignada_MB={(UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / 1048576f).ToString("0.0", ci)} mono_usado_MB={(UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong() / 1048576f).ToString("0.0", ci)}");
                 int canvases = 0, worldCanvases = 0, graficos = 0;
-                foreach (var c in UnityEngine.Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None)) { canvases++; if (c.renderMode == RenderMode.WorldSpace) worldCanvases++; }
-                graficos = UnityEngine.Object.FindObjectsByType<Graphic>(FindObjectsSortMode.None).Length;
-                sb.AppendLine($"escena={SceneManager.GetActiveScene().name} canvases={canvases} (world={worldCanvases}) graficos_ui={graficos} audiosources={UnityEngine.Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None).Length}");
+                foreach (var c in UnityEngine.Object.FindObjectsByType<Canvas>()) { canvases++; if (c.renderMode == RenderMode.WorldSpace) worldCanvases++; }
+                graficos = UnityEngine.Object.FindObjectsByType<Graphic>().Length;
+                sb.AppendLine($"escena={SceneManager.GetActiveScene().name} canvases={canvases} (world={worldCanvases}) graficos_ui={graficos} audiosources={UnityEngine.Object.FindObjectsByType<AudioSource>().Length}");
                 sb.AppendLine($"cajas_de_suministros={SP.Player.CajaDeSuministros.Todas.Count} reservas_activas={SP.Combat.WeaponHolder.ReservasActivas} hud_pulido={(UnityEngine.Object.FindAnyObjectByType<SP.UI.HudPulido>() != null)} soldados={ActorRegistry.All.Count}");
                 sb.AppendLine($"gpu={SystemInfo.graphicsDeviceName} cpu={SystemInfo.processorType} ram_MB={SystemInfo.systemMemorySize} resolucion={Screen.width}x{Screen.height}");
                 try { File.WriteAllText(Path.Combine(Application.persistentDataPath, "spmetrics.txt"), sb.ToString()); } catch { }

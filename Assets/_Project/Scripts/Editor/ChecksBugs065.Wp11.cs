@@ -38,7 +38,7 @@ namespace SP.EditorTools
                 cam.CopyFrom(src);
                 cam.transform.SetPositionAndRotation(src.transform.position, src.transform.rotation);
                 cam.targetTexture = rt; cam.cullingMask = ~0;
-                foreach (var c in UnityEngine.Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+                foreach (var c in UnityEngine.Object.FindObjectsByType<Canvas>())
                 {
                     if (c == null || !c.isRootCanvas || !c.gameObject.activeInHierarchy || c.renderMode != RenderMode.ScreenSpaceOverlay) continue;
                     cambiados.Add((c, c.sortingOrder));

@@ -51,7 +51,7 @@ namespace SP.EditorTools
             int limpiados = LimpiarTodosLosIconos();
             int soldadosCreados = 0, vehiculosCreados = 0;
 
-            foreach (var soldier in Object.FindObjectsByType<Soldier>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var soldier in Object.FindObjectsByType<Soldier>(FindObjectsInactive.Include))
             {
                 var color = soldier.Team == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
                 var icon = MinimapIcon.Spawn(soldier.transform, color, layerMinimapa, RadioSoldado);
@@ -60,7 +60,7 @@ namespace SP.EditorTools
                 soldadosCreados++;
             }
 
-            foreach (var vehicle in Object.FindObjectsByType<Vehicle>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var vehicle in Object.FindObjectsByType<Vehicle>(FindObjectsInactive.Include))
             {
                 var icon = MinimapIcon.Spawn(vehicle.transform, Color.gray, layerMinimapa, RadioVehiculo);
                 // NO como hijo del vehiculo: Vehicle.RefreshOccupancyColor
@@ -95,7 +95,7 @@ namespace SP.EditorTools
 
         static int LimpiarTodosLosIconos()
         {
-            var iconos = Object.FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var iconos = Object.FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include);
             foreach (var icon in iconos) Object.DestroyImmediate(icon.gameObject);
             return iconos.Length;
         }

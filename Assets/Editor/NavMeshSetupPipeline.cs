@@ -77,7 +77,7 @@ namespace SP.EditorTools
             }
 
             // Buscar o crear NavMeshSurface
-            var surface = Object.FindFirstObjectByType<NavMeshSurface>();
+            var surface = Object.FindAnyObjectByType<NavMeshSurface>();
             if (surface == null)
             {
                 var go = new GameObject("NavMeshSurface");

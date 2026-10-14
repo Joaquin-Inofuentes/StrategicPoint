@@ -23,7 +23,7 @@ namespace SP.EditorTools
             while (c == null && Time.realtimeSinceStartup - t0 < 5f)
             {
                 yield return null;
-                c = Object.FindFirstObjectByType<LoadingScreenController>();
+                c = Object.FindAnyObjectByType<LoadingScreenController>();
             }
             if (c == null) { sb.Append($"[{destino}: no aparecio SC_Loading] "); fin(false); yield break; }
             // La barra avanza sola (0,5 s de espera + 2,6 s de carga): se toman dos fotos del estado mientras la escena de carga sigue viva.
@@ -60,7 +60,7 @@ namespace SP.EditorTools
             }
             // Espera a que termine de cargar el destino.
             t0 = Time.realtimeSinceStartup;
-            while (Object.FindFirstObjectByType<LoadingScreenController>() != null && Time.realtimeSinceStartup - t0 < 20f) yield return null;
+            while (Object.FindAnyObjectByType<LoadingScreenController>() != null && Time.realtimeSinceStartup - t0 < 20f) yield return null;
             foreach (var x in Esperar(1.0f)) yield return x;
             fin(ok);
         }
@@ -85,7 +85,7 @@ namespace SP.EditorTools
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
             if (UnityEngine.SceneManagement.SceneManager.GetActiveScene().name != "SC_Gameplay") { Fin("FALLO la escena no es SC_Gameplay"); yield break; }
             var sb = new StringBuilder(); bool ok = true;
-            var ws = Object.FindObjectsByType<CinematicaWaypoint>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var ws = Object.FindObjectsByType<CinematicaWaypoint>(FindObjectsInactive.Include);
             bool viejo = false, fondo = false;
             foreach (var w in ws)
             {
@@ -102,7 +102,7 @@ namespace SP.EditorTools
             float t0 = Time.realtimeSinceStartup;
             while (intro != null && Time.realtimeSinceStartup - t0 < 25f && !capturado)
             {
-                foreach (var tx in Object.FindObjectsByType<Text>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                foreach (var tx in Object.FindObjectsByType<Text>(FindObjectsInactive.Exclude))
                     if (tx.name == "Subtitulo" && tx.text.Length > 3 && tx.color.a > 0.9f) { visto = tx.text; capturado = true; break; }
                 yield return null;
             }

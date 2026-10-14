@@ -133,12 +133,12 @@ namespace SP.EditorTools
         public static string Entorno()
         {
             int activos = 0, fragmentos = 0, renderers = 0, luces = 0, luzActiva = 0, soldados = 0, enemigos = 0, particulas = 0;
-            foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None)) if (r != null && r.enabled && r.gameObject.activeInHierarchy) renderers++;
-            foreach (var l in UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None)) { luces++; if (l.enabled && l.gameObject.activeInHierarchy) luzActiva++; }
+            foreach (var r in UnityEngine.Object.FindObjectsByType<Renderer>()) if (r != null && r.enabled && r.gameObject.activeInHierarchy) renderers++;
+            foreach (var l in UnityEngine.Object.FindObjectsByType<Light>()) { luces++; if (l.enabled && l.gameObject.activeInHierarchy) luzActiva++; }
             foreach (var s in SP.Core.ActorRegistry.All) if (s != null && s.isActiveAndEnabled && s.Health != null && s.Health.IsAlive) { soldados++; if (s.Team == SP.Combat.TeamId.Enemy) enemigos++; }
-            foreach (var p in UnityEngine.Object.FindObjectsByType<ParticleSystem>(FindObjectsSortMode.None)) if (p != null && p.isPlaying) particulas++;
-            foreach (var fr in UnityEngine.Object.FindObjectsByType<SP.Presentation.Fragmento>(FindObjectsSortMode.None)) if (fr != null && fr.gameObject.activeInHierarchy) fragmentos++;
-            activos = UnityEngine.Object.FindObjectsByType<Transform>(FindObjectsSortMode.None).Length;
+            foreach (var p in UnityEngine.Object.FindObjectsByType<ParticleSystem>()) if (p != null && p.isPlaying) particulas++;
+            foreach (var fr in UnityEngine.Object.FindObjectsByType<SP.Presentation.Fragmento>()) if (fr != null && fr.gameObject.activeInHierarchy) fragmentos++;
+            activos = UnityEngine.Object.FindObjectsByType<Transform>().Length;
             return $"transforms={activos} renderers={renderers} luces={luzActiva}/{luces} soldadosVivos={soldados} (enemigos {enemigos}) particulasActivas={particulas} fragmentosActivos={fragmentos} gameView={Screen.width}x{Screen.height}";
         }
     }

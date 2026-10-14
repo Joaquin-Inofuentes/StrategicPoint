@@ -82,7 +82,7 @@ namespace SP.EditorTools
         public static string ActualizarSubtitulos()
         {
             var sb = new System.Text.StringBuilder(); int cambiados = 0;
-            foreach (var w in Object.FindObjectsByType<CinematicaWaypoint>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var w in Object.FindObjectsByType<CinematicaWaypoint>(FindObjectsInactive.Include))
             {
                 sb.Append(w.name + "=[" + w.subtitulo + "] ");
                 if (w.subtitulo != null && w.subtitulo.ToLowerInvariant().Contains("luego volver al helicoptero"))

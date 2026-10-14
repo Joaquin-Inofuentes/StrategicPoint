@@ -37,7 +37,7 @@ namespace SP.UI
         }
         public static void AplicarEscala()
         {
-            foreach (var cs in Object.FindObjectsByType<CanvasScaler>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var cs in Object.FindObjectsByType<CanvasScaler>(FindObjectsInactive.Include))
             {
                 if (cs.uiScaleMode != CanvasScaler.ScaleMode.ScaleWithScreenSize) continue;
                 float h = cs.referenceResolution.y;

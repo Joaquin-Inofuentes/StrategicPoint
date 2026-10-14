@@ -93,7 +93,7 @@ namespace SP.Presentation
         // escena.
         static void DestroyOrphans()
         {
-            foreach (var m in Object.FindObjectsByType<OrderMarkerFx>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var m in Object.FindObjectsByType<OrderMarkerFx>(FindObjectsInactive.Include))
             {
                 if (m == null || all.Contains(m)) continue;
                 if (Application.isPlaying) Object.Destroy(m.gameObject);

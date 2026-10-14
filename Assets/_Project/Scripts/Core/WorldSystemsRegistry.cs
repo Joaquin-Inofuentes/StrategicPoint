@@ -58,9 +58,9 @@ namespace SP.Core
             if (populated) return;
             populated = true;
 
-            foreach (var v in UnityEngine.Object.FindObjectsByType<Vehicle>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None))
+            foreach (var v in UnityEngine.Object.FindObjectsByType<Vehicle>(UnityEngine.FindObjectsInactive.Include))
                 Register(v);
-            foreach (var o in UnityEngine.Object.FindObjectsByType<SP.Presentation.ObstacleMarker>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None))
+            foreach (var o in UnityEngine.Object.FindObjectsByType<SP.Presentation.ObstacleMarker>(UnityEngine.FindObjectsInactive.Include))
                 Register(o);
 
             // Bootstrap() y no Register() a secas: estos tres cachean
@@ -70,11 +70,11 @@ namespace SP.Core
             // Tick() haria un no-op silencioso via su guarda de null -- que
             // es exactamente el bug que dejaba a TurretAI sin cobertura en
             // la suite pese a que WorldSimulationDriver.Step ya lo recorre.
-            foreach (var vb in UnityEngine.Object.FindObjectsByType<VehicleBrain>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None))
+            foreach (var vb in UnityEngine.Object.FindObjectsByType<VehicleBrain>(UnityEngine.FindObjectsInactive.Include))
                 vb.Bootstrap();
-            foreach (var tw in UnityEngine.Object.FindObjectsByType<TurretWeapon>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None))
+            foreach (var tw in UnityEngine.Object.FindObjectsByType<TurretWeapon>(UnityEngine.FindObjectsInactive.Include))
                 tw.Bootstrap();
-            foreach (var ta in UnityEngine.Object.FindObjectsByType<TurretAI>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None))
+            foreach (var ta in UnityEngine.Object.FindObjectsByType<TurretAI>(UnityEngine.FindObjectsInactive.Include))
                 ta.Bootstrap();
         }
 

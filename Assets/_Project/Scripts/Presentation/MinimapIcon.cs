@@ -962,7 +962,7 @@ namespace SP.Presentation
         public static MinimapIcon BuscarPorTarget(Transform target)
         {
             if (target == null) return null;
-            foreach (var icon in FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var icon in FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include))
                 if (icon.Target == target) return icon;
             return null;
         }

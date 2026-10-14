@@ -748,7 +748,7 @@ namespace SP.EditorTools
             var marcador = GameObject.Find("Marcador_RefugioCivil");
             if (marcador != null) { marcador.transform.position = c; EditorUtility.SetDirty(marcador.transform); }
 
-            var director = Object.FindFirstObjectByType<MisionDirector>();
+            var director = Object.FindAnyObjectByType<MisionDirector>();
             if (director != null)
             {
                 var so = new SerializedObject(director);

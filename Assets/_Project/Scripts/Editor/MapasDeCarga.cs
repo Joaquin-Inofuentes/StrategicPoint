@@ -92,7 +92,7 @@ namespace SP.EditorTools
         static void ReunirGameplay(List<Vector3> pts, List<int> idx, List<string> et, List<string> col, out string leyenda)
         {
             var squad = GameObject.Find("PlayerSquad");
-            var md = UnityEngine.Object.FindFirstObjectByType<MisionDirector>(FindObjectsInactive.Include);
+            var md = UnityEngine.Object.FindAnyObjectByType<MisionDirector>(FindObjectsInactive.Include);
             Vector3 inicio = squad != null ? squad.transform.position : new Vector3(0f, 0f, -20f);
             Vector3 rehen = md != null ? md.RefugioDelCivil : new Vector3(-2f, 0f, 124f);
             Vector3 heli = md != null ? md.Helipuerto : new Vector3(-26f, 0f, -8f);
@@ -106,7 +106,7 @@ namespace SP.EditorTools
 
         static void ReunirOperacion(List<Vector3> pts, List<int> idx, List<string> et, List<string> col, out string leyenda)
         {
-            var d = UnityEngine.Object.FindFirstObjectByType<OperacionDirector>(FindObjectsInactive.Include);
+            var d = UnityEngine.Object.FindAnyObjectByType<OperacionDirector>(FindObjectsInactive.Include);
             string[] nombres = { "CUARTEL", "MURALLA", "CENTRO DE DATOS", "TANQUE", "CIUDAD", "HELICOPTERO" };
             string[] colores = { "#4FC3F7", "#FF8A65", "#BA68C8", "#FFD54F", "#F06292", "#81C784" };
             if (d != null && d.anclasDeZona != null)

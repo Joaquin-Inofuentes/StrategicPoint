@@ -281,7 +281,7 @@ namespace SP.EditorTools
             bool clipOk = WeaponHolder.UltimoClipDeRecarga == esperadoClip;
             bool dos_d = WeaponHolder.UltimaRecargaFue2D;
             bool fuente = false; float blend = -1f;
-            foreach (var src in Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var src in Object.FindObjectsByType<AudioSource>(FindObjectsInactive.Include))
                 if (src != null && src.clip != null && src.clip.name == esperadoClip) { fuente = true; blend = src.spatialBlend; if (blend <= 0.001f) break; }
             bool animOk = frames > 3 && cubierto >= 0.9f && conAnim >= frames * 0.9f;
             bool audioOk = clipOk && dos_d && (!fuente || blend <= 0.001f);

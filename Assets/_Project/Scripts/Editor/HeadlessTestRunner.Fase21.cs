@@ -89,7 +89,7 @@ namespace SP.EditorTools
             kes.transform.position = vega.transform.position + new Vector3(3f, 0f, 3f);
             doc.transform.position = vega.transform.position + new Vector3(-3f, 0f, 3f);
             AjustesDeEscuadra.AsegurarEnEscena();
-            var ajustes = Object.FindFirstObjectByType<AjustesDeEscuadra>(FindObjectsInactive.Include);
+            var ajustes = Object.FindAnyObjectByType<AjustesDeEscuadra>(FindObjectsInactive.Include);
             ajustes.distanciaParaSeguir = 12.5f; ajustes.distanciaParaDetenerse = 4f; ajustes.Aplicar();
             AjustesDeEscuadra.Lider = vega;
 
@@ -416,7 +416,7 @@ namespace SP.EditorTools
         // ---------------------------------------------------------------- 6
         static void Fase21_Ajustes(Soldier vega, Soldier kes, Soldier doc)
         {
-            var pc = Object.FindFirstObjectByType<SP.Presentation.PauseController>(FindObjectsInactive.Include);
+            var pc = Object.FindAnyObjectByType<SP.Presentation.PauseController>(FindObjectsInactive.Include);
             var sp = pc != null ? pc.transform.Find("SettingsPanel") : null;
             if (sp == null) { Check("Existe el panel de Configuraciones en la escena de prueba", false); return; }
 

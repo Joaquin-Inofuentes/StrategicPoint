@@ -66,7 +66,7 @@ namespace SP.Presentation
         // viejos que quedaron sueltos.
         static void DestroyOrphans()
         {
-            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include))
             {
                 if (t == null || !t.name.StartsWith("Decal_")) continue;
                 if (Application.isPlaying) Object.Destroy(t.gameObject);

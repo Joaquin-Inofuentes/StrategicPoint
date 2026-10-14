@@ -13,7 +13,7 @@ namespace SP.EditorTools
     // WP3: UI de opciones, controles y minimapa (#098, #099, #100, #065 minimapa). Hay que estar en Play sobre SC_Operacion.
     public static partial class ChecksBugs065
     {
-        static PauseController PausaDelJuego() => UnityEngine.Object.FindFirstObjectByType<PauseController>(FindObjectsInactive.Include);
+        static PauseController PausaDelJuego() => UnityEngine.Object.FindAnyObjectByType<PauseController>(FindObjectsInactive.Include);
 
         static Transform HijoDe(Transform raiz, string nombre) => SP.Core.BuscarHijo.Ruta(raiz, nombre);
 

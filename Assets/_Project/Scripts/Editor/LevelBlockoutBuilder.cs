@@ -53,7 +53,7 @@ namespace SP.EditorTools
         public static Terrain TerrenoPrincipal()
         {
             Terrain elegido = null;
-            foreach (var t in Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var t in Object.FindObjectsByType<Terrain>(FindObjectsInactive.Include))
             {
                 if (t.name == "Terrain_Fondo") continue;
                 if (elegido == null || t.name == "Terrain_Main") elegido = t;
@@ -639,7 +639,7 @@ namespace SP.EditorTools
         // disparan a 13; aliados: 20 y 12.
         internal static void AjustarAlcancesDeCombate()
         {
-            foreach (var s in Object.FindObjectsByType<Soldier>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var s in Object.FindObjectsByType<Soldier>(FindObjectsInactive.Include))
             {
                 var ai = s.GetComponent<AiBrain>();
                 if (ai == null) continue;
@@ -706,11 +706,11 @@ namespace SP.EditorTools
 
         internal static void BakeNavMesh(bool conProps = false)
         {
-            var surface = Object.FindFirstObjectByType<Unity.AI.Navigation.NavMeshSurface>(FindObjectsInactive.Include);
+            var surface = Object.FindAnyObjectByType<Unity.AI.Navigation.NavMeshSurface>(FindObjectsInactive.Include);
             if (surface == null) { Debug.LogWarning("[Blockout] No hay NavMeshSurface."); return; }
 
             int volumenes = 0;
-            foreach (var c in Object.FindObjectsByType<BoxCollider>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+            foreach (var c in Object.FindObjectsByType<BoxCollider>(FindObjectsInactive.Exclude))
             {
                 if (c.isTrigger || c.name == "Ground") continue;
                 if (c.name.StartsWith("Campanario_")) continue;   // WP10: la plataforma y la rampa del campanario tienen que quedar caminables
@@ -728,7 +728,7 @@ namespace SP.EditorTools
             if (conProps)
             {
                 int props = 0;
-                foreach (var c in Object.FindObjectsByType<Collider>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                foreach (var c in Object.FindObjectsByType<Collider>(FindObjectsInactive.Exclude))
                 {
                     if (c.isTrigger || c.name == "Ground" || c is TerrainCollider || c is WheelCollider) continue;
                     if (c.GetComponentInParent<Soldier>() != null || c.GetComponentInParent<Vehicle>() != null || c.GetComponentInParent<SP.Combat.Projectile>() != null) continue;
@@ -744,7 +744,7 @@ namespace SP.EditorTools
                 Debug.Log($"[Blockout] NavMesh: {props} volumenes no caminables para props con collider propio.");
             }
 
-            foreach (var v in Object.FindObjectsByType<Vehicle>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var v in Object.FindObjectsByType<Vehicle>(FindObjectsInactive.Include))
             {
                 var mod = v.GetComponent<Unity.AI.Navigation.NavMeshModifier>();
                 if (mod == null) mod = v.gameObject.AddComponent<Unity.AI.Navigation.NavMeshModifier>();
