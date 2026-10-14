@@ -230,7 +230,7 @@ namespace SP.Presentation
             // Y por el mismo motivo, las coberturas que daba este obstaculo
             // ya no cubren de nada: sin reregistrar, la IA seguiria yendo a
             // esconderse detras de un escombro.
-            SP.Core.Coberturas.Registrar();
+            SP.Core.Coberturas.AlDerrumbarse(transform);   // sacar sus puntos, no re-escanear toda la escena (20-45 ms por derrumbe)
         }
 
         void Encender()

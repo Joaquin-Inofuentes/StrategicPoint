@@ -60,6 +60,22 @@ namespace SP.Core
             return lista;
         }
 
+        // Un obstaculo se derrumbo. Antes: Registrar() entero (FindObjectsByType<Collider> de toda la escena + 4 OverlapSphere por obstaculo),
+        // 20-45 ms de un tiron por cada barricada, saco, jersey o farola que caia. En juego alcanza con sacar SUS puntos (queda un
+        // poco menos de cobertura donde el obstaculo tapaba a sus vecinos, que es lo que ya pasaba hasta el siguiente Registrar).
+        // En Edit mode (la suite headless) se rehace entero, como siempre.
+        public static void AlDerrumbarse(Transform raiz)
+        {
+            if (!Application.isPlaying || raiz == null) { Registrar(); return; }
+            for (int i = duenos.Count - 1; i >= 0; i--)
+            {
+                var d = duenos[i];
+                if (d != null && !d.transform.IsChildOf(raiz)) continue;
+                duenos.RemoveAt(i);
+                puntos.RemoveAt(i);
+            }
+            Version++;
+        }
         // Los cuatro costados de cada obstaculo, a DistanciaDeLaCara de su
         // cara. Devuelve cuantos quedaron: un candidato que cae adentro de
         // otro collider se descarta, asi que no siempre son 4 por
