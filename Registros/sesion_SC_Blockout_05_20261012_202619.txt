@@ -1,0 +1,57 @@
+# REGISTRO DE SESION - Strategic Point
+# escena=SC_Blockout_05 fecha=2026-10-12 20:26:19 unity=6000.6.2f1 intervalo=5s
+# Formato: bloque cada 5 s (JUGADOR / ACCIONES / ALIADOS / ENEMIGOS / VEHICULOS / MISION) + lineas sueltas [EVENTO|ORDEN|BAJA|POSESION|BUG].
+# Para volver a un momento: SesionLog.RestaurarBug(n) (n = numero de bug marcado con [U] o [8]).
+
+=== BLOQUE 1 [T+0004.9s juego=0000.0 | escena SC_Blockout_05] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=270/270 pos=(-2.2,5.3,-3.0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_2_Kes            Sniper    hp=270/270 pos=(-0.1,5.3,-4.5) yaw=0 ia=Attack obj=Enemigo_Oeste_2 yendoACobertura
+  Soldado_3_Doc            Medic     hp=270/270 pos=(2.4,5.3,-4.4) yaw=9 ia=Chase obj=Enemigo_Este_2
+  Soldado_1_Vega           Assault   hp=270/270 pos=(-2.2,5.3,-3.0) yaw=0 ia=Patrol obj=-
+ENEMIGOS (11 vivos, 0 en reserva):
+  Enemigo_Este_3#2         Enemy     hp=135/135 pos=(48.0,0.8,0.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Flanker_O#3      Flanker   hp=135/135 pos=(-30.1,0.8,29.9) yaw=351 ia=Patrol obj=-
+  Enemigo_Oeste_2#4        Enemy     hp=135/135 pos=(-44.1,0.8,-6.2) yaw=351 ia=Patrol obj=-
+  Enemigo_Flanker_E#5      Flanker   hp=135/135 pos=(29.9,0.8,29.9) yaw=351 ia=Patrol obj=-
+  Enemigo_Este_1#6         Enemy     hp=135/135 pos=(43.8,0.8,3.9) yaw=351 ia=Patrol obj=-
+  Enemigo_Oeste_3#7        Enemy     hp=135/135 pos=(-48.0,0.8,0.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Vigia_Norte#8    Sniper    hp=135/135 pos=(0.0,4.3,46.0) yaw=356 ia=Attack obj=Soldado_1_Vega agachado
+  Enemigo_Este_2#10        Enemy     hp=135/135 pos=(43.8,0.8,-6.1) yaw=351 ia=Patrol obj=-
+  Enemigo_Norte_1#11       Enemy     hp=135/135 pos=(-10.2,0.8,35.9) yaw=351 ia=Patrol obj=-
+  Enemigo_Norte_2#13       Enemy     hp=135/135 pos=(9.8,0.8,35.9) yaw=351 ia=Patrol obj=-
+  Enemigo_Oeste_1#14       Enemy     hp=135/135 pos=(-44.1,0.8,3.8) yaw=351 ia=Patrol obj=-
+VEHICULOS (1):
+  Vehiculo_Blindado    bando=Player hp=260/260 pos=(-12.0,0.7,-34.0) yaw=0 ocupantes=[]
+MISION:
+
+[T+0009.5s juego=0002.7] BAJA: Enemigo_Este_2 (Enemy/Enemy) en (33.1,-0.3) por Soldado_3_Doc
+=== BLOQUE 2 [T+0010.0s juego=0003.1 | escena SC_Blockout_05] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=270/270 pos=(-2.2,5.3,-3.0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=None
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=1
+   baja: Enemigo_Este_2 (Enemy/Enemy) en (33.1,-0.3) por Soldado_3_Doc
+ALIADOS (3):
+  Soldado_2_Kes            Sniper    hp=270/270 pos=(-4.9,5.3,0.2) yaw=246 ia=Attack obj=Enemigo_Oeste_2 cobertura
+  Soldado_3_Doc            Medic     hp=270/270 pos=(7.4,3.8,2.0) yaw=88 ia=Attack obj=Enemigo_Este_1
+  Soldado_1_Vega           Assault   hp=270/270 pos=(-2.2,5.3,-3.0) yaw=0 ia=Patrol obj=-
+ENEMIGOS (10 vivos, 0 en reserva):
+  Enemigo_Este_3#2         Enemy     hp=135/135 pos=(48.0,0.8,0.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Flanker_O#3      Flanker   hp=135/135 pos=(-28.9,0.8,21.1) yaw=139 ia=Chase obj=Soldado_2_Kes
+  Enemigo_Oeste_2#4        Enemy     hp=135/135 pos=(-36.2,0.8,-14.2) yaw=118 ia=Attack obj=Soldado_2_Kes yendoACobertura
+  Enemigo_Flanker_E#5      Flanker   hp=135/135 pos=(25.7,0.8,17.9) yaw=153 ia=Attack obj=Soldado_3_Doc cobertura agachado
+  Enemigo_Este_1#6         Enemy     hp=135/135 pos=(28.7,0.8,3.0) yaw=270 ia=Attack obj=Soldado_3_Doc yendoACobertura
+  Enemigo_Oeste_3#7        Enemy     hp=135/135 pos=(-48.3,0.8,0.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Vigia_Norte#8    Sniper    hp=135/135 pos=(0.0,4.3,46.0) yaw=186 ia=Attack obj=Soldado_2_Kes agachado
+  Enemigo_Norte_1#11       Enemy     hp=135/135 pos=(-8.3,0.8,31.9) yaw=89 ia=Patrol obj=-
+  Enemigo_Norte_2#13       Enemy     hp=135/135 pos=(10.5,0.8,24.0) yaw=152 ia=Attack obj=Soldado_3_Doc yendoACobertura
+  Enemigo_Oeste_1#14       Enemy     hp=135/135 pos=(-36.1,0.8,-2.6) yaw=109 ia=Attack obj=Soldado_2_Kes yendoACobertura
+VEHICULOS (1):
+  Vehiculo_Blindado    bando=Player hp=260/260 pos=(-12.0,0.7,-34.0) yaw=0 ocupantes=[]
+MISION:
+
+[T+0010.2s juego=0003.4] BAJA: Enemigo_Oeste_2 (Enemy/Enemy) en (-35.2,-14.7) por Soldado_2_Kes
+[T+0010.4s juego=0003.6] BAJA: Enemigo_Este_1 (Enemy/Enemy) en (28.9,2.5) por Soldado_3_Doc
+[T+0012.4s juego=0005.5] ORDEN: CURAR -> Soldado_3_Doc | a Soldado_2_Kes (106/270)
+[T+0012.5s juego=0005.7] BAJA: Enemigo_Flanker_O (Enemy/Flanker) en (-26.0,17.6) por Soldado_2_Kes
+[T+0014.7s juego=0007.9] BAJA: Enemigo_Flanker_E (Enemy/Flanker) en (25.9,17.6) por Soldado_2_Kes

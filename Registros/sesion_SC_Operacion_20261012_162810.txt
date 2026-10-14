@@ -1,0 +1,77 @@
+# REGISTRO DE SESION - Strategic Point
+# escena=SC_Operacion fecha=2026-10-12 16:28:10 unity=6000.6.2f1 intervalo=5s
+# Formato: bloque cada 5 s (JUGADOR / ACCIONES / ALIADOS / ENEMIGOS / VEHICULOS / MISION) + lineas sueltas [EVENTO|ORDEN|BAJA|POSESION|BUG].
+# Para volver a un momento: SesionLog.RestaurarBug(n) (n = numero de bug marcado con [U] o [8]).
+
+[T+0056.0s juego=0219.4] EVENTO: FASE de la Operacion -> Infiltrar
+[T+0003.5s juego=0219.4] EVENTO: FASE de la Operacion -> Puestos (volados 0/2)
+[T+0003.5s juego=0219.4] EVENTO: Operacion restaurada: fase=Puestos reloj=8,3 puesto=3
+[T+0003.5s juego=0219.4] EVENTO: RESTAURADO: Restaurando bug #0 (2026-10-12 16:27:56): fase=Puestos | Soldado_2_Kes en (-40,2,0,8,-185,0) | aliados vivos=7 enemigos vivos=0 | vehiculos=3. misiones=1 soldados=118/122 vehiculos=3/3 jugador=Soldado_2_Kes
+[T+0003.6s juego=0219.4] EVENTO: PARTIDA: restaurada (test): Restaurando bug #0 (2026-10-12 16:27:56): fase=Puestos | Soldado_2_Kes en (-40,2,0,8,-185,0) | aliados vivos=7 enemigos vivos=0 | vehiculos=3. misiones=1 soldados=118/122 vehiculos=3/3 jugador=Soldado_2_Kes
+[T+0017.7s juego=0219.4] EVENTO: FASE de la Operacion -> Huir
+=== BLOQUE 49 [T+0017.8s juego=0219.5 | escena SC_Operacion] ===
+JUGADOR: Soldado_2_Kes (Flanker) hp=486/486 pos=(-2.2,0.8,-36.0) yaw=0 pitch=0 modo=Fps asiento=- municion=24 apunta=Ally:Soldado_1_Vega
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(0.2,0.8,-36.8) yaw=18 ia=Chase obj=Enemigo
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(-2.2,0.8,-36.0) yaw=0 ia=Patrol obj=-
+  Soldado_3_Doc            Medic     hp=486/486 pos=(2.3,1.8,-38.1) yaw=350 ia=Chase obj=Enemigo
+ENEMIGOS (0 vivos, 115 en reserva):
+VEHICULOS (1):
+  Tanque_Fuga          bando=Enemy hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[Enemigo:Driver,Enemigo:Passenger2]
+MISION:
+  Operacion.fase = Huir
+  Operacion.reloj = 0.00
+  Operacion.puestoActual = 2
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.jefeVida = 1.000
+  Operacion.reparacion = 0.000
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puestoOeste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.puestoEste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=False;pos=330.0,70.0,380.0;aterrizo=False
+
+[T+0019.0s juego=0220.7] ORDEN: Se dio la orden de seguir a 2 soldados -> Soldado_1_Vega, Soldado_3_Doc
+[T+0019.3s juego=0220.9] EVENTO: PARTIDA: guardada (auto: inicio objetivo 4) objetivo 4 fase Huir
+=== BLOQUE 50 [T+0022.8s juego=0224.4 | escena SC_Operacion] ===
+JUGADOR: Soldado_2_Kes (Flanker) hp=486/486 pos=(-2.2,0.8,-36.0) yaw=0 pitch=0 modo=Fps asiento=- municion=24 apunta=None
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=1 | cambios de soldado=0 | bajas=0
+   orden: [0019,0s] Se dio la orden de seguir a 2 soldados -> Soldado_1_Vega, Soldado_3_Doc
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=486/486 pos=(7.0,0.8,-13.9) yaw=3 ia=Attack obj=Enemigo siguiendoAuto
+  Soldado_2_Kes            Flanker   hp=486/486 pos=(-2.2,0.8,-36.0) yaw=0 ia=Patrol obj=-
+  Soldado_3_Doc            Medic     hp=486/486 pos=(-4.6,0.8,-16.0) yaw=327 ia=Chase obj=Enemigo siguiendoAuto
+ENEMIGOS (0 vivos, 115 en reserva):
+VEHICULOS (1):
+  Tanque_Fuga          bando=Enemy hp=1600/1600 pos=(0.0,0.7,22.0) yaw=0 ocupantes=[Enemigo:Driver,Enemigo:Passenger2]
+MISION:
+  Operacion.fase = Huir
+  Operacion.reloj = 4.99
+  Operacion.puestoActual = 2
+  Operacion.subfase = 0
+  Operacion.enTanque = False
+  Operacion.indiceRuta = 0
+  Operacion.autosDestruidos = 0
+  Operacion.jefeVida = 1.000
+  Operacion.reparacion = 0.000
+  Operacion.hackSegundos = -1.00
+  Operacion.oleadasCentro = 
+  Operacion.oleadasCiudad = 
+  Operacion.puestoOeste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.puestoEste = volado=True;mecha=0.00;guardiasVivos=0
+  Operacion.computadora = progreso=0.00;completo=False;operador=-
+  Operacion.cuartelVivos = 0
+  Operacion.torresCaidas = 
+  Operacion.reflectoresRotos = 
+  Operacion.heli = activo=False;pos=330.0,70.0,380.0;aterrizo=False
+
+[T+0031.6s juego=0227.7] EVENTO: PARTIDA: guardada (test) objetivo 4 fase Huir

@@ -1,0 +1,51 @@
+# REGISTRO DE SESION - Strategic Point
+# escena=SC_Blockout_02 fecha=2026-10-12 21:04:40 unity=6000.6.2f1 intervalo=5s
+# Formato: bloque cada 5 s (JUGADOR / ACCIONES / ALIADOS / ENEMIGOS / VEHICULOS / MISION) + lineas sueltas [EVENTO|ORDEN|BAJA|POSESION|BUG].
+# Para volver a un momento: SesionLog.RestaurarBug(n) (n = numero de bug marcado con [U] o [8]).
+
+=== BLOQUE 1 [T+0007.5s juego=0000.0 | escena SC_Blockout_02] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=270/270 pos=(-2.2,0.8,-68.0) yaw=0 pitch=72 modo=Fps asiento=- municion=8 apunta=Ground
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=270/270 pos=(-2.2,0.8,-68.0) yaw=0 ia=Patrol obj=-
+  Soldado_3_Doc            Medic     hp=270/270 pos=(2.3,0.8,-69.5) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes            Sniper    hp=270/270 pos=(0.0,0.8,-69.4) yaw=9 ia=Chase obj=Enemigo_Guardia_E1
+ENEMIGOS (11 vivos, 0 en reserva):
+  Enemigo_Vigia_E#1        Sniper    hp=135/135 pos=(22.0,4.3,10.0) yaw=0 ia=Attack obj=Soldado_1_Vega
+  Enemigo_Guardia_E1#2     Enemy     hp=135/135 pos=(18.0,0.8,6.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Guardia_O2#3     Enemy     hp=135/135 pos=(-18.0,0.8,31.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Vigia_O#4        Sniper    hp=135/135 pos=(-22.0,4.3,35.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Deposito_3#5     Enemy     hp=135/135 pos=(0.0,0.8,50.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Deposito_2#6     Enemy     hp=135/135 pos=(5.8,0.8,55.9) yaw=351 ia=Patrol obj=-
+  Enemigo_Guardia_E2#7     Enemy     hp=135/135 pos=(26.0,0.8,6.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Deposito_1#11    Enemy     hp=135/135 pos=(-6.1,0.8,54.0) yaw=356 ia=Patrol obj=-
+  Enemigo_Guardia_O1#12    Enemy     hp=135/135 pos=(-26.0,0.8,31.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Flanker_O#13     Flanker   hp=135/135 pos=(-32.1,0.8,9.9) yaw=356 ia=Patrol obj=-
+  Enemigo_Flanker_E#14     Flanker   hp=135/135 pos=(32.2,0.8,39.9) yaw=9 ia=Patrol obj=-
+VEHICULOS (1):
+  Vehiculo_Blindado    bando=Player hp=260/260 pos=(8.0,0.7,-70.0) yaw=0 ocupantes=[]
+MISION:
+
+=== BLOQUE 2 [T+0012.6s juego=0005.1 | escena SC_Blockout_02] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=270/270 pos=(-2.2,0.8,-68.0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=Cubrirse
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=270/270 pos=(-2.2,0.8,-68.0) yaw=0 ia=Patrol obj=-
+  Soldado_3_Doc            Medic     hp=270/270 pos=(3.0,0.8,-69.7) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes            Sniper    hp=270/270 pos=(9.3,0.8,-46.5) yaw=1 ia=Chase obj=Enemigo_Guardia_E2 siguiendoAuto
+ENEMIGOS (11 vivos, 0 en reserva):
+  Enemigo_Vigia_E#1        Sniper    hp=127/135 pos=(18.0,0.8,9.5) yaw=195 ia=Patrol obj=-
+  Enemigo_Guardia_E1#2     Enemy     hp=135/135 pos=(17.0,0.8,4.6) yaw=12 ia=Attack obj=Enemigo_Vigia_E agachado
+  Enemigo_Guardia_O2#3     Enemy     hp=135/135 pos=(-18.6,0.8,33.1) yaw=105 ia=Attack obj=Enemigo_Vigia_O agachado
+  Enemigo_Vigia_O#4        Sniper    hp=127/135 pos=(-16.3,0.8,32.8) yaw=327 ia=Attack obj=Soldado_2_Kes yendoACobertura
+  Enemigo_Deposito_3#5     Enemy     hp=135/135 pos=(0.0,0.8,50.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Deposito_2#6     Enemy     hp=135/135 pos=(12.7,0.8,55.4) yaw=230 ia=Patrol obj=-
+  Enemigo_Guardia_E2#7     Enemy     hp=135/135 pos=(16.2,0.8,0.5) yaw=11 ia=Attack obj=Enemigo_Vigia_E cobertura agachado
+  Enemigo_Deposito_1#11    Enemy     hp=135/135 pos=(-2.2,0.8,43.5) yaw=233 ia=Attack obj=Enemigo_Vigia_O cobertura agachado
+  Enemigo_Guardia_O1#12    Enemy     hp=135/135 pos=(-20.4,0.8,29.4) yaw=96 ia=Attack obj=Enemigo_Vigia_O yendoACobertura
+  Enemigo_Flanker_O#13     Flanker   hp=135/135 pos=(-28.7,0.8,-4.5) yaw=98 ia=Chase obj=Enemigo_Vigia_O
+  Enemigo_Flanker_E#14     Flanker   hp=135/135 pos=(32.6,0.8,25.4) yaw=120 ia=Patrol obj=-
+VEHICULOS (1):
+  Vehiculo_Blindado    bando=Player hp=260/260 pos=(8.0,0.7,-70.0) yaw=0 ocupantes=[]
+MISION:
+

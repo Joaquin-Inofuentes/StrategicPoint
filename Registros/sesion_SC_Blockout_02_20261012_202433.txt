@@ -1,0 +1,75 @@
+# REGISTRO DE SESION - Strategic Point
+# escena=SC_Blockout_02 fecha=2026-10-12 20:24:33 unity=6000.6.2f1 intervalo=5s
+# Formato: bloque cada 5 s (JUGADOR / ACCIONES / ALIADOS / ENEMIGOS / VEHICULOS / MISION) + lineas sueltas [EVENTO|ORDEN|BAJA|POSESION|BUG].
+# Para volver a un momento: SesionLog.RestaurarBug(n) (n = numero de bug marcado con [U] o [8]).
+
+=== BLOQUE 1 [T+0004.8s juego=0000.0 | escena SC_Blockout_02] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=270/270 pos=(-2.2,0.8,-68.0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=Cubrirse
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=270/270 pos=(-2.2,0.8,-68.0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes            Sniper    hp=270/270 pos=(-0.1,0.8,-69.3) yaw=351 ia=Chase obj=Enemigo_Guardia_E1
+  Soldado_3_Doc            Medic     hp=270/270 pos=(2.3,0.8,-69.5) yaw=0 ia=Patrol obj=-
+ENEMIGOS (11 vivos, 0 en reserva):
+  Enemigo_Flanker_E#1      Flanker   hp=135/135 pos=(32.2,0.8,39.9) yaw=9 ia=Patrol obj=-
+  Enemigo_Guardia_O1#3     Enemy     hp=135/135 pos=(-26.0,0.8,31.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Deposito_2#4     Enemy     hp=135/135 pos=(5.8,0.8,55.9) yaw=351 ia=Patrol obj=-
+  Enemigo_Flanker_O#5      Flanker   hp=135/135 pos=(-32.1,0.8,9.8) yaw=351 ia=Patrol obj=-
+  Enemigo_Vigia_E#7        Sniper    hp=135/135 pos=(22.0,4.3,10.0) yaw=0 ia=Attack obj=Soldado_1_Vega yendoACobertura
+  Enemigo_Deposito_1#8     Enemy     hp=135/135 pos=(-6.2,0.8,53.9) yaw=351 ia=Patrol obj=-
+  Enemigo_Guardia_O2#10    Enemy     hp=135/135 pos=(-18.0,0.8,31.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Deposito_3#11    Enemy     hp=135/135 pos=(0.0,0.8,50.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Guardia_E1#12    Enemy     hp=135/135 pos=(18.0,0.8,6.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Vigia_O#13       Sniper    hp=135/135 pos=(-22.0,4.3,35.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Guardia_E2#14    Enemy     hp=135/135 pos=(26.0,0.8,6.0) yaw=0 ia=Patrol obj=-
+VEHICULOS (1):
+  Vehiculo_Blindado    bando=Player hp=260/260 pos=(8.0,0.7,-70.0) yaw=0 ocupantes=[]
+MISION:
+
+=== BLOQUE 2 [T+0009.8s juego=0003.3 | escena SC_Blockout_02] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=270/270 pos=(-2.2,0.8,-68.0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=Cubrirse
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=0
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=270/270 pos=(-2.2,0.8,-68.0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes            Sniper    hp=270/270 pos=(-3.7,0.8,-54.7) yaw=335 ia=Chase obj=Enemigo_Guardia_E2 siguiendoAuto
+  Soldado_3_Doc            Medic     hp=270/270 pos=(2.7,0.8,-69.7) yaw=0 ia=Patrol obj=-
+ENEMIGOS (11 vivos, 0 en reserva):
+  Enemigo_Flanker_E#1      Flanker   hp=135/135 pos=(32.6,0.8,30.9) yaw=132 ia=Patrol obj=-
+  Enemigo_Guardia_O1#3     Enemy     hp=135/135 pos=(-27.2,0.8,31.5) yaw=108 ia=Attack obj=Enemigo_Vigia_O agachado
+  Enemigo_Deposito_2#4     Enemy     hp=135/135 pos=(11.3,0.8,53.0) yaw=92 ia=Patrol obj=-
+  Enemigo_Flanker_O#5      Flanker   hp=135/135 pos=(-32.6,0.8,-0.3) yaw=223 ia=Chase obj=Enemigo_Vigia_O
+  Enemigo_Vigia_E#7        Sniper    hp=127/135 pos=(17.4,0.8,8.0) yaw=193 ia=Chase obj=Soldado_1_Vega
+  Enemigo_Deposito_1#8     Enemy     hp=135/135 pos=(-5.2,0.8,46.9) yaw=134 ia=Attack obj=Enemigo_Vigia_O yendoACobertura
+  Enemigo_Guardia_O2#10    Enemy     hp=135/135 pos=(-17.9,0.8,31.1) yaw=218 ia=Attack obj=Enemigo_Vigia_O agachado
+  Enemigo_Deposito_3#11    Enemy     hp=135/135 pos=(0.0,0.8,50.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Guardia_E1#12    Enemy     hp=135/135 pos=(16.9,0.8,4.6) yaw=8 ia=Attack obj=Enemigo_Vigia_E agachado
+  Enemigo_Vigia_O#13       Sniper    hp=127/135 pos=(-19.3,0.8,29.0) yaw=92 ia=Attack obj=Soldado_2_Kes yendoACobertura
+  Enemigo_Guardia_E2#14    Enemy     hp=135/135 pos=(20.0,0.8,4.1) yaw=326 ia=Attack obj=Enemigo_Vigia_E agachado
+VEHICULOS (1):
+  Vehiculo_Blindado    bando=Player hp=260/260 pos=(8.0,0.7,-70.0) yaw=0 ocupantes=[]
+MISION:
+
+[T+0014.8s juego=0008.2] BAJA: Enemigo_Guardia_E1 (Enemy/Enemy) en (17.3,0.1) por Soldado_2_Kes
+=== BLOQUE 3 [T+0014.8s juego=0008.3 | escena SC_Blockout_02] ===
+JUGADOR: Soldado_1_Vega (Assault) hp=270/270 pos=(-2.2,0.8,-68.0) yaw=0 pitch=0 modo=Fps asiento=- municion=8 apunta=Cubrirse
+ACCIONES (ultimos 5s): camino 0.0 m | disparos=0 | ordenes=0 | cambios de soldado=0 | bajas=1
+   baja: Enemigo_Guardia_E1 (Enemy/Enemy) en (17.3,0.1) por Soldado_2_Kes
+ALIADOS (3):
+  Soldado_1_Vega           Assault   hp=270/270 pos=(-2.2,0.8,-68.0) yaw=0 ia=Patrol obj=-
+  Soldado_2_Kes            Sniper    hp=270/270 pos=(-12.1,0.8,-36.6) yaw=38 ia=Attack obj=Enemigo_Guardia_E2 siguiendoAuto
+  Soldado_3_Doc            Medic     hp=270/270 pos=(2.7,0.8,-69.7) yaw=0 ia=Patrol obj=-
+ENEMIGOS (10 vivos, 0 en reserva):
+  Enemigo_Flanker_E#1      Flanker   hp=135/135 pos=(32.6,0.8,15.8) yaw=123 ia=Patrol obj=-
+  Enemigo_Guardia_O1#3     Enemy     hp=135/135 pos=(-17.8,0.8,33.6) yaw=27 ia=Attack obj=Enemigo_Vigia_O yendoACobertura
+  Enemigo_Deposito_2#4     Enemy     hp=135/135 pos=(12.8,0.8,55.5) yaw=198 ia=Patrol obj=-
+  Enemigo_Flanker_O#5      Flanker   hp=135/135 pos=(-20.6,0.8,4.7) yaw=36 ia=Attack obj=Enemigo_Vigia_O yendoACobertura
+  Enemigo_Vigia_E#7        Sniper    hp=127/135 pos=(15.8,0.8,1.2) yaw=151 ia=Attack obj=Soldado_3_Doc yendoACobertura
+  Enemigo_Deposito_1#8     Enemy     hp=135/135 pos=(-2.2,0.8,43.5) yaw=235 ia=Attack obj=Enemigo_Vigia_O cobertura agachado
+  Enemigo_Guardia_O2#10    Enemy     hp=135/135 pos=(-18.6,0.8,36.0) yaw=126 ia=Attack obj=Enemigo_Vigia_O agachado
+  Enemigo_Deposito_3#11    Enemy     hp=135/135 pos=(0.0,0.8,50.0) yaw=0 ia=Patrol obj=-
+  Enemigo_Vigia_O#13       Sniper    hp=127/135 pos=(-15.9,0.8,33.8) yaw=227 ia=Attack obj=Soldado_2_Kes yendoACobertura
+  Enemigo_Guardia_E2#14    Enemy     hp=135/135 pos=(20.0,0.8,4.1) yaw=236 ia=Attack obj=Enemigo_Vigia_E agachado
+VEHICULOS (1):
+  Vehiculo_Blindado    bando=Player hp=260/260 pos=(8.0,0.7,-70.0) yaw=0 ocupantes=[]
+MISION:
+
