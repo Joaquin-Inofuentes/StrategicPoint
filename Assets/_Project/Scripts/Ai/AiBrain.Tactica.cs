@@ -385,6 +385,7 @@ namespace SP.Ai
 
             relojTactico -= dt;
             if (relojTactico > 0f) return false;
+            if (!CoberturasPuntuadas.PuedeBuscar()) { relojTactico = 0.02f; return false; }   // sin presupuesto este frame (busquedas con raycasts): reintenta el proximo
             relojTactico = 0.5f + (self.Id % 5) * 0.08f;   // #227: antes 1,2 s + 0,15 por Id: tardaban en decidir cubrirse
 
             float dActual = Vector3.Distance(self.transform.position, target.transform.position);

@@ -753,7 +753,10 @@ namespace SP.Combat
 
         public static void ExplodeAt(Vector3 point, float radius, int damage, int ownerId, TeamId? spareTeam, SP.Vehicles.Vehicle ignoreVehicle = null, float multiplicadorVsVehiculo = 1f)
         {
+            UnityEngine.Profiling.Profiler.BeginSample("Exp.Obstaculos");
             DanarObstaculos(point, radius, damage);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("Exp.Actores");
             foreach (var s in ActorRegistry.All)
             {
                 if (s == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
@@ -807,6 +810,8 @@ namespace SP.Combat
             // Tercer barrido por frame que tambien se va: la explosion si
             // reparte a TODOS los vehiculos en radio, asi que aca el orden
             // no importa y la semantica queda identica.
+            UnityEngine.Profiling.Profiler.EndSample();   // Exp.Actores
+            UnityEngine.Profiling.Profiler.BeginSample("Exp.Vehiculos");
             var explosionVehicles = SP.Core.WorldSystemsRegistry.Vehicles;
             for (int i = 0; i < explosionVehicles.Count; i++)
             {
@@ -826,6 +831,8 @@ namespace SP.Combat
                 finally { SP.Vehicles.Vehicle.DanoDeExplosionEnCurso = false; }
             }
 
+            UnityEngine.Profiling.Profiler.EndSample();   // Exp.Vehiculos
+            UnityEngine.Profiling.Profiler.BeginSample("Exp.Fx");
             EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Ground, point));
             // Mas fuerte y mas prioritario que el impacto puntual: es una
             // granada, no una bala. Sigue siendo la cola de tierra y no un
@@ -844,6 +851,7 @@ namespace SP.Combat
             // sacudida cae con la distancia y el tope global del rig
             // garantiza que nunca se pase, aunque exploten varias juntas.
             // Instance y no FindAnyObjectByType: Explode corre muy seguido.
+            UnityEngine.Profiling.Profiler.EndSample();   // Exp.Fx
             var rig = SP.CameraSystem.CameraRig.Instance;
             if (rig != null)
             {

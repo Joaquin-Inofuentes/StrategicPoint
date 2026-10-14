@@ -79,7 +79,9 @@ namespace SP.Ai
         bool CubrirseDe(Soldier objetivo, float dt, float radio = RadioDeBusquedaDeCobertura, float maxDistAlBlanco = float.MaxValue, float factorRango = 1f)
         {
             relojDeCobertura += dt;
-            if (!tieneCobertura || relojDeCobertura >= RefrescoDeCobertura)
+            bool toca = !tieneCobertura || relojDeCobertura >= RefrescoDeCobertura;
+            if (toca && !SP.Core.CoberturasPuntuadas.PuedeBuscar()) { if (!tieneCobertura) return false; toca = false; }   // presupuesto de busquedas por frame
+            if (toca)
             {
                 relojDeCobertura = 0f;
                 Vector3 elegida = Vector3.zero;

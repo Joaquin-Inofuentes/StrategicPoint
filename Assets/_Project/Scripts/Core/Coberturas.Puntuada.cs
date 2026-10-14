@@ -111,7 +111,29 @@ namespace SP.Core
 
         // maxDistAlBlanco / minDistAlBlanco (WP4): filtran los candidatos por su distancia al blanco. "No alejarse" = max (distancia
         // actual + margen); "no acercarse" (repliegue de un herido) = min.
+        // Presupuesto: busquedas de cobertura por frame (cada una lanza varios raycasts). Las que no entran esperan al proximo frame (ver PuedeBuscar).
+        public const int BusquedasPorFrame = 3;
+        static int frameDelPresupuesto = -1, usadasEnElFrame;
+        public static bool PuedeBuscar()
+        {
+            if (!Application.isPlaying) return true;   // la suite headless simula a mano en Edit mode: ahi frameCount no avanza
+            int f = Time.frameCount;
+            if (f != frameDelPresupuesto) { frameDelPresupuesto = f; usadasEnElFrame = 0; }
+            if (usadasEnElFrame >= BusquedasPorFrame) return false;
+            usadasEnElFrame++;
+            return true;
+        }
+
         public static bool TryElegir(Vector3 desde, Soldier objetivo, Soldier quien, float radio, float rango, float vida01,
+                                     int version, bool recargando, Vector3? actual, out Eleccion eleccion,
+                                     float maxDistAlBlanco = float.MaxValue, float minDistAlBlanco = 0f)
+        {
+            UnityEngine.Profiling.Profiler.BeginSample("SP.Cobertura.TryElegir");
+            try { return TryElegirCore(desde, objetivo, quien, radio, rango, vida01, version, recargando, actual, out eleccion, maxDistAlBlanco, minDistAlBlanco); }
+            finally { UnityEngine.Profiling.Profiler.EndSample(); }
+        }
+
+        static bool TryElegirCore(Vector3 desde, Soldier objetivo, Soldier quien, float radio, float rango, float vida01,
                                      int version, bool recargando, Vector3? actual, out Eleccion eleccion,
                                      float maxDistAlBlanco = float.MaxValue, float minDistAlBlanco = 0f)
         {

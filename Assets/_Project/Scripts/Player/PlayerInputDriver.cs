@@ -769,7 +769,7 @@ namespace SP.Player
             // Ronda 11: [F9] mata al soldado que manejas y [F10] revive a la escuadra caida (para probar si el medico viene).
             if (kb.f9Key.wasPressedThisFrame) ModeToast?.Show(ComandosDeDepuracion.Matar().ToUpperInvariant(), 1.5f);
             if (kb.f10Key.wasPressedThisFrame && SP.Operacion.OperacionDirector.Instancia == null) ModeToast?.Show(ComandosDeDepuracion.Revivir().ToUpperInvariant(), 1.5f);   // en la Operacion F10 es el menu de trampas
-            ActualizarVistaTactica();
+            UnityEngine.Profiling.Profiler.BeginSample("PID.VistaTactica"); ActualizarVistaTactica(); UnityEngine.Profiling.Profiler.EndSample();
 
             if (MinimapRef != null)
                 MinimapRef.Target = currentSeat.HasValue ? Vehicle.transform : (Brain.Current != null ? Brain.Current.transform : null);
@@ -818,14 +818,16 @@ namespace SP.Player
             // apretar y soltar son el mismo gesto hasta que pasa el umbral,
             // y decidir al apretar haria que mantener [Q] ciclara ademas de
             // abrir el menu.
-            ActualizarMenuDeOrdenes();
+            UnityEngine.Profiling.Profiler.BeginSample("PID.MenuOrdenes"); ActualizarMenuDeOrdenes(); UnityEngine.Profiling.Profiler.EndSample();
             // 199: solo se podia ciclar hacia ADELANTE. Con una escuadra de
             // tres eso ya obliga a dar la vuelta entera para volver uno.
             if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.CiclarPosesionAtras)) CycleLivingAlly(-1);
             if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.PoseerMasCercano)) PossessNearestAlly();
 
+            UnityEngine.Profiling.Profiler.BeginSample(Rig.Mode == ControlMode.Fps ? "PID.UpdateFps" : "PID.UpdateRts");
             if (Rig.Mode == ControlMode.Fps) UpdateFps(kb, Mouse.current);
             else UpdateRts(kb, Mouse.current);
+            UnityEngine.Profiling.Profiler.EndSample();
         }
 
         // Devuelve el cuerpo al jugador: sin orden pendiente, sin IA y con el estado

@@ -39,7 +39,7 @@ namespace SP.Presentation
         {
             if (Time.unscaledTime < proximo) return;
             // Bug #052: el barrido de toda la escena (incluidos inactivos) cada 0,25 s costaba 2-8 ms por vez.
-            proximo = Time.unscaledTime + 1f;
+            proximo = Time.unscaledTime + 2.5f;
             Aplicar(FindObjectsInactive.Exclude);
         }
 

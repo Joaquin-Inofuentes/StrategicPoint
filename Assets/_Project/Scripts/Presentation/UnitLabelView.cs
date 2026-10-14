@@ -60,6 +60,23 @@ namespace SP.Presentation
             obstaculo = (soldier == null && vehicle == null) ? GetComponentInParent<ObstacleMarker>() : null;
         }
 
+        // Lo apaga el director cuando la etiqueta esta lejos o fuera de encuadre (mismo criterio que las barras de vida).
+        public bool LodOk = true;
+        int claveVista = int.MinValue;
+        static int frameDeAltas = -1, altasEnElFrame;
+        // Cada etiqueta tiene su propio Canvas: encender ~500 a la vez (entrar a RTS) reconstruia todos los canvases en un solo frame (100+ ms).
+        public const int AltasPorFrame = 10;
+
+        static bool HayCupoDeAlta()
+        {
+            if (!Application.isPlaying) return true;
+            int f = Time.frameCount;
+            if (f != frameDeAltas) { frameDeAltas = f; altasEnElFrame = 0; }
+            if (altasEnElFrame >= AltasPorFrame) return false;
+            altasEnElFrame++;
+            return true;
+        }
+
         // Lo llama WorldUiDirector una vez por frame, con si la camara
         // esta en RTS ahora mismo (CameraRig.Instance.Mode). Devuelve true
         // si quedo visible.
@@ -68,14 +85,32 @@ namespace SP.Presentation
             if (!bootstrapped) Bootstrap();
             if (label == null) return false;
 
-            string texto = enRts ? BuildText() : null;
-            bool visible = texto != null;
-            if (label.gameObject.activeSelf != visible) label.gameObject.SetActive(visible);
-            if (visible) label.text = texto;
+            int clave = 0;
+            bool visible = enRts && LodOk && ClaveDeTexto(out clave);
+            bool activo = label.gameObject.activeSelf;
+            if (visible && !activo && !HayCupoDeAlta()) visible = false;   // las altas se reparten en varios frames
+            if (activo != visible) label.gameObject.SetActive(visible);
+            // El texto se arma solo si cambio algo (antes: un string nuevo por etiqueta y por frame, ~500 por frame).
+            if (visible && (!activo || clave != claveVista)) { label.text = BuildText(); claveVista = clave; }
             // Item 77: apaga el Canvas propio cuando no toca mostrar nada
             // (fuera de RTS), no solo el Text hijo.
             if (canvas != null && canvas.enabled != visible) canvas.enabled = visible;
             return visible;
+        }
+
+        // Huella barata de lo que muestra el texto: si no cambia, no hace falta rearmar el string.
+        bool ClaveDeTexto(out int clave)
+        {
+            clave = 0;
+            if (soldier != null)
+            {
+                if (soldier.Health == null) return false;
+                clave = (soldier.Health.Current << 12) ^ soldier.Health.MaxHealth ^ ((int)soldier.Team + 1) << 28;
+                return true;
+            }
+            if (vehicle != null) { clave = vehicle.OccupantCount * 64 + vehicle.Capacity; return true; }
+            if (obstaculo != null) { clave = (obstaculo.CurrentHealth << 12) ^ obstaculo.MaxHealth; return true; }
+            return false;
         }
 
         string BuildText()

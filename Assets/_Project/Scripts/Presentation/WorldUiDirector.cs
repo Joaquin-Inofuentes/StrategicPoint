@@ -83,6 +83,8 @@ namespace SP.Presentation
         // Mas alla de esta distancia el elemento se apaga: a esa altura
         // una barra de vida ocupa un par de pixeles y no comunica nada.
         [SerializeField] float maxVisibleDistance = 60f;
+        // Las etiquetas al pie solo se ven en RTS, con la camara muy arriba: su distancia maxima es mucho mayor que la de las barras.
+        public const float DistanciaMaximaDeEtiquetas = 220f;
 
         // La visibilidad se reevalua a intervalo, NO todos los frames:
         // mismo enfoque que ya usaba MinimapIcon con su timer de niebla
@@ -236,7 +238,9 @@ namespace SP.Presentation
             {
                 var label = unitLabels[i];
                 if (label == null) { unitLabels.RemoveAt(i); continue; }
-                if (hasCam) label.ApplyBillboard(camRot);
+                // En Edit mode (suite headless) no se recorta: el encuadre de esa camara no dice nada. En juego, solo el encuadre y una distancia amplia (RTS aleja mucho).
+                if (reevaluate) label.LodOk = !Application.isPlaying || IsWithinLod(label.transform.position, camPos, hasCam, DistanciaMaximaDeEtiquetas);
+                if (hasCam && enRts && label.LodOk) label.ApplyBillboard(camRot);   // las ocultas no se giran (500 transforms sucios por frame)
                 if (label.Tick(enRts)) visible++;
             }
 
@@ -268,14 +272,14 @@ namespace SP.Presentation
         // siendo un buen discriminante al alejarse: con el zoom afuera del
         // todo entran en cuadro unidades a mas de cien unidades de la
         // camara, y son justamente esas las que se apagan.
-        bool IsWithinLod(Vector3 worldPos, Vector3 camPos, bool hasCam)
+        bool IsWithinLod(Vector3 worldPos, Vector3 camPos, bool hasCam, float distanciaMaxima = -1f)
         {
             // Sin camara no hay criterio posible. Se devuelve true a
             // proposito: el LOD solo puede QUITAR elementos que ya
             // estarian visibles, nunca apagar por falta de informacion.
             if (!hasCam) return true;
 
-            float max = Mathf.Max(0f, maxVisibleDistance);
+            float max = Mathf.Max(0f, distanciaMaxima > 0f ? distanciaMaxima : maxVisibleDistance);
             if ((worldPos - camPos).sqrMagnitude > max * max) return false;
 
             var vp = cam.WorldToViewportPoint(worldPos);
@@ -334,15 +338,15 @@ namespace SP.Presentation
             if (populated) return;
             populated = true;
 
-            foreach (var v in UnityEngine.Object.FindObjectsByType<HealthBarView>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var v in UnityEngine.Object.FindObjectsByType<HealthBarView>(FindObjectsInactive.Include))
                 Register(v);
-            foreach (var v in UnityEngine.Object.FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var v in UnityEngine.Object.FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include))
                 Register(v);
-            foreach (var v in UnityEngine.Object.FindObjectsByType<PossessedMarkerView>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var v in UnityEngine.Object.FindObjectsByType<PossessedMarkerView>(FindObjectsInactive.Include))
                 Register(v);
-            foreach (var v in UnityEngine.Object.FindObjectsByType<UnitLabelView>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var v in UnityEngine.Object.FindObjectsByType<UnitLabelView>(FindObjectsInactive.Include))
                 Register(v);
-            foreach (var v in UnityEngine.Object.FindObjectsByType<RevivePromptView>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var v in UnityEngine.Object.FindObjectsByType<RevivePromptView>(FindObjectsInactive.Include))
                 Register(v);
         }
 

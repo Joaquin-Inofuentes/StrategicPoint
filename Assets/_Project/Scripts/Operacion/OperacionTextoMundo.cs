@@ -30,7 +30,7 @@ namespace SP.Operacion
         static readonly System.Collections.Generic.List<TextMesh> bufferTextos = new System.Collections.Generic.List<TextMesh>();
         void RegenerarMallas()
         {
-            var todos = FindObjectsByType<TextMesh>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var todos = FindObjectsByType<TextMesh>(FindObjectsInactive.Exclude);
             bufferTextos.Clear(); bufferTextos.AddRange(todos);
             for (int i = 0; i < bufferTextos.Count; i++)
             {
@@ -54,7 +54,7 @@ namespace SP.Operacion
             // y los carteles se pintaban encima de todo. Se reasigna el material con prueba de profundidad a todos los TextMesh del mundo.
             if (Application.isPlaying && Time.unscaledTime >= proximaRevision)
             {
-                proximaRevision = Time.unscaledTime + 1f;
+                proximaRevision = Time.unscaledTime + 3f;   // era 1 s: barre todos los TextMesh (incluidos inactivos) y reasigna material/bloque a cada uno
                 AsignarATodos();
             }
         }
@@ -63,7 +63,7 @@ namespace SP.Operacion
         public void AsignarATodos()
         {
             if (material == null) return;
-            var todos = FindObjectsByType<TextMesh>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            var todos = FindObjectsByType<TextMesh>(FindObjectsInactive.Include);
             for (int i = 0; i < todos.Length; i++)
             {
                 var mr = todos[i].GetComponent<MeshRenderer>();
@@ -76,7 +76,9 @@ namespace SP.Operacion
                 {
                     if (bloque == null) bloque = new MaterialPropertyBlock();
                     mr.GetPropertyBlock(bloque);
-                    bloque.SetTexture("_MainTex", f.material.mainTexture);
+                    var tex = f.material.mainTexture;
+                    if (bloque.GetTexture("_MainTex") == tex) continue;   // ya esta: no se vuelve a sucio el renderer en cada barrido
+                    bloque.SetTexture("_MainTex", tex);
                     mr.SetPropertyBlock(bloque);
                 }
             }
