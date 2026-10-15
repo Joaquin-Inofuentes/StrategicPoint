@@ -156,6 +156,7 @@ namespace SP.Operacion
         void Awake()
         {
             Instancia = this;
+            SP.Core.SesionLog.RegistrarGuardable(this);   // el registro de sesion lo lee sin barrer la escena
             ResistirSinMando = false;
             AnuncioDeZonas.Desactivado = true;
             // Bug #095: el HUD tiene que decir la municion total REAL, no "infinita": la Operacion usa reservas (6 cargadores por arma en DIFICIL).
@@ -189,6 +190,7 @@ namespace SP.Operacion
         void OnDestroy()
         {
             if (Instancia == this) Instancia = null;
+            SP.Core.SesionLog.QuitarGuardable(this);
             WeaponHolder.CargadoresDeReserva = WeaponHolder.CargadoresPorDefecto;
             SonidosDeOperacion.DetenerAmbiente();
             AnuncioDeZonas.Desactivado = false;
@@ -497,7 +499,7 @@ namespace SP.Operacion
             foreach (var s in Escuadra())
             {
                 if (s == yo || s.Brain == null || s.Brain.IsPossessedByPlayer || s.Brain.MontadoEnVehiculo) continue;
-                if (s.Brain.TieneOrden) continue;
+                if (s.Brain.TieneOrden || s.Brain.Quieto || s.Brain.Pasivo) continue;   // #242: el que ya esta operando algo no se va a seguir
                 lista.Add(s);
             }
             if (lista.Count > 0) { SeguimientosAutomaticos += lista.Count; OrderService.IssueFollowOrderForSelection(lista, yo); }

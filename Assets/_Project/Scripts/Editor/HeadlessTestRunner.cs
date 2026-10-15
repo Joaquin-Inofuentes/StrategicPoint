@@ -1267,7 +1267,7 @@ namespace SP.EditorTools
 
             TestLog.Step("Simulando acercarse y apretar E: Vega sube de conductor");
             bool mounted = vehicle.Mount(vega, VehicleSeatRole.Driver);
-            Check($"Vega subio como conductor (ocupantes {vehicle.OccupantCount}/{vehicle.Capacity})", mounted);
+            Check($"Vega subio como conductor (ocupantes {vehicle.OccupantCount}/{vehicle.Capacity}; destruido={vehicle.IsDestroyed}; vegaViva={vega.Health.IsAlive}; activo={vehicle.gameObject.activeInHierarchy}; vegaEnOtro={(vega.Brain != null && vega.Brain.MontadoEnVehiculo)})", mounted);
 
             bool kesAutoMounted = Vector3.Distance(kes.transform.position, vehicle.transform.position) <= 6f && vehicle.Mount(kes);
             Check($"Kes (aliada cercana) subio automaticamente al acercarse Vega (asiento: {vehicle.RoleOf(kes)})", kesAutoMounted);
@@ -2028,7 +2028,12 @@ namespace SP.EditorTools
 
         static void FullHeal(params Soldier[] soldiers)
         {
-            foreach (var s in soldiers) s.Health.Heal(s.Health.MaxHealth);
+            foreach (var s in soldiers)
+            {
+                // Los enemigos ahora oyen los tiros a 48 m (#235): a veces un aliado llega muerto a la fase siguiente. Se lo revive antes de curar.
+                if (s.Health != null && !s.Health.IsAlive) Reanimacion.Ejecutar(s, 1f);
+                s.Health.Heal(s.Health.MaxHealth);
+            }
         }
 
         // Antes Check() solo emitia un Warn: la suite imprimia "TODAS LAS

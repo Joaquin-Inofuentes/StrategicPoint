@@ -30,6 +30,7 @@ namespace SP.Ai
         [SerializeField] float visionRange = 10f;
         [SerializeField] float attackRange = 6f;
         [SerializeField] float alertRadius = 30f;
+        public const float RadioDeOidoEnemigo = 48f;   // bug #235
         [SerializeField] float arriveThreshold = 0.6f;
 
         // Tolerancia de apuntado antes de disparar en Attack (ver el gate
@@ -624,7 +625,11 @@ namespace SP.Ai
             var shooter = ActorRegistry.FindById(evt.ShooterId);
             if (shooter == null || !shooter.Health.IsAlive || shooter.Team == self.Team) return;
 
-            if (Vector3.Distance(self.transform.position, shooter.transform.position) > alertRadius) return;
+            // Bug #235 ("si un enemigo escucha disparos en su zona que vaya de donde escucho el disparo"): los enemigos libres OYEN mas lejos
+            // (RadioDeOido) y van hacia donde sono el tiro aunque no vean a nadie; al llegar, la vista (Chase) hace el resto.
+            float d = Vector3.Distance(self.transform.position, shooter.transform.position);
+            float oido = self.Team == SP.Combat.TeamId.Enemy ? RadioDeOidoEnemigo : alertRadius;
+            if (d > oido) return;
 
             target = shooter;
             hasOrder = false;

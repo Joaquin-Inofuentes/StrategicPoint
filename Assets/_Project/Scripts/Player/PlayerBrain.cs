@@ -106,7 +106,43 @@ namespace SP.Player
                 if (haciaElPunto.sqrMagnitude > 0.0001f) direction = haciaElPunto.normalized;
             }
 
-            return Current.Weapon.TryFire(Current.transform.position, direction);
+            // Bug #234 ("dispara pero no le llegan los disparos"): con la mira (o pegado a una cobertura baja) la camara ve por encima del
+            // saco pero la boca del arma queda por detras/debajo del borde: la bala nacia dentro del obstaculo. Si el tramo boca->punto
+            // esta tapado por algo que el rayo de la camara NO toco, la bala sale de la camara (donde esta la mira) en vez de la boca.
+            Vector3? boca = null;
+            if (aimPoint.HasValue && Current.Weapon.Muzzle != null)
+            {
+                var cam = SP.Core.CamaraPrincipal.Actual;
+                Vector3 m = Current.Weapon.Muzzle.position;
+                Vector3 hacia = aimPoint.Value - m;
+                float dist = hacia.magnitude;
+                if (cam != null && dist > 1.5f && TramoTapado(m, hacia / dist, Mathf.Min(dist - 0.5f, 3f), Current))
+                {
+                    Vector3 c = cam.transform.position;
+                    Vector3 d2 = aimPoint.Value - c;
+                    if (d2.sqrMagnitude > 1f && !TramoTapado(c, d2.normalized, Mathf.Min(d2.magnitude - 0.5f, 1.5f), Current))
+                    {
+                        direction = d2.normalized;
+                        boca = c + direction * 0.8f;
+                    }
+                }
+            }
+
+            return Current.Weapon.TryFire(Current.transform.position, direction, 0f, boca);
+        }
+
+        // true si entre 'desde' y 'largo' metros hay un collider solido que no es un soldado ni un vehiculo.
+        static bool TramoTapado(Vector3 desde, Vector3 dir, float largo, Soldier propio)
+        {
+            if (largo <= 0.05f) return false;
+            var hits = Physics.RaycastAll(desde, dir, largo, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < hits.Length; i++)
+            {
+                var c = hits[i].collider;
+                if (c == null || c.GetComponentInParent<Soldier>() != null || c.GetComponentInParent<SP.Vehicles.Vehicle>() != null) continue;
+                return true;
+            }
+            return false;
         }
     }
 }

@@ -53,8 +53,22 @@ namespace SP.Presentation
             var titulo = Titulo; var texto = Texto;
             if (titulo == null || texto == null) return 0;
             int n = 0;
-            var textos = Object.FindObjectsByType<Text>(inactivos);
-            for (int i = 0; i < textos.Length; i++) if (Aplicar(textos[i], titulo, texto)) n++;
+            if (inactivos == FindObjectsInactive.Exclude)
+            {
+                // Pulido de rendimiento: FindObjectsByType<Text> recorre los ~11.000 scripts de la escena (2-2,5 ms por barrido, cada 2,5 s).
+                // Los Canvas son nativos (barrido casi gratis) y el registro de UGUI ya conoce los graficos activos de cada uno.
+                var canvases = Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude);
+                for (int c = 0; c < canvases.Length; c++)
+                {
+                    var gs = GraphicRegistry.GetGraphicsForCanvas(canvases[c]);
+                    for (int g = 0; g < gs.Count; g++) if (gs[g] is Text t && Aplicar(t, titulo, texto)) n++;
+                }
+            }
+            else
+            {
+                var textos = Object.FindObjectsByType<Text>(inactivos);
+                for (int i = 0; i < textos.Length; i++) if (Aplicar(textos[i], titulo, texto)) n++;
+            }
             var mallas = Object.FindObjectsByType<TextMesh>(inactivos);
             for (int i = 0; i < mallas.Length; i++) if (Aplicar(mallas[i], texto)) n++;
             Cambiados += n;

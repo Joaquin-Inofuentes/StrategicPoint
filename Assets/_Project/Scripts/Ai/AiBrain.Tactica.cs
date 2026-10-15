@@ -212,10 +212,34 @@ namespace SP.Ai
             // aliado pasaba ~0,35 s agachado y ~2,2 s parado asomandose (con vida llena), contra el "se agacha y se queda ahi" de la orden
             // (y de #164). La vista de la IA no baja al agacharse, asi que oculto sigue detectando; con blanco el ciclo es el de siempre.
             bool reposo = target == null && State != AiState.Attack && State != AiState.Chase;
-            if (reposo) { subStateCobertura = CoverSubState.Hidden; relojSubStateCobertura = 0.4f; }
+            // Bug #251 ("quiero que cada tanto se asomen para disparar"): el defensor de un sector sin blanco NO queda oculto para siempre: cada
+            // 3-6 s se asoma ~1,5 s a vigilar (y dispara si ve algo). Los guardias atrincherados y las coberturas por orden siguen quietos.
+            bool escanea = reposo && Stance == CombatStance.Defensiva;
+            if (reposo && !escanea) { subStateCobertura = CoverSubState.Hidden; relojSubStateCobertura = 0.4f; }
             else relojSubStateCobertura -= dt;
 
-            if (reposo) { }
+            if (reposo && !escanea) { }
+            else if (escanea)
+            {
+                if (relojSubStateCobertura <= 0f)
+                {
+                    if (subStateCobertura == CoverSubState.Hidden && !isReloading && !isMagazineEmpty)
+                    {
+                        subStateCobertura = CoverSubState.Peeking;
+                        relojSubStateCobertura = UnityEngine.Random.Range(1.2f, 1.9f);
+                        if (esCoberturaDeBorde)
+                        {
+                            Vector3 frente = Coberturas.FrenteDe(coberturaPunto, coberturaDueno);
+                            lateralOffset = Vector3.Cross(Vector3.up, frente).normalized * (UnityEngine.Random.value < 0.5f ? 0.6f : -0.6f);
+                        }
+                    }
+                    else
+                    {
+                        subStateCobertura = CoverSubState.Hidden;
+                        relojSubStateCobertura = UnityEngine.Random.Range(3f, 6f);
+                    }
+                }
+            }
             else if (subStateCobertura == CoverSubState.Peeking && isMagazineEmpty)
             {
                 subStateCobertura = CoverSubState.Hidden;

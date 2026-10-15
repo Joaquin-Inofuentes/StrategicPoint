@@ -71,7 +71,7 @@ namespace SP.EditorTools
                 Object.DestroyImmediate(f.GetComponent<BoxCollider>());
             }
             Rotulo(est, "MURALLA DE CONTENCION", 0f, 6.5f, ZMuralla - 1.6f, 0f, 1.3f, Color.white, AzulSenal, 17f, 1.9f);
-            Rotulo(est, "PORTON BLINDADO\nSE ABRE AL VOLAR LOS 2 PUESTOS", 0f, 3.3f, ZMuralla - 1.2f, 0f, 0.8f, Color.white, Rojo, 12f, 1.6f);
+            Rotulo(est, "PORTON BLINDADO", 0f, 3.3f, ZMuralla - 1.2f, 0f, 0.8f, Color.white, Rojo, 12f, 1.6f);
             LuzPuntual(est, "Luz_Porton_Blindado", 0f, 6f, ZMuralla - 8f, new Color(1f, 0.93f, 0.8f), 3.2f, 24f);
 
             // --- Dos bunkers ---
@@ -105,7 +105,7 @@ namespace SP.EditorTools
             AutoQuemadoDe(zona, "Auto_Quemado_2", 13f, -184f, -20f);
             Solido(zona, "Poste_Zona_O", -8.4f, -207f, 0.4f, 6.5f, 0.4f, CementoOsc);
             Solido(zona, "Poste_Zona_E", 8.4f, -207f, 0.4f, 6.5f, 0.4f, CementoOsc);
-            Rotulo(zona, "ZONA DE APROXIMACION\nSOLO EL ASALTO COLOCA LAS CARGAS", 0f, 5.4f, -207.2f, 0f, 0.9f, Color.white, Negro, 16.4f, 1.9f);
+            Rotulo(zona, "ZONA DE APROXIMACION", 0f, 5.4f, -207.2f, 0f, 0.9f, Color.white, Negro, 16.4f, 1.9f);
             LuzPuntual(zona, "Luz_Zona_1", -18f, 7f, -196f, new Color(1f, 0.93f, 0.8f), 3.2f, 26f);
             LuzPuntual(zona, "Luz_Zona_2", 18f, 7f, -196f, new Color(1f, 0.93f, 0.8f), 3.2f, 26f);
 
@@ -171,7 +171,7 @@ namespace SP.EditorTools
             Decor(b, "MG_Tripode", xb, z0 - 2.9f, 0.4f, 0.7f, 0.4f, MetalOsc, 180f, 4f);
             Decor(b, "MG_Cajon", xb, z0 - 3.1f, 0.35f, 0.35f, 0.8f, MetalOsc, 180f, 4.65f);
             Decor(b, "MG_Canon", xb, z0 - 3.9f, 0.12f, 0.12f, 1.2f, Negro, 180f, 4.75f);
-            Rotulo(b, "PUESTO " + lado, xb, 2.9f, z0 - 4.12f, 0f, 1.0f, Color.white, Rojo, 7f, 1.3f);
+            Rotulo(b, "PUESTO " + lado, xb, 4.8f, z0 - 4.12f, 0f, 1.0f, Color.white, Rojo, 7f, 1.3f);
             // Escalera (visual) en la cara de adentro, al sur.
             float ex = xb - s * 5.25f;
             Decor(b, "Escalera_Riel_1", ex, z0 - 2.3f, 0.1f, 4f, 0.1f, MetalOsc, 0f, 0f);
@@ -191,7 +191,7 @@ namespace SP.EditorTools
             Decor(b, "Reserva_Cajon_1", hx(6.0f), z0 - 5.4f, 0.8f, 0.6f, 0.8f, OlivaOsc, 15f, 0f);
             // Portón: hoja corrediza (AbrirPuertaYSalir la sube y la apaga). Decorado sin colision para que la malla de navegacion deje salir a la reserva.
             var puerta = Decor(b, "Bunker_Puerta", hx(7.6f), zS - 0.12f, 2.4f, 2.6f, 0.2f, Naranja, 0f, 0f);
-            Rotulo(b, "RESERVA", hx(7.6f), 3.45f, zS - 0.45f, 0f, 0.6f, Color.white, Rojo, 3.4f, 0.8f);
+            // Pulido: sin rotulo "RESERVA" (la puerta naranja ya lo dice).
             LuzPuntual(b, "Luz_Reserva", hx(7.4f), 2.6f, zc2, new Color(1f, 0.62f, 0.3f), 1.6f, 7f);
             LuzPuntual(b, "Luz_Porton", hx(7.6f), 3.1f, zS - 1.2f, new Color(1f, 0.55f, 0.2f), 1.8f, 6f);
             LuzPuntual(b, "Luz_Bunker", xb, 6.5f, z0 - 9f, new Color(1f, 0.9f, 0.7f), 3.4f, 22f);
@@ -205,7 +205,7 @@ namespace SP.EditorTools
             var caja = Cubo(carga, "Caja_Carga", xb, zc, 1.1f, 0.85f, 0.8f, CargaCaja, 0f, 0f, true, 0);
             Decor(carga, "Caja_Cinta", xb, zc, 1.16f, 0.12f, 0.86f, Amarillo, 0f, 0.5f);
             var led = Decor(carga, "Led", xb + 0.3f, zc - 0.2f, 0.2f, 0.1f, 0.2f, Pantalla, 0f, 0.85f);
-            var rotulo = Rotulo(carga, "CARGA " + lado, xb, 2.3f, zc, 0f, 0.8f, new Color(1f, 0.82f, 0.1f), Negro, 4.8f, 0.95f);
+            var rotulo = Rotulo(carga, "CARGA " + lado, xb, 1.8f, zc, 0f, 0.8f, new Color(1f, 0.82f, 0.1f), Negro, 4.8f, 0.95f);
             LuzPuntual(carga, "Luz_Carga", xb, 3f, zc - 1.5f, new Color(1f, 0.75f, 0.3f), 2.6f, 14f);
             var ce = carga.gameObject.AddComponent<CargaExplosiva>();
             ce.lado = lado;

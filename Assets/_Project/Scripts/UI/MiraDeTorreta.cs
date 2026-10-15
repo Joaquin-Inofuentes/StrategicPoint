@@ -35,6 +35,8 @@ namespace SP.UI
         static readonly Color RecargaRelleno = new Color(1f, 0.62f, 0.2f);
 
         public static bool Visible => raiz != null && raiz.activeSelf;
+        public static bool CrucetaVisible => Visible && cruceta != null && cruceta.enabled;
+        public static bool RomboVisible => Visible && rombo != null && rombo.gameObject.activeSelf;
         public static string TextoDelBlanco => textoBlanco != null && textoBlanco.gameObject.activeSelf ? textoBlanco.text : "";
         public static bool ApuntaAEnemigo { get; private set; }
         public static TurretAimView.TipoDeImpacto EstadoDeCruceta { get; private set; }
@@ -130,6 +132,16 @@ namespace SP.UI
                 }
             }
             if (rombo.gameObject.activeSelf != verRombo) rombo.gameObject.SetActive(verRombo);
+
+            // Bug #245: del cursor del canon queda SOLO el circulo de la zona de impacto en el piso (TurretAimView): sin cruceta, rombo ni anillos de UI.
+            if (TurretAimView.SoloAnilloDeZona && !periscopioActivo)
+            {
+                cruceta.enabled = false;
+                anilloVida.SetVisible(false);
+                anilloRecarga.SetVisible(false);
+                textoBlanco.gameObject.SetActive(false);
+                if (rombo.gameObject.activeSelf) rombo.gameObject.SetActive(false);
+            }
         }
 
         static void Asegurar(Transform canvasRoot)

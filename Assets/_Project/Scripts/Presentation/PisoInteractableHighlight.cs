@@ -32,7 +32,8 @@ namespace SP.Presentation
             var h = go.AddComponent<PisoInteractableHighlight>();
             h.objetivo = objetivo;
             h.yOffsetAlPiso = yOffsetAlPiso;
-            h.Construir(radio);
+            // Pedido (pulido): sin discos de color en el piso; el rombo/engranaje del interactuable ya lo senala.
+            h.enabled = false;
             return h;
         }
 

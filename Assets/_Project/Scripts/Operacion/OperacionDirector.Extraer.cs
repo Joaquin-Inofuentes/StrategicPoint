@@ -28,9 +28,27 @@ namespace SP.Operacion
             if (hud != null) hud.Objetivo(TituloObjetivo(6, "SUBIR AL HELICOPTERO"), $"El helicoptero (con metralleta) aterrizo · {Mathf.RoundToInt(d)} m · acercate y apreta [E]", 0.9f, new Color(0.35f, 1f, 0.5f));
             if (d <= 11f && yo != null && yo.Health.IsAlive)
             {
-                if (hud != null) hud.Prompt("[E] SUBIR AL HELICOPTERO");
-                if (OperacionTerminal.EToque()) SubirAlHeli();
+                // Bug #255: con companeros caidos no se sube (antes se los levantaba solos): hay que ir a recuperarlos.
+                int caidos = AliadosCaidos();
+                if (caidos > 0)
+                {
+                    if (hud != null) hud.Prompt(caidos == 1 ? "TENES 1 MUERTO · RECUPERALO Y VOLVE AQUI" : $"TENES {caidos} MUERTOS · RECUPERALOS Y VOLVE AQUI");
+                    if (OperacionTerminal.EToque() && hud != null) hud.Aviso("TENES MUERTOS\nRECUPERALOS Y VOLVE AQUI", 2.5f);
+                }
+                else
+                {
+                    if (hud != null) hud.Prompt("[E] SUBIR AL HELICOPTERO");
+                    if (OperacionTerminal.EToque()) SubirAlHeli();
+                }
             }
+        }
+
+        // Bug #255: cuantos de la escuadra y los milicianos estan caidos (se pueden reanimar).
+        public static int AliadosCaidos()
+        {
+            int n = 0;
+            foreach (var s in AliadosAEvacuar(false)) if (s != null && s.Health != null && !s.Health.IsAlive) n++;
+            return n;
         }
 
         public void SubirAlHeli()

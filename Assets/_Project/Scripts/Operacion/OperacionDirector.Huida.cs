@@ -212,7 +212,7 @@ namespace SP.Operacion
             int rest = Mathf.CeilToInt(TrayectoRestante);
             if (hud != null)
             {
-                hud.Objetivo(TituloObjetivo(4, "HUIR EN EL TANQUE"), $"Canon: camionetas, cornisas con cohetes y el HALCON · derribados: {AutosDestruidos} · el tanque sigue su camino", Reloj / segundosDeTrayecto, new Color(0.4f, 1f, 0.5f));
+                hud.Objetivo(TituloObjetivo(4, "HUIR EN EL TANQUE"), $"Canon: camionetas y cornisas con cohetes · derribados: {AutosDestruidos} · el tanque sigue su camino", Reloj / segundosDeTrayecto, new Color(0.4f, 1f, 0.5f));
                 hud.Timer("TRAYECTO", rest, rest <= 8 ? new Color(1f, 0.4f, 0.3f) : Color.white);
             }
         }

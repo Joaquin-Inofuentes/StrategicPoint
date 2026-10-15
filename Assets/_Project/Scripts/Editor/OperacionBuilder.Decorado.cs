@@ -197,7 +197,7 @@ namespace SP.EditorTools
             }
             // Ciudad (x 195..380, z 120..380): escombros, autos, sacos en las esquinas, faroles, vallas y cajas entre los edificios.
             var gCiudad = Grupo(g, "PropsDeLaCiudad");
-            string[] urbano = { "P_Env_Barricada_Sacos", "P_Env_Auto_Quemado", "P_Env_Escombro_Pila_A", "P_Env_Escombro_Pila_B", "P_Env_Farol", "P_Env_Caja_Madera", "P_Env_Barril", "P_Env_Neumaticos", "P_Env_Barricada_Concreto", "P_Env_Barricada_Sacos", "P_Mod_Valla_Chapa", "P_Env_Poste_Caido", "P_Env_Muro_Caido", "P_Env_Palet", "P_Env_Barricada_Sacos", "P_Env_Cartel", "P_Env_Emplazamiento_Cajon", "P_Env_Barricada_Tablones" };
+            string[] urbano = { "P_Env_Barricada_Sacos", "P_Env_Auto_Quemado", "P_Env_Escombro_Pila_A", "P_Env_Escombro_Pila_B", "P_Env_Farol", "P_Env_Caja_Madera", "P_Env_Barril", "P_Env_Neumaticos", "P_Env_Barricada_Concreto", "P_Env_Barricada_Sacos", "P_Mod_Valla_Chapa", "P_Env_Poste_Caido", "P_Env_Muro_Caido", "P_Env_Palet", "P_Env_Barricada_Sacos", "P_Env_Cartel", "P_Env_Emplazamiento_Cajon" };
             float[] escUrb = { 1.2f, 1.1f, 1.3f, 1.2f, 1.1f, 1.2f, 0.5f, 1.2f, 1.1f, 1.2f, 1.2f, 1.2f, 1.2f, 1f, 1.2f, 1.1f, 1.3f, 1.2f };
             for (int i = 0, intentos = 0; i < 190 && intentos < 3200; intentos++)
             {

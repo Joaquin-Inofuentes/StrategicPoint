@@ -106,12 +106,70 @@ namespace SP.UI
 
         void LateUpdate()
         {
-            if (Target == null) return;
-            transform.position = new Vector3(Target.position.x, height, Target.position.z);
             var rig = SP.CameraSystem.CameraRig.Instance;
+            // Bug #250: en RTS el minimapa muestra la REGION que mira la camara tactica (su foco), no la del soldado, y la va siguiendo.
+            bool rts = rig != null && rig.Mode == SP.CameraSystem.ControlMode.Rts;
+            if (rts) { var f = rig.RtsFoco; transform.position = new Vector3(f.x, height, f.z); }
+            else
+            {
+                if (Target == null) { ActualizarRecuadroRts(false, rig); return; }
+                transform.position = new Vector3(Target.position.x, height, Target.position.z);
+            }
             Giro = girarConLaCamara && rig != null ? rig.transform.eulerAngles.y : 0f;
             transform.rotation = Quaternion.Euler(90f, Giro, 0f);
             UbicarNorte();
+            ActualizarRecuadroRts(rts, rig);
+        }
+
+        // Recuadro de la region que ve la camara RTS (bug #250): se dibuja sobre el minimapa solo en modo RTS.
+        RectTransform recuadroRts;
+        readonly Vector3[] esquinasDelPiso = new Vector3[4];
+        void ActualizarRecuadroRts(bool rts, SP.CameraSystem.CameraRig rig)
+        {
+            var rect = ResolveRect();
+            if (!rts || rect == null)
+            {
+                if (recuadroRts != null && recuadroRts.gameObject.activeSelf) recuadroRts.gameObject.SetActive(false);
+                return;
+            }
+            var cam = SP.Core.CamaraPrincipal.Actual;
+            var mini = ResolveCamera();
+            if (cam == null || mini == null) return;
+            if (recuadroRts == null)
+            {
+                var go = new GameObject("RecuadroRts", typeof(RectTransform), typeof(UnityEngine.UI.Image));
+                go.transform.SetParent(rect.parent != null ? rect.parent : rect, false);
+                recuadroRts = go.GetComponent<RectTransform>();
+                recuadroRts.anchorMin = recuadroRts.anchorMax = new Vector2(0.5f, 0.5f);
+                var img = go.GetComponent<UnityEngine.UI.Image>();
+                img.color = new Color(1f, 1f, 1f, 0.07f); img.raycastTarget = false;
+                var ol = go.AddComponent<UnityEngine.UI.Outline>(); ol.effectColor = new Color(1f, 0.92f, 0.3f, 0.95f); ol.effectDistance = new Vector2(2f, 2f);
+            }
+            if (!recuadroRts.gameObject.activeSelf) recuadroRts.gameObject.SetActive(true);
+
+            // Huella de la camara en el piso: los 4 rayos de las esquinas del viewport contra y = 0 (acotados a 120 m por el horizonte).
+            var piso = new Plane(Vector3.up, Vector3.zero);
+            var vp = new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(1f, 1f), new Vector2(0f, 1f) };
+            for (int i = 0; i < 4; i++)
+            {
+                var ray = cam.ViewportPointToRay(vp[i]);
+                float d = piso.Raycast(ray, out float e) && e > 0f ? Mathf.Min(e, 120f) : 120f;
+                esquinasDelPiso[i] = ray.origin + ray.direction * d;
+            }
+            Rect r = rect.rect;
+            float halfH = mini.orthographicSize, halfW = halfH * ViewAspect(mini);
+            Vector3 centro = CameraCenter(mini); EjesDe(mini, out var derecha, out var arriba);
+            float minX = 1e9f, maxX = -1e9f, minY = 1e9f, maxY = -1e9f;
+            for (int i = 0; i < 4; i++)
+            {
+                var dl = new Vector3(esquinasDelPiso[i].x - centro.x, 0f, esquinasDelPiso[i].z - centro.z);
+                float nx = 0.5f + Vector3.Dot(dl, derecha) / (2f * halfW), ny = 0.5f + Vector3.Dot(dl, arriba) / (2f * halfH);
+                minX = Mathf.Min(minX, nx); maxX = Mathf.Max(maxX, nx); minY = Mathf.Min(minY, ny); maxY = Mathf.Max(maxY, ny);
+            }
+            minX = Mathf.Clamp01(minX); maxX = Mathf.Clamp01(maxX); minY = Mathf.Clamp01(minY); maxY = Mathf.Clamp01(maxY);
+            recuadroRts.position = rect.TransformPoint(new Vector3(r.xMin + (minX + maxX) * 0.5f * r.width, r.yMin + (minY + maxY) * 0.5f * r.height, 0f));
+            recuadroRts.sizeDelta = new Vector2(Mathf.Max(8f, (maxX - minX) * r.width), Mathf.Max(8f, (maxY - minY) * r.height));
+            recuadroRts.SetAsLastSibling();
         }
 
         RectTransform[] marcasDeNorte;

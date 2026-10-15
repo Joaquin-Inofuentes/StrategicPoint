@@ -728,12 +728,40 @@ namespace SP.CameraSystem
         // quede desalineado del centro de pantalla.
         [SerializeField] float shoulderSideOffset = 1.0f;
 
+        // Bug #233: la camara por encima del hombro no tenia colision y al retroceder contra un muro quedaba DENTRO de el
+        // (se veia el interior del cubo y el soldado desaparecia). Se lanza una esfera desde el pivote hacia la posicion
+        // deseada y, si choca con geometria fija, la camara se acerca a ese punto: siempre mira al soldado.
+        // No cuentan los soldados/vehiculos ni los escombros chicos (no tienen que empujar la camara).
+        static readonly RaycastHit[] bufCamara = new RaycastHit[16];
+        public const float RadioDeCamara = 0.28f;
+        Vector3 DespejarDeObstaculos(Vector3 pivot, Vector3 deseada)
+        {
+            Vector3 d = deseada - pivot;
+            float dist = d.magnitude;
+            if (dist < 0.05f) return deseada;
+            d /= dist;
+            int n = Physics.SphereCastNonAlloc(pivot, RadioDeCamara, d, bufCamara, dist, ~0, QueryTriggerInteraction.Ignore);
+            float libre = dist;
+            for (int i = 0; i < n; i++)
+            {
+                var h = bufCamara[i];
+                var c = h.collider;
+                if (c == null || h.distance <= 0.0001f) continue;   // arranca adentro de otro collider: no cuenta
+                if (c.GetComponentInParent<Soldier>() != null || c.GetComponentInParent<SP.Vehicles.Vehicle>() != null) continue;
+                if (c.bounds.size.sqrMagnitude < 1.2f) continue;     // escombro / casquillo / prop chico
+                if (h.distance < libre) libre = h.distance;
+            }
+            if (libre >= dist) return deseada;
+            return pivot + d * Mathf.Max(0.35f, libre);
+        }
+
         public void FollowOverShoulder(Transform target, float distance = 4f, float height = 1.53f, float heightOffset = 0f, Vector3? ojo = null)
         {
             if (target == null || IsTransitioning) return;
             Vector3 pivot = target.position + Vector3.up * (height - heightOffset);
             Quaternion look = target.rotation * Quaternion.Euler(-(pitch + recoilPitch), 0f, 0f);
             Vector3 desired = pivot - (look * Vector3.forward) * distance + (look * Vector3.right) * shoulderSideOffset;
+            desired = DespejarDeObstaculos(pivot, desired);
 
             // Apuntando: la camara viaja al ojo (misma rotacion, sin lag) y desde ahi se ve
             // por la mira del arma, no por encima del hombro.
@@ -757,7 +785,7 @@ namespace SP.CameraSystem
             }
 
             float k = Mathf.Clamp01(Time.deltaTime * normalFollowSpeed);
-            transform.position = Vector3.Lerp(transform.position, desired, k);
+            transform.position = DespejarDeObstaculos(pivot, Vector3.Lerp(transform.position, desired, k));
             transform.rotation = Quaternion.Slerp(transform.rotation, look, k);
         }
 

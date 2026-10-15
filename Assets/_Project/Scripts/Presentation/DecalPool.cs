@@ -14,7 +14,7 @@ namespace SP.Presentation
     public static class DecalPool
     {
         public const int CraterBudget = 24;
-        public const int BulletHoleBudget = 48;
+        public const int BulletHoleBudget = 120;   // bug #238: los disparos que impactan dejan marca (decal) y duran mas
 
         static readonly Dictionary<DecalKind, List<GameObject>> pools = new Dictionary<DecalKind, List<GameObject>>();
         static Transform root;
@@ -90,6 +90,45 @@ namespace SP.Presentation
             AsegurarRoot();
         }
 
+        static Sprite spriteImpacto;
+        // Marca de impacto de bala generada una sola vez (sin assets): 64 px, nucleo oscuro, corona de astillas claras y 5 grietas.
+        static Sprite SpriteDeImpacto()
+        {
+            if (spriteImpacto != null) return spriteImpacto;
+            const int n = 64;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave };
+            var px = new Color32[n * n];
+            float c = (n - 1) * 0.5f;
+            var rng = new System.Random(4242);
+            var grietas = new float[5]; for (int i = 0; i < 5; i++) grietas[i] = (float)(rng.NextDouble() * Mathf.PI * 2f);
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float dx = x - c, dy = y - c, d = Mathf.Sqrt(dx * dx + dy * dy) / c;   // 0 centro .. 1 borde
+                    float a = 0f; byte r = 20, g = 20, b = 22;
+                    if (d < 0.20f) { a = 1f; }                                                  // el agujero
+                    else if (d < 0.34f) { a = Mathf.Lerp(0.95f, 0.5f, (d - 0.20f) / 0.14f); r = 38; g = 36; b = 36; }   // borde hundido
+                    else if (d < 0.62f)
+                    {
+                        // astillas claras: puntos al azar (hash estable) sobre la corona
+                        float h = Mathf.Abs(Mathf.Sin(x * 12.9898f + y * 78.233f)) * 43758.5453f; h -= Mathf.Floor(h);
+                        if (h > 0.55f) { a = 0.55f * (1f - (d - 0.34f) / 0.28f); r = 150; g = 145; b = 135; }
+                    }
+                    float ang = Mathf.Atan2(dy, dx);
+                    for (int i = 0; i < 5; i++)
+                    {
+                        float da = Mathf.Abs(Mathf.DeltaAngle(ang * Mathf.Rad2Deg, grietas[i] * Mathf.Rad2Deg));
+                        float ancho = Mathf.Lerp(7f, 1.5f, d);
+                        if (d > 0.18f && d < 0.92f && da < ancho) { float k = 0.8f * (1f - d); if (k > a) { a = k; r = 16; g = 16; b = 18; } }
+                    }
+                    px[y * n + x] = new Color32(r, g, b, (byte)Mathf.RoundToInt(255f * Mathf.Clamp01(a)));
+                }
+            tex.SetPixels32(px); tex.Apply(false, true);
+            spriteImpacto = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), n, 0, SpriteMeshType.FullRect);
+            spriteImpacto.hideFlags = HideFlags.HideAndDontSave;
+            return spriteImpacto;
+        }
+
         public static GameObject Spawn(DecalKind kind, Vector3 position, Vector3 normal, float size)
         {
             ResetIfStale();
@@ -124,10 +163,11 @@ namespace SP.Presentation
 
             // Ronda 12: antes era un quad gris liso (placeholder). Ahora es una marca real: sprite de quemadura (Kenney, CC0)
             // teñido oscuro y girado al azar para que no se repitan.
-            var spr = SpritesReales.Obtener(kind == DecalKind.Crater ? (Random.value < 0.5f ? "scorch_03" : "scorch_01") : (Random.value < 0.5f ? "scorch_02" : "scorch_01"));
+            // Bug #238: el agujero de bala es una marca propia (nucleo oscuro, borde astillado claro y grietas), no una quemadura.
+            var spr = kind == DecalKind.Crater ? SpritesReales.Obtener(Random.value < 0.5f ? "scorch_03" : "scorch_01") : SpriteDeImpacto();
             var decalSr = decal.GetComponent<SpriteRenderer>();
             decalSr.sprite = spr;
-            decalSr.color = kind == DecalKind.Crater ? new Color(0.06f, 0.05f, 0.04f, 0.92f) : new Color(0.04f, 0.04f, 0.045f, 0.95f);
+            decalSr.color = kind == DecalKind.Crater ? new Color(0.06f, 0.05f, 0.04f, 0.92f) : Color.white;
             decalSr.sortingOrder = kind == DecalKind.Crater ? -2 : -1;
 
             // Levantado un pelo sobre la superficie para no pelear con ella

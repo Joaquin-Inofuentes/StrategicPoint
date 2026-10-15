@@ -86,7 +86,7 @@ namespace SP.Presentation
                 candidate.SetColor(RingColor);
                 return candidate;
             }
-            var nuevo = SelectionRingFx.Spawn(target, RingColor, 1.05f);   // bug #178: mas grande, que se vea alrededor del rombo
+            var nuevo = SelectionRingFx.Spawn(target, RingColor, 0.5f);   // bug #178: mas grande, que se vea alrededor del rombo
             nuevo.ElevacionExtra = ElevacionDelAro;
             return nuevo;
         }

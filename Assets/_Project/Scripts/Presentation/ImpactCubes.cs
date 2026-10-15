@@ -39,8 +39,10 @@ namespace SP.Presentation
 
             var color = ColorOf(surface);
             int n = CountFor(surface, damage);
+            // Bug #238: contra el piso y los obstaculos el impacto es la MARCA (decal del proyectil); solo saltan un par de astillas.
+            if (surface != ImpactSurface.Soldier) n = Mathf.Min(n, 2);
             // Ronda 12: ademas de los cubitos, un chispazo y una voluta con sprites reales (Kenney CC0).
-            SpriteFx.Golpe(point + normal * 0.06f, surface == ImpactSurface.Soldier ? new Color(0.55f, 0.1f, 0.08f) : new Color(0.5f, 0.45f, 0.38f), Mathf.Lerp(0.3f, 0.7f, Mathf.InverseLerp(5f, 60f, damage)) * ImpactFx.EscalaVisualDeImpacto);
+            SpriteFx.Golpe(point + normal * 0.06f, surface == ImpactSurface.Soldier ? new Color(0.55f, 0.1f, 0.08f) : new Color(0.5f, 0.45f, 0.38f), Mathf.Lerp(0.3f, 0.7f, Mathf.InverseLerp(5f, 60f, damage)) * ImpactFx.EscalaVisualDeImpacto * (surface == ImpactSurface.Soldier ? 1f : 0.6f));
             for (int i = 0; i < n; i++)
             {
                 // Cono alrededor de la normal + una componente hacia arriba,

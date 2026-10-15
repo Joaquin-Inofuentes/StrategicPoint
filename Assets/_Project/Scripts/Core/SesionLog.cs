@@ -319,7 +319,7 @@ namespace SP.Core
             if (Time.timeScale > 0f && Time.unscaledTime >= proximoBloque)
             {
                 proximoBloque = Time.unscaledTime + Intervalo;
-                EscribirBloque();
+                if (!armandoBloque) StartCoroutine(BloqueGradual());
             }
         }
 
@@ -350,11 +350,36 @@ namespace SP.Core
             return $"  {s.DisplayName + (s.Team == TeamId.Enemy ? "#" + s.Id : ""),-24} {s.Role,-9} hp={s.Health.Current}/{s.Health.MaxHealth} pos={V(s.transform.position)} yaw={s.transform.eulerAngles.y:0} ia={st} obj={tgt}{extra}";
         }
 
+        // Pulido de rendimiento: el bloque de 5 s armaba ~100 lineas de texto de una sola vez (2,6-4,6 ms en un frame). Ahora se arma en
+        // trozos: un yield cada pocos soldados, uno por frame. El cierre de sesion usa la version completa y sincrona.
+        bool armandoBloque;
         void EscribirBloque()
         {
             using var _c = new CulturaInvariante();
-            bloques++;
             var sb = new StringBuilder(4096);
+            foreach (var _ in ConstruirBloque(sb)) { }
+            try { escritor.Write(sb.ToString()); } catch { }
+        }
+
+        System.Collections.IEnumerator BloqueGradual()
+        {
+            armandoBloque = true;
+            var sb = new StringBuilder(4096);
+            var it = ConstruirBloque(sb).GetEnumerator();
+            while (true)
+            {
+                bool hay;
+                using (new CulturaInvariante()) hay = it.MoveNext();
+                if (!hay) break;
+                yield return null;
+            }
+            try { if (escritor != null) escritor.Write(sb.ToString()); } catch { }
+            armandoBloque = false;
+        }
+
+        IEnumerable<bool> ConstruirBloque(StringBuilder sb)
+        {
+            bloques++;
             var drv = PlayerInputDriver.Activo;
             var yo = drv != null && drv.Brain != null ? drv.Brain.Current : null;
             sb.AppendLine($"=== BLOQUE {bloques} [{Reloj} | escena {SceneManager.GetActiveScene().name}] ===");
@@ -390,8 +415,13 @@ namespace SP.Core
             }
             sb.AppendLine($"ALIADOS ({aliados.Count}):");
             foreach (var s in aliados) sb.AppendLine(LineaSoldado(s) + (s.Health.IsAlive ? "" : " MUERTO"));
+            yield return true;
             sb.AppendLine($"ENEMIGOS ({enemigos.Count} vivos, {reservas} en reserva):");
-            foreach (var s in enemigos) sb.AppendLine(LineaSoldado(s));
+            for (int i = 0; i < enemigos.Count; i++)
+            {
+                sb.AppendLine(LineaSoldado(enemigos[i]));
+                if ((i & 7) == 7) yield return true;
+            }
 
             // VEHICULOS
             var vs = Vehicle.Todos;   // los activos (alta en OnEnable): este bloque corre cada 5 s, sin barrer la escena
@@ -409,25 +439,19 @@ namespace SP.Core
             sb.AppendLine("MISION:");
             foreach (var par in kv) sb.AppendLine($"  {par.Key} = {par.Value}");
             sb.AppendLine();
-
-            try { escritor.Write(sb.ToString()); } catch { }
         }
 
         static float NormalizarAngulo(float a) => a > 180f ? a - 360f : a;
 
         // Bug #052: FindObjectsByType<MonoBehaviour>(Include) cada 5 s era un tiron de ~8 ms. Los guardables se buscan cada 30 s.
+        // Registro de guardables (antes un FindObjectsByType<MonoBehaviour> cada 30 s: 3-7 ms por los ~11.000 scripts de la escena).
         static readonly List<IEstadoGuardable> guardables = new List<IEstadoGuardable>();
-        static float proximaBusquedaDeGuardables = -1f;
+        public static void RegistrarGuardable(IEstadoGuardable g) { if (g != null && !guardables.Contains(g)) guardables.Add(g); }
+        public static void QuitarGuardable(IEstadoGuardable g) { guardables.Remove(g); }
 
         static void CapturarMision(Dictionary<string, string> kv)
         {
-            if (Time.unscaledTime >= proximaBusquedaDeGuardables || guardables.Exists(x => x == null || (x is UnityEngine.Object o && o == null)))
-            {
-                proximaBusquedaDeGuardables = Time.unscaledTime + 30f;
-                guardables.Clear();
-                foreach (var m in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
-                    if (m is IEstadoGuardable gg) guardables.Add(gg);
-            }
+            guardables.RemoveAll(x => x == null || (x is UnityEngine.Object o && o == null));
             foreach (var g in guardables)
             {
                 {

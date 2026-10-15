@@ -41,9 +41,8 @@ namespace SP.UI
         {
             if (!Application.isPlaying) return;
             var director = SP.Presentation.KillFeedbackDirector.Instance;
-            string txt = director != null ? director.FeedText() : "ENEMIGO ABATIDO";
-            bool mine = director != null && director.LastKillWasPlayer;
-            AvisoUnico.Mostrar(txt, 1.6f, mine ? new Color(1f, 0.4f, 0.3f) : new Color(0.6f, 0.8f, 1f), AvisoUnico.PrioridadBaja);
+            // Pulido (feedback visual, no texto): sin cartel "ENEMIGO ABATIDO". La baja se ve en la mirilla (marca roja con aro, MarcaDeImpacto),
+            // en el estallido del cuerpo y se oye; el texto solo repetia lo que ya se ve.
             if (label != null) label.gameObject.SetActive(false);   // el cartel ya no se dibuja: va al texto unico de abajo al centro
         }
 

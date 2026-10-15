@@ -88,7 +88,7 @@ namespace SP.Mision
             h.CrearTimerGrande(raiz, font);
 
             var p = Dificultad.PerfilActual;
-            h.dificultad.text = $"Dificultad: {p.Nombre}";   // el detalle (enemigos/aliados/vos) vive en Configuraciones, no en el HUD
+            h.dificultad.text = "";   // pulido: la dificultad ya no ocupa un renglon del HUD (se ve en Configuraciones)   // el detalle (enemigos/aliados/vos) vive en Configuraciones, no en el HUD
             h.Refrescar();
             
             CartelVolverView.Crear();

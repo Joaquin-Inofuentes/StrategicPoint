@@ -371,7 +371,12 @@ namespace SP.Presentation
                     Roce(b, 1.40f, 0.2f, 0.45f, 556);      // cerrojo adelante
                     Clac(b, 1.66f, 1.0f, 557, 0.7f);
                     Clac(b, 2.0f, 0.8f, 558, 0.9f);        // baja la manija
-                    return Cerrar(b, "Reload_Sniper", 0.85f);
+                    // Bug #241: recarga FUERTE: golpes graves de la culata y el cerrojo pesado debajo de los clacs.
+                    Tunc(b, 0.30f, 1.3f, 559, 0.55f);      // cerrojo atras
+                    Tunc(b, 1.40f, 1.5f, 560, 0.5f);       // cerrojo adelante (golpe)
+                    Tono(b, 1.64f, 0.14f, 120f, 55f, 22f, 0.9f);   // traba
+                    Metal(b, 1.66f, 0.18f, new[] { 900f, 1900f, 3200f }, 38f, 0.5f, 561, 0.05f);
+                    return Cerrar(b, "Reload_Sniper", 0.95f);
                 }
                 case WeaponKind.Rocket:
                 {

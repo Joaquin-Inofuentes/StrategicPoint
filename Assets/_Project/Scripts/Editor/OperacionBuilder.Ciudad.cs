@@ -333,7 +333,7 @@ namespace SP.EditorTools
             LuzPuntual(g, "Luz_Plaza_2", cx + m, 6.6f, cz - m, luzPlaza, 9f, 24f);
             LuzPuntual(g, "Luz_Plaza_3", cx - m, 6.6f, cz + m, luzPlaza, 9f, 24f);
             LuzPuntual(g, "Luz_Plaza_4", cx + m, 6.6f, cz + m, luzPlaza, 9f, 24f);
-            Rotulo(g, "PLAZA >>\nEXTRACCION", 306f, 5.2f, 228f, 90f, 1.2f, Color.black, Amarillo, 11f, 2.6f);
+            Rotulo(g, "PLAZA >>", 306f, 5.2f, 228f, 90f, 1.2f, Color.black, Amarillo, 11f, 2.6f);
             Solido(g, "Poste_Plaza_S", 306f, 222.2f, 0.4f, 6.8f, 0.4f, CementoOsc);
             Solido(g, "Poste_Plaza_N", 306f, 233.8f, 0.4f, 6.8f, 0.4f, CementoOsc);
 

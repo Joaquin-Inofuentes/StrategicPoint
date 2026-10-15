@@ -290,6 +290,11 @@ namespace SP.EditorTools
             doc.transform.position = vega.transform.position + new Vector3(-4f, 0f, 3f);
             AjustesDeEscuadra.Lider = vega;
             doc.Brain.CancelOrder();
+            // Bug #235: los enemigos ahora OYEN los tiros de fases anteriores (hasta 48 m) y se acercan: se los aparta del lugar de la prueba.
+            foreach (var e in ActorRegistry.All)
+                if (e != null && e.Team == TeamId.Enemy && e.Health != null && e.Health.IsAlive && Vector3.Distance(e.transform.position, vega.transform.position) < 90f)
+                { e.transform.position = new Vector3(-70f, 0.8f, 70f); if (e.Brain != null) e.Brain.CancelOrder(); }
+            Physics.SyncTransforms();
             Check("Hay calma en el lugar de la prueba", PedidoDeCuracion.HayCalma(kes.transform.position) && PedidoDeCuracion.HayCalma(doc.transform.position));
             Matar(kes);
             SimulateSeconds(6f);

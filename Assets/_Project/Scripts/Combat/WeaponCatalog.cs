@@ -55,8 +55,8 @@ namespace SP.Combat
                     // simple vista con el fucsia de un material roto.
                     return new Spec { Damage = 50, Cooldown = 0.80f, Color = new Color(0.85f, 0.35f, 0.10f), VisualScale = new Vector3(0.26f, 0.26f, 0.65f), MagazineSize = 4, ReloadDuration = 2.2f, ZoomFactor = 2.0f, Reticle = ReticleStyle.Anillo, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Ametralladora", MultiplicadorVsVehiculo = 1f };
                 case WeaponKind.Rifle:
-                    // Larga y angosta.
-                    return new Spec { Damage = 26, Cooldown = 0.30f, Color = new Color(0.55f, 0.68f, 0.78f), VisualScale = new Vector3(0.15f, 0.15f, 0.55f), MagazineSize = 8, ReloadDuration = 1.5f, ZoomFactor = 3.0f, Reticle = ReticleStyle.Punto, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Fusil", MultiplicadorVsVehiculo = 1f };
+                    // Larga y angosta. Bug #244 ("la cadencia el doble y la municion por carga el triple"): 0,30 -> 0,15 s y cargador 8 -> 24.
+                    return new Spec { Damage = 26, Cooldown = 0.15f, Color = new Color(0.55f, 0.68f, 0.78f), VisualScale = new Vector3(0.15f, 0.15f, 0.55f), MagazineSize = 24, ReloadDuration = 1.5f, ZoomFactor = 3.0f, Reticle = ReticleStyle.Punto, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Fusil", MultiplicadorVsVehiculo = 1f };
                 case WeaponKind.Smg:
                     // Rafaga corta y suelta: dps sostenido parecido al fusil (9 x 24 / 4,2 s).
                     return new Spec { Damage = 9, Cooldown = 0.11f, Color = new Color(0.62f, 0.9f, 0.45f), VisualScale = new Vector3(0.13f, 0.17f, 0.42f), MagazineSize = 24, ReloadDuration = 1.6f, ZoomFactor = 2.0f, Reticle = ReticleStyle.Chevron, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Metralleta", MultiplicadorVsVehiculo = 1f };

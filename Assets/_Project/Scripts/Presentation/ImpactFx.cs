@@ -289,7 +289,7 @@ namespace SP.Presentation
 
         // Pedido: "al impactar que el efecto sea 2 veces mas grande". Solo el dibujo (fuego, humo, tierra, polvo): el radio de dano y el anillo
         // que lo muestra no cambian.
-        public const float EscalaVisualDeImpacto = 2f;
+        public const float EscalaVisualDeImpacto = 1f;   // bug #246: "el efecto de explosion a la mitad de tamano" (antes 2)
 
         // Pedido: "particulas de explosion del canon al salir". Fogonazo grande, destello, chorro de humo hacia adelante, chispas y polvo
         // levantado si la boca esta cerca del piso. size 1 = canon de tanque chico; metralletas 0.4-0.6.

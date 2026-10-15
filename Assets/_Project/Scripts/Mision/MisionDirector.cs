@@ -135,9 +135,8 @@ namespace SP.Mision
             LanzarLineasEnemigas();
             IluminacionTactica.Activa = true;   // de noche solo te ven de lejos si estas a la luz
             hud = MisionHud.Crear(this);
-            flechaDeObjetivo = SP.Presentation.ObjectiveArrowIndicator.Crear();
+            // Pulido: "si objetivo, no camino" -- sin flecha a los pies ni ruta [I]; queda el rombo del objetivo con su distancia.
             baliza = TutorialBeacon.Crear("CENTRO", new Color(1f, 0.85f, 0.25f), Plaza, null, 3.2f, 24f);
-            SP.Presentation.RutaAlObjetivo.Crear();
             SP.Presentation.ObjectiveDiamondMarker.Crear(PuntoObjetivoActual);
             GameLog.Line($"Mision iniciada (dificultad {Dificultad.PerfilActual.Nombre})");
             CambioDeFase?.Invoke(Fase);

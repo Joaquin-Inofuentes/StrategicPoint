@@ -75,10 +75,17 @@ namespace SP.Core
             // se acaba de mover con transform.position = ... en este mismo
             // frame (por ejemplo, al spawnearlo): la medicion de abajo sale
             // mal y el cuerpo queda hundido o flotando segun de donde vino.
+            // Bugs #231/#232/#253 (cuerpos enterrados): el bounds de un collider APAGADO esta vacio (centro en el origen), asi que un
+            // soldado muerto (el collider se apaga al morir) se "apoyaba" con la base en y=0 en vez de en piso + 0,8 y quedaba enterrado.
+            // Se enciende un instante solo para medirlo.
+            bool estabaEncendido = col.enabled;
+            if (!estabaEncendido) col.enabled = true;
             Physics.SyncTransforms();
+            var medida = col.bounds;
+            if (!estabaEncendido) col.enabled = false;
 
             var pos = cuerpo.position;
-            var desde = new Vector3(pos.x, col.bounds.max.y + AlturaDeSondeo, pos.z);
+            var desde = new Vector3(pos.x, medida.max.y + AlturaDeSondeo, pos.z);
 
             // NonAlloc y descartando el propio cuerpo: un rayo simple se
             // choca consigo mismo en el primer metro y el "piso" le sale
@@ -110,7 +117,7 @@ namespace SP.Core
             }
             if (!hay) return false;
 
-            float desfase = col.bounds.min.y - piso;
+            float desfase = medida.min.y - piso;
             if (Mathf.Abs(desfase) < ToleranciaEnMetros) return false;
 
             cuerpo.position = new Vector3(pos.x, pos.y - desfase, pos.z);

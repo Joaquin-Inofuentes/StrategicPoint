@@ -191,8 +191,9 @@ namespace SP.Operacion
             var cg = new GameObject("CartelCentral", typeof(RectTransform), typeof(CanvasGroup));
             cg.transform.SetParent(raiz, false);
             grupoCartel = cg.GetComponent<CanvasGroup>(); grupoCartel.alpha = 0f;
-            Anclar(cg.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 120f), new Vector2(1500f, 260f));
-            cartel = NuevaTexto(cg.transform, "Texto", 150, TextAnchor.MiddleCenter, new Color(1f, 0.9f, 0.3f));
+            // Bug #249: el cartel de fuego va ABAJO DE TODO y centrado (justo sobre la barra de cine), no tapando la escena.
+            Anclar(cg.GetComponent<RectTransform>(), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 122f), new Vector2(1500f, 130f));
+            cartel = NuevaTexto(cg.transform, "Texto", 100, TextAnchor.MiddleCenter, new Color(1f, 0.9f, 0.3f));
             cartel.horizontalOverflow = HorizontalWrapMode.Overflow;
             Anclar(cartel.rectTransform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
 
@@ -244,6 +245,8 @@ namespace SP.Operacion
             if (texto != null) cartel.text = texto;
             if (color.HasValue) cartel.color = color.Value;
             grupoCartel.alpha = Mathf.Clamp01(alfa);
+            // El subtitulo (abajo) sube mientras el cartel esta a la vista para que no se pisen.
+            if (grupoSub != null) ((RectTransform)grupoSub.transform).anchoredPosition = new Vector2(0f, grupoCartel.alpha > 0.05f ? 270f : 150f);
         }
 
         public void Fundido(float alfa)

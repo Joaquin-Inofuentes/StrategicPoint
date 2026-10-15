@@ -64,7 +64,7 @@ namespace SP.EditorTools
             Solido(pc, "Torre_Servidor", -3.4f, -45.2f, 0.9f, 1.6f, 0.9f, Rack);
             var monitor = Decor(pc, "Monitor", 0f, -44.6f, 3.2f, 1.5f, 0.15f, Pantalla, 0f, 1.1f);
             var barra = Decor(pc, "BarraProgreso", 0f, -45.9f, 3.2f, 0.12f, 0.2f, Mat("Progreso", new Color(0.35f, 1f, 0.5f), 1.4f), 0f, 1.1f);
-            Rotulo(pc, "COMPUTADORA\n[E] INTERACTUAR 30 s", 0f, 7.2f, -45f, 0f, 0.8f, Color.white, Negro, 6.6f, 1.6f);
+            Rotulo(pc, "COMPUTADORA", 0f, 7.2f, -45f, 0f, 0.8f, Color.white, Negro, 6.6f, 1.6f);
             LuzPuntual(pc, "Luz_PC", 0f, 3.2f, -50f, new Color(0.4f, 0.8f, 1f), 3.5f, 14f);
             var term = mesa.AddComponent<OperacionTerminal>();
             term.titulo = "COMPUTADORA";

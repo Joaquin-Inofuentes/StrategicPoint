@@ -31,6 +31,10 @@ namespace SP.Core
         // sirve para saber CUANDO SE DESTRUYE la cobertura y para elegir el
         // punto del lado que se esta apuntando.
         static readonly List<Collider> duenos = new List<Collider>();
+        // Cambia con cada alta/baja de puntos: invalida el cache de TryPuntoApuntado.
+        static int version;
+        static Transform cacheObstaculo; static int cacheVersion = -1;
+        static readonly List<int> cacheIndices = new List<int>();
         public static IReadOnlyList<Vector3> Puntos => puntos;
         public static IReadOnlyList<Collider> Duenos => duenos;
         public static int Cantidad => puntos.Count;
@@ -73,6 +77,7 @@ namespace SP.Core
                 if (d != null && !d.transform.IsChildOf(raiz)) continue;
                 duenos.RemoveAt(i);
                 puntos.RemoveAt(i);
+                version++;
             }
             Version++;
         }
@@ -89,6 +94,7 @@ namespace SP.Core
             Physics.SyncTransforms();
             puntos.Clear();
             duenos.Clear();
+            version++;
             var solidos = Solidos();
             for (int i = 0; i < solidos.Count; i++)
             {
@@ -126,6 +132,7 @@ namespace SP.Core
                 if (NavService.BlocksMovement(alrededor[i])) return;
             puntos.Add(p);
             duenos.Add(dueno);
+            version++;
         }
 
         // La cobertura sigue en pie: su obstaculo existe, esta activo y no se
@@ -147,12 +154,19 @@ namespace SP.Core
             punto = Vector3.zero;
             dueno = null;
             float mejor = float.MaxValue;
-            for (int i = 0; i < puntos.Count; i++)
+            // Pulido de rendimiento: apuntando a un obstaculo se hacia un IsChildOf por CADA punto de cobertura de la escena, cada frame (~1,5 ms).
+            // Los puntos de ese obstaculo no cambian mientras no se agreguen o saquen puntos: se resuelven una vez y se reusan.
+            if (obstaculo != null && (obstaculo != cacheObstaculo || cacheVersion != version))
             {
-                if (obstaculo != null)
-                {
-                    if (duenos[i] == null || !duenos[i].transform.IsChildOf(obstaculo)) continue;
-                }
+                cacheIndices.Clear();
+                for (int i = 0; i < puntos.Count; i++)
+                    if (duenos[i] != null && duenos[i].transform.IsChildOf(obstaculo)) cacheIndices.Add(i);
+                cacheObstaculo = obstaculo; cacheVersion = version;
+            }
+            int total = obstaculo != null ? cacheIndices.Count : puntos.Count;
+            for (int k = 0; k < total; k++)
+            {
+                int i = obstaculo != null ? cacheIndices[k] : k;
                 float d = new Vector2(puntos[i].x - puntoApuntado.x, puntos[i].z - puntoApuntado.z).sqrMagnitude;
                 if (obstaculo == null && d > radioPiso * radioPiso) continue;
                 if (d >= mejor) continue;
@@ -215,6 +229,7 @@ namespace SP.Core
         {
             puntos.Clear();
             duenos.Clear();
+            version++;
             BorrarRoot();
         }
 

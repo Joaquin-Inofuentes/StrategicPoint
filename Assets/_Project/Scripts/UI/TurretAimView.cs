@@ -121,7 +121,9 @@ namespace SP.UI
 
         // Bug #091: el anillo del punto de impacto VIBRA (radio +-6 % a 7 Hz, ancho de 0,12 a 0,2) y cambia de color segun lo que
         // hay bajo el punto: rojo = vehiculo o soldado enemigo, naranja = obstaculo destructible, blanco = neutro.
-        public const float VibracionHz = 7f, VibracionRadio = 0.06f, AnchoMin = 0.12f, AnchoMax = 0.2f;
+        public const float VibracionHz = 7f, VibracionRadio = 0.06f, AnchoMin = 0.12f, AnchoMax = 0.2f, AnchoFijo = 0.18f;
+        public static bool Vibra = false;            // bug #247
+        public static bool SoloAnilloDeZona = true;  // bug #245: sin cruceta, rombo ni anillos de UI: solo el circulo en el piso
         public static readonly Color ColorEnemigo = new Color(1f, 0.2f, 0.15f);
         public static readonly Color ColorDestructible = new Color(1f, 0.55f, 0.1f);
         public static readonly Color ColorNeutro = Color.white;
@@ -142,11 +144,14 @@ namespace SP.UI
             // Con municion perforante el radio es 0: el anillo pasa a ser
             // una marca chica de punto de caida, no una zona de daño.
             float radio = turret.ExplosionRadius > 0f ? turret.ExplosionRadius : 0.5f;
-            float fase = Mathf.Sin(Time.unscaledTime * VibracionHz * Mathf.PI * 2f);
+            // Bug #247: el anillo ya no vibra (queda fijo); con Vibra = true vuelve el pulso del bug #091.
+            float fase = Vibra ? Mathf.Sin(Time.unscaledTime * VibracionHz * Mathf.PI * 2f) : 0f;
             radio *= 1f + VibracionRadio * fase;
-            float ancho = Mathf.Lerp(AnchoMin, AnchoMax, 0.5f + 0.5f * fase);
+            float ancho = Vibra ? Mathf.Lerp(AnchoMin, AnchoMax, 0.5f + 0.5f * fase) : AnchoFijo;
             radiusRing.widthMultiplier = ancho;
             var color = ColorDe(impacto.Tipo);
+            // Bug #245: el anillo de la zona es lo UNICO que queda del cursor del canon: mientras recarga se atenua (en vez del anillo de recarga de la UI).
+            if (SoloAnilloDeZona && turret.CooldownFraction01 < 0.999f) color.a = 0.4f;
             radiusRing.startColor = color; radiusRing.endColor = color;
             UltimoTipo = impacto.Tipo; UltimoPunto = impacto.Punto; UltimaNormal = impacto.Normal;
             UltimoRadioDibujado = radio; UltimoAnchoDibujado = ancho; UltimoColor = color;
@@ -279,11 +284,32 @@ namespace SP.UI
             Vector3 ux, uz;
             if (Mathf.Abs(Vector3.Dot(normal, Vector3.up)) > 0.95f) { ux = Vector3.right; uz = Vector3.forward; }
             else { ux = Vector3.Cross(normal, Vector3.up).normalized; uz = Vector3.Cross(normal, ux).normalized; }
+            bool horizontal = Mathf.Abs(Vector3.Dot(normal, Vector3.up)) > 0.95f;
             for (int i = 0; i < segments; i++)
             {
                 float a = (float)i / segments * Mathf.PI * 2f;
-                radiusRing.SetPosition(i, center + (ux * Mathf.Cos(a) + uz * Mathf.Sin(a)) * radius);
+                var p = center + (ux * Mathf.Cos(a) + uz * Mathf.Sin(a)) * radius;
+                // Bug #245: sobre el piso cada punto del anillo se apoya en lo que haya debajo (cordon, rampa, escombro grande): se adapta a la zona.
+                if (horizontal) p = ApoyarEnElPiso(p, center.y);
+                radiusRing.SetPosition(i, p);
             }
+        }
+
+        static readonly RaycastHit[] golpesAnillo = new RaycastHit[8];
+        Vector3 ApoyarEnElPiso(Vector3 p, float yBase)
+        {
+            var desde = new Vector3(p.x, yBase + 2.5f, p.z);
+            int n = Physics.RaycastNonAlloc(desde, Vector3.down, golpesAnillo, 5f, ~0, QueryTriggerInteraction.Ignore);
+            float mejor = float.MaxValue; float y = yBase;
+            for (int i = 0; i < n; i++)
+            {
+                var h = golpesAnillo[i];
+                if (h.collider == null || h.distance >= mejor) continue;
+                if (h.collider.GetComponentInParent<SP.Actors.Soldier>() != null || h.collider.GetComponentInParent<Vehicle>() != null) continue;
+                mejor = h.distance; y = h.point.y + 0.06f;
+            }
+            p.y = y;
+            return p;
         }
     }
 }

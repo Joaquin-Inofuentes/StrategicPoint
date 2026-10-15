@@ -10,7 +10,7 @@ namespace SP.Presentation
     {
         public Transform Target;
         [SerializeField] float baseRadius = 0.75f;
-        [SerializeField] float pulseAmount = 0.18f;
+        [SerializeField] float pulseAmount = 0.06f;
         [SerializeField] float pulseSpeed = 2.2f;
         [SerializeField] float groundHeight = 0.03f;
 
@@ -118,7 +118,7 @@ namespace SP.Presentation
 
             float ackRemaining = ackFlashUntil - Time.time;
             float ack = ackRemaining > 0f ? ackRemaining / AckFlashDuration : 0f;
-            radius *= 1f + ack * 0.8f;
+            radius *= 1f + ack * 0.3f;
             transform.localScale = new Vector3(radius, 1f, radius);
 
             if (trackedSoldier != null && trackedSoldier.Health != null)

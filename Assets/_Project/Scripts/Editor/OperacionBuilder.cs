@@ -391,6 +391,8 @@ namespace SP.EditorTools
             CiudadDeCubos(raiz);     // decorado del resto del mapa (antes de hornear: sus edificios llevan el volumen no caminable)
             Ambiente(raiz, ruta);    // tierra, pasto, desierto con cactus y plantaciones, campamentos militares
             Decorado(raiz, ruta);    // detalle de edificios y props del kit de arte (barricadas, cajas, autos quemados, arboles...)
+            MarcarEstaticos(raiz);   // OperacionBuilder.Rendimiento.cs: lo que no se mueve ni se rompe se funde en pocas mallas
+            Debug.Log("[Operacion] Fusion de mallas: " + FusionarMallas(raiz));   // OperacionBuilder.Fusion.cs: piezas solo visuales en mallas combinadas
             LevelBlockoutBuilder.BakeNavMesh(true);
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -666,7 +668,7 @@ namespace SP.EditorTools
             Rotulo(ap, "ZONA MILITAR\nCUARTEL ENEMIGO", 0f, 7.4f, -362f, 0f, 1.5f, Color.white, Rojo, 15f, 4.2f);
             Solido(ap, "Poste_Zona_L", -7.6f, -362f, 0.4f, 9.5f, 0.4f, CementoOsc);
             Solido(ap, "Poste_Zona_R", 7.6f, -362f, 0.4f, 9.5f, 0.4f, CementoOsc);
-            Rotulo(ap, "INFILTRATE POR LA BRECHA  ^\n(elimina a TODOS los enemigos)", 0f, 7.6f, -350f, 0f, 1.1f, Color.white, AzulSenal, 16f, 3.4f);
+            Rotulo(ap, "INFILTRATE POR LA BRECHA  ^", 0f, 7.6f, -350f, 0f, 1.1f, Color.white, AzulSenal, 16f, 3.4f);
             Solido(ap, "Poste_Brecha_L", -7.6f, -350f, 0.4f, 9.5f, 0.4f, CementoOsc);
             Solido(ap, "Poste_Brecha_R", 7.6f, -350f, 0.4f, 9.5f, 0.4f, CementoOsc);
             FlechaPiso(ap, 0f, -358f, 0f); FlechaPiso(ap, 0f, -348f, 0f);

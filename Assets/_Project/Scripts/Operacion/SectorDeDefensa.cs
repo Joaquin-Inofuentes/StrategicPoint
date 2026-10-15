@@ -196,7 +196,14 @@ namespace SP.Operacion
                         var obstaculoHacia = -Coberturas.FrenteDe(i);   // del punto hacia el obstaculo
                         if (Vector3.Dot(obstaculoHacia, hacia) < minimo) continue;
                         bool ocupado = false;
-                        foreach (var r in res) { var q = r.punto - p; q.y = 0f; if (q.sqrMagnitude < 2.2f * 2.2f) { ocupado = true; break; } }
+                        // Bug #251 ("alli entran 2"): un solo defensor por obstaculo (antes un mismo monton de sacos daba un punto por cada costado y
+                        // el segundo soldado quedaba al descubierto del lado de la amenaza). Un obstaculo muy largo (> 5 m) admite dos, bien separados.
+                        foreach (var r in res)
+                        {
+                            var q = r.punto - p; q.y = 0f;
+                            if (q.sqrMagnitude < 2.2f * 2.2f) { ocupado = true; break; }
+                            if (r.dueno == duenos[i] && (duenos[i].bounds.size.x < 5f && duenos[i].bounds.size.z < 5f || q.sqrMagnitude < 4f * 4f)) { ocupado = true; break; }
+                        }
                         if (ocupado) continue;
                         // Mejor: del lado de la amenaza (sin alejarse del centro mas de la cuenta), lejos del resto.
                         float puntaje = -Vector3.Dot(obstaculoHacia, hacia) * 4f + d * 0.25f;

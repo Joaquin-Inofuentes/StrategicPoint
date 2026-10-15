@@ -32,7 +32,7 @@ namespace SP.EditorTools
             { "Presentation/WorldUiDirector.cs", 5 },  // EnsurePopulated: una sola vez, guardado por flag (igual que WorldSystemsRegistry)
             { "Vehicles/TorretaFija.cs", 1 },          // InstalarEnEscena: una vez al arrancar, los emplazamientos son arte sin componente
             { "Core/Loc.cs", 1 },                      // pasada de traduccion de los Text (sin registro de Text)
-            { "Presentation/FuentesBelicas.cs", 2 },   // pasada de fuentes sobre Text/TextMesh (sin registro)
+            { "Presentation/FuentesBelicas.cs", 3 },   // pasada de fuentes: Canvas (registro de graficos) + Text de respaldo + TextMesh
             { "Mision/CinematicaDeVictoria.cs", 2 },   // una vez al empezar y una al terminar la cinematica
             { "Mision/CinematicaDeIntro.cs", 3 },      // mismo patron que CinematicaDeVictoria: al empezar, al terminar y en Saltar() (atajo de prueba)
             { "Mision/MisionDirector.cs", 1 },         // Casas(): cachea el resultado (nunca uno vacio) y solo se llama al crear un enemigo, no por frame
@@ -125,7 +125,8 @@ namespace SP.EditorTools
         // WeaponStatusView.OcultarSobrantes (esconde las piezas que #144 saco del panel; corria en cada cuadro desde
         // UpdateFrom y ahora una sola vez por armado del panel, guardado por flag). El detector de "por frame" de abajo no
         // lo veia porque el Find esta en un metodo propio, no en el cuerpo de UpdateFrom.
-        const int PresupuestoFindPorNombre = 126;
+        // Bug #237: +1 -- WeaponStatusView.Fondo (las dos tarjetas del panel de arma; corre solo al armar el panel, no por frame).
+        const int PresupuestoFindPorNombre = 127;
         static readonly Regex PatronFindPorNombre = new Regex(@"(?<!Shader)(?<!GameObject)(?<!Object)\.Find\(\s*[""\w]");
         static readonly Regex PatronMetodoPorFrame = new Regex(@"\b(void|bool|float|Vector\d)\s+(Update|LateUpdate|FixedUpdate|UpdateFrom|UpdateInVehicle|TickPlayerAim|Tick)\s*\(");
         static readonly Regex PatronCabeceraMetodo = new Regex(@"^\s*(public |private |protected |internal |static |override |virtual )*[\w<>\[\],\.?]+\s+\w+\s*\([^;]*\)\s*$");

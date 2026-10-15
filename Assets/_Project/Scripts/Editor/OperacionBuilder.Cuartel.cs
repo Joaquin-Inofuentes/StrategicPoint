@@ -141,7 +141,7 @@ namespace SP.EditorTools
             Saco(e, "Saco_NidoA_O", -14f, -323.75f); Saco(e, "Saco_NidoA_E", 14f, -323.75f);
             Edificio(e, "Garita_A", -50f, -328f, 6f, 3.2f, 5f, Hormigon);
             Decor(e, "Garita_A_Techo", -50f, -328f, 6.6f, 0.4f, 5.6f, Techo, 0f, 3.2f);
-            Rotulo(e, "SECTOR A\nCONTROL DE ACCESO", -16f, 2.6f, -313.12f, 0f, 1.0f, Color.white, Negro, 10f, 2.2f);
+            Rotulo(e, "SECTOR A", -16f, 2.6f, -313.12f, 0f, 1.0f, Color.white, Negro, 10f, 2.2f);
             // Franjas de hazard en las puntas de cada linea.
             for (int l = 0; l < 3; l++)
             {
@@ -166,10 +166,10 @@ namespace SP.EditorTools
             Decor(e, "Dintel_C", 35f, -312f, 6.4f, 0.5f, 2.4f, OlivaClaro, 0f, 4f);
             Decor(e, "Dintel_D1", -30f, -260f, 6.4f, 0.5f, 2.4f, AzulAcero, 0f, 4f);
             Decor(e, "Dintel_D2", 30f, -260f, 6.4f, 0.5f, 2.4f, AzulAcero, 0f, 4f);
-            Rotulo(e, "SECTOR B\nBARRACAS", -35f, 4.9f, -313.2f, 0f, 1.0f, Color.white, Ocre, 8f, 1.9f);
+            Rotulo(e, "SECTOR B", -35f, 4.9f, -313.2f, 0f, 1.0f, Color.white, Ocre, 8f, 1.9f);
             Rotulo(e, "PATIO DE ARMAS", 0f, 4.9f, -313.2f, 0f, 1.0f, Color.white, Negro, 8f, 1.5f);
-            Rotulo(e, "SECTOR C\nARMERIA Y DEPOSITO", 35f, 4.9f, -313.2f, 0f, 1.0f, Color.white, OlivaOsc, 10f, 1.9f);
-            Rotulo(e, "SECTOR D\nCOMANDO Y PARQUE MOTOR", 0f, 2.6f, -261.12f, 0f, 1.0f, Color.white, AzulAcero, 12f, 2.0f);
+            Rotulo(e, "SECTOR C", 35f, 4.9f, -313.2f, 0f, 1.0f, Color.white, OlivaOsc, 10f, 1.9f);
+            Rotulo(e, "SECTOR D", 0f, 2.6f, -261.12f, 0f, 1.0f, Color.white, AzulAcero, 12f, 2.0f);
         }
 
         static void SectorB(Transform e)

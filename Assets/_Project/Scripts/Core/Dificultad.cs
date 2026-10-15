@@ -127,7 +127,7 @@ namespace SP.Core
             var atacante = atacanteId >= 0 ? ActorRegistry.FindById(atacanteId) : null;
             if (atacante != null)
             {
-                if (atacante.Team == TeamId.Enemy) m *= d.DanoEnemigos;
+                if (atacante.Team == TeamId.Enemy) m *= d.DanoEnemigos * DificultadAdaptativa.MultiplicadorEnemigo(atacante.Id);   // bug #240
                 else if (atacante.Brain != null && atacante.Brain.IsPossessedByPlayer) m *= d.DanoJugador;
                 else if (atacante.Role != RoleType.Civilian) m *= d.DanoAliados;
             }
@@ -136,7 +136,7 @@ namespace SP.Core
             {
                 var v = victima.GetComponent<Soldier>();
                 // Golpe de origen desconocido (torreta, cañon, explosion sin duenio) contra tu bando: es del enemigo, tambien a la mitad.
-                if (atacante == null && v != null && v.Team == TeamId.Player && v.Role != RoleType.Civilian) m *= d.DanoEnemigos;
+                if (atacante == null && v != null && v.Team == TeamId.Player && v.Role != RoleType.Civilian) m *= d.DanoEnemigos * DificultadAdaptativa.MultiplicadorEnemigo(-1);
                 if (v != null && v.Brain != null && v.Brain.IsPossessedByPlayer && d.VidaJugador > 0f) m /= d.VidaJugador;
                 if (v != null && v.Brain != null && v.Brain.IsPossessedByPlayer && victima.MaxHealth > 0) m *= FactorPorVidaDelJugador((float)victima.Current / victima.MaxHealth);
             }

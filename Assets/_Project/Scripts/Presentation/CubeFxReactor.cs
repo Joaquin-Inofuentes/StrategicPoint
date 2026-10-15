@@ -151,6 +151,9 @@ namespace SP.Presentation
             // muerte o el cañon, que son sucesos unicos.
             // Perfil de disparo (5-120 m, logaritmico): lo que suena lejos se oye lejos y lo cercano pega (bug #095).
             AudioDirector.PlayClipAt(GenericSfx.GetWeaponShot(kind), flashPos, 0.9f, 0.6f, PerfilEspacial.Disparo);
+            // Bug #241: el francotirador tiene su propio efecto (fogonazo largo, onda de presion, estampido con ecos y golpe de camara).
+            if (kind == SP.Combat.WeaponKind.Sniper)
+                SniperFx.Disparo(flashPos, muzzle != null ? muzzle.forward : transform.forward, yo != null && yo.Brain != null && yo.Brain.Current == soldier, !propioConZoom);
         }
 
         void OnDamage(DamageTakenEvent evt)
@@ -209,7 +212,7 @@ namespace SP.Presentation
             // pantalla cada vez que cae un aliado propio.
             if (soldier != null && soldier.Team == TeamId.Enemy)
             {
-                KillCylinderFx.Spawn(transform.position);
+                // Pedido (pulido): sin columna de color al morir un enemigo; queda solo el estallido de chispas.
                 // Pedido explicito (ronda nueva): "revisa q al... matar
                 // enemigos... tengan sistemas de particulas interesantes".
                 // Estallido naranja/rojo a la altura del pecho -- lectura de
@@ -219,7 +222,9 @@ namespace SP.Presentation
             
             if (soldier != null)
             {
-                if (!cadaveres.Contains(soldier)) cadaveres.Add(soldier);
+                // Bug #253: un aliado caido se ve SIEMPRE (se puede revivir) y pide ayuda con el brazo levantado.
+                if (soldier.Team == TeamId.Player) AyudaDeCaido.Activar(soldier);
+                else if (!cadaveres.Contains(soldier)) cadaveres.Add(soldier);
                 while (cadaveres.Count > 24)
                 {
                     var viejo = cadaveres[0];

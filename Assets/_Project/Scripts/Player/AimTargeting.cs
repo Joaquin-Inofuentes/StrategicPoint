@@ -59,20 +59,61 @@ namespace SP.Player
             return mejor;
         }
 
+        // Pulido de rendimiento: Evaluate corre CADA frame y hacia 8 GetComponentInParent (uno de interfaz, el mas lento) mas un name.StartsWith
+        // que reserva un string. Lo que hay "colgado" de un collider no cambia de un frame al otro: se resuelve una vez por collider.
+        sealed class InfoDeCollider
+        {
+            public SP.Interaction.IInteractable interactable; public WeaponPickup wp; public MunicionPickup mp; public CajaDeSuministros cs;
+            public Soldier soldier; public TorretaFija torreta; public Vehicle vehicle; public ObstacleMarker obstaculo; public bool suelo;
+        }
+        readonly System.Collections.Generic.Dictionary<Collider, InfoDeCollider> infoPorCollider = new System.Collections.Generic.Dictionary<Collider, InfoDeCollider>(128);
+        Collider ultimoCollider; InfoDeCollider ultimaInfo;
+
+        InfoDeCollider Resolver(Collider c)
+        {
+            if (c == ultimoCollider && ultimaInfo != null) return ultimaInfo;
+            if (!infoPorCollider.TryGetValue(c, out var i))
+            {
+                if (infoPorCollider.Count > 600) infoPorCollider.Clear();
+                i = new InfoDeCollider
+                {
+                    interactable = c.GetComponentInParent<SP.Interaction.IInteractable>(),
+                    wp = c.GetComponentInParent<WeaponPickup>(),
+                    mp = c.GetComponentInParent<MunicionPickup>(),
+                    cs = c.GetComponentInParent<CajaDeSuministros>(),
+                    soldier = c.GetComponentInParent<Soldier>(),
+                    torreta = c.GetComponentInParent<TorretaFija>(),
+                    vehicle = c.GetComponentInParent<Vehicle>(),
+                    obstaculo = c.GetComponentInParent<ObstacleMarker>(),
+                    suelo = c.gameObject.name.StartsWith("Ground"),
+                };
+                infoPorCollider[c] = i;
+            }
+            ultimoCollider = c; ultimaInfo = i;
+            return i;
+        }
+
         public AimResult Evaluate(Ray ray, Soldier excludeSelf)
         {
+            UnityEngine.Profiling.Profiler.BeginSample("Aim.Sync");
             Physics.SyncTransforms();
-
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("Aim.Raycast");
             bool golpeo = Physics.Raycast(ray, out var hit, maxDistance, ~0, QueryTriggerInteraction.Collide);
+            UnityEngine.Profiling.Profiler.EndSample();
 
             // Los aliados CAIDOS no tienen collider (se apaga al morir): se los apunta por cercania al rayo.
+            UnityEngine.Profiling.Profiler.BeginSample("Aim.Caido");
             var caido = CaidoBajoRayo(ray, excludeSelf, golpeo ? hit.distance : maxDistance, out var puntoCaido);
+            UnityEngine.Profiling.Profiler.EndSample();
             if (caido != null)
                 return new AimResult { Type = AimTargetType.Caido, Soldier = caido, Point = puntoCaido, HitTransform = caido.transform };
 
             // Pedido: "los rombos de aliados para cambiar entre ellos: que apunte y me pueda cambiar a el". El rombo flota sobre la
             // cabeza y a distancia el cuerpo es un punto: apuntar al ROMBO cuenta como apuntar al aliado (y [F] lo posee).
+            UnityEngine.Profiling.Profiler.BeginSample("Aim.Rombo");
             var bajoRombo = AliadoBajoSuRombo(ray, excludeSelf);
+            UnityEngine.Profiling.Profiler.EndSample();
             if (bajoRombo != null)
                 return new AimResult { Type = AimTargetType.Ally, Soldier = bajoRombo, Point = bajoRombo.transform.position + Vector3.up * AlturaDelRombo, HitTransform = bajoRombo.transform };
 
@@ -83,18 +124,19 @@ namespace SP.Player
                 if (rigRts != null && rigRts.Mode == SP.CameraSystem.ControlMode.Rts && SP.Operacion.MandoTactico.EsParteDeLaRadio(hit.collider, hit.point))
                     return new AimResult { Type = AimTargetType.Radio, Point = hit.point, HitTransform = hit.collider.transform };
 
-                var interactable = hit.collider.GetComponentInParent<SP.Interaction.IInteractable>();
+                var info = Resolver(hit.collider);
+                var interactable = info.interactable;
                 if (interactable != null && interactable.CanInteract(PlayerInputDriver.Activo))
                     return new AimResult { Type = AimTargetType.Interactuar, Point = hit.point, HitTransform = (interactable as MonoBehaviour)?.transform };
 
-                var wp = hit.collider.GetComponentInParent<WeaponPickup>();
+                var wp = info.wp;
                 if (wp != null) return new AimResult { Type = AimTargetType.Recoger, Point = hit.point, HitTransform = wp.transform };
-                var mp = hit.collider.GetComponentInParent<MunicionPickup>();
+                var mp = info.mp;
                 if (mp != null) return new AimResult { Type = AimTargetType.Recoger, Point = hit.point, HitTransform = mp.transform };
-                var cs = hit.collider.GetComponentInParent<CajaDeSuministros>();
+                var cs = info.cs;
                 if (cs != null && cs.Disponible) return new AimResult { Type = AimTargetType.Recoger, Point = hit.point, HitTransform = cs.transform };
 
-                var soldier = hit.collider.GetComponentInParent<Soldier>();
+                var soldier = info.soldier;
                 if (soldier != null && soldier != excludeSelf && soldier.Health.IsAlive)
                 {
                     if (soldier.Team == TeamId.Player)
@@ -113,15 +155,15 @@ namespace SP.Player
 
                 ClearHighlight();
 
-                var torreta = hit.collider.GetComponentInParent<TorretaFija>();
+                var torreta = info.torreta;
                 if (torreta != null)
                     return new AimResult { Type = AimTargetType.Torreta, Torreta = torreta, Point = hit.point, HitTransform = torreta.transform };
 
-                var vehicle = hit.collider.GetComponentInParent<Vehicle>();
+                var vehicle = info.vehicle;
                 if (vehicle != null)
                     return new AimResult { Type = AimTargetType.Vehicle, Vehicle = vehicle, Point = hit.point, HitTransform = vehicle.transform };
 
-                var obstaculo = hit.collider.GetComponentInParent<ObstacleMarker>();
+                var obstaculo = info.obstaculo;
                 if (obstaculo != null)
                 {
                     if (Coberturas.TryPuntoApuntado(hit.point, obstaculo.transform, 1.5f, out var puntoCob, out _))
@@ -129,7 +171,7 @@ namespace SP.Player
                     return new AimResult { Type = AimTargetType.Obstacle, Point = hit.point, HitTransform = obstaculo.transform };
                 }
 
-                if (hit.collider.gameObject.name.StartsWith("Ground"))
+                if (info.suelo)
                     return new AimResult { Type = AimTargetType.Ground, Point = hit.point };
 
                 // CUALQUIER OTRO SOLIDO cuenta como suelo para el mando, con

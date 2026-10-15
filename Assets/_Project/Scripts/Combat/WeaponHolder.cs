@@ -701,7 +701,10 @@ namespace SP.Combat
         // dispersionMinima (grados): piso de dispersion para la IA (Ronda 11); 0 = solo la del arma. Se atenua igual por el rol (francotirador).
         public bool TryFire(Vector3 origin, Vector3 direction) => TryFire(origin, direction, 0f);
 
-        public bool TryFire(Vector3 origin, Vector3 direction, float dispersionMinima)
+        public bool TryFire(Vector3 origin, Vector3 direction, float dispersionMinima) => TryFire(origin, direction, dispersionMinima, null);
+
+        // bocaForzada (bug #234): punto de salida de la bala cuando la boca del arma quedo tapada por una cobertura baja que la camara no ve.
+        public bool TryFire(Vector3 origin, Vector3 direction, float dispersionMinima, Vector3? bocaForzada)
         {
             if (owner == null) Bootstrap();
             if (IsReloading || cooldownTimer > 0f || owner == null) return false;
@@ -729,7 +732,7 @@ namespace SP.Combat
             var spreadDir = ApplySpread(direction, dispersionTiro);
             spreadDeg = Mathf.Min(MaxSpreadDeg, spreadDeg + SpreadGrowthPerShot * Mathf.Lerp(1f, CrecimientoApuntando, Apuntado01));
 
-            var spawnPos = Muzzle != null ? Muzzle.position : origin;
+            var spawnPos = bocaForzada ?? (Muzzle != null ? Muzzle.position : origin);
             var espec = WeaponCatalog.Get(CurrentWeaponKind);
             if (espec.Pellets > 1)
             {
@@ -807,8 +810,9 @@ namespace SP.Combat
                 bool propia = owner != null && owner.Brain != null && owner.Brain.IsPossessedByPlayer;
                 UltimoClipDeRecarga = clip != null ? clip.name : "";
                 UltimaRecargaFue2D = propia;
-                if (propia) SP.Presentation.AudioDirector.PlayClipAt(clip, transform.position, VolumenDeRecargaPropia, 0.55f, SP.Presentation.PerfilEspacial.Ui);
-                else SP.Presentation.AudioDirector.PlayClipAt(clip, Muzzle != null ? Muzzle.position : transform.position, VolumenDeRecargaAjena, 0.55f);
+                float fuerte = CurrentWeaponKind == WeaponKind.Sniper ? 1.7f : 1f;   // bug #241: la recarga del francotirador suena fuerte
+                if (propia) SP.Presentation.AudioDirector.PlayClipAt(clip, transform.position, Mathf.Min(1f, VolumenDeRecargaPropia * fuerte), 0.55f, SP.Presentation.PerfilEspacial.Ui);
+                else SP.Presentation.AudioDirector.PlayClipAt(clip, Muzzle != null ? Muzzle.position : transform.position, Mathf.Min(1f, VolumenDeRecargaAjena * fuerte), 0.55f);
             }
         }
 

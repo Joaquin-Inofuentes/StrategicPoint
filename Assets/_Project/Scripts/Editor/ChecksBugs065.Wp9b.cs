@@ -377,6 +377,7 @@ namespace SP.EditorTools
         static IEnumerator Bug097l()
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            OperacionDirector.HalconEnLaCarrera = true;   // bug #248: en el juego el Halcon ya no entra a la carrera; estos checks miden su variante con Halcon
             var sb = new StringBuilder(); bool ok = true; var c = new W9bCarrera(); bool llego = false;
             foreach (var x in W9bCorrerCarrera(sb, c, null, 95f, v => llego = v)) yield return x;
             var d = OperacionDirector.Instancia;
@@ -391,6 +392,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, c.barricadas >= 2, sb, $"barricadas aplastadas={c.barricadas} (de {OperacionBuilderBarricadas()})");
             bool finOk = false;
             foreach (var x in W9bObservarFinal(d, false, sb, v => finOk = v)) yield return x;
+            OperacionDirector.HalconEnLaCarrera = false;
             Fin((ok && finOk ? "OK " : "FALLO ") + sb);
         }
 
@@ -399,6 +401,7 @@ namespace SP.EditorTools
         static IEnumerator Bug097m()
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            OperacionDirector.HalconEnLaCarrera = true;   // bug #248: en el juego el Halcon ya no entra a la carrera; estos checks miden su variante con Halcon
             var sb = new StringBuilder(); bool ok = true; var c = new W9bCarrera(); bool llego = false;
             bool derribado = false; float tDerribo = -1f;
             Func<OperacionDirector, float, IEnumerator> accion = (dir, reloj) => W9bDerribarHalcon(dir, reloj, v => { derribado |= v; if (v && tDerribo < 0f) tDerribo = reloj; });
@@ -409,6 +412,7 @@ namespace SP.EditorTools
             bool finOk = false;
             foreach (var x in W9bObservarFinal(d, true, sb, v => finOk = v)) yield return x;
             W8Ok(ref ok, d.HalconesCreados >= 2, sb, $"helicopteros creados={d.HalconesCreados}");
+            OperacionDirector.HalconEnLaCarrera = false;
             Fin((ok && finOk ? "OK " : "FALLO ") + sb);
         }
 

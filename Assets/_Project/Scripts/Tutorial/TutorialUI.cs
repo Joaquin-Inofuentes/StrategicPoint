@@ -158,7 +158,8 @@ namespace SP.Tutorial
             saltoTxt.color = new Color(1f, 1f, 1f, 0.55f);
             saltoTxt.alignment = TextAnchor.MiddleRight;
             saltoTxt.raycastTarget = false;
-            saltoTxt.text = "[F8] Saltar este paso";
+            saltoTxt.text = "";
+            saltoGo.SetActive(false);   // pulido: el rotulo vive ahora en la cabecera del panel
             var saltoRt = (RectTransform)saltoGo.transform;
             saltoRt.anchorMin = saltoRt.anchorMax = new Vector2(1f, 1f);
             saltoRt.pivot = new Vector2(1f, 1f);
@@ -191,7 +192,8 @@ namespace SP.Tutorial
         // ---- API ----
         public void MostrarPaso(int indice, int total, string tituloPaso, string[] textosSub, string layoutTeclas, Color acento)
         {
-            cabecera.text = $"TUTORIAL · PASO {indice + 1} / {total}";
+            // Pulido: una sola linea corta (numero de paso + tecla de salto) en vez de "TUTORIAL · PASO x / y" mas un rotulo suelto de [F8] debajo del panel.
+            cabecera.text = $"{indice + 1} / {total}   ·   [F8] SALTAR";
             cabecera.color = acento;
             borde.color = acento;
             titulo.text = tituloPaso;

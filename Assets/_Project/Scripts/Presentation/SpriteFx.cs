@@ -41,6 +41,7 @@ namespace SP.Presentation
     public class SpriteFx : MonoBehaviour
     {
         public const int Cupo = 96;
+        const float PasosPorSegundo = 15f;
         static readonly List<SpriteFx> pool = new List<SpriteFx>();
         static Transform root;
         public static int Activos { get { int n = 0; for (int i = 0; i < pool.Count; i++) if (pool[i] != null && pool[i].gameObject.activeSelf) n++; return n; } }
@@ -130,6 +131,8 @@ namespace SP.Presentation
             edad += Time.deltaTime;
             float k = Mathf.Clamp01(edad / dur);
             if (k >= 1f) { gameObject.SetActive(false); return; }
+            // Estilo toon: animacion "de a pasos" (15 cuadros por segundo) en vez de curvas suaves, como en el dibujo animado.
+            k = Mathf.Min(0.999f, Mathf.Floor(edad * PasosPorSegundo) / PasosPorSegundo / dur);
             if (vel.sqrMagnitude > 0f)
             {
                 transform.position += vel * Time.deltaTime;
@@ -139,7 +142,12 @@ namespace SP.Presentation
             // Crece rapido al principio (curva de salida) y se apaga en la segunda mitad.
             float t = 1f - (1f - k) * (1f - k);
             transform.localScale = Vector3.one * Mathf.Lerp(tam0, tam1, t);
-            var c = color; c.a = color.a * (k < 0.15f ? k / 0.15f : Mathf.Clamp01((1f - k) / 0.85f));
+            // Sin fundido de entrada (aparece de golpe) y sin degradado de salida: opaco hasta el 60 % de la vida y despues tres escalones.
+            float escalon = k < 0.6f ? 1f : k < 0.75f ? 0.7f : k < 0.9f ? 0.4f : 0.15f;
+            // Las formas toon son planas y opacas: una explosion que nace pegada a la camara tapaba media pantalla. Se apaga entre 5 m y 1,5 m.
+            var camara = SP.Core.CamaraPrincipal.Actual;
+            if (camara != null) escalon *= Mathf.Clamp01((Vector3.Distance(camara.transform.position, transform.position) - 1.5f) / 3.5f);
+            var c = color; c.a = color.a * escalon;
             sr.color = c;
             Orientar();
         }

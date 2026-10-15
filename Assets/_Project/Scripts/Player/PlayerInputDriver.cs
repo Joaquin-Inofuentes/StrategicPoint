@@ -894,6 +894,7 @@ namespace SP.Player
         // locales de la corrutina: si esta se cortaba a mitad, nadie los
         // destruia nunca y quedaban clavados en escena. Como campos del
         // componente siempre hay quien los limpie (CleanupDeathSequence).
+        public const float TiempoMirandoAlAsesino = 3f;   // bug #254
         SelectionRingFx deathKillerRing;
         GameObject deathPullBackGO;
 
@@ -1029,11 +1030,28 @@ namespace SP.Player
                         bool teEstanReviviendo = SP.Player.RescateAutomatico.Activo && SP.Player.RescateAutomatico.Caido == deadSoldier;
                         if (!teEstanReviviendo) espera += Time.unscaledDeltaTime;
 
-                        angle += orbitDegPerSec * Time.unscaledDeltaTime;
-                        float rad = angle * Mathf.Deg2Rad;
-                        Vector3 offset = new Vector3(Mathf.Cos(rad) * radius, height, Mathf.Sin(rad) * radius);
-                        deathPullBackGO.transform.position = deadSoldier.transform.position + offset;
-                        deathPullBackGO.transform.rotation = Quaternion.LookRotation((deadSoldier.transform.position + Vector3.up * 0.8f - deathPullBackGO.transform.position).normalized);
+                        // Bug #254: al morir la camara apunta a QUIEN te mato (senalizado con el anillo rojo) durante
+                        // TiempoMirandoAlAsesino; despues pasa sola al aliado libre mas cercano. Sin asesino vivo, orbita el cadaver.
+                        if (killer != null && killer.Health.IsAlive && espera < TiempoMirandoAlAsesino)
+                        {
+                            Vector3 aK = killer.transform.position - deadSoldier.transform.position; aK.y = 0f;
+                            if (aK.sqrMagnitude < 0.01f) aK = deadSoldier.transform.forward;
+                            aK.Normalize();
+                            Vector3 desdeK = deadSoldier.transform.position - aK * 3.4f + Vector3.up * 2.3f;
+                            Vector3 mira = killer.transform.position + Vector3.up * 1.0f;
+                            deathPullBackGO.transform.position = Vector3.Lerp(deathPullBackGO.transform.position, desdeK, Mathf.Clamp01(Time.unscaledDeltaTime * 4f));
+                            var rotK = Quaternion.LookRotation((mira - deathPullBackGO.transform.position).normalized);
+                            deathPullBackGO.transform.rotation = Quaternion.Slerp(deathPullBackGO.transform.rotation, rotK, Mathf.Clamp01(Time.unscaledDeltaTime * 6f));
+                            if (deathKillerRing != null) deathKillerRing.transform.localScale = Vector3.one * (1f + 0.12f * Mathf.Sin(Time.unscaledTime * 9f));
+                        }
+                        else
+                        {
+                            angle += orbitDegPerSec * Time.unscaledDeltaTime;
+                            float rad = angle * Mathf.Deg2Rad;
+                            Vector3 offset = new Vector3(Mathf.Cos(rad) * radius, height, Mathf.Sin(rad) * radius);
+                            deathPullBackGO.transform.position = deadSoldier.transform.position + offset;
+                            deathPullBackGO.transform.rotation = Quaternion.LookRotation((deadSoldier.transform.position + Vector3.up * 0.8f - deathPullBackGO.transform.position).normalized);
+                        }
                         Rig.FollowAnchor(deathPullBackGO.transform);
 
                         // A5: el rescate llego a buen puerto -- volves a
@@ -1047,7 +1065,7 @@ namespace SP.Player
                         }
 
                         // A2: el jugador PIDE el cambio, no le llega solo.
-                        if (KeyBindings.WasPressed(KeyBindings.Recentrar))
+                        if (KeyBindings.WasPressed(KeyBindings.Recentrar) || (espera >= TiempoMirandoAlAsesino && !teEstanReviviendo))
                         {
                             var elegido = OrderService.FindNearestFreeAlly(deadSoldier.transform.position, TeamId.Player, deadSoldier);
                             if (elegido != null)
@@ -1194,7 +1212,9 @@ namespace SP.Player
         void UpdateFps(Keyboard kb, Mouse mouse)
         {
             if (Brain.Current == null) return;
+            UnityEngine.Profiling.Profiler.BeginSample("PID.TorretaFija");
             ActualizarTorretaFija();
+            UnityEngine.Profiling.Profiler.EndSample();
             if (VehicleStatus != null) VehicleStatus.gameObject.SetActive(false);
             if (TurretAim != null) TurretAim.SetVisible(false);
             if (AimUiRef != null)
@@ -1288,7 +1308,9 @@ namespace SP.Player
             // Pedido explicito: pisadas reales segun superficie. Cadencia
             // fija: no hay Animator de piernas expuesto aca para engancharse
             // a un evento de clip, pero alcanza para que se sienta ritmico.
+            UnityEngine.Profiling.Profiler.BeginSample("PID.Pasos");
             UpdateFootsteps(moving);
+            UnityEngine.Profiling.Profiler.EndSample();
 
             // G2: mismo Ctrl que en RTS usan Ctrl+A y Ctrl+Click (trazar
             // recorrido) -- no colisiona porque son ramas mutuamente
@@ -1345,20 +1367,40 @@ namespace SP.Player
             // En la torreta la camara va casi al ojo (los techos de las torres no dejan lugar a 4 m detras).
             Rig.FollowOverShoulder(Brain.Current.transform, distance: TorretaFijaActiva ? 1.4f : 4f, heightOffset: Brain.Current.Motor.EyeHeightDropSuave,
                 ojo: Brain.Current.EyeAnchor != null ? Brain.Current.EyeAnchor.position : (Vector3?)null);
+            UnityEngine.Profiling.Profiler.BeginSample("PID.AliadoCercano");
             UpdateNearestAllyHighlight();
+            UnityEngine.Profiling.Profiler.EndSample();
 
             var ray = Rig.GetForwardRay();
+            UnityEngine.Profiling.Profiler.BeginSample("PID.AimEvaluate");
             var result = MiraForzada ?? Aim.Evaluate(ray, Brain.Current);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("PID.AimHighlight");
             UpdateAimHighlight(result);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("PID.AimRing");
             UpdateAimRing(result);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("PID.CoverPreview");
             UpdateCoverPreview(kb, result);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("PID.GestoAliado");
             TickGestoMoverAliado(kb, result, ray);   // bug #205
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("PID.MountIndicator");
             UpdateVehicleMountIndicator(result);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("PID.AimUi");
             if (AimUiRef != null) AimUiRef.UpdateFromAimResult(result);
+            UnityEngine.Profiling.Profiler.EndSample();
             ultimoResultadoDeMira = result;
             RecordarEnemigoApuntado(result);
+            UnityEngine.Profiling.Profiler.BeginSample("PID.Prompt");
             ActualizarPromptContextual(result);
+            UnityEngine.Profiling.Profiler.EndSample();
+            UnityEngine.Profiling.Profiler.BeginSample("PID.Mirilla");
             ActualizarMirilla(result);
+            UnityEngine.Profiling.Profiler.EndSample();
             // [Ctrl]: habilidad especial de la clase que se maneja -- medico
             // cura/reanima, asalto/explosivos/francotirador afinan la
             // punteria. Mismo Ctrl que ya agacha (agacharHeld arriba): no es
@@ -1371,7 +1413,9 @@ namespace SP.Player
             eToque = KeyBindings.WasTapped(KeyBindings.Interactuar, SostenerParaEspecial);
             bool ctrlSostenido = KeyBindings.IsHeld(KeyBindings.Interactuar, SostenerParaEspecial) || MandoFps.Agachar;
             EspecialSostenido = ctrlSostenido;
+            UnityEngine.Profiling.Profiler.BeginSample("PID.Habilidad");
             ActualizarHabilidadDeClase(result, ctrlSostenido, moving);
+            UnityEngine.Profiling.Profiler.EndSample();
             if (WeaponStatus != null) WeaponStatus.UpdateFrom(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateAmmoWarning(Brain.Current.Weapon);
             if (AimUiRef != null) AimUiRef.UpdateReloadCircle(Brain.Current.Weapon);
@@ -1385,7 +1429,9 @@ namespace SP.Player
             // La vida del poseido vive SOLO en el roster (abajo a la izquierda):
             // el panel "VIDA" de la esquina derecha repetia el mismo dato.
             if (PlayerHealth != null) PlayerHealth.gameObject.SetActive(false);
+            UnityEngine.Profiling.Profiler.BeginSample("PID.Viewmodel");
             UpdateWeaponViewmodel(Brain.Current.Weapon);
+            UnityEngine.Profiling.Profiler.EndSample();
 
             // isPressed (no wasPressedThisFrame): antes habia que
             // clickear una vez por bala incluso con un rifle. Ahora
@@ -1463,7 +1509,9 @@ namespace SP.Player
             else if (KeyBindings.WasPressed(KeyBindings.AtaqueCuchillo) && !(OrdenesMenu != null && OrdenesMenu.Abierto))
                 Brain.Current.Weapon.TryMelee();
 
+            UnityEngine.Profiling.Profiler.BeginSample("PID.Granada");
             ActualizarGranada(kb, ray, result);
+            UnityEngine.Profiling.Profiler.EndSample();
 
             if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.Poseer) && result.Type == AimTargetType.Ally)
                 TryPossess(result.Soldier);
@@ -2810,7 +2858,8 @@ namespace SP.Player
                     return "[E] MANTENER 5 s: REANIMAR";
                 default:
                     // Los atajos basicos solo al arrancar (despues estan en pausa > controles).
-                    return Time.timeSinceLevelLoad < 40f ? "[WASD] MOVERSE   ·   [SHIFT] CORRER   ·   [Q] MANTENER: RADIAL" : "";
+                    // Pulido: sin barra de atajos al arrancar (estan en pausa > controles y el tutorial los ensena).
+                    return "";
             }
         }
 

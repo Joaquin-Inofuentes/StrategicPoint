@@ -188,8 +188,12 @@ namespace SP.EditorTools
         // Bug #225 ("se solapan los asfaltos de las calles"): 22 pares de pisos/calles quedaban coplanares (misma altura) y las losetas se peleaban
         // el pixel (z-fighting). Cada piso sube una fraccion distinta (calles +5 cm sobre patios) sin pasar de la cara del cubo.
         static int ordenDePiso;
+        public static bool ConLosetas = false;
         static int VestirPiso(MeshRenderer mr, string clave)
         {
+            // Pulido: los pisos ya NO se cubren de losetas. Cada loseta del kit dejaba juntas oscuras a intervalos fijos (costuras muy visibles);
+            // el piso queda como un plano continuo de color liso y la variedad la ponen los decals (OperacionBuilder.Decals.cs).
+            if (!ConLosetas) return 0;
             var cubo = mr.transform; var s = cubo.localScale;
             bool calle = clave.StartsWith("Calle") || clave.StartsWith("Camino") || clave.StartsWith("Asfalto");
             int nx = Mathf.Max(1, Mathf.RoundToInt(s.x / 3.83f)), nz = Mathf.Max(1, Mathf.RoundToInt(s.z / 3.83f));

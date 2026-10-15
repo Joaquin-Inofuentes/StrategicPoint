@@ -1712,7 +1712,7 @@ namespace SP.Tutorial
             foreach (var s in p.Subs) if (!s.Hecha) { pendiente = s; break; }
             if (pendiente != null && sinProgreso > 16f && !string.IsNullOrEmpty(pendiente.Pista))
             {
-                pista = "PISTA: " + pendiente.Pista;
+                pista = pendiente.Pista;
                 if (pistaMostrada != pista)
                 {
                     pistaMostrada = pista;
@@ -1726,7 +1726,7 @@ namespace SP.Tutorial
                 var ob = ObjetivoDeAyuda(p);
                 string flecha = ob != null && ob.gameObject.activeInHierarchy && driver.Rig.Cam != null
                     ? DireccionHacia(driver.Rig.Cam.transform.position, Yaw(), ob.position) : "";
-                pista = (pista.Length > 0 ? pista + "  ·  " : "") + (flecha.Length > 0 ? flecha + "  ·  " : "") + "[F8] SALTAR PASO";
+                pista = (pista.Length > 0 && flecha.Length > 0) ? pista + "  ·  " + flecha : (pista.Length > 0 ? pista : flecha);
             }
 
             string mensaje = p.MensajeVivo != null ? p.MensajeVivo()

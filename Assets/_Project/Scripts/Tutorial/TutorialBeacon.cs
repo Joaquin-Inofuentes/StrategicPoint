@@ -118,6 +118,9 @@ namespace SP.Tutorial
             var rs = sombra.GetComponent<MeshRenderer>();
             rs.sharedMaterial = fuente.material;
             rs.shadowCastingMode = ShadowCastingMode.Off;
+
+            // Pulido (feedback visual, no texto): la etiqueta sigue existiendo para el log y las pruebas, pero ya no se dibuja; la marca es el anillo.
+            rm.enabled = false; rs.enabled = false;
         }
 
         void LateUpdate()

@@ -68,7 +68,9 @@ namespace SP.UI
         // granada -- y la barra al pie. WeaponStatusUiPipeline.cs deja el
         // panel/Text/BarBG de la escena con ese mismo tamaño para que esto
         // encaje.
-        public const float AnchoPanel = 136f, AltoPanel = 112f;
+        // Bug #237 ("la UI inferior derecha son 2 cuerpos: el icono del arma y el de granada y municion; distribuilo mejor"): el panel
+        // pasa a DOS TARJETAS lado a lado: la granada (icono arriba, cantidad abajo) y el arma (icono arriba, municion abajo).
+        public const float AnchoPanel = 204f, AltoPanel = 108f;
 
         public Image EnsureIcon()
         {
@@ -216,12 +218,56 @@ namespace SP.UI
             }
             ActualizarReloj(weapon);
             ActualizarExtras(weapon);
+            Disponer();
             if (fill != null)
             {
                 fill.fillAmount = weapon.ReadinessFraction01;
                 fill.color = AjustesDeJuego.Adaptar(weapon.IsReloading ? new Color(0.95f, 0.6f, 0.2f) : new Color(0.4f, 0.85f, 0.45f));
             }
             OcultarSobrantes();
+        }
+
+        // Bug #237: coloca las dos tarjetas (granada | arma). Se rearma si cambia algun hijo (Bind/EnsureExtras ponen sobrantesOcultos = false).
+        bool dispuesto;
+        void Disponer()
+        {
+            if (dispuesto && sobrantesOcultos) return;
+            if (icon == null || label == null || extrasGranada == null || extrasGranadaCount == null) return;
+            dispuesto = true;
+            const float m = 8f, alto = 92f, wGranada = 64f, wArma = 116f;
+            float xArma = AnchoPanel - m - wArma, xGranada = xArma - 8f - wGranada;
+            Fondo("TarjetaGranada", xGranada, m, wGranada, alto);
+            Fondo("TarjetaArma", xArma, m, wArma, alto);
+            Colocar(icon.rectTransform, xArma + 8f, m + 44f, wArma - 16f, 42f);
+            Colocar(label.rectTransform, xArma, m + 4f, wArma, 36f);
+            label.alignment = TextAnchor.MiddleCenter;
+            label.resizeTextForBestFit = true; label.resizeTextMinSize = 14; label.resizeTextMaxSize = 30;
+            label.horizontalOverflow = HorizontalWrapMode.Overflow;
+            Colocar(extrasGranada.rectTransform, xGranada + (wGranada - 36f) * 0.5f, m + 46f, 36f, 36f);
+            Colocar(extrasGranadaCount.rectTransform, xGranada, m + 4f, wGranada, 36f);
+            extrasGranadaCount.alignment = TextAnchor.MiddleCenter; extrasGranadaCount.fontSize = 26;
+            if (reloj != null) Colocar(reloj.rectTransform, xArma + wArma - 28f, m + alto - 28f, 22f, 22f);
+        }
+
+        static void Colocar(RectTransform rt, float x, float y, float w, float h)
+        {
+            rt.anchorMin = rt.anchorMax = Vector2.zero; rt.pivot = Vector2.zero;
+            rt.sizeDelta = new Vector2(w, h); rt.anchoredPosition = new Vector2(x, y);
+        }
+
+        void Fondo(string nombre, float x, float y, float w, float h)
+        {
+            var t = transform.Find(nombre);
+            Image im;
+            if (t == null)
+            {
+                var go = new GameObject(nombre, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                go.transform.SetParent(transform, false);
+                go.transform.SetAsFirstSibling();
+                im = go.GetComponent<Image>(); im.raycastTarget = false; im.color = new Color(0.02f, 0.03f, 0.05f, 0.55f);
+                t = go.transform;
+            }
+            Colocar((RectTransform)t, x, y, w, h);
         }
 
         // Bug #144: "quita la F y el icono de cuchillo, solo deja el icono del arma, la municion, las granadas y el icono; y quita la vida de alli
@@ -241,8 +287,7 @@ namespace SP.UI
             }
             if (fill != null && fill.transform.parent != null && fill.transform.parent != transform && fill.transform.parent.gameObject.activeSelf)
                 fill.transform.parent.gameObject.SetActive(false);
-            if (extrasGranada != null) ((RectTransform)extrasGranada.transform).anchoredPosition = new Vector2(78f, 40f);
-            if (extrasGranadaCount != null) ((RectTransform)extrasGranadaCount.transform).anchoredPosition = new Vector2(110f, 40f);
+            dispuesto = false;   // bug #237: la disposicion de dos tarjetas la pone Disponer()
         }
 
         // Pedido explicito: "intenta evitar textos" -- la barra ya no lleva

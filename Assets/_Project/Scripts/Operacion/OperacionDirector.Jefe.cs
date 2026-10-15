@@ -182,7 +182,9 @@ namespace SP.Operacion
             if (hud != null)
                 hud.Objetivo(TituloObjetivo(4, "HUIR EN EL TANQUE"), muro ? "El ASALTO debe DEMOLER el muro de la salida norte (apuntalo y [Q] > DEMOLER) · despues avanza al patio" : "Avanza al patio · hay un BLINDADO enemigo custodiando la fuga", 0f, ColorDelJefe);
             if (TomaDelJefeActiva || yo == null || !yo.Health.IsAlive) return;
-            if (yo.transform.position.z > ZParaLaToma) StartCoroutine(TomaDelJefe());
+            // Bug #243: la presentacion del jefe arranca apenas cae el muro (antes habia que caminar hasta z > -30 y la toma llegaba tarde).
+            bool muroCaido = muroDeSalida != null && !muro;
+            if (muroCaido || yo.transform.position.z > ZParaLaToma) StartCoroutine(TomaDelJefe());
         }
 
         void TickJefe()

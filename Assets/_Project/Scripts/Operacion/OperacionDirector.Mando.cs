@@ -215,9 +215,73 @@ namespace SP.Operacion
                 panelMando.AlSoltarRadio = () => SoltarLaRadio("RADIO ABANDONADA · EL RELOJ SE DETUVO", true);
                 AlertQueue.Push("VISTA TÁCTICA · DIRIGÍ A TU EQUIPO", AlertPriority.Alta, 3.5f);
             }
-            else AlertQueue.Push("CUBRI LOS 2 PUESTOS · A Y B · CON CUALQUIER SOLDADO", AlertPriority.Alta, 3.5f);
+            else
+            {
+                AlertQueue.Push("CUBRI LOS 2 PUESTOS · A Y B · CON CUALQUIER SOLDADO", AlertPriority.Alta, 3.5f);
+                if (!PartidaGuardada.Restaurando) VistaTacticaInicialDeResistir();
+            }
             SesionLog.Evento($"MANDO: radio tomada por {yo.DisplayName}; unidades A={(UnidadA != null ? UnidadA.DisplayName : "-")} C={(UnidadC != null ? UnidadC.DisplayName : "-")} milicianos={milicianosActivos.Count}");
             if (ubicarSolos) UbicarLaEscuadraSola();
+        }
+
+        // Bug #250: Resistir arranca en RTS ("que cambie a RTS por defecto y muestre a los 2 equipos yendo a los 2 puntos a proteger"):
+        // la camara tactica se centra entre los sectores A y B, con altura suficiente para ver los dos y a los equipos caminando hacia ahi.
+        void VistaTacticaInicialDeResistir()
+        {
+            var drv = PlayerInputDriver.Activo;
+            if (drv == null || drv.Rig == null || sectoresDeDefensa == null) return;
+            Vector3 suma = Vector3.zero; int n = 0; float maxD = 0f;
+            for (int i = 0; i < sectoresDeDefensa.Length; i++)
+            {
+                if (sectoresDeDefensa[i] == null) continue;
+                var p = sectoresDeDefensa[i].transform.position;
+                for (int j = 0; j < i; j++) if (sectoresDeDefensa[j] != null) maxD = Mathf.Max(maxD, Plano(p, sectoresDeDefensa[j].transform.position).magnitude);
+                suma += p; n++;
+            }
+            if (n == 0) return;
+            var foco = suma / n;
+            var rig = drv.Rig;
+            rig.SetMode(ControlMode.Rts, foco);
+            rig.rtsYaw = 0f;
+            rig.rtsInclinacionAdelante = AnguloDeLaVistaTactica;
+            rig.SetRtsView(foco);
+            // Mas lejos cuanto mas separados estan los sectores (66 m alcanza hasta ~50 m de separacion).
+            float extra = Mathf.Max(0f, maxD - 50f) * 0.5f;
+            rig.CentrarRtsEn(foco, (AlturaDeLaVistaTactica + extra - 18f) / 2.4f);
+            if (drv.Selection != null) drv.Selection.Clear();
+            MandoTactico.PrimerIngresoHecho = true;
+
+            // Los DOS equipos (la escuadra y los milicianos) salen hacia los DOS puntos a proteger: cada equipo al sector mas cercano a su centro,
+            // y si los dos eligen el mismo, la escuadra (el equipo del jugador) se queda con el otro.
+            var escuadra = new List<Soldier>(); var milicia = new List<Soldier>();
+            foreach (var a in ActorRegistry.All)
+            {
+                if (a == null || a.Team != TeamId.Player || a.Role == RoleType.Civilian || !a.gameObject.activeInHierarchy || a.Health == null || !a.Health.IsAlive) continue;
+                if (milicianosActivos.Contains(a)) milicia.Add(a); else escuadra.Add(a);
+            }
+            if (sectoresDeDefensa == null || sectoresDeDefensa.Length < 2 || sectoresDeDefensa[0] == null || sectoresDeDefensa[1] == null) return;
+            Vector3 Centro(List<Soldier> l) { var c = Vector3.zero; foreach (var x in l) c += x.transform.position; return l.Count > 0 ? c / l.Count : Vector3.zero; }
+            int Mas(Vector3 c) => Plano(c, sectoresDeDefensa[0].Centro).magnitude <= Plano(c, sectoresDeDefensa[1].Centro).magnitude ? 0 : 1;
+            int sEsc = Mas(Centro(escuadra)), sMil = Mas(Centro(milicia));
+            if (escuadra.Count > 0 && milicia.Count > 0 && sEsc == sMil) sMil = 1 - sEsc;
+            void Enviar(List<Soldier> l, int sector)
+            {
+                for (int i = 0; i < l.Count; i++)
+                {
+                    var u = l[i];
+                    var p = sectoresDeDefensa[sector].Centro + new Vector3((i - (l.Count - 1) * 0.5f) * 1.8f, 0f, 0f);
+                    if (UnityEngine.AI.NavMesh.SamplePosition(p, out var h, 4f, UnityEngine.AI.NavMesh.AllAreas)) p = h.position;
+                    if (u.Brain != null)
+                    {
+                        // En RTS no se maneja el cuerpo con WASD: la orden manda aunque sea el que posee el jugador (igual que OrderService).
+                        if (u.Brain.IsPossessedByPlayer) { u.Brain.IsPossessedByPlayer = false; u.Brain.ReactivarNavegacion(); }
+                        u.Brain.IssueMoveOrder(p);
+                    }
+                    ordenSector[u.Id] = sector;
+                }
+            }
+            Enviar(escuadra, sEsc); Enviar(milicia, sMil);
+            SesionLog.Evento($"RESISTIR: escuadra ({escuadra.Count}) -> sector {(char)('A' + sEsc)}, milicia ({milicia.Count}) -> sector {(char)('A' + sMil)}");
         }
 
         void ArmarOleadasDelMando()
@@ -861,7 +925,7 @@ namespace SP.Operacion
                     for (int k = 0; k < puntos.Count; k++)
                     {
                         if (puntos[k].dueno == null) continue;
-                        if (PuntoTomado(puntos[k].punto, a, todos)) continue;
+                        if (PuntoTomado(puntos[k].punto, a, todos) || ObstaculoTomado(puntos[k].dueno, a, todos)) continue;
                         float d = Plano(puntos[k].punto, a.transform.position).sqrMagnitude;
                         if (d < dm) { dm = d; mejor = k; }
                     }
@@ -913,6 +977,24 @@ namespace SP.Operacion
                 if (o == null || o == yo || o.Team != TeamId.Player || o.Brain == null || o.Health == null || !o.Health.IsAlive) continue;
                 if (!(o.Brain.EnCobertura || o.Brain.YendoACobertura)) continue;
                 if (Plano(o.Brain.CoberturaPunto, p).sqrMagnitude < 1.2f * 1.2f) return true;
+            }
+            return false;
+        }
+
+        // Bug #251: otro aliado ya usa (o va a) ESTE obstaculo: no se manda un segundo (los costados de un mismo monton de sacos son puntos distintos).
+        static bool ObstaculoTomado(Collider dueno, Soldier yo, IReadOnlyList<Soldier> todos)
+        {
+            if (dueno == null) return false;
+            for (int i = 0; i < todos.Count; i++)
+            {
+                var o = todos[i];
+                if (o == null || o == yo || o.Team != TeamId.Player || o.Brain == null || o.Health == null || !o.Health.IsAlive) continue;
+                if (!(o.Brain.EnCobertura || o.Brain.YendoACobertura)) continue;
+                var q = o.Brain.CoberturaPunto - o.transform.position; q.y = 0f;
+                var c = dueno.bounds.center; c.y = o.Brain.CoberturaPunto.y;
+                // El que esta en la cobertura de ESTE obstaculo: su punto queda a ~1-1,5 m de la cara.
+                var b = dueno.bounds; b.Expand(new Vector3(2.4f, 4f, 2.4f));
+                if (b.Contains(o.Brain.CoberturaPunto) && dueno.bounds.size.x < 5f && dueno.bounds.size.z < 5f) return true;
             }
             return false;
         }

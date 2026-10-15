@@ -28,6 +28,9 @@ namespace SP.Operacion
         public int HalconesCreados { get; private set; }
         public int HalconesDerribados { get; private set; }
         bool halconLanzado;
+        // Bug #248: el helicoptero enemigo solo aparece en la cinematica final, no durante el trayecto (false = comportamiento nuevo;
+        // los checks de la carrera vieja lo prenden).
+        public static bool HalconEnLaCarrera = false;
 
         // ---- Estado de la cinematica final (para los checks) ----
         public bool FinalActiva { get; private set; }
@@ -60,7 +63,7 @@ namespace SP.Operacion
 
         void TickCarreraExtras()
         {
-            if (!halconLanzado && Reloj >= HelicopteroEnemigo.SegundoDeEntrada && halcon != null)
+            if (HalconEnLaCarrera && !halconLanzado && Reloj >= HelicopteroEnemigo.SegundoDeEntrada && halcon != null)
             {
                 halconLanzado = true;
                 Halcon = HelicopteroEnemigo.Iniciar(halcon, tanque);
@@ -161,7 +164,7 @@ namespace SP.Operacion
             if (heli == null || heli.Derribado || heli.Vehiculo == null || heli.Vehiculo.IsDestroyed)
             {
                 heli = halcon != null ? HelicopteroEnemigo.Iniciar(halcon, tanque) : null;
-                if (heli != null) { HalconesCreados++; Halcon = heli; FinalOtroHelicoptero = true; heli.transform.position = posHeli; heli.AlDerribarse += () => HalconesDerribados++; }
+                if (heli != null) { bool habiaOtro = Halcon != null; HalconesCreados++; Halcon = heli; FinalOtroHelicoptero = habiaOtro; heli.transform.position = posHeli; heli.AlDerribarse += () => HalconesDerribados++; }
             }
             if (heli != null)
             {

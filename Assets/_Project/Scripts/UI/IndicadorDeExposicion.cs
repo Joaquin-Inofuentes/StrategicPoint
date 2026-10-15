@@ -4,12 +4,13 @@ using SP.Core;
 
 namespace SP.UI
 {
-    // Cartel chico abajo al centro: dice si el soldado que manejas esta a la LUZ (los enemigos te ven de lejos) o en la
+    // Icono chico abajo al centro (antes un cartel de texto): dice si el soldado que manejas esta a la LUZ (los enemigos te ven de lejos) o en la
     // SOMBRA (solo te ven de cerca). Es la cara visible de IluminacionTactica: sin esto el jugador no sabria por que
     // unos caminos son "sigilosos" y otros no. Solo se muestra en la mision, y se apaga en las fases sin sigilo.
     public class IndicadorDeExposicion : MonoBehaviour
     {
-        Text texto;
+        Image icono;
+        static Sprite spSol, spSombra;
         CanvasGroup grupo;
         float proximoChequeo;
         bool iluminado;
@@ -26,20 +27,55 @@ namespace SP.UI
             rt.anchoredPosition = new Vector2(0f, 168f);
             rt.sizeDelta = new Vector2(420f, 26f);
 
-            var t = new GameObject("Texto", typeof(RectTransform), typeof(Text), typeof(Outline));
+            // Pulido (feedback visual, no texto): un icono chico, sol anaranjado = a la luz (te ven de lejos), luna azul = en la sombra.
+            rt.sizeDelta = new Vector2(44f, 44f);
+            var t = new GameObject("Icono", typeof(RectTransform), typeof(Image));
             t.transform.SetParent(go.transform, false);
-            var txt = t.GetComponent<Text>();
-            txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            txt.fontSize = 15; txt.fontStyle = FontStyle.Bold; txt.alignment = TextAnchor.MiddleCenter; txt.raycastTarget = false;
-            txt.horizontalOverflow = HorizontalWrapMode.Overflow; txt.verticalOverflow = VerticalWrapMode.Overflow;
-            var o = t.GetComponent<Outline>(); o.effectColor = new Color(0f, 0f, 0f, 0.9f); o.effectDistance = new Vector2(1.5f, -1.5f);
-            var trt = txt.rectTransform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = trt.offsetMax = Vector2.zero;
+            var img = t.GetComponent<Image>();
+            img.raycastTarget = false; img.preserveAspect = true;
+            var trt = img.rectTransform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = trt.offsetMax = Vector2.zero;
 
             var ind = go.GetComponent<IndicadorDeExposicion>();
-            ind.texto = txt;
+            ind.icono = img;
             ind.grupo = go.GetComponent<CanvasGroup>();
             ind.grupo.alpha = 0f; ind.grupo.interactable = false; ind.grupo.blocksRaycasts = false;
             return ind;
+        }
+
+        // Sprites procedurales (en runtime, no se guardan en escena): disco con rayos y media luna.
+        static Sprite Sol()
+        {
+            if (spSol != null) return spSol;
+            const int N = 64; var px = new Color32[N * N]; float c = (N - 1) * 0.5f;
+            for (int y = 0; y < N; y++) for (int x = 0; x < N; x++)
+            {
+                float dx = x - c, dy = y - c, r = Mathf.Sqrt(dx * dx + dy * dy), ang = Mathf.Atan2(dy, dx);
+                bool disco = r < 13f;
+                bool rayo = r > 18f && r < 30f && Mathf.Abs(Mathf.Sin(ang * 4f)) > 0.8f;
+                px[y * N + x] = new Color32(255, 255, 255, (byte)((disco || rayo) ? 255 : 0));
+            }
+            return spSol = Hacer(px, N);
+        }
+
+        static Sprite Sombra()
+        {
+            if (spSombra != null) return spSombra;
+            const int N = 64; var px = new Color32[N * N]; float c = (N - 1) * 0.5f;
+            for (int y = 0; y < N; y++) for (int x = 0; x < N; x++)
+            {
+                float dx = x - c, dy = y - c, r = Mathf.Sqrt(dx * dx + dy * dy);
+                float dx2 = x - (c + 11f), dy2 = y - (c + 5f), r2 = Mathf.Sqrt(dx2 * dx2 + dy2 * dy2);
+                bool luna = r < 26f && r2 > 22f;
+                px[y * N + x] = new Color32(255, 255, 255, (byte)(luna ? 255 : 0));
+            }
+            return spSombra = Hacer(px, N);
+        }
+
+        static Sprite Hacer(Color32[] px, int n)
+        {
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
+            tex.SetPixels32(px); tex.Apply();
+            return Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f);
         }
 
         void Update()
@@ -59,8 +95,8 @@ namespace SP.UI
                 if (hay)
                 {
                     iluminado = IluminacionTactica.EstaIluminado(yo.transform.position);
-                    texto.text = iluminado ? "A LA LUZ · TE VEN DE LEJOS" : "EN LA SOMBRA · SOLO TE VEN DE CERCA";
-                    texto.color = iluminado ? new Color(1f, 0.66f, 0.28f) : new Color(0.55f, 0.82f, 1f);
+                    icono.sprite = iluminado ? Sol() : Sombra();
+                    icono.color = iluminado ? new Color(1f, 0.66f, 0.28f) : new Color(0.55f, 0.82f, 1f);
                 }
             }
             grupo.alpha = Mathf.MoveTowards(grupo.alpha, alfaObjetivo * 0.9f, dt * 3f);

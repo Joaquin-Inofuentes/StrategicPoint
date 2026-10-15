@@ -109,6 +109,7 @@ namespace SP.Operacion
 
         float proximoReintento;
         bool asignadoTrabajando;
+        bool pasivoPrevioDelOperador, pasivoPrevioDelAsignado;   // bug #242
 
         public bool EnviarA(Soldier s, out string motivo)
         {
@@ -128,7 +129,7 @@ namespace SP.Operacion
 
         void SoltarAsignado()
         {
-            if (Asignado != null && asignadoTrabajando && Asignado.Brain != null) Asignado.Brain.Quieto = false;
+            if (Asignado != null && asignadoTrabajando && Asignado.Brain != null) { Asignado.Brain.Quieto = false; Asignado.Brain.Pasivo = pasivoPrevioDelAsignado; }
             Asignado = null;
             asignadoTrabajando = false;
         }
@@ -158,7 +159,7 @@ namespace SP.Operacion
                 if (!asignadoTrabajando)
                 {
                     asignadoTrabajando = true;
-                    if (s.Brain != null) { s.Brain.CancelOrder(); s.Brain.Quieto = true; }
+                    if (s.Brain != null) { pasivoPrevioDelAsignado = s.Brain.Pasivo; s.Brain.CancelOrder(); s.Brain.Quieto = true; s.Brain.Pasivo = true; }   // bug #242: concentrado en lo suyo
                     var dir = transform.position - s.transform.position; dir.y = 0f;
                     if (dir.sqrMagnitude > 0.01f) s.transform.rotation = Quaternion.LookRotation(dir.normalized);
                 }
@@ -268,7 +269,9 @@ namespace SP.Operacion
         {
             if (s == null || Completo) return;
             Operador = s;
-            if (s.Brain != null) { s.Brain.CancelOrder(); s.Brain.Quieto = true; }
+            // Bug #242 ("cuando inicie no se distraiga con enemigos"): el que hackea se concentra en la computadora; no contesta el fuego ni
+            // se da vuelta a pelear (lo cubre el resto de la escuadra). Al terminar o caer vuelve a su postura.
+            if (s.Brain != null) { pasivoPrevioDelOperador = s.Brain.Pasivo; s.Brain.CancelOrder(); s.Brain.Quieto = true; s.Brain.Pasivo = true; }
             // Se planta mirando a la pantalla.
             var dir = transform.position - s.transform.position; dir.y = 0f;
             if (dir.sqrMagnitude > 0.01f) s.transform.rotation = Quaternion.LookRotation(dir.normalized);
@@ -276,7 +279,7 @@ namespace SP.Operacion
 
         void SoltarOperador()
         {
-            if (Operador != null && Operador.Brain != null) Operador.Brain.Quieto = false;
+            if (Operador != null && Operador.Brain != null) { Operador.Brain.Quieto = false; Operador.Brain.Pasivo = pasivoPrevioDelOperador; }
             Operador = null;
         }
 

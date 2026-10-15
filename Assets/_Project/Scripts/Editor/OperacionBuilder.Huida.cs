@@ -41,7 +41,7 @@ namespace SP.EditorTools
             Saco(g, "Saco_Salida_1", -10f, -12f); Saco(g, "Saco_Salida_2", 10f, -4f);   // bug #070: corridos (la camioneta de asalto quedaba dentro del primero) Saco(g, "Saco_Patio_1", -12f, 8f, false); Saco(g, "Saco_Patio_2", 12f, 10f, false);
             Cubo(g, "Camion_Patio", -16f, 40f, 3f, 2.8f, 7f, Oliva, 0f, 0f, true, 700);
             Cubo(g, "Caja_Patio", 15f, 38f, 3f, 2f, 3f, Cobertura, 0f, 0f, true, 400);
-            Rotulo(g, "TANQUE\nPUNTO DE FUGA ^", 0f, 5.2f, 3f, 0f, 1.5f, Color.white, VerdeSenal, 12f, 3f);
+            Rotulo(g, "TANQUE ^", 0f, 5.2f, 3f, 0f, 1.5f, Color.white, VerdeSenal, 12f, 3f);
             Solido(g, "Poste_Tanque_O", -6.2f, 3f, 0.4f, 5f, 0.4f, CementoOsc);
             Solido(g, "Poste_Tanque_E", 6.2f, 3f, 0.4f, 5f, 0.4f, CementoOsc);
             Farola(g, -8f, -20f, true); Farola(g, 8f, -20f, true); Farola(g, -14f, 14f, true); Farola(g, 14f, 14f, true);
@@ -185,10 +185,10 @@ namespace SP.EditorTools
             // ObstaculosDeLaRuta(g, pts);
             CanadonPuenteYEmboscadas(g, pts);
             // Cartelera y senales de la autopista.
-            Rotulo(g, $"AUTOPISTA ^\nCIUDAD ESTE {Mathf.RoundToInt(longitudTotal / 10f) * 10} m", -17.5f, 4.6f, 62f, 0f, 1.3f, Color.white, VerdeSenal, 12f, 3f);
+            Rotulo(g, "AUTOPISTA ^", -17.5f, 4.6f, 62f, 0f, 1.3f, Color.white, VerdeSenal, 12f, 3f);
             Solido(g, "Poste_Autopista_O", -22.5f, 62f, 0.4f, 6f, 0.4f, CementoOsc);
             Solido(g, "Poste_Autopista_E", -12.5f, 62f, 0.4f, 6f, 0.4f, CementoOsc);
-            Rotulo(g, "CANADON ^\nCUIDADO: CORNISAS", -17.5f, 3.8f, 92f, 0f, 1.2f, Color.black, Amarillo, 12f, 1.8f);
+            Rotulo(g, "CANADON ^", -17.5f, 3.8f, 92f, 0f, 1.2f, Color.black, Amarillo, 12f, 1.8f);
             Solido(g, "Poste_Canadon_O", -22.5f, 92f, 0.3f, 4f, 0.3f, CementoOsc);
             Solido(g, "Poste_Canadon_E", -12.5f, 92f, 0.3f, 4f, 0.3f, CementoOsc);
             // Carteles de km cada ~200 m, a la derecha del sentido de la marcha (la curva ya no tiene esquinas para chevrons).
@@ -202,7 +202,7 @@ namespace SP.EditorTools
                 Destruible(g, "Poste_Km" + km, pk.x, pk.y, 0.3f, 2.6f, 0.3f, CementoOsc, 60);
                 km++;
             }
-            Rotulo(g, "CIUDAD >>\nEXTRACCION EN LA PLAZA", 232f, 4.8f, 206f, 90f, 1.3f, Color.white, VerdeSenal, 10f, 3f);
+            Rotulo(g, "CIUDAD >>", 232f, 4.8f, 206f, 90f, 1.3f, Color.white, VerdeSenal, 10f, 3f);
             Solido(g, "Poste_Ciudad_O", 232f, 201.4f, 0.4f, 6f, 0.4f, CementoOsc);
             Solido(g, "Poste_Ciudad_E", 232f, 210.6f, 0.4f, 6f, 0.4f, CementoOsc);
 
@@ -453,7 +453,7 @@ namespace SP.EditorTools
             }
             var pCartel = PuntoDeLaRuta(pts, pIni - 8f, out var dirP);
             pCartel += new Vector2(dirP.y, -dirP.x) * 9.5f;   // a la derecha de la marcha, de cara a quien llega
-            Rotulo(g, "PUENTE\nSIN GUARDARRAILES", pCartel.x, 3.4f, pCartel.y, Mathf.Atan2(dirP.x, dirP.y) * Mathf.Rad2Deg, 1.1f, Color.black, Amarillo, 12f, 1.8f);
+            Rotulo(g, "PUENTE", pCartel.x, 3.4f, pCartel.y, Mathf.Atan2(dirP.x, dirP.y) * Mathf.Rad2Deg, 1.1f, Color.black, Amarillo, 12f, 1.8f);
             float[] distAutos = { pIni + 22f, pIni + 55f, pIni + 90f, pIni + 118f };
             float[] latAutos = { 2.6f, -2.2f, 3.0f, -2.8f };
             var matsAuto = new[] { AutoRojo, Casa, CasaB, Oliva };

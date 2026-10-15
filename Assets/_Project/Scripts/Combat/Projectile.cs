@@ -365,7 +365,8 @@ namespace SP.Combat
                     PlayImpactSfx(EnvironmentHitKind.Ground, transform.position, 0.45f);
                     if (esDeVehiculoEnemigo) ImpactFx.SpawnImpactoDeMetralla(transform.position, Vector3.up);   // bug #187
                     else ImpactCubes.Spawn(transform.position, Vector3.up, ImpactSurface.Ground, damage);
-                    DecalPool.Spawn(DecalKind.BulletHole, new Vector3(transform.position.x, 0.02f, transform.position.z), Vector3.up, 0.25f);
+                    // Bug #238: el decal se apoya sobre el piso real (los pisos miden 5-9 cm: a 0,02 la marca quedaba enterrada).
+                    DecalPool.Spawn(DecalKind.BulletHole, new Vector3(transform.position.x, DestruccionDeVehiculo.AlturaDelPiso(transform.position) + 0.03f, transform.position.z), Vector3.up, 0.34f);
                 }
                 Expire();
                 return;
@@ -481,7 +482,7 @@ namespace SP.Combat
             if (esDeVehiculoEnemigo) ImpactFx.SpawnImpactoDeMetralla(impacto.point, impacto.normal);   // bug #187
             else ImpactCubes.Spawn(impacto.point, impacto.normal,
                 marca != null ? ImpactSurface.Obstacle : ImpactSurface.Ground, damage);
-            DecalPool.Spawn(DecalKind.BulletHole, impacto.point, impacto.normal, 0.22f);
+            DecalPool.Spawn(DecalKind.BulletHole, impacto.point, impacto.normal, 0.34f);
 
             Expire();
             return true;
