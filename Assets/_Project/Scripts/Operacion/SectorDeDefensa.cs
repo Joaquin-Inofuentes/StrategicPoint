@@ -112,6 +112,7 @@ namespace SP.Operacion
             rMundo.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             rMundo.receiveShadows = false;
             aroMundo = go.transform;
+            rMundo.enabled = AroEnElPiso;
 
             // Anillo gemelo en el minimapa (capa Minimap, a y=44: debajo de los iconos de unidades).
             int layer = LayerMask.NameToLayer("Minimap");
@@ -157,9 +158,12 @@ namespace SP.Operacion
             }
         }
 
+        // Pedido de pulido: sin circulos de colores en el piso. El aro del mundo queda apagado; el del minimapa se mantiene.
+        public const bool AroEnElPiso = false;
+
         public void Mostrar(bool si)
         {
-            if (rMundo != null) rMundo.enabled = si;
+            if (rMundo != null) rMundo.enabled = si && AroEnElPiso;
             if (rMapa != null) rMapa.enabled = si;
         }
 

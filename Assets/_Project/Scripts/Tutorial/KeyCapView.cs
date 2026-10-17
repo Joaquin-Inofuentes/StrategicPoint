@@ -181,6 +181,7 @@ namespace SP.Tutorial
                 v.label.text = token;
                 v.label.color = Color.white;
                 v.label.raycastTarget = false;
+                SP.UI.TextoSoloMision.Permitir(v.label);   // la letra de la ficha ES la instruccion
             }
             else
             {

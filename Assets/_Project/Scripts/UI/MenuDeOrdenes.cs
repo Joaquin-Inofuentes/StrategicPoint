@@ -139,8 +139,8 @@ namespace SP.UI
         const float SubidaDelIcono = 9f, BajadaDeLaEtiqueta = 20f;
         const float RadioIconoOpcion = RadioExterior * 0.80f;
         const float SubidaDelIconoOpcion = 10f, BajadaDeLaEtiquetaOpcion = 18f;
-        const float TamanoIconoCategoria = 44f; // lado maximo del icono; Refrescar() lo achica si no entra
-        const float TamanoIconoOpcion = 38f;
+        const float TamanoIconoCategoria = 58f; // lado maximo del icono; Refrescar() lo achica si no entra
+        const float TamanoIconoOpcion = 50f;
         const float RadioMaximoCursor = 300f; // alcance del cursor virtual
         const float ZonaMuerta = 34f;         // por debajo no se elige nada
         const float PasoDeAbanico = 32f;      // grados entre opciones del abanico
@@ -158,7 +158,7 @@ namespace SP.UI
         Vector2 virtualPos;
         readonly string[] soldados = { "1", "2", "3" };
         readonly bool[] soldadosMuertos = new bool[3];
-        static Sprite donaInterior, donaExterior;
+        static Sprite donaInterior, donaExterior, donaFina;
 
         // Distribucion actual: ids de categoria en orden de pantalla (las contextuales primero).
         readonly List<int> ids = new List<int>();
@@ -170,9 +170,101 @@ namespace SP.UI
         public static int PistaCategoria = -1, PistaOpcion = -1;
         public static void PonerPista(int categoria, int opcion = -1) { PistaCategoria = categoria; PistaOpcion = opcion; }
 
+        // Pedido: "reducir el circulo de Q a la mitad, con animacion y mas efectos; eliminar los textos". El radial se dibuja a la mitad
+        // (EscalaPedida), sin etiquetas (solo iconos y color) y con: apertura con rebote, onda al abrir, escalonado de las porciones,
+        // anillo exterior giratorio, brillo de la porcion elegida y un "pop" cada vez que el cursor cambia de opcion.
+        public const float EscalaPedida = 0.5f;
+        public const float SegundosDeApertura = 0.24f, SegundosDeCierre = 0.12f, SegundosDeOnda = 0.45f, SegundosDePop = 0.16f;
+        float aperturaT = 1f, cierreT = 1f, ondaT = 1f, popT = 1f, escalaBase = 1f;
+        bool cerrando;
+        Image brillo, anilloGiratorio, anilloInterno, onda;
+        public float Apertura01 => aperturaT;
+        public bool Cerrandose => cerrando;
+
+        static float RebotePositivo(float t)
+        {
+            // easeOutBack: sube pasandose un poco y se asienta
+            const float c1 = 1.70158f, c3 = c1 + 1f;
+            t = Mathf.Clamp01(t) - 1f;
+            return 1f + c3 * t * t * t + c1 * t * t;
+        }
+
         void Update()
         {
-            if (Abierto && PistaCategoria >= 0) Refrescar();
+            float dt = Time.unscaledDeltaTime;
+            if (Abierto)
+            {
+                aperturaT = Mathf.Min(1f, aperturaT + dt / SegundosDeApertura);
+                ondaT = Mathf.Min(1f, ondaT + dt / SegundosDeOnda);
+                popT = Mathf.Min(1f, popT + dt / SegundosDePop);
+                AplicarAnimacion();
+                // Mientras hay algo animandose (o una pista de tutorial latiendo) se redibuja cada cuadro; si no, solo cuando se mueve el cursor.
+                if (PistaCategoria >= 0 || aperturaT < 1f || popT < 1f || Seleccion >= 0) Refrescar();
+            }
+            else if (cerrando)
+            {
+                cierreT = Mathf.Min(1f, cierreT + dt / SegundosDeCierre);
+                AplicarAnimacion();
+                if (cierreT >= 1f) { cerrando = false; if (group != null) group.alpha = 0f; }
+            }
+        }
+
+        // Escala, transparencia y giro del conjunto. Se llama cada cuadro mientras el radial esta animandose o abierto.
+        void AplicarAnimacion()
+        {
+            float k;
+            if (Abierto) k = RebotePositivo(aperturaT);
+            else k = Mathf.Lerp(1f, 0.82f, cierreT);
+            transform.localScale = Vector3.one * escalaBase * Mathf.Lerp(0.55f, 1f, Mathf.Clamp(k, 0f, 1.12f));
+            if (group != null) group.alpha = Abierto ? Mathf.Clamp01(aperturaT * 3f) : 1f - cierreT;
+            if (anilloGiratorio != null) anilloGiratorio.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -Time.unscaledTime * 22f);
+            if (anilloInterno != null) anilloInterno.rectTransform.localRotation = Quaternion.Euler(0f, 0f, Time.unscaledTime * 38f);
+            if (onda != null)
+            {
+                bool viva = Abierto && ondaT < 1f;
+                onda.gameObject.SetActive(viva);
+                if (viva)
+                {
+                    float e = 1f - (1f - ondaT) * (1f - ondaT);
+                    float lado = RadioExterior * 2f * Mathf.Lerp(0.55f, 1.35f, e);
+                    onda.rectTransform.sizeDelta = new Vector2(lado, lado);
+                    var cc = onda.color; cc.a = 0.55f * (1f - ondaT); onda.color = cc;
+                }
+            }
+        }
+
+        // Efectos que se suman al radial (idempotente: el radial guardado en la escena puede venir de antes de que existieran).
+        void AsegurarEfectos()
+        {
+            if (anilloGiratorio != null && brillo != null) return;
+            var exterior = Dona(0.6f);
+            var fino = Dona(0.95f);
+            Image Nuevo(string nombre, Sprite sp, float lado, Color c, bool lleno)
+            {
+                var existente = SP.Core.BuscarHijo.Ruta(transform, nombre);
+                GameObject g = existente != null ? existente.gameObject : new GameObject(nombre, typeof(RectTransform), typeof(Image));
+                g.transform.SetParent(transform, false);
+                var img = g.GetComponent<Image>();
+                img.sprite = sp; img.color = c; img.raycastTarget = false;
+                if (lleno) { img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Radial360; img.fillOrigin = (int)Image.Origin360.Top; img.fillClockwise = true; }
+                var r = img.rectTransform;
+                r.anchorMin = r.anchorMax = new Vector2(0.5f, 0.5f);
+                r.anchoredPosition = Vector2.zero;
+                r.sizeDelta = new Vector2(lado, lado);
+                return img;
+            }
+            // Detras de todo, en este orden: onda, anillo giratorio, anillo interno, brillo de la seleccion.
+            onda = Nuevo("EfectoOnda", fino, RadioExterior * 2f, new Color(1f, 1f, 1f, 0f), false);
+            anilloGiratorio = Nuevo("EfectoAnilloExterior", fino, (RadioExterior + 22f) * 2f, new Color(0.55f, 0.85f, 1f, 0.35f), false);
+            anilloInterno = Nuevo("EfectoAnilloInterior", fino, (RadioInterior + 10f) * 2f, new Color(1f, 1f, 1f, 0.16f), false);
+            brillo = Nuevo("EfectoBrillo", Dona(0.36f), RadioInterior * 2f * 1.16f, new Color(1f, 1f, 1f, 0f), true);
+            // Los dibujos del anillo exterior sin relleno: dientes (se parte en tramos con un patron de fill para que parezca dentado).
+            anilloGiratorio.type = Image.Type.Simple;
+            onda.transform.SetAsFirstSibling();
+            anilloGiratorio.transform.SetSiblingIndex(1);
+            anilloInterno.transform.SetSiblingIndex(2);
+            brillo.transform.SetSiblingIndex(3);
+            onda.gameObject.SetActive(false);
         }
 
         public bool Abierto { get; private set; }
@@ -263,7 +355,8 @@ namespace SP.UI
             var padre = transform.parent as RectTransform;
             if (padre == null) return;
             float e = Mathf.Clamp(padre.rect.height * 0.92f / (RadioExterior * 2f), 0.4f, 1f);
-            transform.localScale = Vector3.one * e;
+            escalaBase = e * EscalaPedida;
+            transform.localScale = Vector3.one * escalaBase;
         }
 
         // Ordena las categorias visibles: contextuales primero (arriba, centradas en las 12), luego el resto.
@@ -298,15 +391,19 @@ namespace SP.UI
         {
             AjustarEscala();
             AsegurarDiscoDelCentro();
+            AsegurarEfectos();
             Distribuir(ctx);
             Abierto = true;
+            cerrando = false;
+            aperturaT = 0f; ondaT = 0f; popT = 1f;
             virtualPos = Vector2.zero;
             Seleccion = -1;
             Sub = -1;
             hoverCat = -1; hoverSub = -1;
             opcionesActuales.Clear();
             Refrescar();
-            if (group != null) group.alpha = 1f;
+            AplicarAnimacion();
+            if (group != null) group.alpha = 0.01f;
             SP.Presentation.AudioDirector.PlayUi2D(SP.Presentation.SfxKind.RadialOpen, 0.6f, 0.9f);
 
             // BUG REAL ("no reconoce el atacar al enemigo con Q"): cuando lo apuntado
@@ -332,6 +429,7 @@ namespace SP.UI
             if (Seleccion == hoverCat && Sub == hoverSub) return;
             bool hayAlgo = Seleccion >= 0;
             hoverCat = Seleccion; hoverSub = Sub;
+            popT = 0f;
             if (hayAlgo) SP.Presentation.AudioDirector.PlayUi2D(SP.Presentation.SfxKind.RadialTick, Sub >= 0 ? 0.55f : 0.4f, 0.5f);
         }
 
@@ -347,18 +445,22 @@ namespace SP.UI
 
         public void Cerrar()
         {
+            bool estabaAbierto = Abierto;
             Abierto = false;
             Seleccion = -1;
             Sub = -1;
             virtualPos = Vector2.zero;
-            if (group != null) group.alpha = 0f;
+            // Cierre animado (encoge y se desvanece); si ya estaba cerrado (OnEnable, Bind) queda cerrado de una.
+            if (estabaAbierto && Application.isPlaying) { cerrando = true; cierreT = 0f; }
+            else { cerrando = false; if (group != null) group.alpha = 0f; }
         }
 
         // Cursor virtual: acumula el movimiento del mouse (que en FPS esta capturado).
         public void MoverSeleccion(Vector2 delta)
         {
             if (!Abierto) return;
-            virtualPos += delta * 1.5f;
+            // El radial se dibuja a la mitad: sin compensar, el cursor viajaria la mitad de rapido sobre la pantalla.
+            virtualPos += delta * 1.5f / Mathf.Max(0.25f, escalaBase);
             if (virtualPos.magnitude > RadioMaximoCursor) virtualPos = virtualPos.normalized * RadioMaximoCursor;
             Resolver();
         }
@@ -453,12 +555,12 @@ namespace SP.UI
             // (2 * radio * sin(paso/2)); con 8-9 categorias esa cuerda da ~53-59 px, MENOR que el
             // icono de 58 px -> se pisan. Se achica el icono para que siempre quede holgado.
             float cuerda = 2f * RadioIconoCategoria * Mathf.Sin(paso * 0.5f * Mathf.Deg2Rad);
-            float tamanoIcono = Mathf.Clamp(cuerda * 0.5f, 30f, TamanoIconoCategoria);
+            float tamanoIcono = Mathf.Clamp(cuerda * 0.5f, 38f, TamanoIconoCategoria);
             for (int i = 0; i < rebanadas.Length; i++)
             {
                 bool activa = i < ids.Count;
                 rebanadas[i].gameObject.SetActive(activa);
-                etiquetas[i].gameObject.SetActive(activa);
+                etiquetas[i].gameObject.SetActive(false);   // sin textos: el radial se lee por icono y color
                 if (!activa) continue;
 
                 int cat = ids[i];
@@ -476,7 +578,11 @@ namespace SP.UI
                     float latido = (Mathf.Sin(Time.unscaledTime * 6f) + 1f) * 0.5f;
                     rebanadas[i].color = Color.Lerp(new Color(0.05f, 0.3f, 0.42f, 0.95f), new Color(0.25f, 0.85f, 1f, 0.97f), latido);
                 }
-                rebanadas[i].rectTransform.localScale = Vector3.one * (sel ? 1.04f : ctx ? 1.02f : 1f);
+                // Escalonado de apertura (cada porcion entra un instante despues de la anterior) y "pop" al elegir.
+                float ent = Mathf.Clamp01((aperturaT - i * 0.035f) / 0.65f);
+                float pop = sel ? 1.04f + 0.08f * (1f - popT) * (1f - popT) + 0.012f * Mathf.Sin(Time.unscaledTime * 7f) : ctx ? 1.02f : 1f;
+                rebanadas[i].rectTransform.localScale = Vector3.one * pop * Mathf.Lerp(0.4f, 1f, RebotePositivo(ent));
+                var cr = rebanadas[i].color; cr.a *= ent; rebanadas[i].color = cr;
 
                 // Pedido explicito: "iconos grandes descriptivos y claros,
                 // texto chico" -- el icono ocupa el centro de la porcion (mas
@@ -490,12 +596,29 @@ namespace SP.UI
                 {
                     iconosCategoria[i].rectTransform.anchoredPosition = dir * RadioIconoCategoria + Vector2.up * SubidaDelIcono;
                     iconosCategoria[i].rectTransform.sizeDelta = new Vector2(tamanoIcono, tamanoIcono);
-                    iconosCategoria[i].color = colorTexto;
+                    iconosCategoria[i].color = new Color(colorTexto.r, colorTexto.g, colorTexto.b, ent);
+                    iconosCategoria[i].rectTransform.localScale = Vector3.one * (sel ? pop : 1f);
                 }
                 etiquetas[i].rectTransform.anchoredPosition = dir * RadioIconoCategoria + Vector2.down * BajadaDeLaEtiqueta;
                 string marca = cat == PistaCategoria && !sel ? "▶" : ctx ? "★" : (i + 1).ToString();
                 etiquetas[i].text = "<size=9>" + marca + "</size> " + NombreCorto(cat);
                 etiquetas[i].color = colorTexto;
+            }
+
+            // Brillo de la porcion elegida y color del anillo exterior (siguen el acento de la categoria).
+            if (brillo != null)
+            {
+                bool hay = Seleccion >= 0 && ids.Contains(Seleccion);
+                brillo.gameObject.SetActive(hay);
+                var ac = hay ? (EsContextual(Seleccion) ? Dorado : Acentos[Seleccion]) : new Color(0.55f, 0.85f, 1f);
+                if (hay)
+                {
+                    brillo.fillAmount = relleno;
+                    brillo.rectTransform.localRotation = Quaternion.Euler(0f, 0f, -(AnguloDeSlot(ids.IndexOf(Seleccion)) - relleno * 180f));
+                    brillo.color = new Color(ac.r, ac.g, ac.b, 0.30f + 0.12f * Mathf.Sin(Time.unscaledTime * 8f));
+                }
+                if (anilloGiratorio != null) anilloGiratorio.color = new Color(ac.r, ac.g, ac.b, hay ? 0.55f : 0.30f);
+                if (anilloInterno != null) anilloInterno.color = new Color(ac.r, ac.g, ac.b, hay ? 0.30f : 0.14f);
             }
 
             // Abanico de opciones de la categoria resaltada.
@@ -505,7 +628,7 @@ namespace SP.UI
             {
                 bool visible = j < n;
                 opciones[j].gameObject.SetActive(visible);
-                etiquetasOpcion[j].gameObject.SetActive(visible);
+                etiquetasOpcion[j].gameObject.SetActive(false);
                 if (iconosOpcion != null && iconosOpcion[j] != null) iconosOpcion[j].gameObject.SetActive(false);
                 if (!visible) continue;
                 etiquetasOpcion[j].rectTransform.sizeDelta = new Vector2(92f, 30f);   // el radial guardado en la escena puede traer la caja vieja (118 x 40)
@@ -542,7 +665,7 @@ namespace SP.UI
                         float latido = (Mathf.Sin(Time.unscaledTime * 6f) + 1f) * 0.5f;
                         opciones[j].color = Color.Lerp(new Color(0.05f, 0.3f, 0.42f, 0.95f), new Color(0.25f, 0.85f, 1f, 0.97f), latido);
                     }
-                    opciones[j].rectTransform.localScale = Vector3.one * (elegida ? 1.03f : 1f);
+                    opciones[j].rectTransform.localScale = Vector3.one * (elegida ? 1.03f + 0.06f * (1f - popT) * (1f - popT) : 1f);
                     float rad = centro * Mathf.Deg2Rad;
                     var dirOp = new Vector2(Mathf.Sin(rad), Mathf.Cos(rad));
                     var colorOp = elegida ? new Color(0.05f, 0.06f, 0.08f) : ctx ? new Color(1f, 0.9f, 0.45f) : Color.white;
@@ -561,13 +684,7 @@ namespace SP.UI
             }
 
             if (cursor != null) cursor.rectTransform.anchoredPosition = virtualPos;
-            if (lista != null)
-            {
-                string apunta = contexto != null && !string.IsNullOrEmpty(contexto.Apuntando) ? "\n<size=11><color=#FFD23A>" + contexto.Apuntando + "</color></size>" : "";
-                if (Seleccion < 0) lista.text = "ORDENES" + apunta + "\n<size=11>apunta con el mouse · suelta Q</size>";
-                else if (Sub >= 0) lista.text = Porciones[Seleccion].Replace("\n", " ") + "\n<size=13>" + Texto(OpcionesDe[Seleccion][Sub]).Replace(" · ", " ") + "</size>";
-                else lista.text = Porciones[Seleccion].Replace("\n", " ") + "\n<size=11>sigue hacia afuera</size>";
-            }
+            if (lista != null) { lista.text = ""; lista.gameObject.SetActive(false); }   // sin textos
         }
 
         // Construye el panel si la escena no lo trae y deja cableado el driver. Existe
@@ -605,8 +722,10 @@ namespace SP.UI
         static Sprite Dona(float hueco)
         {
             bool interior = hueco < 0.5f;
-            if (interior && donaInterior != null) return donaInterior;
-            if (!interior && donaExterior != null) return donaExterior;
+            bool fino = hueco > 0.9f;
+            if (fino && donaFina != null) return donaFina;
+            if (!fino && interior && donaInterior != null) return donaInterior;
+            if (!fino && !interior && donaExterior != null) return donaExterior;
             const int n = 256;
             var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
             var px = new Color32[n * n];
@@ -622,7 +741,7 @@ namespace SP.UI
             tex.SetPixels32(px); tex.Apply();
             var sp = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
             sp.hideFlags = HideFlags.HideAndDontSave;
-            if (interior) donaInterior = sp; else donaExterior = sp;
+            if (fino) donaFina = sp; else if (interior) donaInterior = sp; else donaExterior = sp;
             return sp;
         }
 

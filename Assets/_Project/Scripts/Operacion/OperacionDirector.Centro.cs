@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 using UnityEngine.UI;
 using SP.Actors;
 using SP.Combat;
@@ -19,8 +20,73 @@ namespace SP.Operacion
     public partial class OperacionDirector
     {
         // ---- 3. centro de datos ----
+        // Pedido de pulido: "enemigos mas secuenciales, mas dispersos y mas enemigos" en el hackeo. Al entrar a la fase, las 3 oleadas del
+        // blockout (16 soldados, 3 entradas) se rearman en tandas de 3 que salen cada 2,5 s, con 14 refuerzos clonados y repartidos por
+        // 5 entradas (sur, patio oeste, patio este y las dos esquinas del sur), asi nunca llegan todos juntos ni por el mismo lado.
+        bool oleadasReforzadas;
+        public const int SoldadosPorTanda = 3, RefuerzosDelCentro = 14;
+        public const float SegundosEntreTandas = 2.5f;
+
+        void ReforzarOleadasDelCentro()
+        {
+            if (oleadasReforzadas || oleadasDelCentro == null || oleadasDelCentro.Length == 0) return;
+            oleadasReforzadas = true;
+            var todos = new List<Soldier>();
+            Transform destino = null;
+            foreach (var w in oleadasDelCentro)
+            {
+                if (w == null || w.soldados == null) continue;
+                if (destino == null) destino = w.destino;
+                foreach (var so in w.soldados) if (so != null) todos.Add(so);
+            }
+            if (todos.Count == 0) return;
+            var plantilla = todos[0];
+
+            // Refuerzos: clones inactivos de un soldado de reserva, repartidos por las 5 entradas.
+            var rnd = new System.Random(20261018);
+            float R(float a, float b) => a + (float)rnd.NextDouble() * (b - a);
+            for (int k = 0; k < RefuerzosDelCentro; k++)
+            {
+                Vector3 p; float yaw;
+                switch (k % 5)
+                {
+                    case 0: p = new Vector3(R(-42f, 42f), 0.8f, R(-114f, -102f)); yaw = 0f; break;     // entrada sur, abierta de lado a lado
+                    case 1: p = new Vector3(R(-60f, -52f), 0.8f, R(-88f, -44f)); yaw = 90f; break;     // patio oeste
+                    case 2: p = new Vector3(R(52f, 60f), 0.8f, R(-88f, -44f)); yaw = 270f; break;      // patio este
+                    case 3: p = new Vector3(R(-56f, -44f), 0.8f, R(-100f, -92f)); yaw = 45f; break;    // esquina suroeste
+                    default: p = new Vector3(R(44f, 56f), 0.8f, R(-100f, -92f)); yaw = -45f; break;    // esquina sureste
+                }
+                if (NavMesh.SamplePosition(p, out var hit, 8f, NavMesh.AllAreas)) p = hit.position + Vector3.up * 0.2f;
+                var clon = Instantiate(plantilla, p, Quaternion.Euler(0f, yaw, 0f), plantilla.transform.parent);
+                clon.name = "Reserva_CD_Refuerzo_" + (k + 1);
+                clon.gameObject.SetActive(false);
+                todos.Add(clon);
+            }
+
+            // Se alternan los soldados de cada entrada para que cada tanda mezcle lados, y se arman tandas de a 3 cada 2,5 s.
+            var mezclados = new List<Soldier>(todos.Count);
+            var cola = new List<Soldier>(todos);
+            cola.Sort((a, b) => (Mathf.Atan2(a.transform.position.z + 70f, a.transform.position.x)).CompareTo(Mathf.Atan2(b.transform.position.z + 70f, b.transform.position.x)));
+            for (int i = 0, j = cola.Count - 1; i <= j; i++, j--)
+            {
+                mezclados.Add(cola[i]);
+                if (i != j) mezclados.Add(cola[j]);
+            }
+            var nuevas = new List<OleadaDeReserva>();
+            for (int i = 0; i < mezclados.Count; i += SoldadosPorTanda)
+            {
+                int n = Mathf.Min(SoldadosPorTanda, mezclados.Count - i);
+                var grupo = new Soldier[n];
+                for (int k = 0; k < n; k++) grupo[k] = mezclados[i + k];
+                nuevas.Add(new OleadaDeReserva { segundo = (i / SoldadosPorTanda) * SegundosEntreTandas, aviso = null, soldados = grupo, destino = destino });
+            }
+            oleadasDelCentro = nuevas.ToArray();
+            GameLog.Line($"[Operacion] Hackeo: {todos.Count} soldados en {nuevas.Count} tandas de {SoldadosPorTanda} cada {SegundosEntreTandas} s");
+        }
+
         void TickCentro()
         {
+            ReforzarOleadasDelCentro();
             if (computadora.Operador != null && hackInicio < 0f) hackInicio = Time.time;
             if (hackInicio >= 0f)
             {

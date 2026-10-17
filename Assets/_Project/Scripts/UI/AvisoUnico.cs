@@ -63,12 +63,16 @@ namespace SP.UI
             return t.ToUpperInvariant();
         }
 
+        public static bool Dibujar = false;
+
         public static void Mostrar(string mensaje, float segundos = 3f, Color? color = null, int prioridad = PrioridadMedia)
         {
             string t = Normalizar(mensaje);
             if (t.Length == 0) return;
             historial.Add(t); if (historial.Count > 64) historial.RemoveAt(0);
             var a = new Aviso { texto = t, color = color ?? Color.white, segundos = Mathf.Max(0.8f, segundos), encolado = Time.unscaledTime, prioridad = prioridad };
+            // Pedido de pulido: sin textos en pantalla salvo el de mision; el aviso ya no se dibuja (queda en el historial y el log).
+            if (!Dibujar) return;
             var v = Asegurar();
             if (v == null) return;
             // Mismo texto ya en pantalla o en espera: se refresca en vez de repetir.
@@ -165,6 +169,7 @@ namespace SP.UI
         void Update()
         {
             if (texto == null) return;
+            if (!Dibujar) { if (grupo != null && grupo.alpha > 0f) grupo.alpha = 0f; return; }   // pedido de pulido: sin cartel de avisos
             float ahora = Time.unscaledTime;
             if (ahora >= actualHasta)
             {

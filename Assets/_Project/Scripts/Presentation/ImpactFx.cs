@@ -332,8 +332,7 @@ namespace SP.Presentation
             // lo que permite aprender el alcance real y evitar el fuego
             // amigo.
             float pisoY = Application.isPlaying ? DestruccionDeVehiculo.AlturaDelPiso(position) : 0f;
-            var anillo = rings.Take();
-            if (anillo != null) anillo.LaunchRing(new Vector3(position.x, pisoY + 0.06f, position.z), radius);
+            // Pedido de pulido: sin aros de color en el piso; queda el crater y el humo.
             DecalPool.Spawn(DecalKind.Crater, new Vector3(position.x, Mathf.Max(pisoY, 0.02f), position.z), Vector3.up, radius * 1.4f);
             if (conCrater && radius >= 3.5f && position.y - pisoY <= 2.5f)
                 CraterPool.Crear(position, pisoY, radius * 0.55f);

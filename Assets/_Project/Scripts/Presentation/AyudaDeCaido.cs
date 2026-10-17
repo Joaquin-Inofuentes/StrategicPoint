@@ -65,6 +65,7 @@ namespace SP.Presentation
             texto.fontSize = 60;
             texto.color = new Color(1f, 0.3f, 0.25f);
             c.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            c.GetComponent<MeshRenderer>().enabled = false;   // pedido de pulido: sin textos en pantalla (queda el brazo que saluda)
         }
 
         void Ocultar()

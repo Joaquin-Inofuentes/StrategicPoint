@@ -93,6 +93,29 @@ namespace SP.Player
             return i;
         }
 
+        // Fix disparo de asalto (con y sin mira): el punto de tiro era AimResult.Point, que NO siempre es donde pega el rayo de la cruz:
+        // contra un muro/obstaculo es el punto de COBERTURA (en el piso, al pie), y con un aliado delante de la mira es su cuerpo. La bala
+        // salia hacia ahi (medido: 11 grados de desvio con un aliado a 1 m, ~1,4 m abajo a 175 m contra un muro) y con el zoom se ve.
+        // El punto de tiro es el primer solido que toca el rayo de la camara, atravesando a la escuadra propia y los disparadores.
+        static readonly RaycastHit[] bufferDeTiro = new RaycastHit[48];
+        public Vector3 PuntoDeTiro(Ray ray, Soldier excludeSelf)
+        {
+            int n = Physics.RaycastNonAlloc(ray, bufferDeTiro, maxDistance, ~0, QueryTriggerInteraction.Ignore);
+            float mejor = float.MaxValue;
+            var punto = ray.origin + ray.direction * maxDistance;
+            for (int i = 0; i < n; i++)
+            {
+                var h = bufferDeTiro[i];
+                if (h.collider == null || h.distance >= mejor || h.distance < 0.05f) continue;
+                var info = Resolver(h.collider);
+                if (info.soldier != null && (info.soldier == excludeSelf || info.soldier.Team == TeamId.Player)) continue;
+                if (info.vehicle != null && info.vehicle.Bando == TeamId.Player) continue;
+                mejor = h.distance;
+                punto = h.point;
+            }
+            return punto;
+        }
+
         public AimResult Evaluate(Ray ray, Soldier excludeSelf)
         {
             UnityEngine.Profiling.Profiler.BeginSample("Aim.Sync");

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -21,6 +22,44 @@ namespace SP.Presentation
     public static class ParticleMaterialFactory
     {
         static Shader shaderCache;
+
+        // Pedido de pulido: "vfx toon, no tan realistas (stylized toon)". Toda textura de particula pasa por un posterizado: el alfa cae en
+        // tres escalones duros (nada / media / opaca) y el color en tres tonos planos, asi el humo, el fuego y las chispas se ven como manchas
+        // de dibujo animado con borde marcado en vez de nubes suaves. Se cachea por textura de origen.
+        public static bool ToonActivo = true;
+        static readonly Dictionary<Texture2D, Texture2D> toonCache = new Dictionary<Texture2D, Texture2D>();
+
+        public static Texture2D Toon(Texture2D src)
+        {
+            if (src == null || !ToonActivo || !Application.isPlaying) return src;
+            if (toonCache.TryGetValue(src, out var hecha) && hecha != null) return hecha;
+            int w = src.width, h = src.height;   // misma resolucion: los sprites se arman con pixelsPerUnit = ancho
+            var rt = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            var previa = RenderTexture.active;
+            Texture2D res;
+            try
+            {
+                Graphics.Blit(src, rt);
+                RenderTexture.active = rt;
+                res = new Texture2D(w, h, TextureFormat.RGBA32, false) { name = "Toon_" + src.name, hideFlags = HideFlags.HideAndDontSave, wrapMode = TextureWrapMode.Clamp };
+                res.ReadPixels(new Rect(0, 0, w, h), 0, 0);
+            }
+            finally { RenderTexture.active = previa; RenderTexture.ReleaseTemporary(rt); }
+            var px = res.GetPixels32();
+            for (int i = 0; i < px.Length; i++)
+            {
+                float a = px[i].a / 255f;
+                float a2 = a < 0.22f ? 0f : (a < 0.55f ? 0.65f : 1f);
+                float luz = (px[i].r + px[i].g + px[i].b) / 765f;
+                float tono = luz < 0.4f ? 0.6f : (luz < 0.75f ? 0.82f : 1f);
+                byte t = (byte)Mathf.RoundToInt(tono * 255f);
+                px[i] = new Color32(t, t, t, (byte)Mathf.RoundToInt(a2 * 255f));
+            }
+            res.SetPixels32(px);
+            res.Apply(false, false);
+            toonCache[src] = res;
+            return res;
+        }
 
         static Shader ShaderParticulas()
         {
@@ -62,6 +101,7 @@ namespace SP.Presentation
             }
             mat.hideFlags = HideFlags.HideAndDontSave;
 
+            textura = Toon(textura);
             if (textura != null)
             {
                 if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", textura);

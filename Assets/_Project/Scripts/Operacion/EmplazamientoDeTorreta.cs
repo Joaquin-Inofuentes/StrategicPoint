@@ -80,12 +80,14 @@ namespace SP.Operacion
             Pintar(0f);
         }
 
+        // Pedido de pulido: sin circulos de colores en el piso.
+        public const bool AnillosEnElPiso = false;
         public bool AnillosVisibles => anillosVisibles;
 
         void Update()
         {
             if (torreta == null || raizAnillos == null) return;
-            bool libre = torreta.Libre && !RomboVisibilidad.Suprimidos;
+            bool libre = AnillosEnElPiso && torreta.Libre && !RomboVisibilidad.Suprimidos;
             if (libre != anillosVisibles) { anillosVisibles = libre; raizAnillos.gameObject.SetActive(libre); }
             if (libre) Pintar(Time.time);
         }

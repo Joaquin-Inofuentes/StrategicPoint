@@ -5,13 +5,9 @@ using SP.UI;
 
 namespace SP.Presentation
 {
-    // Punto unico de feedback de las ACCIONES del juego (pedido: "toda
-    // accion tenga feedback visual y auditivo"). Cada accion llama a
-    // Feedback.Accion y sale, siempre, por tres canales a la vez:
-    //   - sonido  (3D si hay posicion, 2D si es de interfaz)
-    //   - visual en el MUNDO (etiqueta flotante + pulso en el piso)
-    //   - visual en la INTERFAZ (aviso arriba, por la cola de alertas)
-    // mas una linea en el log de flujo.
+    // Punto unico de feedback de las ACCIONES del juego. Pedido de pulido: un solo canal por accion.
+    // Feedback.Accion = sonido (3D si hay posicion, 2D si es de interfaz) + una linea en el log de flujo.
+    // Ya no hay etiqueta flotante, pulso en el piso ni aviso por la cola de alertas.
     public static class Feedback
     {
         public static readonly Color Ok = new Color(0.35f, 0.90f, 0.45f);
@@ -33,17 +29,9 @@ namespace SP.Presentation
         {
             Contador++;
             UltimoTexto = texto;
-            var c = color ?? Info;
+            // Pedido de pulido: "simplificar el feedback de acciones a uno solo". Lo unico que queda por accion es el sonido (Accion);
+            // el cartel flotante, el pulso en el piso y el aviso de arriba se quitaron. Aca solo queda la linea de log.
             bool conTexto = !string.IsNullOrEmpty(texto);
-            if (Application.isPlaying && conTexto)
-            {
-                if (enMundo.HasValue)
-                {
-                    WorldTag.Spawn(enMundo.Value + Vector3.up * 2.3f, texto, c);
-                    if (pulso) OrderMarkerFx.Spawn(enMundo.Value, c, 0.9f);
-                }
-                if (aviso) AlertQueue.Push(texto, AlertPriority.Media, 1.3f);
-            }
             if (conTexto) GameLog.Line("[FB] " + texto);
         }
 
@@ -53,20 +41,11 @@ namespace SP.Presentation
             Contador++;
             UltimoTexto = texto;
             UltimoSonido = sonido;
-            var c = color ?? Info;
-
             bool conTexto = !string.IsNullOrEmpty(texto);
             if (Application.isPlaying)
             {
                 if (enMundo.HasValue) AudioDirector.PlayAt(sonido, enMundo.Value, volumen, 0.7f);
                 else AudioDirector.PlayUi2D(sonido, volumen, 0.7f);
-
-                if (enMundo.HasValue)
-                {
-                    if (conTexto) WorldTag.Spawn(enMundo.Value + Vector3.up * 2.3f, texto, c);
-                    if (pulso) OrderMarkerFx.Spawn(enMundo.Value, c, 0.9f);
-                }
-                if (aviso && conTexto) AlertQueue.Push(texto, AlertPriority.Media, 1.3f);
             }
             if (conTexto) GameLog.Line("[FB] " + texto);
         }

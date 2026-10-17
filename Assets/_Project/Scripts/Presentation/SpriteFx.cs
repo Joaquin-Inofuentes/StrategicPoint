@@ -19,6 +19,7 @@ namespace SP.Presentation
             if (cache.TryGetValue(nombre, out var s) && s != null) return s;
             var tex = SP.Core.RecursosCache.Cargar<Texture2D>(Carpeta + nombre);
             if (tex == null) return null;
+            tex = ParticleMaterialFactory.Toon(tex);   // pedido de pulido: efectos toon (alfa y tonos en escalones)
             // Bug #052: sin meshType, Sprite.Create arma una malla "Tight" que recorre el contorno de la textura de 512 px
             // (SpriteMeshGenerator: 45-60 ms en el frame de la PRIMERA granada). Un efecto que mira a camara va bien con un rectangulo.
             s = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f), tex.width, 0, SpriteMeshType.FullRect);

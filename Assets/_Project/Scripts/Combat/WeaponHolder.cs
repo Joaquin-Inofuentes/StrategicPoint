@@ -754,6 +754,20 @@ namespace SP.Combat
             return true;
         }
 
+        // Direccion de salida para que un proyectil con gravedad (cohete) pase por 'objetivo': arco bajo de tiro parabolico, con la misma
+        // integracion que Projectile.Tick (vy -= g*dt). Fuera de alcance cae a 45 grados; sin gravedad o muy cerca devuelve 'respaldo'.
+        public static Vector3 DireccionBalistica(Vector3 desde, Vector3 objetivo, float velocidad, float gravedad, Vector3 respaldo)
+        {
+            var delta = objetivo - desde;
+            var plano = new Vector3(delta.x, 0f, delta.z);
+            float d = plano.magnitude;
+            if (gravedad <= 0f || velocidad <= 0f || d < 1.5f) return respaldo;
+            float v2 = velocidad * velocidad;
+            float disc = v2 * v2 - gravedad * (gravedad * d * d + 2f * delta.y * v2);
+            float tan = disc >= 0f ? (v2 - Mathf.Sqrt(disc)) / (gravedad * d) : 1f;
+            return (plano / d + Vector3.up * tan).normalized;
+        }
+
         // Publico: TurretWeapon (canon de vehiculo) reusa exactamente el mismo cono de
         // dispersion que las armas de mano, en vez de duplicar la matematica aparte
         // (item de normalizacion de precision jugador/aliado/enemigo/torreta/canon).

@@ -66,6 +66,7 @@ namespace SP.Mision
             h.titulo = Texto(go.transform, font, 14, new Vector2(0f, 40f), new Vector2(304f, 20f), new Color(1f, 0.82f, 0.3f));
             h.detalle = Texto(go.transform, font, 16, new Vector2(0f, 10f), new Vector2(304f, 42f), Color.white);
             h.dificultad = Texto(go.transform, font, 11, new Vector2(0f, -43f), new Vector2(304f, 16f), new Color(0.72f, 0.8f, 0.9f));
+            TextoSoloMision.Permitir(h.titulo); TextoSoloMision.Permitir(h.detalle);
             h.detalle.horizontalOverflow = HorizontalWrapMode.Wrap;
             h.dificultad.resizeTextForBestFit = true; h.dificultad.resizeTextMinSize = 8; h.dificultad.resizeTextMaxSize = 11;
 
@@ -112,6 +113,7 @@ namespace SP.Mision
 
             timerEtiqueta = Texto(go.transform, font, 28, new Vector2(0f, 36f), new Vector2(560f, 40f), new Color(1f, 0.82f, 0.3f));
             timerNumero = Texto(go.transform, font, 64, new Vector2(0f, -22f), new Vector2(560f, 80f), Color.white);
+            TextoSoloMision.Permitir(timerNumero);
             var borde = timerNumero.gameObject.AddComponent<Outline>();
             borde.effectColor = new Color(0f, 0f, 0f, 0.85f);
             borde.effectDistance = new Vector2(2f, -2f);
@@ -224,6 +226,9 @@ namespace SP.Mision
                     break;
                 }
             }
+            // Minimas palabras posibles: el titulo a una palabra y el detalle a sus cifras.
+            titulo.text = TextoMinimo.Titulo(titulo.text);
+            detalle.text = TextoMinimo.Detalle(detalle.text);
         }
     }
 }

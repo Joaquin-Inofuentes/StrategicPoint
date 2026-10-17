@@ -323,8 +323,12 @@ namespace SP.Presentation
             QueuedMarkers.Add(m.gameObject);
         }
 
+        // Pedido de pulido: sin pulsos de colores en el piso (los marcadores de cola del plan RTS se mantienen).
+        public const bool PulsosEnElPiso = false;
+
         public static void Spawn(Vector3 position, Color color, float duration = 0.6f)
         {
+            if (!PulsosEnElPiso) return;
             var m = Take();
             if (m == null) return;
             m.LaunchFading(position, color, duration);

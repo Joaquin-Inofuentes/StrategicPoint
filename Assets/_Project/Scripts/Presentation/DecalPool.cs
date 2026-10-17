@@ -172,8 +172,21 @@ namespace SP.Presentation
 
             // Levantado un pelo sobre la superficie para no pelear con ella
             // por el z-buffer.
+            // Pedido (disparo del tanque): el crater SIEMPRE va echado sobre el piso -- ni vertical ni de canto --, adaptado al terreno de
+            // verdad: se busca el suelo justo debajo y se usa su normal (inclinada como mucho ~35 grados). Y el giro se hace con una
+            // referencia estable (LookRotation(-up) sin referencia salta a cualquier angulo y el decal "se rompia").
+            if (kind == DecalKind.Crater)
+            {
+                normal = Vector3.up;
+                if (Physics.Raycast(position + Vector3.up * 1.5f, Vector3.down, out var suelo, 4f, ~0, QueryTriggerInteraction.Ignore) && suelo.normal.y > 0.8f)
+                {
+                    position = suelo.point;
+                    normal = suelo.normal;
+                }
+            }
+            var referencia = Mathf.Abs(normal.y) > 0.9f ? Vector3.forward : Vector3.up;
             decal.transform.position = position + normal * 0.02f;
-            decal.transform.rotation = Quaternion.LookRotation(-normal) * Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
+            decal.transform.rotation = Quaternion.LookRotation(-normal, referencia) * Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
             // El sprite mide 1 m a escala 1 y su marca ocupa ~60 % del cuadro: se agranda para que "size" sea el ancho visible.
             decal.transform.localScale = Vector3.one * size * 1.6f;
             decal.SetActive(true);

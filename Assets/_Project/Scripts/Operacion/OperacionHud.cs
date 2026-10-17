@@ -83,6 +83,8 @@ namespace SP.Operacion
             h.timerGrupo.alpha = 0f; h.timerGrupo.interactable = false; h.timerGrupo.blocksRaycasts = false;
             h.timerEtiqueta = Texto(tg.transform, font, 26, new Vector2(0f, 36f), new Vector2(620f, 40f), new Color(1f, 0.82f, 0.3f));
             h.timerNumero = Texto(tg.transform, font, 60, new Vector2(0f, -20f), new Vector2(620f, 80f), Color.white);
+            // Unicos textos del HUD que quedan (pedido de pulido): el objetivo y el numero del temporizador. Ver TextoSoloMision.
+            SP.UI.TextoSoloMision.Permitir(h.titulo); SP.UI.TextoSoloMision.Permitir(h.detalle); SP.UI.TextoSoloMision.Permitir(h.timerNumero);
             var borde = h.timerNumero.gameObject.AddComponent<Outline>();
             borde.effectColor = new Color(0f, 0f, 0f, 0.85f); borde.effectDistance = new Vector2(2f, -2f);
 
@@ -176,7 +178,7 @@ namespace SP.Operacion
         public void Objetivo(string tit, string det, float progreso01, Color color)
         {
             if (titulo == null) return;
-            titulo.text = tit.Replace("OBJETIVO ", ""); detalle.text = det;
+            titulo.text = SP.UI.TextoMinimo.Titulo(tit); detalle.text = SP.UI.TextoMinimo.Detalle(det);   // minimas palabras posibles
             relleno.sizeDelta = new Vector2(barra.sizeDelta.x * Mathf.Clamp01(progreso01), 0f);
             relleno.GetComponent<Image>().color = color;
         }

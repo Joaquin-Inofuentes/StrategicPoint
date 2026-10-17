@@ -70,7 +70,25 @@ namespace SP.Presentation
             if (drv.Brain != null && drv.Brain.Current != null) lista.Add(drv.Brain.Current);
             if (drv.Selection != null)
                 foreach (var s in drv.Selection.Selected) if (s != null && !lista.Contains(s)) lista.Add(s);
+
+            // "Disparo a las torretas de vigia: cuando quiero dispararles no veo a los enemigos": postes, escudos y parapetos tapaban al
+            // tirador de la torre. Tambien se destapa al enemigo que esta en la mira y a los tiradores de torre que se tienen delante.
+            var cam = SP.Core.CamaraPrincipal.Actual;
+            if (cam == null) return;
+            var mira = drv.UltimaMira;
+            if (mira.Type == AimTargetType.Enemy && mira.Soldier != null && !lista.Contains(mira.Soldier)) lista.Add(mira.Soldier);
+            foreach (var t in SP.Operacion.TiradorDeTorre.Todos)
+            {
+                var s = t != null && t.Activo ? t.soldado : null;
+                if (s == null || lista.Contains(s)) continue;
+                var d = s.transform.position - cam.transform.position;
+                float dist = d.magnitude;
+                if (dist < 4f || dist > DistanciaDeTorres || Vector3.Angle(cam.transform.forward, d) > AnguloDeTorres) continue;
+                lista.Add(s);
+            }
         }
+
+        public const float DistanciaDeTorres = 90f, AnguloDeTorres = 32f;
 
         readonly List<Soldier> objetivos = new List<Soldier>();
 

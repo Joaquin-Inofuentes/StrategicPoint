@@ -20,7 +20,12 @@ namespace SP.Combat
     public class HitboxCabeza : MonoBehaviour
     {
         public const float Lado = 0.34f;   // metros: respaldo para rigs sin malla pesada (casco de soldado low poly)
-        const float Margen = 0.04f;        // la caja sobresale de la malla visible (la bala tiene radio y el cuello tambien cuenta)
+        // Pedido: "reducir headshot, que los colliders sean mas chicos". Antes la caja era la malla pesada + 4 cm por lado y la bala le sumaba
+        // 12 cm de tolerancia (el casco ancho se llevaba todo). Ahora la caja es el 62 % de la malla de la cabeza, sin margen, y la bala
+        // la prueba con MargenDeBala (3 cm): hay que apuntarle de verdad a la cara.
+        const float Margen = 0f;
+        public const float FactorDeCaja = 0.62f;
+        public const float MargenDeBala = 0.03f;
         public BoxCollider Caja { get; private set; }
 
         // Caja de la cabeza en el espacio local del hueso, por malla (los 100+ enemigos comparten la misma malla).
@@ -89,14 +94,14 @@ namespace SP.Combat
                 if (medida.HasValue)
                 {
                     h.Caja.center = medida.Value.center;
-                    h.Caja.size = medida.Value.size + Vector3.one * (Margen * 2f);
+                    h.Caja.size = medida.Value.size * FactorDeCaja + Vector3.one * (Margen * 2f);
                 }
                 else
                 {
                     // Sin pesos: el centro del craneo queda un poco arriba del pivote del hueso (que esta en el cuello).
                     var escala = hueso.lossyScale;
                     float k = 1f / Mathf.Max(0.0001f, Mathf.Abs(escala.y));
-                    h.Caja.size = Vector3.one * Lado * k;
+                    h.Caja.size = Vector3.one * Lado * FactorDeCaja * k;
                     h.Caja.center = hueso.InverseTransformVector(Vector3.up * 0.12f);
                 }
             }

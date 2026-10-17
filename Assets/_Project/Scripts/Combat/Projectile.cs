@@ -968,7 +968,7 @@ namespace SP.Combat
                 {
                     var dir = muestra - previa;
                     var fin = dir.sqrMagnitude > 0.0001f ? muestra + dir.normalized * ProfundidadDelCuerpo : muestra;
-                    if (cabeza.Cruza(previa, fin, RadioDeBala, out var pc)) { ultimoImpactoFueCabeza = true; punto = pc; return true; }
+                    if (cabeza.Cruza(previa, fin, HitboxCabeza.MargenDeBala, out var pc)) { ultimoImpactoFueCabeza = true; punto = pc; return true; }
                 }
             }
             return LeDioAlCuerpo(victima, muestra);

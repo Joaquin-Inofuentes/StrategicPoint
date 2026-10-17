@@ -129,6 +129,9 @@ namespace SP.Player
         // dibuja el anillo de seleccion -- en vez de armar un anillo
         // nuevo desde cero.
         SelectionRingFx aimRing;
+        // Pedido de pulido: "borrar el cilindro rojo / circulos de colores del piso". Los anillos de apuntado, de aliado cercano y del asesino
+        // ya no se dibujan; enemigo y aliado se distinguen por los rombos y el tinte del soldado.
+        const bool AnillosDeApuntado = false;
         static readonly Color AimRingColor = new Color(0.85f, 0.88f, 0.95f);
 
         // Cubo pegado a la cámara (no al cuerpo): así se ve en primera
@@ -970,7 +973,7 @@ namespace SP.Player
                 var killer = ActorRegistry.FindById(deadSoldier.Health.LastAttackerId);
                 if (killer != null && killer.Health.IsAlive)
                 {
-                    deathKillerRing = SelectionRingFx.Spawn(killer.transform, new Color(1f, 0.3f, 0.2f), 1.1f);
+                    if (AnillosDeApuntado) deathKillerRing = SelectionRingFx.Spawn(killer.transform, new Color(1f, 0.3f, 0.2f), 1.1f);
                     if (DeadNotice != null) DeadNotice.Show($"Te mato {killer.DisplayName}");
                 }
 
@@ -1443,7 +1446,7 @@ namespace SP.Player
                 // El mismo punto que ya muestra la mira (result.Point): si
                 // no golpeo nada (apuntando al cielo) se usa un punto lejano
                 // sobre el mismo rayo de camara, nunca Vector3.zero.
-                Vector3 aimPoint = result.Type != AimTargetType.None ? result.Point : ray.origin + ray.direction * Aim.MaxDistance;
+                Vector3 aimPoint = Aim.PuntoDeTiro(ray, Brain.Current);   // el solido real bajo la cruz (no el punto de cobertura ni el cuerpo de un aliado)
                 bool fired = Brain.Fire(aimPoint);
                 // Clic seco de gatillo vacio: solo si de verdad no
                 // disparo por falta de municion (no por estar en
@@ -1990,7 +1993,7 @@ namespace SP.Player
             nearestAllyHighlighted = nearest;
 
             if (nearestAllyRing != null) { Destroy(nearestAllyRing.gameObject); nearestAllyRing = null; }
-            if (nearest != null) nearestAllyRing = SelectionRingFx.Spawn(nearest.transform, NearestAllyRingColor, 0.85f);
+            if (nearest != null && AnillosDeApuntado) nearestAllyRing = SelectionRingFx.Spawn(nearest.transform, NearestAllyRingColor, 0.85f);
         }
 
         void ClearNearestAllyHighlight()
@@ -2280,7 +2283,7 @@ namespace SP.Player
                 result.Type == AimTargetType.Vehicle || result.Type == AimTargetType.Obstacle ||
                 result.Type == AimTargetType.Caido || result.Type == AimTargetType.Torreta);
 
-            if (!show)
+            if (!show || !AnillosDeApuntado)
             {
                 if (aimRing != null) aimRing.gameObject.SetActive(false);
                 return;

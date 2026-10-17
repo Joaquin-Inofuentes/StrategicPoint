@@ -103,6 +103,7 @@ namespace SP.Tutorial
             Anclar(cabecera.rectTransform, 14, 8, 328, 16);
             titulo = NuevoTexto("Titulo", panel, 19, FontStyle.Bold, Color.white, TextAnchor.UpperLeft);
             Anclar(titulo.rectTransform, 14, 22, 328, 28);
+            SP.UI.TextoSoloMision.Permitir(titulo);   // el titulo del paso es el unico texto de mision; la instruccion larga, la cabecera y las pistas se ocultan (el panel muestra las teclas)
             // Los titulos largos ("CUBRIRSE HACIA DONDE MIRO (RADIAL)") se achican en vez de pasar a dos renglones.
             titulo.horizontalOverflow = HorizontalWrapMode.Wrap;
             titulo.verticalOverflow = VerticalWrapMode.Truncate;
@@ -135,6 +136,7 @@ namespace SP.Tutorial
                 subCasillas[i].texture = TutorialTextures.Casilla(false);
                 subTextos[i] = NuevoTexto("Sub" + i, panel, 13, FontStyle.Normal, new Color(0.82f, 0.86f, 0.94f), TextAnchor.MiddleLeft);
                 subTextos[i].horizontalOverflow = HorizontalWrapMode.Overflow;
+                SP.UI.TextoSoloMision.Permitir(subTextos[i]);   // las casillas de los subpasos llevan su etiqueta: son la mision del tutorial
                 Anclar(subTextos[i].rectTransform, 38, 112 + i * 20, 304, 18);
             }
 
@@ -289,6 +291,7 @@ namespace SP.Tutorial
                     prt.anchorMin = prt.anchorMax = new Vector2(0f, 0.5f); prt.pivot = new Vector2(0.5f, 0.5f);
                     prt.anchoredPosition = new Vector2(x + 10f, 0f); prt.sizeDelta = new Vector2(24f, 36f);
                     plus.text = "+";
+                    SP.UI.TextoSoloMision.Permitir(plus);
                 }
                 else Poner(fichas[i], x + anchos[i] * 0.5f, 25f);
                 x += anchos[i] + 10f;

@@ -128,6 +128,18 @@ namespace SP.Player
                 }
             }
 
+            // Fix disparo de asalto: el lanzacohetes vuela lento y CAE (ProjectileGravity). Apuntado a lo lejos, con o sin mira, el cohete
+            // pasaba por debajo de la cruz (medido: 4,2 m a 175 m). Se corrige el angulo de salida para que la parabola pase por el punto apuntado.
+            if (aimPoint.HasValue)
+            {
+                var espec = SP.Combat.WeaponCatalog.Get(Current.Weapon.CurrentWeaponKind);
+                if (espec.ProjectileGravity > 0f)
+                {
+                    Vector3 desde = boca ?? (Current.Weapon.Muzzle != null ? Current.Weapon.Muzzle.position : Current.transform.position);
+                    direction = SP.Combat.WeaponHolder.DireccionBalistica(desde, aimPoint.Value, SP.Combat.Projectile.VelocidadBase * espec.ProjectileSpeed, espec.ProjectileGravity, direction);
+                }
+            }
+
             return Current.Weapon.TryFire(Current.transform.position, direction, 0f, boca);
         }
 
