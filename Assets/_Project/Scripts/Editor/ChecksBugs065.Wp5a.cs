@@ -165,7 +165,7 @@ namespace SP.EditorTools
         static string Bug084()
         {
             var sb = new StringBuilder(); bool ok = true;
-            foreach (var (rol, nombre) in new[] { (RoleType.Assault, "ASALTO"), (RoleType.Flanker, "FLANQUEADOR"), (RoleType.Medic, "MÉDICO") })
+            foreach (var (rol, nombre) in new[] { (RoleType.Assault, "ASALTO"), (RoleType.Flanker, "FRANCOTIRADOR"), (RoleType.Medic, "MÉDICO") })
             {
                 string t = RolRequerido.Texto(rol, "INTERACTUAR CON ESTO", null);
                 bool bien = t.StartsWith("DEBES SER " + nombre + " PARA INTERACTUAR CON ESTO", StringComparison.Ordinal);
@@ -190,7 +190,7 @@ namespace SP.EditorTools
             if (v == null) return "(sin vista)";
             var campo = typeof(InteractHintView).GetField("texto", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
             var t = campo != null ? campo.GetValue(v) as UnityEngine.UI.Text : null;
-            return t != null && t.gameObject.activeSelf ? t.text : "(oculto)";
+            return t != null && !string.IsNullOrEmpty(t.text) ? t.text : "(oculto)";   // el aviso unico muestra el texto; el GO propio de la pista puede estar apagado
         }
 
         // ---------------------------------------------------------------- teclado inyectado (tecla E, W...)

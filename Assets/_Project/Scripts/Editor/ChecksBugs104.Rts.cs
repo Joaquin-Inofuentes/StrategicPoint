@@ -384,7 +384,7 @@ namespace SP.EditorTools
             foreach (var x in Esperar(2.5f)) yield return x;
             var sb = new StringBuilder(); bool ok = true;
             Renderer letraA = null; Material matOriginal = null;
-            foreach (var n in new[] { "Letra_A", "Letra_B", "Letra_C" })
+            foreach (var n in new[] { "Letra_A", "Letra_B" })   // hoy son 2 sectores (no hay Letra_C)
             {
                 var go = GameObject.Find(n);
                 var mr = go != null ? go.GetComponent<MeshRenderer>() : null;
@@ -397,29 +397,20 @@ namespace SP.EditorTools
             foreach (var t in Object.FindObjectsByType<TextMesh>())
             {
                 var r = t.GetComponent<MeshRenderer>(); total++;
-                if (r != null && r.sharedMaterial != null && r.sharedMaterial.shader.name == "GUI/Text Shader") malos++;
+                if (r != null && r.enabled && r.sharedMaterial != null && r.sharedMaterial.shader.name == "GUI/Text Shader") malos++;   // los carteles ocultos por TextoSoloMision no se dibujan
             }
             P6Ok(ref ok, malos == 0 && total > 10, sb, $"TextMesh con GUI/Text Shader: {malos} de {total}");
             if (letraA != null)
             {
-                // Camara detras del ayuntamiento (la pared tapa la letra A, que esta a 12 m al norte de su frente).
-                var cam = CamaraTemporal(new Vector3(322f, 4f, 266f), new Vector3(322f, 0.1f, 292f), 50f, null, out var go);
-                // Con la carga del TextMesh: la letra A de frente (sin pared) se ve.
-                var camLibre = CamaraTemporal(new Vector3(322f, 40f, 262f), new Vector3(322f, 0.1f, 292f), 50f, null, out var go2);
+                // Los sectores se reubicaron (2 posiciones: A calle norte, B mercado oeste): la camara sale de la posicion real de la letra.
+                // La oclusion contra la pared del ayuntamiento ya no se mide (la pared no esta delante de la letra); que el shader respete la
+                // profundidad (SP/OperacionTexto y no GUI/Text Shader) queda asegurado por las aserciones de arriba.
+                var lp = letraA.transform.position;
+                var camLibre = CamaraTemporal(lp + new Vector3(0f, 40f, -6f), lp, 50f, null, out var go2);
                 int visibleLibre = P6PixelesQueCambian(letraA, camLibre);
-                int tapada = P6PixelesQueCambian(letraA, cam);
-                // "Antes": el material de la fuente (GUI/Text Shader) la dibuja encima de la pared.
-                var fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                letraA.sharedMaterial = fuente.material;
-                int tapadaAntes = P6PixelesQueCambian(letraA, cam);
-                RenderTemporal("v3_112_letra_antes", new Vector3(322f, 4f, 266f), new Vector3(322f, 0.1f, 292f), 50f);
-                letraA.sharedMaterial = matOriginal;
-                RenderTemporal("v3_112_letra_despues", new Vector3(322f, 4f, 266f), new Vector3(322f, 0.1f, 292f), 50f);
-                RenderTemporal("v3_112_letra_desde_arriba", new Vector3(322f, 40f, 262f), new Vector3(322f, 0.1f, 292f), 50f);
-                Object.Destroy(go); Object.Destroy(go2);
+                RenderTemporal("v3_112_letra_desde_arriba", lp + new Vector3(0f, 40f, -6f), lp, 50f);
+                Object.Destroy(go2);
                 P6Ok(ref ok, visibleLibre > 300, sb, $"letra A desde arriba: {visibleLibre} px");
-                P6Ok(ref ok, tapada < 60, sb, $"detras del ayuntamiento: {tapada} px (antes con GUI/Text Shader: {tapadaAntes} px)");
-                P6Ok(ref ok, tapadaAntes > tapada + 200, sb, "el 'antes' reproduce la letra encima de la pared");
             }
             Fin((ok ? "OK " : "FALLO ") + sb);
         }

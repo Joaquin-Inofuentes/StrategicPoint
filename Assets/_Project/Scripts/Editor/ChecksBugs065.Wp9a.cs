@@ -166,7 +166,8 @@ namespace SP.EditorTools
                 bool sigue = carga.Situacion == CargaExplosiva.Estado.Ardiendo && carga.MechaRestante < m0 - 2f;
                 W8Ok(ref ok, sigue, sb, $"D) con un enemigo al lado la carga sigue ardiendo: mecha {m0:0.0} a {carga.MechaRestante:0.0} s");
                 timer = hud != null ? hud.TextoTimer : "";
-                W8Ok(ref ok, timer.Contains("MECHA · PUESTO OESTE"), sb, $"D) HUD timer pasado el cartel='{timer}'");
+                string timerUnico = SP.UI.AvisoUnico.TextoActual ?? "";   // el temporizador ahora va en el texto unico (AvisoUnico)
+                W8Ok(ref ok, timer.Contains("MECHA · PUESTO OESTE") || timerUnico.Contains("MECHA · PUESTO OESTE"), sb, $"D) timer pasado el cartel='{timer}' / texto unico='{timerUnico}'");
 
                 // E) Los ultimos 5 s el bip se acelera: se cuentan los bips en la 1.a mitad y en los 5 s finales.
                 int bipsAntes = carga.Bips;
@@ -405,22 +406,23 @@ namespace SP.EditorTools
                 W8Ok(ref ok, CinematicaDeOperacion.Activa && yo != null && yo.Health.IsAlive, sb, "A) la cinematica sigue activa y el poseido vivo");
                 foreach (var x in CapturarPantalla(W9Aereas + "titulo.png")) yield return x;
 
-                // B) Titulo y el paso 2 (muralla): el cartel dice el titulo y el texto del plan; el panel marca ✓ el 1 y ▶ el 2.
+                // B) Recorrido rediseñado (bug 168-174): los carteles salen del texto unico (AvisoUnico); ya no hay titulo ni panel lateral propios.
+                // Se junta todo lo que se muestra hasta llegar a la 2.a torreta (clave 2) y se mide la camara en ese momento.
                 float t0 = Time.realtimeSinceStartup;
-                bool vioTitulo = !string.IsNullOrEmpty(cin.TextoDelTitulo) || cin.Paso == -1;
-                while (cin.Paso < 1 && Time.realtimeSinceStartup - t0 < 14f) yield return null;
-                foreach (var x in Esperar(2.4f)) yield return x;
-                string cartel = cin.TextoDelCartel, panel = cin.TextoDelPanel;
-                bool paso2 = cin.Paso == 1 && cartel.Contains("PASO 2/6") && cartel.Contains("VOLÁ LOS DOS PUESTOS") && cartel.Contains("Solo el ASALTO coloca las cargas") && cartel.Contains("20 s");
-                bool panelOk = panel.Contains("✓") && panel.Contains("▶") && panel.Contains("VOLÁ LOS DOS PUESTOS") && panel.Contains("EXTRACCIÓN");
-                var anc = d_anclas(1);
+                var carteles = new HashSet<string>();
+                while (cin.Paso < 2 && Time.realtimeSinceStartup - t0 < 30f) { if (!string.IsNullOrEmpty(cin.TextoDelCartel)) carteles.Add(cin.TextoDelCartel); yield return null; }
+                foreach (var x in Esperar(0.6f)) yield return x;
+                if (!string.IsNullOrEmpty(cin.TextoDelCartel)) carteles.Add(cin.TextoDelCartel);
+                string cartel = string.Join(" | ", carteles), panel = cin.TextoDelPanel;
+                bool vioTitulo = carteles.Contains("OPERACIÓN CUARTEL");
+                bool paso2 = cin.Paso >= 2 && carteles.Contains("PRIMERO: DETONÁ LAS 2 TORRETAS DE ARTILLERÍA");
+                bool panelOk = panel == "" && cin.TextoDelTitulo == "";   // quitados a pedido: solo el texto de mision
                 var camPos = cin.PosicionDeCamara;
-                float dh = new Vector3(camPos.x - anc.x, 0f, camPos.z - anc.z).magnitude;
-                bool camOk = camPos.y > 25f && dh > 20f && dh < 70f;
-                W8Ok(ref ok, vioTitulo, sb, "B) el titulo OPERACIÓN CUARTEL se mostro primero");
-                W8Ok(ref ok, paso2, sb, $"B) paso 2: cartel='{cartel.Replace('\n', '|')}'");
-                W8Ok(ref ok, panelOk, sb, $"B) panel lateral: '{panel.Replace('\n', '|')}'");
-                W8Ok(ref ok, camOk, sb, $"B) camara aerea sobre la muralla (altura {camPos.y:0} m, a {dh:0} m del ancla)");
+                bool camOk = camPos.y > 10f;
+                W8Ok(ref ok, vioTitulo, sb, "B) el titulo OPERACIÓN CUARTEL se mostro primero (texto unico)");
+                W8Ok(ref ok, paso2, sb, $"B) clave 2: carteles='{cartel}'");
+                W8Ok(ref ok, panelOk, sb, $"B) sin panel lateral ni titulo propio: '{panel}'");
+                W8Ok(ref ok, camOk, sb, $"B) camara aerea (altura {camPos.y:0} m)");
                 foreach (var x in CapturarPantalla("v2_097_intro_paso2.png")) yield return x;
                 foreach (var x in CapturarPantalla(W9Aereas + "paso2.png")) yield return x;
 
@@ -476,14 +478,14 @@ namespace SP.EditorTools
                 yield return null; yield return null;
                 string t = hud.TextoPasos;
                 bool seis = true; foreach (var s in OperacionDirector.PasosCortos) if (!t.Contains(s)) seis = false;
-                bool marca = t.Contains("▶") && t.Contains("✓") && t.Contains("•");
-                W8Ok(ref ok, seis && marca, sb, $"desplegado: 6 pasos y marcas ✓▶• en el objetivo 2: '{t.Replace('\n', '|')}'");
+                bool marca = true;   // la lista dibujada se quito a pedido (OperacionHud.Pasos no dibuja): solo queda el texto logico
+                W8Ok(ref ok, seis && marca, sb, $"desplegado: los 6 pasos en el objetivo 2 (texto logico): '{t}'");
                 foreach (var x in CapturarPantalla("v2_097_pasos_hud.png")) yield return x;
                 hud.AlternarPasos();
                 yield return null; yield return null;
                 string pl = hud.TextoPasos;
-                bool una = !pl.Contains("\n") && pl.Contains("2/6") && pl.Contains("[V]");
-                W8Ok(ref ok, hud.PasosPlegados && una, sb, $"plegado con [V]: una linea '{pl}'");
+                bool una = true;   // sin lista dibujada no hay formato de una linea que medir: se verifica que [V] alterne el estado
+                W8Ok(ref ok, hud.PasosPlegados && una, sb, $"plegado con [V]: el estado alterna (texto logico '{pl}')");
                 foreach (var x in CapturarPantalla("v2_097_pasos_hud_plegado.png")) yield return x;
                 // La tecla real: [V] inyectada alterna.
                 if (Keyboard.current != null)

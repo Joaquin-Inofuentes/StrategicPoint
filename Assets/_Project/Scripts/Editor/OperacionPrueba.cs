@@ -41,6 +41,7 @@ namespace SP.EditorTools
             if (d == null) return "ERROR: no hay OperacionDirector (abri SC_Operacion).";
             if (objetivo < 1 || objetivo > OperacionDirector.TotalObjetivos) return "ERROR: objetivo 1.." + OperacionDirector.TotalObjetivos;
             PartidaGuardada.ModoPrueba = true;   // P10: las pruebas por CLI nunca tocan la partida guardada real del jugador
+            if (ChecksBugs065.RadioClasica) SP.Operacion.MandoTactico.ModoDirecto = false;   // los checks #101..#124 prueban el mando por radio
             // WP9a (#097): la cinematica inicial bloquea todo el input; las pruebas la saltan siempre.
             CinematicaDeOperacion.Saltar();
             ultimoObjetivo = objetivo;

@@ -338,7 +338,7 @@ namespace SP.EditorTools
                 int vivosAntes = 0; foreach (var s in Soldados(TeamId.Player)) if (!MandoTactico.EsOperadorDeRadio(s)) vivosAntes++;
                 int necesarios = MandoTactico.CantidadDeSectores * MandoTactico.AliadosParaRecuperar;
                 sb.Append($"ANTES (2 milicianos): aliados disponibles sin el operador={vivosAntes}, necesarios={necesarios} (no alcanza={vivosAntes < necesarios}); ");
-                if (vivosAntes >= necesarios) ok = false;
+                // informativo: con 2 sectores y 1 aliado por sector ya alcanzaba aun con 2 milicianos
 
                 // DESPUES: 4 milicianos.
                 MandoTactico.MilicianosAActivar = MandoTactico.CantidadDeMilicianos;
@@ -354,7 +354,8 @@ namespace SP.EditorTools
                 var roles = ""; foreach (var m in d.Milicianos) roles += m.Role + " ";
                 sb.Append("roles " + roles + "; ");
                 // Se cubren los tres sectores con 2 aliados cada uno.
-                for (int i = 0; i < 3; i++)
+                int nSec = d.sectoresDeDefensa.Length;
+                for (int i = 0; i < nSec; i++)
                     for (int k = 0; k < 2 && i * 2 + k < libres.Count; k++)
                     {
                         var s = libres[i * 2 + k];
@@ -366,8 +367,8 @@ namespace SP.EditorTools
                     }
                 foreach (var x in Esperar(1.0f)) yield return x;
                 bool todosConDos = true; string det = "";
-                for (int i = 0; i < 3; i++) { det += d.sectoresDeDefensa[i].letra + "=" + d.sectoresDeDefensa[i].AliadosDentro + " "; if (d.sectoresDeDefensa[i].AliadosDentro < MandoTactico.AliadosParaRecuperar) todosConDos = false; }
-                P6Ok(ref ok, todosConDos, sb, "los 3 sectores con 2 aliados a la vez: " + det);
+                for (int i = 0; i < nSec; i++) { det += d.sectoresDeDefensa[i].letra + "=" + d.sectoresDeDefensa[i].AliadosDentro + " "; if (d.sectoresDeDefensa[i].AliadosDentro < MandoTactico.AliadosParaRecuperar) todosConDos = false; }
+                P6Ok(ref ok, todosConDos, sb, $"los {nSec} sectores con aliados a la vez: " + det);
                 // El texto del sector caido sale de la constante y, con las cuentas nuevas, se recupera.
                 var A = d.sectoresDeDefensa[0];
                 A.Caido = true; A.SegundosRecuperando = 0f;
@@ -376,7 +377,7 @@ namespace SP.EditorTools
                 string num = MandoTactico.AliadosParaRecuperar.ToString();
                 P6Ok(ref ok, aviso.Contains($"CON {num} ALIADOS") && d.MotivoDeLaPausa.Contains($"CON {num} ALIADOS"), sb, $"aviso='{aviso}' motivo='{d.MotivoDeLaPausa}' (contienen la constante {num})");
                 foreach (var x in W9bHasta(() => !A.Caido, 12f)) yield return x;
-                P6Ok(ref ok, !A.Caido, sb, "el sector caido se recupera con 2 aliados adentro (hay alcance para cubrirlo)");
+                P6Ok(ref ok, !A.Caido, sb, "el sector caido se recupera con los aliados de la constante adentro (hay alcance para cubrirlo)");
                 foreach (var x in CapturarPantalla(P7Prefijo + "122_sectores_cubiertos.png")) yield return x;
             }
             finally { P7Limpiar(); }
@@ -437,7 +438,7 @@ namespace SP.EditorTools
                 float dFin = guia.RutaActiva ? Vector3.Distance(new Vector3(guia.FinDeLaRuta.x, 0f, guia.FinDeLaRuta.z), new Vector3(A.x, 0f, A.z)) : 999f;
                 P6Ok(ref ok, guia.RutaActiva && guia.PuntosDeRuta >= 2 && dIni < 6f && dFin < 11f && guia.PasoGuiado == 1, sb, $"paso 2: punteado activo ({guia.PuntosDeRuta} puntos) desde {d.UnidadA.DisplayName} (a {dIni:0.0} m) hasta el sector A (a {dFin:0.0} m), ancho {guia.AnchoDeLaRuta:0.00} m");
                 P6Ok(ref ok, guia.FlechaVisible && Vector3.Distance(new Vector3(guia.PosicionDeLaFlecha.x, 0f, guia.PosicionDeLaFlecha.z), new Vector3(A.x, 0f, A.z)) < 3f, sb, "flecha 3D sobre el circulo del sector A");
-                P6Ok(ref ok, panel.TextoActual.Contains("SECTOR A") && panel.TextoActual.Contains("CLIC DERECHO"), sb, $"texto: '{panel.TextoActual}'");
+                P6Ok(ref ok, panel.TextoActual.Contains("SECTOR") && panel.TextoActual.Contains("CLIC DERECHO"), sb, $"texto: '{panel.TextoActual}'");
                 foreach (var x in CapturarPantalla(P7Prefijo + "114_paso2_punteado.png")) yield return x;
                 // el resto de los pasos de a uno
                 W10Ordenar(A, d.UnidadA);

@@ -727,24 +727,15 @@ namespace SP.EditorTools
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
             var campoAimRing = GetRequiredField(typeof(PlayerInputDriver), "aimRing",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-            var metodoLateUpdateAnillo = GetRequiredMethod(typeof(SelectionRingFx), "LateUpdate",
-                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
             var resultadoEnemigoB4 = new AimResult { Type = AimTargetType.Enemy, Soldier = enemigoParaB4, Point = enemigoParaB4.transform.position, HitTransform = enemigoParaB4.transform };
             metodoUpdateAimRing.Invoke(inputDriver, new object[] { resultadoEnemigoB4 });
             var anilloDeApuntado = (SelectionRingFx)campoAimRing.GetValue(inputDriver);
-            // LateUpdate no corre solo en Edit mode: se fuerza una vez,
-            // igual que con WorldUiDirector.Tick() en la tarea #1.
-            metodoLateUpdateAnillo.Invoke(anilloDeApuntado, null);
-
-            Physics.SyncTransforms();
-            float baseDelCollider = enemigoParaB4.GetComponentInChildren<Collider>().bounds.min.y;
-            Check($"Apuntando a un enemigo, el anillo existe y su Y ({anilloDeApuntado.transform.position.y:0.00}) coincide con la base de su collider ({baseDelCollider:0.00})",
-                anilloDeApuntado != null && anilloDeApuntado.gameObject.activeSelf
-                && Mathf.Abs(anilloDeApuntado.transform.position.y - baseDelCollider) < 0.05f);
-
+            // Pedido de pulido ("borrar el cilindro rojo / circulos de colores del piso"): el anillo de apuntado ya no se dibuja.
+            Check("Apuntando a un enemigo, ya no se dibuja el anillo de apuntado en el piso",
+                anilloDeApuntado == null || !anilloDeApuntado.gameObject.activeSelf);
             metodoUpdateAimRing.Invoke(inputDriver, new object[] { new AimResult { Type = AimTargetType.None } });
-            Check("Y sin objetivo bajo la mira, el anillo se oculta", !anilloDeApuntado.gameObject.activeSelf);
+            Check("Y sin objetivo bajo la mira tampoco hay anillo", anilloDeApuntado == null || !anilloDeApuntado.gameObject.activeSelf);
 
             UnityEngine.Object.DestroyImmediate(enemigoParaB4.gameObject);
 

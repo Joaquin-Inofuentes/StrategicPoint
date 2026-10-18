@@ -83,6 +83,7 @@ namespace SP.UI
             {
                 if (m == null) continue;
                 if (EsLibre(m.transform)) continue;
+                if (m.name.StartsWith("Letra_")) continue;   // las letras de los sectores (A, B) en el piso: la mision los nombra
                 var r = m.GetComponent<MeshRenderer>();
                 if (r != null && r.enabled) { r.enabled = false; ocultos++; }
             }

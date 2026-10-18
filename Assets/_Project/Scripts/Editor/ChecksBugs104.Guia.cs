@@ -97,8 +97,9 @@ namespace SP.EditorTools
             foreach (var t in WorldTag.Todas) if (t != null && t.gameObject.activeSelf && t.Texto.Contains("SIGUE")) { agrupados++; textoAgrupado = t.Texto; }
             bool nombresTodos = true;
             foreach (var a in aliados) if (!textoAgrupado.Contains(OrderService.NombreCorto(a))) nombresTodos = false;
-            if (agrupados != 1 || !nombresTodos) ok = false;
-            sb.Append($"carteles de seguimiento tras la orden = {agrupados} (se pide 1) '{textoAgrupado}'{(agrupados == 1 && nombresTodos ? "" : " MAL")}; ");
+            // Pulido de UI (2026-10-17): Feedback.Accion es solo sonido; ya no sale ningun cartel de "TE SIGUE" en el mundo.
+            if (agrupados != 0) ok = false;
+            sb.Append($"carteles de seguimiento tras la orden = {agrupados} (se pide 0: el feedback es solo sonido) '{textoAgrupado}'{(agrupados == 0 ? "" : " MAL")}; ");
 
             // ANTES (bug reproducido): sin apilar, los carteles individuales que nacen juntos se superponen.
             int solapesAntes = 0;
@@ -133,8 +134,8 @@ namespace SP.EditorTools
             }
             int solapes = 0;
             for (int i = 0; i < rects.Count; i++) for (int j = i + 1; j < rects.Count; j++) if (rects[i].Overlaps(rects[j])) solapes++;
-            if (rects.Count != aliados.Count || solapes > 0) ok = false;
-            sb.Append($"carteles individuales en pantalla {rects.Count}/{aliados.Count}, superposiciones={solapes}{(solapes == 0 && rects.Count == aliados.Count ? "" : " MAL")}; ");
+            if (rects.Count != 0 || solapes > 0) ok = false;
+            sb.Append($"carteles individuales en pantalla {rects.Count} (se pide 0: solo sonido), superposiciones={solapes}{(solapes == 0 && rects.Count == 0 ? "" : " MAL")}; ");
             if (CamaraPrincipal.Actual != null) RenderTemporal("v3_105_carteles_despues", cam.transform.position, cam.transform.position + cam.transform.forward * 10f, cam.fieldOfView);
 
             // (3) guia de objetivo: ruta punteada, flecha 3D sobre el objetivo y flecha a los pies.
@@ -142,8 +143,9 @@ namespace SP.EditorTools
             foreach (var x in Esperar(1.5f)) yield return x;
             var g = GuiaDeObjetivo.Instancia;
             bool ruta = g != null && g.RutaActiva, flecha = g != null && g.FlechaVisible, pies = g != null && g.FlechaDelPiesVisible;
-            if (!ruta || !flecha || !pies) ok = false;
-            sb.Append($"guia: activa={(g != null && g.Activa)} ruta punteada={ruta} ({(g != null ? g.PuntosDeRuta : 0)} puntos) flecha 3D={flecha} flecha a los pies={pies}{(ruta && flecha && pies ? "" : " MAL")}");
+            // La ruta punteada y la flecha a los pies del piso se quitaron a pedido (GuiaDeObjetivo.RutaActiva/FlechaDelPiesVisible => false): queda la flecha 3D.
+            if (ruta || !flecha || pies) ok = false;
+            sb.Append($"guia: activa={(g != null && g.Activa)} ruta punteada={ruta} (apagada a pedido) flecha 3D={flecha} flecha a los pies={pies} (apagada a pedido){(!ruta && flecha && !pies ? "" : " MAL")}");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 

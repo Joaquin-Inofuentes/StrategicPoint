@@ -336,6 +336,8 @@ namespace SP.EditorTools
         static IEnumerator Bug068()
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            // Pedido de pulido ("borrar circulos y planos de colores del piso"): el pulso de orden en el piso se apago a proposito (OrderMarkerFx.PulsosEnElPiso).
+            if (!OrderMarkerFx.PulsosEnElPiso) { Fin("OK el pulso de orden en el piso esta apagado a proposito (pedido de pulido); no hay marcador que medir"); yield break; }
             string r0 = OperacionPrueba.Arrancar(1, 1);
             foreach (var x in Esperar(1.5f)) yield return x;
             var sb = new StringBuilder(); bool ok = true;

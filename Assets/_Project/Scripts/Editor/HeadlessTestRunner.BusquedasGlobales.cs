@@ -54,6 +54,7 @@ namespace SP.EditorTools
             { "Simulacion/SimulacionBatallaBootstrap.cs", 1 }, // Start: una vez, prende el PerfHud de la escena de simulacion
             { "UI/HeadshotPopup.cs", 1 },              // Crear(): una vez, copia la fuente del HUD al armar el cartel
             { "UI/TurretAimView.cs", 1 },              // AsegurarAnillo: solo si el anillo llego nulo (bug #091), despues queda cacheado
+            { "UI/TextoSoloMision.cs", 2 },            // barrido de textos cada 0,1 s (pedido: solo el texto de mision); sin registro de Text ni TextMesh, igual que FuentesBelicas
         };
 
         static readonly Regex PatronBusquedaGlobal = new Regex(@"GameObject\.Find\(|FindObjectsByType|FindAnyObjectByType|FindFirstObjectByType|Resources\.FindObjectsOfTypeAll");

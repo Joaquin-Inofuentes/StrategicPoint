@@ -24,8 +24,9 @@ namespace SP.Mision
         float timerAlpha, timerPulso;
         int timerUltimoSegundo = -1;
 
-        public string TextoTitulo => titulo != null ? titulo.text : "";
-        public string TextoDetalle => detalle != null ? detalle.text : "";
+        string tituloLogico = "", detalleLogico = "";   // texto completo; en pantalla va la version minima
+        public string TextoTitulo => titulo != null ? (titulo.text.Length == 0 ? "" : tituloLogico) : "";
+        public string TextoDetalle => detalle != null ? (titulo != null && titulo.text.Length == 0 && detalle.text.Length == 0 ? "" : detalleLogico) : "";
         public string TextoDificultad => dificultad != null ? dificultad.text : "";
 
         public static MisionHud Crear(MisionDirector d)
@@ -227,6 +228,7 @@ namespace SP.Mision
                 }
             }
             // Minimas palabras posibles: el titulo a una palabra y el detalle a sus cifras.
+            tituloLogico = titulo.text; detalleLogico = detalle.text;
             titulo.text = TextoMinimo.Titulo(titulo.text);
             detalle.text = TextoMinimo.Detalle(detalle.text);
         }

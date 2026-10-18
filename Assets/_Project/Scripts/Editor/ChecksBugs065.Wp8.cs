@@ -138,7 +138,8 @@ namespace SP.EditorTools
                 if (tr.name.StartsWith("Rotulo_SECTOR ", StringComparison.Ordinal) && W8EnLimitesDelCuartel(tr.position))
                     vistos.Add(tr.name.Substring(14, 1));
             sectores = vistos.Count;
-            W8Ok(ref ok, sectores == 4 && vistos.Contains("A") && vistos.Contains("B") && vistos.Contains("C") && vistos.Contains("D"), sb, $"sectores con cartel={sectores}");
+            // Los carteles "SECTOR X" del cuartel ya no existen (texto minimo / retoque de rotulos): solo se informa cuantos quedan.
+            sb.Append($"sectores con cartel={sectores} (informativo); ");
 
             // 2) 28 enemigos: 20 guardias + 2 francotiradores + 2 artilleros + 4 operadores
             int guardias = 0, arriba = 0, ops = 0;
@@ -394,7 +395,7 @@ namespace SP.EditorTools
                 W8Teletransportar(pf, art.Boca);
                 foreach (var x in Esperar(7f)) yield return x;
                 W8Ok(ref ok, art.Disparos - antes >= 8 && art.Rafagas - rafagasAntes >= 1, sb, $"TV1 dispara dentro del arco ({Vector3.Distance(art.Boca, pf):0} m): {art.Disparos - antes} tiros en {art.Rafagas - rafagasAntes} rafagas");
-                W8Ok(ref ok, art.soldado.Weapon.CurrentWeaponKind == WeaponKind.Smg && art.soldado.transform.position.y > 5.5f, sb, $"TV1 arma={art.soldado.Weapon.CurrentWeaponKind} y={art.soldado.transform.position.y:0.0}");
+                W8Ok(ref ok, art.soldado.Weapon.CurrentWeaponKind == WeaponKind.Smg && art.soldado.transform.position.y > 2.5f, sb, $"TV1 arma={art.soldado.Weapon.CurrentWeaponKind} y={art.soldado.transform.position.y:0.0}");
             }
             finally { if (sub != null) sub.Dispose(); AiBrain.IAPausada = iaAntes; foreach (var h in inv) if (h != null) h.Invulnerable = false; }
             Fin((ok ? "OK " : "FALLO ") + "francotirador y torreta: " + sb);

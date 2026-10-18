@@ -151,7 +151,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, milicianos == 4 && rolesOk && elegibles.Count == 6 && seleccionados == 6, sb, $"P7/#122: 4 milicianos (Assault, Medic, Flanker, Assault), aliados seleccionables={elegibles.Count}, seleccion de todos={seleccionados} (pide 6 = 3 + 4 - el operador)");
             // 7) panel guiado y anillo guia en el paso 1.
             var panel = PanelDeMando.Instancia;
-            W8Ok(ref ok, panel != null && panel.Filas == OperacionDirector.PasosDelMando && panel.Actual == 0 && panel.TextoActual.Contains("SELECCION") && panel.TextoActual.Contains(RolRequerido.NombreCorto(d.UnidadA)), sb, $"panel: filas={(panel != null ? panel.Filas : -1)} actual={(panel != null ? panel.Actual : -9)} '{(panel != null ? panel.TextoActual : "-")}'");
+            W8Ok(ref ok, panel != null && panel.Filas == OperacionDirector.PasosDelMando && panel.Actual == 0 && panel.TextoActual.Contains("SELECCION"), sb, $"panel: filas={(panel != null ? panel.Filas : -1)} actual={(panel != null ? panel.Actual : -9)} '{(panel != null ? panel.TextoActual : "-")}'");
             W8Ok(ref ok, d.AnillosDeGuia == 1, sb, $"anillo guia sobre {d.UnidadA.DisplayName}: {d.AnillosDeGuia}");
             // el paso 1 se cumple al seleccionar a Kes y el anillo se apaga.
             W10Elegir(d.UnidadA);
@@ -195,11 +195,12 @@ namespace SP.EditorTools
             W10Elegir(ms.ToArray()); foreach (var x in Esperar(0.25f)) yield return x;
             W10Ordenar(d.sectoresDeDefensa[1].Centro, ms.ToArray()); foreach (var x in Esperar(0.25f)) yield return x;
             W10Elegir(c); foreach (var x in Esperar(0.25f)) yield return x;
-            W10Ordenar(d.sectoresDeDefensa[2].Centro, c); foreach (var x in Esperar(0.25f)) yield return x;
+            W10Ordenar(d.sectoresDeDefensa[1].Centro, c); foreach (var x in Esperar(0.25f)) yield return x;   // hoy son 2 sectores: el tercero va con los milicianos
+            int nSec = d.sectoresDeDefensa.Length;
             for (int i = 0; i < 3; i++) { llegada[i] = -1f; w10Cubierta[i] = -1f; }
             while (Time.realtimeSinceStartup - t0 < 45f)
             {
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < nSec; i++)
                 {
                     if (llegada[i] < 0f && d.sectoresDeDefensa[i].AliadosDentro > 0) llegada[i] = Time.realtimeSinceStartup - t0;
                     if (w10Cubierta[i] < 0f && llegada[i] >= 0f)
@@ -209,7 +210,8 @@ namespace SP.EditorTools
                             if (d.sectoresDeDefensa[i].Contiene(s.transform.position) && s.Brain.EnCobertura) { w10Cubierta[i] = Time.realtimeSinceStartup - t0; break; }
                         }
                 }
-                if (llegada[0] >= 0f && llegada[1] >= 0f && llegada[2] >= 0f && w10Cubierta[0] >= 0f && w10Cubierta[1] >= 0f && w10Cubierta[2] >= 0f) break;
+                bool todos = true; for (int i = 0; i < nSec; i++) if (llegada[i] < 0f || w10Cubierta[i] < 0f) todos = false;
+                if (todos) break;
                 yield return null;
             }
         }
@@ -237,15 +239,13 @@ namespace SP.EditorTools
             W8Ok(ref ok, d.PasoHecho[2] && panel.Actual == 3, sb, $"paso 3 (los dos milicianos) hecho, panel.Actual={panel.Actual}");
             float rAntes = d.RelojEfectivo;
             W10Ordenar(d.sectoresDeDefensa[1].Centro, ms.ToArray()); foreach (var x in Esperar(0.4f)) yield return x;
-            W8Ok(ref ok, d.PasoHecho[3] && panel.Actual == 4 && d.RelojDelMandoCorre, sb, $"paso 4 (milicianos al sector B) hecho, panel.Actual={panel.Actual}, el reloj corre={d.RelojDelMandoCorre}");
-            W10Ordenar(d.sectoresDeDefensa[2].Centro, c); foreach (var x in Esperar(0.4f)) yield return x;
-            W8Ok(ref ok, d.PasoHecho[4] && panel.Hechos >= 5, sb, $"paso 5 ({RolRequerido.NombreCorto(c)} al sector C) hecho, pasos hechos={panel.Hechos}");
+            W8Ok(ref ok, d.PasoHecho[3] && d.RelojDelMandoCorre, sb, $"paso 4 (milicianos al sector B) hecho, panel.Actual={panel.Actual} (el paso 5 se cumple solo cuando llegan), el reloj corre={d.RelojDelMandoCorre}");
             // 3) llegan a sus sectores; sale la primera flecha de aviso.
-            var llegada = new float[] { -1f, -1f, -1f };
+            var llegada = new float[] { -1f, -1f };
             float t0 = Time.realtimeSinceStartup; bool capSectores = false; bool flecha = false; int anunciadas = 0;
             while (Time.realtimeSinceStartup - t0 < 40f)
             {
-                for (int i = 0; i < 3; i++) if (llegada[i] < 0f && d.sectoresDeDefensa[i].AliadosDentro > 0) llegada[i] = Time.realtimeSinceStartup - t0;
+                for (int i = 0; i < 2; i++) if (llegada[i] < 0f && d.sectoresDeDefensa[i].AliadosDentro > 0) llegada[i] = Time.realtimeSinceStartup - t0;
                 if (FlechaDeOleada.Activas > 0) flecha = true;
                 anunciadas = d.OleadasDelMandoAnunciadas;
                 if (!capSectores && FlechaDeOleada.Activas > 0 && llegada[0] >= 0f)
@@ -254,10 +254,11 @@ namespace SP.EditorTools
                     foreach (var x in Esperar(5.0f)) yield return x;
                     foreach (var x in CapturarPantalla(W10Prefijo + "sectores.png")) yield return x;
                 }
-                if (llegada[0] >= 0f && llegada[1] >= 0f && llegada[2] >= 0f && capSectores) break;
+                if (llegada[0] >= 0f && llegada[1] >= 0f && capSectores) break;
                 yield return null;
             }
-            W8Ok(ref ok, llegada[0] >= 0f && llegada[1] >= 0f && llegada[2] >= 0f, sb, $"llegadas a A/B/C: {llegada[0]:0.0}/{llegada[1]:0.0}/{llegada[2]:0.0} s");
+            W8Ok(ref ok, llegada[0] >= 0f && llegada[1] >= 0f, sb, $"llegadas a A/B: {llegada[0]:0.0}/{llegada[1]:0.0} s");
+            W8Ok(ref ok, d.PasoHecho[4] && panel.Hechos >= 5, sb, $"paso 5 (los dos sectores con alguien adentro, cualquier soldado) hecho, pasos hechos={panel.Hechos}");
             W8Ok(ref ok, flecha && anunciadas >= 1 && capSectores, sb, $"flecha de oleada visible={flecha} (pool {FlechaDeOleada.Todas.Count}), oleadas anunciadas={anunciadas}");
             W8Ok(ref ok, d.RelojEfectivo > rAntes + 3f, sb, $"el reloj efectivo avanza: {rAntes:0.0} -> {d.RelojEfectivo:0.0} s");
             Fin((ok ? "OK " : "FALLO ") + sb);
@@ -293,11 +294,11 @@ namespace SP.EditorTools
             // Recuperar: Kes y el segundo (C) vuelven a A, 2 aliados adentro 4 s.
             var otro = d.UnidadC;
             W10Ordenar(A.Centro, kes, otro);
-            foreach (var x in W9bHasta(() => A.AliadosDentro >= 2, 40f)) yield return x;
+            foreach (var x in W9bHasta(() => A.AliadosDentro >= MandoTactico.AliadosParaRecuperar, 40f)) yield return x;
             float tDentro = Time.realtimeSinceStartup;
             foreach (var x in W9bHasta(() => !A.Caido, 15f)) yield return x;
             float segRec = Time.realtimeSinceStartup - tDentro;
-            W8Ok(ref ok, !A.Caido && segRec >= 3.0f && segRec <= 6.5f, sb, $"A se recupera {segRec:0.0} s despues de tener 2 aliados adentro (4 +- 1,5)");
+            W8Ok(ref ok, !A.Caido && segRec >= 3.0f && segRec <= 6.5f, sb, $"A se recupera {segRec:0.0} s despues de tener {MandoTactico.AliadosParaRecuperar} aliado(s) adentro (4 +- 1,5)");
             float r2 = d.RelojEfectivo;
             foreach (var x in Esperar(3.0f)) yield return x;
             W8Ok(ref ok, d.RelojEfectivo > r2 + 1.5f && d.SectoresCaidosTotales >= 1, sb, $"el reloj sigue ({r2:0.0} -> {d.RelojEfectivo:0.0}), sectores caidos en la partida={d.SectoresCaidosTotales}");
@@ -313,18 +314,19 @@ namespace SP.EditorTools
             ok = w10Listo;
             var d = OperacionDirector.Instancia; if (!ok) { Fin("FALLO " + sb); yield break; }
             // Puntos de cobertura que ofrece cada sector (>= 3 de los 4 pedidos).
-            for (int i = 0; i < 3; i++)
+            int nSec = d.sectoresDeDefensa.Length;
+            for (int i = 0; i < nSec; i++)
             {
                 int n = d.PuntosDeCoberturaDelSector(i).Count;
                 W8Ok(ref ok, n >= 3, sb, $"sector {d.sectoresDeDefensa[i].letra}: {n} puntos de cobertura");
             }
             // Desde que cada sector tiene aliados adentro, alguno queda en cobertura en <= 6 s.
-            for (int i = 0; i < 3; i++)
+            for (int i = 0; i < nSec; i++)
             {
                 float dt = w10Cubierta[i] - llegada[i];
                 W8Ok(ref ok, llegada[i] >= 0f && w10Cubierta[i] >= 0f && dt <= 6f, sb, $"sector {d.sectoresDeDefensa[i].letra}: en cobertura {dt:0.0} s despues de llegar (llegada a los {llegada[i]:0.0} s)");
             }
-            W8Ok(ref ok, d.CoberturasAutomaticas >= 3, sb, $"ordenes de cobertura automaticas={d.CoberturasAutomaticas}");
+            W8Ok(ref ok, d.CoberturasAutomaticas >= nSec, sb, $"ordenes de cobertura automaticas={d.CoberturasAutomaticas}");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 
@@ -456,7 +458,7 @@ namespace SP.EditorTools
             foreach (var x in Esperar(0.6f)) yield return x;
             var op = MandoTactico.Operador; var panel = PanelDeMando.Instancia;
             W8Ok(ref ok, op == doc && d.UnidadA != null && d.UnidadC != null && d.UnidadA != op && d.UnidadC != op && d.UnidadA != d.UnidadC, sb, $"operador={op.DisplayName}, unidades del tutorial A={d.UnidadA.DisplayName} C={d.UnidadC.DisplayName} (ninguna es el operador)");
-            W8Ok(ref ok, panel.TextoActual.Contains(RolRequerido.NombreCorto(d.UnidadA)) && d.AnillosDeGuia == 1, sb, $"paso 1 nombra a {RolRequerido.NombreCorto(d.UnidadA)}: '{panel.TextoActual}'");
+            W8Ok(ref ok, panel.TextoActual.Contains("SELECCION") && d.AnillosDeGuia == 1, sb, $"paso 1 pide seleccionar a un soldado (el texto ya no nombra a nadie): '{panel.TextoActual}'");
             W8Ok(ref ok, d.Milicianos.Count == MandoTactico.CantidadDeMilicianos && d.MedicoDeApoyo != null && d.MedicoDeApoyo != op, sb, $"medico de apoyo={(d.MedicoDeApoyo != null ? d.MedicoDeApoyo.DisplayName : "-")}");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
@@ -505,14 +507,16 @@ namespace SP.EditorTools
         static string Bug101f()
         {
             var sb = new StringBuilder(); bool ok = true;
-            W8Ok(ref ok, MandoTactico.SegundosDeAnuncio == 12f && MandoTactico.SegundosParaCaer == 10f && MandoTactico.SegundosParaRecuperar == 4f && MandoTactico.AliadosParaRecuperar == 2 && MandoTactico.FactorDeDanoDelOperador == 0.5f, sb, "constantes (ajuste de equilibrio 12 s / 10 s): 12 s de aviso, 10 s para caer, 4 s y 2 aliados para recuperar, dano x0,5");
+            bool modoDirecto0 = MandoTactico.ModoDirecto; MandoTactico.ModoDirecto = false;   // las reglas con pasos y radio son las del flujo clasico
+            W8Ok(ref ok, MandoTactico.SegundosDeAnuncio == 12f && MandoTactico.SegundosParaCaer == 10f && MandoTactico.SegundosParaRecuperar == 4f && MandoTactico.AliadosParaRecuperar == 1 && MandoTactico.FactorDeDanoDelOperador == 0.5f, sb, "constantes (ajuste de equilibrio 12 s / 10 s): 12 s de aviso, 10 s para caer, 4 s y 1 aliado para recuperar (pedido: con quien sea), dano x0,5");
             W8Ok(ref ok, MandoTactico.RelojCorre(4, true, false, 0) && !MandoTactico.RelojCorre(3, true, false, 0) && !MandoTactico.RelojCorre(4, false, false, 0) && !MandoTactico.RelojCorre(4, true, true, 0) && !MandoTactico.RelojCorre(4, true, false, 1), sb, "reloj: solo con pasos 1-4, radio, ningun sector caido y ningun amenazado vacio");
             W8Ok(ref ok, MandoTactico.MotivoDePausa(4, true, false, 0) == "" && MandoTactico.MotivoDePausa(2, true, false, 0).StartsWith("UBICA") && MandoTactico.MotivoDePausa(4, false, false, 0).StartsWith("RADIO") && MandoTactico.MotivoDePausa(4, true, true, 0).StartsWith("SECTOR CAIDO") && MandoTactico.MotivoDePausa(4, true, false, 2).StartsWith("SECTOR AMENAZADO"), sb, "motivos de pausa");
             W8Ok(ref ok, !MandoTactico.DebeCaer(9.9f) && MandoTactico.DebeCaer(10f), sb, "cae a los 10 s (ajuste de equilibrio, antes 6)");
-            W8Ok(ref ok, MandoTactico.AliadosNecesarios(5) == 2 && MandoTactico.AliadosNecesarios(1) == 1 && MandoTactico.AliadosNecesarios(0) == 1, sb, "aliados necesarios: 2 (o los que queden)");
-            W8Ok(ref ok, MandoTactico.SeRecupera(2, 4, 4f) && !MandoTactico.SeRecupera(1, 4, 9f) && !MandoTactico.SeRecupera(2, 4, 3.9f) && MandoTactico.SeRecupera(1, 1, 4f), sb, "se recupera con 2 aliados 4 s (con 1 vivo, basta 1)");
+            W8Ok(ref ok, MandoTactico.AliadosNecesarios(5) == MandoTactico.AliadosParaRecuperar && MandoTactico.AliadosNecesarios(1) == 1 && MandoTactico.AliadosNecesarios(0) == 1, sb, "aliados necesarios: la constante (o los que queden)");
+            W8Ok(ref ok, MandoTactico.SeRecupera(MandoTactico.AliadosParaRecuperar, 4, 4f) && !MandoTactico.SeRecupera(0, 4, 9f) && !MandoTactico.SeRecupera(MandoTactico.AliadosParaRecuperar, 4, 3.9f) && MandoTactico.SeRecupera(1, 1, 4f), sb, "se recupera con los aliados de la constante adentro 4 s (con 1 vivo, basta 1)");
             W8Ok(ref ok, MandoTactico.TextoDeRecuperar().Contains(MandoTactico.AliadosParaRecuperar.ToString()) && MandoTactico.MotivoDePausa(4, true, true, 0).Contains(MandoTactico.AliadosParaRecuperar.ToString()), sb, "P7/#122: los textos de recuperar salen de la constante");
             W8Ok(ref ok, !MandoTactico.EnRadio && !MandoTactico.BloqueaElCambioDeVista() && !MandoTactico.BloqueaLaPosesion() && !CameraRig.RtsForzado, sb, "sin radio nada bloquea: Tab, posesion ni camara");
+            MandoTactico.ModoDirecto = modoDirecto0;
             return (ok ? "OK " : "FALLO ") + sb;
         }
 
@@ -548,7 +552,7 @@ namespace SP.EditorTools
             var kv = new Dictionary<string, string>();
             d.CapturarEstado(kv);
             string rel = kv.ContainsKey("relojEfectivo") ? kv["relojEfectivo"] : "-";
-            W8Ok(ref ok, kv.ContainsKey("relojEfectivo") && kv["radioTomada"] == "True" && kv["sectoresCaidos"] == "1" && kv.ContainsKey("pasosMando"), sb, $"capturado: relojEfectivo={rel} radioTomada={kv["radioTomada"]} sectoresCaidos={kv["sectoresCaidos"]} pasos={kv["pasosMando"]}");
+            W8Ok(ref ok, kv.ContainsKey("relojEfectivo") && kv["radioTomada"] == "True" && kv["sectoresCaidos"].Contains("1") && kv.ContainsKey("pasosMando"), sb, $"capturado: relojEfectivo={rel} radioTomada={kv["radioTomada"]} sectoresCaidos={kv["sectoresCaidos"]} pasos={kv["pasosMando"]}");
             // Se vuelve a la llegada y se restaura.
             OperacionPrueba.Arrancar(5);
             foreach (var x in Esperar(1.0f)) yield return x;

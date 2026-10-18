@@ -247,7 +247,7 @@ namespace SP.EditorTools
                     ColocarMuro();   // se mide contra el muro donde estaba cuando se calculo el anillo; recien despues se lo reacomoda
                 }
                 float media = (rMin + rMax) * 0.5f; float amp = media > 0f ? (rMax - rMin) * 0.5f / media : 0f;
-                bool anillo = enMuro + enCascoPropio >= 20 && enMuro >= 8 && enOtro == 0 && amp >= 0.04f && tipo0 != TurretAimView.TipoDeImpacto.Enemigo;
+                bool anillo = enMuro + enCascoPropio >= 20 && enMuro >= 8 && enOtro == 0 && (TurretAimView.Vibra ? amp >= 0.04f : amp < 0.01f) && tipo0 != TurretAimView.TipoDeImpacto.Enemigo;
                 if (!anillo) ok = false;
                 sb.Append($"d) anillo sobre el muro: dibujado en {dibujados}/40 frames ({enMuro} sobre el muro a <= {dMax:0.00} m de la superficie, {enSuelo} en el piso antes del muro, {enOtro} en otro lado [{otroInfo}], {enCascoPropio} sobre el casco propio (tolerado)), radio {rMin:0.00}-{rMax:0.00} (vibra +-{amp * 100f:0.0}%), tipo={tipo0}{(anillo ? "" : "(MAL)")}; ");
                 if (dibujados > 0)

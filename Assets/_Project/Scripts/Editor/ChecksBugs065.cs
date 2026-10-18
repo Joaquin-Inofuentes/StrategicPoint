@@ -120,6 +120,20 @@ namespace SP.EditorTools
             EditorApplication.update += Paso;
         }
 
+        // Mensaje + primera linea del stack: sin esto "Object reference not set" no dice donde.
+        // Los checks de la radio (#101..#124) se escribieron con el mando por radio; desde el commit 1dc49a12 el modo directo es el de fabrica.
+        // Estos checks piden la radio clasica (Arrancar la deja tomada) y el resto se prueba con el modo de fabrica.
+        public static bool RadioClasica;
+        static readonly Regex reRadio = new Regex(@"^Bug(10[1-9]|11\d|12[0-4])", RegexOptions.Compiled);
+        static void PrepararModoDelMando(string nombre) { RadioClasica = !string.IsNullOrEmpty(nombre) && reRadio.IsMatch(nombre); }
+
+        static string DetalleDeExcepcion(Exception e)
+        {
+            var x = e.InnerException ?? e;
+            var linea = (x.StackTrace ?? "").Split(new[] { (char)10 });
+            return x.Message + (linea.Length > 0 && linea[0].Trim().Length > 0 ? " @ " + linea[0].Trim() : "");
+        }
+
         public static string Correr(int bug)
         {
             if (Estado == "corriendo") return "ERROR: ya hay una corrida en curso (Estado=corriendo)";
@@ -134,10 +148,10 @@ namespace SP.EditorTools
                 var sb = new StringBuilder();
                 foreach (var m in ms)
                 {
-                    erroresDeConsola = 0;
+                    erroresDeConsola = 0; PrepararModoDelMando(m.Name);
                     string r;
                     try { r = (string)m.Invoke(null, null); }
-                    catch (Exception e) { r = "FALLO excepcion: " + (e.InnerException ?? e).Message; }
+                    catch (Exception e) { r = "FALLO excepcion: " + DetalleDeExcepcion(e); }
                     if (sb.Length > 0) sb.Append(Environment.NewLine);
                     sb.Append(Linea(bug, r, m));
                 }
@@ -281,7 +295,7 @@ namespace SP.EditorTools
                         bugActual = int.Parse(partes[0], CultureInfo.InvariantCulture);
                         var nombre = partes.Length > 1 ? partes[1] : "";
                         metodoActual = nombre.Length > 0 ? typeof(ChecksBugs065).GetMethod(nombre, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic) : null;
-                        erroresDeConsola = 0; salida = null; actual = null;
+                        erroresDeConsola = 0; salida = null; actual = null; PrepararModoDelMando(nombre);
                         SP.Core.PartidaGuardada.ModoPrueba = true;   // P10: los checks nunca escriben la partida guardada real
                         if (metodoActual == null) { Anotar(bugActual, "SIN CHECK"); SiguienteCheck(); continue; }
                         // WP9a (#097): la cinematica inicial bloquea todo el input; salvo los checks de la propia cinematica (Bug097*), se la corta antes de cada check.
@@ -290,12 +304,12 @@ namespace SP.EditorTools
                         {
                             string r;
                             try { r = (string)metodoActual.Invoke(null, null); }
-                            catch (Exception e) { r = "FALLO excepcion: " + (e.InnerException ?? e).Message; }
+                            catch (Exception e) { r = "FALLO excepcion: " + DetalleDeExcepcion(e); }
                             Anotar(bugActual, r);
                             SiguienteCheck(); continue;
                         }
                         try { actual = (IEnumerator)metodoActual.Invoke(null, null); }
-                        catch (Exception e) { Anotar(bugActual, "FALLO excepcion: " + (e.InnerException ?? e).Message); actual = null; SiguienteCheck(); continue; }
+                        catch (Exception e) { Anotar(bugActual, "FALLO excepcion: " + DetalleDeExcepcion(e)); actual = null; SiguienteCheck(); continue; }
                         Fase = "corriendo"; continue;
                     }
                     if (fase == "corriendo")
@@ -310,7 +324,7 @@ namespace SP.EditorTools
                         }
                         bool sigue;
                         try { sigue = actual.MoveNext(); }
-                        catch (Exception e) { Anotar(bugActual, "FALLO excepcion: " + (e.InnerException ?? e).Message); actual = null; SiguienteCheck(); continue; }
+                        catch (Exception e) { Anotar(bugActual, "FALLO excepcion: " + DetalleDeExcepcion(e)); actual = null; SiguienteCheck(); continue; }
                         if (salida != null || !sigue)
                         {
                             Anotar(bugActual, salida ?? "FALLO el check asincrono termino sin llamar a Fin()");
@@ -342,7 +356,7 @@ namespace SP.EditorTools
                 var p = cola[idx].Split('|');
                 bugActual = int.Parse(p[0], CultureInfo.InvariantCulture);
                 metodoActual = p.Length > 1 && p[1].Length > 0 ? typeof(ChecksBugs065).GetMethod(p[1], BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic) : null;
-                erroresDeConsola = 0;
+                erroresDeConsola = 0; PrepararModoDelMando(p.Length > 1 ? p[1] : "");
                 Anotar(bugActual, "FALLO " + motivo);
             }
             SiguienteCheck();
@@ -368,6 +382,9 @@ namespace SP.EditorTools
         {
             EditorApplication.update -= Paso;
             Escuchar(false);
+            // Los checks de la radio dejan estaticos del mando y de la camara (se reinician solo al entrar a Play); sin esto contaminan la suite headless.
+            RadioClasica = false;
+            try { SP.CameraSystem.CameraRig.ProveedorDeRtsForzado = null; SP.CameraSystem.CameraRig.LimiteDePaneoRts = null; typeof(SP.Operacion.MandoTactico).GetMethod("Reiniciar", BindingFlags.Static | BindingFlags.NonPublic)?.Invoke(null, null); } catch (Exception) { }
             Estado = "listo";
             Fase = "";
             try { File.AppendAllText(ArchivoProgreso, "# FIN" + Environment.NewLine); } catch (Exception) { }

@@ -16,8 +16,10 @@ namespace SP.Operacion
         int promptFrame = -1;
         Transform raizHud;
         Font fuenteHud;
-        public string TextoTitulo => titulo != null ? titulo.text : "";
-        public string TextoDetalle => detalle != null ? detalle.text : "";
+        // En pantalla se muestra la version minima (TextoMinimo); el texto LOGICO completo queda aca para quien lo lea (checks, guia, guardado).
+        string tituloLogico = "", detalleLogico = "";
+        public string TextoTitulo => titulo != null ? (titulo.text.Length == 0 ? "" : tituloLogico) : "";
+        public string TextoDetalle => detalle != null ? (titulo != null && titulo.text.Length == 0 && detalle.text.Length == 0 ? "" : detalleLogico) : "";
         public string TextoPrompt => prompt != null && promptFrame >= Time.frameCount - 2 ? prompt.text : "";
         public string TextoTimer => timerGrupo != null && timerGrupo.alpha > 0.01f ? timerEtiqueta.text + " " + timerNumero.text : "";
 
@@ -178,6 +180,7 @@ namespace SP.Operacion
         public void Objetivo(string tit, string det, float progreso01, Color color)
         {
             if (titulo == null) return;
+            tituloLogico = tit ?? ""; detalleLogico = det ?? "";
             titulo.text = SP.UI.TextoMinimo.Titulo(tit); detalle.text = SP.UI.TextoMinimo.Detalle(det);   // minimas palabras posibles
             relleno.sizeDelta = new Vector2(barra.sizeDelta.x * Mathf.Clamp01(progreso01), 0f);
             relleno.GetComponent<Image>().color = color;
