@@ -346,11 +346,11 @@ namespace SP.EditorTools
                 peorInclinacion = Mathf.Max(peorInclinacion, Vector3.Angle(kes.transform.up, Vector3.up));
                 maxEscala = Mathf.Max(maxEscala, Mathf.Max(kes.transform.lossyScale.x, Mathf.Max(kes.transform.lossyScale.y, kes.transform.lossyScale.z)));
                 var smr = kes.GetComponentInChildren<SkinnedMeshRenderer>();
-                if (smr != null) { minY = Mathf.Min(minY, smr.bounds.min.y - kes.transform.position.y); minAltura = Mathf.Min(minAltura, smr.bounds.size.y); }
+                if (smr != null) { minY = Mathf.Min(minY, MallaMinima(kes, out _)); minAltura = Mathf.Min(minAltura, smr.bounds.size.y); }
             }
             W8Ok(ref ok, peorInclinacion < 6f, sb, $"el cuerpo no se inclina entre los escombros (peor {peorInclinacion:0.0} grados)");
             W8Ok(ref ok, maxEscala < 1.15f, sb, $"la escala no se deforma (max {maxEscala:0.00})");
-            W8Ok(ref ok, minY > -0.12f, sb, $"la malla no se hunde (min {minY:0.00} m bajo el pivote)");
+            W8Ok(ref ok, minY > -0.12f, sb, $"la malla no se hunde (min {minY:0.00} m bajo el piso)");
             W8Ok(ref ok, minAltura > 1.2f, sb, $"el cuerpo conserva su altura (min {minAltura:0.00} m)");
             var cam = CamaraPrincipal.Actual;
             var pos = kes.transform.position + new Vector3(0f, 2.2f, -3.2f);
