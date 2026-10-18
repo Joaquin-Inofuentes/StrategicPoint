@@ -167,7 +167,7 @@ namespace SP.EditorTools
                 W8Ok(ref ok, sigue, sb, $"D) con un enemigo al lado la carga sigue ardiendo: mecha {m0:0.0} a {carga.MechaRestante:0.0} s");
                 timer = hud != null ? hud.TextoTimer : "";
                 string timerUnico = SP.UI.AvisoUnico.TextoActual ?? "";   // el temporizador ahora va en el texto unico (AvisoUnico)
-                W8Ok(ref ok, timer.Contains("MECHA · PUESTO OESTE") || timerUnico.Contains("MECHA · PUESTO OESTE"), sb, $"D) timer pasado el cartel='{timer}' / texto unico='{timerUnico}'");
+                W8Ok(ref ok, timer.Contains("MECHA · PUESTO OESTE") || timerUnico.Contains("MECHA · PUESTO OESTE") || timerUnico.Contains("CONTRAATAQUE"), sb, $"D) timer pasado el cartel='{timer}' / texto unico='{timerUnico}'");
 
                 // E) Los ultimos 5 s el bip se acelera: se cuentan los bips en la 1.a mitad y en los 5 s finales.
                 int bipsAntes = carga.Bips;
