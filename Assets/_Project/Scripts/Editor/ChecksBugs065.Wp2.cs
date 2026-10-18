@@ -333,7 +333,7 @@ namespace SP.EditorTools
                 }
             }
             var dest = GenericSfx.Get(SfxKind.DestruccionVehiculo);
-            bool destOk = dest != null && dest.name == "DestruccionVehiculo" && dest.length > 3f && MuestrasMono(dest, out var md) && RmsDe(md) > 0.02f;
+            bool destOk = dest != null && dest.length > 0.5f && MuestrasMono(dest, out var md) && RmsDe(md) > 0.02f;   // desde c7548050 es un sample real (Freesound) y no el sintetico de 3 s
             if (!destOk) ok = false;
             sb.Append($"DestruccionVehiculo: {(dest != null ? dest.length.ToString("0.0") + " s" : "null")}{(destOk ? "" : " (MAL)")}; ");
             if (dest != null && MuestrasMono(dest, out var md2)) GuardarOnda("v2_072_destruccion_chapa.png", md2, dest.frequency);
@@ -377,7 +377,7 @@ namespace SP.EditorTools
             {
                 auto.Vehiculo.TakeDamage(9999999, -1);
                 for (int i = 0; i < 20; i++) yield return null;
-                autoOk = AudioDirector.SonoRecien("DestruccionVehiculo", 30);
+                autoOk = dest != null && AudioDirector.SonoRecien(dest.name, 30);
             }
             if (!autoOk) ok = false;
             sb.Append($"camioneta {(auto != null ? "destruida" : "NO HALLADA")}: sono DestruccionVehiculo={autoOk}{(autoOk ? "" : " (MAL)")}; ");
@@ -391,7 +391,7 @@ namespace SP.EditorTools
                 int antes = AudioDirector.TotalReproducidos;
                 tanque.FinalExplosion();
                 yield return null; yield return null;
-                finalOk = AudioDirector.SonoRecien("DestruccionVehiculo", 10) && AudioDirector.SonoRecien("Explosion+Sub", 10) && AudioDirector.TotalReproducidos - antes >= 2;
+                finalOk = dest != null && AudioDirector.SonoRecien(dest.name, 10) && AudioDirector.SonoRecien("Explosion+Sub", 10) && AudioDirector.TotalReproducidos - antes >= 2;
                 if (tanque.FinalExplosionDone && !finalOk) sb.Append($"[reproducciones tras FinalExplosion: +{AudioDirector.TotalReproducidos - antes}] ");
             }
             if (!finalOk) ok = false;

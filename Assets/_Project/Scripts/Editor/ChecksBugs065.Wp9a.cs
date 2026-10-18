@@ -296,7 +296,14 @@ namespace SP.EditorTools
                 while (!carga.EstaPlantada && Time.realtimeSinceStartup - t0 < 25f) yield return null;
                 float tardo = Time.realtimeSinceStartup - t0;
                 W8Ok(ref ok, acepto && carga.EstaPlantada && carga.Plantador == vega, sb, $"B) EnviarA(Vega) acepto={acepto}, plantada por {(carga.Plantador != null ? carga.Plantador.name : "nadie")} a los {tardo:0.0} s (12 m de caminata + 3,5 s)");
-                int act = 0; foreach (var s in d.puestos[0].contraataque.soldados) if (s != null && s.gameObject.activeSelf) act++;
+                // Bug #158: el porton del cuartel de reserva se levanta antes de que salgan: se espera a que terminen de salir.
+                int act = 0;
+                float tSal = Time.realtimeSinceStartup;
+                while (act < OperacionDirector.ContraatacantesPrimera && Time.realtimeSinceStartup - tSal < 15f)
+                {
+                    act = 0; foreach (var s in d.puestos[0].contraataque.soldados) if (s != null && s.gameObject.activeSelf) act++;
+                    yield return null;
+                }
                 W8Ok(ref ok, act == OperacionDirector.ContraatacantesPrimera, sb, $"B) y el contraataque salio igual ({act}/4)");
                 foreach (var x in CapturarPantalla("v2_082_orden_q.png")) yield return x;
             }

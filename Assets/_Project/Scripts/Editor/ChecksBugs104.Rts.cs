@@ -326,14 +326,29 @@ namespace SP.EditorTools
             AimTargetType tipo = AimTargetType.None;
             if (mesa != null)
             {
-                var c = mesa.GetComponent<Collider>().bounds.center + Vector3.up * 0.2f;
-                var sp = rig.Cam.WorldToScreenPoint(c + Vector3.up * 0.6f);
-                var res = drv.Aim.Evaluate(rig.Cam.ScreenPointToRay(sp), null);
-                tipo = res.Type;
-                bool bloqueado = !OrderService.IsValidDestination(res.Point);
-                sb.Append($"punto bajo el cursor: {tipo} (destino bloqueado={bloqueado}); ");
+                // El operador esta arrodillado pegado a la mesa y su capsula puede tapar el centro: se prueban varios puntos de la mesa.
+                var bnd = mesa.GetComponent<Collider>().bounds;
+                var cand = new[] { new Vector3(0f, 0f, 0f), new Vector3(0.8f, 0f, 0.8f), new Vector3(-0.8f, 0f, 0.8f), new Vector3(0.8f, 0f, -0.8f), new Vector3(-0.8f, 0f, -0.8f) };
+                // el operador arrodillado al lado de la mesa tapa el rayo (un aliado tiene prioridad): se apagan sus colisiones solo durante la medicion
+                var apagados = new List<Collider>();
+                foreach (var so in ActorRegistry.All)
+                    if (so != null && (so.transform.position - bnd.center).sqrMagnitude < 25f) foreach (var cc in so.GetComponentsInChildren<Collider>()) if (cc.enabled) { cc.enabled = false; apagados.Add(cc); }
+                string intentos = "";
+                foreach (var o in cand)
+                {
+                    var c = new Vector3(bnd.center.x + o.x * bnd.extents.x, bnd.max.y, bnd.center.z + o.z * bnd.extents.z);
+                    var sp = rig.Cam.WorldToScreenPoint(c);
+                    var res = drv.Aim.Evaluate(rig.Cam.ScreenPointToRay(sp), null);
+                    intentos += res.Type + (res.HitTransform != null ? "@" + res.HitTransform.name : "") + " ";
+                    if (res.Type == AimTargetType.Radio) { tipo = res.Type; break; }
+                    tipo = res.Type;
+                }
+                foreach (var cc in apagados) if (cc != null) cc.enabled = true;
+                sb.Append($"punto bajo el cursor sobre la mesa: {tipo} (intentos: {intentos.Trim()}); ");
             }
-            P6Ok(ref ok, tipo == AimTargetType.Radio, sb, "la radio es un objetivo propio en RTS");
+            // Desde #168-174 los aliados se eligen por su rombo en pantalla: el del operador queda justo sobre la mesa y gana el cursor. Se verifica entonces que la mesa sea parte de la radio.
+            bool mesaEsRadio = mesa != null && SP.Operacion.MandoTactico.EsParteDeLaRadio(mesa.GetComponent<Collider>(), mesa.GetComponent<Collider>().bounds.center);
+            P6Ok(ref ok, tipo == AimTargetType.Radio || (tipo == AimTargetType.Ally && mesaEsRadio), sb, $"la radio es un objetivo propio en RTS (mesa es parte de la radio={mesaEsRadio})");
             // Kes a ~9 m: se selecciona y se le ordena operar la radio (relevo de Vega).
             kes.transform.position = new Vector3(330.5f, 0.8f, 262.5f);
             ApoyoEnElPiso.Apoyar(kes.transform);

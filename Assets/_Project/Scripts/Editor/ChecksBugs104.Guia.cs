@@ -161,6 +161,7 @@ namespace SP.EditorTools
             {
                 NavMesh.SamplePosition(cp + new Vector3(i == 0 ? 2.5f : -2.5f, 0f, -3f), out var h, 4f, NavMesh.AllAreas);
                 aliados[i].transform.position = new Vector3(h.position.x, aliados[i].transform.position.y, h.position.z);
+                { var ag = aliados[i].GetComponent<NavMeshAgent>(); if (ag != null && ag.enabled && ag.isOnNavMesh) ag.Warp(aliados[i].transform.position); }   // el agente simple sigue a su propio estado: hay que avisarle del salto
                 aliados[i].Brain.CancelOrder();
             }
             yield return null;
@@ -184,6 +185,7 @@ namespace SP.EditorTools
             var sb = new StringBuilder(); bool ok = true;
             var aliados = AliadosDelPoseido();
             if (aliados.Count < 2) { Fin("FALLO se esperaban >= 2 aliados"); yield break; }
+            ModoDios.Poner(true);   // la explosion del ANTES mataba a los aliados y el DESPUES media cadaveres
             float radio = CargaExplosiva.RadioDeExplosion;
             int n = aliados.Count;
 

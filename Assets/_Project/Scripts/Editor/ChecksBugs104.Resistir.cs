@@ -110,7 +110,9 @@ namespace SP.EditorTools
                     if (m.Health.IsAlive) { tRevivio = t; break; }
                 }
                 Teclas();
-                P6Ok(ref ok, tRevivio >= 4.3f && tRevivio <= 7.2f, sb, $"[E] mantenido: el miliciano revive a los {tRevivio:0.0} s (se espera ~5)");
+                var quien = PlayerInputDriver.Activo != null && PlayerInputDriver.Activo.Brain != null ? PlayerInputDriver.Activo.Brain.Current : null;
+                bool esMedico = quien != null && quien.Role == RoleType.Medic;   // el medico reanima al doble de rapido (TiempoDeReanimarMedico)
+                P6Ok(ref ok, esMedico ? (tRevivio >= 2.3f && tRevivio <= 4.0f) : (tRevivio >= 4.3f && tRevivio <= 7.2f), sb, $"[E] mantenido: el miliciano revive a los {tRevivio:0.0} s (se espera ~{(esMedico ? "2,5 con medico" : "5")})");
                 foreach (var x in Esperar(0.5f)) yield return x;
                 P6Ok(ref ok, m.Health.IsAlive && MandoTactico.EsMiliciano(m) && d.Milicianos.Count == MandoTactico.CantidadDeMilicianos && m.Brain != null && !m.Brain.IsPossessedByPlayer, sb, "vivo, sigue siendo miliciano y con su cerebro de IA");
             }

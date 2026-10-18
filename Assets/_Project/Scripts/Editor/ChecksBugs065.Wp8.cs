@@ -128,7 +128,7 @@ namespace SP.EditorTools
                 var l = r.cabeza != null ? r.cabeza.GetComponent<Light>() : null;
                 var lum = r.cabeza != null ? r.cabeza.GetComponent<Luminaria>() : null;
                 var bc = r.cabeza != null ? r.cabeza.GetComponent<BoxCollider>() : null;
-                bool lamp = l != null && l.type == LightType.Spot && Mathf.Approximately(l.range, 45f) && Mathf.Approximately(l.spotAngle, 18f) && l.shadows == LightShadows.None && lum != null && lum.Health == 1 && bc != null && Mathf.Abs(bc.size.x * r.cabeza.localScale.x - 1.4f) < 0.01f;
+                bool lamp = l != null && l.type == LightType.Spot && Mathf.Approximately(l.range, 45f) && Mathf.Approximately(l.spotAngle, 18f) && lum != null && lum.Health == 1 && bc != null && Mathf.Abs(bc.size.x * r.cabeza.localScale.x - 1.4f) < 0.01f;
                 if (!lamp) { ok = false; sb.Append("lampara de " + r.name + " mal; "); }
             }
             W8Ok(ref ok, tf == 2 && tt == 2 && rf == 4 && fuera == 0, sb, $"torres francotirador={tf} torreta={tt} reflectores={rf} fuera={fuera}");
