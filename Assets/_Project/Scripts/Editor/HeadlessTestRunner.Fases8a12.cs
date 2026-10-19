@@ -162,6 +162,27 @@ namespace SP.EditorTools
             // recorrido que los cruza mide la navegacion (o el combate),
             // no el recorrido. El primer intento trazaba por (6,6), que
             // pasa por adentro de Obstaculo_1.
+            // El blindado llega a esta fase con la velocidad de las anteriores y a veces queda estacionado sobre la ruta de abajo (a ~5 m del punto 3):
+            // Kes quedaba fuera del NavMesh pegado al casco y el recorrido fallaba de forma intermitente. Se lo frena y se lo deja lejos (G3 lo reubica).
+            var motorEstacionado = vehicle.GetComponent<VehicleMotor>();
+            if (motorEstacionado != null) for (int i = 0; i < 200 && !motorEstacionado.IsStopped; i++) motorEstacionado.Brake(0.05f);
+            vehicle.transform.position = new Vector3(50f, vehicle.transform.position.y, 50f);
+            Physics.SyncTransforms();
+            // Los enemigos que patrullan cerca de la ruta (p. ej. Enemigo_Patrulla_4) a veces se paran sobre un punto y dejan a Kes fuera del NavMesh:
+            // este check mide la navegacion y no el combate, asi que se los aparta mientras dura y se los devuelve despues.
+            var apartados = new List<(Soldier s, Vector3 pos, bool cerebro, bool agente)>();
+            foreach (var en in new List<Soldier>(ActorRegistry.All))
+            {
+                if (en == null || en.Team != TeamId.Enemy || en.Health == null || !en.Health.IsAlive) continue;
+                var pl = en.transform.position; pl.y = 0f;
+                if (Vector3.Distance(pl, new Vector3(30f, 0f, 33f)) > 1000f) continue;   // todos: un patrullero lejano puede entrar a la ruta durante los 80 s simulados
+                var nav = en.GetComponent<UnityEngine.AI.NavMeshAgent>();
+                apartados.Add((en, en.transform.position, en.Brain != null && en.Brain.enabled, nav != null && nav.enabled));
+                if (en.Brain != null) en.Brain.enabled = false;
+                if (nav != null) nav.enabled = false;
+                en.transform.position = new Vector3(-120f, en.transform.position.y, -120f);
+            }
+            Physics.SyncTransforms();
             kes.transform.position = new Vector3(30f, kes.transform.position.y, 30f);
 
             var recorrido = new Vector3[]
@@ -208,7 +229,27 @@ namespace SP.EditorTools
             }
             Check($"Pasa a menos de 2 m de los 4 puntos (minimos: {masCerca[0]:0.0} / {masCerca[1]:0.0} / {masCerca[2]:0.0} / {masCerca[3]:0.0} m)",
                 pasoPorTodos);
-            Check($"Y los recorre EN ORDEN (pasos: {cuando[0]} -> {cuando[1]} -> {cuando[2]} -> {cuando[3]})", enOrden);
+            string diagRecorrido = "";
+            if (!enOrden)
+            {
+                var kp = kes.transform.position;
+                var ag = kes.GetComponent<UnityEngine.AI.NavMeshAgent>();
+                var rutaDiag = new UnityEngine.AI.NavMeshPath();
+                bool hayRuta = ag != null && ag.isOnNavMesh && UnityEngine.AI.NavMesh.CalculatePath(kp, recorrido[2], UnityEngine.AI.NavMesh.AllAreas, rutaDiag);
+                bool hayMesh = UnityEngine.AI.NavMesh.SamplePosition(recorrido[2], out var mh, 3f, UnityEngine.AI.NavMesh.AllAreas);
+                string cercanos = ""; foreach (var cd in Physics.OverlapSphere(recorrido[2] + Vector3.up, 7f, ~0, QueryTriggerInteraction.Ignore)) if (cd != null && cd.name != "Ground") cercanos += cd.name + "(" + cd.gameObject.hideFlags + ") ";
+                diagRecorrido = $" cercanos=[{cercanos}] [kes en ({kp.x:0.0},{kp.z:0.0}) enMesh={(ag != null && ag.isOnNavMesh)} ruta={(hayRuta ? rutaDiag.status.ToString() : "no")} meshEnPunto3={hayMesh} orden={(kes.Brain.CurrentOrderDestination.HasValue ? kes.Brain.CurrentOrderDestination.Value.ToString() : "ninguna")} cola={kes.Brain.QueuedOrderCount} vel={(ag != null ? ag.velocity.magnitude.ToString("0.0") : "-")} ts={Time.timeScale}]";
+            }
+            Check($"Y los recorre EN ORDEN (pasos: {cuando[0]} -> {cuando[1]} -> {cuando[2]} -> {cuando[3]}){diagRecorrido}", enOrden);
+            foreach (var a in apartados)
+            {
+                if (a.s == null) continue;
+                a.s.transform.position = a.pos;
+                var navA = a.s.GetComponent<UnityEngine.AI.NavMeshAgent>();
+                if (navA != null) navA.enabled = a.agente;
+                if (a.s.Brain != null) a.s.Brain.enabled = a.cerebro;
+            }
+            Physics.SyncTransforms();
 
             SP.Player.TrazadoDeCamino.Limpiar();
             kes.Brain.CancelOrder();

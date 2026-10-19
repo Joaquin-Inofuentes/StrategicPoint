@@ -36,7 +36,8 @@ namespace SP.Vehicles
         // OJO con el signo: pitch NEGATIVO es hacia ARRIBA (Euler x). Los valores viejos (-8, 35) estaban al reves: el
         // cañon subia apenas 8 grados y bajaba 35 ("la torreta no se movia para arriba y abajo"). Ahora sube 25 y baja 10.
         [SerializeField] float minPitchDeg = -25f;
-        [SerializeField] float maxPitchDeg = 10f;
+        [SerializeField] float maxPitchDeg = 45f;   // bug #277: la camara del artillero baja hasta 38 grados; el tubo tiene que poder acompanarla (antes 10) para apuntar siempre al suelo bajo la mira
+        public const float DepresionMinima = 45f;
         public float PitchActual => NormalizePitch(transform.eulerAngles.x);
         public float MinPitch => minPitchDeg;
         public float MaxPitch => maxPitchDeg;
@@ -135,6 +136,7 @@ namespace SP.Vehicles
         {
             if (bootstrapped) return;
             bootstrapped = true;
+            maxPitchDeg = Mathf.Max(maxPitchDeg, DepresionMinima);   // #277: la escena guarda 10 serializado; el tubo debe poder bajar lo que baja la camara
             vehicle = GetComponentInParent<Vehicle>();
             barrel = transform.Find("TurretBarrel");
             if (barrel != null) barrelRestLocalPos = barrel.localPosition;

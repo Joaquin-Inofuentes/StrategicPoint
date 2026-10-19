@@ -144,7 +144,7 @@ namespace SP.Operacion
             typeof(TurretWeapon).GetField("explosionRadius", bf)?.SetValue(t, RadioDelCanon);
             typeof(TurretWeapon).GetField("fireCooldown", bf)?.SetValue(t, RecargaDelCanon);
             // Bug #047: el artillero apunta al suelo cerca del tanque: el tubo necesita bajar mas que los 10° de antes.
-            t.FijarLimitesDeElevacion(75f, 15f);   // bug #217: el Halcon enemigo se podia perder por arriba de los 32 grados; ahora el cañon sube hasta 75   // WP9b-2: el Halcon orbita a 18..24 m de altura (hasta ~28 grados desde la torreta)
+            t.FijarLimitesDeElevacion(75f, 45f);   // bug #217: el Halcon enemigo se podia perder por arriba de los 32 grados; ahora el cañon sube hasta 75   // WP9b-2: el Halcon orbita a 18..24 m de altura (hasta ~28 grados desde la torreta)
         }
 
         float LargoDeLaRuta()

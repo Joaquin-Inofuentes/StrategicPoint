@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Reflection;
 using System.Text;
 using UnityEngine;
 using SP.Actors;
@@ -40,6 +41,44 @@ namespace SP.EditorTools
             heli.Vehiculo.TakeDamage(HelicopteroEnemigo.VidaDeAsalto + 10, -4);
             foreach (var x in Esperar(1.5f)) yield return x;
             W8Ok(ref ok, heli.Derribado && def.HelicopterosDerribados >= 1, sb, "se lo derriba a tiros y cuenta como derribado");
+            ModoDios.Poner(false);
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 277a el canon baja lo que baja la camara y vertical + horizontal se suman
+        static IEnumerator Bug277a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            ModoDios.Poner(true);
+            OperacionPrueba.Arrancar(4, 1, 3);
+            foreach (var x in Esperar(2f)) yield return x;
+            var d = PlayerInputDriver.Activo;
+            SP.Vehicles.Vehicle tq = null;
+            foreach (var v in Object.FindObjectsByType<SP.Vehicles.Vehicle>()) if (v != null && v.name == "Tanque_Fuga") { tq = v; break; }
+            if (d == null || tq == null) { Fin("FALLO no hay jugador o tanque"); yield break; }
+            var yo = d.Brain.Current;
+            var ag = yo.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            var pos = tq.transform.position + tq.transform.right * 3f;
+            if (ag != null && ag.enabled) ag.Warp(pos);
+            yo.transform.position = pos;
+            d.EnterVehicle(tq);
+            foreach (var x in Esperar(3.5f)) yield return x;   // la animacion de subida bloquea el cambio de asiento
+            d.SwitchSeat(SP.Vehicles.VehicleSeatRole.Gunner);
+            foreach (var x in Esperar(0.5f)) yield return x;
+            SP.Vehicles.TurretWeapon canon = null;
+            foreach (var t in tq.GetComponentsInChildren<SP.Vehicles.TurretWeapon>()) { var ai = t.GetComponent<SP.Vehicles.TurretAI>(); if (ai != null && ai.Asiento == SP.Vehicles.VehicleSeatRole.Gunner) { canon = t; break; } }
+            if (canon == null) { Fin("FALLO no hay canon"); yield break; }
+            W8Ok(ref ok, d.CurrentSeat == SP.Vehicles.VehicleSeatRole.Gunner, sb, $"el jugador va de artillero ({d.CurrentSeat})");
+            W8Ok(ref ok, canon.MaxPitch >= 38f, sb, $"el tubo baja hasta {canon.MaxPitch:0} grados (la camara baja hasta {PlayerInputDriver.InclinacionMaxArtillero:0}; antes 10/15)");
+            var campo = typeof(PlayerInputDriver).GetField("inclinacionArtillero", BindingFlags.NonPublic | BindingFlags.Instance);
+            campo.SetValue(d, 35f);   // mira casi al pie del tanque
+            float yaw0 = canon.YawMundo;
+            canon.AddDesiredYaw(30f);
+            foreach (var x in Esperar(2.5f)) yield return x;
+            W8Ok(ref ok, canon.PitchActual > 16f, sb, $"mirando al suelo cercano el tubo baja a {canon.PitchActual:0.0} grados (mas que el viejo limite de 15)");
+            float dy = Mathf.Abs(Mathf.DeltaAngle(yaw0, canon.YawMundo));
+            W8Ok(ref ok, dy > 20f, sb, $"el giro horizontal se suma al vertical a la vez (yaw +{dy:0} grados con el tubo a {canon.PitchActual:0.0})");
             ModoDios.Poner(false);
             Fin((ok ? "OK " : "FALLO ") + sb);
         }

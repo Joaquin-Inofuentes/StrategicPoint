@@ -169,9 +169,37 @@ namespace SP.EditorTools
             catch (Exception) { }
         }
 
+        // Una sesion de Play sin recarga de dominio deja vivos los estaticos de los registros (ActorRegistry, WorldSystemsRegistry, etc.): la suite
+        // armaba su escena con ellos a medias y fallaba en checks que no tienen nada que ver (apuntado, recorrido de Kes) hasta recargar el dominio.
+        // Unity corre los metodos [RuntimeInitializeOnLoadMethod(SubsystemRegistration)] al entrar a Play justamente para esto: se corren aca tambien.
+        static int ReiniciarEstaticosDeRuntime()
+        {
+            int n = 0;
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (!asm.GetName().Name.StartsWith("Assembly-CSharp") && !asm.GetName().Name.StartsWith("SP")) continue;
+                Type[] tipos;
+                try { tipos = asm.GetTypes(); } catch (Exception) { continue; }
+                foreach (var t in tipos)
+                {
+                    if (t.IsGenericTypeDefinition) continue;
+                    foreach (var m in t.GetMethods(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly))
+                    {
+                        var at = (RuntimeInitializeOnLoadMethodAttribute)Attribute.GetCustomAttribute(m, typeof(RuntimeInitializeOnLoadMethodAttribute));
+                        if (at == null || at.loadType != RuntimeInitializeLoadType.SubsystemRegistration || m.GetParameters().Length != 0) continue;
+                        try { m.Invoke(null, null); n++; } catch (Exception) { }
+                    }
+                }
+            }
+            return n;
+        }
+
         static void RestablecerEstaticosDeJuego()
         {
+            ReiniciarEstaticosDeRuntime();
+            UnityEngine.Random.InitState(20261019);   // la suite pelea con azar (dispersion, IA): con semilla fija su resultado no depende de lo que corrio antes en el editor
             SP.Core.ModoDios.Poner(false);
+            Time.timeScale = 1f;                         // una sesion de Play puede dejar la camara lenta o el x2 puestos
             SP.Combat.Health.RegeneracionPermitida = true;
             SP.Player.Demolicion.Segundos = SP.Player.Demolicion.SegundosNormales;
             SP.Player.PedidoDeCuracion.AtencionAutomatica = true;
@@ -181,6 +209,15 @@ namespace SP.EditorTools
         [MenuItem("Strategic Point/Run All Tests Headless")]
         public static void RunAll()
         {
+            // Lanzada mientras el editor sale de Play o compila, la suite lee una escena a medio recargar y falla en checks que no tienen nada que ver
+            // (apuntado, recorrido de Kes). Se corta con un resultado claro en vez de dar un FALLO enganoso.
+            if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling || EditorApplication.isUpdating)
+            {
+                failedCheckMessages.Clear();
+                failedCheckMessages.Add("NO CORRIDA: el editor esta en Play o compilando; esperar a que quede quieto y repetir");
+                EscribirResultado(false, null);
+                return;
+            }
             RestablecerEstaticosDeJuego();
             LimpiarConsola();
             // La suite arma y abre SC_TestLevel: al terminar se vuelve a la escena que el usuario tenia abierta.
@@ -1095,10 +1132,22 @@ namespace SP.EditorTools
             bool camFollows = Vector3.Distance(rig.transform.position, brain.Current.EyeAnchor.position) < 0.01f;
             Check("Movimiento de camara verificado (sigue al soldado poseido)", camFollows);
 
+            // En el juego el collider de un soldado muerto se apaga (CubeFxReactor.OnDeath), pero esa muerte solo corre en Play: en la suite un cadaver
+            // de la fase 1 podia quedar en la linea de tiro y tapar a Kes (segun donde cayera). Se replica lo que hace el juego real.
+            var apagadosPorElTest = new List<Collider>();
+            foreach (var muerto in SP.Core.ActorRegistry.All)
+            {
+                if (muerto == null || muerto.Health == null || muerto.Health.IsAlive) continue;
+                var cm = muerto.GetComponent<Collider>();
+                if (cm != null && cm.enabled) { cm.enabled = false; apagadosPorElTest.Add(cm); }
+            }
+            Physics.SyncTransforms();
             Ray rayToKes = new Ray(vega.transform.position + Vector3.up * 0.5f, kes.transform.position - vega.transform.position);
             var resultAlly = aim.Evaluate(rayToKes, vega);
-            Check($"Apuntando... {(resultAlly.Type == AimTargetType.Ally ? resultAlly.Soldier.DisplayName + " en la mira" : "nada en la mira")}", resultAlly.Type == AimTargetType.Ally && resultAlly.Soldier == kes);
+            Check($"Apuntando... {(resultAlly.Type == AimTargetType.Ally ? resultAlly.Soldier.DisplayName + " en la mira" : "nada en la mira (" + resultAlly.Type + " en " + (resultAlly.HitTransform != null ? resultAlly.HitTransform.name : "-") + "; kesCol=" + (kes.GetComponent<Collider>() != null && kes.GetComponent<Collider>().enabled) + " kesActivo=" + kes.gameObject.activeInHierarchy + " vivo=" + kes.Health.IsAlive + " rayo=" + (Physics.Raycast(rayToKes, out var dbgHit, 200f, ~0, QueryTriggerInteraction.Collide) ? dbgHit.collider.name + "[vivo=" + (dbgHit.collider.GetComponentInParent<Soldier>() != null && dbgHit.collider.GetComponentInParent<Soldier>().Health.IsAlive) + " reactor=" + (dbgHit.collider.GetComponentInParent<SP.Presentation.CubeFxReactor>() != null ? dbgHit.collider.GetComponentInParent<SP.Presentation.CubeFxReactor>().enabled.ToString() : "no") + "]" : "nada") + " dist=" + Vector3.Distance(vega.transform.position, kes.transform.position).ToString("0.0") + ")")}", resultAlly.Type == AimTargetType.Ally && resultAlly.Soldier == kes);
 
+            foreach (var cm in apagadosPorElTest) if (cm != null) cm.enabled = true;   // los demas checks esperan los colliders como estaban
+            Physics.SyncTransforms();
             aimUiRef.UpdateFromAimResult(resultAlly);
             // Pedido explicito: ya no hay cartel de texto al apuntar a un
             // aliado (lo reemplazo el rombo con engranaje de
