@@ -42,6 +42,8 @@ namespace SP.Operacion
         public event System.Action AlDerribarse;
 
         Vehicle tanque;
+        Transform ancla;   // #272: helicoptero de asalto del centro de datos: orbita este punto en vez de un tanque
+        public bool DeAsalto => ancla != null;
         VehicleMotor motorTanque;
         Transform rotorPrincipal, rotorCola;
         float angulo, proximaPasada, proximaRafaga, rafagaHasta, pausaHasta, proximoTiroMg, tCaida, giroCaida;
@@ -68,20 +70,60 @@ namespace SP.Operacion
             return h;
         }
 
-        void Armar(Vehicle t)
+        // #272: helicoptero de asalto contra el centro de datos. Entra desde lejos, orbita la computadora (el ancla) y ametralla a los soldados
+        // propios; el Vehicle tiene vida reducida y se lo derriba a tiros desde lejos (torretas aliadas, fusiles, el tanque).
+        public const int VidaDeAsalto = 320;
+        public static HelicopteroEnemigo IniciarSobre(Transform plantilla, Transform punto, float anguloGrados, float distanciaDeEntrada = 150f)
         {
-            tanque = t;
-            motorTanque = t.GetComponent<VehicleMotor>();
+            if (plantilla == null || punto == null) return null;
+            var go = Instantiate(plantilla.gameObject, plantilla.parent);
+            go.name = "Halcon_Asalto_" + (++Creados);
+            var dir = new Vector3(Mathf.Cos(anguloGrados * Mathf.Deg2Rad), 0f, Mathf.Sin(anguloGrados * Mathf.Deg2Rad));
+            var pos = punto.position + dir * distanciaDeEntrada;
+            pos.y = AlturaMaxima + 10f;
+            go.transform.position = pos;
+            go.SetActive(true);
+            var h = go.GetComponent<HelicopteroEnemigo>();
+            if (h == null) { Destroy(go); return null; }
+            h.Armar(null, punto);
+            if (h.Vehiculo != null && h.Vehiculo.Health != null) h.Vehiculo.Health.Initialize(-1, VidaDeAsalto);
+            return h;
+        }
+
+        // Blanco de la metralleta: el tanque en la carrera; en el asalto, el soldado propio vivo mas cercano al helicoptero.
+        Vector3 BlancoDeMetralla()
+        {
+            if (ancla == null) return tanque.transform.position + Vector3.up * 1.4f;
+            if (Time.time >= proximoRetarget)
+            {
+                proximoRetarget = Time.time + 0.5f;
+                blancoDeAsalto = null;
+                float mejor = float.MaxValue;
+                foreach (var s in ActorRegistry.All)
+                {
+                    if (s == null || s.Team != TeamId.Player || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                    float d = (s.transform.position - transform.position).sqrMagnitude;
+                    if (d < mejor) { mejor = d; blancoDeAsalto = s.transform; }
+                }
+            }
+            return blancoDeAsalto != null ? blancoDeAsalto.position + Vector3.up * 1.2f : ancla.position + Vector3.up * 1.4f;
+        }
+        float proximoRetarget; Transform blancoDeAsalto;
+
+        void Armar(Vehicle t, Transform puntoFijo = null)
+        {
+            tanque = t; ancla = puntoFijo;
+            motorTanque = t != null ? t.GetComponent<VehicleMotor>() : null;
             Vehiculo = GetComponent<Vehicle>();
             Vehiculo.MarcarBando(TeamId.Enemy);
             rotorPrincipal = transform.Find("RotorPrincipal");
             rotorCola = transform.Find("RotorCola");
-            var d = transform.position - tanque.transform.position;
+            var d = transform.position - (ancla != null ? ancla.position : tanque.transform.position);
             anguloDeEntrada = Mathf.Atan2(d.z, d.x);
             angulo = anguloDeEntrada;
             Situacion = Estado.Entrando;
             proximaPasada = Time.time + 4f;
-            Instancia = this;
+            if (ancla == null) Instancia = this;   // los de asalto no son "el" Halcon de la carrera (barra de jefe, cinematica)
             SesionLog.Evento("HALCON: entra el helicoptero enemigo");
         }
 
@@ -104,7 +146,7 @@ namespace SP.Operacion
             if (Situacion == Estado.Muerto) return;
             if (Vehiculo.IsDestroyed && Situacion != Estado.Cayendo) { EmpezarCaida(); }
             if (Situacion == Estado.Cayendo) { TickCaida(Time.deltaTime); return; }
-            if (tanque == null || tanque.IsDestroyed && Situacion != Estado.Cinematica) return;
+            if (ancla == null && (tanque == null || tanque.IsDestroyed && Situacion != Estado.Cinematica)) return;
 
             float dt = Time.deltaTime;
             if (Situacion == Estado.Cinematica)
@@ -118,7 +160,7 @@ namespace SP.Operacion
             }
             if (CinematicaDeOperacion.IntroActiva) return;
 
-            var centro = tanque.transform.position;
+            var centro = ancla != null ? ancla.position : tanque.transform.position;
             float vTanque = motorTanque != null ? motorTanque.CurrentSpeed : 0f;
             // Orbita alrededor del tanque (que avanza): el angulo gira a VelocidadDeVuelo / radio.
             float radio = Situacion == Estado.Entrando ? Mathf.Lerp(RadioDeOrbita * 2.2f, RadioDeOrbita, Mathf.Clamp01(Mathf.InverseLerp(0f, 5f, Time.time - (proximaPasada - 4f)))) : RadioDeOrbita;
@@ -186,8 +228,8 @@ namespace SP.Operacion
         // ---- Metralleta ----
         void TickMetralla(float dt)
         {
-            if (avisando || tanque == null) return;
-            var objetivo = tanque.transform.position + Vector3.up * 1.4f;
+            if (avisando || (tanque == null && ancla == null)) return;
+            var objetivo = BlancoDeMetralla();
             var origen = transform.position + transform.forward * 1.2f + Vector3.down * 0.7f;
             if (Vector3.Distance(origen, objetivo) > AlcanceDeMetralla) return;
             if (Time.time >= pausaHasta && Time.time >= rafagaHasta) { rafagaHasta = Time.time + 1.0f; pausaHasta = rafagaHasta + Random.Range(1.2f, 2.2f); }

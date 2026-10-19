@@ -5,6 +5,7 @@ using SP.Actors;
 using SP.Combat;
 using SP.Core;
 using SP.EditorTools;
+using SP.Operacion;
 using SP.Player;
 using SP.Presentation;
 
@@ -15,6 +16,34 @@ namespace SP.EditorTools
     //   258a los contenedores no se vuelven transparentes con el soldado detras     276a modo dios: velocidad x2 y dano x3
     public static partial class ChecksBugs065
     {
+        // ---------------------------------------------------------------- 272a torretas aliadas y helicopteros de asalto en el hackeo
+        static IEnumerator Bug272a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(3, 1);
+            ModoDios.Poner(true);
+            foreach (var x in Esperar(2f)) yield return x;
+            var d = OperacionDirector.Instancia;
+            var def = d != null ? d.DefensaDelCentroActual : null;
+            if (def == null) { Fin("FALLO no hay DefensaDelCentro al entrar a la fase"); yield break; }
+            W8Ok(ref ok, def.Torretas.Count == DefensaDelCentro.TorretasAliadas, sb, $"hay {def.Torretas.Count} torretas aliadas alrededor de la computadora");
+            def.Comenzar();
+            foreach (var x in Esperar(14f)) yield return x;
+            W8Ok(ref ok, def.HelicopterosLanzados >= 1, sb, $"entro al menos un helicoptero de asalto ({def.HelicopterosLanzados})");
+            int disparos = 0; foreach (var t in def.Torretas) if (t != null) disparos += t.Disparos;
+            W8Ok(ref ok, disparos > 0, sb, $"las torretas dispararon solas ({disparos} balas)");
+            HelicopteroEnemigo heli = null; foreach (var h in def.Helicopteros) if (h != null) { heli = h; break; }
+            if (heli == null) { Fin("FALLO " + sb + " sin helicoptero"); yield break; }
+            W8Ok(ref ok, heli.Vehiculo.Health.MaxHealth == HelicopteroEnemigo.VidaDeAsalto, sb, $"vida de asalto {heli.Vehiculo.Health.MaxHealth}");
+            W8Ok(ref ok, heli.Altura > 10f, sb, $"vuela sobre la computadora (altura {heli.Altura:0.0})");
+            heli.Vehiculo.TakeDamage(HelicopteroEnemigo.VidaDeAsalto + 10, -4);
+            foreach (var x in Esperar(1.5f)) yield return x;
+            W8Ok(ref ok, heli.Derribado && def.HelicopterosDerribados >= 1, sb, "se lo derriba a tiros y cuenta como derribado");
+            ModoDios.Poner(false);
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
         // ---------------------------------------------------------------- 276a modo dios: velocidad doble y dano triple
         static IEnumerator Bug276a()
         {

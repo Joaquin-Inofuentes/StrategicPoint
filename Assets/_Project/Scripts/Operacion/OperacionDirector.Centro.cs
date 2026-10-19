@@ -123,7 +123,9 @@ namespace SP.Operacion
         void TickCentro()
         {
             ReforzarOleadasDelCentro();
+            if (defensaDelCentro == null) defensaDelCentro = DefensaDelCentro.Preparar(computadora.transform, halcon);   // #272: torretas aliadas y helicopteros de asalto
             if (computadora.Operador != null && hackInicio < 0f) hackInicio = Time.time;
+            if (hackInicio >= 0f && defensaDelCentro != null) defensaDelCentro.Comenzar();
             if (hackInicio >= 0f)
             {
                 float t = Time.time - hackInicio;
@@ -151,8 +153,16 @@ namespace SP.Operacion
                 if (computadora.Operador != null) hud.Timer("DESCARGANDO DATOS", Mathf.CeilToInt((1f - computadora.Progreso01) * computadora.duracion), new Color(0.5f, 0.9f, 1f));
                 else hud.OcultarTimer();
             }
-            if (computadora.Completo) { if (hud != null) hud.OcultarTimer(); EntrarFase(FaseOperacion.Huir); }
+            if (computadora.Completo)
+            {
+                if (hud != null) hud.OcultarTimer();
+                if (defensaDelCentro != null) { defensaDelCentro.Terminar(); defensaDelCentro = null; }
+                EntrarFase(FaseOperacion.Huir);
+            }
         }
+
+        DefensaDelCentro defensaDelCentro;
+        public DefensaDelCentro DefensaDelCentroActual => defensaDelCentro;
 
         // ---- Bug #043: camionetas de asalto contra el centro de datos ----
         readonly HashSet<int> tandasDeCamionetas = new HashSet<int>();

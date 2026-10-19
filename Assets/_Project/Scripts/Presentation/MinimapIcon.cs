@@ -216,7 +216,7 @@ namespace SP.Presentation
         // amontonamiento de abanicos ilegible. Este es un indicador
         // direccional legible ("hacia aca apunta"), no una copia exacta del
         // hitbox de percepcion.
-        public const float ConoMedioAnguloGrados = 35f;
+        public const float ConoMedioAnguloGrados = 22f;   // bug #278 ("el minimapa es un cono amplio"): de 35 a 22 grados
         public const float ConoRadioFallback = 16f;
         // Pedido explicito original: "99% de transparencia". En la practica
         // 0.01 se demostro INVISIBLE contra el fondo del minimapa (ver

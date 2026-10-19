@@ -171,7 +171,7 @@ namespace SP.EditorTools
             Decor(b, "MG_Tripode", xb, z0 - 2.9f, 0.4f, 0.7f, 0.4f, MetalOsc, 180f, 4f);
             Decor(b, "MG_Cajon", xb, z0 - 3.1f, 0.35f, 0.35f, 0.8f, MetalOsc, 180f, 4.65f);
             Decor(b, "MG_Canon", xb, z0 - 3.9f, 0.12f, 0.12f, 1.2f, Negro, 180f, 4.75f);
-            Rotulo(b, "PUESTO " + lado, xb, 4.8f, z0 - 4.12f, 0f, 1.0f, Color.white, Rojo, 7f, 1.3f);
+            Rotulo(b, "PUESTO " + lado, xb, 4.8f, z0 - 4.12f, 0f, 1.0f, Color.white, null, 7f, 1.3f);
             // Escalera (visual) en la cara de adentro, al sur.
             float ex = xb - s * 5.25f;
             Decor(b, "Escalera_Riel_1", ex, z0 - 2.3f, 0.1f, 4f, 0.1f, MetalOsc, 0f, 0f);
@@ -205,7 +205,7 @@ namespace SP.EditorTools
             var caja = Cubo(carga, "Caja_Carga", xb, zc, 1.1f, 0.85f, 0.8f, CargaCaja, 0f, 0f, true, 0);
             Decor(carga, "Caja_Cinta", xb, zc, 1.16f, 0.12f, 0.86f, Amarillo, 0f, 0.5f);
             var led = Decor(carga, "Led", xb + 0.3f, zc - 0.2f, 0.2f, 0.1f, 0.2f, Pantalla, 0f, 0.85f);
-            var rotulo = Rotulo(carga, "CARGA " + lado, xb, 1.8f, zc, 0f, 0.8f, new Color(1f, 0.82f, 0.1f), Negro, 4.8f, 0.95f);
+            var rotulo = Rotulo(carga, "CARGA " + lado, xb, 1.8f, zc, 0f, 0.8f, new Color(1f, 0.82f, 0.1f), null, 4.8f, 0.95f);
             LuzPuntual(carga, "Luz_Carga", xb, 3f, zc - 1.5f, new Color(1f, 0.75f, 0.3f), 2.6f, 14f);
             var ce = carga.gameObject.AddComponent<CargaExplosiva>();
             ce.lado = lado;
