@@ -212,7 +212,14 @@ namespace SP.Operacion
                     Fragmentador.Romper(p, origen, 6f, 10);
                     p.gameObject.SetActive(false);
                 }
-                if (ocupante != null) ocupante.transform.SetParent(padreOcupante, true);
+                if (ocupante != null)
+                {
+                    ocupante.transform.SetParent(padreOcupante, true);
+                    // #265: el cadaver del tirador no queda flotando ni inclinado donde termino el vuelco: se endereza y se apoya en el piso.
+                    var ang = ocupante.transform.eulerAngles;
+                    ocupante.transform.rotation = Quaternion.Euler(0f, ang.y, 0f);
+                    ApoyoEnElPiso.Apoyar(ocupante.transform);
+                }
                 pivote.gameObject.SetActive(false);
             }
             Cayendo = false;

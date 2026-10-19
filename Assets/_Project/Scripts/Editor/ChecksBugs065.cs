@@ -174,6 +174,7 @@ namespace SP.EditorTools
         {
             if (Estado == "corriendo") return "ERROR: ya hay una corrida en curso (Estado=corriendo)";
             Registrar();
+            SP.Core.ModoDios.VelocidadActiva = false;   // el x2 del modo dios doblaria los tiempos de los checks (lo prueba Bug276 por su cuenta)
             var lista = new List<(int, MethodInfo)>();
             int cuantos = 0;
             for (int b = desde; b <= hasta; b++)

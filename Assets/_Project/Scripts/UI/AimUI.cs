@@ -647,6 +647,8 @@ namespace SP.UI
                 || (result.Type == AimTargetType.Ally)
                 || (result.Type == AimTargetType.Vehicle && result.Vehicle != null && !result.Vehicle.IsDestroyed && result.Vehicle.Bando != SP.Combat.TeamId.Enemy)
                 || (result.Type == AimTargetType.Obstacle && result.HitTransform != null && result.HitTransform.GetComponent<SP.Presentation.ObstacleMarker>() != null);
+            // #264: algo interactuable tambien cambia el COLOR de la mira (dorado), no solo la forma.
+            if (interactuable && result.Type != AimTargetType.Enemy && (currentAimTint == ObstacleTint || currentAimTint == crosshairBaseColor)) currentAimTint = InteractTint;
             MostrarFormaInteractuable(interactuable);
 
             // Mejora pedida: "si te acercas a un enemigo q aparezca para apretar F para

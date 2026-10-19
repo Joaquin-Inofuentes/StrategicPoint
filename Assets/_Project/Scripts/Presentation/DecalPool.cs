@@ -112,14 +112,14 @@ namespace SP.Presentation
                     {
                         // astillas claras: puntos al azar (hash estable) sobre la corona
                         float h = Mathf.Abs(Mathf.Sin(x * 12.9898f + y * 78.233f)) * 43758.5453f; h -= Mathf.Floor(h);
-                        if (h > 0.55f) { a = 0.55f * (1f - (d - 0.34f) / 0.28f); r = 150; g = 145; b = 135; }
+                        if (h > 0.9f) { a = 0.3f * (1f - (d - 0.34f) / 0.28f); r = 120; g = 116; b = 108; }   // #269: corona de astillas mucho mas discreta (antes parecia un aro sucio)
                     }
                     float ang = Mathf.Atan2(dy, dx);
-                    for (int i = 0; i < 5; i++)
+                    for (int i = 0; i < 3; i++)
                     {
                         float da = Mathf.Abs(Mathf.DeltaAngle(ang * Mathf.Rad2Deg, grietas[i] * Mathf.Rad2Deg));
-                        float ancho = Mathf.Lerp(7f, 1.5f, d);
-                        if (d > 0.18f && d < 0.92f && da < ancho) { float k = 0.8f * (1f - d); if (k > a) { a = k; r = 16; g = 16; b = 18; } }
+                        float ancho = Mathf.Lerp(3f, 0.8f, d);
+                        if (d > 0.18f && d < 0.7f && da < ancho) { float k = 0.55f * (1f - d); if (k > a) { a = k; r = 16; g = 16; b = 18; } }
                     }
                     px[y * n + x] = new Color32(r, g, b, (byte)Mathf.RoundToInt(255f * Mathf.Clamp01(a)));
                 }

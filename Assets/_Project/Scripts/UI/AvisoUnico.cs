@@ -64,7 +64,7 @@ namespace SP.UI
         }
 
         // Pedido de pulido: sin textos en pantalla salvo el de mision. Solo se apaga el DIBUJO: la cola, el historial y TextoActual siguen igual.
-        public static bool Dibujar = false;
+        public static bool Dibujar = true;
 
         public static void Mostrar(string mensaje, float segundos = 3f, Color? color = null, int prioridad = PrioridadMedia)
         {

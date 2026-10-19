@@ -257,7 +257,7 @@ namespace SP.Operacion
             Anclar(anillo.rectTransform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             saltarTexto = NuevaTexto(raiz, "SaltarTexto", 24, TextAnchor.MiddleRight, new Color(1f, 1f, 1f, 0.85f));
             Anclar(saltarTexto.rectTransform, new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0), new Vector2(-162f, 148f), new Vector2(520f, 50f));
-            saltarTexto.text = "MANTENÉ [ESPACIO] 1 s PARA SALTAR";
+            saltarTexto.text = "";   // #256: sin texto abajo a la derecha (el anillo avisa; espacio sigue saltando)
 
             // Negro de entrada y de salida.
             negro = NuevaImagen(raiz, "Negro", new Color(0f, 0f, 0f, 1f));

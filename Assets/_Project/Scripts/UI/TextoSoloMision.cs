@@ -19,7 +19,9 @@ namespace SP.UI
     // TextMesh del mundo apagando su MeshRenderer.
     public class TextoSoloMision : MonoBehaviour
     {
-        public static bool Activo = true;
+        // #259/#281: con el barrido activo faltaban el roster, la municion, el objetivo y los botones de resultado ("revisa los textos de
+        // todos lados"): los textos vuelven a verse. El barrido queda disponible, apagado.
+        public static bool Activo = false;
         public const float PeriodoDeBarrido = 0.1f;
 
         static readonly HashSet<Graphic> permitidos = new HashSet<Graphic>();
@@ -40,7 +42,7 @@ namespace SP.UI
         public static int OcultosEnElUltimoBarrido { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { permitidos.Clear(); instancia = null; Activo = true; }
+        static void Reiniciar() { permitidos.Clear(); instancia = null; Activo = false; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Crear()

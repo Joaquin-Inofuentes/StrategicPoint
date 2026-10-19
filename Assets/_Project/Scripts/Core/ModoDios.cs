@@ -28,6 +28,28 @@ namespace SP.Core
 
         public static bool Alternar() { Poner(!Activo); return Activo; }
 
+        // Bugs #276/#279: con el modo dios el bando del jugador pega x3 y la escena corre al doble de velocidad.
+        public const float MultiplicadorDeDanoPropio = 3f;
+        public const float EscalaDeTiempo = 2f;
+
+        // Multiplicador de un golpe segun quien lo da (solo el bando del jugador, y solo con el modo dios activo).
+        public static float MultiplicadorDeDano(int atacanteId)
+        {
+            if (!Activo || atacanteId < 0) return 1f;
+            var a = ActorRegistry.FindById(atacanteId);
+            return a != null && a.Team == TeamId.Player && a.Role != RoleType.Civilian ? MultiplicadorDeDanoPropio : 1f;
+        }
+
+        // Lo llama el vigilante de velocidad: pone o saca el x2 sin pisar la pausa (0) ni la camara lenta (<1).
+        public static bool VelocidadActiva = true;   // las corridas de checks lo apagan para no doblar sus tiempos
+        public static void AjustarVelocidad()
+        {
+            if (!VelocidadActiva) return;
+            float t = Time.timeScale;
+            if (Activo && Mathf.Abs(t - 1f) < 0.001f) Time.timeScale = EscalaDeTiempo;
+            else if (!Activo && Mathf.Abs(t - EscalaDeTiempo) < 0.001f) Time.timeScale = 1f;
+        }
+
         // true si a esta vida no se le puede quitar nada ahora mismo.
         public static bool Protege(Health h)
         {
@@ -36,5 +58,22 @@ namespace SP.Core
             if (h.TryGetComponent<Vehicle>(out var v)) return v.Bando == TeamId.Player;
             return false;
         }
+    }
+
+    // Vigilante de la velocidad del modo dios: se reaplica sola al volver de pausas, camaras lentas y pantallas de resultado.
+    public sealed class VigilanteDeVelocidadDios : MonoBehaviour
+    {
+        static VigilanteDeVelocidadDios instancia;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void Crear()
+        {
+            if (instancia != null) return;
+            var go = new GameObject("VigilanteDeVelocidadDios") { hideFlags = HideFlags.DontSave };
+            DontDestroyOnLoad(go);
+            instancia = go.AddComponent<VigilanteDeVelocidadDios>();
+        }
+        void Update() { ModoDios.AjustarVelocidad(); }
+        void OnDestroy() { if (Mathf.Abs(Time.timeScale - ModoDios.EscalaDeTiempo) < 0.001f) Time.timeScale = 1f; }
     }
 }

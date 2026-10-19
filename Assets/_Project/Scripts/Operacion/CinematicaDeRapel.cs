@@ -291,7 +291,7 @@ namespace SP.Operacion
             saltarTexto.color = new Color(1f, 1f, 1f, 0.85f); saltarTexto.raycastTarget = false; saltarTexto.horizontalOverflow = HorizontalWrapMode.Overflow;
             var o = g.AddComponent<Outline>(); o.effectColor = new Color(0f, 0f, 0f, 0.9f); o.effectDistance = new Vector2(2f, -2f);
             Anclar(saltarTexto.rectTransform, new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0), new Vector2(-162f, 128f), new Vector2(520f, 50f));
-            saltarTexto.text = "MANTENÉ [ESPACIO] 1 s PARA SALTAR";
+            saltarTexto.text = "";   // #256: sin texto abajo a la derecha (el anillo avisa; espacio sigue saltando)
             negro = NuevaImagen(raiz, "Negro", new Color(0f, 0f, 0f, 1f));
             Anclar(negro.rectTransform, Vector2.zero, Vector2.one, new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             barraArriba.transform.SetAsLastSibling(); barraAbajo.transform.SetAsLastSibling();

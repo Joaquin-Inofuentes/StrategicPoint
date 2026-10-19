@@ -28,6 +28,8 @@ namespace SP.UI
         // justamente lo que hay que mirar cuando quedas con poca vida.
         const float PeakAlpha = 0.35f;
 
+        public static bool SonarLatido = false;
+
         // Latidos por segundo en el borde del umbral y al borde de morir.
         const float SlowRate = 1.6f;
         const float FastRate = 3.4f;
@@ -128,7 +130,7 @@ namespace SP.UI
             if (cycle != lastBeatCycle)
             {
                 lastBeatCycle = cycle;
-                GenericSfx.PlayOneShot2D(GenericSfx.Get(SfxKind.Heartbeat), 0.5f, 1f, "Heartbeat");
+                if (SonarLatido) GenericSfx.PlayOneShot2D(GenericSfx.Get(SfxKind.Heartbeat), 0.5f, 1f, "Heartbeat");   // #261/#262/#269: el "bombonazo de corazon" molestaba: apagado
             }
         }
 

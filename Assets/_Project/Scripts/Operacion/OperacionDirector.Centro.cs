@@ -24,7 +24,7 @@ namespace SP.Operacion
         // blockout (16 soldados, 3 entradas) se rearman en tandas de 3 que salen cada 2,5 s, con 14 refuerzos clonados y repartidos por
         // 5 entradas (sur, patio oeste, patio este y las dos esquinas del sur), asi nunca llegan todos juntos ni por el mismo lado.
         bool oleadasReforzadas;
-        public const int SoldadosPorTanda = 3, RefuerzosDelCentro = 14;
+        public const int SoldadosPorTanda = 3, RefuerzosDelCentro = 7;   // #273: la mitad de enemigos que antes (30 -> 15)
         public const float SegundosEntreTandas = 2.5f;
 
         void ReforzarOleadasDelCentro()
@@ -41,6 +41,13 @@ namespace SP.Operacion
             }
             if (todos.Count == 0) return;
             var plantilla = todos[0];
+            // #273: "baja a la mitad los enemigos": se descarta uno de cada dos de los originales (los refuerzos ya son la mitad).
+            for (int i = todos.Count - 1; i >= 1; i -= 2)
+            {
+                var sobra = todos[i];
+                todos.RemoveAt(i);
+                if (sobra != null) Destroy(sobra.gameObject);
+            }
 
             // Refuerzos: clones inactivos de un soldado de reserva, repartidos por las 5 entradas.
             var rnd = new System.Random(20261018);
@@ -84,6 +91,35 @@ namespace SP.Operacion
             GameLog.Line($"[Operacion] Hackeo: {todos.Count} soldados en {nuevas.Count} tandas de {SoldadosPorTanda} cada {SegundosEntreTandas} s");
         }
 
+        // #273: "que aparezcan mas de manera aleatoria segun la vida promedio de todos: a menos vida promedio menos enemigos y a mas vida mas
+        // enemigos". Cada tanda sale con un tamano que depende de la vida media de la escuadra (muertos cuentan 0) y de un azar suave;
+        // los soldados que sobran no salen nunca. Con la escuadra entera y sana pueden salir tandas de hasta 4.
+        public const float FactorMinimoPorVida = 0.34f, FactorMaximoPorVida = 1.5f;
+        readonly System.Random azarDeTandas = new System.Random();
+        public float VidaPromedioDeLaEscuadra()
+        {
+            float suma = 0f; int n = 0;
+            foreach (var a in ActorRegistry.All)
+            {
+                if (a == null || a.Team != TeamId.Player || a.Role == RoleType.Civilian || a.Health == null || (!a.gameObject.activeInHierarchy && a.Health.IsAlive)) continue;
+                suma += a.Health.IsAlive ? (float)a.Health.Current / Mathf.Max(1, a.Health.MaxHealth) : 0f; n++;
+            }
+            return n > 0 ? suma / n : 1f;
+        }
+
+        public int UltimaTandaAjustada { get; private set; }
+        void AjustarTandaALaVidaDeLaEscuadra(OleadaDeReserva o)
+        {
+            if (o == null || o.soldados == null || o.soldados.Length == 0) return;
+            float vida = VidaPromedioDeLaEscuadra();
+            float factor = Mathf.Lerp(FactorMinimoPorVida, FactorMaximoPorVida, Mathf.Clamp01(vida)) * (0.75f + (float)azarDeTandas.NextDouble() * 0.5f);
+            int salen = Mathf.Clamp(Mathf.RoundToInt(o.soldados.Length * factor), 1, o.soldados.Length + 1);
+            if (salen > o.soldados.Length) salen = o.soldados.Length;
+            for (int i = salen; i < o.soldados.Length; i++) { if (o.soldados[i] != null) Destroy(o.soldados[i].gameObject); o.soldados[i] = null; }
+            UltimaTandaAjustada = salen;
+            GameLog.Line($"[Operacion] Hackeo: tanda de {salen}/{o.soldados.Length} (vida media de la escuadra {vida:0.00})");
+        }
+
         void TickCentro()
         {
             ReforzarOleadasDelCentro();
@@ -95,6 +131,7 @@ namespace SP.Operacion
                 {
                     if (oleadasLanzadas.Contains(i) || t < oleadasDelCentro[i].segundo) continue;
                     oleadasLanzadas.Add(i);
+                    AjustarTandaALaVidaDeLaEscuadra(oleadasDelCentro[i]);
                     Activar(oleadasDelCentro[i], computadora.transform.position);
                 }
                 for (int i = 0; segundosDeCamionetasDelCentro != null && i < segundosDeCamionetasDelCentro.Length; i++)

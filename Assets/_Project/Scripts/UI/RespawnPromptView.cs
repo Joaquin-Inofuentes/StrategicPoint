@@ -43,7 +43,7 @@ namespace SP.UI
             textoGo.transform.SetParent(panelGo.transform, false);
             var texto = textoGo.GetComponent<Text>();
             texto.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            texto.text = "[ESPACIO] REAPARECER EN OTRO ALIADO";
+            texto.text = "APRETÁ BARRA ESPACIADORA PARA CAMBIAR AL MÁS CERCANO";
             texto.alignment = TextAnchor.MiddleCenter;
             texto.color = new Color(1f, 0.85f, 0.25f);
             texto.fontSize = 30;
@@ -62,7 +62,7 @@ namespace SP.UI
             pulso = 0f;
             if (caja != null) caja.localScale = Vector3.one;
             // Va al texto unico de abajo al centro (se queda mientras dure la espera).
-            SP.UI.AvisoUnico.FijoPermanente("respawn", "[ESPACIO] REAPARECER EN OTRO ALIADO", new Color(1f, 0.85f, 0.25f));
+            SP.UI.AvisoUnico.FijoPermanente("respawn", "APRETÁ BARRA ESPACIADORA PARA CAMBIAR AL MÁS CERCANO", new Color(1f, 0.85f, 0.25f));
         }
 
         public static void Ocultar()

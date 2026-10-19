@@ -38,6 +38,7 @@ namespace SP.Presentation
             if (jugador)
             {
                 Feedback.Accion(SfxKind.KnifeHit, "¡CUCHILLADA!", golpe, Feedback.Bad, aviso: false, pulso: true, volumen: 0.95f);
+                if (objetivo.Health != null && !objetivo.Health.IsAlive) CuchilladaLenta.Disparar(golpe);   // #274: la cuchillada que mata relentiza la escena 1 s
                 var rig = SP.CameraSystem.CameraRig.Instance;
                 if (rig != null) rig.KickDirectional((objetivo.transform.position - pos).normalized, 0.22f);
             }

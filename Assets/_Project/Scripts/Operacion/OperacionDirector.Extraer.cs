@@ -37,10 +37,33 @@ namespace SP.Operacion
                 }
                 else
                 {
-                    if (hud != null) hud.Prompt("[E] SUBIR AL HELICOPTERO");
+                    if (hud != null) hud.Prompt(TodosEnLaZonaDelHeli() ? "TODOS A BORDO..." : "[E] SUBIR AL HELICOPTERO");
                     if (OperacionTerminal.EToque()) SubirAlHeli();
+                    else
+                    {
+                        // #280: "que suban solos cuando hayan llegado, si todos estan alli".
+                        if (TodosEnLaZonaDelHeli()) { segundosTodosEnZona += Time.deltaTime; if (segundosTodosEnZona >= SegundosParaSubidaAutomatica) SubirAlHeli(); }
+                        else segundosTodosEnZona = 0f;
+                    }
                 }
             }
+            else segundosTodosEnZona = 0f;
+        }
+
+        // #280: subida automatica cuando toda la escuadra y los milicianos vivos ya estan junto al helicoptero.
+        public const float RadioDeLaZonaDeSubida = 14f, SegundosParaSubidaAutomatica = 1.5f;
+        float segundosTodosEnZona;
+        public bool TodosEnLaZonaDelHeli()
+        {
+            if (heli == null) return false;
+            int vivos = 0;
+            foreach (var s in AliadosAEvacuar(false))
+            {
+                if (s == null || s.Health == null || !s.Health.IsAlive) continue;
+                vivos++;
+                if (Plano(s.transform.position, heli.position).magnitude > RadioDeLaZonaDeSubida) return false;
+            }
+            return vivos > 0;
         }
 
         // Bug #255: cuantos de la escuadra y los milicianos estan caidos (se pueden reanimar).

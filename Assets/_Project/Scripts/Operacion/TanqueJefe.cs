@@ -27,6 +27,7 @@ namespace SP.Operacion
         public const float PisoDeVida01 = 0.05f;
         public const float RadioDelCanon = 5.5f;
         public const int DanoDelCanon = 120;
+        public const float FactorVisualDeLaExplosion = 1.6f;
         public const float SegundosEntreCanonazos = 5f, SegundosDeAviso = 1.5f, AlcanceDelCanon = 75f;
         public const float AlcanceDeMetralla = 30f;
         public const int DanoDeMetralla = 8;
@@ -191,6 +192,9 @@ namespace SP.Operacion
             var p = blanco.transform.position; p.y -= 0.8f;
             PuntoDeImpacto = p;
             anillo = AnilloDeAviso.Mostrar(p, RadioDelCanon, SegundosDeAviso);
+            // #275: el golpe del blindado es un COHETE que se ve volar hasta el circulo (el dano y la explosion los pone Impactar).
+            var boca = canon != null && canon.Muzzle != null ? canon.Muzzle.position : transform.position + Vector3.up * 2f;
+            CoheteDeAviso.Lanzar(boca, p + Vector3.up * 0.4f, SegundosDeAviso, 0, RadioDelCanon, conAnillo: false, explota: false);
             InicioDeAvisos.Add(Time.time);
             impactoEn = Time.time + SegundosDeAviso;
             proximoCanonazo = Time.time + SegundosEntreCanonazos;
@@ -214,6 +218,9 @@ namespace SP.Operacion
             InstantesDeImpacto.Add(Time.time);
             // El obus cae sobre el circulo (centro = punto del aviso). La explosion perdona a los enemigos y reparte con caida hacia el borde.
             Projectile.ExplodeAt(PuntoDeImpacto + Vector3.up * 0.4f, RadioDelCanon, DanoDelCanon, -3, TeamId.Enemy, Vehiculo);
+            // #275: "una gran explosion": bola de fuego de 1,6 veces el radio del dano, un segundo golpe de luz y sacudida fuerte.
+            ImpactFx.SpawnExplosion(PuntoDeImpacto + Vector3.up * 0.8f, RadioDelCanon * FactorVisualDeLaExplosion, false);
+            MuzzleLightPool.Flash(PuntoDeImpacto + Vector3.up * 2f, new Color(1f, 0.6f, 0.25f));
             anillo = null;
         }
 

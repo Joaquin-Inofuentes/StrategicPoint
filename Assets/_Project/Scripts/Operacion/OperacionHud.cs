@@ -60,7 +60,7 @@ namespace SP.Operacion
             var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             h.fuenteHud = font;
             h.titulo = Texto(go.transform, font, 13, new Vector2(0f, 13f), new Vector2(318f, 18f), new Color(1f, 0.82f, 0.3f));
-            h.detalle = Texto(go.transform, font, 14, new Vector2(0f, -7f), new Vector2(318f, 22f), Color.white);
+            h.detalle = Texto(go.transform, font, 14, new Vector2(0f, -9f), new Vector2(318f, 30f), Color.white);   // #279: texto descriptivo, hasta 2 renglones
             h.detalle.horizontalOverflow = HorizontalWrapMode.Wrap; h.detalle.verticalOverflow = VerticalWrapMode.Truncate;
             h.detalle.resizeTextForBestFit = true; h.detalle.resizeTextMinSize = 9; h.detalle.resizeTextMaxSize = 14;   // texto largo: se achica en vez de salirse del panel
 

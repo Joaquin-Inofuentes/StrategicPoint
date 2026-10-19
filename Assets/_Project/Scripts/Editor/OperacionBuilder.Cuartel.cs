@@ -251,6 +251,9 @@ namespace SP.EditorTools
         static Soldier TiradorEnSuelo(Transform en, string nombre, float x, float z, float yaw)
             => Enemigo(nombre, x, z, yaw, en, false);
 
+        // #257: la baranda de la torre mide la MITAD (0,5 m): se ve al tirador entero y sirve de cobertura baja (el tirador se agacha detras).
+        public const float AlturaDeLaBarandaDeTorre = 0.5f;
+
         // Torre de francotirador de 12 m. El soldado nace en el suelo (en la malla de navegacion) y sube a la plataforma al empezar la partida.
         static TorreDestruible TorreDeFrancotirador(Transform e, Transform en, string nombre, float x, float z, Material mat, float yawSuelo, List<Soldier> arriba)
         {
@@ -263,10 +266,10 @@ namespace SP.EditorTools
             Decor(pivote, "Torre_Cinto_1", x, z, 3.6f, 0.4f, 3.6f, mat, 0f, 4f);
             Decor(pivote, "Torre_Cinto_2", x, z, 3.6f, 0.4f, 3.6f, mat, 0f, 8f);
             Decor(pivote, "Torre_Plataforma", x, z, 6f, 0.6f, 6f, Techo, 0f, h);
-            Decor(pivote, "Torre_Baranda_N", x, z + 2.9f, 6f, 1f, 0.2f, mat, 0f, h + 0.6f);
-            Decor(pivote, "Torre_Baranda_S", x, z - 2.9f, 6f, 1f, 0.2f, mat, 0f, h + 0.6f);
-            Decor(pivote, "Torre_Baranda_O", x - 2.9f, z, 0.2f, 1f, 6f, mat, 0f, h + 0.6f);
-            Decor(pivote, "Torre_Baranda_E", x + 2.9f, z, 0.2f, 1f, 6f, mat, 0f, h + 0.6f);
+            Decor(pivote, "Torre_Baranda_N", x, z + 2.9f, 6f, AlturaDeLaBarandaDeTorre, 0.2f, mat, 0f, h + 0.6f);
+            Decor(pivote, "Torre_Baranda_S", x, z - 2.9f, 6f, AlturaDeLaBarandaDeTorre, 0.2f, mat, 0f, h + 0.6f);
+            Decor(pivote, "Torre_Baranda_O", x - 2.9f, z, 0.2f, AlturaDeLaBarandaDeTorre, 6f, mat, 0f, h + 0.6f);
+            Decor(pivote, "Torre_Baranda_E", x + 2.9f, z, 0.2f, AlturaDeLaBarandaDeTorre, 6f, mat, 0f, h + 0.6f);
             foreach (var sx in new[] { -2.8f, 2.8f }) foreach (var sz in new[] { -2.8f, 2.8f }) Decor(pivote, "Torre_Poste", x + sx, z + sz, 0.25f, 3.2f, 0.25f, MetalOsc, 0f, h + 0.6f);
             Decor(pivote, "Torre_Techo", x, z, 6.6f, 0.4f, 6.6f, Techo, 0f, h + 3.8f);
             Rotulo(pivote, "FRANCOTIRADOR", x, 8f, z - 1.62f, 0f, 0.9f, Color.white, Rojo, 5f, 1.1f);

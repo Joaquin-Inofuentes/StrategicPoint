@@ -250,6 +250,8 @@ namespace SP.Operacion
                     if (tFase >= Cadencia - Telegrafia) { fase = Fase.Libre; proximoCiclo = Time.time; }
                     break;
             }
+            // #257: detras de la baranda baja el tirador se agacha para cubrirse entre tiro y tiro (o sin blanco) y se para para apuntar.
+            if (soldado.Motor != null) soldado.Motor.SetCrouching(fase == Fase.Enfriando ? tFase > 0.5f : (fase == Fase.Libre && Objetivo == null));
         }
 
         void Disparar()

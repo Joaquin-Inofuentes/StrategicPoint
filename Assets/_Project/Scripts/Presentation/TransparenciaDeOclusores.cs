@@ -15,7 +15,7 @@ namespace SP.Presentation
         public const float AlfaTapando = 0.22f;
         public const float VelocidadDeFundido = 6f;
         public const float PeriodoDeSondeo = 0.1f;
-        public const float RadioDelSondeo = 0.35f;
+        public const float RadioDelSondeo = 0.08f;
 
         sealed class Estado
         {
@@ -75,6 +75,7 @@ namespace SP.Presentation
             // tirador de la torre. Tambien se destapa al enemigo que esta en la mira y a los tiradores de torre que se tienen delante.
             var cam = SP.Core.CamaraPrincipal.Actual;
             if (cam == null) return;
+            propios = lista.Count;
             var mira = drv.UltimaMira;
             if (mira.Type == AimTargetType.Enemy && mira.Soldier != null && !lista.Contains(mira.Soldier)) lista.Add(mira.Soldier);
             foreach (var t in SP.Operacion.TiradorDeTorre.Todos)
@@ -91,6 +92,33 @@ namespace SP.Presentation
         public const float DistanciaDeTorres = 90f, AnguloDeTorres = 32f;
 
         readonly List<Soldier> objetivos = new List<Soldier>();
+        int propios;   // los primeros "propios" de la lista son tuyos (poseido/seleccionados); el resto son enemigos que se quieren ver
+        // Bug #267 ("veo a traves del muro"): para destapar a un enemigo solo se aclaran postes, escudos y parapetos; las paredes largas del
+        // perimetro y los containers NUNCA se vuelven transparentes por un enemigo.
+        public const float LadoMaximoParaEnemigos = 3.5f;   // postes, escudos y parapetos; un container (6 m) o un muro largo no
+
+        readonly HashSet<Renderer> tapaPecho = new HashSet<Renderer>();
+        readonly HashSet<Renderer> tapaCabeza = new HashSet<Renderer>();
+
+        // Renderers altos (>1 m) que corta un rayo fino desde 'origen' hasta 'meta' (sin contar soldados ni vehiculos).
+        void BloqueadoresHacia(Vector3 origen, Vector3 meta, HashSet<Renderer> salida, float ladoMax)
+        {
+            var dir = meta - origen; float dist = dir.magnitude;
+            if (dist < 0.1f) return;
+            int n = Physics.SphereCastNonAlloc(origen, RadioDelSondeo, dir / dist, hits, dist - 0.6f, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = hits[i].collider;
+                if (c == null || c.GetComponentInParent<Soldier>() != null || c.GetComponentInParent<Vehicle>() != null) continue;
+                var r = c.GetComponent<MeshRenderer>();
+                if (r == null) r = c.GetComponentInParent<MeshRenderer>();
+                if (r == null || !r.enabled) continue;
+                if (r.bounds.size.y < 1f) continue;   // pisos y cosas bajas no tapan
+                if (r.bounds.Contains(origen)) continue;
+                if (Mathf.Max(r.bounds.size.x, r.bounds.size.z) > ladoMax) continue;
+                salida.Add(r);
+            }
+        }
 
         void Sondear()
         {
@@ -101,25 +129,20 @@ namespace SP.Presentation
                 objetivos.Clear();
                 Objetivos(objetivos);
                 var origen = cam.transform.position;
-                foreach (var s in objetivos)
+                for (int oi = 0; oi < objetivos.Count; oi++)
                 {
+                    var s = objetivos[oi];
+                    float ladoMax = oi < propios ? float.MaxValue : LadoMaximoParaEnemigos;
                     if (s == null || s.Health == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
-                    var meta = s.transform.position + Vector3.up * 0.9f;
-                    var dir = meta - origen;
-                    float dist = dir.magnitude;
+                    // Bug #258: el container de al lado se hacia transparente sin tapar nada. Solo cuenta lo que tapa de verdad: debe cortar
+                    // el rayo (fino) hacia el pecho Y el rayo hacia la cabeza; un objeto que roza el borde de la vista no se toca.
+                    float dist = Vector3.Distance(origen, s.transform.position + Vector3.up * 0.9f);
                     if (dist < 2.5f) continue;   // en primera persona la camara esta dentro del soldado: no hay nada entre medio
-                    int n = Physics.SphereCastNonAlloc(origen, RadioDelSondeo, dir / dist, hits, dist - 0.6f, ~0, QueryTriggerInteraction.Ignore);
-                    for (int i = 0; i < n; i++)
-                    {
-                        var c = hits[i].collider;
-                        if (c == null || c.GetComponentInParent<Soldier>() != null || c.GetComponentInParent<Vehicle>() != null) continue;
-                        var r = c.GetComponent<MeshRenderer>();
-                        if (r == null) r = c.GetComponentInParent<MeshRenderer>();
-                        if (r == null || !r.enabled) continue;
-                        // Pisos y cosas bajas no tapan: solo lo que levanta mas de ~1 m.
-                        if (r.bounds.size.y < 1f) continue;
-                        tapandoAhora.Add(r);
-                    }
+                    tapaPecho.Clear(); tapaCabeza.Clear();
+                    BloqueadoresHacia(origen, s.transform.position + Vector3.up * 0.9f, tapaPecho, ladoMax);
+                    if (tapaPecho.Count == 0) continue;
+                    BloqueadoresHacia(origen, s.transform.position + Vector3.up * 1.6f, tapaCabeza, ladoMax);
+                    foreach (var r in tapaPecho) if (tapaCabeza.Contains(r)) tapandoAhora.Add(r);
                 }
             }
 

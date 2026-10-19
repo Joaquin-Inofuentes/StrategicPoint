@@ -1822,7 +1822,8 @@ namespace SP.Player
             switch (Brain.Current.Role)
             {
                 case RoleType.Medic:
-                    ActualizarHabilidadMedico(result, ctrlSostenido);
+                    // #271: el medico NO cura ni revive por pasiva al agacharse cerca de alguien: solo con [E] MANTENIDO (accion pedida).
+                    ActualizarHabilidadMedico(result, KeyBindings.IsHeld(KeyBindings.Interactuar, SostenerParaEspecial));
                     break;
                 case RoleType.Assault:
                 case RoleType.Sniper:
@@ -2897,7 +2898,7 @@ namespace SP.Player
             bool on = ModoDios.Alternar();
             Feedback.Accion(on ? SfxKind.Swap : SfxKind.EmptyClick, null, null, on ? Feedback.Ok : Feedback.Warn, aviso: false, pulso: false, volumen: 0.5f);
             if (ModeToast != null)
-                ModeToast.Show(on ? "MODO DIOS: NADIE DE TU BANDO RECIBE DAÑO  ·  [F4] PARA APAGAR" : "MODO DIOS APAGADO", 2.2f);
+                ModeToast.Show(on ? "MODO DIOS: NADIE DE TU BANDO RECIBE DAÑO · PEGAS x3 · TODO x2 MAS RAPIDO  ·  [F4] PARA APAGAR" : "MODO DIOS APAGADO", 2.2f);
         }
 
         // Coberturas del piso: NO estan siempre a la vista. Se ven mientras se mantiene [C], y ademas cuando el

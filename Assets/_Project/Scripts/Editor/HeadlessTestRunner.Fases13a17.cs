@@ -149,7 +149,7 @@ namespace SP.EditorTools
             Check("Modo dios: un aliado no recibe dano", kes.Health.Current == antes);
             var enemigo = SpawnSoldier(soldierPrefab, "T15_Enemigo", TeamId.Enemy, RoleType.Enemy, new Vector3(-70f, 0.8f, 70f), colorEnemy, pool, 100);
             enemigo.Health.TakeDamage(30, kes.Id);
-            Check("Modo dios: el enemigo SI recibe dano", enemigo.Health.Current == 70);
+            Check("Modo dios: el enemigo SI recibe dano (x3 del jugador)", enemigo.Health.Current == 100 - 30 * (int)SP.Core.ModoDios.MultiplicadorDeDanoPropio);
             int vidaTanque = vehicle.Health.Current;
             vehicle.TakeDamage(80, -1);
             Check("Modo dios: el tanque propio no recibe dano", vehicle.Health.Current == vidaTanque);
