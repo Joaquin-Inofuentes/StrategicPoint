@@ -20,6 +20,7 @@ namespace SP.Presentation
     public class SoldierMeleeAnim : MonoBehaviour
     {
         public const float Total = 0.72f;
+        public const float EscalaDelTorsoDelJugador = 0.2f;
         const float FinCarga = 0.17f, FinTajo = 0.37f, EntradaPeso = 0.07f, SalidaPeso = 0.24f;
         const float LargoCuchillo = 0.4f;
 
@@ -134,8 +135,12 @@ namespace SP.Presentation
             if (pecho != null)
             {
                 // Giro grande y cuerpo que se echa hacia atras en la carga y se tira hacia adelante en el tajo.
-                float giro = Mathf.LerpUnclamped(46f, -58f, k) * w;
-                float inclinacion = Mathf.LerpUnclamped(-14f, 24f, k) * w;
+                // Bug "el cuchillo se me avanza": en primera persona la camara sigue al cuerpo, y el torso que se tira 24 grados hacia adelante la
+                // arrastraba hacia el enemigo. Con el jugador poseido el torso casi no se mueve (el brazo y el cuchillo siguen igual de visibles).
+                var yo = GetComponent<SP.Actors.Soldier>();
+                float escalaTorso = yo != null && yo.Brain != null && yo.Brain.IsPossessedByPlayer ? EscalaDelTorsoDelJugador : 1f;
+                float giro = Mathf.LerpUnclamped(46f, -58f, k) * w * escalaTorso;
+                float inclinacion = Mathf.LerpUnclamped(-14f, 24f, k) * w * escalaTorso;
                 pecho.rotation = Quaternion.AngleAxis(giro, transform.up) * Quaternion.AngleAxis(inclinacion, transform.right) * pecho.rotation;
             }
 

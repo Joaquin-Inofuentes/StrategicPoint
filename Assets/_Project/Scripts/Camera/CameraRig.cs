@@ -180,6 +180,26 @@ namespace SP.CameraSystem
             zoomTransicionElapsed = 0f;
         }
 
+        // Rebote de zoom del francotirador: al disparar con la mira puesta el zoom se acerca de golpe, rebota hacia atras y adelante (resorte
+        // amortiguado) y asienta en el zoom normal en medio segundo. Se mide en tiempo real: la camara lenta del cuchillo no lo estira.
+        public const float DuracionDelReboteDeZoom = 0.5f, AmplitudDelReboteDeZoom = 0.22f, CiclosDelReboteDeZoom = 1.75f;
+        float reboteDeZoomT = DuracionDelReboteDeZoom, reboteDeZoomAmp;
+        public bool ReboteDeZoomActivo => reboteDeZoomT < DuracionDelReboteDeZoom;
+        public void RebotarZoom(float amplitud = AmplitudDelReboteDeZoom)
+        {
+            if (!CameraFxSettings.Enabled) return;
+            reboteDeZoomT = 0f; reboteDeZoomAmp = amplitud;
+        }
+        // Multiplicador del FOV: arranca en 1 - amp (mas zoom), oscila alrededor de 1 y vuelve a 1 exacto al terminar.
+        public float FactorDeReboteDeZoom()
+        {
+            if (reboteDeZoomT >= DuracionDelReboteDeZoom) return 1f;
+            reboteDeZoomT = Mathf.Min(DuracionDelReboteDeZoom, reboteDeZoomT + Time.unscaledDeltaTime);
+            float u = reboteDeZoomT / DuracionDelReboteDeZoom;
+            float envolvente = Mathf.Exp(-4.5f * u) - Mathf.Exp(-4.5f) * u;   // decae y llega a 0 exacto en u = 1
+            return 1f - reboteDeZoomAmp * envolvente * Mathf.Cos(2f * Mathf.PI * CiclosDelReboteDeZoom * u);
+        }
+
         // APUNTAR (mantener click derecho) pasa la camara a PRIMERA PERSONA de verdad: del
         // encuadre por encima del hombro se desliza al ojo del soldado (o a la mira del
         // canon en el tanque). 0 = encuadre normal, 1 = camara en el ojo / mira.
@@ -243,7 +263,7 @@ namespace SP.CameraSystem
                 adsBlend = Mathf.MoveTowards(adsBlend, zoomed ? 1f : 0f, Time.unscaledDeltaTime * VelocidadDeApuntado);
                 float goal = zoomed ? zoomFov : normalFov;
                 zoomTransicionElapsed = Mathf.Min(ZoomLerpDuration, zoomTransicionElapsed + Time.deltaTime);
-                cam.fieldOfView = Mathf.Lerp(zoomFovAlEmpezar, goal, SmoothStep01(zoomTransicionElapsed / ZoomLerpDuration));
+                cam.fieldOfView = Mathf.Lerp(zoomFovAlEmpezar, goal, SmoothStep01(zoomTransicionElapsed / ZoomLerpDuration)) * FactorDeReboteDeZoom();
                 ApplyCameraOffsets(frame);
                 AplicarRespiracion();
                 return;

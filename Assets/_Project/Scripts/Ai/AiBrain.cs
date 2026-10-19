@@ -761,10 +761,18 @@ namespace SP.Ai
 
         // Los aliados libres corren cuando el jugador corre ([Shift]) y ellos van hacia una
         // orden, siguen al lider o se retiran. En combate o quietos caminan normal.
+        public const float DistanciaParaAlcanzarAlLider = 14f;
         void ActualizarCarrera()
         {
             bool correr = self.Team == SP.Combat.TeamId.Player && AjustesDeEscuadra.Correr && !IsPossessedByPlayer
                 && (State == AiState.MovingToOrder || State == AiState.Follow);
+            // Bug #283 ("mis aliados se traban al seguirme"): con la misma velocidad que el jugador un aliado que se queda atras (tras un combate,
+            // un atasco) nunca lo alcanza y quedaba a 45-80 m con regresos forzados repetidos. Si sigue al lider y esta lejos, corre hasta alcanzarlo.
+            if (!correr && self.Team == SP.Combat.TeamId.Player && !IsPossessedByPlayer && State == AiState.Follow && followTarget != null)
+            {
+                var haciaLider = followTarget.transform.position - self.transform.position; haciaLider.y = 0f;
+                if (haciaLider.magnitude > DistanciaParaAlcanzarAlLider) correr = true;
+            }
             self.Motor.SetRunning(correr);
             self.Motor.SpeedMultiplier = (!correr && State == AiState.Follow && self.Team == SP.Combat.TeamId.Player) ? 1.15f : 1f;
         }

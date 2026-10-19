@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using System.Reflection;
 using System.Text;
 using UnityEngine;
@@ -41,6 +42,119 @@ namespace SP.EditorTools
             heli.Vehiculo.TakeDamage(HelicopteroEnemigo.VidaDeAsalto + 10, -4);
             foreach (var x in Esperar(1.5f)) yield return x;
             W8Ok(ref ok, heli.Derribado && def.HelicopterosDerribados >= 1, sb, "se lo derriba a tiros y cuenta como derribado");
+            ModoDios.Poner(false);
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 282a el modo dios (x3) no destruye al tanque jefe: el piso de vida se respeta
+        static IEnumerator Bug282a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            ModoDios.VelocidadActiva = false;
+            ModoDios.Poner(true);
+            OperacionPrueba.Arrancar(4, 1, 1);   // subfase Jefe: el Tanque_Fuga lleva el piso de vida del jefe
+            foreach (var x in Esperar(2f)) yield return x;
+            var yo = PlayerInputDriver.Activo.Brain.Current;
+            SP.Vehicles.Vehicle tq = null;
+            foreach (var v in Object.FindObjectsByType<SP.Vehicles.Vehicle>()) if (v != null && v.name == "Tanque_Fuga") { tq = v; break; }
+            if (tq == null) { Fin("FALLO no hay Tanque_Fuga"); yield break; }
+            int piso = tq.PisoDeVida;
+            W8Ok(ref ok, piso > 0, sb, $"el tanque lleva piso de vida ({piso} de {tq.Health.MaxHealth})");
+            for (int i = 0; i < 60 && !tq.IsDestroyed; i++) tq.TakeDamage(300, yo.Id);
+            W8Ok(ref ok, !tq.IsDestroyed && tq.Health.IsAlive, sb, $"con modo dios (x3) tras 60 golpes de 300 sigue vivo ({tq.Health.Current}/{tq.Health.MaxHealth})");
+            W8Ok(ref ok, tq.Health.Current >= piso, sb, $"no baja del piso ({tq.Health.Current} >= {piso})");
+            ModoDios.Poner(false);
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 285a rebote de zoom del francotirador + torso del cuchillo
+        static IEnumerator Bug285a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(1, 1, 0);
+            foreach (var x in Esperar(2f)) yield return x;
+            var rig = PlayerInputDriver.Activo.Rig;
+            W8Ok(ref ok, rig.FactorDeReboteDeZoom() == 1f, sb, "sin disparo el factor es 1");
+            float fov0 = Camera.main.fieldOfView; rig.RebotarZoom(); sb.Append($"[zoom={rig.EstaConZoom}] ");
+            float min = 9f, max = 0f, acum = 0f; int frames = 0; float t0 = Time.unscaledTime;
+            while (rig.ReboteDeZoomActivo && frames < 400)
+            {
+                float f = Camera.main.fieldOfView / fov0;   // solo lo mueve la camara (llamar al factor desde aca lo adelantaria el doble)
+                if (f < min) min = f; if (f > max) max = f; frames++; acum += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            float dur = Time.unscaledTime - t0;
+            W8Ok(ref ok, min < 0.9f, sb, $"acerca el zoom (FOV x{min:0.00})");
+            W8Ok(ref ok, max > 1.02f, sb, $"rebota hacia atras pasando el zoom normal (FOV x{max:0.00})");
+            W8Ok(ref ok, acum > 0.35f && acum < 0.75f, sb, $"dura medio segundo ({acum:0.00} s de dt, {dur:0.00} s de reloj, {frames} cuadros)");
+            W8Ok(ref ok, rig.FactorDeReboteDeZoom() == 1f, sb, "termina exacto en el zoom normal");
+            W8Ok(ref ok, SoldierMeleeAnim.EscalaDelTorsoDelJugador < 0.5f, sb, $"el torso del jugador se mueve poco con el cuchillo ({SoldierMeleeAnim.EscalaDelTorsoDelJugador})");
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 284a la extraccion recibe un flujo secuencial de enemigos
+        static IEnumerator Bug284a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            ModoDios.VelocidadActiva = false;
+            ModoDios.Poner(true);
+            OperacionPrueba.Arrancar(6, 1, 0);
+            foreach (var x in Esperar(3f)) yield return x;
+            var d = OperacionDirector.Instancia;
+            W8Ok(ref ok, d.Fase == FaseOperacion.Extraer, sb, $"estamos en Extraer ({d.Fase})");
+            foreach (var x in Esperar(20f)) yield return x;
+            W8Ok(ref ok, d.TandasDeExtraccion >= 5, sb, $"llegaron {d.TandasDeExtraccion} tandas en 20 s (una cada {OperacionDirector.SegundosEntreTandasDeExtraccion} s)");
+            W8Ok(ref ok, d.EnemigosDeExtraccionCreados >= 12, sb, $"{d.EnemigosDeExtraccionCreados} enemigos creados, {d.EnemigosDeExtraccionVivos} vivos (tope {OperacionDirector.TopeDeVivosEnExtraccion})");
+            W8Ok(ref ok, d.EnemigosDeExtraccionVivos <= OperacionDirector.TopeDeVivosEnExtraccion, sb, "no pasa el tope de vivos");
+            ModoDios.Poner(false);
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 283a los aliados no se traban al seguir al jugador que camina
+        static IEnumerator Bug283a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            ModoDios.VelocidadActiva = false;
+            ModoDios.Poner(true);
+            OperacionPrueba.Arrancar(4, 1, 0);
+            foreach (var x in Esperar(2f)) yield return x;
+            var d = PlayerInputDriver.Activo; var yo = d.Brain.Current;
+            var ag = yo.GetComponent<UnityEngine.AI.NavMeshAgent>();
+            var aliados = new List<Soldier>();
+            foreach (var s in ActorRegistry.All) if (s != null && s.Team == TeamId.Player && s != yo && s.Health.IsAlive && s.Role != RoleType.Civilian) aliados.Add(s);
+            var hist = new Dictionary<Soldier, List<Vector3>>(); foreach (var a in aliados) hist[a] = new List<Vector3>();
+            float t = 0f, atrapadoMax = 0f, distMax = 0f; string peor = "";
+            var atrapadoDesde = new Dictionary<Soldier, float>();
+            var rumbo = new Vector3(0f, 0f, 1f);
+            while (t < 40f)
+            {
+                // El jugador camina a ~5 m/s hacia el norte (si el camino esta libre) y gira 90 grados cada 8 s para recorrer el patio.
+                if (((int)(t / 8f)) % 2 == 1) rumbo = new Vector3(1f, 0f, 0f); else rumbo = new Vector3(0f, 0f, 1f);
+                if (ag != null && ag.enabled) ag.Move(rumbo * 5f * Time.deltaTime); else yo.transform.position += rumbo * 5f * Time.deltaTime;
+                t += Time.deltaTime;
+                if (Time.frameCount % 15 == 0)
+                    foreach (var a in aliados)
+                    {
+                        var l = hist[a]; l.Add(a.transform.position); if (l.Count > 12) l.RemoveAt(0);
+                        float dist = Vector3.Distance(a.transform.position, yo.transform.position);
+                        if (dist > distMax) { distMax = dist; peor = a.DisplayName; }
+                        bool quieto = l.Count >= 12 && Vector3.Distance(l[0], l[l.Count - 1]) < 0.8f;
+                        if (quieto && dist > 8f && a.Brain.State == SP.Ai.AiState.Follow)
+                        {
+                            if (!atrapadoDesde.ContainsKey(a)) atrapadoDesde[a] = t;
+                            atrapadoMax = Mathf.Max(atrapadoMax, t - atrapadoDesde[a]);
+                        }
+                        else atrapadoDesde.Remove(a);
+                    }
+                yield return null;
+            }
+            W8Ok(ref ok, atrapadoMax < 4f, sb, $"ningun aliado queda parado y lejos mas de 4 s (peor {atrapadoMax:0.0} s)");
+            W8Ok(ref ok, distMax < 70f, sb, $"el aliado mas lejano llego a {distMax:0} m ({peor}); corre para alcanzar al lider");
+            foreach (var a in aliados) { var na = a.GetComponent<UnityEngine.AI.NavMeshAgent>(); string nav = na != null ? (na.pathStatus + " vel=" + na.velocity.magnitude.ToString("0.0") + " spd=" + na.speed.ToString("0.0") + " enNav=" + na.isOnNavMesh) : "-"; sb.Append($"[{a.DisplayName} a {Vector3.Distance(a.transform.position, yo.transform.position):0.0} m, {a.Brain.State}, regresos={a.Brain.RegresosForzados}, nav={nav}] "); }
             ModoDios.Poner(false);
             Fin((ok ? "OK " : "FALLO ") + sb);
         }

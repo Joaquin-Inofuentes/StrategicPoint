@@ -166,6 +166,8 @@ namespace SP.Player
             // Ronda 13 (punto 10): apuntando el retroceso de camara baja a un 40 % (la mira "se planta").
             kickDeg *= Mathf.Lerp(1f, 0.4f, Brain.Current.Weapon.Apuntado01);
             Rig.KickRecoil(kickDeg);
+            // Francotirador con la mira puesta: el zoom rebota (se acerca, vuelve hacia atras y adelante y asienta en medio segundo).
+            if (Brain.Current.Weapon.CurrentWeaponKind == WeaponKind.Sniper && Rig.EstaConZoom) Rig.RebotarZoom();
         }
 
         void UpdateWeaponViewmodel(WeaponHolder weapon)

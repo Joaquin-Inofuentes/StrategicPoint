@@ -19,8 +19,58 @@ namespace SP.Operacion
     public partial class OperacionDirector
     {
         // ---- 6. extraccion ----
+        // ---- Bug #284: "aqui quiero que empiecen a venir muchos muchos enemigos de manera secuencial" ----
+        // Mientras se espera/cubre el helicoptero llega un flujo continuo de enemigos en tandas (cada 2,5 s), por las mismas calles que usa la
+        // resistencia en la ciudad, hasta un tope de vivos a la vez (rendimiento) y un total muy alto. Se corta al empezar la subida.
+        public const int EnemigosPorTandaDeExtraccion = 3, TopeDeVivosEnExtraccion = 18, TotalDeEnemigosEnExtraccion = 60;
+        public const float SegundosEntreTandasDeExtraccion = 2.5f;
+        public int EnemigosDeExtraccionCreados { get; private set; }
+        public int TandasDeExtraccion { get; private set; }
+        readonly List<Soldier> enemigosDeExtraccion = new List<Soldier>();
+        float proximaTandaDeExtraccion;
+        int indiceEntradaExtraccion;
+        public int EnemigosDeExtraccionVivos { get { int n = 0; foreach (var e in enemigosDeExtraccion) if (e != null && e.Health != null && e.Health.IsAlive) n++; return n; } }
+
+        void TickOleadasDeExtraer()
+        {
+            if (!Application.isPlaying || SubiendoAlHeli || plantillaDeRefuerzo == null || plaza == null) return;
+            if (Time.time < proximaTandaDeExtraccion) return;
+            if (EnemigosDeExtraccionCreados >= TotalDeEnemigosEnExtraccion || EnemigosDeExtraccionVivos >= TopeDeVivosEnExtraccion) { proximaTandaDeExtraccion = Time.time + 1f; return; }
+            proximaTandaDeExtraccion = Time.time + SegundosEntreTandasDeExtraccion;
+            var aparicion = AparicionesDeLaCiudad();
+            if (aparicion.Count == 0) return;
+            var destino = heli != null ? heli.position : plaza.position;
+            var grupo = new List<Soldier>();
+            for (int k = 0; k < EnemigosPorTandaDeExtraccion && EnemigosDeExtraccionVivos + grupo.Count < TopeDeVivosEnExtraccion; k++)
+            {
+                indiceEntradaExtraccion = (indiceEntradaExtraccion + 1 + UnityEngine.Random.Range(0, 2)) % aparicion.Count;
+                var pos = aparicion[indiceEntradaExtraccion] + new Vector3(UnityEngine.Random.Range(-3f, 3f), 0f, UnityEngine.Random.Range(-3f, 3f));
+                if (UnityEngine.AI.NavMesh.SamplePosition(pos, out var h, 4f, UnityEngine.AI.NavMesh.AllAreas)) pos = h.position;
+                var go = Instantiate(plantillaDeRefuerzo, pos, Quaternion.LookRotation(Plano(destino, pos).normalized, Vector3.up), plantillaDeRefuerzo.transform.parent);
+                go.name = "Enemigo_Extraccion_" + (++EnemigosDeExtraccionCreados);
+                go.SetActive(true);
+                var s = go.GetComponent<Soldier>();
+                if (s == null) { Destroy(go); continue; }
+                enemigosDeExtraccion.Add(s);
+                ApoyoEnElPiso.Apoyar(s.transform);
+                if (s.Brain != null)
+                {
+                    s.Brain.ReactivarNavegacion();
+                    var meta = destino + new Vector3(UnityEngine.Random.Range(-8f, 8f), 0f, UnityEngine.Random.Range(-8f, 8f));
+                    s.Brain.SetPatrolRoute(new[] { meta, destino });
+                }
+                grupo.Add(s);
+            }
+            if (grupo.Count == 0) return;
+            CazaDeEnemigos.Marcar(grupo.ToArray());
+            TandasDeExtraccion++;
+            if (TandasDeExtraccion == 1) { if (hud != null) hud.Aviso("¡VIENEN MAS Y MAS ENEMIGOS!\nAGUANTA HASTA SUBIR", 2.5f); }
+            GameLog.Line($"[Operacion] Extraccion: tanda {TandasDeExtraccion} ({grupo.Count} enemigos, vivos {EnemigosDeExtraccionVivos})");
+        }
+
         void TickExtraer()
         {
+            TickOleadasDeExtraer();
             if (SubiendoAlHeli) return;
             if (CoberturaActiva) { TickCoberturaDeExtraer(Time.deltaTime); return; }   // #127: estacionario cubriendo hasta que todos esten en la zona
             var yo = Poseido();

@@ -67,11 +67,12 @@ namespace SP.Vehicles
                 if (Health.Current <= piso) return;
                 amount = Mathf.Min(amount, Health.Current - piso);
                 // La dificultad escala el dano DENTRO de Health (segun quien pega): se descuenta aca para que el golpe ya escalado no pase del piso.
-                if (SP.Core.Dificultad.Activa)
-                {
-                    float k = Mathf.Max(0.01f, SP.Core.Dificultad.MultiplicadorDeDano(attackerId, Health));
-                    amount = Mathf.Max(1, Mathf.Min(amount, Mathf.FloorToInt((Health.Current - piso) / k)));
-                }
+                // Bug #282: lo mismo con el x3 del modo dios (#276): sin descontarlo, un golpe triplicado pasaba el piso y DESTRUIA al tanque jefe
+                // (el que despues se repara y se monta), dejando la fase sin tanque.
+                float k = 1f;
+                if (SP.Core.Dificultad.Activa) k *= Mathf.Max(0.01f, SP.Core.Dificultad.MultiplicadorDeDano(attackerId, Health));
+                if (SP.Core.ModoDios.Activo) k *= Mathf.Max(0.01f, SP.Core.ModoDios.MultiplicadorDeDano(attackerId));
+                if (k != 1f) amount = Mathf.Max(1, Mathf.Min(amount, Mathf.FloorToInt((Health.Current - piso) / k)));
             }
             bool wasAlive = Health.IsAlive;
             Health.TakeDamage(amount, attackerId);
