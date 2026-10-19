@@ -33,7 +33,7 @@ namespace SP.Actors
             {
                 if (matAliado == null) matAliado = SP.Core.RecursosCache.Cargar<Material>("Soldados/MAT_Trimsheet_Aliado");
                 if (matEnemigo == null) matEnemigo = SP.Core.RecursosCache.Cargar<Material>("Soldados/MAT_Trimsheet_Enemigo");
-                var mat = def.Enemigo ? MaterialEnemigoVisible() : MaterialAliado();
+                var mat = def.Enemigo ? MaterialEnemigoVisible() : (def.Nombre == "MEDICO" ? MaterialMedico() : MaterialAliado());
                 if (s.Role == RoleType.Civilian) mat = MaterialCivil();
                 smr.sharedMesh = malla;
                 if (mat != null) smr.sharedMaterial = mat;
@@ -133,6 +133,20 @@ namespace SP.Actors
                 matAliadoTenido.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
             }
             return matAliadoTenido;
+        }
+
+        // Bug #270 ("el material se rompio, al soldado le falta algo"): con el tinte azul pleno el uniforme blanco del medico quedaba un azul lavado
+        // y las cruces se perdian. El medico lleva un tinte mas suave: blanco azulado con las cruces azules bien marcadas.
+        static Material matMedico;
+        static Material MaterialMedico()
+        {
+            if (matMedico != null) return matMedico;
+            var baseAzul = MaterialAliado();
+            if (baseAzul == null) return null;
+            matMedico = new Material(baseAzul) { name = "MAT_Trimsheet_Aliado_Medico" };
+            Teñir(matMedico, new Color(0.78f, 0.88f, 1.00f));
+            if (matMedico.HasProperty("_EmissionColor")) matMedico.SetColor("_EmissionColor", new Color(0.02f, 0.05f, 0.12f));
+            return matMedico;
         }
 
         static Material matCivil;

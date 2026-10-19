@@ -447,6 +447,8 @@ namespace SP.Player
             }
 
             autoConduccion = false;
+            // #277: el artillero siempre empieza mirando hacia abajo (al terreno por delante), nunca al cielo ni al horizonte heredado del asiento anterior.
+            if (newRole == VehicleSeatRole.Gunner || newRole == VehicleSeatRole.Passenger1) inclinacionArtillero = Mathf.Max(inclinacionArtillero, InclinacionInicialArtillero);
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
             // Se lee el asiento REAL tras montar, no se asume newRole: si
             // alguna vez Mount vuelve a caer a un asiento distinto (otra
@@ -605,7 +607,8 @@ namespace SP.Player
         // Bug #047: inclinacion de la camara del artillero (grados, + = hacia abajo). Abajo llega a ver el suelo a pocos
         // metros del tanque; arriba, un poco sobre el horizonte.
         public const float InclinacionMinArtillero = -15f, InclinacionMaxArtillero = 38f;
-        float inclinacionArtillero = 10f;
+        public const float InclinacionInicialArtillero = 10f;
+        float inclinacionArtillero = InclinacionInicialArtillero;
         public float InclinacionArtillero => inclinacionArtillero;
         readonly RaycastHit[] golpesDeMira = new RaycastHit[24];
 
