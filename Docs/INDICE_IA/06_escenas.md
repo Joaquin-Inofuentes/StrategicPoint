@@ -2,16 +2,21 @@
 
 | Tipo | Cantidad |
 |---|---|
-| Escenas | 9 |
+| Escenas | 14 |
 | Prefabs | 137 |
-| Materiales | 252 |
-| Assets (`.asset`) | 34 |
+| Materiales | 306 |
+| Assets (`.asset`) | 62 |
 | Shaders | 3 |
 | Input Actions | 1 |
 
 ## Escenas
 
 - `Assets/Scenes/SampleScene.unity`
+- `Assets/_Project/Scenes/SC_Blockout_01.unity`
+- `Assets/_Project/Scenes/SC_Blockout_02.unity`
+- `Assets/_Project/Scenes/SC_Blockout_03.unity`
+- `Assets/_Project/Scenes/SC_Blockout_04.unity`
+- `Assets/_Project/Scenes/SC_Blockout_05.unity`
 - `Assets/_Project/Scenes/SC_Gameplay.unity`
 - `Assets/_Project/Scenes/SC_Loading.unity`
 - `Assets/_Project/Scenes/SC_MainMenu.unity`

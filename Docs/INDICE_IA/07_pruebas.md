@@ -7,20 +7,20 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 `Strategic Point > Run All Tests Headless` o
 `-executeMethod SP.EditorTools.HeadlessTestRunner.RunAll`.
 
-**712 aserciones (`Check`) en 10 archivos.**
+**722 aserciones (`Check`) en 10 archivos.**
 
 | Archivo | Lineas | Fases | Checks | Algunas fases |
 |---|---|---|---|---|
-| `HeadlessTestRunner.BusquedasGlobales.cs` | 162 | 0 | 5 | — |
+| `HeadlessTestRunner.BusquedasGlobales.cs` | 182 | 0 | 5 | — |
 | `HeadlessTestRunner.Fase18.cs` | 132 | 1 | 35 | RunPhase18 |
-| `HeadlessTestRunner.Fase19.cs` | 424 | 1 | 92 | RunPhase19 |
-| `HeadlessTestRunner.Fase20.cs` | 238 | 2 | 33 | RunPhase20, RunPhase20Ronda12 |
-| `HeadlessTestRunner.Fase21.cs` | 571 | 11 | 77 | Fase21_Acciones, Fase21_Agachado, Fase21_Ajustes, Fase21_ApuntarPreciso, Fase21_BarraDeVidaDelTanque, Fase21_MedicoEnCalma |
+| `HeadlessTestRunner.Fase19.cs` | 432 | 1 | 92 | RunPhase19 |
+| `HeadlessTestRunner.Fase20.cs` | 240 | 2 | 33 | RunPhase20, RunPhase20Ronda12 |
+| `HeadlessTestRunner.Fase21.cs` | 581 | 11 | 78 | Fase21_Acciones, Fase21_Agachado, Fase21_Ajustes, Fase21_ApuntarPreciso, Fase21_BarraDeVidaDelTanque, Fase21_MedicoEnCalma |
 | `HeadlessTestRunner.Fase22.cs` | 51 | 1 | 10 | RunPhase22 |
-| `HeadlessTestRunner.Fase23.cs` | 640 | 20 | 51 | Fase23_AgachadoContagio, Fase23_AnilloAtacante, Fase23_BordeRojoImpacto, Fase23_CartelSeleccionAbajoCentro, Fase23_CinematicaSaltoRapido, Fase23_CivilVisible |
-| `HeadlessTestRunner.Fases13a17.cs` | 736 | 5 | 140 | RunPhase13, RunPhase14, RunPhase15, RunPhase16, RunPhase17 |
-| `HeadlessTestRunner.Fases8a12.cs` | 1559 | 2 | 148 | RunPhase8, RunPhase9 |
-| `HeadlessTestRunner.cs` | 4281 | 7 | 121 | RunPhase1, RunPhase2, RunPhase3, RunPhase4, RunPhase5, RunPhase6 |
+| `HeadlessTestRunner.Fase23.cs` | 799 | 21 | 56 | Fase23_AgachadoContagio, Fase23_AnilloAtacante, Fase23_BordeRojoImpacto, Fase23_CartelSeleccionAbajoCentro, Fase23_CinematicaSaltoRapido, Fase23_CivilVisible |
+| `HeadlessTestRunner.Fases13a17.cs` | 740 | 5 | 141 | RunPhase13, RunPhase14, RunPhase15, RunPhase16, RunPhase17 |
+| `HeadlessTestRunner.Fases8a12.cs` | 1582 | 2 | 150 | RunPhase8, RunPhase9 |
+| `HeadlessTestRunner.cs` | 4297 | 7 | 122 | RunPhase1, RunPhase2, RunPhase3, RunPhase4, RunPhase5, RunPhase6 |
 
 ## Otras entradas de prueba
 
@@ -41,7 +41,7 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 | `Tools/Qa/qa_total.bat` | Corrida completa: suite + build + metricas + capturas en 7 resoluciones + tutorial automatico + todos los logs. |
 | `Tools/Autoplay/autoplay.sh` | Solo el tutorial automatico, desde git-bash. |
 
-## Archivos de logica sin una sola asercion (119)
+## Archivos de logica sin una sola asercion (123)
 
 > Un archivo de `Ai`, `Combat`, `Player`, `Vehicles`, `Core`, `Actors` o `Mision` sin ningun `Check`
 > puede estar cubierto desde otro archivo — pero vale mirarlo.
@@ -54,6 +54,7 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 - `Assets/_Project/Scripts/Ai/AiBrain.Disparo.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Granadas.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Herido.cs`
+- `Assets/_Project/Scripts/Ai/AiBrain.ImpactosContraParedes.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Navegacion.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Revivir.cs`
 - `Assets/_Project/Scripts/Ai/AiBrain.Sentidos.cs`
@@ -85,5 +86,4 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 - `Assets/_Project/Scripts/Core/BuscarHijo.cs`
 - `Assets/_Project/Scripts/Core/CamaraPrincipal.cs`
 - `Assets/_Project/Scripts/Core/Coberturas.Puntuada.cs`
-- `Assets/_Project/Scripts/Core/Coberturas.cs`
-- …y 79 mas
+- …y 83 mas

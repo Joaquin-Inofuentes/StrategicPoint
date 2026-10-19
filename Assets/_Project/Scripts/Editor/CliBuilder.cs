@@ -38,5 +38,38 @@ namespace SP.EditorTools
 
             if (Application.isBatchMode) EditorApplication.Exit(0);
         }
+
+        // Build WebGL ajustada para fluidez y tamano (invocable por eval o -executeMethod).
+        public static void BuildWebGL()
+        {
+            const string outputDir = "Builds/WebGL";
+            System.IO.Directory.CreateDirectory(outputDir);
+
+            var t = UnityEditor.Build.NamedBuildTarget.WebGL;
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
+            PlayerSettings.WebGL.decompressionFallback = true;      // hosting sin cabeceras Content-Encoding (GitHub Pages, itch.io)
+            PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.None;
+            PlayerSettings.WebGL.dataCaching = true;
+            PlayerSettings.WebGL.nameFilesAsHashes = true;
+            PlayerSettings.WebGL.debugSymbolMode = WebGLDebugSymbolMode.Off;
+            PlayerSettings.WebGL.initialMemorySize = 256;
+            PlayerSettings.WebGL.memoryGrowthMode = WebGLMemoryGrowthMode.Geometric;
+            PlayerSettings.SetManagedStrippingLevel(t, ManagedStrippingLevel.High);
+            PlayerSettings.SetIl2CppCodeGeneration(t, UnityEditor.Build.Il2CppCodeGeneration.OptimizeSize);
+            PlayerSettings.stripEngineCode = true;
+            EditorUserBuildSettings.development = false;
+
+            var options = new BuildPlayerOptions
+            {
+                scenes = EditorBuildSettingsScene.GetActiveSceneList(EditorBuildSettings.scenes),
+                locationPathName = outputDir,
+                target = BuildTarget.WebGL,
+                options = BuildOptions.None
+            };
+            var report = BuildPipeline.BuildPlayer(options);
+            var summary = report.summary;
+            Debug.Log($"[CliBuilder] WebGL Resultado: {summary.result} | Errores: {summary.totalErrors} | Tamano: {summary.totalSize} bytes | Salida: {summary.outputPath}");
+            if (Application.isBatchMode) EditorApplication.Exit(summary.result == UnityEditor.Build.Reporting.BuildResult.Succeeded ? 0 : 1);
+        }
     }
 }
