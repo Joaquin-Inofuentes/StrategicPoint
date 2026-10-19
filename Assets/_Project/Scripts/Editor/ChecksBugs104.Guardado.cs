@@ -430,7 +430,7 @@ namespace SP.EditorTools
                 var doc = SoldadoPor("Doc"); var kes = SoldadoPor("Kes");
                 if (kes != null && doc != null && d.Fase != FaseOperacion.Extraer)
                 {
-                    doc.Health.RestaurarVida(41);
+                    doc.Health.RestaurarVida(Mathf.Max(41, doc.Health.MaxHealth - 3));
                     kes.Weapon.FijarReservaParaPrueba(kes.Weapon.CurrentWeaponKind, 77);
                     kes.Weapon.ConsumirGranada();
                 }

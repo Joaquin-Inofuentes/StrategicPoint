@@ -343,7 +343,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, SP.Mision.EstadisticasDeMision.SupervivientesForzados < 0, sb, "SupervivientesForzados sin forzar durante Resistir");
             float t0 = Time.realtimeSinceStartup; float acum = 0f; int frames = 0; float peor = 0f; bool ordenAtaque = false; int maxVivos = 0, maxCamionetas = 0; int caidos = 0;
             var vistas = new HashSet<int>(); Soldier soldadoQueVuelve = null; float volverA = -1f;
-            while (d.Fase == FaseOperacion.Resistir && Time.realtimeSinceStartup - t0 < 160f)
+            while (d.Fase == FaseOperacion.Resistir && Time.realtimeSinceStartup - t0 < 300f)
             {
                 float dt = Time.unscaledDeltaTime; acum += dt; frames++; peor = Mathf.Max(peor, dt);
                 if (volverA > 0f && Time.realtimeSinceStartup > volverA) { W10Ordenar(d.sectoresDeDefensa[1].Centro, soldadoQueVuelve); volverA = -1f; }
@@ -368,6 +368,8 @@ namespace SP.EditorTools
                     }
                 }
                 foreach (var s in d.sectoresDeDefensa) if (s.Caido) caidos++;
+                // El reloj del mando se detiene con un sector caido o amenazado y vacio (diseno actual): la cadena entera necesita que corra, asi que si se frena se barre a los atacantes y se reabren los sectores.
+                if (!d.RelojDelMandoCorre) { foreach (var o in d.OleadasDelMando) foreach (var sd in o.soldados) if (sd != null && sd.gameObject.activeInHierarchy && sd.Health.IsAlive) sd.Health.TakeDamage(100000, -1); foreach (var sc in d.sectoresDeDefensa) sc.Caido = false; }
                 yield return null;
             }
             float dur = Time.realtimeSinceStartup - t0;

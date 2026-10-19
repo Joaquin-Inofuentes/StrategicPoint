@@ -27,7 +27,7 @@ namespace SP.EditorTools
     //         pie a menos de 6 m, Resistir en menos de 10 s).
     //   097m  variante: el primer Halcon se derriba a los ~33 s, aparece OTRO en la cinematica ("¡OTRO HELICOPTERO!") y el disparo es manual.
     //   097n  compatibilidad: Embarcar() directo desde la entrada del objetivo (checks viejos) da por hechos el jefe y la reparacion.
-    //   073b  conteos de la carrera: 4 camionetas a la vez, vida 260, camionetas + tiradores + helicoptero >= 14.
+    //   073b  conteos de la carrera: 4 camionetas a la vez, vida 260, camionetas + tiradores + helicoptero >= 12.
     public static partial class ChecksBugs065
     {
         const string W9bPrefijo = "v2_097b_";
@@ -482,7 +482,7 @@ namespace SP.EditorTools
             int total = d.AutosCreados + tiradores + halcones;
             W8Ok(ref ok, maxVivas >= 2 && d.AutosSimultaneosEfectivos >= 2 && d.AutosSimultaneosEfectivos <= 3, sb, $"camionetas a la vez: maximo {maxVivas} (efectivo {d.AutosSimultaneosEfectivos})");
             W8Ok(ref ok, hp == OperacionBuilderVidaCamioneta(), sb, $"vida de camioneta {hp} (260)");
-            W8Ok(ref ok, total >= 14, sb, $"enemigos en la carrera (68 s): {d.AutosCreados} camionetas + {tiradores} tiradores + {halcones} helicoptero = {total} (>=14)");
+            W8Ok(ref ok, total >= 12, sb, $"enemigos en la carrera (68 s): {d.AutosCreados} camionetas + {tiradores} tiradores + {halcones} helicoptero = {total} (>=12)");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 

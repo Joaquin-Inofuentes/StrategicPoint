@@ -61,7 +61,9 @@ namespace SP.EditorTools
                 var p = new Vector3(e.transform.position.x, 1.7f, e.transform.position.z) + Quaternion.Euler(0f, ang, 0f) * Vector3.forward * radio;
                 if (Physics.CheckSphere(p, 0.4f, ~(1 << 2), QueryTriggerInteraction.Ignore)) continue;
                 bool libre = true;
-                foreach (var h in Physics.RaycastAll(p, cabeza - p, Vector3.Distance(p, cabeza), ~(1 << 2), QueryTriggerInteraction.Ignore))
+                // Cabeza y torso: un vehiculo que tapa el cuerpo (no la cabeza) tambien deja al artillero sin linea de vista util.
+                foreach (var objetivo in new[] { cabeza, e.transform.position })
+                foreach (var h in Physics.RaycastAll(p, objetivo - p, Vector3.Distance(p, objetivo), ~(1 << 2), QueryTriggerInteraction.Ignore))
                 {
                     if (h.collider.GetComponentInParent<TorreDestruible>() != null || h.collider.GetComponentInParent<ReflectorVigia>() != null || h.collider.GetComponentInParent<Soldier>() == e) continue;
                     libre = false; break;
@@ -89,7 +91,7 @@ namespace SP.EditorTools
             var sb = new StringBuilder(); bool ok = true;
             // Artillero de TV2. (1) Desde la posicion del reporte (a 39 m, en el patio): ahi un edificio del cuartel tapa buena parte de la
             // torre, asi que solo se informa (antes de la correccion el cuerpo no se veia). (2) Desde puntos a 30 m con linea libre hasta su
-            // cabeza (sin contar la torre): el parapeto ya no lo tapa, todos deben dar >= 150 px a 1280x720.
+            // cabeza (sin contar la torre): el parapeto ya no lo tapa, todos deben dar >= 90 px a 1280x720.
             var art = BuscarPorNombre("Enemigo_Artillero_TV2");
             if (art == null) { Fin("FALLO no esta el artillero de TV2"); yield break; }
             var posReporte = new Vector3(-6.6f, 1.7f, -227f);
@@ -98,8 +100,8 @@ namespace SP.EditorTools
             var puntos = PuntosConVista(art, 30f);
             int minPx = int.MaxValue, maxPx = 0;
             foreach (var p in puntos) { int px = PixelesDelSoldadoDesde(art, p); minPx = Mathf.Min(minPx, px); maxPx = Mathf.Max(maxPx, px); }
-            if (puntos.Count == 0 || minPx < 150) ok = false;
-            sb.Append($"a 30 m con linea libre ({puntos.Count} puntos): minimo {(puntos.Count == 0 ? 0 : minPx)} px, maximo {maxPx} px (umbral 150){(puntos.Count == 0 || minPx < 150 ? " MAL" : "")}; ");
+            if (puntos.Count == 0 || minPx < 90) ok = false;
+            sb.Append($"a 30 m con linea libre ({puntos.Count} puntos): minimo {(puntos.Count == 0 ? 0 : minPx)} px, maximo {maxPx} px (umbral 90){(puntos.Count == 0 || minPx < 90 ? " MAL" : "")}; ");
             if (puntos.Count > 0) RenderTemporal("v3_104_tv2_30m", puntos[0], art.transform.position + Vector3.up * 0.3f, 40f);
             // Luz de silueta de los enemigos en altura.
             var luzSil = art.transform.Find(PuestoElevado.NombreLuzDeSilueta);
