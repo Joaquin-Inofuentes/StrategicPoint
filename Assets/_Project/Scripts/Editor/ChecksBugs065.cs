@@ -384,6 +384,7 @@ namespace SP.EditorTools
             Escuchar(false);
             // Los checks de la radio dejan estaticos del mando y de la camara (se reinician solo al entrar a Play); sin esto contaminan la suite headless.
             RadioClasica = false;
+            try { RestaurarEntradaSinFoco(); } catch (Exception) { }
             try { SP.CameraSystem.CameraRig.ProveedorDeRtsForzado = null; SP.CameraSystem.CameraRig.LimiteDePaneoRts = null; typeof(SP.Operacion.MandoTactico).GetMethod("Reiniciar", BindingFlags.Static | BindingFlags.NonPublic)?.Invoke(null, null); } catch (Exception) { }
             Estado = "listo";
             Fase = "";

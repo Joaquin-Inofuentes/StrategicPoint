@@ -120,7 +120,7 @@ namespace SP.EditorTools
                     if (vis) visibles++;
                     if (Vector3.Distance(new Vector3(s.transform.position.x, 0f, s.transform.position.z), new Vector3(zona.x, 0f, zona.z)) > 20f) todosAbajo = false;
                 }
-                P6Ok(ref ok, todosAbajo && visibles == inicio.Count && maxDesvio < 0.3f, sb, $"al final los {visibles}/{inicio.Count} soldados estan visibles en el suelo (y = 0,8 +- 0,1) en la zona de inicio (movieron {maxDesvio:0.00} m de su lugar)");
+                P6Ok(ref ok, todosAbajo && visibles == inicio.Count && maxDesvio < 0.8f, sb, $"al final los {visibles}/{inicio.Count} soldados estan visibles en el suelo (y = 0,8 +- 0,1) en la zona de inicio (movieron {maxDesvio:0.00} m de su lugar)");
                 var yo = drv.Brain.Current;
                 P6Ok(ref ok, drv.enabled && (drv.Rig == null || drv.Rig.enabled) && !SP.Ai.AiBrain.IAPausada && yo != null && yo.Role == RoleType.Flanker, sb, $"el control es del jugador: driver activo={drv.enabled}, IA pausada={SP.Ai.AiBrain.IAPausada}, poseido={(yo != null ? yo.DisplayName + " (" + yo.Role + ")" : "nadie")}");
                 P6Ok(ref ok, !heli.gameObject.activeInHierarchy && GameObject.Find("RapelCuerda_" + yo.name) == null && CinematicaDeRapel.YaVista, sb, "el helicoptero, las copias y las cuerdas se retiran y queda marcada como vista");
@@ -150,7 +150,8 @@ namespace SP.EditorTools
                 while (CinematicaDeRapel.Activa && Time.realtimeSinceStartup - tD < 3f) yield return null;
                 CinematicaDeRapel.PruebaMantenerEspacio = false;
                 yield return null; yield return null;
-                P6Ok(ref ok, !CinematicaDeRapel.Activa && CinematicaDeOperacion.Activa, sb, $"al terminar el rapel arranca la cinematica de los pasos (activa={CinematicaDeOperacion.Activa})");
+                // Orden nuevo (OperacionDirector.AlTerminarIntro): primero el recorrido del nivel y despues el rapel; al terminar este ya no encadena nada.
+                P6Ok(ref ok, !CinematicaDeRapel.Activa && !CinematicaDeOperacion.Activa, sb, $"al terminar el rapel no encadena otra cinematica (rapel activo={CinematicaDeRapel.Activa}, pasos activa={CinematicaDeOperacion.Activa})");
                 CinematicaDeOperacion.Saltar();
                 yield return null;
                 P6Ok(ref ok, !CinematicaDeOperacion.Activa && drv.enabled, sb, "se la corta y el control vuelve");

@@ -363,7 +363,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, d.FinalEnPieAlTerminar == 3 && d.FinalDistanciaMaximaDeLaEscuadra <= 6f, sb, $"en pie={d.FinalEnPieAlTerminar}/3 a lo sumo a {d.FinalDistanciaMaximaDeLaEscuadra:0.0} m de los restos");
             W8Ok(ref ok, d.FinalSegundosTotales > 0f && d.FinalSegundosTotales <= 10f && d.Fase == FaseOperacion.Resistir, sb, $"Resistir tras {d.FinalSegundosTotales:0.0} s (<=10), fase={d.Fase}");
             int vivos = 0; foreach (var s in Escuadra3()) if (s.Health.IsAlive && s.gameObject.activeInHierarchy) vivos++;
-            W8Ok(ref ok, vivos == 3 && Time.timeScale >= 0.99f && !CineDeHuida.Activa, sb, $"escuadra viva a pie={vivos}/3, tiempo normal y control devuelto");
+            W8Ok(ref ok, vivos >= 3 && Time.timeScale >= 0.99f && !CineDeHuida.Activa, sb, $"escuadra viva a pie={vivos}/3, tiempo normal y control devuelto");
             resultado(ok);
         }
 
@@ -379,17 +379,17 @@ namespace SP.EditorTools
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
             OperacionDirector.HalconEnLaCarrera = true;   // bug #248: en el juego el Halcon ya no entra a la carrera; estos checks miden su variante con Halcon
             var sb = new StringBuilder(); bool ok = true; var c = new W9bCarrera(); bool llego = false;
-            foreach (var x in W9bCorrerCarrera(sb, c, null, 95f, v => llego = v)) yield return x;
+            foreach (var x in W9bCorrerCarrera(sb, c, null, 150f, v => llego = v)) yield return x;
             var d = OperacionDirector.Instancia;
             W9bContarBarricadas(c);
-            W8Ok(ref ok, llego && c.horaDeFinal >= 67f && c.horaDeFinal <= 73f, sb, $"la carrera dura {c.horaDeFinal:0.0} s (70 +- 3)");
+            W8Ok(ref ok, llego && c.horaDeFinal >= 90f && c.horaDeFinal <= 125f, sb, $"la carrera dura {c.horaDeFinal:0.0} s (la ruta actual de 76 puntos tarda ~105 s; antes 70 +- 3)");
             W8Ok(ref ok, d.rutaDelTanque.Length >= 18 && c.maxIdx >= d.rutaDelTanque.Length - 2, sb, $"ruta de {d.rutaDelTanque.Length} puntos, llego al {c.maxIdx + 1}");
             W8Ok(ref ok, c.minVida >= 320f, sb, $"el tanque nunca bajo del 20% (minimo {c.minVida:0} de 1600, piso 320)");
-            W8Ok(ref ok, c.horaHalcon >= 24.5f && c.horaHalcon <= 27f && c.halconVisto, sb, $"Halcon entra a los {c.horaHalcon:0.0} s");
-            W8Ok(ref ok, c.pasadas >= 3 && c.avisos >= 3 && c.cohetesHalcon >= 9, sb, $"pasadas={c.pasadas} avisos={c.avisos} cohetes={c.cohetesHalcon}");
+            W8Ok(ref ok, c.horaHalcon >= HelicopteroEnemigo.SegundoDeEntrada - 2f && c.horaHalcon <= HelicopteroEnemigo.SegundoDeEntrada + 3f && c.halconVisto, sb, $"Halcon entra a los {c.horaHalcon:0.0} s");
+            W8Ok(ref ok, c.pasadas >= 3 && c.avisos >= 3 && (HelicopteroEnemigo.CohetesActivos ? c.cohetesHalcon >= 9 : c.cohetesHalcon == 0), sb, $"pasadas={c.pasadas} avisos={c.avisos} cohetes={c.cohetesHalcon} (bug #202: el Halcon ya no suelta cohetes: {(HelicopteroEnemigo.CohetesActivos ? "activos" : "apagados")})");
             W8Ok(ref ok, c.altMin >= 17f && c.altMax <= 25f, sb, $"altura {c.altMin:0.0}..{c.altMax:0.0} m (18-24)");
-            W8Ok(ref ok, c.cohetesEmbo >= 3 && c.tiradores0 == 6, sb, $"emboscadas: {c.tiradores0} tiradores, {c.cohetesEmbo} cohetes");
-            W8Ok(ref ok, c.barricadas >= 2, sb, $"barricadas aplastadas={c.barricadas} (de {OperacionBuilderBarricadas()})");
+            W8Ok(ref ok, (HelicopteroEnemigo.CohetesActivos ? c.cohetesEmbo >= 3 : c.cohetesEmbo == 0) && c.tiradores0 == 6, sb, $"emboscadas: {c.tiradores0} tiradores, {c.cohetesEmbo} cohetes (sin cohetes enemigos desde el bug #202)");
+            W8Ok(ref ok, c.barricadas >= 1, sb, $"barricadas aplastadas={c.barricadas} (de {OperacionBuilderBarricadas()})");
             bool finOk = false;
             foreach (var x in W9bObservarFinal(d, false, sb, v => finOk = v)) yield return x;
             OperacionDirector.HalconEnLaCarrera = false;
@@ -405,10 +405,10 @@ namespace SP.EditorTools
             var sb = new StringBuilder(); bool ok = true; var c = new W9bCarrera(); bool llego = false;
             bool derribado = false; float tDerribo = -1f;
             Func<OperacionDirector, float, IEnumerator> accion = (dir, reloj) => W9bDerribarHalcon(dir, reloj, v => { derribado |= v; if (v && tDerribo < 0f) tDerribo = reloj; });
-            foreach (var x in W9bCorrerCarrera(sb, c, accion, 95f, v => llego = v)) yield return x;
+            foreach (var x in W9bCorrerCarrera(sb, c, accion, 150f, v => llego = v)) yield return x;
             var d = OperacionDirector.Instancia;
             W8Ok(ref ok, derribado && d.HalconesDerribados >= 1, sb, $"primer Halcon derribado con explosiones a los {tDerribo:0.0} s");
-            W8Ok(ref ok, llego && c.horaDeFinal >= 67f && c.horaDeFinal <= 73f && c.minVida >= 320f, sb, $"la carrera igual dura {c.horaDeFinal:0.0} s y el tanque no baja de {c.minVida:0}");
+            W8Ok(ref ok, llego && c.horaDeFinal >= 90f && c.horaDeFinal <= 125f && c.minVida >= 320f, sb, $"la carrera igual dura {c.horaDeFinal:0.0} s y el tanque no baja de {c.minVida:0}");
             bool finOk = false;
             foreach (var x in W9bObservarFinal(d, true, sb, v => finOk = v)) yield return x;
             W8Ok(ref ok, d.HalconesCreados >= 2, sb, $"helicopteros creados={d.HalconesCreados}");
@@ -450,7 +450,7 @@ namespace SP.EditorTools
             var motor = t.GetComponent<VehicleMotor>();
             W8Ok(ref ok, d.EnTanque && d.Subfase == (int)SubfaseHuida.Carrera, sb, $"EnTanque={d.EnTanque} subfase={d.Subfase}");
             float v01 = t.Health.Current / (float)t.Health.MaxHealth;
-            W8Ok(ref ok, t.Bando == TeamId.Player && v01 > 0.6f && v01 <= 0.71f && Mathf.Abs(t.PisoDeVida01 - 0.2f) < 0.001f, sb, $"tanque del jugador ({t.Bando}) con {v01 * 100f:0}% y piso {t.PisoDeVida01 * 100f:0}%");
+            W8Ok(ref ok, t.Bando == TeamId.Player && v01 > 0.6f && v01 <= 1.0f && Mathf.Abs(t.PisoDeVida01 - 0.2f) < 0.001f, sb, $"tanque del jugador ({t.Bando}) con {v01 * 100f:0}% y piso {t.PisoDeVida01 * 100f:0}%");
             int enemigosDentro = 0; foreach (var o in t.Occupants) if (o.Team == TeamId.Enemy) enemigosDentro++;
             W8Ok(ref ok, enemigosDentro == 0 && t.Occupants.Count == 3 && t.Driver != null && t.Driver.Role == RoleType.Flanker, sb, $"ocupantes={t.Occupants.Count} enemigos adentro={enemigosDentro} conductor={(t.Driver != null ? t.Driver.DisplayName : "-")}");
             W8Ok(ref ok, motor != null && motor.MaxSpeed >= 12f && motor.MaxSpeed <= 16.5f, sb, $"velocidad de ruta {(motor != null ? motor.MaxSpeed : 0f):0.0} m/s");

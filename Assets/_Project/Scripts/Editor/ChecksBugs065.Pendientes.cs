@@ -337,7 +337,7 @@ namespace SP.EditorTools
             var ag = kes.GetComponent<UnityEngine.AI.NavMeshAgent>();
             var destino = centro + new Vector3(2.5f, 0f, 2.5f);
             if (UnityEngine.AI.NavMesh.SamplePosition(destino, out var nh, 8f, UnityEngine.AI.NavMesh.AllAreas)) destino = nh.position;
-            if (ag != null) ag.Warp(destino); kes.transform.position = destino;
+            if (ag != null) ag.Warp(destino); kes.transform.position = destino; ApoyoEnElPiso.Apoyar(kes.transform);   // el warp deja el pivote en el piso: la altura de cadera la repone el apoyo (igual que en #119)
             float peorInclinacion = 0f, minY = 99f, minAltura = 99f, maxEscala = 0f;
             float t0 = Time.realtimeSinceStartup;
             while (Time.realtimeSinceStartup - t0 < 6f)

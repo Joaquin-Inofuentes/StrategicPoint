@@ -194,10 +194,31 @@ namespace SP.EditorTools
         }
 
         // ---------------------------------------------------------------- teclado inyectado (tecla E, W...)
+        // Las teclas inyectadas solo llegaban con el editor en primer plano. Con estos dos ajustes llegan igual en segundo plano, sin tocar el foco
+        // del usuario (se restauran al terminar la corrida: RestaurarEntradaSinFoco).
+        static bool entradaSinFoco; static InputSettings.EditorInputBehaviorInPlayMode comportamientoPrevio; static InputSettings.BackgroundBehavior fondoPrevio;
+        static void PonerEntradaSinFoco()
+        {
+            if (entradaSinFoco) return;
+            comportamientoPrevio = InputSystem.settings.editorInputBehaviorInPlayMode;
+            fondoPrevio = InputSystem.settings.backgroundBehavior;
+            InputSystem.settings.editorInputBehaviorInPlayMode = InputSettings.EditorInputBehaviorInPlayMode.AllDeviceInputAlwaysGoesToGameView;
+            InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
+            entradaSinFoco = true;
+        }
+        static void RestaurarEntradaSinFoco()
+        {
+            if (!entradaSinFoco) return;
+            InputSystem.settings.editorInputBehaviorInPlayMode = comportamientoPrevio;
+            InputSystem.settings.backgroundBehavior = fondoPrevio;
+            entradaSinFoco = false;
+        }
+
         static void Teclas(params Key[] teclas)
         {
             var kb = Keyboard.current;
             if (kb == null) return;
+            PonerEntradaSinFoco();
             InputSystem.QueueStateEvent(kb, new KeyboardState(teclas));
         }
 

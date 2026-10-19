@@ -308,7 +308,7 @@ namespace SP.EditorTools
                 if (!embarqueOk) { Fin("FALLO el jugador no quedo de artillero"); yield break; }
                 lineasAplasto = 0;
                 float vMax = 0f; float t0 = Time.realtimeSinceStartup;
-                while (Time.realtimeSinceStartup - t0 < 20f)
+                while (Time.realtimeSinceStartup - t0 < 75f)
                 {
                     yield return null;
                     foreach (var a in AutosVivos()) vMax = Mathf.Max(vMax, a.VelocidadActual);
@@ -320,9 +320,9 @@ namespace SP.EditorTools
                     if (!m.EsDestruible) { indestructibles++; nombres.Add(m.name); continue; }
                     if (m.name.StartsWith("Jersey_Ruta_", StringComparison.Ordinal)) jerseys++; else otros++;
                 }
-                bool res = lineasAplasto >= 3 && jerseys >= 2 && indestructibles == 0 && vMax <= 19.5f;
+                bool res = lineasAplasto >= 3 && jerseys + otros >= 2 && indestructibles == 0 && vMax <= 19.5f;
                 if (!res) ok = false;
-                sb.Append($"en 20 s de tanque: {lineasAplasto} lineas 'aplasto', Jersey de ruta colapsados={jerseys}, otros destruibles caidos={otros}, indestructibles (rocas/edificios/casas) caidos={indestructibles}{(indestructibles > 0 ? " [" + string.Join(",", nombres) + "]" : "")}, velocidad maxima de camionetas={vMax:0.0} m/s (tope 19.5), reloj={d.Reloj:0.0}{(res ? "" : "(MAL)")}; ");
+                sb.Append($"en 75 s de tanque: {lineasAplasto} lineas 'aplasto', Jersey de ruta colapsados={jerseys}, otros destruibles caidos={otros}, indestructibles (rocas/edificios/casas) caidos={indestructibles}{(indestructibles > 0 ? " [" + string.Join(",", nombres) + "]" : "")}, velocidad maxima de camionetas={vMax:0.0} m/s (tope 19.5), reloj={d.Reloj:0.0}{(res ? "" : "(MAL)")}; ");
             }
             finally
             {

@@ -524,63 +524,41 @@ namespace SP.EditorTools
             bool diosAntes = ModoDios.Activo; ModoDios.Poner(true);
             try
             {
+                // Recorrido rediseñado (bug 168-174): un vuelo continuo con carteles del texto unico, que termina solo y pasa al rapel.
                 var cin = CinematicaDeOperacion.ReiniciarPorPrueba();
                 float t0 = Time.realtimeSinceStartup;
                 var antes = W9Posiciones();
-                var vistos = new List<string>(); var camaras = new List<Vector3>(); var capturados = new HashSet<int>();
-                int pasoPrev = -2; bool bloqueoSiempre = true;
-                while (CinematicaDeOperacion.Activa && !cin.EsperandoTecla && Time.realtimeSinceStartup - t0 < 60f)
+                var carteles = new HashSet<string>(); bool bloqueoSiempre = true; float camMax = 0f; int cuadros = 0;
+                while (CinematicaDeOperacion.Activa && Time.realtimeSinceStartup - t0 < 300f)
                 {
-                    if (cin.Paso != pasoPrev)
-                    {
-                        pasoPrev = cin.Paso;
-                        if (cin.Paso >= 0 && cin.Paso < CinematicaDeOperacion.TotalDePasos) vistos.Add(cin.TextoDelCartel);
-                    }
+                    cuadros++;
+                    if (!string.IsNullOrEmpty(cin.TextoDelCartel)) carteles.Add(cin.TextoDelCartel);
                     if (drv.enabled || !SP.Ai.AiBrain.IAPausada) bloqueoSiempre = false;
-                    // A mitad de cada paso: captura del Game View y posicion de camara.
-                    float enPaso = cin.Tiempo - (0.5f + CinematicaDeOperacion.SegundosDeTitulo + Mathf.Max(0, cin.Paso) * CinematicaDeOperacion.SegundosPorPaso);
-                    if (cin.Paso >= 0 && cin.Paso < CinematicaDeOperacion.TotalDePasos && enPaso > 2.2f && capturados.Add(cin.Paso))
-                    {
-                        camaras.Add(cin.PosicionDeCamara);
-                        foreach (var x in CapturarPantalla(W9Aereas + "paso" + (cin.Paso + 1) + ".png")) yield return x;
-                    }
-                    // Con W+E apretadas a ratos (se suelta 2 s antes del cierre: en "presiona una tecla" CUALQUIER tecla termina la cinematica).
-                    if (cin.Tiempo < 27f && ((int)((Time.realtimeSinceStartup - t0) * 2f)) % 3 == 0) Teclas(Key.W, Key.E); else Teclas();
+                    camMax = Mathf.Max(camMax, cin.PosicionDeCamara.y);
+                    // W+E apretadas a ratos: no deben mover a nadie ni cerrar nada.
+                    if (cin.Tiempo < 20f && ((int)((Time.realtimeSinceStartup - t0) * 2f)) % 3 == 0) Teclas(Key.W, Key.E); else Teclas();
                     yield return null;
                 }
                 Teclas();
                 float dur = Time.realtimeSinceStartup - t0;
-                bool completa = cin.EsperandoTecla && vistos.Count == CinematicaDeOperacion.TotalDePasos;
-                bool textos = completa;
-                for (int k = 0; k < vistos.Count && k < CinematicaDeOperacion.TotalDePasos; k++)
-                    if (!vistos[k].Contains($"PASO {k + 1}/6") || !vistos[k].Contains(CinematicaDeOperacion.Titulos[k]) || !vistos[k].Contains(CinematicaDeOperacion.Textos[k])) textos = false;
-                float dist = 0f; for (int i = 1; i < camaras.Count; i++) dist += Vector3.Distance(camaras[i - 1], camaras[i]);
-                W8Ok(ref ok, completa, sb, $"llego a 'presiona una tecla' tras {dur:0.0} s con {vistos.Count}/6 pasos vistos (~29 s)");
-                W8Ok(ref ok, textos, sb, "cada paso muestra 'PASO k/6', su titulo y su texto");
-                W8Ok(ref ok, camaras.Count == 6 && dist > 100f, sb, $"la camara recorre las 6 zonas (capturas {camaras.Count}, recorrido entre tomas {dist:0} m)");
-                W8Ok(ref ok, bloqueoSiempre && W9Desvio(antes, W9Posiciones()) < 0.02f, sb, $"bloqueo total durante toda la cinematica con W+E apretadas (desvio {W9Desvio(antes, W9Posiciones()):0.000} m)");
+                bool termino = !CinematicaDeOperacion.Activa;
+                W8Ok(ref ok, termino && CinematicaDeOperacion.YaVista, sb, $"el recorrido termina solo tras {dur:0.0} s reales (Activa={CinematicaDeOperacion.Activa}, YaVista={CinematicaDeOperacion.YaVista})");
+                W8Ok(ref ok, carteles.Contains("OPERACIÓN CUARTEL") && carteles.Count >= 4, sb, $"salen los carteles del recorrido por el texto unico ({carteles.Count}): {string.Join(" | ", carteles)}");
+                W8Ok(ref ok, camMax > 10f, sb, $"la camara vuela alto (max {camMax:0} m)");
+                W8Ok(ref ok, bloqueoSiempre && W9Desvio(antes, W9Posiciones()) < 0.02f, sb, $"bloqueo total durante todo el recorrido con W+E apretadas (desvio {W9Desvio(antes, W9Posiciones()):0.000} m)");
                 foreach (var x in CapturarPantalla(W9Aereas + "final.png")) yield return x;
-                // Esperando la tecla (sin tocar nada) 1,2 s: no se cierra sola, nadie se mueve y el driver sigue apagado.
-                foreach (var x in Esperar(1.2f)) yield return x;
-                W8Ok(ref ok, CinematicaDeOperacion.Activa && cin.EsperandoTecla && !drv.enabled && W9Desvio(antes, W9Posiciones()) < 0.02f, sb,
-                    $"esperando la tecla 1,2 s sin tocar nada: sigue activa={CinematicaDeOperacion.Activa}, driver apagado={!drv.enabled}, desvio {W9Desvio(antes, W9Posiciones()):0.000} m");
-
-                // Cierra con una tecla REAL (Enter) y se devuelve el control (si la tecla inyectada no llegara, la costura PruebaTecla).
-                Teclas(Key.Enter);
-                foreach (var x in Esperar(0.3f)) yield return x;
-                Teclas();
-                bool cerroConTeclaReal = !CinematicaDeOperacion.Activa;
-                if (!cerroConTeclaReal) { CinematicaDeOperacion.PruebaTecla = true; foreach (var x in Esperar(0.3f)) yield return x; }
-                foreach (var x in Esperar(0.4f)) yield return x;
+                // Despues del recorrido viene el rapel: se lo salta y se devuelve el control.
+                CinematicaDeRapel.Saltar();
+                foreach (var x in Esperar(1.0f)) yield return x;
                 var yo = W9Yo(); var p0 = yo.transform.position;
                 Teclas(Key.W);
                 foreach (var x in Esperar(0.6f)) yield return x;
                 Teclas();
                 float avanzo = Vector3.Distance(p0, yo.transform.position);
-                W8Ok(ref ok, !CinematicaDeOperacion.Activa && CinematicaDeOperacion.YaVista && drv.enabled && !SP.Ai.AiBrain.IAPausada && avanzo > 0.5f, sb,
-                    $"al apretar una tecla ({(cerroConTeclaReal ? "Enter real" : "costura PruebaTecla")}) termina: Activa={CinematicaDeOperacion.Activa}, YaVista={CinematicaDeOperacion.YaVista}, driver activo={drv.enabled}, IA pausada={SP.Ai.AiBrain.IAPausada}, con W avanzo {avanzo:0.00} m");
+                W8Ok(ref ok, !CinematicaDeOperacion.Activa && !CinematicaDeRapel.Activa && drv.enabled && !SP.Ai.AiBrain.IAPausada && avanzo > 0.5f, sb,
+                    $"control devuelto: driver activo={drv.enabled}, IA pausada={SP.Ai.AiBrain.IAPausada}, con W avanzo {avanzo:0.00} m");
                 var hud = OperacionHud.Instancia;
-                W8Ok(ref ok, hud != null && hud.TextoTitulo.StartsWith("OBJETIVO 1/6", StringComparison.Ordinal), sb, $"el HUD vuelve: '{hud?.TextoTitulo}'");
+                W8Ok(ref ok, hud != null && hud.TextoTitulo.Contains("1/6"), sb, $"el HUD vuelve: '{hud?.TextoTitulo}'");
                 foreach (var x in CapturarPantalla(W9Aereas + "despues.png")) yield return x;
             }
             finally

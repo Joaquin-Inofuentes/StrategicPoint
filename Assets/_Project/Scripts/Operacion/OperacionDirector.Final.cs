@@ -164,7 +164,7 @@ namespace SP.Operacion
             if (heli == null || heli.Derribado || heli.Vehiculo == null || heli.Vehiculo.IsDestroyed)
             {
                 heli = halcon != null ? HelicopteroEnemigo.Iniciar(halcon, tanque) : null;
-                if (heli != null) { bool habiaOtro = Halcon != null; HalconesCreados++; Halcon = heli; FinalOtroHelicoptero = habiaOtro; heli.transform.position = posHeli; heli.AlDerribarse += () => HalconesDerribados++; }
+                if (heli != null) { bool habiaOtro = Halcon != null || HalconesCreados > 0; HalconesCreados++; Halcon = heli; FinalOtroHelicoptero = habiaOtro; heli.transform.position = posHeli; heli.AlDerribarse += () => HalconesDerribados++; }
             }
             if (heli != null)
             {
