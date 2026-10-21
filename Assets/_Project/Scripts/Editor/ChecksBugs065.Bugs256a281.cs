@@ -198,6 +198,44 @@ namespace SP.EditorTools
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 
+        // ---------------------------------------------------------------- 289a la cinematica inicial va a los puntos clave y cada linea de voz cabe en su tramo
+        static IEnumerator Bug289a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            foreach (var x in Esperar(2f)) yield return x;
+            var c = CinematicaDeOperacion.ReiniciarPorPrueba();
+            yield return null;
+            c = CinematicaDeOperacion.Instancia;
+            if (c == null) { Fin("FALLO no arranco la cinematica"); yield break; }
+            W8Ok(ref ok, c.Duracion > 25f && c.Duracion < 55f, sb, $"el sobrevuelo dura {c.Duracion:0.0} s (antes 68) mas el rapel de {CinematicaDeRapel.Duracion:0.0} s");
+            W8Ok(ref ok, c.TiemposDeCorte.Count == 3, sb, $"{c.TiemposDeCorte.Count} cortes a negro (blindado, ciudad, helipuerto) en vez de recorrer el trayecto");
+            // Cada linea tiene hasta que empieza la siguiente: el clip (cuando exista) no puede pasarse.
+            var tiempos = new List<float>(); var lineas = new List<VozDeCinematica.Linea>();
+            var campo = typeof(CinematicaDeOperacion).GetField("claves", BindingFlags.NonPublic | BindingFlags.Instance);
+            var lista = (System.Collections.IList)campo.GetValue(c);
+            var campoVoz = lista[0].GetType().GetField("voz");
+            for (int i = 0; i < lista.Count; i++)
+            {
+                var v = (VozDeCinematica.Linea?)campoVoz.GetValue(lista[i]);
+                if (v.HasValue) { tiempos.Add(c.TiempoDeClave[i]); lineas.Add(v.Value); }
+            }
+            W8Ok(ref ok, lineas.Count == 7, sb, $"{lineas.Count} lineas del comandante en el sobrevuelo (+2 en el rapel)");
+            var cuando = new StringBuilder();
+            for (int i = 0; i < lineas.Count; i++)
+            {
+                float fin = i + 1 < lineas.Count ? tiempos[i + 1] : c.Duracion;
+                float hueco = fin - tiempos[i];
+                cuando.Append($"[{lineas[i].Id} a los {tiempos[i]:0.0} s, hueco {hueco:0.0} s, ventana {lineas[i].Ventana:0.0} s] ");
+                W8Ok(ref ok, hueco + 0.05f >= lineas[i].Ventana, sb, $"{lineas[i].Id}: cabe ({hueco:0.0} s de hueco para {lineas[i].Ventana:0.0} s)");
+            }
+            var problemas = VozDeCinematica.Validar(false);
+            W8Ok(ref ok, problemas.Count == 0, sb, "los clips que ya existen no se pasan de su ventana" + (problemas.Count > 0 ? ": " + string.Join(" | ", problemas) : ""));
+            sb.Append(cuando);
+            CinematicaDeOperacion.Saltar();
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
         // ---------------------------------------------------------------- 284a la extraccion recibe un flujo secuencial de enemigos
         static IEnumerator Bug284a()
         {

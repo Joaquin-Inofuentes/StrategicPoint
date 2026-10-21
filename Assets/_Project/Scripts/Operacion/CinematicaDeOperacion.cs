@@ -153,6 +153,7 @@ namespace SP.Operacion
         {
             if (!Activa) return;
             StopAllCoroutines();
+            VozDeCinematica.Callar();
             Restaurar();
             Activa = false;
             YaVista = true;
@@ -269,16 +270,20 @@ namespace SP.Operacion
         // El recorrido: cuadros clave (posicion de camara, punto al que mira, velocidad en m/s, cartel) unidos por una curva Catmull-Rom.
         // La camara avanza por LONGITUD de la curva con la velocidad interpolada entre cuadros: lenta sobre las torretas, rapida sobre la autopista.
         // ---------------------------------------------------------------
-        struct Clave { public Vector3 pos, mira; public float velocidad; public string cartel; public Color color; }
+        struct Clave { public Vector3 pos, mira; public float velocidad; public string cartel; public Color color; public VozDeCinematica.Linea? voz; public bool corte; }
         readonly List<Clave> claves = new List<Clave>();
         // Muestras densas de la curva: posicion, indice fraccional de cuadro (para la mirada), longitud y tiempo acumulados.
         readonly List<Vector3> muestraPos = new List<Vector3>();
         readonly List<float> muestraK = new List<float>(), muestraT = new List<float>();
+        // Segundo en que la camara llega a cada cuadro clave (para el guion de voz y las pruebas) y segundos de cada corte a negro.
+        public readonly List<float> TiempoDeClave = new List<float>();
+        public readonly List<float> TiemposDeCorte = new List<float>();
         const int MuestrasPorTramo = 24;
+        public const float MediaDelCorte = 0.35f;
         static readonly Color Dorado = new Color(1f, 0.9f, 0.4f), Celeste = new Color(0.6f, 0.85f, 1f);
 
-        void C(Vector3 pos, Vector3 mira, float velocidad, string cartel = null, Color? color = null)
-            => claves.Add(new Clave { pos = pos, mira = mira, velocidad = velocidad, cartel = cartel, color = color ?? Dorado });
+        void C(Vector3 pos, Vector3 mira, float velocidad, string cartel = null, Color? color = null, VozDeCinematica.Linea? voz = null, bool corte = false)
+            => claves.Add(new Clave { pos = pos, mira = mira, velocidad = velocidad, cartel = cartel, color = color ?? Dorado, voz = voz, corte = corte });
 
         static Vector3 Plano(Vector3 v, float y) => new Vector3(v.x, y, v.z);
 
@@ -295,47 +300,54 @@ namespace SP.Operacion
             Vector3 tB = tiros.Count > 1 ? tiros[1] : new Vector3(-45f, 0f, -232f);
             Vector3 alto(Vector3 p, float h) => new Vector3(p.x, h, p.z);
 
-            // 1) Aproximacion y cuartel: se frena en cada torreta de artilleria (lo primero que hay que detonar).
-            C(alto(inicio, 34f) + new Vector3(0f, 0f, -26f), new Vector3(0f, 4f, -330f), 10f, "OPERACIÓN CUARTEL");
-            C(new Vector3(-14f, 26f, -346f), tA + Vector3.up * 5f, 9f);
-            C(tA + new Vector3(-26f, 15f, -22f), tA + Vector3.up * 5f, 7f, "PRIMERO: DETONÁ LAS 2 TORRETAS DE ARTILLERÍA", new Color(1f, 0.55f, 0.3f));
-            C(tA + new Vector3(-23f, 17f, 16f), tA + Vector3.up * 5f, 7f);
-            C(new Vector3(0f, 24f, -250f), Vector3.Lerp(tA, tB, 0.7f) + Vector3.up * 5f, 9f);
-            C(tB + new Vector3(24f, 15f, -16f), tB + Vector3.up * 5f, 7f);
-            C(tB + new Vector3(24f, 17f, 20f), tB + Vector3.up * 5f, 9f, "DESPUÉS ELIMINÁ A TODO EL CUARTEL");
+            // Pedido 2026-10-21: saltear el recorrido inicial (todo el trayecto de la ruta) y centrarse en los puntos clave. Sin la autopista ni
+            // los tramos de paso: cada punto clave tiene su cuadro con su voz del comandante, y entre zonas lejanas hay un CORTE a negro.
+            // 1) El cuartel y las dos torretas de artilleria (lo primero que hay que detonar).
+            C(alto(inicio, 34f) + new Vector3(0f, 0f, -26f), new Vector3(0f, 4f, -330f), 17f, "OPERACIÓN CUARTEL", null, VozDeCinematica.Inicio);
+            C(new Vector3(-14f, 26f, -346f), tA + Vector3.up * 5f, 20f);
+            C(tA + new Vector3(-26f, 15f, -22f), tA + Vector3.up * 5f, 13f, "PRIMERO: DETONÁ LAS 2 TORRETAS DE ARTILLERÍA", new Color(1f, 0.55f, 0.3f), VozDeCinematica.Torretas);
+            C(tA + new Vector3(-23f, 17f, 16f), tA + Vector3.up * 5f, 14f);
+            C(new Vector3(0f, 24f, -250f), Vector3.Lerp(tA, tB, 0.7f) + Vector3.up * 5f, 16f);
+            C(tB + new Vector3(24f, 15f, -16f), tB + Vector3.up * 5f, 14f);
+            C(tB + new Vector3(24f, 17f, 20f), tB + Vector3.up * 5f, 7f, "DESPUÉS ELIMINÁ A TODO EL CUARTEL", null, VozDeCinematica.Cuartel);
 
-            // 2) Muralla, centro de datos y patio del tanque.
-            C(new Vector3(0f, 28f, -196f), new Vector3(0f, 3f, -150f), 20f);
-            C(new Vector3(0f, 30f, -160f), new Vector3(0f, 3f, -110f), 24f, "VOLÁ LOS 2 PUESTOS · DESCARGÁ LOS DATOS");
-            C(new Vector3(0f, 34f, -100f), new Vector3(0f, 2f, -50f), 30f);
-            C(new Vector3(0f, 32f, -40f), new Vector3(0f, 2f, 10f), 30f);
+            // 2) Los dos puestos y el centro de datos.
+            C(new Vector3(0f, 30f, -160f), new Vector3(0f, 3f, -110f), 14f, "VOLÁ LOS 2 PUESTOS · DESCARGÁ LOS DATOS", null, VozDeCinematica.CentroDeDatos);
+            C(new Vector3(0f, 34f, -100f), new Vector3(0f, 2f, -50f), 16f);
+            C(new Vector3(0f, 32f, -40f), new Vector3(0f, 2f, 10f), 14f);
+
+            // 3) El patio del blindado (corte directo: sin recorrer el trayecto).
             var tanquePos = d != null && d.tanque != null ? d.tanque.transform.position : new Vector3(0f, 0f, 22f);
-            C(tanquePos + new Vector3(8f, 24f, -34f), tanquePos + Vector3.up * 2f, 36f, "ESCAPÁ EN EL BLINDADO", Celeste);
+            C(tanquePos + new Vector3(10f, 14f, -22f), tanquePos + Vector3.up * 2f, 5.6f, "ESCAPÁ EN EL BLINDADO", Celeste, VozDeCinematica.Blindado, true);
+            C(tanquePos + new Vector3(-8f, 12f, -16f), tanquePos + Vector3.up * 2f, 5.6f);
+            C(tanquePos + new Vector3(-16f, 10f, -2f), tanquePos + Vector3.up * 2f, 5.6f);
 
-            // 3) La autopista entera (la curva real de la ruta): la camara va detras y arriba, mirando adelante.
-            var ruta = d != null ? d.rutaDelTanque : null;
-            if (ruta != null && ruta.Length > 4)
-            {
-                for (int i = 2; i < ruta.Length - 1; i += 3)
-                {
-                    var p = ruta[i].position; var adel = ruta[Mathf.Min(ruta.Length - 1, i + 3)].position; var atras = ruta[i - 2].position;
-                    var fwd = Plano(adel - atras, 0f).normalized;
-                    C(Plano(p, 38f) - fwd * 6f, adel + Vector3.up * 2f, 68f);
-                }
-            }
-
-            // 4) Ciudad y helipuerto.
+            // 4) La ciudad y el helipuerto (otro corte cada uno).
             Vector3 plaza = d != null && d.plaza != null ? d.plaza.position : new Vector3(322f, 0f, 228f);
             Vector3 helipad = d != null && d.heliAterrizaje != null ? d.heliAterrizaje.position : plaza;
-            C(plaza + new Vector3(-62f, 40f, -40f), plaza + Vector3.up * 2f, 28f, "DEFENDÉ LA CIUDAD DESDE LA RADIO: 2 POSICIONES", Celeste);
-            C(helipad + new Vector3(34f, 30f, -30f), helipad + Vector3.up * 3f, 18f, "Y EXTRAÉ EN EL HELICÓPTERO", new Color(0.55f, 1f, 0.6f));
-            C(helipad + new Vector3(22f, 26f, 20f), helipad + Vector3.up * 3f, 10f);
+            C(plaza + new Vector3(-62f, 40f, -40f), plaza + Vector3.up * 2f, 8f, "DEFENDÉ LA CIUDAD DESDE LA RADIO: 2 POSICIONES", Celeste, VozDeCinematica.Ciudad, true);
+            C(plaza + new Vector3(-40f, 34f, -28f), plaza + Vector3.up * 2f, 8f);
+            C(plaza + new Vector3(-20f, 30f, -8f), plaza + Vector3.up * 2f, 8f);
+            C(helipad + new Vector3(34f, 30f, -30f), helipad + Vector3.up * 3f, 10f, "Y EXTRAÉ EN EL HELICÓPTERO", new Color(0.55f, 1f, 0.6f), VozDeCinematica.Helipuerto, true);
+            C(helipad + new Vector3(22f, 26f, 20f), helipad + Vector3.up * 3f, 8f);
 
-            // Curva densa: posiciones Catmull-Rom con indice fraccional y tiempo acumulado (dt = ds / velocidad interpolada).
-            muestraPos.Clear(); muestraK.Clear(); muestraT.Clear();
+            // Curva densa: posiciones Catmull-Rom con indice fraccional y tiempo acumulado (dt = ds / velocidad interpolada). Un cuadro con
+            // `corte` no se recorre: la camara salta ahi (en el mismo instante) y la pantalla se va a negro un momento a cada lado.
+            muestraPos.Clear(); muestraK.Clear(); muestraT.Clear(); TiempoDeClave.Clear(); TiemposDeCorte.Clear();
             float tiempo = 0f; Vector3 previa = Vector3.zero; bool primera = true;
             for (int i = 0; i < claves.Count - 1; i++)
             {
+                TiempoDeClave.Add(tiempo);
+                if (claves[i + 1].corte)
+                {
+                    // Dos muestras casi en el mismo instante: el fin de este tramo y el arranque del siguiente.
+                    muestraPos.Add(claves[i].pos); muestraK.Add(i); muestraT.Add(tiempo);
+                    tiempo += 0.0005f;
+                    muestraPos.Add(claves[i + 1].pos); muestraK.Add(i + 1); muestraT.Add(tiempo);
+                    previa = claves[i + 1].pos; primera = false;
+                    TiemposDeCorte.Add(tiempo);
+                    continue;
+                }
                 for (int s = 0; s < MuestrasPorTramo; s++)
                 {
                     float u = (float)s / MuestrasPorTramo;
@@ -346,14 +358,19 @@ namespace SP.Operacion
                     previa = p; primera = false;
                 }
             }
+            TiempoDeClave.Add(tiempo);
             muestraPos.Add(claves[claves.Count - 1].pos); muestraK.Add(claves.Count - 1);
             muestraT.Add(tiempo + Vector3.Distance(claves[claves.Count - 1].pos, previa) / Mathf.Max(1f, claves[claves.Count - 1].velocidad));
             Duracion = muestraT[muestraT.Count - 1];
         }
 
+        // Catmull-Rom que NO cruza los cortes: los vecinos al otro lado de un corte se reemplazan por el propio punto (sin curvas raras al saltar).
         static Vector3 CatmullRom(List<Clave> c, int i, float u, System.Func<Clave, Vector3> f)
         {
-            Vector3 p0 = f(c[Mathf.Max(0, i - 1)]), p1 = f(c[i]), p2 = f(c[i + 1]), p3 = f(c[Mathf.Min(c.Count - 1, i + 2)]);
+            int a = Mathf.Max(0, i - 1), d = Mathf.Min(c.Count - 1, i + 2);
+            if (c[i].corte) a = i;                          // corte justo antes de i: no mirar atras
+            if (d > i + 1 && c[i + 2].corte) d = i + 1;     // corte justo despues de i+1: no mirar adelante
+            Vector3 p0 = f(c[a]), p1 = f(c[i]), p2 = f(c[i + 1]), p3 = f(c[d]);
             float u2 = u * u, u3 = u2 * u;
             return 0.5f * ((2f * p1) + (-p0 + p2) * u + (2f * p0 - 5f * p1 + 4f * p2 - p3) * u2 + (-p0 + 3f * p1 - 3f * p2 + p3) * u3);
         }
@@ -403,7 +420,10 @@ namespace SP.Operacion
                 if (cuadro != ultimoCuadro)
                 {
                     for (int q = ultimoCuadro + 1; q <= cuadro; q++)
+                    {
                         if (!string.IsNullOrEmpty(claves[q].cartel)) { AvisoUnico.Limpiar(); AvisoUnico.Mostrar(claves[q].cartel, 4f, claves[q].color, AvisoUnico.PrioridadAlta); }
+                        if (claves[q].voz.HasValue) VozDeCinematica.Decir(claves[q].voz.Value);
+                    }
                     ultimoCuadro = cuadro; Paso = cuadro;
                 }
                 float b = Mathf.Clamp01(t / 0.5f) * 110f;
@@ -411,6 +431,8 @@ namespace SP.Operacion
                 barraAbajo.rectTransform.sizeDelta = new Vector2(0f, b);
                 float a = Mathf.Clamp01(1f - t / Entrada);                       // entra de negro
                 if (t > final) a = Mathf.Max(a, Mathf.Clamp01((t - final) / Salida));   // sale a negro
+                foreach (var tcorte in TiemposDeCorte) a = Mathf.Max(a, 1f - Mathf.Clamp01(Mathf.Abs(t - tcorte) / MediaDelCorte));   // corte: negro un instante a cada lado
+                foreach (var tc0 in TiemposDeCorte) a = Mathf.Max(a, 1f - Mathf.Clamp01(Mathf.Abs(t - tc0) / MediaDelCorte));   // corte: la pantalla se va a negro un instante a cada lado
                 negro.color = new Color(0f, 0f, 0f, a);
                 if (RevisarSalto()) yield break;
                 yield return null;

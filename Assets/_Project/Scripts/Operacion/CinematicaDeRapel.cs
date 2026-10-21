@@ -37,6 +37,7 @@ namespace SP.Operacion
 
         public const float Duracion = 12.5f;
         public const float SegundosParaSaltar = 1f;
+        public const float SegundoVozPreparar = 0.6f, SegundoVozBajar = 6.3f;   // voz del comandante: la 1.a llega con la toma de frente, la 2.a cuando sueltan las cuerdas
         public const float AlturaDeRapel = 11f;       // de la cabina al piso
         const float FinDeToma0 = 2.6f, FinDeToma1 = 5.8f, FinDeToma2 = 9.9f;   // cortes: viene de frente | lateral, frena y gira | bajan | se va
         const float InicioDeCuerdas = 6.1f, SegundosDeBajada = 2.4f, EntreSoldados = 0.55f;
@@ -197,6 +198,7 @@ namespace SP.Operacion
         {
             if (!Activa) return;
             StopAllCoroutines();
+            VozDeCinematica.Callar();
             LimpiarEscena();
             Restaurar();
             Activa = false;
@@ -558,7 +560,7 @@ namespace SP.Operacion
             if (scriptHeli != null) { scriptHeli.Volando = true; scriptHeli.RotorAFondo(); scriptHeli.DisparaCobertura = false; scriptHeli.SilenciarYa(); }
             PoseDelHeli(0f, out var p0, out var r0); heli.SetPositionAndRotation(p0, r0);
             Tiempo = 0f; Toma = 1;
-            bool cuerdasSonaron = false;
+            bool cuerdasSonaron = false, vozPreparar = false, vozBajar = false;
             while (Tiempo < Duracion)
             {
                 float dt = Time.deltaTime;
@@ -566,6 +568,8 @@ namespace SP.Operacion
                 PoseDelHeli(Tiempo, out var p, out var r);
                 heli.SetPositionAndRotation(p, r);
                 if (scriptHeli != null) scriptHeli.VolumenExtra = VolumenDelRotorEn(Tiempo);
+                if (!vozPreparar && Tiempo >= SegundoVozPreparar) { vozPreparar = true; VozDeCinematica.Decir(VozDeCinematica.RapelPreparar); }
+                if (!vozBajar && Tiempo >= SegundoVozBajar) { vozBajar = true; VozDeCinematica.Decir(VozDeCinematica.RapelBajar); }
                 if (!cuerdasSonaron && Tiempo >= InicioDeCuerdas)
                 {
                     cuerdasSonaron = true;
