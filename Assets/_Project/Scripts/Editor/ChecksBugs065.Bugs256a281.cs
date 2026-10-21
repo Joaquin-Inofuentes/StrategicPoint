@@ -177,6 +177,27 @@ namespace SP.EditorTools
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 
+        // ---------------------------------------------------------------- 288a el anillo de la mira del tanque siempre queda en el piso, nunca vertical
+        static IEnumerator Bug288a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(4, 1, 3);
+            foreach (var x in Esperar(1.0f)) yield return x;
+            // Un muro alto: el impacto en su cara (a 6 m de altura) tiene que dibujarse al pie, sobre el piso.
+            var muro = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            muro.transform.position = new Vector3(60f, 5f, 60f); muro.transform.localScale = new Vector3(10f, 10f, 1f);
+            yield return null;
+            var enLaCara = new Vector3(60f, 6f, 59.45f);
+            var c = SP.UI.TurretAimView.PuntoEnElPiso(enLaCara);
+            float pisoReal = 0f;
+            if (Physics.Raycast(new Vector3(60f, 50f, 58f), Vector3.down, out var h, 100f)) pisoReal = h.point.y;
+            W8Ok(ref ok, Mathf.Abs(c.y - (pisoReal + 0.06f)) < 0.3f, sb, $"impacto a 6 m de altura en un muro: el anillo se dibuja a y={c.y:0.00} (piso {pisoReal:0.00})");
+            W8Ok(ref ok, Mathf.Abs(c.x - 60f) < 0.01f && Mathf.Abs(c.z - 59.45f) < 0.01f, sb, "queda justo al pie del punto apuntado");
+            Object.Destroy(muro);
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
         // ---------------------------------------------------------------- 284a la extraccion recibe un flujo secuencial de enemigos
         static IEnumerator Bug284a()
         {

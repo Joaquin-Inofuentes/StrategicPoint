@@ -153,9 +153,31 @@ namespace SP.UI
             // Bug #245: el anillo de la zona es lo UNICO que queda del cursor del canon: mientras recarga se atenua (en vez del anillo de recarga de la UI).
             if (SoloAnilloDeZona && turret.CooldownFraction01 < 0.999f) color.a = 0.4f;
             radiusRing.startColor = color; radiusRing.endColor = color;
-            UltimoTipo = impacto.Tipo; UltimoPunto = impacto.Punto; UltimaNormal = impacto.Normal;
+            // Pedido 2026-10-21: "la mira del tanque siempre contra el suelo, jamas vertical, asi siempre es legible". Contra un muro, un
+            // vehiculo o un edificio el anillo ya no se pega a la cara: se apoya en el piso al pie de lo que se apunta, siempre horizontal.
+            var centro = PuntoEnElPiso(impacto.Punto);
+            UltimoTipo = impacto.Tipo; UltimoPunto = impacto.Punto; UltimaNormal = Vector3.up; UltimoCentroDibujado = centro;
             UltimoRadioDibujado = radio; UltimoAnchoDibujado = ancho; UltimoColor = color;
-            DrawCircle(impacto.Punto + impacto.Normal * 0.06f, radio, impacto.Normal);
+            DrawCircle(centro, radio, Vector3.up);
+        }
+
+        public static Vector3 UltimoCentroDibujado { get; private set; }
+
+        static readonly RaycastHit[] golpesDePiso = new RaycastHit[8];
+        // El piso justo bajo (o al pie de) el punto de impacto: el primer golpe hacia abajo que sea suelo (no soldado ni vehiculo).
+        public static Vector3 PuntoEnElPiso(Vector3 punto)
+        {
+            var desde = punto + Vector3.up * 0.3f;
+            int n = Physics.RaycastNonAlloc(desde, Vector3.down, golpesDePiso, 80f, ~0, QueryTriggerInteraction.Ignore);
+            float mejor = float.MaxValue; float y = punto.y;
+            for (int i = 0; i < n; i++)
+            {
+                var h = golpesDePiso[i];
+                if (h.collider == null || h.distance >= mejor || h.normal.y < 0.5f) continue;
+                if (h.collider.GetComponentInParent<SP.Actors.Soldier>() != null || h.collider.GetComponentInParent<Vehicle>() != null) continue;
+                mejor = h.distance; y = h.point.y;
+            }
+            return new Vector3(punto.x, y + 0.06f, punto.z);
         }
 
         public static Color ColorDe(TipoDeImpacto t) => t == TipoDeImpacto.Enemigo ? ColorEnemigo : t == TipoDeImpacto.Destructible ? ColorDestructible : ColorNeutro;
