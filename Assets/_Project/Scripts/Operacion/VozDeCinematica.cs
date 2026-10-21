@@ -20,23 +20,23 @@ namespace SP.Operacion
             public Linea(string id, float ventana, string texto) { Id = id; Ventana = ventana; Texto = texto; }
         }
 
-        public static readonly Linea Inicio = new Linea("cmd_01_inicio", 6.0f,
-            "Escuadra, habla el comandante. Esta noche entramos al cuartel enemigo. Mantengan la calma y sigan mis órdenes.");
-        public static readonly Linea Torretas = new Linea("cmd_02_torretas", 6.0f,
+        public static readonly Linea Inicio = new Linea("cmd_01_inicio", 6.5f,
+            "Escuadra, habla el comandante. Esta noche entramos al cuartel enemigo.");
+        public static readonly Linea Torretas = new Linea("cmd_02_torretas", 9.5f,
             "Primero, las dos torretas de artillería. Si siguen en pie no llegamos al centro. Cargas explosivas, y rápido.");
-        public static readonly Linea Cuartel = new Linea("cmd_03_cuartel", 4.5f,
-            "Después, limpien el cuartel. No dejen a nadie con vida a sus espaldas.");
-        public static readonly Linea CentroDeDatos = new Linea("cmd_04_centro", 7.0f,
-            "Más adelante, dos puestos de control y el centro de datos. Solo el soldado de asalto coloca las cargas. Los demás, cubran las tres entradas.");
+        public static readonly Linea Cuartel = new Linea("cmd_03_cuartel", 5.4f,
+            "Después, limpien el cuartel. No dejen a nadie con vida.");
+        public static readonly Linea CentroDeDatos = new Linea("cmd_04_centro", 7.8f,
+            "Luego, dos puestos y el centro de datos. Asalto coloca las cargas, los demás cubren.");
         public static readonly Linea Blindado = new Linea("cmd_05_blindado", 6.0f,
-            "Un tanque jefe custodia el patio. Derríbenlo con cohetes, cubran a Kes mientras lo repara, y escapen en él.");
-        public static readonly Linea Ciudad = new Linea("cmd_06_ciudad", 6.0f,
-            "En la ciudad, tomen la radio y organicen la defensa. Dos posiciones alcanzan, y cualquier soldado sirve.");
+            "Un tanque jefe custodia el patio. Derríbenlo y escapen en él.");
+        public static readonly Linea Ciudad = new Linea("cmd_06_ciudad", 6.4f,
+            "En la ciudad, tomen la radio y defiendan. Dos posiciones alcanzan.");
         public static readonly Linea Helipuerto = new Linea("cmd_07_helipuerto", 5.5f,
-            "Y al final, el helicóptero. Sube todo el escuadrón, nadie se queda atrás. Comandante fuera.");
-        public static readonly Linea RapelPreparar = new Linea("cmd_08_rapel_a", 4.5f,
+            "Al final, el helicóptero. Suban todos. Comandante fuera.");
+        public static readonly Linea RapelPreparar = new Linea("cmd_08_rapel_a", 5.4f,
             "Zona de descenso a la vista. Prepárense para el rapel.");
-        public static readonly Linea RapelBajar = new Linea("cmd_09_rapel_b", 4.5f,
+        public static readonly Linea RapelBajar = new Linea("cmd_09_rapel_b", 5.9f,
             "¡Abajo, abajo! Suerte, escuadra. Los estoy mirando.");
 
         public static readonly Linea[] Todas = { Inicio, Torretas, Cuartel, CentroDeDatos, Blindado, Ciudad, Helipuerto, RapelPreparar, RapelBajar };

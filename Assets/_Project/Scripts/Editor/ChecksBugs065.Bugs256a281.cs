@@ -229,10 +229,61 @@ namespace SP.EditorTools
                 cuando.Append($"[{lineas[i].Id} a los {tiempos[i]:0.0} s, hueco {hueco:0.0} s, ventana {lineas[i].Ventana:0.0} s] ");
                 W8Ok(ref ok, hueco + 0.05f >= lineas[i].Ventana, sb, $"{lineas[i].Id}: cabe ({hueco:0.0} s de hueco para {lineas[i].Ventana:0.0} s)");
             }
-            var problemas = VozDeCinematica.Validar(false);
-            W8Ok(ref ok, problemas.Count == 0, sb, "los clips que ya existen no se pasan de su ventana" + (problemas.Count > 0 ? ": " + string.Join(" | ", problemas) : ""));
+            var problemas = VozDeCinematica.Validar(true);
+            W8Ok(ref ok, problemas.Count == 0, sb, "los 9 clips existen y ninguno se pasa de su ventana" + (problemas.Count > 0 ? ": " + string.Join(" | ", problemas) : ""));
             sb.Append(cuando);
             CinematicaDeOperacion.Saltar();
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 290a la voz del comandante arranca en su cuadro y no se encima (reproduccion real)
+        static IEnumerator Bug290a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            foreach (var x in Esperar(1f)) yield return x;
+            VozDeCinematica.Callar(); VozDeCinematica.Reproducidas.Clear();
+            CinematicaDeOperacion.ReiniciarPorPrueba();
+            CinematicaDeRapel.YaVista = false;   // ReiniciarPorPrueba salta (y marca visto) el rapel: se lo deja encadenar
+            yield return null;
+            var c = CinematicaDeOperacion.Instancia;
+            if (c == null) { Fin("FALLO no arranco la cinematica"); yield break; }
+            float t0 = Time.realtimeSinceStartup;
+            var ids = new List<string>(); var inicio = new List<float>(); var terminoAntes = new List<bool>();
+            string previa = ""; int maxJuntas = 0;
+            // Mientras corre sobrevuelo + rapel (~63 s): anota cuando cambia la linea y si la anterior ya habia terminado de hablar.
+            while (Time.realtimeSinceStartup - t0 < 75f && (CinematicaDeOperacion.Activa || CinematicaDeRapel.Activa || ids.Count < 9))
+            {
+                var a = VozDeCinematica.Actual;
+                if (a != previa && a != "")
+                {
+                    ids.Add(a); inicio.Add(Time.realtimeSinceStartup - t0);
+                    terminoAntes.Add(true);
+                }
+                previa = a;
+                int hablando = 0;
+                foreach (var f in Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None)) if (f.isPlaying && f.clip != null && f.clip.name.StartsWith("cmd_")) hablando++;
+                if (hablando > maxJuntas) maxJuntas = hablando;
+                yield return null;
+            }
+            W8Ok(ref ok, ids.Count == 9, sb, $"sonaron {ids.Count} de 9 lineas");
+            var esperado = new[] { "cmd_01_inicio", "cmd_02_torretas", "cmd_03_cuartel", "cmd_04_centro", "cmd_05_blindado", "cmd_06_ciudad", "cmd_07_helipuerto", "cmd_08_rapel_a", "cmd_09_rapel_b" };
+            bool orden = ids.Count == 9; for (int i = 0; i < ids.Count && i < 9; i++) if (ids[i] != esperado[i]) orden = false;
+            W8Ok(ref ok, orden, sb, "orden correcto: " + string.Join(",", ids));
+            W8Ok(ref ok, maxJuntas <= 1, sb, $"nunca hay dos voces sonando a la vez (maximo {maxJuntas})");
+            var rep = new StringBuilder();
+            for (int i = 0; i < ids.Count; i++)
+            {
+                var l = System.Array.Find(VozDeCinematica.Todas, z => z.Id == ids[i]);
+                float largo = VozDeCinematica.Clip(l).length;
+                float fin = i + 1 < ids.Count ? inicio[i + 1] : float.MaxValue;
+                bool termino = inicio[i] + largo <= fin + 0.1f;
+                rep.Append($"[{ids[i]} entra a {inicio[i]:0.0} s dura {largo:0.0} s termina a {inicio[i] + largo:0.0} s]");
+                W8Ok(ref ok, termino, sb, $"{ids[i]} termina antes de la siguiente");
+            }
+            W8Ok(ref ok, ids.Count > 0 && inicio[0] < 1.5f, sb, $"la primera linea entra a los {(ids.Count > 0 ? inicio[0] : -1):0.0} s");
+            sb.Append(rep);
+            CinematicaDeOperacion.Saltar(); VozDeCinematica.Callar();
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 
