@@ -107,6 +107,7 @@ namespace SP.Operacion
             MaximoDeAutosVivos = 0;
             indiceRuta = 0;
             proximoAuto = 2.5f;
+            destrabeDesde = 0f; destrabePos = tanque.transform.position; destrabeIntentos = 0; DestrabadasDelTanque = 0; RescatesDelTanque = 0;
             // Velocidad del tanque tal que la ruta entera dure ~el trayecto (el motor es [SerializeField] privado).
             var motor = tanque.GetComponent<VehicleMotor>();
             if (motor != null)
@@ -238,6 +239,59 @@ namespace SP.Operacion
             return ai;
         }
 
+        // Pedido 2026-10-21 (otra vez): "el tanque se sigue trabando al comienzo". Ademas de limpiar la ruta antes de arrancar, un destrabador
+        // general: si con orden activa el tanque no avanza ni 1,5 m en 1,2 s, se le libera lo que tiene delante (cadaveres, restos de vehiculos,
+        // props y barricadas: se les apaga la colision, el tanque los aplasta) y, si a la 2.a vez sigue clavado, se lo adelanta 7 m por la ruta.
+        public const float SegundosParaDestrabar = 1.2f, AvanceMinimoParaNoEstarTrabado = 1.5f, SaltoDeRescate = 7f;
+        public int DestrabadasDelTanque { get; private set; }
+        public int RescatesDelTanque { get; private set; }
+        float destrabeDesde; Vector3 destrabePos; int destrabeIntentos;
+
+        void DestrabarTanque(float dt)
+        {
+            if (tanque == null || Reloj < 1f) return;
+            destrabeDesde += dt;
+            if (destrabeDesde < SegundosParaDestrabar) return;
+            var pos = tanque.transform.position;
+            bool quieto = Plano(pos, destrabePos).magnitude < AvanceMinimoParaNoEstarTrabado;
+            destrabeDesde = 0f; destrabePos = pos;
+            if (!quieto) { destrabeIntentos = 0; return; }
+            destrabeIntentos++;
+            var rb = tanque.GetComponent<Rigidbody>();
+            var objetivo = indiceRuta < rutaDelTanque.Length ? rutaDelTanque[indiceRuta].position : pos + tanque.transform.forward * 10f;
+            var hacia = objetivo - pos; hacia.y = 0f;
+            if (hacia.sqrMagnitude < 0.01f) hacia = tanque.transform.forward;
+            hacia.Normalize();
+            if (destrabeIntentos == 1)
+            {
+                int n = 0;
+                var propios = tanque.GetComponentsInChildren<Collider>(true);
+                var rot = Quaternion.LookRotation(hacia, Vector3.up);
+                foreach (var c in Physics.OverlapBox(pos + hacia * 3f + Vector3.up * 1.4f, new Vector3(2.4f, 1.6f, 4.5f), rot))
+                {
+                    if (c == null || c.isTrigger || !c.enabled || c is TerrainCollider || System.Array.IndexOf(propios, c) >= 0) continue;
+                    var otro = c.GetComponentInParent<Vehicle>();
+                    if (otro == tanque) continue;
+                    var sol = c.GetComponentInParent<Soldier>();
+                    if (sol != null && sol.Team == TeamId.Player && sol.Health.IsAlive) continue;   // la escuadra del jugador no se toca
+                    var b = c.bounds;
+                    if (b.max.y > 9f || Mathf.Max(b.size.x, b.size.z) > 20f) continue;   // murallas y edificios no
+                    c.enabled = false; n++;
+                }
+                DestrabadasDelTanque++;
+                SesionLog.Evento($"HUIDA: tanque trabado en {pos}: se liberaron {n} colisiones de adelante");
+                var vb = tanque.GetComponent<VehicleBrain>(); if (vb != null) vb.IssueMoveOrder(objetivo);
+            }
+            else
+            {
+                var nueva = pos + hacia * SaltoDeRescate;
+                if (rb != null) { rb.position = nueva; rb.linearVelocity = Vector3.zero; rb.angularVelocity = Vector3.zero; }
+                tanque.transform.position = nueva;
+                RescatesDelTanque++; destrabeIntentos = 0;
+                SesionLog.Evento($"HUIDA: tanque rescatado en {pos}: adelantado {SaltoDeRescate} m por la ruta");
+            }
+        }
+
         void TickTrayecto(float dt)
         {
             var vb = tanque.GetComponent<VehicleBrain>();
@@ -249,6 +303,8 @@ namespace SP.Operacion
                 else if (vb != null && !vb.HasOrder && indiceRuta < rutaDelTanque.Length - 1) { indiceRuta++; EmitirOrdenDeRuta(); }
                 else if (vb != null && !vb.HasOrder) EmitirOrdenDeRuta();
             }
+
+            DestrabarTanque(dt);
 
             // El tanque aguanta hasta el final del trayecto (el guion lo destruye). Bug #073: solo tiene un PISO del 20 % de la vida
             // (Vehicle.PisoDeVida01, WP9b: antes era una cura "a mano" cada frame): si el dano lo pasa, se lo deja justo ahi.

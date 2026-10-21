@@ -28,9 +28,9 @@ namespace SP.Core
 
         public static bool Alternar() { Poner(!Activo); return Activo; }
 
-        // Bugs #276/#279: con el modo dios el bando del jugador pega x3 y la escena corre a x3 de velocidad (pedido 2026-10-21: antes x2).
+        // Bugs #276/#279: con el modo dios el bando del jugador pega x3 y la escena corre a x4 de velocidad (pedido 2026-10-21: antes x2, luego x3).
         public const float MultiplicadorDeDanoPropio = 3f;
-        public const float EscalaDeTiempo = 3f;
+        public const float EscalaDeTiempo = 4f;
 
         // Multiplicador de un golpe segun quien lo da (solo el bando del jugador, y solo con el modo dios activo).
         public static float MultiplicadorDeDano(int atacanteId)
@@ -40,7 +40,7 @@ namespace SP.Core
             return a != null && a.Team == TeamId.Player && a.Role != RoleType.Civilian ? MultiplicadorDeDanoPropio : 1f;
         }
 
-        // Lo llama el vigilante de velocidad: pone o saca el x3 sin pisar la pausa (0) ni la camara lenta (<1).
+        // Lo llama el vigilante de velocidad: pone o saca el x4 sin pisar la pausa (0) ni la camara lenta (<1).
         public static bool VelocidadActiva = true;   // las corridas de checks lo apagan para no doblar sus tiempos
         public static void AjustarVelocidad()
         {

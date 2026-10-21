@@ -135,6 +135,92 @@ namespace SP.EditorTools
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 
+        // ---------------------------------------------------------------- 286b lo mismo que 286a pero a la velocidad del modo dios (x4)
+        static IEnumerator Bug286b()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionDirector.HalconEnLaCarrera = false;
+            ModoDios.VelocidadActiva = true;   // como juega el usuario: x4
+            ModoDios.Poner(true);
+            var d = OperacionDirector.Instancia;
+            OperacionPrueba.Arrancar(4, 1, 1);   // subfase Jefe: el blindado patrulla el patio antes de rendirse, y desde ahi arranca el recorrido
+            foreach (var x in Esperar(30f)) yield return x;
+            d.Embarcar();
+            SP.Vehicles.Vehicle tq = null; foreach (var v in Object.FindObjectsByType<SP.Vehicles.Vehicle>()) if (v != null && v.name == "Tanque_Fuga") { tq = v; break; }
+            if (tq == null) { Fin("FALLO no hay Tanque_Fuga"); yield break; }
+            var campoIdx = typeof(OperacionDirector).GetField("indiceRuta", BindingFlags.NonPublic | BindingFlags.Instance);
+            Vector3 ancla = tq.transform.position; float tAncla = 0f, t = 0f, peorQuieto = 0f, quietoDesde = -1f; string donde = "", volcado = null;
+            float primeros10 = 0f; Vector3 p0 = tq.transform.position;
+            while (t < 45f && d.Fase == FaseOperacion.Huir && !d.FinalActiva)
+            {
+                t += Time.unscaledDeltaTime;
+                if (t - tAncla >= 1f)
+                {
+                    float avance = Vector3.Distance(new Vector3(tq.transform.position.x, 0, tq.transform.position.z), new Vector3(ancla.x, 0, ancla.z));
+                    if (avance < 2f) { if (quietoDesde < 0f) quietoDesde = t - 1f; float q = t - quietoDesde; if (q > peorQuieto) { peorQuieto = q; donde = $"{tq.transform.position} ruta#{campoIdx.GetValue(d)}"; } }
+                    if (avance < 2f && t - quietoDesde > 3f && volcado == null)
+                    {
+                        var sd = new StringBuilder(); var vbx = tq.GetComponent<SP.Vehicles.VehicleBrain>(); var mt = tq.GetComponent<SP.Vehicles.VehicleMotor>();
+                        sd.Append($"pos {tq.transform.position} rotY {tq.transform.eulerAngles.y:0} vel {(mt != null ? mt.CurrentSpeed : 0f):0.0} orden={(vbx != null ? vbx.HasOrder.ToString() : "-")} dest={(vbx != null && vbx.CurrentDestination.HasValue ? vbx.CurrentDestination.Value.ToString() : "-")} rutaBrain={(vbx != null ? vbx.Route.Count : -1)}/{(vbx != null ? vbx.RouteIndex : -1)} | ");
+                        foreach (var c in Physics.OverlapBox(tq.transform.position + tq.transform.forward * 2f + Vector3.up, new Vector3(2f, 1.2f, 4.5f), tq.transform.rotation))
+                        {
+                            if (c == null || c.isTrigger || c.GetComponentInParent<SP.Vehicles.Vehicle>() == tq || c is TerrainCollider) continue;
+                            var mkx = c.GetComponentInParent<SP.Presentation.ObstacleMarker>();
+                            sd.Append($"[{c.name} ({c.transform.root.name}) {c.bounds.center} destr={(mkx != null ? mkx.EsDestruible.ToString() : "sinMarca")} rb={(c.attachedRigidbody != null)}] ");
+                        }
+                        volcado = sd.ToString();
+                    }
+                    else quietoDesde = -1f;
+                    ancla = tq.transform.position; tAncla = t;
+                }
+                if (t >= 10f && primeros10 == 0f) primeros10 = Vector3.Distance(new Vector3(tq.transform.position.x, 0, tq.transform.position.z), new Vector3(p0.x, 0, p0.z));
+                yield return null;
+            }
+            W8Ok(ref ok, d.PropsDespejadosDeLaRuta >= 1, sb, $"antes de arrancar se despejaron {d.PropsDespejadosDeLaRuta} props sin vida de la ruta (poste caido, auto quemado, neumaticos)");
+            W8Ok(ref ok, primeros10 > 60f, sb, $"en los primeros 10 s avanzo {primeros10:0} m");
+            W8Ok(ref ok, peorQuieto < 3f, sb, $"nunca quedo quieto mas de 3 s (peor {peorQuieto:0.0} s en {donde}) {volcado}");
+            ModoDios.Poner(false); ModoDios.VelocidadActiva = false; Time.timeScale = 1f;
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 286c el destrabador: un obstaculo macizo (como un cadaver o un resto de vehiculo) delante del tanque
+        static IEnumerator Bug286c()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionDirector.HalconEnLaCarrera = false;
+            ModoDios.VelocidadActiva = true;
+            ModoDios.Poner(true);
+            var d = OperacionDirector.Instancia;
+            OperacionPrueba.Arrancar(4, 1, 1);
+            foreach (var x in Esperar(30f)) yield return x;
+            d.Embarcar();
+            SP.Vehicles.Vehicle tq = null; foreach (var v in Object.FindObjectsByType<SP.Vehicles.Vehicle>()) if (v != null && v.name == "Tanque_Fuga") { tq = v; break; }
+            if (tq == null) { Fin("FALLO no hay Tanque_Fuga"); yield break; }
+            // Despues de Embarcar (que ya barrio la ruta): bloques de 6 m de alto que no son destruibles, uno a 12 m y otro a 30 m por delante.
+            var objetivo = d.rutaDelTanque[0].position; var dir = objetivo - tq.transform.position; dir.y = 0f; dir.Normalize();
+            var bloques = new List<GameObject>();
+            foreach (float dist in new[] { 12f, 30f })
+            {
+                var b = GameObject.CreatePrimitive(PrimitiveType.Cube); b.name = "BloqueDePrueba";
+                b.transform.position = tq.transform.position + dir * dist + Vector3.up * 3f; b.transform.localScale = new Vector3(5f, 6f, 3f);
+                b.transform.rotation = Quaternion.LookRotation(dir, Vector3.up); bloques.Add(b);
+            }
+            Vector3 p0 = tq.transform.position; float t = 0f; float lejos = 0f;
+            while (t < 20f && d.Fase == FaseOperacion.Huir && !d.FinalActiva)
+            {
+                t += Time.unscaledDeltaTime;
+                lejos = Mathf.Max(lejos, Vector3.Distance(new Vector3(tq.transform.position.x, 0, tq.transform.position.z), new Vector3(p0.x, 0, p0.z)));
+                yield return null;
+            }
+            W8Ok(ref ok, d.DestrabadasDelTanque >= 1, sb, $"el destrabador actuo {d.DestrabadasDelTanque} vez/veces (rescates {d.RescatesDelTanque})");
+            W8Ok(ref ok, lejos > 80f, sb, $"el tanque paso los bloques y llego a {lejos:0} m del arranque en {t:0} s");
+            foreach (var b in bloques) if (b != null) Object.Destroy(b);
+            ModoDios.Poner(false); ModoDios.VelocidadActiva = false; Time.timeScale = 1f;
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
         // ---------------------------------------------------------------- 287a rendimiento: la carrera del tanque y las oleadas de Extraer no hunden los cuadros
         static IEnumerable Muestrear(float segundos, List<float> ms)
         {
