@@ -406,15 +406,9 @@ namespace SP.Player
                 UpdateVehicleCamera();
             }
 
-            const string asientos = "[1] conducir · [2] cañón · [3] metralleta · [4] pasajero (si esta ocupado, intercambian)";
-            string role = currentSeat == VehicleSeatRole.Driver
-                ? "[WASD] conducir · [Espacio] frenar · [Q] radial (tanque allí, subir/bajar) · " + asientos + " · [TAB] vista RTS · [E] bajar"
-                : currentSeat == VehicleSeatRole.Gunner
-                    ? "[Mouse] apuntar · [Click] disparar · [Click der.] zoom · [R] munición · [Q] radial · " + asientos + " · [E] bajar"
-                    : currentSeat == VehicleSeatRole.Passenger1
-                        ? "[Mouse] apuntar · [Click] disparar (mantener = rafaga) · [Q] radial · " + asientos + " · [E] bajar"
-                        : "[Q] radial (tanque allí, subir/bajar) · " + asientos + " · [E] bajar · [TAB] vista RTS";
-            SetInstructionText(role);
+            // Pedido: se saco la linea larga de controles del vehiculo ("[Mouse] apuntar · [Click] disparar · ... [1] conducir · ... [E] bajar"),
+            // tapaba el menu y repetia lo que ya dice la tabla de controles.
+            SetInstructionText("");
         }
 
         public void SwitchSeat(VehicleSeatRole newRole)

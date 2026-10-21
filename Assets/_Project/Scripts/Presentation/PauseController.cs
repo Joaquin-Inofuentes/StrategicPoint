@@ -593,6 +593,9 @@ namespace SP.Presentation
         public void OnMenuClicked()
         {
             if (confirmExitPanel == null || confirmExitPanel.activeSelf) return;
+            // Pedido 2026-10-21: "el menu de confirmacion de salir se ve raro solapado". El panel es translucido y por detras se
+            // transparentaban GUARDAR / CARGAR y la leyenda de abajo: mientras se confirma, el menu de pausa se oculta.
+            if (pausePanel != null) pausePanel.SetActive(false);
             confirmExitPanel.SetActive(true);
         }
 
@@ -600,6 +603,7 @@ namespace SP.Presentation
         {
             if (confirmExitPanel == null || !confirmExitPanel.activeSelf) return;
             confirmExitPanel.SetActive(false);
+            if (pausePanel != null && IsPaused) pausePanel.SetActive(true);
         }
 
         bool exitConfirmed;

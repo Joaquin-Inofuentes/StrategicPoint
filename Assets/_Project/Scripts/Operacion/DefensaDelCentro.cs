@@ -17,6 +17,8 @@ namespace SP.Operacion
     {
         public const int TorretasAliadas = 3;
         public static readonly float[] SegundosDeEntrada = { 5f, 40f };
+        // Pedido 2026-10-21: "el helicoptero de la zona de hackeo eliminalo, genera mucha confusion". Sin helicopteros de asalto; quedan las torretas.
+        public const bool HelicopterosDeAsalto = false;
 
         public static DefensaDelCentro Instancia { get; private set; }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -64,7 +66,7 @@ namespace SP.Operacion
 
         void Update()
         {
-            if (inicio < 0f || plantillaHalcon == null) return;
+            if (!HelicopterosDeAsalto || inicio < 0f || plantillaHalcon == null) return;
             float t = Time.time - inicio;
             for (int i = 0; i < SegundosDeEntrada.Length; i++)
             {

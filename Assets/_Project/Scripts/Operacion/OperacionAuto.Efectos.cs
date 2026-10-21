@@ -25,6 +25,7 @@ namespace SP.Operacion
         Vector3 ruedaTraseraIzq, ruedaTraseraDer;
         float proximoPolvo, proximoHumoCarcasa;
         static Material materialHuella;
+        public const float DuracionDeLaHuella = 3f;
 
         // Gira hacia rot con una velocidad de giro que acelera/frena en vez de saltar (curva redondeada).
         void Girar(Quaternion rot, float giroMaximo, float dt)
@@ -76,7 +77,7 @@ namespace SP.Operacion
             go.transform.rotation = Quaternion.LookRotation(Vector3.up, transform.forward);
             var t = go.AddComponent<TrailRenderer>();
             t.alignment = LineAlignment.TransformZ;
-            t.time = 7f;
+            t.time = DuracionDeLaHuella;   // pedido 2026-10-21: las marcas se desvanecen 3 s despues (antes 7)
             t.minVertexDistance = 0.35f;
             t.widthMultiplier = 0.32f * Mathf.Clamp(transform.lossyScale.x * 2f, 0.6f, 1.4f);
             t.numCapVertices = 0;

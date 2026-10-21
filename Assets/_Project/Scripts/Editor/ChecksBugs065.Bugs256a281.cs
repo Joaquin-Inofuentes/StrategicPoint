@@ -32,16 +32,8 @@ namespace SP.EditorTools
             W8Ok(ref ok, def.Torretas.Count == DefensaDelCentro.TorretasAliadas, sb, $"hay {def.Torretas.Count} torretas aliadas alrededor de la computadora");
             def.Comenzar();
             foreach (var x in Esperar(14f)) yield return x;
-            W8Ok(ref ok, def.HelicopterosLanzados >= 1, sb, $"entro al menos un helicoptero de asalto ({def.HelicopterosLanzados})");
-            int disparos = 0; foreach (var t in def.Torretas) if (t != null) disparos += t.Disparos;
-            W8Ok(ref ok, disparos > 0, sb, $"las torretas dispararon solas ({disparos} balas)");
-            HelicopteroEnemigo heli = null; foreach (var h in def.Helicopteros) if (h != null) { heli = h; break; }
-            if (heli == null) { Fin("FALLO " + sb + " sin helicoptero"); yield break; }
-            W8Ok(ref ok, heli.Vehiculo.Health.MaxHealth == HelicopteroEnemigo.VidaDeAsalto, sb, $"vida de asalto {heli.Vehiculo.Health.MaxHealth}");
-            W8Ok(ref ok, heli.Altura > 10f, sb, $"vuela sobre la computadora (altura {heli.Altura:0.0})");
-            heli.Vehiculo.TakeDamage(HelicopteroEnemigo.VidaDeAsalto + 10, -4);
-            foreach (var x in Esperar(1.5f)) yield return x;
-            W8Ok(ref ok, heli.Derribado && def.HelicopterosDerribados >= 1, sb, "se lo derriba a tiros y cuenta como derribado");
+            W8Ok(ref ok, def.HelicopterosLanzados == 0 && !DefensaDelCentro.HelicopterosDeAsalto, sb, $"no entra ningun helicoptero de asalto ({def.HelicopterosLanzados}): se quitaron por confusos");
+            W8Ok(ref ok, def.Helicopteros.Count == 0, sb, "no hay helicopteros enemigos sobre la computadora");
             ModoDios.Poner(false);
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
@@ -91,6 +83,97 @@ namespace SP.EditorTools
             W8Ok(ref ok, acum > 0.35f && acum < 0.75f, sb, $"dura medio segundo ({acum:0.00} s de dt, {dur:0.00} s de reloj, {frames} cuadros)");
             W8Ok(ref ok, rig.FactorDeReboteDeZoom() == 1f, sb, "termina exacto en el zoom normal");
             W8Ok(ref ok, SoldierMeleeAnim.EscalaDelTorsoDelJugador < 0.5f, sb, $"el torso del jugador se mueve poco con el cuchillo ({SoldierMeleeAnim.EscalaDelTorsoDelJugador})");
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 286a el tanque de la huida no se traba al iniciar el recorrido
+        static IEnumerator Bug286a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionDirector.HalconEnLaCarrera = false;
+            ModoDios.VelocidadActiva = false;
+            ModoDios.Poner(true);
+            var d = OperacionDirector.Instancia;
+            OperacionPrueba.Arrancar(4, 1, 1);   // subfase Jefe: el blindado patrulla el patio antes de rendirse, y desde ahi arranca el recorrido
+            foreach (var x in Esperar(45f)) yield return x;
+            d.Embarcar();
+            SP.Vehicles.Vehicle tq = null; foreach (var v in Object.FindObjectsByType<SP.Vehicles.Vehicle>()) if (v != null && v.name == "Tanque_Fuga") { tq = v; break; }
+            if (tq == null) { Fin("FALLO no hay Tanque_Fuga"); yield break; }
+            var campoIdx = typeof(OperacionDirector).GetField("indiceRuta", BindingFlags.NonPublic | BindingFlags.Instance);
+            Vector3 ancla = tq.transform.position; float tAncla = 0f, t = 0f, peorQuieto = 0f, quietoDesde = -1f; string donde = "", volcado = null;
+            float primeros10 = 0f; Vector3 p0 = tq.transform.position;
+            while (t < 45f && d.Fase == FaseOperacion.Huir && !d.FinalActiva)
+            {
+                t += Time.deltaTime;
+                if (t - tAncla >= 1f)
+                {
+                    float avance = Vector3.Distance(new Vector3(tq.transform.position.x, 0, tq.transform.position.z), new Vector3(ancla.x, 0, ancla.z));
+                    if (avance < 2f) { if (quietoDesde < 0f) quietoDesde = t - 1f; float q = t - quietoDesde; if (q > peorQuieto) { peorQuieto = q; donde = $"{tq.transform.position} ruta#{campoIdx.GetValue(d)}"; } }
+                    if (avance < 2f && t - quietoDesde > 3f && volcado == null)
+                    {
+                        var sd = new StringBuilder(); var vbx = tq.GetComponent<SP.Vehicles.VehicleBrain>(); var mt = tq.GetComponent<SP.Vehicles.VehicleMotor>();
+                        sd.Append($"pos {tq.transform.position} rotY {tq.transform.eulerAngles.y:0} vel {(mt != null ? mt.CurrentSpeed : 0f):0.0} orden={(vbx != null ? vbx.HasOrder.ToString() : "-")} dest={(vbx != null && vbx.CurrentDestination.HasValue ? vbx.CurrentDestination.Value.ToString() : "-")} rutaBrain={(vbx != null ? vbx.Route.Count : -1)}/{(vbx != null ? vbx.RouteIndex : -1)} | ");
+                        foreach (var c in Physics.OverlapBox(tq.transform.position + tq.transform.forward * 2f + Vector3.up, new Vector3(2f, 1.2f, 4.5f), tq.transform.rotation))
+                        {
+                            if (c == null || c.isTrigger || c.GetComponentInParent<SP.Vehicles.Vehicle>() == tq || c is TerrainCollider) continue;
+                            var mkx = c.GetComponentInParent<SP.Presentation.ObstacleMarker>();
+                            sd.Append($"[{c.name} ({c.transform.root.name}) {c.bounds.center} destr={(mkx != null ? mkx.EsDestruible.ToString() : "sinMarca")} rb={(c.attachedRigidbody != null)}] ");
+                        }
+                        volcado = sd.ToString();
+                    }
+                    else quietoDesde = -1f;
+                    ancla = tq.transform.position; tAncla = t;
+                }
+                if (t >= 10f && primeros10 == 0f) primeros10 = Vector3.Distance(new Vector3(tq.transform.position.x, 0, tq.transform.position.z), new Vector3(p0.x, 0, p0.z));
+                yield return null;
+            }
+            W8Ok(ref ok, d.PropsDespejadosDeLaRuta >= 1, sb, $"antes de arrancar se despejaron {d.PropsDespejadosDeLaRuta} props sin vida de la ruta (poste caido, auto quemado, neumaticos)");
+            W8Ok(ref ok, primeros10 > 60f, sb, $"en los primeros 10 s avanzo {primeros10:0} m");
+            W8Ok(ref ok, peorQuieto < 3f, sb, $"nunca quedo quieto mas de 3 s (peor {peorQuieto:0.0} s en {donde}) {volcado}");
+            ModoDios.Poner(false);
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 287a rendimiento: la carrera del tanque y las oleadas de Extraer no hunden los cuadros
+        static IEnumerable Muestrear(float segundos, List<float> ms)
+        {
+            float t = 0f;
+            yield return null;
+            while (t < segundos) { float dt = Time.unscaledDeltaTime; t += dt; ms.Add(dt * 1000f); yield return null; }
+        }
+
+        static string Resumen(List<float> ms, out float prom, out float p95, out float max)
+        {
+            var o = new List<float>(ms); o.Sort();
+            prom = 0f; foreach (var v in o) prom += v; prom /= Mathf.Max(1, o.Count);
+            p95 = o.Count > 0 ? o[Mathf.Min(o.Count - 1, (int)(o.Count * 0.95f))] : 0f; max = o.Count > 0 ? o[o.Count - 1] : 0f;
+            return $"{o.Count} cuadros, prom {prom:0.0} ms ({1000f / Mathf.Max(0.01f, prom):0} fps), p95 {p95:0.0} ms, peor {max:0} ms";
+        }
+
+        static IEnumerator Bug287a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionDirector.HalconEnLaCarrera = false;
+            ModoDios.VelocidadActiva = false;
+            ModoDios.Poner(true);
+            var d = OperacionDirector.Instancia;
+            OperacionPrueba.Arrancar(4, 1, 3);
+            foreach (var x in Esperar(1.0f)) yield return x;
+            d.Embarcar();
+            foreach (var x in Esperar(4f)) yield return x;
+            var huida = new List<float>();
+            foreach (var x in Muestrear(20f, huida)) yield return x;
+            string r1 = Resumen(huida, out float prom1, out float p951, out float max1);
+            W8Ok(ref ok, prom1 < 33f && p951 < 50f, sb, $"carrera del tanque: {r1}");
+            OperacionPrueba.Arrancar(6, 1, 0);
+            foreach (var x in Esperar(3f)) yield return x;
+            var extraer = new List<float>();
+            foreach (var x in Muestrear(25f, extraer)) yield return x;
+            string r2 = Resumen(extraer, out float prom2, out float p952, out float max2);
+            W8Ok(ref ok, prom2 < 33f && p952 < 50f, sb, $"oleadas de Extraer ({d.EnemigosDeExtraccionVivos} vivos): {r2}");
+            ModoDios.Poner(false);
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 

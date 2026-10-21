@@ -126,6 +126,7 @@ namespace SP.Operacion
             InstalarMetralletaConIA();
             if (baliza != null) { baliza.Quitar(); baliza = null; }
             Aviso("A BORDO · TRAYECTO DE " + Mathf.RoundToInt(segundosDeTrayecto) + " s\nDESTRUI A LOS AUTOS CON EL CANON");
+            DespejarRutaDelTanque();
             EmitirOrdenDeRuta();
         }
 
@@ -153,6 +154,52 @@ namespace SP.Operacion
             var prev = tanque.transform.position;
             foreach (var t in rutaDelTanque) { l += Plano(t.position, prev).magnitude; prev = t.position; }
             return Mathf.Max(50f, l);
+        }
+
+        // Pedido 2026-10-21: "el tanque al iniciar recorrido se traba: no se tiene que obstaculizar con objetos que no sean destruibles".
+        // Medido: el pulido del nivel dejo props sin vida (poste caido, auto quemado, neumaticos) sobre la ruta y el casco quedaba
+        // clavado (hasta 38 s). Antes de arrancar se barre el corredor del tanque y se les apaga la colision; lo destruible (barricadas,
+        // autos abandonados) se deja: el tanque lo aplasta (Atropello). Murallas y edificios (altos o enormes) no se tocan.
+        public const float AnchoDelCorredorDelTanque = 1.7f, AlturaMaximaDeUnPropDespejable = 4f, TamanoMaximoDeUnPropDespejable = 12f;
+        public int PropsDespejadosDeLaRuta { get; private set; }
+
+        public int DespejarRutaDelTanque()
+        {
+            PropsDespejadosDeLaRuta = 0;
+            if (tanque == null || rutaDelTanque == null) return 0;
+            var propios = tanque.GetComponentsInChildren<Collider>(true);
+            var vistos = new HashSet<Collider>();
+            var prev = tanque.transform.position;
+            foreach (var t in rutaDelTanque)
+            {
+                if (t == null) continue;
+                var dir = t.position - prev; dir.y = 0f;
+                float largo = dir.magnitude;
+                if (largo > 0.1f)
+                {
+                    dir /= largo;
+                    var rot = Quaternion.LookRotation(dir, Vector3.up);
+                    for (float d = 0f; d <= largo + 1f; d += 2f)
+                    {
+                        var centro = prev + dir * Mathf.Min(d, largo) + Vector3.up * 1.4f;
+                        foreach (var c in Physics.OverlapBox(centro, new Vector3(AnchoDelCorredorDelTanque, 1.1f, 1.4f), rot))
+                        {
+                            if (c == null || c.isTrigger || !c.enabled || !vistos.Add(c) || c is TerrainCollider) continue;
+                            if (System.Array.IndexOf(propios, c) >= 0) continue;
+                            if (c.GetComponentInParent<Soldier>() != null || c.GetComponentInParent<Vehicle>() != null) continue;
+                            var marca = c.GetComponentInParent<ObstacleMarker>();
+                            if (marca != null && marca.EsDestruible) continue;
+                            var b = c.bounds;
+                            if (b.max.y > AlturaMaximaDeUnPropDespejable || Mathf.Max(b.size.x, b.size.z) > TamanoMaximoDeUnPropDespejable) continue;
+                            c.enabled = false;
+                            PropsDespejadosDeLaRuta++;
+                        }
+                    }
+                }
+                prev = t.position;
+            }
+            SesionLog.Evento($"HUIDA: ruta del tanque despejada ({PropsDespejadosDeLaRuta} props sin vida sin colision)");
+            return PropsDespejadosDeLaRuta;
         }
 
         void EmitirOrdenDeRuta()
