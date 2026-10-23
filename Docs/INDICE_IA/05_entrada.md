@@ -49,7 +49,7 @@
 | `SesionLog.cs` | `StartsWith`, `Substring` |
 | `ChecksBugs065.Wp5a.cs` | `W` |
 | `ChecksBugs065.Wp6.cs` | `IsDestroyed` |
-| `ChecksBugs065.Wp9a.cs` | `D`, `Digit2`, `E`, `Enter`, `F`, `LeftShift`, `Q`, `R`, `Tab`, `W` |
+| `ChecksBugs065.Wp9a.cs` | `D`, `Digit2`, `E`, `F`, `LeftShift`, `Q`, `R`, `Tab`, `W` |
 | `ChecksBugs104.Resistir.cs` | `C` |
 | `ChecksBugs104.Rts.cs` | `D` |
 | `HeadlessTestRunner.Fase18.cs` | `F` |
@@ -57,6 +57,8 @@
 | `HeadlessTestRunner.Fase21.cs` | `name`, `text`, `transform` |
 | `HeadlessTestRunner.Fases13a17.cs` | `C`, `F`, `G`, `I`, `None`, `T` |
 | `HeadlessTestRunner.cs` | `U` |
+| `OperacionBuilder.Fusion.cs` | `capa`, `cx`, `cz`, `mat`, `sombra` |
+| `OperacionBuilder.Retoque.cs` | `bounds` |
 | `ValidacionBugs.cs` | `Space`, `U`, `W` |
 | `ValidadorJugabilidad.cs` | `LeftShift` |
 | `EstadisticasDeMision.cs` | `Replace` |

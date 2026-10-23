@@ -4,8 +4,8 @@
 |---|---|
 | Escenas | 14 |
 | Prefabs | 137 |
-| Materiales | 306 |
-| Assets (`.asset`) | 62 |
+| Materiales | 330 |
+| Assets (`.asset`) | 431 |
 | Shaders | 3 |
 | Input Actions | 1 |
 
