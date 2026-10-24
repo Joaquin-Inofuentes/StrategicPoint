@@ -286,6 +286,7 @@ namespace SP.Operacion
             foreach (var s in o.soldados)
             {
                 if (s == null) continue;
+                EntradaDeReserva.Marcar(s.transform.position);
                 s.gameObject.SetActive(true);
                 ApoyoEnElPiso.Apoyar(s.transform);
                 if (s.Brain != null)

@@ -104,6 +104,8 @@ namespace SP.Actors
             {
                 var p = px[i];
                 if (p.r > 70 && p.r > p.g * 1.5f && p.r > p.b * 1.5f) { byte r = p.r; p.r = p.b; p.b = r; px[i] = p; }
+                // El verde militar (casco, pantalon) tambien pasa a azul: aliado y enemigo vestian el mismo verde.
+                else if (p.g > 40 && p.g > p.r * 1.15f && p.g > p.b * 1.15f) { byte g = p.g; p.g = p.b; p.b = g; px[i] = p; }
             }
             res.SetPixels32(px);
             res.Apply(true, false);

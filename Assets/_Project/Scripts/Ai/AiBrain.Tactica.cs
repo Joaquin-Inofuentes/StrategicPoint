@@ -489,6 +489,8 @@ namespace SP.Ai
         Vector3 posLiderAnterior;
         Soldier liderMedido;
 
+        float atascadoSeg;
+
         void TickSeguirAlJugador(float dt)
         {
             // BUG REAL: el civil (Pasivo=true, "no reacciona a nada, solo
@@ -518,6 +520,21 @@ namespace SP.Ai
             bool liderEnMarcha = liderMedido == lider && dt > 0f && paso.magnitude / dt > VelocidadDeLiderEnMarcha;
             posLiderAnterior = lider.transform.position;
             liderMedido = lider;
+
+            // Perro guardian anti-trabado (bug "aliados no avanzan / NavMesh"): lejos del lider, en Follow y sin avanzar durante 3 s ->
+            // se reordena el seguimiento; si pasan 6 s trabado y esta muy lejos, se lo reubica en el NavMesh cerca del lider.
+            if (State == AiState.Follow && dist > 12f && agent != null && agent.enabled && agent.isOnNavMesh && agent.velocity.sqrMagnitude < 0.01f)
+            {
+                atascadoSeg += dt;
+                if (atascadoSeg > 3f && atascadoSeg - dt <= 3f) IssueFollowOrder(lider, default, 4f);
+                if (atascadoSeg > 6f)
+                {
+                    atascadoSeg = 0f;
+                    var cerca = lider.transform.position - lider.transform.forward * 4f;
+                    if (dist > 30f && UnityEngine.AI.NavMesh.SamplePosition(cerca, out var nv, 6f, UnityEngine.AI.NavMesh.AllAreas)) agent.Warp(nv.position);
+                }
+            }
+            else atascadoSeg = 0f;
 
             // Bug #16: "si los aliados desaparecen de la visibilidad del minimapa, si o si vienen hacia mi; les costo mucho venir y
             // se distraen con un enemigo". Mas lejos que RadioDeRegresoForzado vuelven SI O SI: seguimiento forzado (no se
