@@ -19,12 +19,14 @@ namespace SP.UI
             Instancia = this;
         }
 
+        WeaponStatusView vistaArma;
+
         // En RTS no hay soldado poseido que actualice el panel de arma: muestra el arma del lider de la escuadra.
         void LateUpdate()
         {
             if (!EnRts || Hud_FPS == null) return;
-            var t = Hud_FPS.transform.Find("WeaponStatus");
-            var vista = t != null ? t.GetComponent<WeaponStatusView>() : null;
+            if (vistaArma == null) vistaArma = Hud_FPS.GetComponentInChildren<WeaponStatusView>(true);
+            var vista = vistaArma;
             if (vista == null) return;
             var lider = SP.Ai.AjustesDeEscuadra.Lider;
             if (lider == null || lider.Health == null || !lider.Health.IsAlive)

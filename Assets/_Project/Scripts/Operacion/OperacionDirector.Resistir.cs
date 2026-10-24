@@ -252,6 +252,7 @@ namespace SP.Operacion
             if (UnityEngine.AI.NavMesh.SamplePosition(pos, out var h, 4f, UnityEngine.AI.NavMesh.AllAreas)) pos = h.position;
             s.transform.position = new Vector3(pos.x, origen.y, pos.z);
             if (plaza != null) s.transform.rotation = Quaternion.LookRotation(Plano(plaza.position, pos).normalized, Vector3.up);
+            EntradaDeReserva.Marcar(s.transform.position);
             s.gameObject.SetActive(true);
             ApoyoEnElPiso.Apoyar(s.transform);
             CazaDeEnemigos.Marcar(new[] { s });

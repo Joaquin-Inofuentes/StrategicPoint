@@ -601,7 +601,8 @@ namespace SP.UI
                 }
                 etiquetas[i].rectTransform.anchoredPosition = dir * RadioIconoCategoria + Vector2.down * BajadaDeLaEtiqueta;
                 string marca = cat == PistaCategoria && !sel ? "▶" : ctx ? "★" : (i + 1).ToString();
-                etiquetas[i].text = "<size=9>" + marca + "</size> " + NombreCorto(cat);
+                etiquetas[i].fontSize = 15; etiquetas[i].fontStyle = FontStyle.Bold;   // legible: antes 11 px y se perdia sobre el paisaje
+                etiquetas[i].text = "<size=11>" + marca + "</size> " + NombreCorto(cat);
                 etiquetas[i].color = colorTexto;
             }
 

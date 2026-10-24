@@ -96,6 +96,7 @@ namespace SP.Operacion
                     var deseada = punto0 + lateral * ((k - 1) * 3.4f + Random.Range(-0.6f, 0.6f)) + atras * Random.Range(-1.5f, 1.5f);
                     if (UnityEngine.AI.NavMesh.SamplePosition(deseada, out var h, 8f, UnityEngine.AI.NavMesh.AllAreas)) deseada = h.position;
                     s.transform.position = new Vector3(deseada.x, s.transform.position.y, deseada.z);
+                    EntradaDeReserva.Marcar(s.transform.position);
                     s.gameObject.SetActive(true);
                     ApoyoEnElPiso.Apoyar(s.transform);
                     tiradoresFinales.Add(s);
