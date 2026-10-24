@@ -211,6 +211,16 @@ namespace SP.Player
                 // de altura arriba de la barricada.
                 if (TryPuntoEnElPiso(ray, out var puntoPiso))
                 {
+                    // Un muro alto tapa el piso que hay detras: el punto del
+                    // piso quedaria al otro lado de la pared (bug "Q atraviesa
+                    // paredes"). Si el piso cae mas de 2 m despues del impacto,
+                    // se ordena al pie del muro, del lado del jugador.
+                    if (Vector3.Distance(ray.origin, puntoPiso) > hit.distance + 2f)
+                    {
+                        var haciaAtras = ray.origin - hit.point; haciaAtras.y = 0f;
+                        haciaAtras = haciaAtras.sqrMagnitude > 0.0001f ? haciaAtras.normalized : Vector3.zero;
+                        puntoPiso = new Vector3(hit.point.x, AlturaDelPiso, hit.point.z) + haciaAtras * 0.8f;
+                    }
                     if (Coberturas.TryPuntoApuntado(puntoPiso, null, 1.5f, out var puntoCob, out var duenoCob))
                         return new AimResult { Type = AimTargetType.Cubrirse, Point = puntoCob, HitTransform = duenoCob != null ? duenoCob.transform : null };
                     return new AimResult { Type = AimTargetType.Ground, Point = puntoPiso };

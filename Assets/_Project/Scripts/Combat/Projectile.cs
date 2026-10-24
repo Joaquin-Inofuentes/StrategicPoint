@@ -137,6 +137,9 @@ namespace SP.Combat
             // rojo-naranja saturado y con un halo grande que se lee de noche y de dia (ver ConfigurarHalo).
             esDeVehiculoEnemigo = shooterTeam == TeamId.Enemy && (sourceVehicle != null || shooterId < 0);
             if (esDeVehiculoEnemigo) transform.localScale = new Vector3(RestScale * 2.2f, RestScale * 2.2f, RestScale * TraceStretch * 1.6f);
+            // Obus (con explosion): bloque 2x mas grueso y con halo, antes era una caja naranja de 0,2 m casi invisible y sin estela.
+            bool esObus = explosionRadiusValue > 0f && !esDeVehiculoEnemigo;
+            if (esObus) transform.localScale = new Vector3(RestScale * 2f, RestScale * 2f, RestScale * TraceStretch * 1.3f);
             ownerId = shooterId;
             ownerTeam = shooterTeam;
             var miEquipo = shooterTeam;
@@ -157,7 +160,7 @@ namespace SP.Combat
             // y el tinte pedido se aplica encima si vino.
             AsegurarMaterial();
             if (color.HasValue && cachedRenderer != null) cachedRenderer.sharedMaterial.color = esDeVehiculoEnemigo ? ColorDeTrazadoraEnemiga : color.Value;
-            ConfigurarHalo(esDeVehiculoEnemigo);
+            ConfigurarHalo(esDeVehiculoEnemigo || esObus);
         }
 
         public static readonly Color ColorDeTrazadoraEnemiga = new Color(1f, 0.14f, 0.04f, 1f);

@@ -102,7 +102,7 @@ namespace SP.UI
                 var rc = transform.parent as RectTransform;
                 float altoCanvas = rc != null && rc.rect.height > 1f ? rc.rect.height : 720f;
                 float ventana = altoCanvas * 0.64f / 640f;
-                float lado = periscopio ? altoCanvas * 1.5f : scope ? 480f : (estilo == ReticleStyle.Mildot ? 300f : 230f);
+                float lado = periscopio ? altoCanvas * 1.5f : scope ? 380f : (estilo == ReticleStyle.Mildot ? 260f : 150f);
                 reticula.rectTransform.sizeDelta = new Vector2(lado, lado);
                 tubo.gameObject.SetActive(scope || periscopio || estilo == ReticleStyle.Mildot);
                 // Ronda 12: el artillero del tanque mira por un PERISCOPIO RECTANGULAR (ventana ancha y baja con esquinas
@@ -327,7 +327,7 @@ namespace SP.UI
                     foreach (var d in Cuatro())
                     {
                         a = Mathf.Max(a, Cov(DistSegmento(p, d * h * 0.05f, d * h * 0.98f), 1.6f));
-                        a = Mathf.Max(a, Cov(DistSegmento(p, d * h * 0.55f, d * h * 0.98f), 6f));
+                        a = Mathf.Max(a, Cov(DistSegmento(p, d * h * 0.55f, d * h * 0.98f), 3f));
                         for (int k = 1; k <= 4; k++) a = Mathf.Max(a, Cov(Vector2.Distance(p, d * h * (0.1f + 0.09f * k)), 3.6f));
                     }
                     a = Mathf.Max(a, Cov(r, 3f));

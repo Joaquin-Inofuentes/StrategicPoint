@@ -560,7 +560,7 @@ namespace SP.UI
             {
                 bool activa = i < ids.Count;
                 rebanadas[i].gameObject.SetActive(activa);
-                etiquetas[i].gameObject.SetActive(false);   // sin textos: el radial se lee por icono y color
+                etiquetas[i].gameObject.SetActive(activa);   // icono + nombre corto debajo (pedido: radial con descripcion)
                 if (!activa) continue;
 
                 int cat = ids[i];

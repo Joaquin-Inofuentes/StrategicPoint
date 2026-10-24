@@ -75,8 +75,8 @@ namespace SP.Actors
 
         // Pedido de pulido: "distinguir enemigos de aliados, mejorar el codigo de colores". Un solo criterio: ALIADO = frio (azul),
         // ENEMIGO = calido (rojo). Se multiplica sobre el trimsheet, asi no se pierde el dibujo de cada clase.
-        public static readonly Color TinteAliado = new Color(0.30f, 0.62f, 1.00f);
-        public static readonly Color TinteEnemigo = new Color(1.00f, 0.52f, 0.46f);
+        public static readonly Color TinteAliado = new Color(0.12f, 0.42f, 1.00f);
+        public static readonly Color TinteEnemigo = new Color(1.00f, 0.30f, 0.24f);
 
         static void Teñir(Material m, Color c)
         {
