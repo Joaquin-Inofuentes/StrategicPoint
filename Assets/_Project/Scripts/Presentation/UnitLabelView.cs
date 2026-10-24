@@ -139,7 +139,12 @@ namespace SP.Presentation
             if (!tieneBase) { posLocalBase = transform.localPosition; tieneBase = true; }
             transform.localPosition = posLocalBase;
             transform.rotation = cameraRotation;
-            transform.position += cameraRotation * Vector3.down * BajadaBajoElAnillo;
+            // Sobre el suelo, hacia la camara: la parte baja de la pantalla en una vista inclinada. Bajar por el eje vertical de la camara
+            // hundia el texto bajo el piso.
+            var haciaLaCamara = cameraRotation * Vector3.back; haciaLaCamara.y = 0f;
+            if (haciaLaCamara.sqrMagnitude < 0.0001f) haciaLaCamara = cameraRotation * Vector3.down;   // camara a plomo: el abajo de pantalla ya es horizontal
+            haciaLaCamara.y = 0f;
+            if (haciaLaCamara.sqrMagnitude > 0.0001f) transform.position += haciaLaCamara.normalized * BajadaBajoElAnillo;
         }
 
         // La raiz de cada unidad es un cubo primitivo de Unity, centrado en

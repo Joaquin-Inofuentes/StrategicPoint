@@ -49,6 +49,9 @@ namespace SP.Core
             }
         }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarAlEntrarAPlay() => Clear();
+
         public static void Clear()
         {
             soldiers.Clear();

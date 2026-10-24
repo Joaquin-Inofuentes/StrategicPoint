@@ -225,6 +225,11 @@ namespace SP.Core
         public static bool TryCercano(Vector3 p, float radio, out Vector3 punto, out Collider dueno)
             => TryPuntoApuntado(p, null, radio, out punto, out dueno);
 
+        // Sin recarga de dominio, los puntos de cobertura de la sesion de Play anterior seguian vivos (4070 puntos con colliders ya
+        // destruidos) y contaminaban la siguiente corrida (apuntado, subir al vehiculo): se reinician al entrar a Play como el resto.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarAlEntrarAPlay() { puntos.Clear(); duenos.Clear(); version++; }
+
         public static void Limpiar()
         {
             puntos.Clear();
