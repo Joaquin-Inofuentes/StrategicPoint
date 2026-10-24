@@ -229,6 +229,16 @@ namespace SP.EditorTools
             try
             {
                 ok = RunOnceCore(logSuccessPhase: true);
+                if (!ok && !Application.isBatchMode)
+                {
+                    // Reproducido (2026-10-24): tras una sesion de Play con estado alterado (modo dios, torres caidas, enemigos apagados) la
+                    // PRIMERA corrida falla en apuntado / UI de apuntado / subir al vehiculo y la segunda pasa. Un fallo real falla tambien
+                    // en el reintento; solo se acepta el resultado si pasa y se deja constancia.
+                    var primeros = new List<string>(failedCheckMessages);
+                    RestablecerEstaticosDeJuego();
+                    ok = RunOnceCore(logSuccessPhase: true);
+                    if (ok) { failedCheckMessages.Clear(); failedCheckMessages.Add("OK en el 2do intento; el 1ro fallo por estado residual de Play: " + string.Join(" | ", primeros)); }
+                }
                 EscribirResultado(ok, null);
                 if (!Application.isBatchMode && !string.IsNullOrEmpty(escenaPrevia) && !escenaPrevia.EndsWith("SC_TestLevel.unity"))
                     UnityEditor.SceneManagement.EditorSceneManager.OpenScene(escenaPrevia);

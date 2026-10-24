@@ -129,7 +129,18 @@ namespace SP.Presentation
             return null;
         }
 
-        public void ApplyBillboard(Quaternion cameraRotation) => transform.rotation = cameraRotation;
+        // Distancia (en pantalla, hacia abajo) a la que baja la etiqueta: el anillo de seleccion mide ~1,8 m y el texto, que nacia
+        // centrado en los pies, quedaba pisado por el circulo (bug "texto bajo el circulo de seleccion").
+        const float BajadaBajoElAnillo = 1.45f;
+        Vector3 posLocalBase; bool tieneBase;
+
+        public void ApplyBillboard(Quaternion cameraRotation)
+        {
+            if (!tieneBase) { posLocalBase = transform.localPosition; tieneBase = true; }
+            transform.localPosition = posLocalBase;
+            transform.rotation = cameraRotation;
+            transform.position += cameraRotation * Vector3.down * BajadaBajoElAnillo;
+        }
 
         // La raiz de cada unidad es un cubo primitivo de Unity, centrado en
         // su propio origen local (va de -0.5 a 0.5 en cada eje ANTES de

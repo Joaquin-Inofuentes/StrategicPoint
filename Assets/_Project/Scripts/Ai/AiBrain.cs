@@ -1191,7 +1191,9 @@ namespace SP.Ai
                     break;
 
                 case AiState.Attack:
-                    if (target == null || !target.Health.IsAlive) { SetState(followTarget != null ? AiState.Follow : AiState.Patrol); break; }
+                    // Un objetivo vivo pero INACTIVO (oculto: montado en un vehiculo o reserva apagada) no se puede atacar: antes el aliado
+                    // quedaba clavado en Attack mirando a la nada, sin seguir al lider (bug "aliados que no avanzan").
+                    if (target == null || !target.Health.IsAlive || !target.gameObject.activeInHierarchy) { SetState(followTarget != null ? AiState.Follow : AiState.Patrol); break; }
                     float dd = Vector3.Distance(self.transform.position, target.transform.position);
                     if (dd > EffectiveAttackRange * HisteresisDeAlcance) { SetState(hasOrder ? AiState.MovingToAttackOrder : AiState.Chase); break; }
 
