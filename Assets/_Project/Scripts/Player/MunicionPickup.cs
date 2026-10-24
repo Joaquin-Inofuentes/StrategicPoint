@@ -38,16 +38,34 @@ namespace SP.Player
 
             var pk = raiz.AddComponent<MunicionPickup>();
             pk.alturaBase = pos.y;
+            pk.Apoyar();
 
             InteractableDiamond.Agregar(raiz.transform, Vector3.up * 0.15f, DiamondGizmo.ColorMunicion, true, 0.5f);
 
             return pk;
         }
 
+        // Un enemigo que muere arriba de una torre dejaba la municion a 13 m de altura, y si la torre caia despues quedaba flotando en el aire
+        // (bug "elementos flotando despues de una explosion"). Se apoya en el piso real al crearse y se vuelve a apoyar si el piso desaparece.
+        static readonly RaycastHit[] bufferPiso = new RaycastHit[8];
+        float proximoApoyo;
+        void Apoyar()
+        {
+            int n = Physics.RaycastNonAlloc(alturaBase * Vector3.up + new Vector3(transform.position.x, 0.5f, transform.position.z), Vector3.down, bufferPiso, 60f, ~0, QueryTriggerInteraction.Ignore);
+            float mejor = float.NegativeInfinity;
+            for (int i = 0; i < n; i++)
+            {
+                if (bufferPiso[i].collider != null && bufferPiso[i].collider.GetComponentInParent<SP.Actors.Soldier>() != null) continue;
+                mejor = Mathf.Max(mejor, bufferPiso[i].point.y);
+            }
+            if (mejor > float.NegativeInfinity && alturaBase - mejor > 1.2f) alturaBase = mejor + 0.5f;
+        }
+
         void Update()
         {
             edad += Time.deltaTime;
             if (edad >= VidaMaxima) { Destroy(gameObject); return; }
+            if (Time.time >= proximoApoyo) { proximoApoyo = Time.time + 0.5f; Apoyar(); }
 
             // Flota un poco
             var p = transform.position;
