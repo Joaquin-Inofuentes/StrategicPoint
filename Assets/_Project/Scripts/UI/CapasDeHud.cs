@@ -56,7 +56,8 @@ namespace SP.UI
                 foreach (Transform hijo in Instancia.Hud_FPS.transform)
                 {
                     if (hijo.name == "WeaponStatus") continue;
-                    var g = hijo.GetComponent<CanvasGroup>() ?? hijo.gameObject.AddComponent<CanvasGroup>();
+                    // TryGetComponent y no "?? AddComponent": en el editor GetComponent devuelve un falso null que "??" no detecta.
+                    if (!hijo.TryGetComponent<CanvasGroup>(out var g)) g = hijo.gameObject.AddComponent<CanvasGroup>();
                     g.alpha = fps ? 1f : 0f; g.blocksRaycasts = fps; g.interactable = fps;
                 }
             }
