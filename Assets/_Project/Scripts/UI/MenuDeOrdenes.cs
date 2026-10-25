@@ -643,7 +643,8 @@ namespace SP.UI
                 etiquetasOpcion[j].gameObject.SetActive(false);
                 if (iconosOpcion != null && iconosOpcion[j] != null) iconosOpcion[j].gameObject.SetActive(false);
                 if (!visible) continue;
-                etiquetasOpcion[j].rectTransform.sizeDelta = new Vector2(92f, 30f);   // el radial guardado en la escena puede traer la caja vieja (118 x 40)
+                etiquetasOpcion[j].rectTransform.sizeDelta = new Vector2(120f, 40f);   // el radial guardado en la escena puede traer otra caja
+                etiquetasOpcion[j].fontSize = 16;   // solo se ve la opcion bajo el cursor: no se pisa con las vecinas
                 float centro = AnguloDeSlot(slotSel) + (j - (n - 1) * 0.5f) * PasoDeAbanico;
                 bool ctx = EsContextual(Seleccion);
                 var c = ctx ? Dorado : Acentos[Seleccion];
@@ -701,7 +702,64 @@ namespace SP.UI
 
             if (cursor != null) cursor.rectTransform.anchoredPosition = virtualPos;
             if (lista != null) { lista.text = ""; lista.gameObject.SetActive(false); }   // sin textos
+            ActualizarDescripcion();
         }
+
+        // Frase que explica la accion bajo el cursor (la opcion si hay una resaltada, si no la categoria).
+        // Solo existe mientras se apunta a algo: con el cursor en el centro no hay texto.
+        Text descripcion;
+        void ActualizarDescripcion()
+        {
+            if (etiquetas == null || etiquetas.Length == 0) return;
+            string frase = "";
+            if (Abierto && Seleccion >= 0 && Seleccion < DescripcionDeCategoria.Length)
+            {
+                frase = DescripcionDeCategoria[Seleccion];
+                if (Sub >= 0 && Sub < DescripcionDeOpcion[Seleccion].Length)
+                    frase = DescripcionDeOpcion[Seleccion][Sub]
+                        .Replace("{1}", soldados[0]).Replace("{2}", soldados[1]).Replace("{3}", soldados[2]);
+            }
+            if (descripcion == null)
+            {
+                if (frase.Length == 0) return;
+                descripcion = NuevoTexto(transform, "Descripcion", etiquetas[0].font, 30, new Vector2(760f, 90f));
+                descripcion.horizontalOverflow = HorizontalWrapMode.Wrap;
+                descripcion.rectTransform.anchoredPosition = new Vector2(0f, -(RadioExterior + 70f));
+            }
+            descripcion.gameObject.SetActive(frase.Length > 0);
+            descripcion.text = frase;
+            descripcion.color = Color.white;
+        }
+
+        // Que hace cada categoria y cada opcion (mismo orden que OpcionesDe; {1}{2}{3} = clase del soldado N).
+        static readonly string[] DescripcionDeCategoria =
+        {
+            "Manda a la escuadra al punto que apuntas",
+            "Busca la cobertura mas cercana hacia donde miras",
+            "Ordena atacar al enemigo que apuntas",
+            "Cambia la formacion o la actitud de la escuadra",
+            "El medico cura a los heridos",
+            "Sube o baja soldados del tanque",
+            "Pasas a controlar a otro soldado",
+            "Demuele la estructura que apuntas",
+            "Ocupa o manda ocupar la torreta fija",
+            "Usa el objeto que apuntas",
+        };
+
+        static readonly string[][] DescripcionDeOpcion =
+        {
+            new[] { "Toda la escuadra va al punto", "Solo {1} va al punto", "Solo {2} va al punto", "Solo {3} va al punto" },
+            new[] { "Toda la escuadra se cubre", "Solo {1} se cubre", "Solo {2} se cubre", "Solo {3} se cubre" },
+            new[] { "Toda la escuadra ataca al apuntado", "Solo {1} ataca al apuntado", "Solo {2} ataca al apuntado", "Solo {3} ataca al apuntado",
+                    "Toda la escuadra dispara de supresion al punto", "Un soldado lanza una granada al punto" },
+            new[] { "Todos se quedan quietos donde estan", "Todos te siguen", "Se forman en linea", "Se forman en cuña", "Se retiran hacia ti" },
+            new[] { "El medico te cura", "El medico cura al mas herido", "El medico cura al apuntado", "Revive al soldado caido apuntado" },
+            new[] { "Todos suben al tanque", "Todos bajan del tanque", "Lleva el tanque al punto apuntado", "Subes tu al tanque", "Bajas tu del tanque" },
+            new[] { "Controlas a {1}", "Controlas a {2}", "Controlas a {3}", "Pasas al siguiente soldado vivo", "Controlas al soldado apuntado" },
+            new[] { "El soldado de asalto demuele la estructura", "Tu demueles la estructura", "Cancela la demolicion" },
+            new[] { "Te subes a la torreta fija", "Sales de la torreta", "Un soldado monta la torreta" },
+            new[] { "El soldado indicado usa el objeto", "Solo {1} usa el objeto", "Solo {2} usa el objeto", "Solo {3} usa el objeto" },
+        };
 
         // Construye el panel si la escena no lo trae y deja cableado el driver. Existe
         // porque SC_Gameplay NO la arma HeadlessTestRunner (esa solo escribe SC_TestLevel).

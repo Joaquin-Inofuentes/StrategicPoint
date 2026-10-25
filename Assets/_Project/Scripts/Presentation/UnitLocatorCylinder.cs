@@ -150,9 +150,8 @@ namespace SP.Presentation
             if (tex == null) return MaterialDeColor(Color.white);
             if (!materialesPorIcono.TryGetValue(tex, out var m) || m == null)
             {
-                m = DiamondGizmo.NuevoMaterial(Color.white);
-                m.mainTexture = tex;
-                if (m.HasProperty("_BaseMap")) m.SetTexture("_BaseMap", tex);
+                // Transparente: con el Unlit opaco el alfa de la textura se ignora y el icono salia como un rombo blanco liso.
+                m = DiamondGizmo.NuevoMaterialTransparente(Color.white, tex);
                 materialesPorIcono[tex] = m;
             }
             return m;
