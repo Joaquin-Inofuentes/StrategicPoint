@@ -254,7 +254,7 @@ namespace SP.Presentation
 
         static void Materiales()
         {
-            if (matDisco == null) matDisco = SafeMaterial.Create(new Color(0.045f, 0.04f, 0.035f));
+            if (matDisco == null) matDisco = SafeMaterial.Create(new Color(0.11f, 0.09f, 0.075f));   // marron quemado: el negro puro se leia como un agujero
             if (matBorde == null) matBorde = SafeMaterial.Create(new Color(0.24f, 0.18f, 0.12f));
         }
 

@@ -5,6 +5,25 @@ namespace SP.Presentation
 {
     public enum DecalKind { Crater, BulletHole }
 
+    // La quemadura del crater dura 25 s entera y se desvanece en los 35 s siguientes; despues se apaga y su lugar se reusa.
+    public class DecalDesvanecido : MonoBehaviour
+    {
+        public const float Mantener = 25f, Desvanecer = 35f;
+        SpriteRenderer sr; Color baseColor; float nace;
+
+        public void Iniciar(SpriteRenderer render, Color color) { sr = render; baseColor = color; nace = Time.time; }
+
+        void Update()
+        {
+            if (sr == null) return;
+            float edad = Time.time - nace - Mantener;
+            if (edad <= 0f) return;
+            float k = 1f - Mathf.Clamp01(edad / Desvanecer);
+            var c = baseColor; c.a *= k; sr.color = c;
+            if (k <= 0f) gameObject.SetActive(false);
+        }
+    }
+
     // Marcas persistentes en el terreno (crateres de explosion y agujeros
     // de bala). Mismo problema que los escombros: sin un cupo duro, una
     // batalla larga deja miles de quads. Cada tipo tiene su propio cupo y
@@ -15,6 +34,8 @@ namespace SP.Presentation
     {
         public const int CraterBudget = 24;
         public const int BulletHoleBudget = 120;   // bug #238: los disparos que impactan dejan marca (decal) y duran mas
+        public static readonly Color ColorCrater = new Color(0.17f, 0.14f, 0.11f, 0.55f);
+        public const float EscalaCrater = 0.95f;   // antes 1.6 (mancha de ~12 m para un obus de 6 m de radio)
 
         static readonly Dictionary<DecalKind, List<GameObject>> pools = new Dictionary<DecalKind, List<GameObject>>();
         static Transform root;
@@ -167,7 +188,15 @@ namespace SP.Presentation
             var spr = kind == DecalKind.Crater ? SpritesReales.Obtener(Random.value < 0.5f ? "scorch_03" : "scorch_01") : SpriteDeImpacto();
             var decalSr = decal.GetComponent<SpriteRenderer>();
             decalSr.sprite = spr;
-            decalSr.color = kind == DecalKind.Crater ? new Color(0.06f, 0.05f, 0.04f, 0.92f) : Color.white;
+            // Pedido: la mancha del crater era un charco negro de ~12 m que no se iba nunca. Ahora es una quemadura marron oscura,
+            // translucida (se ve el piso debajo), mas chica, y se desvanece sola (DecalDesvanecido).
+            var colorMarca = kind == DecalKind.Crater ? ColorCrater : Color.white;
+            decalSr.color = colorMarca;
+            if (kind == DecalKind.Crater)
+            {
+                if (!decal.TryGetComponent<DecalDesvanecido>(out var fade)) fade = decal.AddComponent<DecalDesvanecido>();
+                fade.Iniciar(decalSr, colorMarca);
+            }
             decalSr.sortingOrder = kind == DecalKind.Crater ? -2 : -1;
 
             // Levantado un pelo sobre la superficie para no pelear con ella
@@ -188,7 +217,7 @@ namespace SP.Presentation
             decal.transform.position = position + normal * 0.02f;
             decal.transform.rotation = Quaternion.LookRotation(-normal, referencia) * Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
             // El sprite mide 1 m a escala 1 y su marca ocupa ~60 % del cuadro: se agranda para que "size" sea el ancho visible.
-            decal.transform.localScale = Vector3.one * size * 1.6f;
+            decal.transform.localScale = Vector3.one * size * (kind == DecalKind.Crater ? EscalaCrater : 1.6f);
             decal.SetActive(true);
 
             list.Add(decal);
