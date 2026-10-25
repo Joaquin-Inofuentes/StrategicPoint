@@ -1,9 +1,9 @@
 # Mapa del proyecto — indice para IA
 
-> Generado por `Tools/Indice/indexar_ia.py` el 2026-10-23 14:36 UTC.
+> Generado por `Tools/Indice/indexar_ia.py` el 2026-10-25 01:24 UTC.
 > No editar a mano: se regenera. Si algo esta mal, esta mal el generador.
 
-**480 scripts · 129,714 lineas · 14 escenas · 137 prefabs**
+**481 scripts · 129,889 lineas · 14 escenas · 137 prefabs**
 
 ## Como leer este indice
 
@@ -40,17 +40,17 @@ que la IA y que las pruebas.
 | Subsistema | Scripts | Lineas | Que hace |
 |---|---|---|---|
 | **Editor** | 115 | 43561 | Herramientas de Editor: suite headless, constructores de escena, pipelines de arte. |
-| **Presentation** | 113 | 22913 | Todo lo que se ve y se oye en el mundo: VFX, audio, marcadores, pools visuales. |
-| **UI** | 61 | 12077 | HUD y pantallas: mira, roster, minimapa, radial, menus, ajustes. |
-| **Operacion** | 46 | 13119 |  |
-| **Core** | 38 | 6679 | Servicios sin escena: bus de eventos, registros, grilla espacial, navegacion, pools, idioma, dificultad. |
-| **Player** | 28 | 10323 | Traduccion de intencion a ordenes: input, posesion, seleccion, ordenes. |
-| **Ai** | 16 | 4180 | Cerebro de una unidad no poseida y el driver que avanza la simulacion. |
-| **Combat** | 14 | 3028 | Vida, dano, armas, proyectiles y catalogo. |
+| **Presentation** | 113 | 22929 | Todo lo que se ve y se oye en el mundo: VFX, audio, marcadores, pools visuales. |
+| **UI** | 61 | 12112 | HUD y pantallas: mira, roster, minimapa, radial, menus, ajustes. |
+| **Operacion** | 47 | 13180 |  |
+| **Core** | 38 | 6687 | Servicios sin escena: bus de eventos, registros, grilla espacial, navegacion, pools, idioma, dificultad. |
+| **Player** | 28 | 10351 | Traduccion de intencion a ordenes: input, posesion, seleccion, ordenes. |
+| **Ai** | 16 | 4202 | Cerebro de una unidad no poseida y el driver que avanza la simulacion. |
+| **Combat** | 14 | 3031 | Vida, dano, armas, proyectiles y catalogo. |
 | **Mision** | 13 | 3399 | La partida: objetivos, oleadas, rehen, helicoptero, cinematica final. |
 | **Tutorial** | 13 | 4578 | Modulo de ensenanza y su reproductor automatico. |
 | **Vehicles** | 11 | 2954 | Tanque, asientos, torretas y ametralladoras fijas. |
-| **Actors** | 4 | 814 | El soldado: identidad, piezas, motor de movimiento y aspecto. |
+| **Actors** | 4 | 816 | El soldado: identidad, piezas, motor de movimiento y aspecto. |
 | **Interaction** | 3 | 145 | Contrato de lo interactuable. |
 | **Camera** | 2 | 1135 | Rig de camara: hombro, RTS, transiciones, sacudidas, zoom. |
 | **Otros** | 1 | 17 |  |
@@ -65,12 +65,12 @@ que la IA y que las pruebas.
 | `Assets/_Project/Scripts/Player/PlayerInputDriver.cs` | 3246 | Player | Traduce teclado/ratón reales a los mismos métodos que usa el test automático. No decide na… |
 | `Assets/_Project/Scripts/Tutorial/TutorialManager.cs` | 1905 | Tutorial | Modulo de tutorial. Recorre 35 pasos en orden; cada paso tiene sub-pasos y cada sub-paso u… |
 | `Assets/_Project/Scripts/Editor/HeadlessTestRunner.Fases8a12.cs` | 1614 | Editor | HeadlessTestRunner (parte): fases 8 a 12 de la suite. |
-| `Assets/_Project/Scripts/Operacion/OperacionDirector.Mando.cs` | 1435 | Operacion | Fase 5 (RESISTIR), WP10 (#101): "DIRIGIR LA DEFENSA DESDE LA RADIO". El objetivo solo se g… |
-| `Assets/_Project/Scripts/Ai/AiBrain.cs` | 1366 | Ai | Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las … |
+| `Assets/_Project/Scripts/Operacion/OperacionDirector.Mando.cs` | 1436 | Operacion | Fase 5 (RESISTIR), WP10 (#101): "DIRIGIR LA DEFENSA DESDE LA RADIO". El objetivo solo se g… |
+| `Assets/_Project/Scripts/Ai/AiBrain.cs` | 1368 | Ai | Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las … |
 | `Assets/_Project/Scripts/Editor/BlockoutArtDresser.cs` | 1320 | Editor | "Implementa arte en todo": viste el BLOCKOUT (cubos grises) con los prefabs de arte de Ass… |
 | `Assets/_Project/Scripts/Camera/CameraRig.cs` | 1089 | Camera | Posee la cámara y delega su posición en el modo activo (FPS u RTS). |
 | `Assets/_Project/Scripts/Editor/ArtSetup.cs` | 1064 | Editor | Pipeline de importacion del arte de Assets/ARTS. Es una herramienta y no un README con pas… |
-| `Assets/_Project/Scripts/Combat/Projectile.cs` | 1003 | Combat | Viaja, comprueba su propio impacto por distancia (sin física) y se devuelve solo al pool. … |
+| `Assets/_Project/Scripts/Combat/Projectile.cs` | 1006 | Combat | Viaja, comprueba su propio impacto por distancia (sin física) y se devuelve solo al pool. … |
 | `Assets/_Project/Scripts/Presentation/MinimapIcon.cs` | 971 | Presentation | Circulo chato que representa a un soldado/vehiculo en el minimapa. Vive en su propia capa … |
 | `Assets/_Project/Scripts/Vehicles/Vehicle.cs` | 969 | Vehicles | Vehículo con 4 asientos: conductor, artillero y dos pasajeros. Los soldados que suben qued… |
 

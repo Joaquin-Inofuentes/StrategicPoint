@@ -7,16 +7,16 @@
 
 **444 estaticos mutables fuera de `Editor/`:
 44 cubiertos por `ReinicioDeEstaticos`,
-175 en archivos con hook propio (hay que mirar si el hook cubre ESE campo),
-y 225 sin nada.**
+185 en archivos con hook propio (hay que mirar si el hook cubre ESE campo),
+y 215 sin nada.**
 
 | Campo | Tipo | Donde | Quien lo restablece |
 |---|---|---|---|
 | `nextId` | `int` | `Soldier.cs:18` | **nada** |
 | `matEnemigoVisible` | `Material` | `SoldierLook.cs:56` | **nada** |
-| `matAliadoTenido` | `Material` | `SoldierLook.cs:112` | **nada** |
-| `matMedico` | `Material` | `SoldierLook.cs:140` | **nada** |
-| `matCivil` | `Material` | `SoldierLook.cs:151` | **nada** |
+| `matAliadoTenido` | `Material` | `SoldierLook.cs:114` | **nada** |
+| `matMedico` | `Material` | `SoldierLook.cs:142` | **nada** |
+| `matCivil` | `Material` | `SoldierLook.cs:153` | **nada** |
 | `DescensoDeEscalonActivo` | `bool` | `SoldierMotor.cs:224` | **nada** |
 | `AlejarseDeCargasActivo` | `bool` | `AiBrain.Cargas.cs:19` | **nada** |
 | `Humanizada` | `bool` | `AiBrain.Disparo.cs:46` | **nada** |
@@ -47,28 +47,28 @@ y 225 sin nada.**
 | `LimiteDePaneoRts` | `Rect?` | `CameraRig.cs:947` | **nada** |
 | `RegeneracionPermitida` | `bool` | `Health.cs:33` | `ReinicioDeEstaticos` |
 | `nextInstanceId` | `int` | `Projectile.cs:40` | `ReinicioDeEstaticos` |
-| `HeadshotMataAlInstante` | `bool` | `Projectile.cs:939` | `ReinicioDeEstaticos` |
+| `HeadshotMataAlInstante` | `bool` | `Projectile.cs:942` | `ReinicioDeEstaticos` |
 | `damageSub` | `System.IDisposable` | `TeamCombatState.cs:9` | `ReinicioDeEstaticos` |
 | `CargadoresDeReserva` | `int` | `WeaponHolder.cs:218` | `ReinicioDeEstaticos` |
 | `ReservasActivas` | `bool` | `WeaponHolder.cs:219` | `ReinicioDeEstaticos` |
 | `metralletaVehiculo` | `GameObject` | `WeaponModels.cs:127` | **nada** |
 | `metralletaVehiculoCargada` | `bool` | `WeaponModels.cs:128` | **nada** |
-| `All` | `IReadOnlyList<Soldier>` | `ActorRegistry.cs:60` | **nada** |
-| `proximoBarrido` | `float` | `ActorRegistry.cs:67` | **nada** |
+| `All` | `IReadOnlyList<Soldier>` | `ActorRegistry.cs:63` | hook propio *(revisar si cubre este campo)* |
+| `proximoBarrido` | `float` | `ActorRegistry.cs:70` | hook propio *(revisar si cubre este campo)* |
 | `CartelVisible` | `bool` | `AyudaDebugger.cs:17` | hook propio *(revisar si cubre este campo)* |
 | `guardada` | `Camera` | `CamaraPrincipal.cs:9` | **nada** |
 | `UmbralDeCubrirse` | `float` | `Coberturas.Puntuada.cs:54` | **nada** |
 | `PesoTipoAlta` | `float` | `Coberturas.Puntuada.cs:55` | **nada** |
 | `PesoVida` | `float` | `Coberturas.Puntuada.cs:56` | **nada** |
 | `frameDelPresupuesto` | `int` | `Coberturas.Puntuada.cs:116` | **nada** |
-| `version` | `int` | `Coberturas.cs:35` | **nada** |
-| `cacheObstaculo` | `Transform` | `Coberturas.cs:36` | **nada** |
-| `Puntos` | `IReadOnlyList<Vector3>` | `Coberturas.cs:38` | **nada** |
-| `Duenos` | `IReadOnlyList<Collider>` | `Coberturas.cs:39` | **nada** |
-| `Cantidad` | `int` | `Coberturas.cs:40` | **nada** |
-| `root` | `Transform` | `Coberturas.cs:43` | **nada** |
-| `marcasVisibles` | `bool` | `Coberturas.cs:370` | **nada** |
-| `MarcasVisibles` | `bool` | `Coberturas.cs:371` | **nada** |
+| `version` | `int` | `Coberturas.cs:35` | hook propio *(revisar si cubre este campo)* |
+| `cacheObstaculo` | `Transform` | `Coberturas.cs:36` | hook propio *(revisar si cubre este campo)* |
+| `Puntos` | `IReadOnlyList<Vector3>` | `Coberturas.cs:38` | hook propio *(revisar si cubre este campo)* |
+| `Duenos` | `IReadOnlyList<Collider>` | `Coberturas.cs:39` | hook propio *(revisar si cubre este campo)* |
+| `Cantidad` | `int` | `Coberturas.cs:40` | hook propio *(revisar si cubre este campo)* |
+| `root` | `Transform` | `Coberturas.cs:43` | hook propio *(revisar si cubre este campo)* |
+| `marcasVisibles` | `bool` | `Coberturas.cs:375` | hook propio *(revisar si cubre este campo)* |
+| `MarcasVisibles` | `bool` | `Coberturas.cs:376` | hook propio *(revisar si cubre este campo)* |
 | `actual` | `NivelDificultad?` | `Dificultad.cs:32` | hook propio *(revisar si cubre este campo)* |
 | `FuegoAmigoExplosivo` | `bool` | `Dificultad.cs:37` | hook propio *(revisar si cubre este campo)* |
 | `PerfilActual` | `Perfil` | `Dificultad.cs:83` | hook propio *(revisar si cubre este campo)* |
@@ -175,7 +175,7 @@ y 225 sin nada.**
 | `HalconEnLaCarrera` | `bool` | `OperacionDirector.Final.cs:33` | **nada** |
 | `PruebaDisparar` | `bool` | `OperacionDirector.Final.cs:49` | **nada** |
 | `ResistirSinMando` | `bool` | `OperacionDirector.Mando.cs:36` | **nada** |
-| `PasosSecuenciales` | `bool` | `OperacionDirector.Mando.cs:1032` | **nada** |
+| `PasosSecuenciales` | `bool` | `OperacionDirector.Mando.cs:1033` | **nada** |
 | `Activo` | `bool` | `OperacionDirector.cs:58` | `ReinicioDeEstaticos` |
 | `MilicianosSuben` | `bool` | `OperacionDirector.cs:262` | **nada** |
 | `PruebaMantenerE` | `bool` | `OperacionTerminal.cs:42` | **nada** |
@@ -424,7 +424,7 @@ y 225 sin nada.**
 | `cachedTexture` | `Texture2D` | `LowHealthPulseView.cs:52` | **nada** |
 | `cachedSprite` | `Sprite` | `LowHealthPulseView.cs:54` | **nada** |
 | `PistaCategoria` | `int` | `MenuDeOrdenes.cs:170` | `ReinicioDeEstaticos` |
-| `discoCentro` | `Sprite` | `MenuDeOrdenes.cs:765` | `ReinicioDeEstaticos` |
+| `discoCentro` | `Sprite` | `MenuDeOrdenes.cs:766` | `ReinicioDeEstaticos` |
 | `sharedSprite` | `Sprite` | `MilitaryButtonSkin.cs:24` | **nada** |
 | `raiz` | `GameObject` | `MiraDeTorreta.cs:22` | **nada** |
 | `textoBlanco` | `Text` | `MiraDeTorreta.cs:25` | **nada** |

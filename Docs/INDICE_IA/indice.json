@@ -1,5 +1,5 @@
 {
- "generado": "2026-10-23 14:36 UTC",
+ "generado": "2026-10-25 01:24 UTC",
  "raiz": "DV_C6_StrategicPoint",
  "archivos": [
   {
@@ -766,8 +766,8 @@
    "ruta": "Assets/_Project/Scripts/Actors/SoldierLook.cs",
    "nombre": "SoldierLook.cs",
    "subsistema": "Actors",
-   "lineas": 175,
-   "bytes": 8734,
+   "lineas": 177,
+   "bytes": 8976,
    "namespace": "SP.Actors",
    "resumen": "Viste al soldado segun su clase: cambia la malla del SkinnedMeshRenderer por la variante armada por SoldierVariantBuilder (mismo esqueleto, mismo Animator), le pone el material del trimsheet (teñido de rojo si es enemigo) y le da el loadout de la clase. Se aplica en Start (no en Awake): asi corre despues de Soldier.Configure, que los spawners llaman recien instanciado.",
    "tipos": [
@@ -811,19 +811,19 @@
      "nombre": "matAliadoTenido",
      "tipo": "Material",
      "acceso": "private",
-     "linea": 112
+     "linea": 114
     },
     {
      "nombre": "matMedico",
      "tipo": "Material",
      "acceso": "private",
-     "linea": 140
+     "linea": 142
     },
     {
      "nombre": "matCivil",
      "tipo": "Material",
      "acceso": "private",
-     "linea": 151
+     "linea": 153
     }
    ],
    "publica_eventos": [],
@@ -837,7 +837,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "d4aaf14a6162"
+   "sha1": "6b3e3928dadc"
   },
   {
    "ruta": "Assets/_Project/Scripts/Actors/SoldierMotor.cs",
@@ -1562,8 +1562,8 @@
    "ruta": "Assets/_Project/Scripts/Ai/AiBrain.Tactica.cs",
    "nombre": "AiBrain.Tactica.cs",
    "subsistema": "Ai",
-   "lineas": 760,
-   "bytes": 39675,
+   "lineas": 780,
+   "bytes": 41035,
    "namespace": "SP.Ai",
    "resumen": "Parte \"tactica\" del cerebro: coberturas (ordenadas por el jugador o buscadas por el propio enemigo en combate), seguir al jugador cuando se aleja, y eleccion DINAMICA del objetivo por distancia y vision.",
    "tipos": [
@@ -1602,7 +1602,7 @@
      "devuelve": "float",
      "estatico": false,
      "args": "Soldier s",
-     "linea": 682
+     "linea": 699
     }
    ],
    "propiedades_publicas": [
@@ -1735,7 +1735,7 @@
    "checks": 0,
    "notas_bug": 5,
    "notas_todo": 0,
-   "sha1": "f0868164ec76"
+   "sha1": "408195259f1b"
   },
   {
    "ruta": "Assets/_Project/Scripts/Ai/AiBrain.Vehiculos.cs",
@@ -1805,8 +1805,8 @@
    "ruta": "Assets/_Project/Scripts/Ai/AiBrain.cs",
    "nombre": "AiBrain.cs",
    "subsistema": "Ai",
-   "lineas": 1366,
-   "bytes": 75025,
+   "lineas": 1368,
+   "bytes": 75326,
    "namespace": "SP.Ai",
    "resumen": "Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las otras dos NO son un camino de codigo alternativo, son modificadores que se aplican sobre las mismas tres decisiones que ya existian (rango de vision, avanzar hacia el objetivo, apretar el gatillo). Con Libre esos modificadores son exactamente neutros: multiplicador 1f y guardas que devuelven true",
    "tipos": [
@@ -2038,7 +2038,7 @@
    "checks": 0,
    "notas_bug": 14,
    "notas_todo": 1,
-   "sha1": "40d393e1d9e5"
+   "sha1": "b93454c38ba5"
   },
   {
    "ruta": "Assets/_Project/Scripts/Ai/AiState.cs",
@@ -3139,8 +3139,8 @@
    "ruta": "Assets/_Project/Scripts/Combat/Projectile.cs",
    "nombre": "Projectile.cs",
    "subsistema": "Combat",
-   "lineas": 1003,
-   "bytes": 56368,
+   "lineas": 1006,
+   "bytes": 56715,
    "namespace": "SP.Combat",
    "resumen": "Viaja, comprueba su propio impacto por distancia (sin física) y se devuelve solo al pool. Nunca lo instancia nadie salvo el pool. [DefaultExecutionOrder(-50)]: los proyectiles tienen que evaluar su impacto DESPUES de que WorldSimulationDriver mueva a todo el mundo en este mismo frame (-100), no antes -- si no, el orden relativo entre \"el soldado se movio\" y \"la bala revisa que toco\" quedaba librado al",
    "tipos": [
@@ -3165,28 +3165,28 @@
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 223
+     "linea": 226
     },
     {
      "nombre": "OnDespawn",
      "devuelve": "void",
      "estatico": false,
      "args": "",
-     "linea": 231
+     "linea": 234
     },
     {
      "nombre": "Tick",
      "devuelve": "void",
      "estatico": false,
      "args": "float dt",
-     "linea": 249
+     "linea": 252
     },
     {
      "nombre": "ExplodeAt",
      "devuelve": "void",
      "estatico": true,
      "args": "Vector3 point, float radius, int damage, int ownerId, TeamId? spareTeam, SP.Vehicles.Vehicle ignoreVehicle = null, float multiplicadorVsVehiculo = 1f",
-     "linea": 755
+     "linea": 758
     }
    ],
    "propiedades_publicas": [
@@ -3208,27 +3208,27 @@
     {
      "nombre": "EsDeVehiculoEnemigo",
      "tipo": "bool",
-     "linea": 165
+     "linea": 168
     },
     {
      "nombre": "DanoDeExplosionEnCurso",
      "tipo": "bool",
-     "linea": 724
+     "linea": 727
     },
     {
      "nombre": "HeadshotsDelJugador",
      "tipo": "int",
-     "linea": 940
+     "linea": 943
     },
     {
      "nombre": "UltimoImpactoEnSoldado",
      "tipo": "Vector3",
-     "linea": 941
+     "linea": 944
     },
     {
      "nombre": "UltimoImpactoFueCabeza",
      "tipo": "bool",
-     "linea": 942
+     "linea": 945
     }
    ],
    "estaticos_mutables": [
@@ -3242,7 +3242,7 @@
      "nombre": "HeadshotMataAlInstante",
      "tipo": "bool",
      "acceso": "public",
-     "linea": 939
+     "linea": 942
     }
    ],
    "publica_eventos": [
@@ -3262,7 +3262,7 @@
    "checks": 0,
    "notas_bug": 6,
    "notas_todo": 1,
-   "sha1": "b941c67e7242"
+   "sha1": "20df3a623966"
   },
   {
    "ruta": "Assets/_Project/Scripts/Combat/ProjectilePool.cs",
@@ -4133,8 +4133,8 @@
    "ruta": "Assets/_Project/Scripts/Core/ActorRegistry.cs",
    "nombre": "ActorRegistry.cs",
    "subsistema": "Core",
-   "lineas": 172,
-   "bytes": 7016,
+   "lineas": 175,
+   "bytes": 7163,
    "namespace": "SP.Core",
    "resumen": "Registro simple de soldados vivos en la escena, para consultas de distancia y de sensado. Sustituye a FindObjectOfType.",
    "tipos": [
@@ -4166,70 +4166,70 @@
      "devuelve": "void",
      "estatico": true,
      "args": "",
-     "linea": 52
+     "linea": 55
     },
     {
      "nombre": "Invalidate",
      "devuelve": "void",
      "estatico": true,
      "args": "",
-     "linea": 66
+     "linea": 69
     },
     {
      "nombre": "EnsureAllRegistered",
      "devuelve": "void",
      "estatico": true,
      "args": "",
-     "linea": 96
+     "linea": 99
     },
     {
      "nombre": "Rebarrer",
      "devuelve": "void",
      "estatico": true,
      "args": "",
-     "linea": 106
+     "linea": 109
     },
     {
      "nombre": "CountAlive",
      "devuelve": "int",
      "estatico": true,
      "args": "TeamId team",
-     "linea": 121
+     "linea": 124
     },
     {
      "nombre": "CountDead",
      "devuelve": "int",
      "estatico": true,
      "args": "TeamId team",
-     "linea": 130
+     "linea": 133
     },
     {
      "nombre": "FindById",
      "devuelve": "Soldier",
      "estatico": true,
      "args": "int id",
-     "linea": 139
+     "linea": 142
     },
     {
      "nombre": "FindNearest",
      "devuelve": "Soldier",
      "estatico": true,
      "args": "Vector3 point, Func<Soldier, bool> predicate",
-     "linea": 144
+     "linea": 147
     },
     {
      "nombre": "FindNearestEnemyInRange",
      "devuelve": "Soldier",
      "estatico": true,
      "args": "Vector3 point, TeamId excludeTeam, float range",
-     "linea": 165
+     "linea": 168
     }
    ],
    "propiedades_publicas": [
     {
      "nombre": "All",
      "tipo": "IReadOnlyList<Soldier>",
-     "linea": 60
+     "linea": 63
     }
    ],
    "estaticos_mutables": [
@@ -4237,13 +4237,13 @@
      "nombre": "All",
      "tipo": "IReadOnlyList<Soldier>",
      "acceso": "public",
-     "linea": 60
+     "linea": 63
     },
     {
      "nombre": "proximoBarrido",
      "tipo": "float",
      "acceso": "private",
-     "linea": 67
+     "linea": 70
     }
    ],
    "publica_eventos": [],
@@ -4258,7 +4258,7 @@
    "checks": 0,
    "notas_bug": 1,
    "notas_todo": 0,
-   "sha1": "f1c7e5ec1349"
+   "sha1": "e45c74dbdc93"
   },
   {
    "ruta": "Assets/_Project/Scripts/Core/ApoyoEnElPiso.cs",
@@ -4558,8 +4558,8 @@
    "ruta": "Assets/_Project/Scripts/Core/Coberturas.cs",
    "nombre": "Coberturas.cs",
    "subsistema": "Core",
-   "lineas": 422,
-   "bytes": 20498,
+   "lineas": 427,
+   "bytes": 20948,
    "namespace": "SP.Core",
    "resumen": "Los puntos de cobertura del mapa: donde pararse para tener un obstaculo entre uno y el enemigo. Que cuenta como obstaculo NO se define aca de nuevo: sale de NavService.BlocksMovement, la misma definicion de \"esto es una pared\" que ya usan el deslizador, la ruta y la linea de tiro. Lo unico que se agrega es el filtro de tamaño, para dejar afuera el",
    "tipos": [
@@ -4640,56 +4640,56 @@
      "devuelve": "void",
      "estatico": true,
      "args": "",
-     "linea": 228
+     "linea": 233
     },
     {
      "nombre": "TryMejorCobertura",
      "devuelve": "bool",
      "estatico": true,
      "args": "Vector3 desde, Soldier objetivo, Soldier quien, float radioMaximo, float distanciaDeTiro, out Vector3 elegida, out Collider dueno",
-     "linea": 242
+     "linea": 247
     },
     {
      "nombre": "TryMejorCobertura",
      "devuelve": "bool",
      "estatico": true,
      "args": "Vector3 desde, Soldier objetivo, Soldier quien, float radioMaximo, float distanciaDeTiro, out Vector3 elegida",
-     "linea": 253
+     "linea": 258
     },
     {
      "nombre": "TryCoberturaDeTiro",
      "devuelve": "bool",
      "estatico": true,
      "args": "Vector3 desde, Soldier objetivo, Soldier quien, float radio, float minimo, float maximo, out Vector3 punto, out Collider dueno",
-     "linea": 297
+     "linea": 302
     },
     {
      "nombre": "HayLineaDeTiroDesde",
      "devuelve": "bool",
      "estatico": true,
      "args": "Vector3 punto, Soldier objetivo, Soldier quien",
-     "linea": 326
+     "linea": 331
     },
     {
      "nombre": "PuntoDeTiro",
      "devuelve": "Vector3",
      "estatico": true,
      "args": "Soldier s",
-     "linea": 340
+     "linea": 345
     },
     {
      "nombre": "HayLineaDeTiroAlPecho",
      "devuelve": "bool",
      "estatico": true,
      "args": "Vector3 punto, Soldier objetivo, Soldier quien",
-     "linea": 347
+     "linea": 352
     },
     {
      "nombre": "MostrarMarcas",
      "devuelve": "void",
      "estatico": true,
      "args": "bool visibles",
-     "linea": 373
+     "linea": 378
     }
    ],
    "propiedades_publicas": [
@@ -4716,7 +4716,7 @@
     {
      "nombre": "MarcasVisibles",
      "tipo": "bool",
-     "linea": 371
+     "linea": 376
     }
    ],
    "estaticos_mutables": [
@@ -4760,13 +4760,13 @@
      "nombre": "marcasVisibles",
      "tipo": "bool",
      "acceso": "private",
-     "linea": 370
+     "linea": 375
     },
     {
      "nombre": "MarcasVisibles",
      "tipo": "bool",
      "acceso": "public",
-     "linea": 371
+     "linea": 376
     }
    ],
    "publica_eventos": [],
@@ -4780,7 +4780,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "8c22ffbae11e"
+   "sha1": "4f679ffc2732"
   },
   {
    "ruta": "Assets/_Project/Scripts/Core/ComandosDeDepuracion.cs",
@@ -17845,6 +17845,45 @@
    "sha1": "7663a1a80804"
   },
   {
+   "ruta": "Assets/_Project/Scripts/Operacion/EntradaDeReserva.cs",
+   "nombre": "EntradaDeReserva.cs",
+   "subsistema": "Operacion",
+   "lineas": 57,
+   "bytes": 2799,
+   "namespace": "SP.Operacion",
+   "resumen": "Las reservas aparecian en suelo abierto, sin ningun acceso (bug 12). Al activarse una reserva se levanta, una sola vez por lugar, una compuerta (marco + hoja oscura + luz de aviso) orientada hacia el centro del mapa, y sale una nube de polvo.",
+   "tipos": [
+    {
+     "nombre": "EntradaDeReserva",
+     "clase": "class",
+     "parcial": false,
+     "estatica": true,
+     "linea": 8
+    }
+   ],
+   "metodos_publicos": [
+    {
+     "nombre": "Marcar",
+     "devuelve": "void",
+     "estatico": true,
+     "args": "Vector3 pos",
+     "linea": 23
+    }
+   ],
+   "propiedades_publicas": [],
+   "estaticos_mutables": [],
+   "publica_eventos": [],
+   "escucha_eventos": [],
+   "declara_eventos": [],
+   "usa": [],
+   "teclas": [],
+   "menu_items": [],
+   "checks": 0,
+   "notas_bug": 0,
+   "notas_todo": 0,
+   "sha1": "24b20715ae3e"
+  },
+  {
    "ruta": "Assets/_Project/Scripts/Operacion/EscaleraTrepable.cs",
    "nombre": "EscaleraTrepable.cs",
    "subsistema": "Operacion",
@@ -18806,8 +18845,8 @@
    "ruta": "Assets/_Project/Scripts/Operacion/OperacionDirector.Centro.cs",
    "nombre": "OperacionDirector.Centro.cs",
    "subsistema": "Operacion",
-   "lineas": 301,
-   "bytes": 17135,
+   "lineas": 302,
+   "bytes": 17198,
    "namespace": "SP.Operacion",
    "resumen": "Fase 3 (CENTRO DE DATOS): hackeo de 30 s con oleadas y camionetas de asalto. Activar()/InstanciarCamioneta() tambien los usa la huida.",
    "tipos": [
@@ -18896,7 +18935,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "3eec765429fa"
+   "sha1": "ccffd7c4edc9"
   },
   {
    "ruta": "Assets/_Project/Scripts/Operacion/OperacionDirector.Extraer.Cobertura.cs",
@@ -19590,8 +19629,8 @@
    "ruta": "Assets/_Project/Scripts/Operacion/OperacionDirector.Mando.cs",
    "nombre": "OperacionDirector.Mando.cs",
    "subsistema": "Operacion",
-   "lineas": 1435,
-   "bytes": 84463,
+   "lineas": 1436,
+   "bytes": 84523,
    "namespace": "SP.Operacion",
    "resumen": "Fase 5 (RESISTIR), WP10 (#101): \"DIRIGIR LA DEFENSA DESDE LA RADIO\". El objetivo solo se gana coordinando desde la vista tactica. Subfase 0  llegada: la escuadra entra a la ciudad y va a la radio del ayuntamiento ([E] TOMAR LA RADIO). No pasa nada hasta tomarla. Subfase 1  radio tomada: la camara pasa a RTS UNA vez (sugerencia; P7 #120: ya no es obligatoria, la radio es un ROL: el operador sigue ahi como IA aunque el jugador vuelva a FPS o posea a otro), salen 4 milicianos (#122), tres sectores (A, B, C) y un tutorial guiado. El reloj del helicoptero (\"reloj efectivo\", 90 s) solo avanza si el equipo esta ubicado y cada sector amenazado tiene a alguien adentro. 5 oleadas dirigidas a un sector, anunciadas 8 s antes con una flecha roja. Un sector amenazado vacio 6 s CAE: sus enemigos van a la radio y el",
    "tipos": [
@@ -19621,7 +19660,7 @@
      "clase": "struct",
      "parcial": false,
      "estatica": false,
-     "linea": 1121
+     "linea": 1122
     }
    ],
    "metodos_publicos": [
@@ -19665,14 +19704,14 @@
      "devuelve": "List<SectorDeDefensa.PuntoDeCobertura>",
      "estatico": false,
      "args": "int i",
-     "linea": 903
+     "linea": 904
     },
     {
      "nombre": "GuiaDelPaso",
      "devuelve": "bool",
      "estatico": false,
      "args": "out GuiaDePaso g",
-     "linea": 1123
+     "linea": 1124
     }
    ],
    "propiedades_publicas": [
@@ -19794,7 +19833,7 @@
     {
      "nombre": "AnillosDeGuia",
      "tipo": "int",
-     "linea": 1181
+     "linea": 1182
     }
    ],
    "estaticos_mutables": [
@@ -19808,7 +19847,7 @@
      "nombre": "PasosSecuenciales",
      "tipo": "bool",
      "acceso": "public",
-     "linea": 1032
+     "linea": 1033
     }
    ],
    "publica_eventos": [],
@@ -19834,7 +19873,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "596b2d9ee6a3"
+   "sha1": "5776de80f332"
   },
   {
    "ruta": "Assets/_Project/Scripts/Operacion/OperacionDirector.Puestos.cs",
@@ -19919,8 +19958,8 @@
    "ruta": "Assets/_Project/Scripts/Operacion/OperacionDirector.Resistir.cs",
    "nombre": "OperacionDirector.Resistir.cs",
    "subsistema": "Operacion",
-   "lineas": 405,
-   "bytes": 23206,
+   "lineas": 406,
+   "bytes": 23266,
    "namespace": "SP.Operacion",
    "resumen": "Fase 5 (RESISTIR): coberturas de la plaza, refuerzos y oleadas de la ciudad, llegada del helicoptero.",
    "tipos": [
@@ -19967,12 +20006,12 @@
     {
      "nombre": "FlechaHeli",
      "tipo": "SP.UI.FlechaDeObjetivo",
-     "linea": 287
+     "linea": 288
     },
     {
      "nombre": "VelocidadHeli",
      "tipo": "float",
-     "linea": 357
+     "linea": 358
     }
    ],
    "estaticos_mutables": [],
@@ -19995,14 +20034,14 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "340c2743fe8b"
+   "sha1": "e00c8277cbd8"
   },
   {
    "ruta": "Assets/_Project/Scripts/Operacion/OperacionDirector.TomaFinal.cs",
    "nombre": "OperacionDirector.TomaFinal.cs",
    "subsistema": "Operacion",
-   "lineas": 322,
-   "bytes": 19693,
+   "lineas": 323,
+   "bytes": 19761,
    "namespace": "SP.Operacion",
    "resumen": "Bug #077: toma final de la extraccion. En vez de planos aereos y un fundido a negro, la camara salta al piso (1,2 m), detras y entre tres enemigos de la plaza que giran hacia el helicoptero y le disparan mientras se achica (de ~60 a 250 m). La pantalla de resultado entra translucida sobre esta misma toma, que sigue en camara lenta.",
    "tipos": [
@@ -20089,7 +20128,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "ef20c7278ed7"
+   "sha1": "c329f57d1e30"
   },
   {
    "ruta": "Assets/_Project/Scripts/Operacion/OperacionDirector.cs",
@@ -21743,8 +21782,8 @@
    "ruta": "Assets/_Project/Scripts/Player/AimTargeting.cs",
    "nombre": "AimTargeting.cs",
    "subsistema": "Player",
-   "lineas": 280,
-   "bytes": 15573,
+   "lineas": 290,
+   "bytes": 16328,
    "namespace": "SP.Player",
    "resumen": "B4: raiz del objeto golpeado, para el anillo generico de apuntado (SelectionRingFx necesita un Transform a quien seguir, y Point es solo el punto de impacto -- no sirve para seguir a algo que se mueve). Null en Ground/None: ahi no hay \"algo\" a marcar en su base.",
    "tipos": [
@@ -21804,7 +21843,7 @@
      "devuelve": "bool",
      "estatico": true,
      "args": "Ray ray, out Vector3 punto",
-     "linea": 266
+     "linea": 276
     }
    ],
    "propiedades_publicas": [
@@ -21833,7 +21872,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "937f51b0785c"
+   "sha1": "2e954dbddfc8"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/CajaDeSuministros.cs",
@@ -22530,8 +22569,8 @@
    "ruta": "Assets/_Project/Scripts/Player/MunicionPickup.cs",
    "nombre": "MunicionPickup.cs",
    "subsistema": "Player",
-   "lineas": 129,
-   "bytes": 5947,
+   "lineas": 147,
+   "bytes": 7134,
    "namespace": "SP.Player",
    "resumen": "Municion suelta al morir un enemigo (item nuevo). 100% por codigo, sin prefab ni asset externo -- mismo espiritu que CajaDeSuministros.Crear, pero mas chica y sin reposicion (se recoge una vez y desaparece). Deteccion por DISTANCIA en Update, no OnTriggerEnter: los soldados de este proyecto no llevan Rigidbody (ver Rehen.cs para el mismo razonamiento), asi que un trigger normal de Unity nunca dispararia",
    "tipos": [
@@ -22570,7 +22609,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "2b8babeff3ab"
+   "sha1": "7e57e8ec0277"
   },
   {
    "ruta": "Assets/_Project/Scripts/Player/OrdenesDeEscuadra.cs",
@@ -33562,8 +33601,8 @@
    "ruta": "Assets/_Project/Scripts/Presentation/UnitLabelView.cs",
    "nombre": "UnitLabelView.cs",
    "subsistema": "Presentation",
-   "lineas": 223,
-   "bytes": 10399,
+   "lineas": 239,
+   "bytes": 11491,
    "namespace": "SP.Presentation",
    "resumen": "C1: etiqueta al pie de cada unidad con su vida, su tipo (aliado / enemigo / vehiculo / interactuable) y, si es montable, la ocupacion (2/4). Solo se ve en RTS -- en FPS, a los pies de decenas de soldados, seria puro ruido debajo de lo que ya muestra el HUD. Ya NO tiene LateUpdate propio: la recorre WorldUiDirector en el mismo pase que HealthBarView y MinimapIcon.",
    "tipos": [
@@ -33595,21 +33634,21 @@
      "devuelve": "void",
      "estatico": false,
      "args": "Quaternion cameraRotation",
-     "linea": 132
+     "linea": 137
     },
     {
      "nombre": "Construir",
      "devuelve": "UnitLabelView",
      "estatico": true,
      "args": "Transform unidad",
-     "linea": 142
+     "linea": 158
     },
     {
      "nombre": "RegistrarTodas",
      "devuelve": "int",
      "estatico": true,
      "args": "",
-     "linea": 208
+     "linea": 224
     }
    ],
    "propiedades_publicas": [
@@ -33645,7 +33684,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "d43678e0b4e9"
+   "sha1": "ee57cb85ddc4"
   },
   {
    "ruta": "Assets/_Project/Scripts/Presentation/UnitLocatorCylinder.cs",
@@ -36153,10 +36192,10 @@
    "ruta": "Assets/_Project/Scripts/UI/CapasDeHud.cs",
    "nombre": "CapasDeHud.cs",
    "subsistema": "UI",
-   "lineas": 34,
-   "bytes": 891,
+   "lineas": 68,
+   "bytes": 2813,
    "namespace": "SP.UI",
-   "resumen": "",
+   "resumen": "En RTS no hay soldado poseido que actualice el panel de arma: muestra el arma del lider de la escuadra.",
    "tipos": [
     {
      "nombre": "CapasDeHud",
@@ -36172,7 +36211,7 @@
      "devuelve": "void",
      "estatico": true,
      "args": "ControlMode modo",
-     "linea": 26
+     "linea": 46
     }
    ],
    "propiedades_publicas": [
@@ -36180,6 +36219,11 @@
      "nombre": "Instancia",
      "tipo": "CapasDeHud",
      "linea": 8
+    },
+    {
+     "nombre": "EnRts",
+     "tipo": "bool",
+     "linea": 9
     }
    ],
    "estaticos_mutables": [],
@@ -36194,7 +36238,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "8120b841322b"
+   "sha1": "97e82844e7bd"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/CartelDeRacha.cs",
@@ -37786,8 +37830,8 @@
    "ruta": "Assets/_Project/Scripts/UI/MenuDeOrdenes.cs",
    "nombre": "MenuDeOrdenes.cs",
    "subsistema": "UI",
-   "lineas": 922,
-   "bytes": 49323,
+   "lineas": 923,
+   "bytes": 49480,
    "namespace": "SP.UI",
    "resumen": "Contexto del radial: que categorias y opciones tienen sentido AHORA segun lo que se apunta. Las contextuales (curar al herido apuntado, demoler el muro apuntado, subir al tanque apuntado, usar la torreta apuntada...) van arriba y con otro color; el resto solo se ofrece si hay algo que hacer. Sin contexto (null) el radial ofrece todas, como antes.",
    "tipos": [
@@ -37938,21 +37982,21 @@
      "devuelve": "MenuDeOrdenes",
      "estatico": true,
      "args": "",
-     "linea": 692
+     "linea": 693
     },
     {
      "nombre": "Construir",
      "devuelve": "MenuDeOrdenes",
      "estatico": true,
      "args": "Transform padre",
-     "linea": 835
+     "linea": 836
     },
     {
      "nombre": "LeerTecla",
      "devuelve": "int",
      "estatico": true,
      "args": "",
-     "linea": 905
+     "linea": 906
     }
    ],
    "propiedades_publicas": [
@@ -38018,7 +38062,7 @@
      "nombre": "discoCentro",
      "tipo": "Sprite",
      "acceso": "private",
-     "linea": 765
+     "linea": 766
     }
    ],
    "publica_eventos": [],
@@ -38030,7 +38074,7 @@
    "checks": 0,
    "notas_bug": 2,
    "notas_todo": 0,
-   "sha1": "8a0ebb0e0a6e"
+   "sha1": "a6ad716d857e"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/MilitaryButtonSkin.cs",
@@ -38478,7 +38522,7 @@
    "checks": 0,
    "notas_bug": 0,
    "notas_todo": 0,
-   "sha1": "73d2a1177a11"
+   "sha1": "fc8855f7d25e"
   },
   {
    "ruta": "Assets/_Project/Scripts/UI/MissionStatusView.cs",
@@ -41981,6 +42025,30 @@
    "Assets/_Project/Materials/Operacion/M_Op_VentanaOscura.mat",
    "Assets/_Project/Materials/Operacion/M_Op_VerdeSenal.mat",
    "Assets/_Project/Materials/Operacion/M_Skybox_Dia_Operacion.mat",
+   "Assets/_Project/Materials/Variantes/MAT_Trimsheet_v0.mat",
+   "Assets/_Project/Materials/Variantes/MAT_Trimsheet_v1.mat",
+   "Assets/_Project/Materials/Variantes/MAT_Trimsheet_v2.mat",
+   "Assets/_Project/Materials/Variantes/MAT_Trimsheet_v3.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_Cactus_v0.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_Cactus_v1.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_Cactus_v2.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_Cactus_v3.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_CementoOsc_v0.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_CementoOsc_v1.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_CementoOsc_v2.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_CementoOsc_v3.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_PastoSeco_v0.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_PastoSeco_v1.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_PastoSeco_v2.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_PastoSeco_v3.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_PastoVerde_v0.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_PastoVerde_v1.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_PastoVerde_v2.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_PastoVerde_v3.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_Roca_v0.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_Roca_v1.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_Roca_v2.mat",
+   "Assets/_Project/Materials/Variantes/M_Op_Roca_v3.mat",
    "Assets/_Project/Resources/Soldados/MAT_Trimsheet_Aliado.mat",
    "Assets/_Project/Resources/Soldados/MAT_Trimsheet_Enemigo.mat",
    "Assets/_Project/Terrains/M_Terrain_URP.mat"

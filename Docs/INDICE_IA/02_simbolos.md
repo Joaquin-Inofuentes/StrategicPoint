@@ -157,7 +157,7 @@
 |---|---|---|---|---|
 | `IssueCoverOrder` |  | `void` | `Vector3 punto, Collider dueno` | 64 |
 | `TomarCoberturaInicial` |  | `void` | `Vector3 punto, Collider dueno` | 80 |
-| `PuntajeDeObjetivo` |  | `float` | `Soldier s` | 682 |
+| `PuntajeDeObjetivo` |  | `float` | `Soldier s` | 699 |
 
 **Propiedades:** `MountTargetVehicle`, `EnCobertura`, `YendoACobertura`, `CoberturaPorOrden`, `CoberturaPunto`, `VersionDeCobertura`, `UltimaPresion`, `CoberturasElegidas`, `CambiosDeCobertura`, `Quieto`, `Pasivo`, `MantienePosicion`, `RegresosForzados`, `SiguiendoAlJugador`
 
@@ -349,10 +349,10 @@
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
 | `Configure` |  | `void` | `ProjectilePool owningPool, Vector3 position, Vector3 direction, int sh` | 122 |
-| `OnSpawn` |  | `void` | — | 223 |
-| `OnDespawn` |  | `void` | — | 231 |
-| `Tick` |  | `void` | `float dt` | 249 |
-| `ExplodeAt` | static | `void` | `Vector3 point, float radius, int damage, int ownerId, TeamId? spareTea` | 755 |
+| `OnSpawn` |  | `void` | — | 226 |
+| `OnDespawn` |  | `void` | — | 234 |
+| `Tick` |  | `void` | `float dt` | 252 |
+| `ExplodeAt` | static | `void` | `Vector3 point, float radius, int damage, int ownerId, TeamId? spareTea` | 758 |
 
 **Propiedades:** `Gravity`, `Velocity`, `PoolGeneration`, `EsDeVehiculoEnemigo`, `DanoDeExplosionEnCurso`, `HeadshotsDelJugador`, `UltimoImpactoEnSoldado`, `UltimoImpactoFueCabeza`
 
@@ -479,15 +479,15 @@
 |---|---|---|---|---|
 | `Register` | static | `void` | `Soldier soldier` | 32 |
 | `Unregister` | static | `void` | `Soldier soldier` | 42 |
-| `Clear` | static | `void` | — | 52 |
-| `Invalidate` | static | `void` | — | 66 |
-| `EnsureAllRegistered` | static | `void` | — | 96 |
-| `Rebarrer` | static | `void` | — | 106 |
-| `CountAlive` | static | `int` | `TeamId team` | 121 |
-| `CountDead` | static | `int` | `TeamId team` | 130 |
-| `FindById` | static | `Soldier` | `int id` | 139 |
-| `FindNearest` | static | `Soldier` | `Vector3 point, Func<Soldier, bool> predicate` | 144 |
-| `FindNearestEnemyInRange` | static | `Soldier` | `Vector3 point, TeamId excludeTeam, float range` | 165 |
+| `Clear` | static | `void` | — | 55 |
+| `Invalidate` | static | `void` | — | 69 |
+| `EnsureAllRegistered` | static | `void` | — | 99 |
+| `Rebarrer` | static | `void` | — | 109 |
+| `CountAlive` | static | `int` | `TeamId team` | 124 |
+| `CountDead` | static | `int` | `TeamId team` | 133 |
+| `FindById` | static | `Soldier` | `int id` | 142 |
+| `FindNearest` | static | `Soldier` | `Vector3 point, Func<Soldier, bool> predicate` | 147 |
+| `FindNearestEnemyInRange` | static | `Soldier` | `Vector3 point, TeamId excludeTeam, float range` | 168 |
 
 **Propiedades:** `All`
 
@@ -558,14 +558,14 @@
 | `FrenteDe` | static | `Vector3` | `int indice` | 205 |
 | `FrenteDe` | static | `Vector3` | `Vector3 punto, Collider dueno` | 215 |
 | `TryCercano` | static | `bool` | `Vector3 p, float radio, out Vector3 punto, out Collider dueno` | 225 |
-| `Limpiar` | static | `void` | — | 228 |
-| `TryMejorCobertura` | static | `bool` | `Vector3 desde, Soldier objetivo, Soldier quien, float radioMaximo, flo` | 242 |
-| `TryMejorCobertura` | static | `bool` | `Vector3 desde, Soldier objetivo, Soldier quien, float radioMaximo, flo` | 253 |
-| `TryCoberturaDeTiro` | static | `bool` | `Vector3 desde, Soldier objetivo, Soldier quien, float radio, float min` | 297 |
-| `HayLineaDeTiroDesde` | static | `bool` | `Vector3 punto, Soldier objetivo, Soldier quien` | 326 |
-| `PuntoDeTiro` | static | `Vector3` | `Soldier s` | 340 |
-| `HayLineaDeTiroAlPecho` | static | `bool` | `Vector3 punto, Soldier objetivo, Soldier quien` | 347 |
-| `MostrarMarcas` | static | `void` | `bool visibles` | 373 |
+| `Limpiar` | static | `void` | — | 233 |
+| `TryMejorCobertura` | static | `bool` | `Vector3 desde, Soldier objetivo, Soldier quien, float radioMaximo, flo` | 247 |
+| `TryMejorCobertura` | static | `bool` | `Vector3 desde, Soldier objetivo, Soldier quien, float radioMaximo, flo` | 258 |
+| `TryCoberturaDeTiro` | static | `bool` | `Vector3 desde, Soldier objetivo, Soldier quien, float radio, float min` | 302 |
+| `HayLineaDeTiroDesde` | static | `bool` | `Vector3 punto, Soldier objetivo, Soldier quien` | 331 |
+| `PuntoDeTiro` | static | `Vector3` | `Soldier s` | 345 |
+| `HayLineaDeTiroAlPecho` | static | `bool` | `Vector3 punto, Soldier objetivo, Soldier quien` | 352 |
+| `MostrarMarcas` | static | `void` | `bool visibles` | 378 |
 
 **Propiedades:** `Puntos`, `Duenos`, `Cantidad`, `Version`, `MarcasVisibles`
 
@@ -2294,6 +2294,16 @@
 
 **Propiedades:** `SacosCreados`, `AnillosVisibles`
 
+## `Assets/_Project/Scripts/Operacion/EntradaDeReserva.cs`
+
+**Tipos:** `class EntradaDeReserva`
+
+**Metodos publicos**
+
+| Metodo |  | Devuelve | Argumentos | Linea |
+|---|---|---|---|---|
+| `Marcar` | static | `void` | `Vector3 pos` | 23 |
+
 ## `Assets/_Project/Scripts/Operacion/FrancotiradorEnTorre.cs`
 
 **Tipos:** `class TiradorDeTorre`, `class FrancotiradorEnTorre`, `enum Fase`
@@ -2506,8 +2516,8 @@
 | `TomarLaRadioPorPrueba` |  | `void` | `bool ubicarSolos = false` | 177 |
 | `OrdenarOperarLaRadio` |  | `bool` | `IReadOnlyList<Soldier> seleccion, out string motivo` | 479 |
 | `RelevarOperador` |  | `void` | `Soldier nuevo` | 510 |
-| `PuntosDeCoberturaDelSector` |  | `List<SectorDeDefensa.PuntoDeCobertura>` | `int i` | 903 |
-| `GuiaDelPaso` |  | `bool` | `out GuiaDePaso g` | 1123 |
+| `PuntosDeCoberturaDelSector` |  | `List<SectorDeDefensa.PuntoDeCobertura>` | `int i` | 904 |
+| `GuiaDelPaso` |  | `bool` | `out GuiaDePaso g` | 1124 |
 
 **Propiedades:** `MandoActivo`, `RelojEfectivo`, `RelojDelMandoCorre`, `MotivoDeLaPausa`, `SaltoDePrueba`, `UnidadA`, `UnidadC`, `MedicoDeApoyo`, `Milicianos`, `PasoHecho`, `PasoActualDelMando`, `CampanarioOcupado`, `SectoresCaidosTotales`, `CoberturasAutomaticas`, `OleadasDelMandoLanzadas`, `OleadasDelMandoAnunciadas`, `OleadasDelMando`, `ForzarHud`, `Vivos`, `VehiculosVivos`, `OperadorPendiente`, `ESostenidaParaSoltar`, `PendientesDelMando`, `AnillosDeGuia`
 
@@ -2756,7 +2766,7 @@
 | `AliadoBajoSuRombo` | static | `Soldier` | `Ray ray, Soldier excludeSelf` | 41 |
 | `PuntoDeTiro` |  | `Vector3` | `Ray ray, Soldier excludeSelf` | 101 |
 | `Evaluate` |  | `AimResult` | `Ray ray, Soldier excludeSelf` | 119 |
-| `PisoBajoRayo` | static | `bool` | `Ray ray, out Vector3 punto` | 266 |
+| `PisoBajoRayo` | static | `bool` | `Ray ray, out Vector3 punto` | 276 |
 
 **Propiedades:** `MaxDistance`
 
@@ -4623,9 +4633,9 @@
 |---|---|---|---|---|
 | `Bootstrap` |  | `void` | — | 51 |
 | `Tick` |  | `bool` | `bool enRts` | 83 |
-| `ApplyBillboard` |  | `void` | `Quaternion cameraRotation` | 132 |
-| `Construir` | static | `UnitLabelView` | `Transform unidad` | 142 |
-| `RegistrarTodas` | static | `int` | — | 208 |
+| `ApplyBillboard` |  | `void` | `Quaternion cameraRotation` | 137 |
+| `Construir` | static | `UnitLabelView` | `Transform unidad` | 158 |
+| `RegistrarTodas` | static | `int` | — | 224 |
 
 **Propiedades:** `CurrentText`, `IsVisible`
 
@@ -4985,9 +4995,9 @@
 
 | Metodo |  | Devuelve | Argumentos | Linea |
 |---|---|---|---|---|
-| `ActivarModo` | static | `void` | `ControlMode modo` | 26 |
+| `ActivarModo` | static | `void` | `ControlMode modo` | 46 |
 
-**Propiedades:** `Instancia`
+**Propiedades:** `Instancia`, `EnRts`
 
 ## `Assets/_Project/Scripts/UI/CartelDeRacha.cs`
 
@@ -5292,9 +5302,9 @@
 | `MoverSeleccion` |  | `void` | `Vector2 delta` | 459 |
 | `ElegirDirecto` |  | `void` | `int categoria, int sub = -1` | 512 |
 | `CategoriaDeTecla` |  | `int` | `int tecla` | 546 |
-| `AsegurarEnEscena` | static | `MenuDeOrdenes` | — | 692 |
-| `Construir` | static | `MenuDeOrdenes` | `Transform padre` | 835 |
-| `LeerTecla` | static | `int` | — | 905 |
+| `AsegurarEnEscena` | static | `MenuDeOrdenes` | — | 693 |
+| `Construir` | static | `MenuDeOrdenes` | `Transform padre` | 836 |
+| `LeerTecla` | static | `int` | — | 906 |
 
 **Propiedades:** `Activo`, `Apertura01`, `Cerrandose`, `Abierto`, `Seleccion`, `Sub`, `EsRadial`, `EnAnilloExterior`, `CategoriasVisibles`, `OpcionesVisibles`
 

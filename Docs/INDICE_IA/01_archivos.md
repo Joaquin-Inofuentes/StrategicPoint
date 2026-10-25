@@ -1,25 +1,25 @@
 # Mapa de archivos
-> 480 scripts. Generado el 2026-10-23 14:36 UTC.
+> 481 scripts. Generado el 2026-10-25 01:24 UTC.
 
-## Actors — 4 scripts, 814 lineas
+## Actors — 4 scripts, 816 lineas
 
 > El soldado: identidad, piezas, motor de movimiento y aspecto.
 
 | Archivo | Lineas | Tipos | Que hace |
 |---|---|---|---|
 | `SoldierMotor.cs` | 418 | SoldierMotor | Mueve el transform. Lo usan por igual el jugador y la IA detrás de la misma llamada, sin que a ninguno le importe quién … |
-| `SoldierLook.cs` | 175 | SoldierLook | Viste al soldado segun su clase: cambia la malla del SkinnedMeshRenderer por la variante armada por SoldierVariantBuilde… |
+| `SoldierLook.cs` | 177 | SoldierLook | Viste al soldado segun su clase: cambia la malla del SkinnedMeshRenderer por la variante armada por SoldierVariantBuilde… |
 | `Soldier.cs` | 155 | Soldier | Reúne las piezas del GameObject y las expone. No decide nada por sí mismo. Se auto-inicializa en Awake a partir de sus p… |
 | `SoldierClasses.cs` | 66 | SoldierClasses, Def | Las clases del juego, en un solo lugar: como se llama, que modelo lleva, que armas trae (las teclas 1/2/3 son sus ranura… |
 
-## Ai — 16 scripts, 4,180 lineas
+## Ai — 16 scripts, 4,202 lineas
 
 > Cerebro de una unidad no poseida y el driver que avanza la simulacion.
 
 | Archivo | Lineas | Tipos | Que hace |
 |---|---|---|---|
-| `AiBrain.cs` | 1366 | CombatStance, AiBrain | Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las otras dos NO son un camino de … |
-| `AiBrain.Tactica.cs` | 760 | AiBrain, CoverSubState | Parte "tactica" del cerebro: coberturas (ordenadas por el jugador o buscadas por el propio enemigo en combate), seguir a… |
+| `AiBrain.cs` | 1368 | CombatStance, AiBrain | Postura de combate de una unidad. Libre es el comportamiento historico y por defecto: las otras dos NO son un camino de … |
+| `AiBrain.Tactica.cs` | 780 | AiBrain, CoverSubState | Parte "tactica" del cerebro: coberturas (ordenadas por el jugador o buscadas por el propio enemigo en combate), seguir a… |
 | `AiBrain.Navegacion.cs` | 273 | AiBrain | AiBrain (parte): navegacion. Simple a proposito: el NavMeshAgent calcula la ruta y el cuerpo la sigue (SoldierMotor apli… |
 | `AiBrain.Sentidos.cs` | 252 | AiBrain | AiBrain (parte): linea de tiro, posturas, cobertura y sensado del enemigo mas cercano. |
 | `AiBrain.Herido.cs` | 245 | AiBrain | Bug #087 ("un aliado herido se manda al muere"): antes un aliado con poca vida seguia cargando contra el enemigo (Herido… |
@@ -44,13 +44,13 @@
 | `CameraRig.cs` | 1089 | ControlMode, CameraRig | Posee la cámara y delega su posición en el modo activo (FPS u RTS). |
 | `CameraFxSettings.cs` | 46 | CameraFxSettings | Interruptor global de los efectos de camara (sacudida, balanceo al caminar, viñeta de velocidad, destellos, latido). Es … |
 
-## Combat — 14 scripts, 3,028 lineas
+## Combat — 14 scripts, 3,031 lineas
 
 > Vida, dano, armas, proyectiles y catalogo.
 
 | Archivo | Lineas | Tipos | Que hace |
 |---|---|---|---|
-| `Projectile.cs` | 1003 | Projectile | Viaja, comprueba su propio impacto por distancia (sin física) y se devuelve solo al pool. Nunca lo instancia nadie salvo… |
+| `Projectile.cs` | 1006 | Projectile | Viaja, comprueba su propio impacto por distancia (sin física) y se devuelve solo al pool. Nunca lo instancia nadie salvo… |
 | `WeaponHolder.cs` | 892 | WeaponChangedEvent, WeaponHolder | Un solo evento para "este soldado tiene otra arma puesta", sin importar el camino (recogida del piso, ciclado 1/2/3, IA)… |
 | `Granada.cs` | 276 | Granada | Granada de mano (tecla [G], ronda 7). Se tira con una parabola que ella misma calcula: la vista previa que se dibuja al … |
 | `Health.cs` | 196 | Health | Única responsabilidad: llevar la cuenta de puntos de vida y avisar cuando cambian o llegan a cero. No sabe que existe un… |
@@ -65,7 +65,7 @@
 | `RoleType.cs` | 6 | RoleType | Flanker se agrega al final: el enum se serializa en las escenas. |
 | `TeamId.cs` | 5 | TeamId | — |
 
-## Core — 38 scripts, 6,679 lineas
+## Core — 38 scripts, 6,687 lineas
 
 > Servicios sin escena: bus de eventos, registros, grilla espacial, navegacion, pools, idioma, dificultad.
 
@@ -73,7 +73,7 @@
 |---|---|---|---|
 | `SesionLog.cs` | 908 | IEstadoGuardable, SnapSoldado, SnapVehiculo | Una mision (o cualquier sistema) con estado propio que entra en el registro de sesion y se puede restaurar. |
 | `WaypointGraph.cs` | 696 | WaypointGraph, NodeMinHeap | ITEM 226 -- Grafo de waypoints (grilla + A* sobre el plano XZ). POR QUE EXISTE (y por que NO es una optimizacion). El mo… |
-| `Coberturas.cs` | 422 | Coberturas | Los puntos de cobertura del mapa: donde pararse para tener un obstaculo entre uno y el enemigo. Que cuenta como obstacul… |
+| `Coberturas.cs` | 427 | Coberturas | Los puntos de cobertura del mapa: donde pararse para tener un obstaculo entre uno y el enemigo. Que cuenta como obstacul… |
 | `LocTextos.cs` | 344 | LocTextos | Textos del tutorial y de la mision en ingles (item 27). Loc los suma a su tabla al iniciar; la clave es el texto origina… |
 | `PartidaGuardada.cs` | 317 | PartidaGuardadaDatos, PartidaGuardada, Info | P10 (#120): guardar y continuar la partida. Se apoya en SesionLog (Capturar / Restaurar: soldados, vehiculos y el estado… |
 | `ReporteDeBug.cs` | 281 | ReporteDeBug | Pedido: "cuando apriete U para reportar, que me abra un cuadro de dialogo para escribir, que se ponga en PAUSA hasta que… |
@@ -85,7 +85,7 @@
 | `Loc.cs` | 188 | Idioma, Loc, LocTraductor | Localizacion (item 27), espanol -> ingles. El texto original del juego es la CLAVE (no hay tablas de ids que mantener): … |
 | `SpatialGrid.cs` | 187 | SpatialGrid | ActorRegistry.FindNearest(EnemyInRange) barre linealmente TODOS los soldados en cada llamada. AiBrain.Tick() llama a esa… |
 | `Deslizador.cs` | 185 | Deslizador | Resolucion de colision para cuerpos que se mueven ESCRIBIENDO EL TRANSFORM, que es como se mueve todo en este proyecto: … |
-| `ActorRegistry.cs` | 172 | ActorRegistry | Registro simple de soldados vivos en la escena, para consultas de distancia y de sensado. Sustituye a FindObjectOfType. |
+| `ActorRegistry.cs` | 175 | ActorRegistry | Registro simple de soldados vivos en la escena, para consultas de distancia y de sensado. Sustituye a FindObjectOfType. |
 | `Dificultad.cs` | 155 | NivelDificultad, Dificultad, Perfil | Dificultad de la partida: se elige al tocar JUGAR y reparte "potenciadores" de vida y dano a tres grupos: los ENEMIGOS, … |
 | `NavMeshViva.cs` | 153 | NavMeshViva | EL NAVMESH QUE SE QUEDABA CON LOS MUROS EN PIE. El NavMesh se hornea en el editor y en partida no cambiaba nunca. Cuando… |
 | `DificultadAdaptativa.cs` | 151 | DificultadAdaptativa, DificultadAdaptativaTicker | Bug #240 ("quiero un sistema de dificultad para que se ajuste y sea desafiante, y que vayan variando los danos de los en… |
@@ -270,11 +270,11 @@
 | `MarcadorDeAparicion.cs` | 29 | MarcadorDeAparicion | Marcador puramente visual (Gizmos, sin Renderer/Collider: cero costo e invisible en Game view/build) que queda en el pun… |
 | `CinematicaWaypoint.cs` | 27 | CinematicaWaypoint | Un punto de camara de la cinematica de apertura (ver CinematicaIntroPath/CinematicaDeIntro). Pedido explicito: "cada emp… |
 
-## Operacion — 46 scripts, 13,119 lineas
+## Operacion — 47 scripts, 13,180 lineas
 
 | Archivo | Lineas | Tipos | Que hace |
 |---|---|---|---|
-| `OperacionDirector.Mando.cs` | 1435 | OperacionDirector, OleadaDelMando, Vacio | Fase 5 (RESISTIR), WP10 (#101): "DIRIGIR LA DEFENSA DESDE LA RADIO". El objetivo solo se gana coordinando desde la vista… |
+| `OperacionDirector.Mando.cs` | 1436 | OperacionDirector, OleadaDelMando, Vacio | Fase 5 (RESISTIR), WP10 (#101): "DIRIGIR LA DEFENSA DESDE LA RADIO". El objetivo solo se gana coordinando desde la vista… |
 | `OperacionDirector.cs` | 770 | FaseOperacion, PuestoDeVoladura, OleadaDeReserva | WP9a (#082/#097): un puesto de la muralla de contencion = un bunker con su punto de carga. El "Asalto" coloca la carga, … |
 | `CinematicaDeRapel.cs` | 649 | CinematicaDeRapel, Rapelista, PoseDeRapel | P9 (#123): cinematica de APERTURA de la Operacion Cuartel (~12,5 s): el helicoptero entra de frente a la camara, frena y… |
 | `CinematicaDeOperacion.cs` | 470 | CinematicaDeOperacion, Clave | Cinematica INICIAL de la Operacion Cuartel (rediseno): UNA SOLA CAMARA que recorre todo el nivel sin cortes, de principi… |
@@ -283,15 +283,15 @@
 | `OperacionHud.cs` | 449 | OperacionHud | Cartel de la Operacion Cuartel: capitulo + objetivo (arriba a la izquierda), temporizador grande al centro, barra de pro… |
 | `OperacionDirector.Jefe.cs` | 425 | SubfaseHuida, OperacionDirector | Subfases del objetivo 4 (HUIR). WP9b (#097 parte 2): el tanque ya no espera con las puertas abiertas; es un JEFE que hay… |
 | `OperacionDirector.Extraer.cs` | 410 | OperacionDirector | Fase 6 (EXTRAER): subida al helicoptero, cinematica de salida, fundido y victoria. |
-| `OperacionDirector.Resistir.cs` | 405 | OperacionDirector | Fase 5 (RESISTIR): coberturas de la plaza, refuerzos y oleadas de la ciudad, llegada del helicoptero. |
+| `OperacionDirector.Resistir.cs` | 406 | OperacionDirector | Fase 5 (RESISTIR): coberturas de la plaza, refuerzos y oleadas de la ciudad, llegada del helicoptero. |
 | `OperacionDirector.Final.cs` | 387 | OperacionDirector | WP9b-2 (#097 / #073): la carrera (emboscadas del canadon, helicoptero Halcon) y la cinematica final en camara lenta. |
 | `TanqueJefe.cs` | 363 | TanqueJefe, Estado | WP9b (#097): el BLINDADO GOLIAT, jefe del objetivo 4. Es el tanque de la fuga en manos enemigas (bando Enemy, Driver + P… |
 | `OperacionTerminal.cs` | 328 | OperacionTerminal | Punto de interaccion de la Operacion Cuartel: el panel de cada puesto de control (se mantiene [E] y SOLO lo puede hacer … |
-| `OperacionDirector.TomaFinal.cs` | 322 | OperacionDirector | Bug #077: toma final de la extraccion. En vez de planos aereos y un fundido a negro, la camara salta al piso (1,2 m), de… |
+| `OperacionDirector.TomaFinal.cs` | 323 | OperacionDirector | Bug #077: toma final de la extraccion. En vez de planos aereos y un fundido a negro, la camara salta al piso (1,2 m), de… |
 | `ReflectorVigia.cs` | 321 | ReflectorVigia | WP8 (#078): reflector de vigilancia del cuartel. Torre de 6 m con un operador (soldado enemigo en la plataforma) y una l… |
 | `OperacionDirector.Extraer.Cobertura.cs` | 306 | OperacionDirector | Fase 6 (EXTRAER), #127: el helicoptero llega y se queda en ESTACIONARIO sobre la zona de aterrizaje, cubriendo con fuego… |
 | `HelicopteroEnemigo.cs` | 302 | HelicopteroEnemigo, Estado | WP9b (#097/#073): el helicoptero enemigo HALCON de la carrera. NO es el Helicoptero de la extraccion (ese tiene un singl… |
-| `OperacionDirector.Centro.cs` | 301 | OperacionDirector | Fase 3 (CENTRO DE DATOS): hackeo de 30 s con oleadas y camionetas de asalto. Activar()/InstanciarCamioneta() tambien los… |
+| `OperacionDirector.Centro.cs` | 302 | OperacionDirector | Fase 3 (CENTRO DE DATOS): hackeo de 30 s con oleadas y camionetas de asalto. Activar()/InstanciarCamioneta() tambien los… |
 | `OperacionDirector.Puestos.cs` | 290 | OperacionDirector | Fase 2 (PUESTOS, WP9a #082/#097): MURALLA DE CONTENCION. Una sola capa transversal (z -170) con dos bunkers en los flanc… |
 | `FrancotiradorEnTorre.cs` | 273 | TiradorDeTorre, FrancotiradorEnTorre, Fase | WP8 (#078): tiradores fijos de las torres del cuartel. Son soldados enemigos comunes (con vida, cuerpo y baja) subidos a… |
 | `TorreDestruible.cs` | 269 | TorreDestruible, Tipo, VuelcoDeTorre | WP8 (#078): torre del cuartel con alguien arriba (francotirador de 12 m o torreta vigia de 5 m). Va en la RAIZ de la tor… |
@@ -319,6 +319,7 @@
 | `OperacionTextoMundo.cs` | 95 | OperacionTextoMundo | Los carteles del nivel son TextMesh. Con la fuente integrada el shader de texto (GUI/Text Shader) ignora la profundidad … |
 | `RampaCaminable.cs` | 68 | RampaCaminable | WP10 (#101): la rampa del campanario. El motor de los soldados camina en plano (la altura solo cambia con saltos, trepas… |
 | `ArtilleroDeTorreta.cs` | 64 | ArtilleroDeTorreta | Una MonoBehaviour que se agrega a la escena desde el builder debe vivir en un archivo con su mismo nombre: si no, el pla… |
+| `EntradaDeReserva.cs` | 57 | EntradaDeReserva | Las reservas aparecian en suelo abierto, sin ningun acceso (bug 12). Al activarse una reserva se levanta, una sola vez p… |
 | `EscaleraTrepable.cs` | 39 | EscaleraTrepable | Bug #141 ("bug de escalera"): la escalera de la torreta de artilleria era solo decorado (aparecia el icono de trepar y n… |
 
 ## Otros — 1 scripts, 17 lineas
@@ -327,7 +328,7 @@
 |---|---|---|---|
 | `Readme.cs` | 17 | Readme, Section | — |
 
-## Player — 28 scripts, 10,323 lineas
+## Player — 28 scripts, 10,351 lineas
 
 > Traduccion de intencion a ordenes: input, posesion, seleccion, ordenes.
 
@@ -340,8 +341,8 @@
 | `PlayerInputDriver.Vehiculo.cs` | 698 | PlayerInputDriver | PlayerInputDriver (parte): manejo de vehiculos (entrar, asientos, camara, ordenes con [T]). |
 | `PedidoDeCuracion.cs` | 565 | PedidoDeCuracion | "Necesito curarme" del menu de ordenes ([Q] sostenido). De las cinco ordenes del menu, cuatro ya existian en OrderServic… |
 | `Demolicion.cs` | 417 | Demolicion, DemoledorAsalto | DEMOLER (habilidad del soldado de ASALTO): plantar una carga en un muro o cobertura. Hay que estar AGACHADO y QUIETO fre… |
+| `AimTargeting.cs` | 290 | AimTargetType, AimResult, AimTargeting | B4: raiz del objeto golpeado, para el anillo generico de apuntado (SelectionRingFx necesita un Transform a quien seguir,… |
 | `KeyBindings.cs` | 285 | KeyBindings | Item 208: remapeo de teclas. Las ~35 lecturas de teclado de PlayerInputDriver estaban hardcodeadas (kb.rKey, kb.eKey, ..… |
-| `AimTargeting.cs` | 280 | AimTargetType, AimResult, AimTargeting | B4: raiz del objeto golpeado, para el anillo generico de apuntado (SelectionRingFx necesita un Transform a quien seguir,… |
 | `CambioDeAliado.cs` | 266 | CambioDeAliado | P7 (#120c): cambio de aliado con [C], en FPS. pantalla, no objetos del mundo); el candidato es el mas centrado en pantal… |
 | `SelectionController.cs` | 238 | SelectionController | Selección múltiple en vista RTS. |
 | `PlayerInputDriver.Contextual.cs` | 204 | PlayerInputDriver | PlayerInputDriver (parte): la orden CONTEXTUAL de un toque de [Q] y el envio de aliados a interactuar. Pedido explicito:… |
@@ -349,7 +350,7 @@
 | `PlayerInputDriver.Interaccion.cs` | 162 | PlayerInputDriver | PlayerInputDriver (parte): detector central de IInteractable. Archivo NUEVO y aditivo: no reemplaza nada de PlayerInputD… |
 | `PlayerBrain.cs` | 161 | PlayerBrain | La consciencia que salta de cuerpo en cuerpo. Traduce intención en llamadas al soldado que ocupa. Es único en la escena. |
 | `Rehen.cs` | 154 | Rehen, GiroDeMarcador | Hace que el civil de la mision de rescate (RoleType.Civilian, creado por MisionDirector.AparecerCivil) se distinga a sim… |
-| `MunicionPickup.cs` | 129 | MunicionPickup | Municion suelta al morir un enemigo (item nuevo). 100% por codigo, sin prefab ni asset externo -- mismo espiritu que Caj… |
+| `MunicionPickup.cs` | 147 | MunicionPickup | Municion suelta al morir un enemigo (item nuevo). 100% por codigo, sin prefab ni asset externo -- mismo espiritu que Caj… |
 | `PlayerInputDriver.Escuadra.cs` | 125 | PlayerInputDriver | PlayerInputDriver (parte): orden de la escuadra. El lugar en la lista fija a que numero de roster y a que [F1..F9] respo… |
 | `RescateAutomatico.cs` | 123 | RescateAutomatico | A5: "un aliado libre va a revivirte y frena el timer". Mismo patron que PedidoDeCuracion (curarse por pedido del jugador… |
 | `OrdenesDeEscuadra.cs` | 109 | OrdenesDeEscuadra, PuntoDeCobertura | Ordenes nuevas del radial que no vivian en OrderService: cubrirse segun hacia donde se mira y "todos quietos". Estaticas… |
@@ -362,7 +363,7 @@
 | `PossessionService.cs` | 28 | PossessionService | Ejecuta la transferencia de control y la anuncia. El cuerpo abandonado no se destruye ni se congela: su AiBrain se react… |
 | `PlayerInputDriver.Registro.cs` | 19 | PlayerInputDriver | Servicio unico de la escena: se registra al activarse en vez de que cada consumidor lo busque con un barrido. El suite (… |
 
-## Presentation — 113 scripts, 22,913 lineas
+## Presentation — 113 scripts, 22,929 lineas
 
 > Todo lo que se ve y se oye en el mundo: VFX, audio, marcadores, pools visuales.
 
@@ -397,10 +398,10 @@
 | `KillCylinderFx.cs` | 248 | KillCylinderFx | Marca el lugar donde cae un enemigo con un cilindro delgado que sube muy por encima del mapa y se desvanece solo. Mismo … |
 | `VehicleFxReactor.cs` | 244 | VehicleFxReactor, VehicleSmokePuff | Reaccion visual/sonora propia del vehiculo al recibir daño. Antes un impacto solo bajaba una barra de vida en el HUD -- … |
 | `GameplaySceneBootstrap.cs` | 243 | GameplaySceneBootstrap | Marca en el log de flujo que la escena de gameplay terminó de cargar (Start corre después de que todo el resto ya se con… |
+| `UnitLabelView.cs` | 239 | UnitLabelView | C1: etiqueta al pie de cada unidad con su vida, su tipo (aliado / enemigo / vehiculo / interactuable) y, si es montable,… |
 | `TransparenciaDeOclusores.cs` | 234 | TransparenciaDeOclusores, Estado | Bug #219 ("me obstaculiza algo: aplica transparencia a lo que esta entre la camara y el seleccionado"): paredes, techos … |
 | `SfxSintetico.Victoria.cs` | 231 | SfxSintetico | WP2 (#093): himno de victoria y salvataje, sintetizado por codigo (nada descargado). 26,5 s en Re mayor a 92 bpm, progre… |
 | `PantallaDeResultado.cs` | 224 | PantallaDeResultado | Bug #064: "agrega una animacion, que no sea una pantalla de golpe, que tenga su fade o efecto". La pantalla de victoria/… |
-| `UnitLabelView.cs` | 223 | UnitLabelView | C1: etiqueta al pie de cada unidad con su vida, su tipo (aliado / enemigo / vehiculo / interactuable) y, si es montable,… |
 | `CurandoAnimacion.cs` | 219 | CurandoAnimacion, Estado, AvisoCentral | Animacion de CURAR / REANIMAR (pedido del bug #8: "quiero que tenga una animacion de curarme"). Los soldados son de bloq… |
 | `PostFxDirector.cs` | 215 | PostFxDirector | Items 176 (aberracion cromatica por daño) y 178 (desenfoque de movimiento en el vehiculo). Los dos necesitan post-proces… |
 | `CoverHologram.cs` | 214 | CoverHologram | Holograma de cobertura. Mientras el jugador mantiene [Shift] apuntando a una cobertura se muestra, ESTATICO y 90 % trans… |
@@ -508,13 +509,13 @@
 | `TutorialLog.cs` | 57 | TutorialLog | Log claro del tutorial: una linea por INICIO de paso, por SUB-PASO cumplido, por PISTA mostrada y por PASO completado. S… |
 | `CatalogoDelTutorial.cs` | 40 | CatalogoDelTutorial | Los objetos del tutorial que viven bakeados en SC_Tutorial, con referencias serializadas. Antes el tutorial y su corrida… |
 
-## UI — 61 scripts, 12,077 lineas
+## UI — 61 scripts, 12,112 lineas
 
 > HUD y pantallas: mira, roster, minimapa, radial, menus, ajustes.
 
 | Archivo | Lineas | Tipos | Que hace |
 |---|---|---|---|
-| `MenuDeOrdenes.cs` | 922 | ContextoRadial, MenuDeOrdenes | Contexto del radial: que categorias y opciones tienen sentido AHORA segun lo que se apunta. Las contextuales (curar al h… |
+| `MenuDeOrdenes.cs` | 923 | ContextoRadial, MenuDeOrdenes | Contexto del radial: que categorias y opciones tienen sentido AHORA segun lo que se apunta. Las contextuales (curar al h… |
 | `AimUI.cs` | 757 | AimUI | Retículo + prompt contextual: "F: Poseer a X" o "T: Ir aquí". También resalta el retículo cuando el disparo del jugador … |
 | `MinimapFollow.cs` | 479 | MinimapFollow | Cámara cenital del minimapa: sigue al objetivo actual (soldado o vehículo poseído) desde arriba, mirando siempre hacia a… |
 | `WeaponStatusView.cs` | 446 | WeaponStatusView | HUD fijo (no depende de apuntar a nada) con qué arma tenés, cuánta munición te queda y una barra de recarga/enfriamiento… |
@@ -569,12 +570,12 @@
 | `HudPulido.cs` | 72 | HudPulido | Ajustes de HUD que valen para TODAS las escenas de juego (gameplay, tutorial, pruebas) sin tocar cada constructor de esc… |
 | `SpriteBlanco.cs` | 70 | SpriteBlanco | BUG REAL, y afectaba a TODAS las barras del juego a la vez. Una Image de uGUI con type = Filled solo respeta fillAmount … |
 | `TextoMinimo.cs` | 69 | TextoMinimo | Pedido: "el texto de mision con las minimas palabras posibles". Los directores de nivel arman frases largas ("Avanza ent… |
+| `CapasDeHud.cs` | 68 | CapasDeHud | En RTS no hay soldado poseido que actualice el panel de arma: muestra el arma del lider de la escuadra. |
 | `MissionStatusView.cs` | 66 | MissionStatusView | Cuántos enemigos quedan y cuántos de los tuyos siguen vivos. Antes no había forma de saberlo: se peleaba a ciegas, sin s… |
 | `SelectionCountView.cs` | 63 | SelectionCountView | Cuantos hay seleccionados, en un numero grande y propio -- antes solo aparecia al final del texto de ayuda de RTS, mezcl… |
 | `SpriteDeTriangulo.cs` | 57 | SpriteTriangulo | Ronda 12: las flechas del HUD (aliados fuera de encuadre, bajas) eran rectangulos lisos de 16x22. Deben ser triangulos. … |
 | `InstructionBannerView.cs` | 43 | InstructionBannerView | Texto persistente abajo-centro: qué tecla apretar ahora, o que no hay nada que hacer. Lo actualiza quien conduce el fluj… |
 | `FondoOpacoLink.cs` | 38 | FondoOpacoLink | BUG REAL ("la UI que solapa feo" -- cajas negras vacias que se quedaban pegadas en pantalla): FondoOpaco.Poner cuelga el… |
-| `CapasDeHud.cs` | 34 | CapasDeHud | — |
 
 ## Vehicles — 11 scripts, 2,954 lineas
 
