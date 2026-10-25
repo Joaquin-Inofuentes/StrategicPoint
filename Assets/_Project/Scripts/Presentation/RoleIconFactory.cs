@@ -71,8 +71,53 @@ namespace SP.Presentation
         // llevan (SoldierClasses.Enemigos). Se aproxima el icono al arma:
         // mira de francotirador para Sniper, flecha para el resto (fusil,
         // pesada, metralleta).
+        // Una forma por clase enemiga: fusilero = flecha, comando (pesada) = doble flecha,
+        // explorador (metralleta) = circulo, francotirador = mira.
         public static Texture2D WorldIconTextureForWeapon(WeaponKind kind)
-            => WorldIconTexture(kind == WeaponKind.Sniper ? RoleType.Sniper : RoleType.Assault);
+        {
+            switch (kind)
+            {
+                case WeaponKind.Sniper: return WorldIconTexture(RoleType.Sniper);
+                case WeaponKind.Heavy:
+                    if (dobleFlechaMundo == null) dobleFlechaMundo = Blanquear(BuildDobleFlecha(), "WorldIcon_DobleFlecha");
+                    return dobleFlechaMundo;
+                case WeaponKind.Smg: return WorldIconTexture(RoleType.Enemy);
+                default: return WorldIconTexture(RoleType.Assault);
+            }
+        }
+
+        static Texture2D dobleFlechaMundo;
+
+        // Copia en blanco opaco de la forma (el material Unlit de mundo lee RGB, no el alfa solo).
+        static Texture2D Blanquear(Texture2D origen, string nombre)
+        {
+            int w = origen.width, h = origen.height;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, false) { name = nombre, hideFlags = HideFlags.HideAndDontSave };
+            var pix = new Color32[w * h];
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+                pix[y * w + x] = new Color32(255, 255, 255, (byte)(origen.GetPixel(x, y).a * 255f));
+            tex.SetPixels32(pix);
+            tex.Apply(false, false);
+            return tex;
+        }
+
+        // Dos chevrones apilados: la unidad de asalto pesado.
+        static Texture2D BuildDobleFlecha()
+        {
+            var tex = NuevaTextura();
+            for (int y = 0; y < Size; y++)
+            for (int x = 0; x < Size; x++)
+            {
+                float nx = (x + 0.5f) / Size * 2f - 1f;
+                float ny = (y + 0.5f) / Size * 2f - 1f;
+                bool inside = PointInTriangle(nx, ny, 0f, 0.95f, -0.7f, 0.1f, 0.7f, 0.1f)
+                           || PointInTriangle(nx, ny, 0f, 0.0f, -0.7f, -0.85f, 0.7f, -0.85f);
+                tex.SetPixel(x, y, new Color(0f, 0f, 0f, inside ? 1f : 0f));
+            }
+            tex.Apply();
+            return tex;
+        }
 
         static Texture2D NuevaTextura() => new Texture2D(Size, Size, TextureFormat.Alpha8, false) { name = "RoleIcon", hideFlags = HideFlags.HideAndDontSave };
 

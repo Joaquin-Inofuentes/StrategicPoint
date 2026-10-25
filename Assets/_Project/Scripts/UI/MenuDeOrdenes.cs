@@ -316,6 +316,16 @@ namespace SP.UI
             soldadosMuertos[2] = m3;
         }
 
+        // Rol del soldado a partir del nombre de su clase ("ASALTO", "MEDICO", "FRANCOTIRADOR"...), para elegir su icono.
+        static SP.Combat.RoleType RolDeClase(string clase)
+        {
+            string c = (clase ?? "").ToUpperInvariant();
+            if (c.Contains("MED")) return SP.Combat.RoleType.Medic;
+            if (c.Contains("FRANC") || c.Contains("FLANQ")) return SP.Combat.RoleType.Flanker;
+            if (c.Contains("ASAL")) return SP.Combat.RoleType.Assault;
+            return SP.Combat.RoleType.Enemy;   // sin clase conocida: icono generico
+        }
+
         string Texto(string plantilla)
         {
             return plantilla.Replace("{1}", "1 · " + soldados[0]).Replace("{2}", "2 · " + soldados[1]).Replace("{3}", "3 · " + soldados[2]);
@@ -560,7 +570,8 @@ namespace SP.UI
             {
                 bool activa = i < ids.Count;
                 rebanadas[i].gameObject.SetActive(activa);
-                etiquetas[i].gameObject.SetActive(activa);   // icono + nombre corto debajo (pedido: radial con descripcion)
+                // Pedido: la descripcion aparece solo cuando el cursor esta sobre el icono (categoria resaltada).
+                etiquetas[i].gameObject.SetActive(activa && ids[i] == Seleccion);
                 if (!activa) continue;
 
                 int cat = ids[i];
@@ -657,6 +668,7 @@ namespace SP.UI
                     etiquetasOpcion[j].rectTransform.anchoredPosition = dir * RadioIconoOpcion + Vector2.down * BajadaDeLaEtiquetaOpcion;
                     etiquetasOpcion[j].text = $"<size=9>{sub + 1}</size>\n{SP.Core.Loc.T("MUERTO")}";
                     etiquetasOpcion[j].color = new Color(0.5f, 0.5f, 0.5f);
+                    etiquetasOpcion[j].gameObject.SetActive(elegida);
                 }
                 else
                 {
@@ -673,7 +685,9 @@ namespace SP.UI
                     if (iconosOpcion != null && iconosOpcion[j] != null)
                     {
                         iconosOpcion[j].gameObject.SetActive(true);
-                        iconosOpcion[j].sprite = RadialIconFactory.ForOpcion(Seleccion, sub);
+                        iconosOpcion[j].sprite = Seleccion == Poseer && sub >= 0 && sub < 3
+                            ? SP.Presentation.RoleIconFactory.For(RolDeClase(soldados[sub]))   // icono del tipo de soldado, no una persona generica
+                            : RadialIconFactory.ForOpcion(Seleccion, sub);
                         iconosOpcion[j].color = colorOp;
                         iconosOpcion[j].rectTransform.anchoredPosition = dirOp * RadioIconoOpcion + Vector2.up * SubidaDelIconoOpcion;
                         iconosOpcion[j].rectTransform.sizeDelta = new Vector2(TamanoIconoOpcion, TamanoIconoOpcion);
@@ -681,6 +695,7 @@ namespace SP.UI
                     etiquetasOpcion[j].rectTransform.anchoredPosition = dirOp * RadioIconoOpcion + Vector2.down * BajadaDeLaEtiquetaOpcion;
                     etiquetasOpcion[j].text = Partir(Texto(OpcionesDe[Seleccion][sub]).Replace(" · ", "\n"));
                     etiquetasOpcion[j].color = colorOp;
+                    etiquetasOpcion[j].gameObject.SetActive(elegida);   // descripcion solo de la opcion bajo el cursor
                 }
             }
 
