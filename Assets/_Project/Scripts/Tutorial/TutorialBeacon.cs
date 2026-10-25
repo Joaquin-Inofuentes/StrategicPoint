@@ -47,6 +47,7 @@ namespace SP.Tutorial
             b.color = color;
             b.Armar(texto, alto, alturaEtiqueta, escalaTexto);
             activas.Add(b);
+            MarcaDeObjetivosEnMinimapa.Asegurar();   // la baliza tambien se marca en el minimapa
             return b;
         }
 

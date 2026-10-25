@@ -189,7 +189,7 @@ namespace SP.Operacion
 
         void OnDestroy()
         {
-            if (Instancia == this) Instancia = null;
+            if (Instancia == this) { Instancia = null; SP.Tutorial.MarcaDeObjetivosEnMinimapa.Extras = null; }
             SP.Core.SesionLog.QuitarGuardable(this);
             WeaponHolder.CargadoresDeReserva = WeaponHolder.CargadoresPorDefecto;
             SonidosDeOperacion.DetenerAmbiente();
@@ -223,6 +223,7 @@ namespace SP.Operacion
             ArmarCoberturasDeLaPlaza();
             SP.Presentation.PrecalentadoDeCombate.Ejecutar();
             if (Application.isPlaying) GuiaDeObjetivo.Asegurar();   // #105: flecha 3D + ruta punteada + flecha a los pies
+            if (Application.isPlaying) { SP.Tutorial.MarcaDeObjetivosEnMinimapa.Extras = PuntosExtraDeMinimapa; SP.Tutorial.MarcaDeObjetivosEnMinimapa.Asegurar(); }
             EntrarFase(FaseOperacion.Infiltrar);
             // WP9a (#097): cinematica inicial con los pasos de la operacion. Bloquea todo hasta terminar (o hasta mantener [Espacio] 1 s).
             // P9 (#123): primero el rapel desde el helicoptero (5 s); al terminar encadena la cinematica de los pasos.

@@ -37,6 +37,19 @@ namespace SP.Operacion
 
         public bool MandoActivo => !ResistirSinMando && radioDeCampana != null && sectoresDeDefensa != null && sectoresDeDefensa.Length > 0;
 
+        // Objetivos de la fase Resistir que no son una baliza, para marcarlos en el minimapa: la radio (antes de llegar), los sectores a
+        // cubrir (con el mando activo) o la plaza (sin mando).
+        IEnumerable<Vector3> PuntosExtraDeMinimapa()
+        {
+            if (Fase != FaseOperacion.Resistir) yield break;
+            if (MandoActivo)
+            {
+                if (Subfase < 1) { if (baliza == null && radioDeCampana != null) yield return radioDeCampana.position; }
+                else foreach (var s in sectoresDeDefensa) if (s != null) yield return s.transform.position;
+            }
+            else if (baliza == null && plaza != null) yield return plaza.position;
+        }
+
         public const int PasosDelMando = 6;
         public const int CantidadDeOleadas = 5;
         public const float AlturaDelCampanario = 6.5f, RadioDelCampanario = 3.4f;
