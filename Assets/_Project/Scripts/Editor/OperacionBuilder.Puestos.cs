@@ -200,8 +200,7 @@ namespace SP.EditorTools
             float zc = z0 - 7f;
             var carga = Grupo(g, "Carga_" + cap);
             carga.position = new Vector3(xb, 0f, zc);
-            Pintura(carga, "Placa", xb, zc, 3.6f, 3.6f, Amarillo, 0f, 0.075f, 0.05f);
-            for (int k = -1; k <= 1; k++) Pintura(carga, "Banda_" + (k + 1), xb + k * 1.15f, zc, 0.5f, 3.0f, Negro, 45f, 0.12f, 0.03f);
+            // Bugs #299/#300 ("quita ese circulo amarillo"): sin placa ni bandas en el piso; el punto de carga lo marcan la caja, el LED y el rotulo.
             var caja = Cubo(carga, "Caja_Carga", xb, zc, 1.1f, 0.85f, 0.8f, CargaCaja, 0f, 0f, true, 0);
             Decor(carga, "Caja_Cinta", xb, zc, 1.16f, 0.12f, 0.86f, Amarillo, 0f, 0.5f);
             var led = Decor(carga, "Led", xb + 0.3f, zc - 0.2f, 0.2f, 0.1f, 0.2f, Pantalla, 0f, 0.85f);

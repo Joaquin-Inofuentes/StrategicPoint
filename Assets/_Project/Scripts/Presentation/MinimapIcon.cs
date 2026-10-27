@@ -155,11 +155,14 @@ namespace SP.Presentation
         void PintarVehiculo(SP.Vehicles.Vehicle v)
         {
             bool mio = EsDelJugador(v);
-            if (vehiculoPintado && mio == vehiculoMioPintado && v.Occupants.Count == ocupantesPintados && selfRenderer != null && selfRenderer.sharedMaterial != null) return;
-            vehiculoPintado = true; vehiculoMioPintado = mio; ocupantesPintados = v.Occupants.Count;
+            int estado = v.IsDestroyed ? -2 : v.Occupants.Count;
+            if (vehiculoPintado && mio == vehiculoMioPintado && estado == ocupantesPintados && selfRenderer != null && selfRenderer.sharedMaterial != null) return;
+            vehiculoPintado = true; vehiculoMioPintado = mio; ocupantesPintados = estado;
             Color color = Color.gray;
             if (mio) color = DiamondGizmo.ColorObjetivo;
-            else if (v.Occupants.Count > 0) color = v.Bando == TeamId.Enemy ? DiamondGizmo.ColorEnemigo : DiamondGizmo.ColorAliado;
+            else if (v.IsDestroyed) color = Color.gray;
+            else if (v.Bando == TeamId.Enemy) color = DiamondGizmo.ColorEnemigo;   // bug #302: las camionetas enemigas las maneja la IA (sin ocupantes) y salian grises
+            else if (v.Occupants.Count > 0) color = DiamondGizmo.ColorAliado;
             // La forma solo cambia por "yo" (triangulo); al dejar de serlo vuelve a la que tenia (cuadrado o disco, segun como se armo el icono).
             if (mio)
             {
@@ -182,7 +185,7 @@ namespace SP.Presentation
         }
 
         public int SoldadoId => soldierDetectado != null ? soldierDetectado.Id : -1;
-        public const float ConoDeVehiculoRadio = 45f;
+        public const float ConoDeVehiculoRadio = 70f;   // bug #302: de 45 a 70 m (el minimapa muestra 110 m a la redonda); igual a WorldUiDirector.RadioDeVehiculoPropio
 
         public void RepintarPorEquipo(bool forzar = false)
         {
@@ -957,6 +960,23 @@ namespace SP.Presentation
 
             var icon = go.AddComponent<MinimapIcon>();
             icon.Target = target;
+            return icon;
+        }
+
+        // Bug #302 ("no veo a los enemigos en el minimapa"): los vehiculos que nacen en juego (camionetas del asalto, perseguidoras de la huida,
+        // oleadas) se instancian desde una plantilla y el icono NO es hijo del vehiculo, asi que nunca lo tenian. Idempotente.
+        public static MinimapIcon AsegurarParaVehiculo(SP.Vehicles.Vehicle v)
+        {
+            if (v == null) return null;
+            var previo = BuscarPorTarget(v.transform);
+            if (previo != null) return previo;
+            int layer = LayerMask.NameToLayer("Minimap");
+            if (layer < 0) layer = 8;
+            var root = SP.Core.RaicesDeEscena.Buscar("VehiculosIconosRoot");
+            if (root == null) root = new GameObject("VehiculosIconosRoot");
+            var icon = Spawn(v.transform, Color.gray, layer, 2.0f);
+            icon.transform.SetParent(root.transform, true);
+            icon.ConvertirEnCuadrado();
             return icon;
         }
 

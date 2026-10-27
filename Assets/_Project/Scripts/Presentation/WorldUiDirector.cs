@@ -299,7 +299,7 @@ namespace SP.Presentation
         // Bug #293 ("deberian aparecer los enemigos en el minimapa"): antes cada observador veia a 10 m y un soldado montado en un vehiculo contaba en
         // el punto donde subio (200 m detras del tanque). Ahora: a pie ve entre 18 y 35 m (su vision real), el montado no cuenta y el VEHICULO propio
         // con gente adentro ve a 45 m desde donde esta.
-        public const float RadioDeVehiculoPropio = 45f, RadioMinimoAPie = 18f, RadioMaximoAPie = 35f;
+        public const float RadioDeVehiculoPropio = 70f, RadioMinimoAPie = 18f, RadioMaximoAPie = 35f;
         readonly List<float> fogRadios2 = new List<float>();
 
         void RebuildFogObservers()

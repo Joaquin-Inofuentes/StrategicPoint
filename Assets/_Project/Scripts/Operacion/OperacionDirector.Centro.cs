@@ -218,6 +218,7 @@ namespace SP.Operacion
             var go = Instantiate(autoPlantilla, pos, rot);
             go.transform.localScale = autoPlantilla.transform.localScale * EscalaDeCamioneta;
             go.SetActive(true);   // antes de medir: un renderer inactivo devuelve una caja vacia
+            SP.Presentation.MinimapIcon.AsegurarParaVehiculo(go.GetComponent<SP.Vehicles.Vehicle>());   // bug #302: la camioneta enemiga se ve en el minimapa
             bool hay = false; var b = new Bounds();
             foreach (var r in go.GetComponentsInChildren<Renderer>(true))
             {

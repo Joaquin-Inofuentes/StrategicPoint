@@ -141,25 +141,28 @@ namespace SP.EditorTools
             }
 
             // ------------------------------------------------ e) techo: bandejas de cable y ductos de aire
+            // Bug #301 ("las vigas del techo que esten pegadas al techo, estan muy bajas"): el techo de la sala (Techo_CD) tiene su cara de abajo en y 8,0.
+            // Bandejas, ductos, rejillas y paneles cuelgan pegados a esa cara (1 cm de aire para que no se pisen las caras); los cables van bajo la bandeja.
+            const float TechoBandeja = 7.925f, TechoCable = 7.845f, TechoDucto = 7.69f, TechoRejilla = 7.37f, TechoPanel = 7.965f;
             var gTecho = Grupo(g, "Techo");
             foreach (float x in new[] { -17f, -4.5f, 4.5f, 17f })
             {
-                CajaPF(gTecho, "Bandeja", new Vector3(x, 7.25f, -60f), new Vector3(0.55f, 0.12f, 36f), negro);
-                CajaPF(gTecho, "Cable_R", new Vector3(x - 0.14f, 7.33f, -60f), new Vector3(0.08f, 0.05f, 35.6f), cableR);
-                CajaPF(gTecho, "Cable_A", new Vector3(x + 0.14f, 7.33f, -60f), new Vector3(0.08f, 0.05f, 35.6f), cableA);
+                CajaPF(gTecho, "Bandeja", new Vector3(x, TechoBandeja, -60f), new Vector3(0.55f, 0.12f, 36f), negro);
+                CajaPF(gTecho, "Cable_R", new Vector3(x - 0.14f, TechoCable, -60f), new Vector3(0.08f, 0.05f, 35.6f), cableR);
+                CajaPF(gTecho, "Cable_A", new Vector3(x + 0.14f, TechoCable, -60f), new Vector3(0.08f, 0.05f, 35.6f), cableA);
             }
             foreach (float z in new[] { -69f, -52f })
             {
-                CajaPF(gTecho, "Ducto", new Vector3(0f, 7.55f, z), new Vector3(46f, 0.6f, 0.9f), ducto, 0f, true);
+                CajaPF(gTecho, "Ducto", new Vector3(0f, TechoDucto, z), new Vector3(46f, 0.6f, 0.9f), ducto, 0f, true);
                 for (int k = -3; k <= 3; k++)
-                    CajaPF(gTecho, "Rejilla_Aire", new Vector3(k * 6.5f, 7.22f, z), new Vector3(1.4f, 0.04f, 0.7f), gabRejilla);
+                    CajaPF(gTecho, "Rejilla_Aire", new Vector3(k * 6.5f, TechoRejilla, z), new Vector3(1.4f, 0.04f, 0.7f), gabRejilla);
             }
 
             // paneles de luz de techo (emisivos): 3 filas a lo largo de la sala
             var panelLuz = Mat("PanelLuzTecho", new Color(0.8f, 0.92f, 1f), 1.1f);
             foreach (float x in new[] { -11f, 0f, 11f })
                 for (int k = 0; k < 7; k++)
-                    CajaPF(gTecho, "Panel_Luz", new Vector3(x, 7.18f, -76f + k * 5.2f), new Vector3(1.3f, 0.05f, 2.4f), panelLuz);
+                    CajaPF(gTecho, "Panel_Luz", new Vector3(x, TechoPanel, -76f + k * 5.2f), new Vector3(1.3f, 0.05f, 2.4f), panelLuz);
 
             // ------------------------------------------------ f) puertas de acceso: sur (x -4..4), oeste y este (z -62..-56)
             var gPu = Grupo(g, "PuertasDeAcceso");
