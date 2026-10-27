@@ -65,6 +65,7 @@ namespace SP.Operacion
         // tambien van en enemigosCuartel: el objetivo se cumple con todos muertos.
         public TorreDestruible[] torres;
         public ReflectorVigia[] reflectores;
+        public GeneradorDelCuartel generador;   // etapa C: cortar la energia abre el porton norte (las torretas son opcionales)
 
         [Header("2. Muralla de contencion: dos puestos a volar")]
         public PuestoDeVoladura[] puestos;                // Oeste y Este
@@ -576,6 +577,7 @@ namespace SP.Operacion
             kv["cuartelVivos"] = Vivos(enemigosCuartel).ToString();
             kv["torresCaidas"] = IndicesCaidos(torres);
             kv["reflectoresRotos"] = IndicesRotos(reflectores);
+            kv["generadorCaido"] = (generador != null && generador.EstaCaido).ToString();
             if (heli != null) kv["heli"] = $"activo={heli.gameObject.activeSelf};pos={heli.position.x:0.0},{heli.position.y:0.0},{heli.position.z:0.0};aterrizo={HeliAterrizo}";
         }
 
@@ -666,6 +668,7 @@ namespace SP.Operacion
                 foreach (var p in tc.Split(',')) if (int.TryParse(p, out var ti) && ti >= 0 && ti < torres.Length && torres[ti] != null) torres[ti].CaerYa();
             if (kv.TryGetValue("reflectoresRotos", out var rr) && !string.IsNullOrEmpty(rr) && reflectores != null)
                 foreach (var p in rr.Split(',')) if (int.TryParse(p, out var ri) && ri >= 0 && ri < reflectores.Length && reflectores[ri] != null) reflectores[ri].RomperYa();
+            if (generador != null && kv.TryGetValue("generadorCaido", out var gc) && gc == "True") { generador.Caer(); apagonHecho = true; }
             Reloj = F(kv, "reloj");
             Subfase = (int)F(kv, "subfase");
             AutosDestruidos = (int)F(kv, "autosDestruidos");
@@ -690,6 +693,7 @@ namespace SP.Operacion
             {
                 foreach (var s in enemigosCuartel) if (s != null) s.gameObject.SetActive(false);
                 if (portonCuartel != null) { portonCuartel.SetActive(false); }
+                if (generador != null) { generador.Caer(); apagonHecho = true; }
             }
             if (Indice(destino) > Indice(FaseOperacion.Puestos))
             {

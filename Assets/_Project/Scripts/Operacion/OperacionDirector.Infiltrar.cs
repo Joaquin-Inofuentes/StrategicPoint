@@ -25,6 +25,7 @@ namespace SP.Operacion
         void BalizaDeInfiltrar()
         {
             TorreDestruible mejor = null;
+            if (generador != null && !generador.EstaCaido) { PonerBaliza("GENERADOR", new Color(1f, 0.82f, 0.3f), generador.transform.position, null); return; }
             if (torres != null)
                 foreach (var t in torres)
                     if (t != null && t.tipo == TorreDestruible.Tipo.Torreta && !t.EstaCaida && (mejor == null || t.transform.position.z < mejor.transform.position.z)) mejor = t;
@@ -43,7 +44,7 @@ namespace SP.Operacion
                 if (dp.magnitude < 15f)
                 {
                     tAvisoDePaso = Time.time + 5f;
-                    AvisoUnico.Mostrar("PRIMERO CUMPLÍ EL OBJETIVO: DERRIBÁ LAS 2 TORRETAS DE ARTILLERÍA", 4f, new Color(1f, 0.7f, 0.3f), AvisoUnico.PrioridadAlta);
+                    AvisoUnico.Mostrar(generador != null ? "PRIMERO CORTÁ LA ENERGÍA: DESTRUÍ EL GENERADOR DEL COMANDO" : "PRIMERO CUMPLÍ EL OBJETIVO: DERRIBÁ LAS 2 TORRETAS DE ARTILLERÍA", 4f, new Color(1f, 0.7f, 0.3f), AvisoUnico.PrioridadAlta);
                 }
             }
             // Pedido: "primero debes detonar los 2 artilleros". Bug #169 ("es muy molesto tener que matar a todos los soldados, que solo sea destruir los 2 puestos"):
@@ -55,12 +56,19 @@ namespace SP.Operacion
                 BalizaDeInfiltrar();
                 if (torretas > 0) AvisoUnico.Mostrar(torretas >= TorresDeTorreta ? "TORRETAS DESTRUIDAS · EL PORTÓN NORTE SE ABRE" : $"TORRETA DESTRUIDA {torretas}/{TorresDeTorreta}", 3.5f, new Color(1f, 0.7f, 0.3f), AvisoUnico.PrioridadAlta);
             }
-            if (hud != null)
+            bool sinEnergia = generador != null && generador.EstaCaido;
+            if (sinEnergia && !apagonHecho) ApagarCuartel();
+            if (hud != null && generador != null)
+            {
+                hud.Objetivo(TituloObjetivo(1, "CORTÁ LA ENERGÍA DEL CUARTEL"), $"Destruí el GENERADOR del comando (norte) · apaga los reflectores y abre el portón · torretas {torretas}/{TorresDeTorreta} (opcional)", sinEnergia ? 1f : 0f, new Color(1f, 0.82f, 0.3f));
+                if (!sinEnergia) hud.Subobjetivos(LineaDeSubobjetivos(vivos));
+            }
+            else if (hud != null)
             {
                 hud.Objetivo(TituloObjetivo(1, "DETONÁ LAS 2 TORRETAS"), $"Artillería antiaérea destruida {torretas}/{TorresDeTorreta} · solo explosivos (el ASALTO las demuele con [Q])", torretas / (float)TorresDeTorreta, new Color(1f, 0.55f, 0.3f));
                 if (torretas < TorresDeTorreta) hud.Subobjetivos(LineaDeSubobjetivos(vivos));
             }
-            if (torretas >= TorresDeTorreta) { AbrirPorton(); PuestoActual = 0; EntrarFase(FaseOperacion.Puestos); }
+            if (torretas >= TorresDeTorreta || sinEnergia) { AbrirPorton(); PuestoActual = 0; EntrarFase(FaseOperacion.Puestos); }
         }
 
         public const int TorresDeFrancotirador = 2, TorresDeTorreta = 2, TotalDeReflectores = 4;
@@ -79,6 +87,17 @@ namespace SP.Operacion
 
         public string LineaDeSubobjetivos(int vivos)
             => $"Torres {TorresCaidas(TorreDestruible.Tipo.Francotirador)}/{TorresDeFrancotirador} · Torretas {TorresCaidas(TorreDestruible.Tipo.Torreta)}/{TorresDeTorreta} · Reflectores {ReflectoresRotos}/{TotalDeReflectores} · Soldados restantes: {vivos}";
+
+        bool apagonHecho;
+
+        // Sin energia: los 4 reflectores se apagan (el cuartel queda en sombra) y suena la alarma baja.
+        void ApagarCuartel()
+        {
+            apagonHecho = true;
+            if (reflectores != null) foreach (var r in reflectores) if (r != null) r.RomperYa();
+            AvisoUnico.Mostrar("ENERGÍA CORTADA · REFLECTORES APAGADOS · EL PORTÓN NORTE SE ABRE", 4f, new Color(1f, 0.82f, 0.3f), AvisoUnico.PrioridadAlta);
+            SesionLog.Evento("Cuartel sin energia: generador destruido");
+        }
 
         void AbrirPorton()
         {

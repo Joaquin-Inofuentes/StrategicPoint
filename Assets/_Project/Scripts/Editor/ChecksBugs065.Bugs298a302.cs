@@ -104,6 +104,28 @@ namespace SP.EditorTools
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 
+        // ---------------------------------------------------------------- 304a (etapa C) destruir el generador apaga los reflectores y abre el porton del cuartel
+        static IEnumerator Bug304a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(1, 1, 0);
+            foreach (var x in Esperar(1.5f)) yield return x;
+            var d = OperacionDirector.Instancia;
+            W8Ok(ref ok, d != null && d.generador != null && d.Fase == FaseOperacion.Infiltrar, sb, "hay generador y la fase es Infiltrar");
+            if (d == null || d.generador == null) { Fin("FALLO " + sb); yield break; }
+            var hud = OperacionHud.Instancia;
+            W8Ok(ref ok, (hud.TextoTitulo ?? "").Contains("CORTÁ LA ENERGÍA"), sb, $"HUD '{hud.TextoTitulo}'");
+            W8Ok(ref ok, d.portonCuartel.activeSelf && d.ReflectoresRotos == 0, sb, "antes: porton cerrado y reflectores encendidos");
+            d.generador.marca.Demoler();
+            foreach (var x in Esperar(2.5f)) yield return x;
+            W8Ok(ref ok, d.generador.EstaCaido && d.ReflectoresRotos == OperacionDirector.TotalDeReflectores, sb, $"generador caido={d.generador.EstaCaido}, reflectores rotos={d.ReflectoresRotos}/4");
+            W8Ok(ref ok, d.Fase == FaseOperacion.Puestos, sb, $"la fase paso a {d.Fase}");
+            foreach (var x in Esperar(1.5f)) yield return x;
+            W8Ok(ref ok, !d.portonCuartel.activeSelf, sb, "el porton del cuartel se abrio");
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
         // ---------------------------------------------------------------- 302a una camioneta enemiga que nace en juego tiene icono rojo en el minimapa
         static IEnumerator Bug302a()
         {
