@@ -3185,11 +3185,7 @@ namespace SP.Player
                         ancla = aim.Vehicle.transform.position + Vector3.up * AlturaGearVehiculo;
                         pista = $"APRETÁ [{tecla}] PARA ENTRAR";
                     }
-                    else if (aim.Vehicle != null && aim.Vehicle.IsDestroyed)
-                    {
-                        mostrar = true; destacado = false;
-                        ancla = aim.Vehicle.transform.position + Vector3.up * AlturaGearVehiculo;
-                    }
+                    // Bug #294 ("las marcas en el piso, no en el aire"): un vehiculo DESTRUIDO ya no ofrece ninguna accion; su engranaje informativo flotaba a 3,6 m. Sin marca.
                     break;
                 case AimTargetType.Torreta:
                     if (aim.Torreta != null)
@@ -3222,12 +3218,10 @@ namespace SP.Player
                 }
                 case AimTargetType.Recoger:
                     // Bug #041: arma/municion/caja en el piso -- antes solo cambiaba la mira; ahora el rombo va encima del objeto.
+                    // Bug #286 ("esa marca de municion deberia estar arriba y no tener engranaje"): el item ya lleva su propio rombo (InteractableDiamond)
+                    // parado sobre el, asi que aca NO se dibuja el engranaje de la mira; solo queda la pista de texto.
                     if (aim.HitTransform != null)
-                    {
-                        mostrar = true; destacado = true;
-                        ancla = aim.HitTransform.position + Vector3.up * 1.1f;
                         pista = "PASÁ POR ENCIMA PARA RECOGER";
-                    }
                     break;
             }
 

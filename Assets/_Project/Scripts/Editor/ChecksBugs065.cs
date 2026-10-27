@@ -297,7 +297,7 @@ namespace SP.EditorTools
                         var nombre = partes.Length > 1 ? partes[1] : "";
                         metodoActual = nombre.Length > 0 ? typeof(ChecksBugs065).GetMethod(nombre, BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic) : null;
                         erroresDeConsola = 0; salida = null; actual = null; PrepararModoDelMando(nombre);
-                        SP.Core.PartidaGuardada.ModoPrueba = true;   // P10: los checks nunca escriben la partida guardada real
+                        SP.Core.PartidaGuardada.ModoPrueba = true; SP.Core.ModoDios.VelocidadActiva = false; Application.runInBackground = true;   // P10: los checks nunca escriben la partida guardada real; el x4 del modo dios (reseteado en cada Play) doblaria sus tiempos
                         if (metodoActual == null) { Anotar(bugActual, "SIN CHECK"); SiguienteCheck(); continue; }
                         // WP9a (#097): la cinematica inicial bloquea todo el input; salvo los checks de la propia cinematica (Bug097*), se la corta antes de cada check.
                         if (EscenaDelIndice() == "SC_Operacion" && !metodoActual.Name.StartsWith("Bug097", StringComparison.Ordinal)) CinematicaDeOperacion.Saltar();

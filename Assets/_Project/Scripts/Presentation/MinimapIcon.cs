@@ -173,7 +173,16 @@ namespace SP.Presentation
             }
             EnsureRenderer();
             if (selfRenderer != null) selfRenderer.sharedMaterial = DiamondGizmo.NuevoMaterialCompartido(color);
+            // Bug #293 ("yo y mi cono de vision"): el vehiculo que maneja el jugador lleva su cono amarillo (hacia donde apunta la torreta).
+            if (Application.isPlaying)
+            {
+                if (mio) { CrearOActualizarConoDeVision(DiamondGizmo.ColorObjetivo); if (conoDeVision != null) conoDeVision.gameObject.SetActive(true); }
+                else if (conoDeVision != null) conoDeVision.gameObject.SetActive(false);
+            }
         }
+
+        public int SoldadoId => soldierDetectado != null ? soldierDetectado.Id : -1;
+        public const float ConoDeVehiculoRadio = 45f;
 
         public void RepintarPorEquipo(bool forzar = false)
         {
@@ -345,7 +354,7 @@ namespace SP.Presentation
         void ActualizarRadioCono()
         {
             if (conoDeVision == null) return;
-            float radio = brainDetectado != null ? brainDetectado.EffectiveVisionRange : ConoRadioFallback;
+            float radio = vehiculoMioPintado ? ConoDeVehiculoRadio : brainDetectado != null ? brainDetectado.EffectiveVisionRange : ConoRadioFallback;
             if (Mathf.Abs(radio - conoRadioActual) < 0.05f) return;
             conoRadioActual = radio;
             var escalaIcono = transform.localScale;
@@ -545,6 +554,13 @@ namespace SP.Presentation
                 transform.rotation = Quaternion.Euler(0f, Target.eulerAngles.y, 0f);
             if (autoColoreado) RepintarPorEquipo();
             ActualizarRadioCono();
+            // Cono del vehiculo propio: gira con la torreta (el triangulo sigue al casco).
+            if (vehiculoMioPintado && conoDeVision != null && vehiculoDetectado != null && Application.isPlaying)
+            {
+                var torreta = vehiculoDetectado.TorretaCanon;
+                float yaw = torreta != null ? torreta.YawMundo : Target.eulerAngles.y;
+                conoDeVision.rotation = Quaternion.Euler(0f, yaw, 0f);
+            }
             return true;
         }
 

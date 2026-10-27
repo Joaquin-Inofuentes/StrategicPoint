@@ -538,12 +538,22 @@ namespace SP.Mision
                 e.rafagaHasta = Time.time + DuracionDeRafaga;
                 e.pausaHasta = e.rafagaHasta + Random.Range(0.5f, 0.9f) * FactorDePausa;
                 e.proximoDisparo = Time.time + 0.1f;   // el canon necesita un instante para encarar
+                SonarRafaga(p.Boca.position);
             }
             var mira = e.objetivo.transform.position + Vector3.up * 0.9f;
             float error = p.Apuntar(mira, dt);
             if (error > 6f || Time.time < e.proximoDisparo || pool == null) return;
             e.proximoDisparo = Time.time + 1f / CadenciaPorSegundo;
             Disparar(p, e, mira);
+        }
+
+        // Bug #297: un solo clip grave por rafaga. Si el otro pivote arranco la suya hace menos de 0,4 s, no suena de nuevo (un sonido de helicoptero, no dos).
+        float ultimaRafagaSonoraT = -99f;
+        void SonarRafaga(Vector3 pos)
+        {
+            if (Time.time - ultimaRafagaSonoraT < 0.4f) return;
+            ultimaRafagaSonoraT = Time.time;
+            AudioDirector.PlayClipAt(SfxSintetico.RafagaDeHeli(), pos, 0.32f, 0.9f, PerfilEspacial.Disparo, 0.95f + 0.1f * Random.value);
         }
 
         void Disparar(PivoteMetralleta p, EstadoDePivote e, Vector3 mira)
@@ -559,8 +569,7 @@ namespace SP.Mision
             if (e.cuenta % 3 == 0)
                 SpriteFx.Lanzar("smoke_02", boca + dir * 0.4f, new Color(0.6f, 0.58f, 0.55f, 0.35f), 0.25f, 0.9f, 0.45f, Random.Range(-40f, 40f), dir * 1.5f + Vector3.up * 0.4f, 2.5f, 1);
             MuzzleLightPool.Flash(boca, new Color(1f, 0.8f, 0.4f), 6f, 10f);
-            var clip = GenericSfx.GetWeaponShot(WeaponKind.Heavy);
-            if (clip != null) AudioDirector.PlayClipAt(clip, boca, 0.6f, 0.9f, PerfilEspacial.Disparo, 0.95f + 0.1f * Random.value);
+            // Bug #297: el sonido ya no va por bala (16 escopetazos por segundo): suena una vez por rafaga (SonarRafaga, al empezarla).
             CasquillosDeMetralleta.Expulsar(boca - dir * 0.5f + Vector3.up * 0.1f, p.transform.right * 0.6f + p.transform.up * 0.3f + transform.right * p.lado);
             AlDisparar?.Invoke(this, p, boca, dir);
         }
@@ -614,6 +623,7 @@ namespace SP.Mision
                 if (objetivoFija == null) { pausaHastaFija = Time.time + 0.5f; return; }
                 rafagaHastaFija = Time.time + Random.Range(0.7f, 1.2f);
                 pausaHastaFija = rafagaHastaFija + Random.Range(0.5f, 0.9f);
+                SonarRafaga(transform.position + transform.right * 1.3f + Vector3.up * 1.2f);
             }
             if (Time.time < rafagaHastaFija && Time.time >= proximoDisparoFija && objetivoFija != null && objetivoFija.Health.IsAlive)
             {
@@ -626,7 +636,6 @@ namespace SP.Mision
                 dir = (dir + Random.insideUnitSphere * 0.035f).normalized;
                 pool.Spawn(boca, dir, -1, TeamId.Player, 6, new Color(1f, 0.85f, 0.35f));
                 MuzzleLightPool.Flash(boca, new Color(1f, 0.8f, 0.4f), 6f, 10f);
-                AudioDirector.PlayAt(SfxKind.Shoot, boca, 0.45f);
                 UltimoOrigenDeDisparo = boca;
                 DisparosHechos++;
             }

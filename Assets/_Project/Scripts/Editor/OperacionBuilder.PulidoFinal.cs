@@ -92,9 +92,9 @@ namespace SP.EditorTools
             var mSilla = Mat("SillaOficina", new Color(0.12f, 0.13f, 0.15f));
             var leds = new[]
             {
-                Mat("LedVerde", new Color(0.2f, 1f, 0.4f), 2.2f),
-                Mat("LedCian", new Color(0.2f, 0.8f, 1f), 2.2f),
-                Mat("LedAmbar", new Color(1f, 0.65f, 0.1f), 2.2f),
+                Mat("LedVerdeTenue", new Color(0.2f, 1f, 0.4f), 1.1f),
+                Mat("LedCianTenue", new Color(0.2f, 0.8f, 1f), 1.1f),
+                Mat("LedAmbarTenue", new Color(1f, 0.65f, 0.1f), 1.1f),
             };
             var pantalla = Mat("PantallaAzul", new Color(0.35f, 0.75f, 1f), 1.8f);
             var pantallaB = Mat("PantallaBlanca", new Color(0.85f, 0.95f, 1f), 1.5f);
@@ -166,17 +166,18 @@ namespace SP.EditorTools
 
             // e) muros interiores: zocalo oscuro y linea de luz cian
             var gMuro = Grupo(raiz, "Muros");
+            var ledLinea = Mat("LineaLuzTenue", new Color(0.2f, 0.8f, 1f), 0.6f);   // bug #289: baja el brillo de las barras de los muros
             void Tramo(float cx, float cz, float largo, bool largoX, float lado)
             {
                 if (largoX)
                 {
                     CajaPF(gMuro, "Zocalo", new Vector3(cx, 0.55f, cz + lado * 0.09f), new Vector3(largo, 1.1f, 0.12f), mRack);
-                    CajaPF(gMuro, "LineaLuz", new Vector3(cx, 2.7f, cz + lado * 0.06f), new Vector3(largo, 0.08f, 0.05f), leds[1]);
+                    CajaPF(gMuro, "LineaLuz", new Vector3(cx, 3.2f, cz + lado * 0.06f), new Vector3(largo, 0.08f, 0.05f), ledLinea);
                 }
                 else
                 {
                     CajaPF(gMuro, "Zocalo", new Vector3(cx + lado * 0.09f, 0.55f, cz), new Vector3(0.12f, 1.1f, largo), mRack);
-                    CajaPF(gMuro, "LineaLuz", new Vector3(cx + lado * 0.06f, 2.7f, cz), new Vector3(0.05f, 0.08f, largo), leds[1]);
+                    CajaPF(gMuro, "LineaLuz", new Vector3(cx + lado * 0.06f, 3.2f, cz), new Vector3(0.05f, 0.08f, largo), ledLinea);
                 }
             }
             Tramo(-15f, -78.95f, 22f, true, 1f); Tramo(15f, -78.95f, 22f, true, 1f);
@@ -189,10 +190,10 @@ namespace SP.EditorTools
             foreach (float x in new[] { -26f, 26f })
                 foreach (float z in new[] { -80f, -40f })
                 {
-                    CajaPF(gTecho, "Mastil", new Vector3(x, 8.2f, z), new Vector3(0.16f, 4.4f, 0.16f), mRack, 0f, true);
-                    CajaPF(gTecho, "Mastil_Luz", new Vector3(x, 10.5f, z), new Vector3(0.28f, 0.28f, 0.28f), luzRoja);
-                    FormaPF(PrimitiveType.Sphere, gTecho, "Antena_Plato", new Vector3(x + (x < 0 ? 0.6f : -0.6f), 7.4f, z), new Vector3(1.3f, 0.35f, 1.3f), mMesa, true);
-                    CajaPF(gTecho, "Equipo_Aire", new Vector3(x, 6.45f, z + (z < -60f ? 2.5f : -2.5f)), new Vector3(1.8f, 0.9f, 1.3f), mMesa, 0f, true);
+                    CajaPF(gTecho, "Mastil", new Vector3(x, 11.2f, z), new Vector3(0.16f, 4.4f, 0.16f), mRack, 0f, true);
+                    CajaPF(gTecho, "Mastil_Luz", new Vector3(x, 13.5f, z), new Vector3(0.28f, 0.28f, 0.28f), luzRoja);
+                    FormaPF(PrimitiveType.Sphere, gTecho, "Antena_Plato", new Vector3(x + (x < 0 ? 0.6f : -0.6f), 10.4f, z), new Vector3(1.3f, 0.35f, 1.3f), mMesa, true);
+                    CajaPF(gTecho, "Equipo_Aire", new Vector3(x, 8.75f, z + (z < -60f ? 2.5f : -2.5f)), new Vector3(1.8f, 0.9f, 1.3f), mMesa, 0f, true);
                 }
             return PulidoFinalObjetos - n0;
         }

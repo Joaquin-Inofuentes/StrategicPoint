@@ -92,9 +92,10 @@ namespace SP.Operacion
         public sealed class OleadaDelMando
         {
             public int numero;                 // 1..5
-            public int[] sectores;             // indices de sector
+            public int[] sectores;             // indices de sector (bug #295: siempre {0}, la plaza)
+            public int[] bocas;                // por donde entra cada grupo (indice en EntradasDelMapa), en paralelo con "cantidades"
             public int[] cantidades;
-            public int camionetas;             // 0 o 1 (sale por el sector indicado en "sectorDeCamioneta")
+            public int camionetas;             // 0 o 1 (sale por la calle indicada en "sectorDeCamioneta": 0 calle norte, 1 calle oeste)
             public int sectorDeCamioneta = -1;
             public float fraccion;             // del reloj efectivo total
             public bool anunciada, lanzada;
@@ -107,14 +108,15 @@ namespace SP.Operacion
             public int VehiculosVivos { get { int n = 0; foreach (var v in vehiculos) if (v != null && !v.Muerto) n++; return n; } }
         }
 
-        // Plan de las 5 oleadas: A, B, C (con camioneta), A+C, B (con camioneta). Fraccion = cuando SALE sobre el reloj efectivo total; se anuncia 8 s antes.
-        static readonly (int[] sectores, int[] cantidades, int camionetas, int sectorCamioneta, float fraccion)[] PlanDeOleadas =
+        // Bug #295: las 5 oleadas atacan LA PLAZA y entran desde fuera del mapa por las bocas 0 NORTE, 1 ESTE, 2 OESTE, 3 SUR (EntradasDelMapa).
+        // Fraccion = cuando SALE sobre el reloj efectivo total; se anuncia 12 s antes. La camioneta sale por la calle norte (0) o la oeste (1).
+        static readonly (int[] bocas, int[] cantidades, int camionetas, int calleCamioneta, float fraccion)[] PlanDeOleadas =
         {
             (new[] { 0 }, new[] { 6 }, 0, -1, 0.13f),
-            (new[] { 1 }, new[] { 6 }, 0, -1, 0.31f),
-            (new[] { 0 }, new[] { 7 }, 1, 0, 0.50f),
-            (new[] { 0, 1 }, new[] { 5, 5 }, 0, -1, 0.68f),
-            (new[] { 1 }, new[] { 8 }, 1, 1, 0.84f),
+            (new[] { 1, 2 }, new[] { 3, 3 }, 0, -1, 0.31f),
+            (new[] { 0, 2 }, new[] { 4, 3 }, 1, 0, 0.50f),
+            (new[] { 0, 1, 2, 3 }, new[] { 3, 3, 2, 2 }, 0, -1, 0.68f),
+            (new[] { 3, 1, 2 }, new[] { 4, 2, 2 }, 1, 1, 0.84f),
         };
 
         // Salida y parada de la camioneta de cada sector (relativas a la plaza; siempre sobre una calle libre).
@@ -216,6 +218,7 @@ namespace SP.Operacion
                 }
             }
             ActivarMilicianos(PartidaGuardada.Restaurando);   // P10: al continuar no se anuncia una llegada que ya ocurrio
+            IniciarLaPlaza();                                  // bug #295: el civil al centro, francotiradores en cero
             AsignarUnidades(yo);
             SuscribirMando();
             CameraRig.LimiteDePaneoRts = LimiteDeLaZonaJugable;
@@ -230,7 +233,7 @@ namespace SP.Operacion
             }
             else
             {
-                AlertQueue.Push("CUBRI LOS 2 PUESTOS · A Y B · CON CUALQUIER SOLDADO", AlertPriority.Alta, 3.5f);
+                AlertQueue.Push("DEFENDE LA PLAZA · PROTEGE AL CIVIL DEL CENTRO", AlertPriority.Alta, 3.5f);
                 if (!PartidaGuardada.Restaurando) VistaTacticaInicialDeResistir();
             }
             SesionLog.Evento($"MANDO: radio tomada por {yo.DisplayName}; unidades A={(UnidadA != null ? UnidadA.DisplayName : "-")} C={(UnidadC != null ? UnidadC.DisplayName : "-")} milicianos={milicianosActivos.Count}");
@@ -272,17 +275,14 @@ namespace SP.Operacion
                 if (a == null || a.Team != TeamId.Player || a.Role == RoleType.Civilian || !a.gameObject.activeInHierarchy || a.Health == null || !a.Health.IsAlive) continue;
                 if (milicianosActivos.Contains(a)) milicia.Add(a); else escuadra.Add(a);
             }
-            if (sectoresDeDefensa == null || sectoresDeDefensa.Length < 2 || sectoresDeDefensa[0] == null || sectoresDeDefensa[1] == null) return;
-            Vector3 Centro(List<Soldier> l) { var c = Vector3.zero; foreach (var x in l) c += x.transform.position; return l.Count > 0 ? c / l.Count : Vector3.zero; }
-            int Mas(Vector3 c) => Plano(c, sectoresDeDefensa[0].Centro).magnitude <= Plano(c, sectoresDeDefensa[1].Centro).magnitude ? 0 : 1;
-            int sEsc = Mas(Centro(escuadra)), sMil = Mas(Centro(milicia));
-            if (escuadra.Count > 0 && milicia.Count > 0 && sEsc == sMil) sMil = 1 - sEsc;
-            void Enviar(List<Soldier> l, int sector)
+            if (sectoresDeDefensa == null || sectoresDeDefensa.Length < 1 || sectoresDeDefensa[0] == null) return;
+            // Bug #295: un solo puesto. Los dos equipos van a la plaza, uno al sur y el otro al norte del civil (sin pisarse).
+            void Enviar(List<Soldier> l, int sector, float dz)
             {
                 for (int i = 0; i < l.Count; i++)
                 {
                     var u = l[i];
-                    var p = sectoresDeDefensa[sector].Centro + new Vector3((i - (l.Count - 1) * 0.5f) * 1.8f, 0f, 0f);
+                    var p = sectoresDeDefensa[sector].Centro + new Vector3((i - (l.Count - 1) * 0.5f) * 1.8f, 0f, dz);
                     if (UnityEngine.AI.NavMesh.SamplePosition(p, out var h, 4f, UnityEngine.AI.NavMesh.AllAreas)) p = h.position;
                     if (u.Brain != null)
                     {
@@ -293,8 +293,8 @@ namespace SP.Operacion
                     ordenSector[u.Id] = sector;
                 }
             }
-            Enviar(escuadra, sEsc); Enviar(milicia, sMil);
-            SesionLog.Evento($"RESISTIR: escuadra ({escuadra.Count}) -> sector {(char)('A' + sEsc)}, milicia ({milicia.Count}) -> sector {(char)('A' + sMil)}");
+            Enviar(escuadra, 0, -4f); Enviar(milicia, 0, 4f);
+            SesionLog.Evento($"RESISTIR: escuadra ({escuadra.Count}) y milicia ({milicia.Count}) -> la plaza");
         }
 
         void ArmarOleadasDelMando()
@@ -303,7 +303,7 @@ namespace SP.Operacion
             for (int i = 0; i < PlanDeOleadas.Length; i++)
             {
                 var p = PlanDeOleadas[i];
-                oleadasMando.Add(new OleadaDelMando { numero = i + 1, sectores = p.sectores, cantidades = p.cantidades, camionetas = p.camionetas, sectorDeCamioneta = p.sectorCamioneta, fraccion = p.fraccion });
+                oleadasMando.Add(new OleadaDelMando { numero = i + 1, sectores = new[] { 0 }, bocas = p.bocas, cantidades = p.cantidades, camionetas = p.camionetas, sectorDeCamioneta = p.calleCamioneta, fraccion = p.fraccion });
             }
         }
 
@@ -609,6 +609,9 @@ namespace SP.Operacion
             TickRumboDeLosAtacantes(dt);
             TickCoberturaAutomatica(dt);
             TickPosturaEnSector(dt);
+            TickCivilDeLaPlaza(dt);
+            TickAnclaDeLaPlaza(dt);
+            TickFrancotiradoresDeAzotea();
             TickCampanario();
             VolarHeli(Mathf.Clamp01(RelojEfectivo / Mathf.Max(1f, segundosDeResistencia)));
             ActualizarHudDelMando();
@@ -733,8 +736,9 @@ namespace SP.Operacion
 
         string LetrasDe(OleadaDelMando o)
         {
+            // Bug #295: ya no hay sectores A/B: se nombra por donde entran (NORTE+ESTE...).
             var sb = new System.Text.StringBuilder();
-            foreach (int i in o.sectores) { if (sb.Length > 0) sb.Append("+"); sb.Append(sectoresDeDefensa != null && i < sectoresDeDefensa.Length && sectoresDeDefensa[i] != null ? sectoresDeDefensa[i].letra : "?"); }
+            if (o.bocas != null) foreach (int b in o.bocas) { if (sb.Length > 0) sb.Append("+"); sb.Append(NombresDeEntrada[Mathf.Clamp(b, 0, NombresDeEntrada.Length - 1)]); }
             return sb.ToString();
         }
 
@@ -743,16 +747,16 @@ namespace SP.Operacion
         void AnunciarOleada(OleadaDelMando o)
         {
             o.anunciada = true;
-            string texto = $"OLEADA {o.numero}/{CantidadDeOleadas} · SECTOR {LetrasDe(o)} EN {Mathf.RoundToInt(MandoTactico.SegundosDeAnuncio)} s · {EnemigosDe(o)} ENEMIGOS{(o.camionetas > 0 ? " + CAMIONETA" : "")}";
+            string texto = $"OLEADA {o.numero}/{CantidadDeOleadas} · POR {LetrasDe(o)} EN {Mathf.RoundToInt(MandoTactico.SegundosDeAnuncio)} s · {EnemigosDe(o)} ENEMIGOS{(o.camionetas > 0 ? " + CAMIONETA" : "")}";
             if (hud != null) hud.Aviso(texto, 4f); else AlertQueue.Push(texto, AlertPriority.Alta, 4f);
-            for (int k = 0; k < o.sectores.Length; k++)
+            // Bug #295: una flecha por cada boca, apoyada sobre la calle un poco adentro del borde del mapa y apuntando a la plaza.
+            var centroPlaza = CentroDeLaPlaza;
+            foreach (int b in o.bocas)
             {
-                var s = sectoresDeDefensa != null && o.sectores[k] < sectoresDeDefensa.Length ? sectoresDeDefensa[o.sectores[k]] : null;
-                if (s == null) continue;
-                // La flecha: del acceso (la boca de calle mas cercana al sector) hacia el centro del sector, sobre la calle.
-                var boca = BocaMasCercana(s.Centro);
-                var centro = (boca + s.Centro) * 0.5f;
-                FlechaDeOleada.Mostrar(centro, s.Centro - boca, MandoTactico.SegundosDeAnuncio + 4f);
+                var entrada = EntradaDelMapa(b);
+                var hacia = centroPlaza - entrada; hacia.y = 0f;
+                var flecha = entrada + hacia.normalized * 14f;
+                FlechaDeOleada.Mostrar(flecha, hacia, MandoTactico.SegundosDeAnuncio + 4f);
             }
             SesionLog.Evento("MANDO: " + texto);
         }
@@ -769,21 +773,20 @@ namespace SP.Operacion
         void LanzarOleada(OleadaDelMando o)
         {
             o.lanzada = true; o.segundosDesdeLanzada = 0f;
-            if (hud != null) hud.Aviso($"¡OLEADA {o.numero}/{CantidadDeOleadas}!\nSECTOR {LetrasDe(o)}", 2.5f);
+            if (hud != null) hud.Aviso($"¡OLEADA {o.numero}/{CantidadDeOleadas}!\nENTRAN POR {LetrasDe(o)}", 2.5f);
             float t = Reloj;
-            for (int k = 0; k < o.sectores.Length; k++)
+            for (int k = 0; k < o.bocas.Length; k++)
             {
-                int sector = o.sectores[k];
                 for (int i = 0; i < o.cantidades[k]; i++)
                 {
-                    var s = TomarAtacante(o, sector, i);
+                    var s = TomarAtacante(o, o.bocas[k], i);
                     if (s == null) continue;
-                    destinoDeOleada[s] = sector;
+                    destinoDeOleada[s] = 0;   // todos van a la plaza
                     o.soldados.Add(s);
-                    pendientesMando.Add((s, t, sector));
+                    pendientesMando.Add((s, t, o.bocas[k]));
                     t += UnityEngine.Random.Range(0.8f, 2.0f);
                 }
-                t = Reloj + UnityEngine.Random.Range(0.2f, 1.0f);   // los sectores de una misma oleada entran en paralelo
+                t = Reloj + UnityEngine.Random.Range(0.2f, 1.0f);   // las bocas de una misma oleada entran en paralelo
             }
             if (o.camionetas > 0 && o.sectorDeCamioneta >= 0) LanzarCamionetaDeOleada(o, o.sectorDeCamioneta);
             lanzadasCiudad.Add(o.numero - 1);
@@ -804,30 +807,23 @@ namespace SP.Operacion
             }
         }
 
-        void LiberarEnSector(Soldier s, int sector)
+        // Bug #295: el atacante aparece en la boca de entrada del mapa (el borde: afuera de la zona jugable no hay nada que cubrir) y marcha hacia
+        // la plaza a la vista: el minimapa lo muestra mientras camina (TickRumboDeLosAtacantes lo mantiene revelado).
+        void LiberarEnSector(Soldier s, int boca)
         {
-            if (sectoresDeDefensa == null || sector < 0 || sector >= sectoresDeDefensa.Length || sectoresDeDefensa[sector] == null) return;
-            var sec = sectoresDeDefensa[sector];
-            var amenaza = sec.haciaLaAmenaza; amenaza.y = 0f; amenaza = amenaza.sqrMagnitude > 0.01f ? amenaza.normalized : Vector3.forward;
-            // Bocas del lado de la amenaza, ni encima del sector (llegan caminando) ni tan lejos que tarden una eternidad.
-            var candidatas = new List<Vector3>();
-            foreach (var b in BocasEnElNavMesh())
-            {
-                var d = Plano(b, sec.Centro);
-                float dist = d.magnitude;
-                if (dist < 24f || dist > 80f) continue;
-                if (Vector3.Dot(d / dist, amenaza) < 0.25f) continue;
-                candidatas.Add(b);
-            }
-            if (candidatas.Count == 0) foreach (var b in BocasEnElNavMesh()) if (Plano(b, sec.Centro).magnitude >= 24f) candidatas.Add(b);
-            var pos = candidatas.Count > 0 ? candidatas[UnityEngine.Random.Range(0, candidatas.Count)] : sec.Centro + amenaza * 40f;
-            pos += new Vector3(UnityEngine.Random.Range(-2.5f, 2.5f), 0f, UnityEngine.Random.Range(-2.5f, 2.5f));
-            if (UnityEngine.AI.NavMesh.SamplePosition(pos, out var h, 4f, UnityEngine.AI.NavMesh.AllAreas)) pos = h.position;
+            if (sectoresDeDefensa == null || sectoresDeDefensa.Length < 1 || sectoresDeDefensa[0] == null) return;
+            var sec = sectoresDeDefensa[0];
+            var entrada = EntradaDelMapa(boca);
+            var haciaLaPlaza = Plano(sec.Centro, entrada);
+            var lado = haciaLaPlaza.sqrMagnitude > 0.01f ? Vector3.Cross(Vector3.up, haciaLaPlaza.normalized) : Vector3.right;
+            var pos = entrada + lado * UnityEngine.Random.Range(-3f, 3f);
+            if (UnityEngine.AI.NavMesh.SamplePosition(pos, out var h, 6f, UnityEngine.AI.NavMesh.AllAreas)) pos = h.position;
             s.transform.position = new Vector3(pos.x, 0.8f, pos.z);
-            s.transform.rotation = Quaternion.LookRotation(Plano(sec.Centro, pos).normalized, Vector3.up);
+            s.transform.rotation = Quaternion.LookRotation(haciaLaPlaza.sqrMagnitude > 0.01f ? haciaLaPlaza.normalized : Vector3.forward, Vector3.up);
             EntradaDeReserva.Marcar(s.transform.position);
             s.gameObject.SetActive(true);
             ApoyoEnElPiso.Apoyar(s.transform);
+            WorldUiDirector.Revelar(s, 4f);
             if (s.Brain != null)
             {
                 s.Brain.ReactivarNavegacion();
@@ -849,7 +845,7 @@ namespace SP.Operacion
                 }
             if (plantillaDeRefuerzo == null) return null;
             var go = Instantiate(plantillaDeRefuerzo, plantillaDeRefuerzo.transform.position, Quaternion.identity, plantillaDeRefuerzo.transform.parent);
-            go.name = $"Atacante_O{o.numero}_{sectoresDeDefensa[sector].letra}{i + 1}";
+            go.name = $"Atacante_O{o.numero}_{NombresDeEntrada[Mathf.Clamp(sector, 0, NombresDeEntrada.Length - 1)][0]}{i + 1}";
             var s = go.GetComponent<Soldier>();
             if (s == null) { Destroy(go); return null; }
             go.SetActive(false);
@@ -895,6 +891,8 @@ namespace SP.Operacion
                     if (!destinoDeOleada.TryGetValue(s, out int idx) || idx < 0 || idx >= sectoresDeDefensa.Length) continue;
                     var sec = sectoresDeDefensa[idx];
                     var b = s.Brain;
+                    // Bug #295: mientras marchan hacia la plaza se los ve (minimapa); ya cerca, rige la niebla de siempre.
+                    if (Plano(s.transform.position, sec.Centro).sqrMagnitude > 24f * 24f) WorldUiDirector.Revelar(s, 3f);
                     if (b.CurrentTarget != null || b.State == AiState.Chase || b.State == AiState.Attack) continue;   // peleando: su IA manda
                     var meta = sec.Caido ? radioDeCampana.position : sec.Centro;
                     var jit = new Vector3(Mathf.Sin(s.Id * 2.3f), 0f, Mathf.Cos(s.Id * 2.3f)) * (sec.Caido ? 3f : 4f);
@@ -910,7 +908,7 @@ namespace SP.Operacion
         List<SectorDeDefensa.PuntoDeCobertura> PuntosDe(SectorDeDefensa s)
         {
             if (Coberturas.Version != versionDeCoberturas) { puntosDeSector.Clear(); versionDeCoberturas = Coberturas.Version; }
-            if (!puntosDeSector.TryGetValue(s, out var l)) { l = s.PuntosDeCobertura(4); puntosDeSector[s] = l; }
+            if (!puntosDeSector.TryGetValue(s, out var l)) { l = s.PuntosDeCobertura(s.omnidireccional ? 10 : 4); puntosDeSector[s] = l; }
             return l;
         }
 
@@ -1051,7 +1049,7 @@ namespace SP.Operacion
             {
                 // Pedido: "no importa con quien": cualquier soldado, cualquiera de los 2 sectores.
                 case 0: return sel != null && sel.Count == 1 && !MandoTactico.EsMiliciano(sel[0]);
-                case 1: return ordenSector.ContainsValue(0) || ordenSector.ContainsValue(1);
+                case 1: return ordenSector.ContainsValue(0);
                 case 2:
                     {
                         if (milicianosActivos.Count == 0 || sel == null) return false;
@@ -1064,7 +1062,7 @@ namespace SP.Operacion
                         foreach (var m in milicianosActivos) if (m != null && m.Health.IsAlive && !(ordenSector.TryGetValue(m.Id, out int b) && b >= 0)) todos = false;
                         return todos;
                     }
-                case 4: return ordenSector.ContainsValue(0) && ordenSector.ContainsValue(1);
+                case 4: return ordenSector.ContainsValue(0);   // bug #295: un solo puesto (la plaza)
             }
             return false;
         }
@@ -1122,10 +1120,10 @@ namespace SP.Operacion
             return new[]
             {
                 new PanelDeMando.Paso { texto = "SELECCIONÁ A UN SOLDADO: CLIC EN SU ROMBO", clicIzq = true },
-                new PanelDeMando.Paso { texto = $"MANDALO A UN SECTOR ({Letra(0)} O {Letra(1)}): CLIC DERECHO EN EL CÍRCULO", clicDer = true },
+                new PanelDeMando.Paso { texto = "MANDALO A LA PLAZA: CLIC DERECHO EN EL CÍRCULO", clicDer = true },
                 new PanelDeMando.Paso { texto = $"SELECCIONÁ A LOS {milicias} MILICIANOS: ARRASTRÁ UN RECUADRO", arrastre = true },
-                new PanelDeMando.Paso { texto = "MANDALOS AL OTRO SECTOR: CLIC DERECHO EN EL CÍRCULO", clicDer = true },
-                new PanelDeMando.Paso { texto = "LOS DOS SECTORES CON ALGUIEN ADENTRO: CUALQUIER SOLDADO SIRVE", clicIzq = true, clicDer = true },
+                new PanelDeMando.Paso { texto = "MANDALOS TAMBIÉN A LA PLAZA: CLIC DERECHO EN EL CÍRCULO", clicDer = true },
+                new PanelDeMando.Paso { texto = "LA PLAZA CON ALGUIEN ADENTRO: CUALQUIER SOLDADO SIRVE", clicIzq = true, clicDer = true },
                 new PanelDeMando.Paso { texto = "LLEGÓ LA CAMIONETA: CLIC DERECHO SOBRE ELLA PARA ATACAR", clicDer = true },
             };
         }
@@ -1149,11 +1147,11 @@ namespace SP.Operacion
                 case 0: if (UnidadA == null) return false; g.unidad = UnidadA; g.flechaEn = UnidadA.transform.position + Vector3.up * 2.4f; return true;
                 case 1: if (UnidadA == null) return false; g.unidad = UnidadA; g.hayRuta = true; g.origen = UnidadA.transform.position; g.destino = Centro(0); g.flechaEn = g.destino; return true;
                 case 2: if (primero == null) return false; g.unidad = primero; g.flechaEn = primero.transform.position + Vector3.up * 2.4f; return true;
-                case 3: if (primero == null) return false; g.unidad = primero; g.hayRuta = true; g.origen = primero.transform.position; g.destino = Centro(1); g.flechaEn = g.destino; return true;
+                case 3: if (primero == null) return false; g.unidad = primero; g.hayRuta = true; g.origen = primero.transform.position; g.destino = Centro(0); g.flechaEn = g.destino; return true;
                 case 4:
                     {
                         if (UnidadC == null) return false;
-                        g.unidad = UnidadC; g.hayRuta = true; g.origen = UnidadC.transform.position; g.destino = Centro(ordenSector.ContainsValue(0) && !ordenSector.ContainsValue(1) ? 1 : 0);
+                        g.unidad = UnidadC; g.hayRuta = true; g.origen = UnidadC.transform.position; g.destino = Centro(0);
                         bool seleccionada = Seleccion(out var sel) && sel.Count == 1 && sel[0] == UnidadC;
                         g.flechaEn = seleccionada ? g.destino : UnidadC.transform.position + Vector3.up * 2.4f;
                         return true;
@@ -1222,15 +1220,11 @@ namespace SP.Operacion
             if (Time.unscaledTime < proximoHud && !ForzarHud) return;
             proximoHud = Time.unscaledTime + 0.16f; ForzarHud = false;
             int seg = Mathf.CeilToInt(Mathf.Max(0f, segundosDeResistencia - RelojEfectivo));
-            var sb = new System.Text.StringBuilder("Sectores cubiertos: ");
-            if (sectoresDeDefensa != null)
-                for (int i = 0; i < sectoresDeDefensa.Length; i++)
-                {
-                    var s = sectoresDeDefensa[i];
-                    if (s == null) continue;
-                    if (i > 0) sb.Append(" · ");
-                    sb.Append(s.letra).Append(' ').Append(Marca(s));
-                }
+            var sb = new System.Text.StringBuilder("Plaza: ");
+            if (sectoresDeDefensa != null && sectoresDeDefensa.Length > 0) sb.Append(Marca(sectoresDeDefensa[0]));
+            if (CivilDeLaPlaza != null) sb.Append($" · civil {Mathf.RoundToInt(VidaDelCivilPorcentaje)} %");
+            int tiradores = FrancotiradoresVivos;
+            if (tiradores > 0) sb.Append($" · francotiradores {tiradores}");
             sb.Append($" · helicóptero en {seg} s");
             bool pausado = !RelojDelMandoCorre;
             var color = pausado ? new Color(1f, 0.3f, 0.25f) : new Color(1f, 0.55f, 0.25f);
@@ -1284,6 +1278,7 @@ namespace SP.Operacion
             FlechaDeOleada.QuitarTodas();
             WorldUiDirector.RevelarEnemigos = false;
             if (sectoresDeDefensa != null) foreach (var s in sectoresDeDefensa) if (s != null) s.Mostrar(false);
+            QuitarLaPlaza();
             foreach (var m in milicianosActivos) if (m != null && m.Brain != null) m.Brain.BonusDeAlcance = 1f;
             foreach (var r in anillosDeGuia) if (r != null) Destroy(r.gameObject);
             anillosDeGuia.Clear();
@@ -1293,12 +1288,14 @@ namespace SP.Operacion
         // Las unidades quedan ubicadas SOLAS en los sectores (subfase 1 pedida por Arrancar(5, _, 1)) y los pasos 1-5 hechos.
         void UbicarLaEscuadraSola()
         {
-            if (sectoresDeDefensa == null || sectoresDeDefensa.Length < 2) return;
-            Teletransportar(UnidadA, sectoresDeDefensa[0].Centro, 0f);
-            for (int i = 0; i < milicianosActivos.Count; i++) Teletransportar(milicianosActivos[i], sectoresDeDefensa[1].Centro, (i - (milicianosActivos.Count - 1) * 0.5f) * 1.6f);
-            Teletransportar(UnidadC, sectoresDeDefensa[0].Centro, 1.6f);
+            if (sectoresDeDefensa == null || sectoresDeDefensa.Length < 1) return;
+            // Bug #295: un solo puesto; se reparten alrededor del civil (a 5 m, 3 m al sur y al norte) para no pisarse.
+            var centro = sectoresDeDefensa[0].Centro;
+            Teletransportar(UnidadA, centro + new Vector3(0f, 0f, -5f), 0f);
+            for (int i = 0; i < milicianosActivos.Count; i++) Teletransportar(milicianosActivos[i], centro + new Vector3(0f, 0f, 5f), (i - (milicianosActivos.Count - 1) * 0.5f) * 1.6f);
+            Teletransportar(UnidadC, centro + new Vector3(0f, 0f, -5f), 1.6f);
             if (UnidadA != null) ordenSector[UnidadA.Id] = 0;
-            foreach (var m in milicianosActivos) if (m != null) ordenSector[m.Id] = 1;
+            foreach (var m in milicianosActivos) if (m != null) ordenSector[m.Id] = 0;
             if (UnidadC != null) ordenSector[UnidadC.Id] = 0;
             for (int i = 0; i < 5; i++) pasoHecho[i] = true;
         }
@@ -1366,6 +1363,26 @@ namespace SP.Operacion
             }
             kv["oleadasMandoHechas"] = string.Join(",", hechas);
             kv["relojOleada"] = rebobinar.ToString("0.00", ic);
+            // Bug #295: el civil de la plaza y los francotiradores de las azoteas (claves nuevas; las partidas viejas no las traen).
+            kv["civilVivo"] = CivilVivo.ToString();
+            kv["civilVida"] = CivilDeLaPlaza != null && CivilDeLaPlaza.Health != null ? CivilDeLaPlaza.Health.Current.ToString() : "";
+            kv["azoteasActivadas"] = AzoteasActivadas.ToString();
+            var muertas = new List<int>();
+            foreach (var f in francotiradores) if (f != null && f.soldado != null && !f.soldado.Health.IsAlive) { int idx = System.Array.IndexOf(Azoteas, f.pies); if (idx >= 0) muertas.Add(idx); }
+            kv["azoteasMuertas"] = string.Join(",", muertas);
+        }
+
+        // Restaura la plaza: el civil con la vida que tenia y los francotiradores que ya habian salido (los que murieron no vuelven).
+        void RestaurarLaPlaza(Dictionary<string, string> kv)
+        {
+            if (kv.TryGetValue("civilVida", out var cv) && int.TryParse(cv, out int vida) && CivilDeLaPlaza != null && CivilDeLaPlaza.Health != null && vida > 0 && vida < CivilDeLaPlaza.Health.Current)
+                CivilDeLaPlaza.Health.TakeDamage(CivilDeLaPlaza.Health.Current - vida, 0);
+            if (!kv.TryGetValue("azoteasActivadas", out var aa) || !int.TryParse(aa, out int activadas)) return;
+            var muertas = new HashSet<int>();
+            if (kv.TryGetValue("azoteasMuertas", out var am) && !string.IsNullOrEmpty(am)) foreach (var p in am.Split(',')) if (int.TryParse(p, out var i)) muertas.Add(i);
+            for (int i = 0; i < Mathf.Min(activadas, Azoteas.Length); i++)
+                if (!muertas.Contains(i)) ActivarFrancotirador(i, false);
+            AzoteasActivadas = Mathf.Clamp(activadas, 0, Azoteas.Length);
         }
 
         void RestaurarMando(Dictionary<string, string> kv)
@@ -1403,6 +1420,7 @@ namespace SP.Operacion
                     if (ie <= 0 || !int.TryParse(par.Substring(ie + 1), out var sec)) continue;
                     var s = PorNombre(par.Substring(0, ie)); if (s != null) ordenSector[s.Id] = sec;
                 }
+            RestaurarLaPlaza(kv);
             RelojEfectivo = F(kv, "relojEfectivo");
             float rebobinar = F(kv, "relojOleada", -1f);
             if (rebobinar >= 0f) RelojEfectivo = Mathf.Min(RelojEfectivo, rebobinar);

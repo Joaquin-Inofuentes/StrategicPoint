@@ -408,6 +408,19 @@ namespace SP.EditorTools
             Decor(mg, "Base_Zocalo", x, z, 3.9f, 0.7f, 3.9f, Hormigon);
         }
 
+        // Bug #285: sombra dura, near plane, bias bajos y resolucion alta (tier High = 1024) para que la luz del reflector no se escape por el pie de los muros.
+        // Se puede llamar sobre una luz ya existente (retoque en sitio). El tier se escribe por SerializedObject: fuera de Play el setter de URP lanza excepcion.
+        public static void SombraDeReflector(Light luz)
+        {
+            luz.shadows = LightShadows.Hard; luz.shadowNearPlane = 0.5f; luz.shadowBias = 0.05f; luz.shadowNormalBias = 0.2f;
+            if (!luz.TryGetComponent<UnityEngine.Rendering.Universal.UniversalAdditionalLightData>(out var datos)) datos = luz.gameObject.AddComponent<UnityEngine.Rendering.Universal.UniversalAdditionalLightData>();
+            var so = new SerializedObject(datos);
+            var usa = so.FindProperty("m_UsePipelineSettings"); if (usa != null) usa.boolValue = false;
+            var tier = so.FindProperty("m_AdditionalLightsShadowResolutionTier"); if (tier != null) tier.intValue = UnityEngine.Rendering.Universal.UniversalAdditionalLightData.AdditionalLightsShadowResolutionTierHigh;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(luz); EditorUtility.SetDirty(datos);
+        }
+
         // Reflector: torre de 6 m, plataforma, lampara (Luminaria + SpotLight) y operador.
         static ReflectorVigia Reflector(Transform e, Transform en, string nombre, float x, float z, Material mat, Vector3 haciaPunto, List<Soldier> arriba)
         {
@@ -450,7 +463,9 @@ namespace SP.EditorTools
             Object.DestroyImmediate(lente.GetComponent<BoxCollider>());
             var luz = lampara.AddComponent<Light>();
             luz.type = LightType.Spot; luz.range = 45f; luz.spotAngle = 18f; luz.innerSpotAngle = 12f; luz.intensity = 9f;
-            luz.color = new Color(1f, 0.96f, 0.84f); luz.shadows = LightShadows.Soft;   // bug #138: la luz no pasa a traves de obstaculos
+            luz.color = new Color(1f, 0.96f, 0.84f); luz.shadows = LightShadows.Hard;   // bug #138/#285: la luz no pasa a traves de obstaculos (sombra dura, resolucion alta, bias bajo)
+            luz.shadowNearPlane = 0.5f; luz.shadowBias = 0.05f; luz.shadowNormalBias = 0.2f;
+            SombraDeReflector(luz);
             lampara.AddComponent<Luminaria>().Health = 1;
             var r = raizR.AddComponent<ReflectorVigia>();
             float lado = x < 0f ? 4f : -4f;

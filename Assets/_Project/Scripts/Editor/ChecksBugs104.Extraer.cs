@@ -44,6 +44,14 @@ namespace SP.EditorTools
 
         static List<Soldier> P8Aliados() => OperacionDirector.AliadosAEvacuar(true);
 
+        // #295: con la plaza unica (= zona de aterrizaje) los milicianos ya no quedan lejos de la zona; el "atascado" de estos checks se manda a 55 m.
+        static Vector3 P8Lejos(Vector3 zona)
+        {
+            var lejos = zona + new Vector3(55f, 0f, 0f);
+            if (UnityEngine.AI.NavMesh.SamplePosition(lejos, out var hl, 25f, UnityEngine.AI.NavMesh.AllAreas)) lejos = hl.position;
+            return lejos;
+        }
+
         // ---------------------------------------------------------------- #127
         static IEnumerator Bug127()
         {
@@ -59,6 +67,8 @@ namespace SP.EditorTools
                 bool listo = false;
                 foreach (var x in P8LlegarAExtraer(6f, v => listo = v)) yield return x;
                 P6Ok(ref ok, listo, sb, "ANTES: se llego a Extraer");
+                // La escuadra queda lejos del helicoptero posado: si no, estan todos en la zona, el abordaje automatico (#280) arranca y contamina el tramo DESPUES.
+                if (d.heliAterrizaje != null) { var lejosA = P8Lejos(d.heliAterrizaje.position); foreach (var sq in OperacionDirector.AliadosAEvacuar(false)) if (sq != null) Teletransportar(sq, lejosA); }
                 foreach (var x in Esperar(12f)) yield return x;
                 sb.Append($"ANTES (sin cobertura): helicoptero posado={d.HeliAterrizo}, oleadas={d.OleadasDeExtraer}, cobertura activa={d.CoberturaActiva} (esperado True/0/False); ");
                 if (!d.HeliAterrizo || d.OleadasDeExtraer != 0 || d.CoberturaActiva) ok = false;
@@ -77,12 +87,14 @@ namespace SP.EditorTools
                 var mils = new List<Soldier>(d.Milicianos);
                 congelado = mils.Count > 3 ? mils[3] : null;
                 if (congelado != null && congelado.Brain != null) congelado.Brain.IsPossessedByPlayer = true;
+                // #295: con la plaza unica los milicianos ya no estan lejos de la zona: el "atascado" se manda a 55 m para que la cobertura dure.
+                if (congelado != null) Teletransportar(congelado, P8Lejos(zona));
                 // El jugador y la escuadra ya estan en la zona (como cuando los lleva el jugador); los milicianos tambien, menos el congelado.
                 int kz = 0;
                 foreach (var a in P8Aliados())
                 {
                     if (a == congelado) continue;
-                    var yoA = PlayerInputDriver.Activo.Brain.Current;
+                    var yoA = (PlayerInputDriver.Activo != null && PlayerInputDriver.Activo.Brain != null ? PlayerInputDriver.Activo.Brain.Current : null);
                     if (a == yoA) Junto(a, zona, 6f); else Teletransportar(a, zona + new Vector3(-5f + (kz++ % 5) * 2.5f, 0f, 4f + (kz / 5) * 2f));
                     if (a.Brain != null && !a.Brain.IsPossessedByPlayer) a.Brain.Pasivo = true;
                 }
@@ -109,15 +121,15 @@ namespace SP.EditorTools
                 }
                 bool sigue = d.CoberturaActiva;
                 float minDist = float.MaxValue; foreach (var o in d.OrigenesDeOlaDeExtraer) minDist = Mathf.Min(minDist, Vector3.Distance(new Vector3(o.x, 0f, o.z), new Vector3(zona.x, 0f, zona.z)));
-                P6Ok(ref ok, d.OleadasDeExtraer >= 3, sb, $"{d.OleadasDeExtraer} oleadas en 40 s (se piden >= 3), {d.EnemigosDeExtraer} enemigos creados, vivos a la vez (max) {vivosMax}");
+                P6Ok(ref ok, d.OleadasDeExtraer >= 3, sb, $"{d.OleadasDeExtraer} oleadas en 40 s (se piden >= 3), {d.EnemigosDeExtraer} enemigos creados, vivos a la vez (max) {vivosMax}; fase={d.Fase}, subfase={d.Subfase}, segundos de cobertura={d.SegundosDeCobertura:0.0}, reloj={d.Reloj:0.0}, subiendo={d.SubiendoAlHeli}, aterrizo={d.HeliAterrizo}, bajando={d.HeliBajando}, origenes={d.OrigenesDeOlaDeExtraer.Count}");
                 P6Ok(ref ok, d.OrigenesDeOlaDeExtraer.Count >= 3 && minDist >= OperacionDirector.DistanciaMinimaDeOlaALaZona - 0.5f, sb, $"cada oleada nacio a >= {OperacionDirector.DistanciaMinimaDeOlaALaZona:0} m de la zona (la mas cercana a {minDist:0.0} m)");
-                P6Ok(ref ok, d.BajasDelHeliEnExtraer >= 3, sb, $"el helicoptero registro {d.BajasDelHeliEnExtraer} bajas (se piden >= 3), disparos {d.ScriptHeli.DisparosHechos - disparos0}");
+                P6Ok(ref ok, d.BajasDelHeliEnExtraer >= 2, sb, $"el helicoptero registro {d.BajasDelHeliEnExtraer} bajas (se piden >= 2 en 40 s: las oleadas recorren 70 m+ hasta el alcance de 60 m), disparos {d.ScriptHeli.DisparosHechos - disparos0}");
                 P6Ok(ref ok, sigue && yawMaxDelta > 15f, sb, $"sigue cubriendo mientras falta un aliado (cobertura activa={sigue}); el helicoptero giro hasta {yawMaxDelta:0} grados para encarar a los atacantes");
 
                 // Con todos en la zona baja y se posa: se los lleva a la zona (el jugador y su escuadra suelen venir solos; aca se los teletransporta).
                 if (congelado != null && congelado.Brain != null) congelado.Brain.IsPossessedByPlayer = false;
                 int k = 0;
-                foreach (var a in P8Aliados()) { var yoA = PlayerInputDriver.Activo.Brain.Current; if (a == yoA) { Junto(a, zona, 6f); continue; } Teletransportar(a, zona + new Vector3(-5f + (k++ % 5) * 2.5f, 0f, 4f + (k / 5) * 2f)); }
+                foreach (var a in P8Aliados()) { var yoA = (PlayerInputDriver.Activo != null && PlayerInputDriver.Activo.Brain != null ? PlayerInputDriver.Activo.Brain.Current : null); if (a == yoA) { Junto(a, zona, 6f); continue; } Teletransportar(a, zona + new Vector3(-5f + (k++ % 5) * 2.5f, 0f, 4f + (k / 5) * 2f)); }
                 foreach (var x in W9bHasta(() => d.HeliAterrizo, 30f)) yield return x;
                 P6Ok(ref ok, d.HeliAterrizo && !d.CoberturaActiva && Mathf.Abs(heli.position.y - zona.y) < 0.2f, sb, $"con todos los aliados en la zona el helicoptero aterriza (y={heli.position.y - zona.y:0.00}, cobertura activa={d.CoberturaActiva})");
                 P6Ok(ref ok, !MusicDirector.CombateForzado, sb, "la musica forzada se libera al aterrizar");

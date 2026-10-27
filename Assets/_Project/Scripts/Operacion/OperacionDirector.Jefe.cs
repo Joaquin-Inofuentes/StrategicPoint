@@ -177,13 +177,14 @@ namespace SP.Operacion
         {
             var yo = Poseido();
             bool muro = MuroDeSalidaEnPie();
-            if (muro && !balizaDeMuroPuesta) { balizaDeMuroPuesta = true; PonerBaliza("MURO DE SALIDA", new Color(1f, 0.62f, 0.25f), muroDeSalida.transform.position, null, 3f); }
+            if (muro && !balizaDeMuroPuesta) { balizaDeMuroPuesta = true; PonerBaliza("SALIDA NORTE", new Color(1f, 0.62f, 0.25f), muroDeSalida.transform.position, null, 3f); }
             else if (!muro && balizaDeMuroPuesta && tanque != null) { balizaDeMuroPuesta = false; PonerBaliza("BLINDADO", ColorDelJefe, tanque.transform.position, tanque.transform, 3f); }
+            // Bug #291: el muro ya no lo demuele el ASALTO: lo vuela el hackeo (AbrirSalidaNorte). Mientras siga en pie solo se avisa que se esta abriendo.
             if (hud != null)
-                hud.Objetivo(TituloObjetivo(4, "HUIR EN EL TANQUE"), muro ? "El ASALTO debe DEMOLER el muro de la salida norte (apuntalo y [Q] > DEMOLER) · despues avanza al patio" : "Avanza al patio · hay un BLINDADO enemigo custodiando la fuga", 0f, ColorDelJefe);
+                hud.Objetivo(TituloObjetivo(4, "HUIR EN EL TANQUE"), muro ? "La salida norte se esta abriendo... · despues avanza al patio" : "Sali por la salida norte y avanza al patio · hay un BLINDADO enemigo custodiando la fuga", 0f, ColorDelJefe);
             if (TomaDelJefeActiva || yo == null || !yo.Health.IsAlive) return;
-            // Bug #243: la presentacion del jefe arranca apenas cae el muro (antes habia que caminar hasta z > -30 y la toma llegaba tarde).
-            bool muroCaido = muroDeSalida != null && !muro;
+            // Bug #243/#291: la presentacion del jefe arranca cuando cae el muro, dejando ver 2,5 s la explosion (antes arrancaba en el mismo cuadro).
+            bool muroCaido = muroDeSalida != null && !muro && Time.time - salidaAbiertaT >= SegundosAntesDeLaToma;
             if (muroCaido || yo.transform.position.z > ZParaLaToma) StartCoroutine(TomaDelJefe());
         }
 

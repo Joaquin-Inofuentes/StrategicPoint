@@ -324,7 +324,10 @@ namespace SP.Operacion
                     // WP9b (#097): el tanque es un jefe enemigo (BLINDADO GOLIAT); las oleadas salen mientras Kes lo repara.
                     RetirarCamionetasDelCentro();
                     PrepararHuida();
-                    Aviso("DATOS DESCARGADOS\nEL ASALTO DEBE DEMOLER EL MURO DE LA SALIDA NORTE\nDESPUES AVANZA AL PATIO: UN BLINDADO ENEMIGO CUSTODIA LA FUGA");
+                    // Bug #291: si se llego a Huir sin pasar por el hackeo (partida guardada) la salida se abre igual. Los atajos de prueba (Arrancar) la dejan en
+                    // pie: el hackeo la abre con la explosion y las pruebas del tanque y del jefe necesitan el muro como estaba.
+                    if (!PartidaGuardada.ModoPrueba || PartidaGuardada.Restaurando) AbrirSalidaNorte(false);
+                    Aviso("DATOS DESCARGADOS\nLA SALIDA NORTE SE ABRIO\nAVANZA AL PATIO: UN BLINDADO ENEMIGO CUSTODIA LA FUGA");
                     break;
                 case FaseOperacion.Resistir:
                     if (MandoActivo)

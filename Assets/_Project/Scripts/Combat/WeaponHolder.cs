@@ -879,7 +879,7 @@ namespace SP.Combat
         // ni en un build -- asi que esto no aparece en gameplay, solo
         // sirve para confirmar a ojo en el editor que el modelo real
         // siempre entra adentro.
-        void OnDrawGizmos()
+        void OnDrawGizmosSelected()
         {
             if (WeaponVisualRenderer == null) return;
             var prisma = WeaponModels.Prisma(CurrentWeaponKind);

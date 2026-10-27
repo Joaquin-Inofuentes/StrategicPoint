@@ -44,9 +44,9 @@ namespace SP.EditorTools
             var extintor = Mat("Extintor", new Color(0.75f, 0.08f, 0.06f));
             var leds = new[]
             {
-                Mat("LedVerde", new Color(0.2f, 1f, 0.4f), 2.2f),
-                Mat("LedCian", new Color(0.2f, 0.8f, 1f), 2.2f),
-                Mat("LedAmbar", new Color(1f, 0.65f, 0.1f), 2.2f),
+                Mat("LedVerdeTenue", new Color(0.2f, 1f, 0.4f), 1.1f),
+                Mat("LedCianTenue", new Color(0.2f, 0.8f, 1f), 1.1f),
+                Mat("LedAmbarTenue", new Color(1f, 0.65f, 0.1f), 1.1f),
             };
             var ledRojo = Mat("LedRojoAcceso", new Color(1f, 0.1f, 0.08f), 2.6f);
             var ledVerde = Mat("LedVerdeAcceso", new Color(0.15f, 1f, 0.35f), 2.6f);
@@ -99,7 +99,7 @@ namespace SP.EditorTools
                         CajaPF(gGab, "Led", new Vector3(x + 0.3f, yu + 0.06f, z + 0.565f), new Vector3(0.07f, 0.07f, 0.03f), led);
                     }
                     CajaPF(gGab, "Ventilacion", new Vector3(x, 2.1f, z + 0.545f), new Vector3(0.66f, 0.1f, 0.03f), gabRejilla);
-                    if (k % 3 == 1) CajaPF(gGab, "Cable_Subida", new Vector3(x, 3.05f, z + 0.1f), new Vector3(0.12f, 1.9f, 0.12f), (k + lado) % 2 == 0 ? cableR : cableA);
+                    if (k % 3 == 1) CajaPF(gGab, "Cable_Subida", new Vector3(x, 4.55f, z + 0.1f), new Vector3(0.12f, 4.9f, 0.12f), (k + lado) % 2 == 0 ? cableR : cableA);
                     idx++;
                 }
 
@@ -144,22 +144,22 @@ namespace SP.EditorTools
             var gTecho = Grupo(g, "Techo");
             foreach (float x in new[] { -17f, -4.5f, 4.5f, 17f })
             {
-                CajaPF(gTecho, "Bandeja", new Vector3(x, 4.25f, -60f), new Vector3(0.55f, 0.12f, 36f), negro);
-                CajaPF(gTecho, "Cable_R", new Vector3(x - 0.14f, 4.33f, -60f), new Vector3(0.08f, 0.05f, 35.6f), cableR);
-                CajaPF(gTecho, "Cable_A", new Vector3(x + 0.14f, 4.33f, -60f), new Vector3(0.08f, 0.05f, 35.6f), cableA);
+                CajaPF(gTecho, "Bandeja", new Vector3(x, 7.25f, -60f), new Vector3(0.55f, 0.12f, 36f), negro);
+                CajaPF(gTecho, "Cable_R", new Vector3(x - 0.14f, 7.33f, -60f), new Vector3(0.08f, 0.05f, 35.6f), cableR);
+                CajaPF(gTecho, "Cable_A", new Vector3(x + 0.14f, 7.33f, -60f), new Vector3(0.08f, 0.05f, 35.6f), cableA);
             }
             foreach (float z in new[] { -69f, -52f })
             {
-                CajaPF(gTecho, "Ducto", new Vector3(0f, 4.55f, z), new Vector3(46f, 0.6f, 0.9f), ducto, 0f, true);
+                CajaPF(gTecho, "Ducto", new Vector3(0f, 7.55f, z), new Vector3(46f, 0.6f, 0.9f), ducto, 0f, true);
                 for (int k = -3; k <= 3; k++)
-                    CajaPF(gTecho, "Rejilla_Aire", new Vector3(k * 6.5f, 4.22f, z), new Vector3(1.4f, 0.04f, 0.7f), gabRejilla);
+                    CajaPF(gTecho, "Rejilla_Aire", new Vector3(k * 6.5f, 7.22f, z), new Vector3(1.4f, 0.04f, 0.7f), gabRejilla);
             }
 
             // paneles de luz de techo (emisivos): 3 filas a lo largo de la sala
-            var panelLuz = Mat("PanelLuzTecho", new Color(0.8f, 0.92f, 1f), 2.0f);
+            var panelLuz = Mat("PanelLuzTecho", new Color(0.8f, 0.92f, 1f), 1.1f);
             foreach (float x in new[] { -11f, 0f, 11f })
                 for (int k = 0; k < 7; k++)
-                    CajaPF(gTecho, "Panel_Luz", new Vector3(x, 4.18f, -76f + k * 5.2f), new Vector3(1.3f, 0.05f, 2.4f), panelLuz);
+                    CajaPF(gTecho, "Panel_Luz", new Vector3(x, 7.18f, -76f + k * 5.2f), new Vector3(1.3f, 0.05f, 2.4f), panelLuz);
 
             // ------------------------------------------------ f) puertas de acceso: sur (x -4..4), oeste y este (z -62..-56)
             var gPu = Grupo(g, "PuertasDeAcceso");

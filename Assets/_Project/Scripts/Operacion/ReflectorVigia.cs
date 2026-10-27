@@ -120,12 +120,55 @@ namespace SP.Operacion
             mr.receiveShadows = false;
         }
 
+        // Bug #285 ("la luz no deberia traspasar muros"): el cono visible media siempre 40 m y seguia de largo por dentro de los muros. Cada 50 ms se
+        // tira un rayo por el eje del haz (y 4 por el borde del cono) y el cono se escala parejo hasta el primer solido: termina en la pared, no la cruza.
+        public const float LargoDelHaz = 40f;
+        public float LargoActualDelHaz { get; private set; } = LargoDelHaz;
+        static readonly RaycastHit[] bufferHaz = new RaycastHit[10];
+        float proximoRecorteHaz;
+
+        float DistanciaLibre(Vector3 dir)
+        {
+            int n = Physics.RaycastNonAlloc(cabeza.position, dir, bufferHaz, LargoDelHaz, ~0, QueryTriggerInteraction.Ignore);
+            float mejor = LargoDelHaz;
+            for (int i = 0; i < n; i++)
+            {
+                var c = bufferHaz[i].collider;
+                if (c == null || c.transform.IsChildOf(cabeza) || c.transform.IsChildOf(transform) || c.GetComponentInParent<Soldier>() != null) continue;
+                if (bufferHaz[i].distance < mejor) mejor = bufferHaz[i].distance;
+            }
+            return mejor;
+        }
+
+        void RecortarHaz()
+        {
+            if (haz == null || !haz.activeSelf || Time.time < proximoRecorteHaz) return;
+            proximoRecorteHaz = Time.time + 0.05f;
+            float d = DistanciaLibre(cabeza.forward);
+            float mitad = (luz != null ? luz.spotAngle : 18f) * 0.5f;
+            float rCono = Mathf.Tan(mitad * Mathf.Deg2Rad);
+            // Rayos del borde: si una esquina o un muro angosto corta el cono antes que el eje, manda el mas corto.
+            for (int i = 0; i < 4; i++)
+            {
+                var lado = i < 2 ? cabeza.up : cabeza.right;
+                var dir = (cabeza.forward + lado * (i % 2 == 0 ? rCono : -rCono) * 0.8f).normalized;
+                float di = DistanciaLibre(dir);
+                if (d - di > 6f) d = di;
+            }
+            float largo = Mathf.Clamp(d + 0.3f, 2f, LargoDelHaz);
+            LargoActualDelHaz = largo;
+            float k = largo / LargoDelHaz;
+            var inv = new Vector3(1f / Mathf.Max(0.01f, cabeza.localScale.x), 1f / Mathf.Max(0.01f, cabeza.localScale.y), 1f / Mathf.Max(0.01f, cabeza.localScale.z));
+            haz.transform.localScale = inv * k;
+        }
+
         // La lampara sale de las luces tacticas al apagarse; el reflector solo mira si se rompio.
         void Update()
         {
             if (!Application.isPlaying || cabeza == null) return;
             if (!EstaRoto && ((luz != null && !luz.enabled) || (luminaria != null && luminaria.Rota))) Romperse();
             if (haz != null && haz.activeSelf == (EstaRoto || (luz != null && !luz.enabled))) haz.SetActive(!(EstaRoto || (luz != null && !luz.enabled)));
+            RecortarHaz();
             if (EstaRoto) { Blanco = null; return; }
             if (!OperadorVivo)
             {

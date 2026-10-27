@@ -305,7 +305,7 @@ namespace SP.Vehicles
 
         // Mismo criterio que AiBrain.OnDrawGizmos: solo Scene view, nunca
         // Game view ni build (asi es OnDrawGizmos por definicion de Unity).
-        void OnDrawGizmos()
+        void OnDrawGizmosSelected()
         {
             Vector3 pos = transform.position;
             Gizmos.color = new Color(1f, 0.15f, 0.15f, 0.6f);

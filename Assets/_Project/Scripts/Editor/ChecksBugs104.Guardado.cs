@@ -84,7 +84,7 @@ namespace SP.EditorTools
             ModoDios.Poner(false);
             var vega = SoldadoPor("Vega"); var kes = SoldadoPor("Kes"); var doc = SoldadoPor("Doc"); var m3 = SoldadoPor("Miliciano_3"); var m1 = SoldadoPor("Miliciano_1");
             if (vega == null || kes == null || doc == null || m3 == null || m1 == null || d.Subfase != 1) { Fin("FALLO faltan soldados o no esta en la subfase 1: vega=" + (vega != null) + " kes=" + (kes != null) + " doc=" + (doc != null) + " m3=" + (m3 != null) + " subfase=" + d.Subfase); yield break; }
-            // Estado conocido: Kes poseida, Vega opera la radio (IA), Doc a 37, reserva de Kes en 3, una sola granada de Kes, MILICIANO 3 caido, sector B caido.
+            // Estado conocido: Kes poseida, Vega opera la radio (IA), Doc a 37, reserva de Kes en 3, una sola granada de Kes, MILICIANO 3 caido, plaza caida.
             drv.TryPossess(kes);
             foreach (var x in Esperar(0.4f)) yield return x;
             d.RelevarOperador(vega);
@@ -93,7 +93,7 @@ namespace SP.EditorTools
             kes.Weapon.FijarReservaParaPrueba(kes.Weapon.CurrentWeaponKind, 3);
             kes.Weapon.ConsumirGranada(); kes.Weapon.ConsumirGranada();
             m3.Health.TakeDamage(100000, -1);
-            d.sectoresDeDefensa[1].Caido = true;
+            d.sectoresDeDefensa[0].Caido = true;
             d.FijarRelojEfectivoParaPrueba(2f);   // antes del aviso de la primera oleada (no hay nada que relanzar)
             if (drv.Rig != null) drv.Rig.SetMode(SP.CameraSystem.ControlMode.Fps);
             // Los pasos hechos son los que dejo UbicarLaEscuadraSola (0..4). El reloj y los sectores se actualizan cada frame: se saca la foto ya.
@@ -103,7 +103,7 @@ namespace SP.EditorTools
             string operadorAntes = MandoTactico.Operador != null ? MandoTactico.Operador.name : "-";
             string pasosAntes = string.Join(",", d.PasoHecho);
             string statsAntes = EstadisticasDeMision.Instancia != null ? EstadisticasDeMision.Instancia.Serializar() : "";
-            W8Ok(ref ok, operadorAntes == vega.name && NombreDelPoseido() == kes.name && !m3.Health.IsAlive && d.sectoresDeDefensa[1].Caido && kes.Weapon.Granadas == 1, sb, $"estado inicial: operador={operadorAntes} poseido={NombreDelPoseido()} M3 vivo={m3.Health.IsAlive} B caido={d.sectoresDeDefensa[1].Caido} granadas Kes={kes.Weapon.Granadas} hpDoc={hpDoc} reservaKes={kes.Weapon.ReservaActual}");
+            W8Ok(ref ok, operadorAntes == vega.name && NombreDelPoseido() == kes.name && !m3.Health.IsAlive && d.sectoresDeDefensa[0].Caido && kes.Weapon.Granadas == 1, sb, $"estado inicial: operador={operadorAntes} poseido={NombreDelPoseido()} M3 vivo={m3.Health.IsAlive} plaza caida={d.sectoresDeDefensa[0].Caido} granadas Kes={kes.Weapon.Granadas} hpDoc={hpDoc} reservaKes={kes.Weapon.ReservaActual}");
             bool cargo = false; var salida = new StringBuilder();
             hpDocAlRestaurar = -1;
             System.Action<PartidaGuardadaDatos> alRestaurar = _ => { var dd = SoldadoPor("Doc"); hpDocAlRestaurar = dd != null ? dd.Health.Current : -2; };
@@ -122,7 +122,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, Armas(kes) == armasKes && kes.Weapon.Granadas == 1, sb, $"armas/reserva de Kes {Armas(kes)} (guardado {armasKes})");
             W8Ok(ref ok, Armas(vega) == armasVega && Armas(doc) == armasDoc, sb, "armas de Vega y Doc iguales");
             W8Ok(ref ok, m3 != null && !m3.Health.IsAlive && m1 != null && m1.Health.IsAlive && MandoTactico.Milicianos.Count == 4, sb, $"milicianos={MandoTactico.Milicianos.Count}, M3 caido={(m3 != null && !m3.Health.IsAlive)}, M1 vivo={(m1 != null && m1.Health.IsAlive)}");
-            W8Ok(ref ok, d.sectoresDeDefensa[1].Caido && !d.sectoresDeDefensa[0].Caido, sb, $"sector B caido={d.sectoresDeDefensa[1].Caido}, A caido={d.sectoresDeDefensa[0].Caido}");
+            W8Ok(ref ok, d.sectoresDeDefensa[0].Caido, sb, $"plaza caida={d.sectoresDeDefensa[0].Caido}");
             W8Ok(ref ok, Cerca(d.RelojEfectivo, relojAntes, 3f), sb, $"reloj efectivo {d.RelojEfectivo:0.0} (guardado {relojAntes:0.0})");
             W8Ok(ref ok, string.Join(",", d.PasoHecho) == pasosAntes, sb, $"pasos del panel {string.Join(",", d.PasoHecho)} (guardado {pasosAntes})");
             string statsDespues = EstadisticasDeMision.Instancia != null ? EstadisticasDeMision.Instancia.Serializar() : "";
@@ -389,7 +389,7 @@ namespace SP.EditorTools
             l.Add(new CasoDeGuardado { nombre = "4.3 Huir: abordaje", objetivo = 4, subfase = 3, captura = d => "subfase=" + d.Subfase + ";bando=" + d.tanque.Bando });
             l.Add(new CasoDeGuardado { nombre = "4.4 Huir: carrera en tanque", objetivo = 4, subfase = 3, preparar = d => d.Embarcar(), captura = d => "enTanque=" + d.EnTanque + ";subfase=" + d.Subfase, igual = null });
             l.Add(new CasoDeGuardado { nombre = "5.0 Resistir: llegada a la radio", objetivo = 5, subfase = 0, captura = d => "radio=" + MandoTactico.RadioTomada + ";subfase=" + d.Subfase });
-            l.Add(new CasoDeGuardado { nombre = "5.1 Resistir: mando (radio, milicianos, sectores)", objetivo = 5, subfase = 1, preparar = d => { d.sectoresDeDefensa[1].Caido = true; var m = SoldadoPor("Miliciano_2"); if (m != null) m.Health.TakeDamage(100000, -1); }, captura = d => "radio=" + MandoTactico.RadioTomada + ";milicianos=" + MandoTactico.Milicianos.Count + ";Bcaido=" + d.sectoresDeDefensa[1].Caido + ";M2vivo=" + (SoldadoPor("Miliciano_2") != null && SoldadoPor("Miliciano_2").Health.IsAlive) });
+            l.Add(new CasoDeGuardado { nombre = "5.1 Resistir: mando (radio, milicianos, sectores)", objetivo = 5, subfase = 1, preparar = d => { d.sectoresDeDefensa[0].Caido = true; var m = SoldadoPor("Miliciano_2"); if (m != null) m.Health.TakeDamage(100000, -1); }, captura = d => "radio=" + MandoTactico.RadioTomada + ";milicianos=" + MandoTactico.Milicianos.Count + ";Pcaida=" + d.sectoresDeDefensa[0].Caido + ";M2vivo=" + (SoldadoPor("Miliciano_2") != null && SoldadoPor("Miliciano_2").Health.IsAlive) });
             l.Add(new CasoDeGuardado { nombre = "6 Extraer (helicoptero en la zona)", objetivo = 6, captura = d => "heliEnZona=" + d.HeliEnLaZona + ";fase=" + d.Fase });
             return l;
         }

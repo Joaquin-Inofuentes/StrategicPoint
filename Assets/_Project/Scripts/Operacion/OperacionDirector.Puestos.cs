@@ -96,6 +96,7 @@ namespace SP.Operacion
                 }
             if (mejor == null) { if (baliza != null) { baliza.Quitar(); baliza = null; } return; }
             PonerBaliza(mejor.carga.Titulo, new Color(1f, 0.82f, 0.3f), mejor.carga.transform.position, null, 2.6f);
+            if (baliza != null) baliza.OcultarAnillo();   // bug #288: sin el circulo amarillo en el piso
         }
 
         // ---- 2. puestos ----

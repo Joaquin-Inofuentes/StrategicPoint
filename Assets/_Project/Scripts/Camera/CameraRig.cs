@@ -542,7 +542,7 @@ namespace SP.CameraSystem
         }
 
         // Muestra en el editor de donde va a salir la camara RTS (frustum del marcador).
-        void OnDrawGizmos()
+        void OnDrawGizmosSelected()
         {
             if (rtsPoseInicial == null || !usarPoseInicialRts) return;
             Gizmos.color = new Color(1f, 0.85f, 0.2f, 1f);

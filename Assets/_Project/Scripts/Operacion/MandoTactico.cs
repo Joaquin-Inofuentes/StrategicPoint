@@ -23,7 +23,7 @@ namespace SP.Operacion
         public const int AliadosParaRecuperar = 1;   // pedido: "no importa con quien": con un soldado adentro alcanza
         // #122: 3 de escuadra + 4 milicianos = 7; menos el operador = 6 = 3 sectores x 2 aliados. (Todos los textos salen de estas constantes.)
         public const int CantidadDeMilicianos = 4;
-        public const int CantidadDeSectores = 2;   // pedido: solo 2 posiciones a llenar (A calle norte, B mercado oeste)
+        public const int CantidadDeSectores = 1;   // bug #295: un solo puesto, la plaza (antes 2: A calle norte, B mercado oeste)
         // Interruptores SOLO para los checks (reproducir el comportamiento de antes de P7 y medir el "despues"). En el juego quedan en su valor por defecto.
         public static int MilicianosAActivar = CantidadDeMilicianos;   // #122 (antes 2)
         public static bool RadioObligaARts;                             // #120b (antes la radio bloqueaba Tab y la posesion y forzaba RTS)

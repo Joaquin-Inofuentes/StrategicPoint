@@ -206,11 +206,12 @@ namespace SP.Presentation
             // referencia estable (LookRotation(-up) sin referencia salta a cualquier angulo y el decal "se rompia").
             if (kind == DecalKind.Crater)
             {
+                // Bug #287: el piso REAL (PisoReal), no el techo de un saco, un escombro o una camioneta que haya justo debajo.
                 normal = Vector3.up;
-                if (Physics.Raycast(position + Vector3.up * 1.5f, Vector3.down, out var suelo, 4f, ~0, QueryTriggerInteraction.Ignore) && suelo.normal.y > 0.8f)
+                if (SP.Core.PisoReal.Altura(position, out var pisoY, out var pisoN, 1.5f, 12f))
                 {
-                    position = suelo.point;
-                    normal = suelo.normal;
+                    position = new Vector3(position.x, pisoY, position.z);
+                    normal = pisoN;
                 }
             }
             var referencia = Mathf.Abs(normal.y) > 0.9f ? Vector3.forward : Vector3.up;

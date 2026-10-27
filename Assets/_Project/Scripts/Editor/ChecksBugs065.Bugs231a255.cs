@@ -201,10 +201,13 @@ namespace SP.EditorTools
             ObstacleMarker muro = null;
             foreach (var o in UnityEngine.Object.FindObjectsByType<ObstacleMarker>(FindObjectsInactive.Include)) if (o.name == "Muro_Salida_Norte") { muro = o; break; }
             if (muro == null) { Fin("FALLO no hay Muro_Salida_Norte"); yield break; }
-            muro.Demoler(null, 9f);
+            // Bug #291: el muro lo vuela el hackeo (AbrirSalidaNorte); la presentacion del jefe arranca SegundosAntesDeLaToma despues, dejando ver la explosion.
+            W8Ok(ref ok, !d.SalidaNorteAbierta, sb, "el muro de la salida norte sigue en pie hasta el hackeo (el atajo de prueba no lo abre)");
+            d.AbrirSalidaNortePorPrueba(false);
             float t0 = Time.realtimeSinceStartup; bool toma = false;
-            while (Time.realtimeSinceStartup - t0 < 3f && !toma) { toma = d.TomaDelJefeActiva || d.Subfase != (int)SubfaseHuida.Acercamiento; yield return null; }
-            W8Ok(ref ok, toma, sb, $"la presentacion del jefe arranca al caer el muro ({Time.realtimeSinceStartup - t0:0.0} s) sin pasar z={OperacionDirector.ZParaLaToma}");
+            while (Time.realtimeSinceStartup - t0 < 6f && !toma) { toma = d.TomaDelJefeActiva || d.Subfase != (int)SubfaseHuida.Acercamiento; yield return null; }
+            float seg = Time.realtimeSinceStartup - t0;
+            W8Ok(ref ok, toma && seg >= OperacionDirector.SegundosAntesDeLaToma - 0.4f && seg <= OperacionDirector.SegundosAntesDeLaToma + 2.5f, sb, $"la presentacion del jefe arranca {seg:0.0} s despues de abrirse la salida (esperaba ~{OperacionDirector.SegundosAntesDeLaToma:0.0} s) sin pasar z={OperacionDirector.ZParaLaToma}");
             ModoDios.Poner(false);
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
@@ -242,7 +245,7 @@ namespace SP.EditorTools
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 
-        // ---------------------------------------------------------------- 250a Resistir arranca en RTS, los dos equipos van a los dos puntos, el minimapa sigue
+        // ---------------------------------------------------------------- 250a Resistir arranca en RTS, los dos equipos van a la plaza (bug #295: un solo puesto), el minimapa sigue
         static IEnumerator Bug250a()
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
@@ -252,25 +255,23 @@ namespace SP.EditorTools
             var d = OperacionDirector.Instancia; var rig = PlayerInputDriver.Activo.Rig;
             W8Ok(ref ok, d.Fase == FaseOperacion.Resistir && rig.Mode == ControlMode.Rts, sb, $"Resistir arranca en RTS (modo={rig.Mode})");
             var sec = (SectorDeDefensa[])typeof(OperacionDirector).GetField("sectoresDeDefensa", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).GetValue(d);
-            var foco = rig.RtsFoco; var medio = (sec[0].Centro + sec[1].Centro) * 0.5f;
-            W8Ok(ref ok, new Vector2(foco.x - medio.x, foco.z - medio.z).magnitude < 30f, sb, $"la camara tactica mira entre los dos sectores (foco {foco}, medio {medio})");
-            // en hasta 30 s reales todos (escuadra y milicianos) estan a <= 12 m de uno de los dos puntos, y los dos puntos tienen gente
-            int enA = 0, enB = 0, total = 0; float t0 = Time.realtimeSinceStartup;
+            var foco = rig.RtsFoco; var medio = sec[0].Centro;
+            W8Ok(ref ok, sec.Length == 1 && new Vector2(foco.x - medio.x, foco.z - medio.z).magnitude < 30f, sb, $"un solo puesto (sectores={sec.Length}) y la camara tactica mira a la plaza (foco {foco}, plaza {medio})");
+            // en hasta 30 s reales todos (escuadra y milicianos) estan adentro de la plaza
+            int enP = 0, total = 0; float t0 = Time.realtimeSinceStartup;
             while (Time.realtimeSinceStartup - t0 < 30f)
             {
-                enA = enB = total = 0;
+                enP = total = 0;
                 foreach (var s in ActorRegistry.All)
                 {
                     if (s == null || s.Team != TeamId.Player || s.Role == RoleType.Civilian || !s.gameObject.activeInHierarchy || !s.Health.IsAlive) continue;
                     total++;
-                    var p = s.transform.position; p.y = 0f;
-                    if (Vector3.Distance(p, new Vector3(sec[0].Centro.x, 0f, sec[0].Centro.z)) <= 12f) enA++;
-                    else if (Vector3.Distance(p, new Vector3(sec[1].Centro.x, 0f, sec[1].Centro.z)) <= 12f) enB++;
+                    if (sec[0].Contiene(s.transform.position)) enP++;
                 }
-                if (enA + enB == total && enA > 0 && enB > 0) break;
+                if (enP == total && total > 0) break;
                 yield return null;
             }
-            W8Ok(ref ok, total >= 6 && enA > 0 && enB > 0 && enA + enB == total, sb, $"los dos equipos llegaron a sus puntos: A={enA} B={enB} de {total}");
+            W8Ok(ref ok, total >= 6 && enP == total, sb, $"los dos equipos llegaron a la plaza: {enP} de {total}");
             // el minimapa se centra en lo que mira la camara tactica y se actualiza al panear
             var mm = SP.UI.MinimapFollow.Activo;
             yield return null;

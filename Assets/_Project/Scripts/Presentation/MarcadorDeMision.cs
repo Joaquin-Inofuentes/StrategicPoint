@@ -12,7 +12,7 @@ namespace SP.Presentation
     public class MarcadorDeMision : MonoBehaviour
     {
 #if UNITY_EDITOR
-        void OnDrawGizmos()
+        void OnDrawGizmosSelected()
         {
             var c = new Color(1f, 0.85f, 0.25f, 0.9f);
             Gizmos.color = c;

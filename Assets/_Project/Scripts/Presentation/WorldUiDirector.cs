@@ -224,7 +224,7 @@ namespace SP.Presentation
                 // seria un cambio de reglas de juego disfrazado de
                 // optimizacion. Lo que se centraliza aca es su
                 // actualizacion y su consulta de niebla.
-                if (reevaluate && icon.FogEnabled) icon.ApplyFog(IsSpotted(icon.TargetPosition));
+                if (reevaluate && icon.FogEnabled) icon.ApplyFog(IsSpotted(icon.TargetPosition) || Revelado(icon));
                 bool dibujado = icon.IsRendered; icon.UltimoRenderizado = dibujado;
                 if (dibujado) visible++;
             }
@@ -296,9 +296,15 @@ namespace SP.Presentation
         // rango de vision". Sin filtro de activeInHierarchy, igual que la
         // grilla espacial (un soldado montado en un vehiculo esta
         // desactivado pero sigue vivo y sigue viendo).
+        // Bug #293 ("deberian aparecer los enemigos en el minimapa"): antes cada observador veia a 10 m y un soldado montado en un vehiculo contaba en
+        // el punto donde subio (200 m detras del tanque). Ahora: a pie ve entre 18 y 35 m (su vision real), el montado no cuenta y el VEHICULO propio
+        // con gente adentro ve a 45 m desde donde esta.
+        public const float RadioDeVehiculoPropio = 45f, RadioMinimoAPie = 18f, RadioMaximoAPie = 35f;
+        readonly List<float> fogRadios2 = new List<float>();
+
         void RebuildFogObservers()
         {
-            fogObservers.Clear();
+            fogObservers.Clear(); fogRadios2.Clear();
             var all = ActorRegistry.All;
             for (int i = 0; i < all.Count; i++)
             {
@@ -306,22 +312,41 @@ namespace SP.Presentation
                 if (s == null || s.Team == TeamId.Enemy) continue;
                 var hp = s.Health;
                 if (hp == null || !hp.IsAlive) continue;
-                fogObservers.Add(s.transform.position);
+                if (s.Brain != null && s.Brain.MontadoEnVehiculo) continue;
+                float r = s.Brain != null ? Mathf.Clamp(s.Brain.EffectiveVisionRange, RadioMinimoAPie, RadioMaximoAPie) : MinimapIcon.FogVisionRange;
+                fogObservers.Add(s.transform.position); fogRadios2.Add(r * r);
+            }
+            foreach (var v in SP.Vehicles.Vehicle.Todos)
+            {
+                if (v == null || v.IsDestroyed || v.Bando != TeamId.Player || v.Occupants.Count == 0) continue;
+                fogObservers.Add(v.transform.position); fogRadios2.Add(RadioDeVehiculoPropio * RadioDeVehiculoPropio);
             }
         }
 
         // WP10 (#101): el campanario de la ciudad revela a todos los enemigos en el minimapa mientras haya un soldado arriba.
         public static bool RevelarEnemigos;
 
+        // Revelado temporal de un soldado concreto (p.ej. los atacantes que marchan hacia la plaza, o un francotirador con el laser activo).
+        static readonly Dictionary<int, float> reveladosHasta = new Dictionary<int, float>();
+        public static void Revelar(Soldier s, float segundos)
+        {
+            if (s == null) return;
+            reveladosHasta[s.Id] = Time.time + Mathf.Max(0.1f, segundos);
+        }
+        public static bool EstaReveladoTemporal(int id) => reveladosHasta.TryGetValue(id, out var t) && Time.time < t;
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarReveladosTemporales() => reveladosHasta.Clear();
+
         bool IsSpotted(Vector3 worldPos)
         {
             if (RevelarEnemigos) return true;
-            float r = MinimapIcon.FogVisionRange;
-            float r2 = r * r;
             for (int i = 0; i < fogObservers.Count; i++)
-                if ((fogObservers[i] - worldPos).sqrMagnitude <= r2) return true;
+                if ((fogObservers[i] - worldPos).sqrMagnitude <= fogRadios2[i]) return true;
             return false;
         }
+
+        // "Si te dispara, lo ves": el enemigo que ya hizo dano / disparo al jugador (InteligenciaDeEnemigos) o revelado a mano queda en el minimapa.
+        bool Revelado(MinimapIcon icon) => icon.SoldadoId >= 0 && (EstaReveladoTemporal(icon.SoldadoId) || SP.Core.InteligenciaDeEnemigos.EstaRevelado(icon.SoldadoId));
 
         // ------------------------------------------------------------
         // Alta masiva y limpieza (mismo contrato que WorldSystemsRegistry)

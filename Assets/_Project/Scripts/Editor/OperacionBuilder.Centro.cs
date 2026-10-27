@@ -37,7 +37,7 @@ namespace SP.EditorTools
             MuroX(est, "CD_Norte_E", 4f, 26f, -40f, 5f, 1.5f, Datos);
             // Bug #159: la salida norte (detras de la computadora) estaba abierta. Ahora es un muro que el ASALTO tiene que demoler ([Q] > DEMOLER) para seguir.
             Destruible(est, "Muro_Salida_Norte", 0f, -40f, 8f, 5f, 1.5f, Datos, 900);
-            Rotulo(est, "SALIDA NORTE · DEMOLER", 0f, 3.4f, -40.9f, 0f, 0.7f, Color.white, Naranja, 6.6f, 0.9f);
+            Rotulo(est, "SALIDA NORTE", 0f, 3.4f, -40.9f, 0f, 0.7f, Color.white, Naranja, 6.6f, 0.9f);
             MuroZ(est, "CD_Oeste_S", -26f, -80f, -62f, 5f, 1.5f, Datos);
             MuroZ(est, "CD_Oeste_N", -26f, -56f, -40f, 5f, 1.5f, Datos);
             MuroZ(est, "CD_Este_S", 26f, -80f, -62f, 5f, 1.5f, Datos);
@@ -88,32 +88,8 @@ namespace SP.EditorTools
                 new OleadaDeReserva { segundo = 10f, aviso = "OLEADA 2/3 · POR EL PATIO OESTE", soldados = w2.ToArray(), destino = DestinoPc(pc) },
                 new OleadaDeReserva { segundo = 20f, aviso = "OLEADA 3/3 · POR EL PATIO ESTE", soldados = w3.ToArray(), destino = DestinoPc(pc) },
             };
-            TorretasDelCentro(g, term.transform.position.x, term.transform.position.z);
+            torretasDelCentro = new GameObject[0];   // bug #292: las dos ametralladoras fijas de la salida norte se quitaron
             return term;
-        }
-
-        // Bug #043: dos ametralladoras fijas (emplazamiento del arte) a los costados de la salida norte del centro de datos, mirando
-        // a la ruta, para parar las camionetas que bajan mientras se hackea. Antes las ponia a mano un script suelto y un rebuild las
-        // perdia. Posicion medida de la escena: x = +-8,5 y 10,5 m al norte de la computadora, giradas 8 grados hacia la ruta.
-        // OperacionDirector.Start les instala TorretaFija; el director las lleva en torretasDelCentro.
-        const string PrefabEmplazamientoMg = "Assets/_Project/Prefabs/ArteMundo/P_Env_Emplazamiento_MG.prefab";
-
-        static void TorretasDelCentro(Transform padre, float x0, float zComputadora)
-        {
-            torretasDelCentro = new GameObject[0];
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabEmplazamientoMg);
-            if (prefab == null) { Debug.LogWarning("[Operacion] Falta " + PrefabEmplazamientoMg + ": el centro de datos queda sin torretas."); return; }
-            var cont = Grupo(padre, "TorretasDelCentro");
-            var lista = new List<GameObject>();
-            foreach (var lado in new[] { -1f, 1f })
-            {
-                var go = (GameObject)PrefabUtility.InstantiatePrefab(prefab, cont);
-                go.name = "Torreta_Centro_" + (lado < 0f ? "Oeste" : "Este");
-                go.transform.position = new Vector3(x0 + lado * 8.5f, 0f, zComputadora + 10.5f);
-                go.transform.rotation = Quaternion.Euler(0f, -lado * 8f, 0f);
-                lista.Add(go);
-            }
-            torretasDelCentro = lista.ToArray();
         }
 
         static Transform DestinoPc(Transform pc)

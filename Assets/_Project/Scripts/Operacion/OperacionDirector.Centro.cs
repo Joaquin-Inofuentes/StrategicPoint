@@ -147,7 +147,7 @@ namespace SP.Operacion
             {
                 string det = computadora.Operador != null
                     ? $"{computadora.Operador.DisplayName} esta hackeando · {Mathf.CeilToInt((1f - computadora.Progreso01) * computadora.duracion)} s · oleadas {oleadasLanzadas.Count}/{oleadasDelCentro.Length}"
-                      + (CamionetasDelCentroVivas > 0 ? $" · ¡{CamionetasDelCentroVivas} vehiculos! usa la ametralladora" : "")
+                      + (CamionetasDelCentroVivas > 0 ? $" · ¡{CamionetasDelCentroVivas} vehiculos! cohetes o granadas" : "")
                     : "Entra al centro de datos y apreta [E] en la computadora";
                 hud.Objetivo(TituloObjetivo(3, "CENTRO DE DATOS"), det, computadora.Progreso01, new Color(0.35f, 0.8f, 1f));
                 if (computadora.Operador != null) hud.Timer("DESCARGANDO DATOS", Mathf.CeilToInt((1f - computadora.Progreso01) * computadora.duracion), new Color(0.5f, 0.9f, 1f));
@@ -157,8 +157,46 @@ namespace SP.Operacion
             {
                 if (hud != null) hud.OcultarTimer();
                 if (defensaDelCentro != null) { defensaDelCentro.Terminar(); defensaDelCentro = null; }
+                AbrirSalidaNorte(true);   // bug #291: la terminal explota y la salida norte se abre sola
                 EntrarFase(FaseOperacion.Huir);
             }
+        }
+
+        // Bug #291 ("al hackear esto deberia explotar y tambien abrir la puerta"): al completarse el hackeo la computadora explota (efecto, humo, sonido,
+        // pantalla apagada) y 1,2 s despues la salida norte (Muro_Salida_Norte) se vuela sola con el mismo camino de Demoler (escombros, malla de
+        // navegacion, coberturas). Antes el ASALTO tenia que demolerla a mano. Idempotente; sin explosion (restaurar partida, atajo de prueba) cae al instante.
+        bool salidaAbierta; float salidaAbiertaT = -99f;
+        public bool SalidaNorteAbierta => salidaAbierta;
+        public float SalidaNorteAbiertaT => salidaAbiertaT;
+        public const float SegundosAntesDeLaToma = 2.5f;
+        // Para las pruebas: lo que hace el hackeo al completarse (con o sin la explosion de la terminal).
+        public void AbrirSalidaNortePorPrueba(bool conExplosion) => AbrirSalidaNorte(conExplosion);
+
+        void AbrirSalidaNorte(bool conExplosion)
+        {
+            if (salidaAbierta) return;
+            salidaAbierta = true;
+            if (!MuroDeSalidaEnPie()) return;
+            salidaAbiertaT = Time.time;
+            var pc = computadora != null ? computadora.transform.position : muroDeSalida.transform.position;
+            if (conExplosion) StartCoroutine(VoladuraDeLaTerminal(pc));
+            else muroDeSalida.Demoler(pc, 6f);
+        }
+
+        IEnumerator VoladuraDeLaTerminal(Vector3 pc)
+        {
+            var centro = pc + Vector3.up * 1.4f;
+            ImpactFx.SpawnExplosion(centro, 3.2f, false);
+            AudioDirector.PlayAt(SfxKind.Explosion, pc, 0.8f);
+            if (computadora != null)
+            {
+                if (computadora.luz != null) computadora.luz.material.color = Color.black;
+                if (computadora.indicador != null) computadora.indicador.gameObject.SetActive(false);
+            }
+            for (int i = 0; i < 6; i++)
+                SpriteFx.Lanzar("smoke_02", centro + UnityEngine.Random.insideUnitSphere * 0.6f, new Color(0.35f, 0.34f, 0.33f, 0.6f), 0.6f, 2.6f, UnityEngine.Random.Range(1.6f, 2.6f), UnityEngine.Random.Range(-30f, 30f), Vector3.up * UnityEngine.Random.Range(1.2f, 2.4f), 1.5f, 1);
+            yield return new WaitForSeconds(1.2f);
+            if (muroDeSalida != null && !muroDeSalida.IsCollapsed) muroDeSalida.Demoler(pc, 6f);
         }
 
         DefensaDelCentro defensaDelCentro;
@@ -251,8 +289,8 @@ namespace SP.Operacion
         {
             if (autoPlantilla == null || computadora == null) return;
             var c = computadora.transform.position;
-            AlertQueue.Push("¡VEHICULOS ENEMIGOS POR LA RUTA NORTE! USA LAS AMETRALLADORAS FIJAS", AlertPriority.Alta, 3.5f);
-            if (hud != null) hud.Aviso("¡VEHICULOS ENEMIGOS!\nTOMA UNA AMETRALLADORA FIJA [E]", 3f);
+            AlertQueue.Push("¡VEHICULOS ENEMIGOS POR LA RUTA NORTE! COHETES Y GRANADAS", AlertPriority.Alta, 3.5f);
+            if (hud != null) hud.Aviso("¡VEHICULOS ENEMIGOS!\nUSA COHETES O GRANADAS", 3f);
             for (int k = 0; k < camionetasPorTanda; k++)
             {
                 float lado = (k % 2 == 0 ? -1f : 1f) * (2.2f + 1.5f * (k / 2));

@@ -50,7 +50,7 @@ namespace SP.Mision
             Gizmos.DrawWireSphere(pos + dir * 0.35f, 0.18f);
         }
 
-        void OnDrawGizmos()
+        void OnDrawGizmosSelected()
         {
             if (Waypoints == null) return;
             Vector3 anterior = default;

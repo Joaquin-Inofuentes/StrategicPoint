@@ -47,7 +47,7 @@ namespace SP.Player
                 var s = todos[i];
                 if (s == null || s == excludeSelf || s.Team != TeamId.Player || s.Role == RoleType.Civilian || s.Health == null || !s.Health.IsAlive) continue;
                 if (!s.gameObject.activeInHierarchy) continue;
-                var v = s.transform.position + Vector3.up * AlturaDelRombo - ray.origin;
+                var v = s.transform.position + Vector3.up * SP.Presentation.UnitLocatorCylinder.AlturaRomboAliado() - ray.origin;
                 float d = v.magnitude;
                 if (d < 6f || d > DistanciaMaxDelRombo) continue;   // pegado a vos el rombo casi no se ve: ahi se apunta al cuerpo
                 float ang = Vector3.Angle(ray.direction, v);
@@ -138,7 +138,7 @@ namespace SP.Player
             var bajoRombo = AliadoBajoSuRombo(ray, excludeSelf);
             UnityEngine.Profiling.Profiler.EndSample();
             if (bajoRombo != null)
-                return new AimResult { Type = AimTargetType.Ally, Soldier = bajoRombo, Point = bajoRombo.transform.position + Vector3.up * AlturaDelRombo, HitTransform = bajoRombo.transform };
+                return new AimResult { Type = AimTargetType.Ally, Soldier = bajoRombo, Point = bajoRombo.transform.position + Vector3.up * SP.Presentation.UnitLocatorCylinder.AlturaRomboAliado(), HitTransform = bajoRombo.transform };
 
             if (golpeo)
             {

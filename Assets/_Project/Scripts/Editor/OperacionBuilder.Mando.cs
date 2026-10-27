@@ -26,11 +26,11 @@ namespace SP.EditorTools
         static GameObject[] prefabsMiliciano;
         public static int SacosDeMando { get; private set; }
 
+        // Bug #295: UN solo puesto, la plaza (antes A calle norte y B mercado oeste). Omnidireccional: atacan de todos lados.
+        public const float RadioDeLaPlazaDelSector = 26f;
         static readonly (string letra, string nombre, float x, float z, Vector2 amenaza)[] SectoresDeLaDefensa =
         {
-            ("A", "CALLE NORTE", 322f, 292f, new Vector2(-1f, 0f)),     // los enemigos llegan por el oeste de la calle norte
-            ("B", "MERCADO OESTE", 272f, 228f, new Vector2(0f, 1f)),    // por el norte de la calle oeste
-            // Pedido: "solo 2 posiciones a llenar": el sector C (calle este) ya no existe.
+            ("P", "PLAZA", 322f, 228f, new Vector2(0f, 1f)),
         };
 
         static void MandoDeLaCiudad(Transform ciudad)
@@ -85,23 +85,10 @@ namespace SP.EditorTools
                 go.transform.SetParent(g, false);
                 go.transform.position = new Vector3(d.x, 0f, d.z);
                 var sec = go.AddComponent<SectorDeDefensa>();
-                sec.letra = d.letra; sec.nombre = d.nombre; sec.radio = SectorDeDefensa.RadioPorDefecto;
+                sec.letra = d.letra; sec.nombre = d.nombre; sec.radio = RadioDeLaPlazaDelSector; sec.omnidireccional = true;
                 sec.haciaLaAmenaza = new Vector3(d.amenaza.x, 0f, d.amenaza.y);
                 sectoresMando[i] = sec;
-
-                // Letra gigante pintada en el piso (se lee desde la vista tactica).
-                LetraEnElPiso(g, d.letra, d.x, d.z, Color.white);
-
-                // Sacos de cobertura: tres de cara a la amenaza (dos en las puntas, uno al medio) y uno de costado.
-                var t = new Vector3(d.amenaza.x, 0f, d.amenaza.y);
-                var l = new Vector3(-t.z, 0f, t.x);
-                bool amenazaEnX = Mathf.Abs(t.x) > 0.5f;
-                var c = new Vector3(d.x, 0f, d.z);
-                var p1 = c + t * 5f + l * 3.3f; var p2 = c + t * 5f - l * 3.3f; var p3 = c + t * 1.5f; var p4 = c + l * 5.5f;
-                SacoLibre(g, $"Saco_{d.letra}_1", p1.x, p1.z, !amenazaEnX);
-                SacoLibre(g, $"Saco_{d.letra}_2", p2.x, p2.z, !amenazaEnX);
-                SacoLibre(g, $"Saco_{d.letra}_3", p3.x, p3.z, !amenazaEnX);
-                SacoLibre(g, $"Saco_{d.letra}_4", p4.x, p4.z, amenazaEnX);
+                // Sin letra pintada ni sacos propios: la plaza ya tiene su anillo de barricadas (OperacionDirector.ArmarCoberturasDeLaPlaza, en Play).
             }
 
             // ---- Campanario (opcional) ----

@@ -1310,7 +1310,7 @@ namespace SP.Ai
         // sobre Game view mientras Gizmos este activado ahi) ni ningun
         // LineRenderer/mesh real (eso SI seria visible en gameplay/build).
         // ------------------------------------------------------------------
-        void OnDrawGizmos()
+        void OnDrawGizmosSelected()
         {
             if (self == null) self = GetComponent<Soldier>();
             if (self == null) return;

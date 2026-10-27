@@ -225,7 +225,7 @@ namespace SP.EditorTools
                 // Camino real: [C] mantenida (CambioDeAliado.PruebaApretada) por el Update del driver.
                 CambioDeAliado.PruebaApretada = true;
                 foreach (var x in Esperar(0.8f)) yield return x;
-                int posibles = 0; foreach (var s in Soldados(TeamId.Player)) if (s != drv.Brain.Current) posibles++;
+                int posibles = 0; foreach (var s in Soldados(TeamId.Player)) if (s != drv.Brain.Current && s.Role != RoleType.Civilian) posibles++;   // #295: el civil de la plaza es del equipo pero no se posee
                 P6Ok(ref ok, ca.Resaltando && ca.Candidato != null && ca.RombosVisibles == posibles, sb, $"mantener C: resaltando={ca.Resaltando}, rombos={ca.RombosVisibles} de {posibles} aliados (incluye milicianos), candidato={(ca.Candidato != null ? ca.Candidato.DisplayName : "-")}");
                 P6Ok(ref ok, ca.Pista.StartsWith("SOLTÁ [C] PARA CONTROLAR A "), sb, $"pista '{ca.Pista}'");
                 // El candidato es el mas centrado (misma cuenta aparte, con tolerancia por el movimiento entre cuadros).
@@ -440,7 +440,7 @@ namespace SP.EditorTools
                 float dFin = guia.RutaActiva ? Vector3.Distance(new Vector3(guia.FinDeLaRuta.x, 0f, guia.FinDeLaRuta.z), new Vector3(A.x, 0f, A.z)) : 999f;
                 P6Ok(ref ok, guia.RutaActiva && guia.PuntosDeRuta >= 2 && dIni < 6f && dFin < 11f && guia.PasoGuiado == 1, sb, $"paso 2: punteado activo ({guia.PuntosDeRuta} puntos) desde {d.UnidadA.DisplayName} (a {dIni:0.0} m) hasta el sector A (a {dFin:0.0} m), ancho {guia.AnchoDeLaRuta:0.00} m");
                 P6Ok(ref ok, guia.FlechaVisible && Vector3.Distance(new Vector3(guia.PosicionDeLaFlecha.x, 0f, guia.PosicionDeLaFlecha.z), new Vector3(A.x, 0f, A.z)) < 3f, sb, "flecha 3D sobre el circulo del sector A");
-                P6Ok(ref ok, panel.TextoActual.Contains("SECTOR") && panel.TextoActual.Contains("CLIC DERECHO"), sb, $"texto: '{panel.TextoActual}'");
+                P6Ok(ref ok, panel.TextoActual.Contains("PLAZA") && panel.TextoActual.Contains("CLIC DERECHO"), sb, $"texto: '{panel.TextoActual}'");
                 foreach (var x in CapturarPantalla(P7Prefijo + "114_paso2_punteado.png")) yield return x;
                 // el resto de los pasos de a uno
                 W10Ordenar(A, d.UnidadA);

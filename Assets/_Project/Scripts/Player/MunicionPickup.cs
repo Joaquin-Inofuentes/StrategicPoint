@@ -39,26 +39,25 @@ namespace SP.Player
             var pk = raiz.AddComponent<MunicionPickup>();
             pk.alturaBase = pos.y;
             pk.Apoyar();
+            raiz.transform.position = new Vector3(pos.x, pk.alturaBase, pos.z);
 
-            InteractableDiamond.Agregar(raiz.transform, Vector3.up * 0.15f, DiamondGizmo.ColorMunicion, true, 0.5f);
+            // Bug #286: una sola marca, un rombo de color municion parado a ~0,85 m del piso (antes: rombo echado en el piso + engranaje de la mira).
+            InteractableDiamond.Agregar(raiz.transform, Vector3.up * AlturaDelRombo, DiamondGizmo.ColorMunicion, false, 0.35f);
 
             return pk;
         }
 
+        public const float AlturaSobrePiso = 0.12f, AlturaDelRombo = 0.75f;   // el rombo queda a 0,12 + 0,75 = 0,87 m del piso
+        public float AlturaApoyada => alturaBase;
+
         // Un enemigo que muere arriba de una torre dejaba la municion a 13 m de altura, y si la torre caia despues quedaba flotando en el aire
-        // (bug "elementos flotando despues de una explosion"). Se apoya en el piso real al crearse y se vuelve a apoyar si el piso desaparece.
-        static readonly RaycastHit[] bufferPiso = new RaycastHit[8];
+        // (bug "elementos flotando despues de una explosion"). Bug #287 ("sigue levitando"): antes se apoyaba en el impacto MAS ALTO (sacos,
+        // escombros) y quedaba a +0,5 m de aire. Ahora se apoya en el piso real (PisoReal) a 0,12 m y se vuelve a apoyar cada 0,5 s.
         float proximoApoyo;
         void Apoyar()
         {
-            int n = Physics.RaycastNonAlloc(alturaBase * Vector3.up + new Vector3(transform.position.x, 0.5f, transform.position.z), Vector3.down, bufferPiso, 60f, ~0, QueryTriggerInteraction.Ignore);
-            float mejor = float.NegativeInfinity;
-            for (int i = 0; i < n; i++)
-            {
-                if (bufferPiso[i].collider != null && bufferPiso[i].collider.GetComponentInParent<SP.Actors.Soldier>() != null) continue;
-                mejor = Mathf.Max(mejor, bufferPiso[i].point.y);
-            }
-            if (mejor > float.NegativeInfinity && alturaBase - mejor > 1.2f) alturaBase = mejor + 0.5f;
+            SP.Core.PisoReal.Altura(new Vector3(transform.position.x, alturaBase, transform.position.z), out var piso, out _, 1.2f, 60f);
+            alturaBase = piso + AlturaSobrePiso;
         }
 
         void Update()
@@ -67,9 +66,9 @@ namespace SP.Player
             if (edad >= VidaMaxima) { Destroy(gameObject); return; }
             if (Time.time >= proximoApoyo) { proximoApoyo = Time.time + 0.5f; Apoyar(); }
 
-            // Flota un poco
+            // Sin flotar: queda apoyada en el piso (el rombo de arriba ya la marca).
             var p = transform.position;
-            p.y = alturaBase + Mathf.Sin(edad * 3.2f) * 0.07f;
+            p.y = alturaBase;
             transform.position = p;
 
             if (driver == null) driver = PlayerInputDriver.Activo;

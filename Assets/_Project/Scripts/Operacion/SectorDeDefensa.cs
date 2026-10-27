@@ -17,6 +17,8 @@ namespace SP.Operacion
         public float radio = RadioPorDefecto;
         // Direccion horizontal desde la que llegan los enemigos (hacia afuera del sector): las coberturas buenas son las que tapan de ese lado.
         public Vector3 haciaLaAmenaza = Vector3.forward;
+        // Bug #295: la plaza se ataca desde todos lados: cualquier cobertura del anillo sirve y entran mas defensores.
+        public bool omnidireccional;
 
         public enum Estado { Libre, Cubierto, Amenazado, Caido }
 
@@ -198,7 +200,7 @@ namespace SP.Operacion
                         if (d > radio - 0.8f) continue;
                         if (Mathf.Abs(p.y) > 1.5f) continue;
                         var obstaculoHacia = -Coberturas.FrenteDe(i);   // del punto hacia el obstaculo
-                        if (Vector3.Dot(obstaculoHacia, hacia) < minimo) continue;
+                        if (!omnidireccional && Vector3.Dot(obstaculoHacia, hacia) < minimo) continue;
                         bool ocupado = false;
                         // Bug #251 ("alli entran 2"): un solo defensor por obstaculo (antes un mismo monton de sacos daba un punto por cada costado y
                         // el segundo soldado quedaba al descubierto del lado de la amenaza). Un obstaculo muy largo (> 5 m) admite dos, bien separados.
@@ -210,7 +212,7 @@ namespace SP.Operacion
                         }
                         if (ocupado) continue;
                         // Mejor: del lado de la amenaza (sin alejarse del centro mas de la cuenta), lejos del resto.
-                        float puntaje = -Vector3.Dot(obstaculoHacia, hacia) * 4f + d * 0.25f;
+                        float puntaje = (omnidireccional ? 0f : -Vector3.Dot(obstaculoHacia, hacia) * 4f) + d * 0.25f;
                         if (puntaje < mejorPuntaje) { mejorPuntaje = puntaje; mejor = i; }
                     }
                     if (mejor < 0) break;

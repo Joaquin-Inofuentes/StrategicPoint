@@ -143,11 +143,15 @@ namespace SP.Operacion
 
         protected override void Awake() { base.Awake(); alcance = AlcanceDelTiro; arcoGrados = 360f; }
 
+        // Bug #295: los francotiradores de azotea (FrancotiradorDeAzotea) tiran mas suave que los de las torres del cuartel.
+        protected virtual int DanoDelTiro => Dano;
+        protected virtual float CadenciaDelTiro => Cadencia;
+
         protected override WeaponKind ArmaEsperada => WeaponKind.Sniper;
         protected override void Equipar()
         {
             var w = soldado.Weapon;
-            w.EquipWeapon(WeaponKind.Sniper, Dano, Cadencia, new Color(0.7f, 0.8f, 0.95f));
+            w.EquipWeapon(WeaponKind.Sniper, DanoDelTiro, CadenciaDelTiro, new Color(0.7f, 0.8f, 0.95f));
             w.ConfigurarCargador(60, 2.4f);
             if (laser == null) CrearLaser();
             PonerDestelloDeMira();
@@ -247,7 +251,7 @@ namespace SP.Operacion
                         cerrojoSono = true;
                         AudioDirector.PlayClipAt(GenericSfx.GetWeaponReload(WeaponKind.Sniper), Boca, 0.85f, 0.6f);
                     }
-                    if (tFase >= Cadencia - Telegrafia) { fase = Fase.Libre; proximoCiclo = Time.time; }
+                    if (tFase >= CadenciaDelTiro - Telegrafia) { fase = Fase.Libre; proximoCiclo = Time.time; }
                     break;
             }
             // #257: detras de la baranda baja el tirador se agacha para cubrirse entre tiro y tiro (o sin blanco) y se para para apuntar.

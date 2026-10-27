@@ -16,25 +16,10 @@ namespace SP.Presentation
         // Tope del asfalto (cubos "Pintura" de 0,08 m): nada que se apoye en el piso de la Operacion puede quedar por debajo.
         public const float TopeDelAsfalto = 0.08f;
 
+        // Bug #287: delega en PisoReal (geometria fija que no esta apoyada sobre otra cosa: ni sacos, ni escombros, ni vehiculos, ni la torre que despues cae).
         public static float AlturaDelPiso(Vector3 p)
         {
-            float y = 0f;
-            int n = Physics.RaycastNonAlloc(new Vector3(p.x, p.y + 0.5f, p.z), Vector3.down, golpes, 8f, ~0, QueryTriggerInteraction.Ignore);
-            float mejor = float.MaxValue; bool hay = false;
-            for (int i = 0; i < n; i++)
-            {
-                var h = golpes[i];
-                if (h.collider == null || h.distance >= mejor) continue;
-                if (!SP.Core.NavService.BlocksMovement(h.collider)) continue;
-                // Solo geometria fija: el chasis del propio vehiculo (o cualquier cuerpo suelto) no es el piso (el cráter quedaba flotando a 1,1 m).
-                if (h.collider.GetComponentInParent<SP.Vehicles.Vehicle>() != null) continue;
-                var rb = h.collider.attachedRigidbody;
-                if (rb != null && !rb.isKinematic) continue;
-                mejor = h.distance; y = h.point.y; hay = true;
-            }
-            if (!hay) y = 0f;
-            if (NavMesh.SamplePosition(new Vector3(p.x, y, p.z), out var nh, 1.2f, NavMesh.AllAreas) && Mathf.Abs(nh.position.y - y) < 0.35f)
-                y = Mathf.Max(y, nh.position.y);
+            SP.Core.PisoReal.Altura(p, out var y, out _, 1f, 40f);
             return Mathf.Max(y, TopeDelAsfalto);
         }
 
@@ -225,7 +210,7 @@ namespace SP.Presentation
             {
                 float a = (b + (float)rnd.NextDouble() * 0.5f) / 8f * Mathf.PI * 2f;
                 float rr = 0.98f + (float)rnd.NextDouble() * 0.16f;
-                float w = 0.34f + (float)rnd.NextDouble() * 0.22f, d = 0.2f + (float)rnd.NextDouble() * 0.16f, h = 0.1f + (float)rnd.NextDouble() * 0.12f;
+                float w = 0.34f + (float)rnd.NextDouble() * 0.22f, d = 0.2f + (float)rnd.NextDouble() * 0.16f, h = 0.025f + (float)rnd.NextDouble() * 0.03f;   // bug #287: el borde ya no son bloques levantados (0,1-0,22 m): queda a ras de la marca
                 var centro = new Vector3(Mathf.Cos(a) * rr, 0f, Mathf.Sin(a) * rr);
                 var tang = new Vector3(-Mathf.Sin(a), 0f, Mathf.Cos(a));
                 var radial = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));

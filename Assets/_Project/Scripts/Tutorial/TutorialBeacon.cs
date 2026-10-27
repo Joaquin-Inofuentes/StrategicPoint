@@ -51,6 +51,10 @@ namespace SP.Tutorial
             return b;
         }
 
+        // Bug #288 ("la marca del piso eliminala, ese circulo"): la baliza de los puestos de voladura queda solo con la etiqueta; sin disco en el piso.
+        public bool AnilloVisible => anillo != null && anillo.activeSelf;
+        public void OcultarAnillo() { if (anillo != null) anillo.SetActive(false); }
+
         public static void QuitarTodas()
         {
             for (int i = activas.Count - 1; i >= 0; i--)

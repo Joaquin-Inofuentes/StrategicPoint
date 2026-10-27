@@ -111,7 +111,12 @@ namespace SP.Presentation
         public float EscalaActual => marcador != null ? marcador.transform.localScale.x : 0f;
         public bool MarcadorVisible => marcador != null && marcador.activeSelf;
 
-        static bool EnRts() => SP.CameraSystem.CameraRig.Instance != null && SP.CameraSystem.CameraRig.Instance.Mode == SP.CameraSystem.ControlMode.Rts;
+        public static bool EnRts() => SP.CameraSystem.CameraRig.Instance != null && SP.CameraSystem.CameraRig.Instance.Mode == SP.CameraSystem.ControlMode.Rts;
+
+        // Bug #294 ("que las marcas sigan en el piso, no en el aire"): en FPS/TPS el rombo del ALIADO va a ras del piso, a los pies (pivote a ~0,8 m del suelo);
+        // en RTS (vista tactica, desde arriba) sigue sobre la cabeza. Enemigos: siempre sobre la cabeza. AimTargeting usa el mismo valor para apuntar al rombo.
+        public const float AlturaRomboAliadoPiso = -0.3f;
+        public static float AlturaRomboAliado() => EnRts() ? Altura : AlturaRomboAliadoPiso;
 
         bool EstaSeleccionado()
         {
@@ -426,18 +431,20 @@ namespace SP.Presentation
             if (marcador.activeSelf) 
             {
                 marcador.transform.rotation = cam.transform.rotation;
-                
+
+                var basePos = baseLocalPosition;
+                if (soldier.Team != TeamId.Enemy) basePos.y = AlturaRomboAliado();   // bug #294: aliados a ras del piso en FPS/TPS
                 if (vibrateTime > 0f)
                 {
                     vibrateTime -= Time.deltaTime;
-                    marcador.transform.localPosition = baseLocalPosition + new Vector3(
+                    marcador.transform.localPosition = basePos + new Vector3(
                         UnityEngine.Random.Range(-0.1f, 0.1f),
                         UnityEngine.Random.Range(-0.1f, 0.1f),
                         0f);
                 }
                 else
                 {
-                    marcador.transform.localPosition = baseLocalPosition;
+                    marcador.transform.localPosition = basePos;
                 }
             }
         }

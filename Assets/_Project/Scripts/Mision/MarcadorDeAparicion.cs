@@ -14,7 +14,7 @@ namespace SP.Mision
     {
         public string Grupo;
 
-        void OnDrawGizmos()
+        void OnDrawGizmosSelected()
         {
             Gizmos.color = new Color(1f, 0.25f, 0.2f, 0.85f);
             Gizmos.DrawWireSphere(transform.position, 0.6f);
