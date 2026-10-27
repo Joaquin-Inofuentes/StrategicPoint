@@ -126,6 +126,32 @@ namespace SP.EditorTools
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 
+        // ---------------------------------------------------------------- 305a (etapa D) una pieza unica por sector y menos repeticion de props en el cuartel
+        static IEnumerator Bug305a()
+        {
+            var sb = new StringBuilder(); bool ok = true;
+            foreach (var n in new[] { "Generador_Cuartel", "Grua_Deposito", "Mastil_Barracas", "Parabolica_Comando" })
+                W8Ok(ref ok, GameObject.Find(n) != null, sb, $"existe la pieza unica {n}");
+            var zona = new Bounds(new Vector3(0f, 2f, -285f), new Vector3(150f, 12f, 130f));
+            var props = new System.Collections.Generic.List<MeshRenderer>();
+            foreach (var r in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude))
+            {
+                var mf = r.GetComponent<MeshFilter>();
+                if (r.enabled && mf != null && mf.sharedMesh != null && mf.sharedMesh.name.StartsWith("SM_Env_") && zona.Contains(r.bounds.center)) props.Add(r);
+            }
+            int peor = 0; string donde = "";
+            foreach (var r in props)
+            {
+                int n = 0; var m = r.GetComponent<MeshFilter>().sharedMesh;
+                foreach (var o in props) if (o.GetComponent<MeshFilter>().sharedMesh == m && (o.bounds.center - r.bounds.center).sqrMagnitude < 400f) n++;
+                if (n > peor) { peor = n; donde = m.name + " en " + r.bounds.center; }
+            }
+            // Antes de la etapa D el peor racimo eran 38 cajas iguales en 20 m (entrada del cuartel).
+            W8Ok(ref ok, peor <= 26, sb, $"peor racimo de props iguales en 20 m = {peor} ({donde}); tope 26");
+            Fin((ok ? "OK " : "FALLO ") + sb);
+            yield break;
+        }
+
         // ---------------------------------------------------------------- 302a una camioneta enemiga que nace en juego tiene icono rojo en el minimapa
         static IEnumerator Bug302a()
         {
