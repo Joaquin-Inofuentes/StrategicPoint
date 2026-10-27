@@ -26,6 +26,7 @@ namespace SP.Operacion
         {
             TorreDestruible mejor = null;
             if (generador != null && !generador.EstaCaido) { PonerBaliza("GENERADOR", new Color(1f, 0.82f, 0.3f), generador.transform.position, null); return; }
+            if (generador != null && cargaPorton != null && !cargaPorton.EstaVolada) { PonerBaliza(cargaPorton.Titulo, new Color(1f, 0.82f, 0.3f), cargaPorton.transform.position, null); return; }
             if (torres != null)
                 foreach (var t in torres)
                     if (t != null && t.tipo == TorreDestruible.Tipo.Torreta && !t.EstaCaida && (mejor == null || t.transform.position.z < mejor.transform.position.z)) mejor = t;
@@ -38,7 +39,7 @@ namespace SP.Operacion
             int vivos = Vivos(enemigosCuartel);
             // Bug #139: "al querer pasar me resalte abajo que debo cumplir el objetivo primero": cerca del porton cerrado, un aviso explica que falta.
             var yoPaso = PlayerInputDriver.Activo != null && PlayerInputDriver.Activo.Brain != null ? PlayerInputDriver.Activo.Brain.Current : null;
-            if (yoPaso != null && portonCuartel != null && portonCuartel.activeSelf && Time.time >= tAvisoDePaso)
+            if (yoPaso != null && portonCuartel != null && portonCuartel.activeSelf && Time.time >= tAvisoDePaso && !(generador != null && generador.EstaCaido))
             {
                 var dp = portonCuartel.transform.position - yoPaso.transform.position; dp.y = 0f;
                 if (dp.magnitude < 15f)
@@ -58,17 +59,25 @@ namespace SP.Operacion
             }
             bool sinEnergia = generador != null && generador.EstaCaido;
             if (sinEnergia && !apagonHecho) ApagarCuartel();
-            if (hud != null && generador != null)
+            if (cargaPorton != null) cargaPorton.Habilitado = sinEnergia;
+            if (hud != null && generador != null && !sinEnergia)
             {
-                hud.Objetivo(TituloObjetivo(1, "CORTÁ LA ENERGÍA DEL CUARTEL"), $"Destruí el GENERADOR del comando (norte) · apaga los reflectores y abre el portón · torretas {torretas}/{TorresDeTorreta} (opcional)", sinEnergia ? 1f : 0f, new Color(1f, 0.82f, 0.3f));
-                if (!sinEnergia) hud.Subobjetivos(LineaDeSubobjetivos(vivos));
+                hud.Objetivo(TituloObjetivo(1, "1/2 · CORTÁ LA ENERGÍA"), "Destruí el GENERADOR del comando (norte) · apaga los reflectores y las torres", 0f, new Color(1f, 0.82f, 0.3f));
+                hud.Subobjetivos(LineaDeSubobjetivos(vivos));
+            }
+            else if (hud != null && generador != null && cargaPorton != null)
+            {
+                float f = cargaPorton.EstaVolada ? 1f : cargaPorton.Situacion == CargaExplosiva.Estado.Ardiendo ? 0.5f + 0.5f * (1f - Mathf.Clamp01(cargaPorton.MechaRestante / cargaPorton.segundosDeMecha)) : 0.5f * cargaPorton.Progreso01;
+                hud.Objetivo(TituloObjetivo(1, "2/2 · ABRÍ EL PORTÓN NORTE"), $"Carga del portón: {cargaPorton.TextoDeEstado} · solo el ASALTO coloca la carga [E]", f, new Color(1f, 0.82f, 0.3f));
+                hud.Subobjetivos(null);
             }
             else if (hud != null)
             {
                 hud.Objetivo(TituloObjetivo(1, "DETONÁ LAS 2 TORRETAS"), $"Artillería antiaérea destruida {torretas}/{TorresDeTorreta} · solo explosivos (el ASALTO las demuele con [Q])", torretas / (float)TorresDeTorreta, new Color(1f, 0.55f, 0.3f));
                 if (torretas < TorresDeTorreta) hud.Subobjetivos(LineaDeSubobjetivos(vivos));
             }
-            if (torretas >= TorresDeTorreta || sinEnergia) { AbrirPorton(); PuestoActual = 0; EntrarFase(FaseOperacion.Puestos); }
+            bool abierto = (generador != null && cargaPorton != null) ? cargaPorton.EstaVolada : (torretas >= TorresDeTorreta || sinEnergia);
+            if (abierto) { AbrirPorton(); PuestoActual = 0; EntrarFase(FaseOperacion.Puestos); }
         }
 
         public const int TorresDeFrancotirador = 2, TorresDeTorreta = 2, TotalDeReflectores = 4;
@@ -95,7 +104,7 @@ namespace SP.Operacion
         {
             apagonHecho = true;
             if (reflectores != null) foreach (var r in reflectores) if (r != null) r.RomperYa();
-            AvisoUnico.Mostrar("ENERGÍA CORTADA · REFLECTORES APAGADOS · EL PORTÓN NORTE SE ABRE", 4f, new Color(1f, 0.82f, 0.3f), AvisoUnico.PrioridadAlta);
+            AvisoUnico.Mostrar("ENERGÍA CORTADA · REFLECTORES APAGADOS · AHORA VOLÁ EL PORTÓN NORTE", 4f, new Color(1f, 0.82f, 0.3f), AvisoUnico.PrioridadAlta);
             SesionLog.Evento("Cuartel sin energia: generador destruido");
         }
 

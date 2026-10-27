@@ -120,8 +120,16 @@ namespace SP.EditorTools
             d.generador.marca.Demoler();
             foreach (var x in Esperar(2.5f)) yield return x;
             W8Ok(ref ok, d.generador.EstaCaido && d.ReflectoresRotos == OperacionDirector.TotalDeReflectores, sb, $"generador caido={d.generador.EstaCaido}, reflectores rotos={d.ReflectoresRotos}/4");
-            W8Ok(ref ok, d.Fase == FaseOperacion.Puestos, sb, $"la fase paso a {d.Fase}");
-            foreach (var x in Esperar(1.5f)) yield return x;
+            W8Ok(ref ok, d.Fase == FaseOperacion.Infiltrar && d.cargaPorton != null && d.portonCuartel.activeSelf, sb, $"sin energia la fase sigue en {d.Fase} (falta la carga del porton)");
+            W8Ok(ref ok, (hud.TextoTitulo ?? "").Contains("2/2"), sb, $"HUD '{hud.TextoTitulo}'");
+            var vega = Escuadrista(RoleType.Assault);
+            Poseer(vega); yield return null;
+            Junto(vega, d.cargaPorton.transform.position, 2f);
+            d.cargaPorton.PlantarPorPrueba(vega); d.cargaPorton.AcortarMecha(2.5f);
+            float t0 = Time.realtimeSinceStartup;
+            while (!d.cargaPorton.EstaVolada && Time.realtimeSinceStartup - t0 < 8f) yield return null;
+            foreach (var x in Esperar(2.5f)) yield return x;
+            W8Ok(ref ok, d.Fase == FaseOperacion.Puestos, sb, $"tras volar el porton la fase pasa a {d.Fase}");
             W8Ok(ref ok, !d.portonCuartel.activeSelf, sb, "el porton del cuartel se abrio");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }

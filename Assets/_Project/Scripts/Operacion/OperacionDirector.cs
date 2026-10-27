@@ -65,6 +65,7 @@ namespace SP.Operacion
         // tambien van en enemigosCuartel: el objetivo se cumple con todos muertos.
         public TorreDestruible[] torres;
         public ReflectorVigia[] reflectores;
+        public CargaExplosiva cargaPorton;       // objetivo 1b: la carga del porton norte del cuartel (se habilita al cortar la energia)
         public GeneradorDelCuartel generador;   // etapa C: cortar la energia abre el porton norte (las torretas son opcionales)
 
         [Header("2. Muralla de contencion: dos puestos a volar")]
@@ -202,6 +203,8 @@ namespace SP.Operacion
 
         void Start()
         {
+            // El cuartel se rediseño sobre el NavMesh horneado (contenedores, plaza): al arrancar se rehace con los colliders reales de la escena.
+            NavMeshViva.Solicitar();
             // P10: si se llega por CONTINUAR, la partida se restaura al arrancar (en un host que sobrevive a SaltarA) y no se repiten las cinematicas.
             bool continuando = Application.isPlaying && PartidaGuardada.HayPendiente;
             if (continuando) PartidaGuardada.ProgramarRestauracion();
@@ -694,6 +697,7 @@ namespace SP.Operacion
                 foreach (var s in enemigosCuartel) if (s != null) s.gameObject.SetActive(false);
                 if (portonCuartel != null) { portonCuartel.SetActive(false); }
                 if (generador != null) { generador.Caer(); apagonHecho = true; }
+                if (cargaPorton != null) cargaPorton.gameObject.SetActive(false);
             }
             if (Indice(destino) > Indice(FaseOperacion.Puestos))
             {
