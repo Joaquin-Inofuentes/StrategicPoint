@@ -417,6 +417,7 @@ namespace SP.Operacion
         {
             if (hud == null) { hud = OperacionHud.Crear(); }
             float dt = Time.deltaTime;
+            NavMeshViva.Pausado = Fase == FaseOperacion.Huir && EnTanque;   // sin rehorneos del NavMesh mientras se maneja el tanque (ver NavMeshViva.Pausado)
             Reloj += dt;
             if (Fase != FaseOperacion.Victoria && Fase != FaseOperacion.Derrota && !SubiendoAlHeli) CazaDeEnemigos.Tick(dt);
             switch (Fase)

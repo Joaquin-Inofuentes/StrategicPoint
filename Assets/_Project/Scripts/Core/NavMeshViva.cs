@@ -38,6 +38,10 @@ namespace SP.Core
         public static int Pedidos { get; private set; }
         public static float UltimaDuracion { get; private set; }   // segundos de reloj desde que se lanzo hasta que termino
         static float inicio;
+        // Tirones en la fuga del tanque: cada derrumbe pedia un rehorneo entero (7-50 ms en el hilo principal) y el tanque derriba cosas
+        // seguido. Mientras maneja el tanque nadie planifica por NavMesh (los montados no caminan, las camionetas siguen un objetivo), asi que
+        // el director pausa el rehorneo y el pedido queda pendiente hasta que termina la fuga.
+        public static bool Pausado;
         public static bool Rehaciendo => enCurso.Count > 0 || rehacerEn >= 0f;
 
         // Los estaticos sobreviven a "Enter Play Mode" sin recarga de dominio.
@@ -51,6 +55,7 @@ namespace SP.Core
             preparadas.Clear();
             Version = 0;
             Pedidos = 0;
+            Pausado = false;
         }
 
         // Un obstaculo cayo (o aparecio uno nuevo): hay que rehacer la malla de navegacion.
@@ -77,7 +82,7 @@ namespace SP.Core
                 }
             }
 
-            if (rehacerEn < 0f || reloj < rehacerEn || enCurso.Count > 0) return;
+            if (Pausado || rehacerEn < 0f || reloj < rehacerEn || enCurso.Count > 0) return;
             if (reloj - ultimoRehacer < IntervaloMinimo) return;   // el pedido sigue pendiente: sale apenas pase el intervalo
             rehacerEn = -1f;
             ultimoRehacer = reloj;

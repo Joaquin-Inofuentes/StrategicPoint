@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using SP.Actors;
 using SP.Core;
@@ -31,7 +32,7 @@ namespace SP.Presentation
         public Transform Target
         {
             get => target;
-            set { target = value; vehiculoResuelto = false; if (Application.isPlaying) DetectarTarget(); }
+            set { QuitarDelRegistro(); target = value; vehiculoResuelto = false; RegistrarPorTarget(); if (Application.isPlaying) DetectarTarget(); }
         }
         [SerializeField] float height = 55f;
         // El icono es un circulo chato: rotarlo no cambia nada visible.
@@ -430,8 +431,11 @@ namespace SP.Presentation
 
         // Alta y baja en el unico recorrido de UI de mundo. Mismo patron
         // que SP.Core.WorldSystemsRegistry.
+        void OnDestroy() => QuitarDelRegistro();
+
         void OnEnable()
         {
+            RegistrarPorTarget();
             int expectedLayer = LayerMask.NameToLayer("Minimap");
             if (expectedLayer < 0) expectedLayer = 8;
             gameObject.layer = expectedLayer;
@@ -995,9 +999,29 @@ namespace SP.Presentation
         // en Vehicle.cs:250 la primera vez que alguien subia/bajaba).
         // Vehicle.cs usa esto para encontrar "su" icono sin depender de la
         // jerarquia.
+        // Optimizacion (tirones en la fuga del tanque): el barrido FindObjectsByType sobre ~500 iconos costaba ~10 ms CADA VEZ que se
+        // activaba un soldado (UnitLocatorCylinder.OnEnable) o nacia una camioneta. En Play se consulta un diccionario por Target; un solo
+        // barrido completo inicial lo llena con los iconos horneados que todavia no pasaron por OnEnable.
+        static readonly Dictionary<Transform, MinimapIcon> porTarget = new Dictionary<Transform, MinimapIcon>();
+        static bool registroCompleto;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarRegistroPorTarget() { porTarget.Clear(); registroCompleto = false; }
+
+        void RegistrarPorTarget() { if (Application.isPlaying && target != null) porTarget[target] = this; }
+        void QuitarDelRegistro() { if (target != null && porTarget.TryGetValue(target, out var m) && m == this) porTarget.Remove(target); }
+
         public static MinimapIcon BuscarPorTarget(Transform target)
         {
             if (target == null) return null;
+            if (Application.isPlaying)
+            {
+                if (porTarget.TryGetValue(target, out var rapido) && rapido != null) return rapido;
+                if (registroCompleto) return null;
+                registroCompleto = true;
+                foreach (var icon in FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include)) if (icon.Target != null) porTarget[icon.Target] = icon;
+                return porTarget.TryGetValue(target, out var lento) ? lento : null;
+            }
             foreach (var icon in FindObjectsByType<MinimapIcon>(FindObjectsInactive.Include))
                 if (icon.Target == target) return icon;
             return null;

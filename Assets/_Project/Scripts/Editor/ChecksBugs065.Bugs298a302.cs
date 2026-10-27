@@ -70,6 +70,10 @@ namespace SP.EditorTools
                 bool pegada = h.name == "Bandeja" || h.name == "Ducto" || h.name == "Panel_Luz";
                 if (pegada && r.bounds.max.y < techoY - 0.03f) sueltas++;
             }
+            int viejas = 0;
+            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include))
+                if ((t.name == "Viga" || t.name == "VigaT" || t.name == "LuzTecho") && t.parent != null && t.parent.name == "ArteExtra") viejas++;
+            W8Ok(ref ok, viejas == 0, sb, $"no quedan las vigas viejas bajas ni sus luces de y=3 (quedan {viejas})");
             W8Ok(ref ok, total > 40, sb, $"hay piezas de techo ({total})");
             W8Ok(ref ok, sueltas == 0, sb, $"bandejas, ductos y paneles tocan el techo (a menos de 3 cm de y={techoY:0.00}); sueltas={sueltas}");
             W8Ok(ref ok, sobrepasan == 0, sb, $"ninguna pieza atraviesa el techo (sobrepasan={sobrepasan})");
