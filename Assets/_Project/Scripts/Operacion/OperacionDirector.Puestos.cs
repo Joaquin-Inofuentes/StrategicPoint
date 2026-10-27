@@ -33,7 +33,7 @@ namespace SP.Operacion
             if (puestos == null) return;
             foreach (var p in puestos)
             {
-                if (p == null || p.carga == null) continue;
+                if (!Activa(p)) continue;
                 p.carga.AlPlantar -= AlPlantarCarga; p.carga.AlPlantar += AlPlantarCarga;
                 p.carga.AlExplotar -= AlExplotarCarga; p.carga.AlExplotar += AlExplotarCarga;
                 p.carga.Habilitado = true;
@@ -55,6 +55,15 @@ namespace SP.Operacion
         {
             if (puestos != null) for (int i = 0; i < puestos.Length; i++) if (puestos[i] != null && puestos[i].carga == c) return i;
             return -1;
+        }
+
+        // Etapa B del rediseño (Bruneval): UNA sola carga, en el porton blindado. Los bunkers son la defensa y ya no llevan carga:
+        // una carga cuenta solo si su objeto sigue activo en la escena.
+        static bool Activa(PuestoDeVoladura p) => p != null && p.carga != null && p.carga.gameObject.activeInHierarchy;
+
+        public int CargasRequeridas
+        {
+            get { int n = 0; if (puestos != null) foreach (var p in puestos) if (Activa(p)) n++; return Mathf.Max(1, n); }
         }
 
         public int ContarVolados()
@@ -90,7 +99,7 @@ namespace SP.Operacion
             if (puestos != null)
                 foreach (var p in puestos)
                 {
-                    if (p == null || p.carga == null || p.carga.EstaPlantada) continue;
+                    if (!Activa(p) || p.carga.EstaPlantada) continue;
                     float d = Plano(desde, p.carga.transform.position).sqrMagnitude;
                     if (d < md) { md = d; mejor = p; }
                 }
@@ -112,24 +121,25 @@ namespace SP.Operacion
             float prog = 0f;
             string det = "";
             float menorMecha = float.MaxValue; string ladoMecha = null;
+            int req = CargasRequeridas, k = 0;
             for (int i = 0; i < puestos.Length; i++)
             {
                 var p = puestos[i];
                 var c = p.carga;
-                if (c == null) continue;
+                if (!Activa(p)) continue;
                 float f = c.EstaVolada ? 1f : c.Situacion == CargaExplosiva.Estado.Ardiendo ? 0.5f + 0.5f * (1f - Mathf.Clamp01(c.MechaRestante / c.segundosDeMecha)) : 0.5f * c.Progreso01;
-                prog += f / puestos.Length;
-                det += (i > 0 ? " · " : "") + $"Puesto {Capital(p.lado)}: {c.TextoDeEstado}";
-                if (c.Situacion == CargaExplosiva.Estado.Ardiendo && c.MechaRestante < menorMecha) { menorMecha = c.MechaRestante; ladoMecha = p.lado; }
+                prog += f / req;
+                det += (k++ > 0 ? " · " : "") + $"Carga del {Capital(c.lado)}: {c.TextoDeEstado}";
+                if (c.Situacion == CargaExplosiva.Estado.Ardiendo && c.MechaRestante < menorMecha) { menorMecha = c.MechaRestante; ladoMecha = c.lado; }
             }
             det += " · solo el ASALTO coloca la carga [E]";
             if (hud != null)
             {
-                hud.Objetivo(TituloObjetivo(2, "VOLAR LOS PUESTOS"), det, prog, new Color(1f, 0.82f, 0.3f));
+                hud.Objetivo(TituloObjetivo(2, "VOLAR EL PORTÓN BLINDADO"), det, prog, new Color(1f, 0.82f, 0.3f));
                 if (ladoMecha != null)
                 {
                     bool urgente = menorMecha <= CargaExplosiva.SegundosDeAdvertencia;
-                    hud.Timer("MECHA · PUESTO " + ladoMecha, Mathf.Max(0, Mathf.CeilToInt(menorMecha)), urgente ? new Color(1f, 0.3f, 0.2f) : new Color(1f, 0.85f, 0.4f));
+                    hud.Timer("MECHA · " + ladoMecha, Mathf.Max(0, Mathf.CeilToInt(menorMecha)), urgente ? new Color(1f, 0.3f, 0.2f) : new Color(1f, 0.85f, 0.4f));
                 }
                 else hud.OcultarTimer();
             }
@@ -142,11 +152,12 @@ namespace SP.Operacion
             if (i < 0) return;
             var p = puestos[i];
             int orden = plantadas++;                         // 0 = la primera carga
-            int cantidad = orden == 0 ? ContraatacantesPrimera : ContraatacantesSegunda;
-            LanzarContraataque(p, cantidad, c.transform.position);
-            if (orden >= 1) LanzarCamionetaDePuesto(p);
+            // La carga unica del porton despierta a las DOS reservas (una por bunker) y manda una camioneta por el flanco del puesto que la tiene.
+            int cantidad = ContraatacantesSegunda;
+            foreach (var otro in puestos) if (otro != null) LanzarContraataque(otro, cantidad, c.transform.position);
+            LanzarCamionetaDePuesto(p);
             BalizaDelPuesto();
-            SesionLog.Evento($"{c.Titulo} colocada (orden {orden + 1}): contraataque de {cantidad}{(orden >= 1 ? " y una camioneta" : "")}");
+            SesionLog.Evento($"{c.Titulo} colocada (orden {orden + 1}): contraataque de {cantidad} por bunker y una camioneta");
         }
 
         void LanzarContraataque(PuestoDeVoladura p, int cantidad, Vector3 meta)
@@ -229,9 +240,9 @@ namespace SP.Operacion
             PuestoActual = volados;
             AlertQueue.Push($"PUESTO {p.lado} VOLADO", AlertPriority.Alta, 2.5f);
             if (hud != null) hud.Aviso($"PUESTO {p.lado} VOLADO", 2.5f);
-            SesionLog.Evento($"Puesto {p.lado} volado ({volados}/{puestos.Length})");
-            if (volados < puestos.Length) { SonarObjetivoCumplido(); BalizaDelPuesto(); return; }
-            // Los dos volados: la muralla cae (el porton blindado se hunde) y sigue el Centro de Datos.
+            SesionLog.Evento($"Puesto {p.lado} volado ({volados}/{CargasRequeridas})");
+            if (volados < CargasRequeridas) { SonarObjetivoCumplido(); BalizaDelPuesto(); return; }
+            // La carga del porton: la muralla cae (el porton blindado se hunde) y sigue el Centro de Datos.
             if (portonBlindado != null && portonBlindado.activeSelf) StartCoroutine(Hundir(portonBlindado));
             LimpiarCamionetasDePuestos();
             EntrarFase(FaseOperacion.CentroDeDatos);
@@ -269,7 +280,7 @@ namespace SP.Operacion
         // ---- HUD: los pasos de la operacion ----
         public static readonly string[] PasosCortos =
         {
-            "INFILTRAR EL CUARTEL", "VOLAR LOS DOS PUESTOS", "CENTRO DE DATOS", "EL BLINDADO", "LA CIUDAD", "EXTRACCIÓN",
+            "INFILTRAR EL CUARTEL", "VOLAR EL PORTÓN BLINDADO", "CENTRO DE DATOS", "EL BLINDADO", "LA CIUDAD", "EXTRACCIÓN",
         };
 
         // Lista compacta bajo el objetivo: ✓ hechos, ▶ el actual, • pendientes. [V] la pliega a una linea. Se llama cada frame (el HUD no reconstruye si no cambio nada).

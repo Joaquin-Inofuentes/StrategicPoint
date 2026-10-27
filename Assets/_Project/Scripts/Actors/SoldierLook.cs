@@ -60,6 +60,13 @@ namespace SP.Actors
             if (matEnemigo == null) return null;
             matEnemigoVisible = new Material(matEnemigo) { name = "MAT_Trimsheet_Enemigo_Brillo" };
             Teñir(matEnemigoVisible, TinteEnemigo);
+            // Etapa A del rediseño de objetivos: el tinte rojo multiplicaba un trimsheet azul/verde y a 10 m el enemigo
+            // se leia igual que el aliado. Los azules y verdes pasan a rojo oxido oscuro en una copia de la textura.
+            if (matEnemigoVisible.HasProperty("_BaseMap") && matEnemigoVisible.GetTexture("_BaseMap") is Texture2D txE)
+            {
+                var oxido = AzulYVerdeAOxido(txE);
+                if (oxido != null) { matEnemigoVisible.SetTexture("_BaseMap", oxido); Teñir(matEnemigoVisible, new Color(1f, 0.78f, 0.7f)); }
+            }
             if (matEnemigoVisible.HasProperty("_EmissionColor"))
             {
                 matEnemigoVisible.EnableKeyword("_EMISSION");
@@ -67,7 +74,8 @@ namespace SP.Actors
                 // MISMA textura del trimsheet (aclara el dibujo sin borrarlo) y un color tenue.
                 if (matEnemigoVisible.HasProperty("_BaseMap") && matEnemigoVisible.GetTexture("_BaseMap") != null && matEnemigoVisible.HasProperty("_EmissionMap"))
                     matEnemigoVisible.SetTexture("_EmissionMap", matEnemigoVisible.GetTexture("_BaseMap"));
-                matEnemigoVisible.SetColor("_EmissionColor", new Color(0.2f, 0.2f, 0.2f));
+                // Acento rojo tenue (antes gris): la familia calida se lee tambien de noche.
+                matEnemigoVisible.SetColor("_EmissionColor", new Color(0.30f, 0.06f, 0.04f));
                 matEnemigoVisible.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
             }
             return matEnemigoVisible;
@@ -75,7 +83,7 @@ namespace SP.Actors
 
         // Pedido de pulido: "distinguir enemigos de aliados, mejorar el codigo de colores". Un solo criterio: ALIADO = frio (azul),
         // ENEMIGO = calido (rojo). Se multiplica sobre el trimsheet, asi no se pierde el dibujo de cada clase.
-        public static readonly Color TinteAliado = new Color(0.12f, 0.42f, 1.00f);
+        public static readonly Color TinteAliado = new Color(0.30f, 0.62f, 1.00f);
         public static readonly Color TinteEnemigo = new Color(1.00f, 0.30f, 0.24f);
 
         static void Teñir(Material m, Color c)
@@ -110,6 +118,46 @@ namespace SP.Actors
             res.SetPixels32(px);
             res.Apply(true, false);
             return res;
+        }
+
+        // Copia del trimsheet para el enemigo: lo azul o verde se vuelve rojo oxido oscuro (la luminosidad se conserva, asi
+        // el dibujo de cada clase sigue legible); los rojos y los neutros (negro, blanco) quedan como estan.
+        static Texture2D AzulYVerdeAOxido(Texture2D src)
+        {
+            var copia = LeerCopia(src, "_Enemigo");
+            if (copia == null) return null;
+            var px = copia.GetPixels32();
+            for (int i = 0; i < px.Length; i++)
+            {
+                var p = px[i];
+                bool azul = p.b > 40 && p.b > p.r * 1.15f && p.b >= p.g;
+                bool verde = p.g > 40 && p.g > p.r * 1.15f && p.g > p.b;
+                if (!azul && !verde) continue;
+                float lum = (0.3f * p.r + 0.59f * p.g + 0.11f * p.b) / 255f;
+                p.r = (byte)Mathf.Clamp(lum * 255f * 1.5f, 0f, 255f);
+                p.g = (byte)Mathf.Clamp(lum * 255f * 0.42f, 0f, 255f);
+                p.b = (byte)Mathf.Clamp(lum * 255f * 0.34f, 0f, 255f);
+                px[i] = p;
+            }
+            copia.SetPixels32(px);
+            copia.Apply(true, false);
+            return copia;
+        }
+
+        static Texture2D LeerCopia(Texture2D src, string sufijo)
+        {
+            if (!Application.isPlaying) return null;
+            var rt = RenderTexture.GetTemporary(src.width, src.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            var previa = RenderTexture.active;
+            try
+            {
+                Graphics.Blit(src, rt);
+                RenderTexture.active = rt;
+                var res = new Texture2D(src.width, src.height, TextureFormat.RGBA32, true) { name = src.name + sufijo, hideFlags = HideFlags.HideAndDontSave };
+                res.ReadPixels(new Rect(0, 0, src.width, src.height), 0, 0);
+                return res;
+            }
+            finally { RenderTexture.active = previa; RenderTexture.ReleaseTemporary(rt); }
         }
 
         static Material matAliadoTenido;

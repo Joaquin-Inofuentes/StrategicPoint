@@ -159,11 +159,17 @@ namespace SP.Combat
             // se garantiza SIEMPRE (con blanco de base si no vino color),
             // y el tinte pedido se aplica encima si vino.
             AsegurarMaterial();
-            if (color.HasValue && cachedRenderer != null) cachedRenderer.sharedMaterial.color = esDeVehiculoEnemigo ? ColorDeTrazadoraEnemiga : color.Value;
+            // Etapa A: una trazadora por bando (enemigo rojo-naranja, aliado cian); los obuses conservan el color de su arma.
+            Color elegido = color ?? Color.white;
+            if (esDeVehiculoEnemigo) elegido = ColorDeTrazadoraEnemiga;
+            else if (!esObus && shooterTeam == TeamId.Enemy) elegido = ColorDeTrazadoraEnemiga;
+            else if (!esObus && shooterTeam == TeamId.Player) elegido = ColorDeTrazadoraAliada;
+            if (color.HasValue && cachedRenderer != null) cachedRenderer.sharedMaterial.color = elegido;
             ConfigurarHalo(esDeVehiculoEnemigo || esObus);
         }
 
         public static readonly Color ColorDeTrazadoraEnemiga = new Color(1f, 0.14f, 0.04f, 1f);
+        public static readonly Color ColorDeTrazadoraAliada = new Color(0.25f, 0.85f, 1f, 1f);
         bool esDeVehiculoEnemigo;
         public bool EsDeVehiculoEnemigo => esDeVehiculoEnemigo;
         Transform halo; SpriteRenderer haloSr;

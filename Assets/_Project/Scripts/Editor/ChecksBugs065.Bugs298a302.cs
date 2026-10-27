@@ -81,6 +81,29 @@ namespace SP.EditorTools
             yield break;
         }
 
+        // ---------------------------------------------------------------- 303a (etapa A) aliados azules y enemigos rojo oxido: tono distinto, trazadoras por bando
+        static IEnumerator Bug303a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(2, 1, 0);
+            foreach (var x in Esperar(1f)) yield return x;
+            float hA = -1f, hE = -1f;
+            foreach (var s in ActorRegistry.All)
+            {
+                if (s == null || s.Role == RoleType.Civilian) continue;
+                var smr = s.GetComponentInChildren<SkinnedMeshRenderer>(true);
+                if (smr == null || smr.sharedMaterial == null) continue;
+                var mc = smr.sharedMaterial.color; Color.RGBToHSV(mc, out float ht, out _, out _);
+                if (s.Team == TeamId.Player && hA < 0f) hA = ht; else if (s.Team == TeamId.Enemy && hE < 0f) hE = ht;
+            }
+            float d = Mathf.Abs(hA - hE); d = Mathf.Min(d, 1f - d) * 360f;
+            W8Ok(ref ok, hA >= 0f && hE >= 0f && d > 120f, sb, $"el tinte de aliados y enemigos separa mas de 120 grados (aliado={hA * 360f:0}, enemigo={hE * 360f:0}, dif={d:0})");
+            var a = Projectile.ColorDeTrazadoraAliada; var e = Projectile.ColorDeTrazadoraEnemiga;
+            W8Ok(ref ok, a.b > a.r && e.r > e.b, sb, "trazadora aliada fria y enemiga calida");
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
         // ---------------------------------------------------------------- 302a una camioneta enemiga que nace en juego tiene icono rojo en el minimapa
         static IEnumerator Bug302a()
         {

@@ -295,7 +295,7 @@ namespace SP.Operacion
             Subfase = 0;
             Reloj = 0f;
             if (terminoUnObjetivo) SonarObjetivoCumplido();
-            SesionLog.Evento("FASE de la Operacion -> " + f + (f == FaseOperacion.Puestos ? " (volados " + PuestoActual + "/" + (puestos != null ? puestos.Length : 0) + ")" : ""));
+            SesionLog.Evento("FASE de la Operacion -> " + f + (f == FaseOperacion.Puestos ? " (volados " + PuestoActual + "/" + CargasRequeridas + ")" : ""));
             if (hud == null) hud = OperacionHud.Crear();
             if (Application.isPlaying) ReabastecerAlJugador();
             if (Application.isPlaying && Indice(f) <= Indice(FaseOperacion.Huir)) StartCoroutine(SeguirAlJugadorAlEmpezar(f));
@@ -695,7 +695,7 @@ namespace SP.Operacion
             {
                 foreach (var p in puestos) DejarPuestoVolado(p);
                 ApagarMuralla();
-                PuestoActual = puestos.Length;
+                PuestoActual = CargasRequeridas;
             }
             else if (destino == FaseOperacion.Puestos) PuestoActual = 0;
             NavService.Invalidate();
@@ -727,7 +727,7 @@ namespace SP.Operacion
         // 8 m al sur de su punto de carga, mirando al norte.
         public void SaltarAPuesto(int indice)
         {
-            indice = Mathf.Clamp(indice, 0, puestos.Length - 1);
+            indice = Mathf.Clamp(indice, 0, CargasRequeridas - 1);   // una sola carga (la del porton)
             SaltarA(FaseOperacion.Puestos, true);
             for (int i = 0; i < indice; i++) DejarPuestoVolado(puestos[i]);
             PuestoActual = ContarVolados();
@@ -735,7 +735,7 @@ namespace SP.Operacion
             NavMeshViva.Solicitar();
             Coberturas.Registrar();
             var carga = puestos[indice].carga;
-            if (carga != null)
+            if (carga != null && carga.gameObject.activeInHierarchy)
                 TeletransportarEscuadra(carga.transform.position + Vector3.back * 8f, Quaternion.LookRotation(Vector3.forward, Vector3.up));
             BalizaDelPuesto();
         }

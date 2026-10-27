@@ -69,7 +69,7 @@ namespace SP.EditorTools
             var d = OperacionDirector.Instancia;
             var sb = new StringBuilder(); bool ok = true;
             if (d == null || d.puestos == null) { Fin("FALLO sin director o sin puestos"); yield break; }
-            W8Ok(ref ok, d.puestos.Length == OperacionDirector.TotalDePuestos && OperacionDirector.TotalDePuestos == 2, sb, $"2 puestos ({d.puestos.Length})");
+            W8Ok(ref ok, d.puestos.Length == OperacionDirector.TotalDePuestos && OperacionDirector.TotalDePuestos == 2 && d.CargasRequeridas == 1, sb, $"2 bunkers ({d.puestos.Length}) y una sola carga requerida ({d.CargasRequeridas}): la del porton");
             var entrada = d.entradas[1].position;
             for (int i = 0; i < d.puestos.Length; i++)
             {
@@ -82,24 +82,24 @@ namespace SP.EditorTools
                 int reservasActivas = 0; foreach (var s in p.contraataque.soldados) if (s != null && s.gameObject.activeSelf) reservasActivas++;
                 W8Ok(ref ok, rolAsalto && vivos == 5 && p.contraataque.soldados.Length == 6 && reservasActivas == 0, sb,
                     $"{p.lado}: rol={p.carga.rol} guardias vivos={vivos}/5 reservas={p.contraataque.soldados.Length} (activas {reservasActivas}, pide 0: una sola capa) mecha={p.carga.segundosDeMecha:0} s plantado={p.carga.duracion:0.0} s");
+                if (!p.carga.gameObject.activeInHierarchy) { W8Ok(ref ok, p.carga.transform.position.x > 0f, sb, $"{p.lado}: bunker sin carga (solo defensa)"); continue; }
                 var punto = p.carga.transform.position;
                 string alc = W9Nav(entrada, punto + Vector3.back * 1.8f, out var est);
                 W8Ok(ref ok, est == NavMeshPathStatus.PathComplete, sb, $"{p.lado}: carga alcanzable desde la entrada ({alc})");
                 string cam1 = W9Nav(entrada, p.salidaCamioneta.position, out var e1), cam2 = W9Nav(entrada, p.paradaCamioneta.position, out var e2);
                 W8Ok(ref ok, e1 == NavMeshPathStatus.PathComplete && e2 == NavMeshPathStatus.PathComplete, sb, $"{p.lado}: salida/parada de la camioneta alcanzables ({cam1}/{cam2})");
             }
-            float sep = Mathf.Abs(d.puestos[0].carga.transform.position.x - d.puestos[1].carga.transform.position.x);
-            W8Ok(ref ok, sep > 60f && sep < 100f, sb, $"puestos separados {sep:0} m (flancos opuestos de la muralla)");
+            var cp = d.puestos[0].carga.transform.position;
+            W8Ok(ref ok, Mathf.Abs(cp.x) < 1f && cp.z < -170.5f && cp.z > -176f && !d.puestos[1].carga.gameObject.activeInHierarchy, sb, $"la carga unica esta frente al porton blindado ({cp}) y el bunker Este no tiene carga");
             W8Ok(ref ok, d.GuardiasDeLosPuestos().Count == 12 && d.soldadosDelCorredor.Length == 3, sb, $"guardias de los puestos={d.GuardiasDeLosPuestos().Count} (12) corredor={d.soldadosDelCorredor.Length} (3)");
             W8Ok(ref ok, d.ContraatacantesActivados == 0 && d.CamionetasDePuestosCreadas == 0, sb, $"nada lanzado al empezar (contraatacantes {d.ContraatacantesActivados}, camionetas {d.CamionetasDePuestosCreadas})");
             string cd = W9Nav(entrada, new Vector3(0f, 0f, -98f), out var ecd);
             W8Ok(ref ok, ecd != NavMeshPathStatus.PathComplete && d.portonBlindado != null && d.portonBlindado.activeSelf, sb, $"Centro de Datos bloqueado por el porton blindado ({cd})");
             var hud = OperacionHud.Instancia;
             string det = hud != null ? hud.TextoDetalle : "(sin hud)";
-            W8Ok(ref ok, det.Contains("Puesto Oeste: intacto") && det.Contains("Puesto Este: intacto") && (hud.TextoTitulo ?? "").StartsWith("OBJETIVO 2/6", StringComparison.Ordinal), sb, $"HUD '{hud?.TextoTitulo}' / '{det}'");
+            W8Ok(ref ok, det.Contains("Carga del Porton: intacto") && (hud.TextoTitulo ?? "").StartsWith("OBJETIVO 2/6", StringComparison.Ordinal), sb, $"HUD '{hud?.TextoTitulo}' / '{det}'");
             W9Aerea(new Vector3(0f, 0f, -178f), W9Aereas + "muralla_aerea.png", 95f, 60f, 62f);
             W9Aerea(d.puestos[0].carga.transform.position, "v2_082_puesto_oeste_aerea.png", 34f, 26f, 60f);
-            W9Aerea(d.puestos[1].carga.transform.position, "v2_082_puesto_este_aerea.png", 34f, 26f, 60f);
             Fin((ok ? "OK " : "FALLO ") + sb + $"(arranque: {r0})");
         }
 
@@ -152,9 +152,9 @@ namespace SP.EditorTools
                 var hud = OperacionHud.Instancia;
                 string timer = hud != null ? hud.TextoTimer : "";
                 var etq = carga.etiqueta != null ? carga.etiqueta.text : "";
-                W8Ok(ref ok, activos == OperacionDirector.ContraatacantesPrimera && d.ContraatacantesActivados == 4 && d.CamionetasDePuestosCreadas == 0, sb,
-                    $"C) contraataque: {activos} reservas activas (pide 4), camionetas={d.CamionetasDePuestosCreadas} (pide 0 en la primera)");
-                W8Ok(ref ok, etq.Contains("CARGA OESTE"), sb, $"C) etiqueta 3D='{etq}' (el timer del HUD se aparta mientras dura el cartel de aviso: #060)");
+                W8Ok(ref ok, activos == OperacionDirector.ContraatacantesSegunda && d.ContraatacantesActivados == 2 * OperacionDirector.ContraatacantesSegunda && d.CamionetasDePuestosCreadas == 1, sb,
+                    $"C) contraataque: {activos} reservas activas del Oeste (pide 6), total={d.ContraatacantesActivados} (pide 12: las dos reservas), camionetas={d.CamionetasDePuestosCreadas} (pide 1)");
+                W8Ok(ref ok, etq.Contains("CARGA PORTON"), sb, $"C) etiqueta 3D='{etq}' (el timer del HUD se aparta mientras dura el cartel de aviso: #060)");
                 W9Aerea(carga.transform.position, "v2_082_contraataque_aerea.png", 30f, 22f, 60f);
                 foreach (var x in CapturarPantalla("v2_082_mecha.png")) yield return x;
 
@@ -167,7 +167,7 @@ namespace SP.EditorTools
                 W8Ok(ref ok, sigue, sb, $"D) con un enemigo al lado la carga sigue ardiendo: mecha {m0:0.0} a {carga.MechaRestante:0.0} s");
                 timer = hud != null ? hud.TextoTimer : "";
                 string timerUnico = SP.UI.AvisoUnico.TextoActual ?? "";   // el temporizador ahora va en el texto unico (AvisoUnico)
-                W8Ok(ref ok, timer.Contains("MECHA · PUESTO OESTE") || timerUnico.Contains("MECHA · PUESTO OESTE") || timerUnico.Contains("CONTRAATAQUE"), sb, $"D) timer pasado el cartel='{timer}' / texto unico='{timerUnico}'");
+                W8Ok(ref ok, timer.Contains("MECHA · PORTON") || timerUnico.Contains("MECHA · PORTON") || timerUnico.Contains("CONTRAATAQUE"), sb, $"D) timer pasado el cartel='{timer}' / texto unico='{timerUnico}'");
 
                 // E) Los ultimos 5 s el bip se acelera: se cuentan los bips en la 1.a mitad y en los 5 s finales.
                 int bipsAntes = carga.Bips;
@@ -188,14 +188,12 @@ namespace SP.EditorTools
                 while (!carga.EstaVolada && Time.realtimeSinceStartup - t1 < 3f) yield return null;
                 foreach (var x in Esperar(0.5f)) yield return x;
                 int cols = 0, tot = 0;
-                foreach (var m in p.bunker.GetComponentsInChildren<ObstacleMarker>(true)) { tot++; if (m.IsCollapsed || !m.gameObject.activeSelf) cols++; }
+                if (p.bunker != null) foreach (var m in p.bunker.GetComponentsInChildren<ObstacleMarker>(true)) { tot++; if (m.IsCollapsed || !m.gameObject.activeSelf) cols++; }
                 bool nidoMuerto = p.nido == null || !p.nido.Health.IsAlive;
                 int vivosRadio = 0;
                 foreach (var g in guardiasAntes) if (g != null && g.Health.IsAlive && g.gameObject.activeInHierarchy && Vector3.Distance(g.transform.position, carga.transform.position) < CargaExplosiva.RadioDeExplosion) vivosRadio++;
-                W8Ok(ref ok, carga.EstaVolada && d.ContarVolados() == 1 && d.Fase == FaseOperacion.Puestos, sb, $"F) volada={carga.EstaVolada} volados={d.ContarVolados()}/2 fase={d.Fase} (sigue en Puestos)");
-                W8Ok(ref ok, cols == tot && tot > 0 && nidoMuerto && vivosRadio == 0, sb, $"F) bunker colapsado {cols}/{tot} marcas, nido muerto={nidoMuerto}, guardias vivos en el radio={vivosRadio} (pide 0)");
-                string det = hud != null ? hud.TextoDetalle : "";
-                W8Ok(ref ok, det.Contains("Puesto Oeste: VOLADO") && det.Contains("Puesto Este: intacto"), sb, $"F) HUD '{det}'");
+                W8Ok(ref ok, carga.EstaVolada && d.ContarVolados() == 1 && d.Fase == FaseOperacion.CentroDeDatos, sb, $"F) volada={carga.EstaVolada} volados={d.ContarVolados()}/1 fase={d.Fase} (pasa al Centro de Datos)");
+                W8Ok(ref ok, vivosRadio == 0, sb, $"F) guardias vivos en el radio de la carga={vivosRadio} (pide 0); el bunker Oeste queda en pie ({p.bunker != null})");
                 W9Aerea(carga.transform.position, "v2_082_volado_aerea.png", 34f, 26f, 60f);
                 foreach (var x in CapturarPantalla("v2_082_volado.png")) yield return x;
             }
@@ -221,43 +219,33 @@ namespace SP.EditorTools
             var este = d.puestos[1]; var oeste = d.puestos[0];
             try
             {
-                // 1) El orden es libre: se coloca primero la del ESTE (Vega la coloca con la costura de pruebas, sin los 3,5 s).
+                // 1) UNA carga, la del porton: Vega la coloca con la costura de pruebas (sin los 3,5 s). Despierta a las dos reservas y manda una camioneta.
                 Poseer(vega); yield return null;
-                Junto(vega, este.carga.transform.position, 2f);
-                este.carga.PlantarPorPrueba(vega);
-                este.carga.AcortarMecha(2.5f);
-                foreach (var x in Esperar(1.2f)) yield return x;
-                int act1 = 0; foreach (var s in este.contraataque.soldados) if (s != null && s.gameObject.activeSelf) act1++;
-                W8Ok(ref ok, act1 == OperacionDirector.ContraatacantesPrimera && d.CamionetasDePuestosCreadas == 0, sb, $"1) Este primero: {act1} contraatacantes (pide 4), camionetas={d.CamionetasDePuestosCreadas} (pide 0)");
-                float t0 = Time.realtimeSinceStartup;
-                while (!este.carga.EstaVolada && Time.realtimeSinceStartup - t0 < 5f) yield return null;
-                foreach (var x in Esperar(0.4f)) yield return x;
-                W8Ok(ref ok, este.carga.EstaVolada && d.ContarVolados() == 1 && d.Fase == FaseOperacion.Puestos && d.portonBlindado.activeSelf, sb,
-                    $"1) Este volado, fase {d.Fase}, porton blindado sigue en pie={d.portonBlindado.activeSelf}");
-
-                // 2) Despues el OESTE: la segunda carga trae 6 y una camioneta de asalto.
-                Junto(vega, oeste.carga.transform.position, 2f);
-                oeste.carga.PlantarPorPrueba(vega);
-                oeste.carga.AcortarMecha(4f);
+                var carga = oeste.carga;
+                Junto(vega, carga.transform.position, 2f);
+                carga.PlantarPorPrueba(vega);
+                carga.AcortarMecha(3f);
                 foreach (var x in Esperar(1.5f)) yield return x;
-                int act2 = 0; foreach (var s in oeste.contraataque.soldados) if (s != null && s.gameObject.activeSelf) act2++;
-                W8Ok(ref ok, act2 == OperacionDirector.ContraatacantesSegunda && d.CamionetasDePuestosCreadas == 1 && d.CamionetasDePuestosVivas == 1, sb,
-                    $"2) Oeste segundo: {act2} contraatacantes (pide 6), camionetas creadas={d.CamionetasDePuestosCreadas} vivas={d.CamionetasDePuestosVivas} (pide 1)");
-                W9Aerea(new Vector3(0f, 0f, -190f), W9Aereas + "segunda_carga_aerea.png", 80f, 50f, 62f);
-                t0 = Time.realtimeSinceStartup;
-                while (!oeste.carga.EstaVolada && Time.realtimeSinceStartup - t0 < 8f) yield return null;
+                int actO = 0, actE = 0;
+                foreach (var s in oeste.contraataque.soldados) if (s != null && s.gameObject.activeSelf) actO++;
+                foreach (var s in este.contraataque.soldados) if (s != null && s.gameObject.activeSelf) actE++;
+                W8Ok(ref ok, actO == OperacionDirector.ContraatacantesSegunda && actE == OperacionDirector.ContraatacantesSegunda && d.CamionetasDePuestosCreadas == 1 && d.CamionetasDePuestosVivas == 1, sb,
+                    $"1) carga del porton: reservas Oeste={actO} Este={actE} (pide 6 y 6), camionetas creadas={d.CamionetasDePuestosCreadas} vivas={d.CamionetasDePuestosVivas} (pide 1)");
+                W9Aerea(new Vector3(0f, 0f, -190f), W9Aereas + "carga_porton_aerea.png", 80f, 50f, 62f);
+                float t0 = Time.realtimeSinceStartup;
+                while (!carga.EstaVolada && Time.realtimeSinceStartup - t0 < 8f) yield return null;
                 foreach (var x in Esperar(0.5f)) yield return x;
 
-                // 3) Los dos volados: la muralla cae, fase Centro de Datos y camino abierto.
+                // 2) Voladura: la muralla cae, fase Centro de Datos y camino abierto. Los bunkers siguen en pie (son defensa, no objetivo).
                 var hud = OperacionHud.Instancia;
-                W8Ok(ref ok, d.ContarVolados() == 2 && d.Fase == FaseOperacion.CentroDeDatos, sb, $"3) volados={d.ContarVolados()}/2 fase={d.Fase} (pide CentroDeDatos)");
+                W8Ok(ref ok, d.ContarVolados() == 1 && d.Fase == FaseOperacion.CentroDeDatos, sb, $"2) volados={d.ContarVolados()}/1 fase={d.Fase} (pide CentroDeDatos)");
                 foreach (var x in Esperar(3.5f)) yield return x;
-                W8Ok(ref ok, d.portonBlindado != null && !d.portonBlindado.activeSelf, sb, $"3) el porton blindado se hundio (activo={d.portonBlindado != null && d.portonBlindado.activeSelf})");
-                W8Ok(ref ok, d.CamionetasDePuestosVivas == 0, sb, $"3) sin camionetas de los puestos (vivas {d.CamionetasDePuestosVivas})");
+                W8Ok(ref ok, d.portonBlindado != null && !d.portonBlindado.activeSelf, sb, $"2) el porton blindado se hundio (activo={d.portonBlindado != null && d.portonBlindado.activeSelf})");
+                W8Ok(ref ok, d.CamionetasDePuestosVivas == 0, sb, $"2) sin camionetas de los puestos (vivas {d.CamionetasDePuestosVivas})");
                 string cd = W9Nav(d.entradas[1].position, new Vector3(0f, 0f, -98f), out var ecd);
-                W8Ok(ref ok, ecd == NavMeshPathStatus.PathComplete, sb, $"3) camino a la entrada del Centro de Datos abierto ({cd})");
+                W8Ok(ref ok, ecd == NavMeshPathStatus.PathComplete, sb, $"2) camino a la entrada del Centro de Datos abierto ({cd})");
                 string tit = hud != null ? hud.TextoTitulo : "(sin hud)";
-                W8Ok(ref ok, tit.StartsWith("OBJETIVO 3/6", StringComparison.Ordinal), sb, $"3) HUD '{tit}'");
+                W8Ok(ref ok, tit.StartsWith("OBJETIVO 3/6", StringComparison.Ordinal), sb, $"2) HUD '{tit}'");
                 foreach (var x in CapturarPantalla("v2_082_cadena_centro.png")) yield return x;
             }
             finally
