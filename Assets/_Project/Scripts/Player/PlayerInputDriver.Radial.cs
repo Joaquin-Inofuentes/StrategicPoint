@@ -733,7 +733,7 @@ namespace SP.Player
                 if (yo == null || yo.Role != RoleType.Assault) { RejectOrder("SOLO EL ASALTO DEMUELE"); return false; }
                 var d = yo.GetComponent<DemoledorAsalto>() ?? yo.gameObject.AddComponent<DemoledorAsalto>();
                 if (!d.IniciarComoJugador(marcador, out motivo)) { RejectOrder(motivo); return false; }
-                Avisar("QUEDATE QUIETO Y AGACHADO: DEMOLIENDO");
+                Avisar("QUEDATE QUIETO Y AGACHADO");
                 return true;
             }
 

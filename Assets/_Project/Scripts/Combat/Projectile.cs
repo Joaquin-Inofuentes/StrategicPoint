@@ -166,6 +166,9 @@ namespace SP.Combat
             else if (!esObus && shooterTeam == TeamId.Player) elegido = ColorDeTrazadoraAliada;
             if (color.HasValue && cachedRenderer != null) cachedRenderer.sharedMaterial.color = elegido;
             ConfigurarHalo(esDeVehiculoEnemigo || esObus);
+            ocultaPorCamara = false;
+            if (cachedRenderer != null) cachedRenderer.enabled = true;
+            OcultarSiPegadaALaCamara();
         }
 
         public static readonly Color ColorDeTrazadoraEnemiga = new Color(1f, 0.14f, 0.04f, 1f);
@@ -200,6 +203,22 @@ namespace SP.Combat
         }
 
         void OnDestroy() { if (halo != null) Destroy(halo.gameObject); }
+
+        // Primera persona: la trazadora nace en el canon, a un paso de la camara, y su cola estirada hacia atras (y el halo) se veian
+        // como una barra gigante pegada al lente. Mientras la bala esta a menos de DistanciaMinimaVisible de la camara no se dibuja.
+        const float DistanciaMinimaVisible = 2.2f;
+        bool ocultaPorCamara;
+        void OcultarSiPegadaALaCamara()
+        {
+            var cam = SP.Core.CamaraPrincipal.Actual;
+            if (cam == null) return;
+            bool cerca = (transform.position - cam.transform.position).sqrMagnitude < DistanciaMinimaVisible * DistanciaMinimaVisible;
+            if (cerca == ocultaPorCamara) return;
+            ocultaPorCamara = cerca;
+            if (cachedRenderer != null) cachedRenderer.enabled = !cerca;
+            if (halo != null && cerca) halo.gameObject.SetActive(false);
+            else if (halo != null && haloSr != null && haloSr.sprite != null && (esDeVehiculoEnemigo || explosionRadius > 0f)) halo.gameObject.SetActive(true);
+        }
 
         // El material se garantiza al DESPERTAR, no solo al disparar. Los
         // proyectiles del pool nacen todos juntos al arrancar la partida y
@@ -241,6 +260,7 @@ namespace SP.Combat
         {
             active = false;
             esDeVehiculoEnemigo = false;
+            if (ocultaPorCamara) { ocultaPorCamara = false; if (cachedRenderer != null) cachedRenderer.enabled = true; }
             if (halo != null) halo.gameObject.SetActive(false);
             gravity = 0f;
             ignoreVehicle = null;
@@ -282,6 +302,7 @@ namespace SP.Combat
                 transform.position += transform.forward * effectiveSpeed * dt;
             }
             age += dt;
+            OcultarSiPegadaALaCamara();
 
             // Un soldado montado en un vehículo queda inactivo (oculto); no
             // debe poder recibir impactos mientras está ahí adentro.

@@ -19,6 +19,8 @@ namespace SP.UI
         Color crosshairBaseColor = Color.white;
         Vector2 crosshairBaseSize = new Vector2(28f, 28f);
         Vector2 crosshairSpriteSize = new Vector2(28f, 28f); // sizeDelta real de la Image, sin escala de usuario ni spread
+        // Mira mas chica, a escala de los shooters de referencia (~18 px a 1080p en lugar de 28).
+        const float FactorDeMira = 0.42f;
         float crosshairUserScale = 1f;
         float crosshairSpreadFraction;
 
@@ -291,7 +293,7 @@ namespace SP.UI
             {
                 cross.sprite = AnilloDeMira();
                 crosshairBaseColor = cross.color;
-                crosshairSpriteSize = cross.rectTransform.sizeDelta;
+                crosshairSpriteSize = cross.rectTransform.sizeDelta * FactorDeMira;
                 RecomputeCrosshairSize();
             }
         }
@@ -366,7 +368,7 @@ namespace SP.UI
                     {
                         crosshair.sprite = AnilloDeMira();
                         crosshairBaseColor = crosshair.color;
-                        crosshairSpriteSize = crosshair.rectTransform.sizeDelta;
+                        crosshairSpriteSize = crosshair.rectTransform.sizeDelta * FactorDeMira;
                         RecomputeCrosshairSize();
                     }
                 }

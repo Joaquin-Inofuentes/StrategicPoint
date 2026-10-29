@@ -56,6 +56,17 @@ namespace SP.Presentation
             var botones = new List<CanvasGroup>();
             if (reintentar != null) { reintentar.sizeDelta = new Vector2(340f, 78f); reintentar.anchoredPosition = new Vector2(-185f, -205f); botones.Add(Grupo(reintentar)); }
             if (salir != null) { salir.sizeDelta = new Vector2(340f, 78f); salir.anchoredPosition = new Vector2(185f, -205f); botones.Add(Grupo(salir)); }
+            // CARGAR ULTIMO GUARDADO (solo en la derrota): centrado debajo de la fila, antes quedaba pisando a REINTENTAR y SALIR.
+            var cargar = panel.transform.Find("LoadSaveButton") as RectTransform;
+            if (cargar != null && cargar.gameObject.activeSelf)
+            {
+                // Tres botones en la misma fila (el lienzo mide 960 de ancho como minimo): no hay alto de sobra para una segunda fila.
+                var tam = new Vector2(290f, 78f);
+                if (reintentar != null) { reintentar.sizeDelta = tam; reintentar.anchoredPosition = new Vector2(-300f, -205f); }
+                if (salir != null) { salir.sizeDelta = tam; salir.anchoredPosition = new Vector2(300f, -205f); }
+                cargar.sizeDelta = tam; cargar.anchoredPosition = new Vector2(0f, -205f);
+                botones.Add(Grupo(cargar));
+            }
             foreach (var b in botones) { b.alpha = 0f; b.interactable = false; b.blocksRaycasts = false; }
 
             // Tabla de estadisticas (reemplaza la linea suelta "Stats").

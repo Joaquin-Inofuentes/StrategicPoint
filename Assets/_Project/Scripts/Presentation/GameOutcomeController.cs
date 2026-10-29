@@ -38,6 +38,22 @@ namespace SP.Presentation
         float startTime;
 
         void Awake() { Registrar(); startTime = Time.time; }
+
+        // La pantalla de resultado se diagrama en un lienzo de 960x540. Con match 0,5 un monitor ultra ancho (21:9) deja el lienzo
+        // de ~466 de alto y los botones de abajo se salen; uno 5:4 deja la tabla de 820 mas ancha que el lienzo. Mientras el
+        // resultado esta en pantalla el escalado se ata al lado que quede mas justo (ancho si es mas cuadrado que 16:9, alto si es
+        // mas ancho), asi el lienzo siempre mide al menos 960x540 y todo entra con cualquier resolucion o relacion de aspecto.
+        void LateUpdate()
+        {
+            if (!shown) return;
+            var cv = GetComponentInParent<Canvas>();
+            var sc = cv != null ? cv.rootCanvas.GetComponent<CanvasScaler>() : null;
+            if (sc == null || sc.uiScaleMode != CanvasScaler.ScaleMode.ScaleWithScreenSize) return;
+            var px = cv.rootCanvas.pixelRect;
+            float aspecto = px.width / Mathf.Max(1f, px.height);
+            sc.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+            sc.matchWidthOrHeight = aspecto < sc.referenceResolution.x / sc.referenceResolution.y ? 0f : 1f;
+        }
         void OnDestroy() => QuitarRegistro();
 
         // Para que PauseController sepa que no debe abrirse encima --

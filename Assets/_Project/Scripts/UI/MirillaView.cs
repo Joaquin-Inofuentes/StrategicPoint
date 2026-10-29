@@ -102,7 +102,7 @@ namespace SP.UI
                 var rc = transform.parent as RectTransform;
                 float altoCanvas = rc != null && rc.rect.height > 1f ? rc.rect.height : 720f;
                 float ventana = altoCanvas * 0.64f / 640f;
-                float lado = periscopio ? altoCanvas * 1.5f : scope ? 380f : (estilo == ReticleStyle.Mildot ? 260f : 150f);
+                float lado = periscopio ? altoCanvas * 1.5f : scope ? 380f : (estilo == ReticleStyle.Mildot ? 200f : 96f);
                 reticula.rectTransform.sizeDelta = new Vector2(lado, lado);
                 tubo.gameObject.SetActive(scope || periscopio || estilo == ReticleStyle.Mildot);
                 // Ronda 12: el artillero del tanque mira por un PERISCOPIO RECTANGULAR (ventana ancha y baja con esquinas

@@ -157,6 +157,7 @@ namespace SP.Player
         public ObstacleMarker Objetivo => objetivo;
         public bool EstaCargando => cargando;
         TextMesh etiqueta;
+        SpriteRenderer icono;
         GameObject carga;
         PlayerInputDriver driver;
 
@@ -385,7 +386,19 @@ namespace SP.Player
                 etiqueta.anchor = TextAnchor.MiddleCenter; etiqueta.alignment = TextAlignment.Center;
                 etiqueta.color = new Color(1f, 0.62f, 0.2f);
             }
-            etiqueta.text = $"DEMOLIENDO {Mathf.RoundToInt(Progreso * 100f)}%";
+            // Sin la palabra "DEMOLIENDO": el icono de demolicion (el mismo del anillo de ordenes) y solo el porcentaje.
+            if (icono == null)
+            {
+                var gi = new GameObject("DemolicionIcono");
+                gi.transform.SetParent(etiqueta.transform, false);
+                gi.transform.localPosition = new Vector3(0f, 0.55f, 0f);
+                icono = gi.AddComponent<SpriteRenderer>();
+                icono.sprite = SP.UI.RadialIconFactory.ForCategoria(SP.UI.MenuDeOrdenes.Demoler);
+                icono.color = etiqueta.color;
+                float lado = icono.sprite != null ? icono.sprite.bounds.size.x : 1f;
+                gi.transform.localScale = Vector3.one * (0.7f / Mathf.Max(0.01f, lado));
+            }
+            etiqueta.text = $"{Mathf.RoundToInt(Progreso * 100f)}%";
             if (SP.Core.CamaraPrincipal.Actual != null) etiqueta.transform.rotation = Quaternion.LookRotation(etiqueta.transform.position - SP.Core.CamaraPrincipal.Actual.transform.position);
 
             // La carga: un cubito rojo que parpadea pegado al muro.
@@ -409,7 +422,7 @@ namespace SP.Player
 
         void LimpiarVisuales()
         {
-            if (etiqueta != null) { Destroy(etiqueta.gameObject); etiqueta = null; }
+            if (etiqueta != null) { Destroy(etiqueta.gameObject); etiqueta = null; icono = null; }
             if (carga != null) { Destroy(carga); carga = null; }
         }
     }
