@@ -303,6 +303,30 @@ namespace SP.EditorTools
             Fin((ok ? "OK " : "FALLO ") + sb + $"(arranque: {r0})");
         }
 
+        // ---------------------------------------------------------------- 326h en la carrera del tanque no aparece ningun helicoptero enemigo
+        static IEnumerator Bug326h()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            OperacionPrueba.Arrancar(4, 1, 4);
+            foreach (var x in Esperar(3f)) yield return x;
+            Time.timeScale = 1f;
+            var d = OperacionDirector.Instancia; bool dios = ModoDios.Activo; ModoDios.Poner(true);
+            int maxHelis = 0;
+            try
+            {
+                float t0 = Time.realtimeSinceStartup;
+                while (Time.realtimeSinceStartup - t0 < 50f)
+                {
+                    yield return null;
+                    int n = 0; foreach (var h in Object.FindObjectsByType<HelicopteroEnemigo>(FindObjectsInactive.Exclude)) if (h != null && !h.Derribado) n++;
+                    maxHelis = Mathf.Max(maxHelis, n);
+                }
+            }
+            finally { ModoDios.Poner(dios); }
+            bool ok = maxHelis == 0 && d.DesplieguesLanzados == 0 && d.HalconesCreados == 0;
+            Fin((ok ? "OK " : "FALLO ") + $"en 50 s de carrera: helicopteros enemigos vivos como maximo={maxHelis}, despliegues={d.DesplieguesLanzados}, halcones creados={d.HalconesCreados}");
+        }
+
         // ---------------------------------------------------------------- 325u oleadas: un lado a la vez y cantidad segun la vida
         static IEnumerator Bug325u()
         {

@@ -122,6 +122,8 @@ namespace SP.Operacion
             var t = cubo.transform;
             var inicio = t.position;
             var alto = t.lossyScale.y;
+            // bug "falta geometria": el arte del porton llega hasta el dintel (6,1 m), mas alto que el cubo del bloqueo.
+            foreach (var r in cubo.GetComponentsInChildren<Renderer>(true)) alto = Mathf.Max(alto, r.bounds.max.y - Mathf.Min(0f, inicio.y - t.lossyScale.y * 0.5f));
             float k = 0f;
             while (k < 1f)
             {
