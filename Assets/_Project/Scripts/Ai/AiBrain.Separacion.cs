@@ -18,6 +18,7 @@ namespace SP.Ai
         public const float RadioDeSeparacionSiguiendo = 1.0f;   // bug #303: menor que la ranura (1,3 m) y que la distancia entre dos aliados (2,6 m)
         public const float PesoDeSeparacion = 1.7f;
         public static bool SeparacionActiva = true;
+        public static bool SeparacionAlSeguirActiva = true;   // bug #303: solo para medir el "antes" en el check (false = comportamiento viejo)
 
         static readonly List<Soldier> vecinosDeSeparacion = new List<Soldier>(8);
         Func<Soldier, bool> filtroDeSeparacion;
@@ -41,7 +42,7 @@ namespace SP.Ai
             var p = self.transform.position;
             // Bug #303: la ranura de "seguime" queda a 1,3 m del lider; con el radio comun (3,2 m, lider incluido) la separacion
             // empujaba a los aliados fuera de su ranura y oscilaban sin llegar. Siguiendo con ranura: ignora al lider y separa chico.
-            bool siguiendoConRanura = State == AiState.Follow && followTarget != null && followOffsetLocal.sqrMagnitude > 0.0001f;
+            bool siguiendoConRanura = SeparacionAlSeguirActiva && State == AiState.Follow && followTarget != null && followOffsetLocal.sqrMagnitude > 0.0001f;
             float radio = siguiendoConRanura ? RadioDeSeparacionSiguiendo : (enCobertura ? RadioDeSeparacionEnCobertura : RadioDeSeparacion);
             SpatialGrid.QueryInRange(p, radio, vecinosDeSeparacion, siguiendoConRanura ? filtroSiguiendo : filtroDeSeparacion);
             if (vecinosDeSeparacion.Count == 0) return;

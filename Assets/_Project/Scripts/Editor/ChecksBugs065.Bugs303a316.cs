@@ -53,6 +53,8 @@ namespace SP.EditorTools
             if (vega == null || kes == null || doc == null || drv == null) { ModoDios.Poner(diosAntes); Fin("FALLO faltan piezas"); yield break; }
             try
             {
+                // Sin combate: este check mide solo la formacion de "seguime" (con enemigos cerca los aliados correrian a pelear).
+                foreach (var s in ActorRegistry.All) if (s != null && s.Team == TeamId.Enemy) s.gameObject.SetActive(false);
                 Poseer(vega); yield return null;
                 vega.transform.position = new Vector3(-20.4f, vega.transform.position.y, -279.6f);
                 ApoyoEnElPiso.Apoyar(vega.transform);
@@ -60,7 +62,17 @@ namespace SP.EditorTools
                 Junto(kes, vega.transform.position, 6f, vega.transform.position + new Vector3(4f, 0f, -4f));
                 Junto(doc, vega.transform.position, 6f, vega.transform.position + new Vector3(-4f, 0f, -4f));
                 yield return null;
+                // ANTES (comportamiento viejo, separacion de 3,2 m contra el lider): se mide 8 s despues de la orden, informativo.
+                SP.Ai.AiBrain.SeparacionAlSeguirActiva = false;
                 int n = drv.SeguirTodosSiOSi();
+                foreach (var x in Esperar(8f)) yield return x;
+                {
+                    int e0 = kes.Brain.EmpujesDeSeparacion + doc.Brain.EmpujesDeSeparacion; var qk = kes.transform.position; var qd = doc.transform.position; float rec = 0f;
+                    float ta = Time.realtimeSinceStartup;
+                    while (Time.realtimeSinceStartup - ta < 3f) { yield return null; rec += (kes.transform.position - qk).magnitude + (doc.transform.position - qd).magnitude; qk = kes.transform.position; qd = doc.transform.position; }
+                    sb.Append($"ANTES (sin el arreglo): recorrido {rec:0.0} m en 3 s con el lider quieto, empujes={kes.Brain.EmpujesDeSeparacion + doc.Brain.EmpujesDeSeparacion - e0}, a {Vector3.Distance(kes.transform.position, vega.transform.position):0.0} y {Vector3.Distance(doc.transform.position, vega.transform.position):0.0} m del lider; ");
+                }
+                SP.Ai.AiBrain.SeparacionAlSeguirActiva = true;
                 float tLlegada = Time.realtimeSinceStartup; float tiempoLlegada = -1f;
                 while (Time.realtimeSinceStartup - tLlegada < 25f && tiempoLlegada < 0f)
                 {
@@ -86,7 +98,7 @@ namespace SP.EditorTools
                 W8Ok(ref ok, dk < 3f && dd < 3f, sb, $"llegaron a su ranura (Kes {dk:0.0} m, Doc {dd:0.0} m del lider, pide < 3)");
                 foreach (var x in CapturarPantalla("v2_303_despues.png")) yield return x;
             }
-            finally { Poseer(vega); ModoDios.Poner(diosAntes); }
+            finally { SP.Ai.AiBrain.SeparacionAlSeguirActiva = true; Poseer(vega); ModoDios.Poner(diosAntes); }
             Fin((ok ? "OK " : "FALLO ") + sb + $"(arranque: {r0})");
         }
 
