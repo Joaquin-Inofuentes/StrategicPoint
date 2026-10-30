@@ -56,39 +56,41 @@ namespace SP.UI
                     return sub == 0 ? Grupo() : Persona();
                 case MenuDeOrdenes.Atacar:
                     if (sub == 0) return Grupo();
-                    if (sub == MenuDeOrdenes.SubSuprimir) return AsSprite(demoler ??= BuildEstallido());
+                    if (sub == MenuDeOrdenes.SubSuprimir) return ForCategoria(MenuDeOrdenes.Demoler);
                     if (sub == MenuDeOrdenes.SubGranada) return Granada();
                     return Persona();
                 case MenuDeOrdenes.Posicion:
                     switch (sub)
                     {
                         case 0: return Grupo();
-                        case 1: return AsSprite(irAlli ??= BuildFlechaAbajo());
+                        case 1: return ForCategoria(MenuDeOrdenes.IrAlli);
                         case 2: return Linea();
                         case 3: return Cuna();
                         default: return FlechaArriba();
                     }
                 case MenuDeOrdenes.Curar:
-                    return sub == 3 ? Corazon() : AsSprite(curar ??= BuildCruz());
+                    return sub == 3 ? Corazon() : ForCategoria(MenuDeOrdenes.Curar);
                 case MenuDeOrdenes.Tanque:
                     switch (sub)
                     {
                         case 0: return FlechaArriba();
-                        case 1: return AsSprite(irAlli ??= BuildFlechaAbajo());
-                        case 2: return AsSprite(tanque ??= BuildTanque());
+                        case 1: return ForCategoria(MenuDeOrdenes.IrAlli);
+                        case 2: return ForCategoria(MenuDeOrdenes.Tanque);
                         default: return Persona();
                     }
                 case MenuDeOrdenes.Poseer:
                     return sub == 3 ? Siguiente() : Persona();
                 case MenuDeOrdenes.Demoler:
-                    if (sub == 0) return AsSprite(demoler ??= BuildEstallido());
+                    if (sub == 0) return ForCategoria(MenuDeOrdenes.Demoler);
                     if (sub == 2) return Equis();
+                    if (sub == 1) return SP.Presentation.RoleIconFactory.For(SP.Combat.RoleType.Assault);   // "YO DEMUELO": el icono del asalto
                     return Persona();
                 case MenuDeOrdenes.Interactuar:
-                    return sub == 0 ? AsSprite(engranaje ??= BuildEngranaje()) : Persona();
+                    return sub == 0 ? ForCategoria(MenuDeOrdenes.Interactuar) : Persona();
                 case MenuDeOrdenes.Torreta:
-                    if (sub == 0) return AsSprite(torreta ??= BuildTorreta());
+                    if (sub == 0) return ForCategoria(MenuDeOrdenes.Torreta);
                     if (sub == 1) return Equis();
+                    if (sub == 2) return Grupo();   // "QUE LO MONTEN"
                     return Persona();
                 default:
                     return Persona();

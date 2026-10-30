@@ -138,7 +138,19 @@ namespace SP.Player
                 case AimTargetType.Interactuar:
                 {
                     var o = OrdenableEnLaMira(aim);
-                    if (o != null) return EnviarAInteractuar(o, 0) ? "INTERACTUAR" : null;
+                    if (o != null)
+                    {
+                        // Bug #308: si el que puede operarlo SOS VOS (y ningun aliado), un cartel vibrante dice que te acerques y aprietes la tecla,
+                        // y la accion no es null: asi el proximo toque de Q no cae en el doble toque de SEGUIR TODOS.
+                        if (o.Habilitado && !o.Completo && o.ElegirOperador(DestinatariosPorSub(0, out _)) == null && o.PuedeOperar(yo))
+                        {
+                            string tecla = KeyBindings.DisplayName(KeyBindings.Interactuar);
+                            AvisoUnico.MostrarVibrante($"SOS EL {o.QuienDebe}: ACERCATE Y APRETA [{tecla}] PARA {o.NombreParaOrden}");
+                            OrderService.PlayRejectSound();
+                            return "ACERCATE";
+                        }
+                        return EnviarAInteractuar(o, 0) ? "INTERACTUAR" : null;
+                    }
                     break;
                 }
 
@@ -169,7 +181,18 @@ namespace SP.Player
                     {
                         bool aliadoAsalto = DestinatariosDeOrden().Exists(d => d.Role == RoleType.Assault);
                         if (aliadoAsalto && EjecutarOrdenRadial(MenuDeOrdenes.Demoler, 0)) return "DEMOLER";
-                        if (yo.Role == RoleType.Assault) { Avisar("SOS EL ASALTO: ACERCATE Y MANTEN [E] QUIETO FRENTE AL MURO"); return "DEMOLER_YO"; }
+                        if (yo.Role == RoleType.Assault)
+                        {
+                            // Bug #306: sobre el generador, Q arranca la carga sola si estas a tiro; si no, cartel vibrante con la distancia.
+                            if (Demolicion.SegundosPara(m) < Demolicion.Segundos)
+                            {
+                                var dem = yo.GetComponent<DemoledorAsalto>() ?? yo.gameObject.AddComponent<DemoledorAsalto>();
+                                if (dem.IniciarAutomatico(m)) return "DEMOLER_YO_AUTO";
+                                AvisoUnico.MostrarVibrante($"ACERCATE AL GENERADOR · {Demolicion.DistanciaA(yo, m):0.0} m (MAX {Demolicion.AlcanceMaximo:0.#} m)");
+                                return "ACERCATE";
+                            }
+                            Avisar("SOS EL ASALTO: ACERCATE Y MANTEN [E] QUIETO FRENTE AL MURO"); return "DEMOLER_YO";
+                        }
                         RejectOrder("NECESITAS UN SOLDADO DE ASALTO PARA DEMOLER");
                         return null;
                     }

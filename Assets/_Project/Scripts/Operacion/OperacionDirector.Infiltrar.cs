@@ -104,8 +104,11 @@ namespace SP.Operacion
         {
             apagonHecho = true;
             if (reflectores != null) foreach (var r in reflectores) if (r != null) r.RomperYa();
+            if (generador != null && generador.derribaTorresAlCaer && torres != null)
+                foreach (var t in torres) if (t != null && !t.EstaCaida) t.CaerYa();
             AvisoUnico.Mostrar("ENERGÍA CORTADA · REFLECTORES APAGADOS · AHORA VOLÁ EL PORTÓN NORTE", 4f, new Color(1f, 0.82f, 0.3f), AvisoUnico.PrioridadAlta);
             SesionLog.Evento("Cuartel sin energia: generador destruido");
+            BalizaDeInfiltrar();   // bug #307: el rombo seguia apuntando al generador caido; ahora salta a la carga del porton
         }
 
         void AbrirPorton()

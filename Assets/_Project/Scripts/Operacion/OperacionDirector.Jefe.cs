@@ -192,6 +192,11 @@ namespace SP.Operacion
         {
             if (jefe == null || tanque == null) return;
             float frac = jefe.Fraccion01;
+            if (!jefe.FuegoHabilitado)   // bug #311: dispara recien cuando el jugador salio del Centro de Datos (latch)
+            {
+                var salio = Poseido();
+                if (salio != null && salio.transform.position.z > ZParaLaToma) jefe.FuegoHabilitado = true;
+            }
             if (hud != null)
             {
                 hud.BarraDeJefe(TanqueJefe.NombreDelJefe, frac);

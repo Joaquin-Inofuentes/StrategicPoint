@@ -18,7 +18,7 @@ namespace SP.UI
         const float VidaDeUnFijo = 0.4f, EsperaMaximaEnCola = 6f, PermanenciaMinima = 0.9f, AlturaBase = 140f;   // Bug #173: AlturaBase sube la caja sobre la barra de unidades y la etiqueta del asiento
         const int MaximoEnCola = 6;
 
-        struct Aviso { public string texto; public Color color; public float segundos, encolado; public int prioridad; }
+        struct Aviso { public string texto; public Color color; public float segundos, encolado; public int prioridad; public bool vibra; }
         struct Fijado { public string texto; public Color color; public float vence; public int orden; public bool vibra; }
 
         static AvisoUnico instancia;
@@ -66,12 +66,16 @@ namespace SP.UI
         // Pedido de pulido: sin textos en pantalla salvo el de mision. Solo se apaga el DIBUJO: la cola, el historial y TextoActual siguen igual.
         public static bool Dibujar = true;
 
-        public static void Mostrar(string mensaje, float segundos = 3f, Color? color = null, int prioridad = PrioridadMedia)
+        // Bug #308: un aviso temporal que pulsa y tiembla ("debes acercarte y apretar E").
+        public static void MostrarVibrante(string mensaje, float segundos = 2.5f, Color? color = null, int prioridad = PrioridadAlta)
+            => Mostrar(mensaje, segundos, color ?? new Color(1f, 0.92f, 0.55f), prioridad, true);
+
+        public static void Mostrar(string mensaje, float segundos = 3f, Color? color = null, int prioridad = PrioridadMedia, bool vibra = false)
         {
             string t = Normalizar(mensaje);
             if (t.Length == 0) return;
             historial.Add(t); if (historial.Count > 64) historial.RemoveAt(0);
-            var a = new Aviso { texto = t, color = color ?? Color.white, segundos = Mathf.Max(0.8f, segundos), encolado = Time.unscaledTime, prioridad = prioridad };
+            var a = new Aviso { texto = t, color = color ?? Color.white, segundos = Mathf.Max(0.8f, segundos), encolado = Time.unscaledTime, prioridad = prioridad, vibra = vibra };
             var v = Asegurar();
             if (v == null) return;
             // Mismo texto ya en pantalla o en espera: se refresca en vez de repetir.
@@ -183,7 +187,7 @@ namespace SP.UI
             }
 
             string t = ""; Color col = Color.white; bool temporal = ahora < actualHasta; bool vibrando = false;
-            if (temporal) { t = actual.texto; col = actual.color; }
+            if (temporal) { t = actual.texto; col = actual.color; vibrando = actual.vibra; }
             else if (fijos.Count > 0)
             {
                 // Varios fijos a la vez ("[E] subir" + "TRAYECTO 40"): se unen en el mismo renglon, el mas reciente primero.
@@ -228,7 +232,7 @@ namespace SP.UI
             float objetivo = t.Length > 0 ? 1f : 0f;
             alfa = Mathf.MoveTowards(alfa, objetivo, Time.unscaledDeltaTime * (objetivo > alfa ? 8f : 2.5f));
             grupo.alpha = Dibujar ? alfa : 0f;   // pedido de pulido: sin cartel en pantalla; la cola y TextoActual siguen funcionando
-            if (vibrando && !temporal && t.Length > 0)
+            if (vibrando && t.Length > 0)
             {
                 caja.localScale = Vector3.one * (1f + 0.07f * Mathf.Sin(ahora * 13f));
                 caja.anchoredPosition = new Vector2(Mathf.Sin(ahora * 47f) * 4f, AlturaBase + Mathf.Sin(ahora * 53f) * 2.5f);

@@ -4,6 +4,7 @@ using SP.Actors;
 using SP.Combat;
 using SP.Core;
 using SP.Interaction;
+using SP.Operacion;
 using SP.Presentation;
 using SP.Vehicles;
 
@@ -17,6 +18,10 @@ namespace SP.Player
         public const float SegundosNormales = 4f;
         // Tiempo de carga vigente. Es 4 s salvo en el paso del tutorial que practica CANCELAR.
         public static float Segundos = SegundosNormales;
+        public const float SegundosDelGenerador = 1.5f;   // bug #306: "que responda mas rapido"
+        // Segundos de carga para ese obstaculo: el generador del cuartel (y sus partes) se demuele en 1,5 s; el resto, Segundos.
+        public static float SegundosPara(ObstacleMarker m)
+            => m != null && (m.GetComponentInParent<GeneradorDelCuartel>() != null || GeneradorDelCuartel.EsParte(m)) ? Mathf.Min(Segundos, SegundosDelGenerador) : Segundos;
         public const float AlcanceMaximo = 4.5f;  // distancia maxima al obstaculo para cargar (Ronda 11: era 9 m; ahora la mitad)
         // Muros mas largos que esto no se pueden volar. 60 m: los muros del chicane (53 y 57 m) son muros normales y tienen que caer;
         // quedan afuera solo los bordes del mapa (Norte/Sur/Este/Oeste, el fondo de la base y la muralla sur de la base: 100-314 m).
@@ -142,7 +147,8 @@ namespace SP.Player
 
         Soldier yo;
         ObstacleMarker objetivo;
-        bool modoAliado, cargando;
+        bool modoAliado, cargando, auto;
+        Vector3 posAuto;
         Vector3 puntoDeCarga, ultimaPos;
         float tiempoDeOrden, proximoAviso, proximoTic;
         public float Progreso { get; private set; }
@@ -198,6 +204,14 @@ namespace SP.Player
             return true;
         }
 
+        // Bug #306: el jugador (asalto) pide la demolicion con Q y empieza sola, sin sostener [E].
+        public bool IniciarAutomatico(ObstacleMarker m)
+        {
+            if (!IniciarComoJugador(m, out _)) return false;
+            auto = true; posAuto = yo.transform.position; Progreso = 0f;
+            return true;
+        }
+
         public bool IniciarComoAliado(ObstacleMarker m, out string motivo)
         {
             motivo = null;
@@ -221,7 +235,7 @@ namespace SP.Player
         public void Cancelar(string aviso)
         {
             bool activo = cargando || modoAliado;
-            cargando = false; modoAliado = false; objetivo = null; Progreso = 0f;
+            cargando = false; modoAliado = false; objetivo = null; Progreso = 0f; auto = false;
             if (yo != null && yo.Brain != null)
             {
                 if (yo.Brain.Quieto) { yo.Brain.Quieto = false; }
@@ -272,7 +286,9 @@ namespace SP.Player
             // Pedido explicito: "cambia CTRL por E". Ahora se mantiene [E] (la habilidad de clase) quieto frente al muro; agacharse
             // con [Ctrl] sigue valiendo (compatibilidad), pero ya no hace falta.
             bool eSostenida = driver.EspecialSostenido;
-            bool agachado = eSostenida || yo.Motor.IsCrouching;
+            // Bug #306: Q sobre el generador arranca la carga sola (sin mantener [E]); se suelta si te alejas mas de 1 m de donde la pediste.
+            if (auto && (yo.transform.position - posAuto).sqrMagnitude > 1f) auto = false;
+            bool agachado = eSostenida || yo.Motor.IsCrouching || auto;
             float velocidad = dt > 0f ? (yo.transform.position - ultimaPos).magnitude / dt : 0f;
             bool quieto = velocidad < 0.35f;
 
@@ -281,7 +297,7 @@ namespace SP.Player
             if (valido && agachado && quieto && Time.timeScale > 0f)
             {
                 if (!cargando) { cargando = true; Feedback.Accion(SfxKind.BombPlant, "PLANTANDO CARGA…", yo.transform.position, Feedback.Warn, aviso: true, pulso: true, volumen: 0.7f); }
-                Progreso = Mathf.Min(1f, Progreso + dt / Demolicion.Segundos);
+                Progreso = Mathf.Min(1f, Progreso + dt / Demolicion.SegundosPara(m));
                 TicDeCarga();
                 ReportarAccion();
                 driver.DemolicionEnCurso = true;
@@ -342,7 +358,7 @@ namespace SP.Player
                 if (mira.sqrMagnitude > 0.01f) yo.transform.rotation = Quaternion.Slerp(yo.transform.rotation, Quaternion.LookRotation(mira.normalized), dt * 8f);
             }
             bool enCombate = yo.Brain.State == SP.Ai.AiState.Chase || yo.Brain.State == SP.Ai.AiState.Attack;
-            if (!enCombate) { Progreso = Mathf.Min(1f, Progreso + dt / Demolicion.Segundos); TicDeCarga(); ReportarAccion(); }
+            if (!enCombate) { Progreso = Mathf.Min(1f, Progreso + dt / Demolicion.SegundosPara(objetivo)); TicDeCarga(); ReportarAccion(); }
             if (Progreso >= 1f) Terminar();
         }
 
@@ -352,7 +368,7 @@ namespace SP.Player
             if (objetivo == null) return;
             var col = objetivo.GetComponent<Collider>();
             var punto = col != null ? col.ClosestPoint(yo.transform.position) : objetivo.transform.position;
-            AccionesEnCurso.Reportar(yo, "DETONANDO", punto, Progreso, (1f - Progreso) * Demolicion.Segundos, objetivo.transform);
+            AccionesEnCurso.Reportar(yo, "DETONANDO", punto, Progreso, (1f - Progreso) * Demolicion.SegundosPara(objetivo), objetivo.transform);
         }
 
         void Terminar()
@@ -360,7 +376,7 @@ namespace SP.Player
             AccionesEnCurso.Terminar(yo);
             var m = objetivo;
             bool eraJugador = yo.Brain != null && yo.Brain.IsPossessedByPlayer;
-            cargando = false; modoAliado = false; objetivo = null; Progreso = 0f;
+            cargando = false; modoAliado = false; objetivo = null; Progreso = 0f; auto = false;
             if (!eraJugador) { yo.Brain.Quieto = false; yo.Motor.SetCrouching(false); }
             if (driver != null) { driver.DemolicionEnCurso = false; driver.OcultarProgresoDemolicion(); }
             LimpiarVisuales();

@@ -97,6 +97,7 @@ namespace SP.Operacion
         public void Reposo()
         {
             Situacion = Estado.Dormido;
+            FuegoHabilitado = false;
             TripulacionBajo = false; rendidoDesde = -1f; mechaAdosada = -1f;
             CancelarAnillo();
             if (Vehiculo != null) { Vehiculo.PisoDeVida01 = PisoDeVida01; Vehiculo.AjusteDeDano = Filtro; }
@@ -111,6 +112,7 @@ namespace SP.Operacion
         {
             if (Vehiculo == null) return;
             Situacion = Estado.Peleando;
+            FuegoHabilitado = false;
             TripulacionBajo = false; rendidoDesde = -1f; mechaAdosada = -1f;
             Vehiculo.PisoDeVida01 = PisoDeVida01;
             Vehiculo.AjusteDeDano = Filtro;
@@ -151,9 +153,14 @@ namespace SP.Operacion
             return 1;
         }
 
+        // Bug #311: el jefe solo dispara cuando el jugador SALIO del Centro de Datos (la sala de la terminal); lo habilita el director.
+        public bool FuegoHabilitado { get; set; }
+        static bool DentroDelCentroDeDatos(Vector3 p) => p.x > -26f && p.x < 26f && p.z > -80f && p.z < -40f;
+
         static Soldier BlancoMasCercano(Vector3 desde, float max)
         {
-            var s = ActorRegistry.FindNearest(desde, x => x.Team == TeamId.Player && x.Role != RoleType.Civilian && x.Health != null && x.Health.IsAlive && x.gameObject.activeInHierarchy);
+            var s = ActorRegistry.FindNearest(desde, x => x.Team == TeamId.Player && x.Role != RoleType.Civilian && x.Health != null && x.Health.IsAlive && x.gameObject.activeInHierarchy
+                                                          && !DentroDelCentroDeDatos(x.transform.position));
             if (s == null) return null;
             var d = s.transform.position - desde; d.y = 0f;
             return d.magnitude <= max ? s : null;
@@ -169,6 +176,7 @@ namespace SP.Operacion
             if (Vehiculo.Health.Current <= Vehiculo.PisoDeVida) { Rendirse(); return; }
             TickCarga(dt);
             if (CinematicaDeOperacion.IntroActiva || SP.Ai.AiBrain.IAPausada) return;   // durante las tomas no dispara
+            if (!FuegoHabilitado) { CancelarAnillo(); return; }
 
             var blanco = BlancoMasCercano(transform.position, AlcanceDelCanon);
             // Cañon: aviso en el piso y golpe.

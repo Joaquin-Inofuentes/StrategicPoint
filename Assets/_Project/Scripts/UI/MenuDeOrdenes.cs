@@ -316,6 +316,17 @@ namespace SP.UI
             soldadosMuertos[2] = m3;
         }
 
+        // Bug #304: las opciones "SOLO {n}" / "SOLDADO {n}" llevan el icono del tipo del soldado n. Devuelve 0..2, o -1 si la opcion no nombra a ninguno.
+        public static int SoldadoDeOpcion(int cat, int sub)
+        {
+            if (cat < 0 || cat >= OpcionesDe.Length || sub < 0 || sub >= OpcionesDe[cat].Length) return -1;
+            string o = OpcionesDe[cat][sub];
+            if (o.Contains("{1}")) return 0;
+            if (o.Contains("{2}")) return 1;
+            if (o.Contains("{3}")) return 2;
+            return -1;
+        }
+
         // Rol del soldado a partir del nombre de su clase ("ASALTO", "MEDICO", "FRANCOTIRADOR"...), para elegir su icono.
         static SP.Combat.RoleType RolDeClase(string clase)
         {
@@ -686,8 +697,8 @@ namespace SP.UI
                     if (iconosOpcion != null && iconosOpcion[j] != null)
                     {
                         iconosOpcion[j].gameObject.SetActive(true);
-                        iconosOpcion[j].sprite = Seleccion == Poseer && sub >= 0 && sub < 3
-                            ? SP.Presentation.RoleIconFactory.For(RolDeClase(soldados[sub]))   // icono del tipo de soldado, no una persona generica
+                        iconosOpcion[j].sprite = SoldadoDeOpcion(Seleccion, sub) >= 0
+                            ? SP.Presentation.RoleIconFactory.For(RolDeClase(soldados[SoldadoDeOpcion(Seleccion, sub)]))   // icono del tipo de soldado, no una persona generica (#304)
                             : RadialIconFactory.ForOpcion(Seleccion, sub);
                         iconosOpcion[j].color = colorOp;
                         iconosOpcion[j].rectTransform.anchoredPosition = dirOp * RadioIconoOpcion + Vector2.up * SubidaDelIconoOpcion;
