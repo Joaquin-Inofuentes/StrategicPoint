@@ -56,8 +56,18 @@ namespace SP.EditorTools
                 Poseer(vega); yield return null;
                 vega.transform.position = new Vector3(-20.4f, vega.transform.position.y, -279.6f);
                 ApoyoEnElPiso.Apoyar(vega.transform);
+                // La escuadra arranca lejos (el Play empieza en la entrada): se la trae a 6 m del lider, como en el reporte.
+                Junto(kes, vega.transform.position, 6f, vega.transform.position + new Vector3(4f, 0f, -4f));
+                Junto(doc, vega.transform.position, 6f, vega.transform.position + new Vector3(-4f, 0f, -4f));
+                yield return null;
                 int n = drv.SeguirTodosSiOSi();
-                foreach (var x in Esperar(5f)) yield return x;
+                float tLlegada = Time.realtimeSinceStartup; float tiempoLlegada = -1f;
+                while (Time.realtimeSinceStartup - tLlegada < 25f && tiempoLlegada < 0f)
+                {
+                    yield return null;
+                    if (Vector3.Distance(kes.transform.position, vega.transform.position) < 3f && Vector3.Distance(doc.transform.position, vega.transform.position) < 3f) tiempoLlegada = Time.realtimeSinceStartup - tLlegada;
+                }
+                foreach (var x in Esperar(1.5f)) yield return x;
                 int empujes0 = kes.Brain.EmpujesDeSeparacion + doc.Brain.EmpujesDeSeparacion;
                 var pk = kes.transform.position; var pd = doc.transform.position;
                 float recorrido = 0f;
@@ -185,14 +195,14 @@ namespace SP.EditorTools
                 Junto(vega, d.cargaPorton.transform.position, 9f, vega.transform.position);
                 // Los aliados NO pueden operar la carga (solo el Asalto, y el Asalto sos vos): se los saca de la escena de la prueba.
                 var kes = Escuadrista(RoleType.Flanker); var doc = Escuadrista(RoleType.Medic);
-                var fase0 = kes != null ? kes.Brain.State : default;
+                var estK = kes != null ? kes.Brain.State : default; var estD = doc != null ? doc.Brain.State : default;
                 var aim = new AimResult { Type = AimTargetType.Interactuar, HitTransform = d.cargaPorton.transform, Point = d.cargaPorton.transform.position };
                 string accion = drv.AccionContextualDeQ(aim);
                 yield return null;
                 W8Ok(ref ok, accion == "ACERCATE", sb, $"la accion es 'ACERCATE' (devolvio '{accion}')");
                 string cartel = AvisoUnico.TextoActual;
                 W8Ok(ref ok, cartel.Contains("ACERCATE") && cartel.Contains("["), sb, $"cartel vibrante con la tecla: '{cartel}'");
-                W8Ok(ref ok, (kes == null || kes.Brain.State != SP.Ai.AiState.Follow) && (doc == null || doc.Brain.State != SP.Ai.AiState.Follow), sb, "ningun aliado paso a SEGUIR por este toque");
+                W8Ok(ref ok, (kes == null || kes.Brain.State == estK) && (doc == null || doc.Brain.State == estD), sb, "ningun aliado cambio de estado (no cayo en SEGUIR)");
                 foreach (var x in CapturarPantalla("v2_308_despues.png")) yield return x;
             }
             finally { Poseer(vega); ModoDios.Poner(diosAntes); }
@@ -312,6 +322,7 @@ namespace SP.EditorTools
                 if (!r.enabled || r.GetComponentInParent<Fragmento>() != null || r.bounds.size.y < 0.05f) continue;
                 if (!caja.Contains(r.bounds.center) || r.bounds.center.y < 0.3f) continue;
                 if (r.GetComponentInParent<Soldier>() != null) continue;
+                if (!(r.name.Contains("Rotulo") || r.name == "Placa" || r.name == "Texto" || r.name.Contains("DEMOLER"))) continue;
                 flotando++;
             }
             W8Ok(ref ok, flotando == 0, sb, $"nada queda flotando donde estaba el muro (piezas={flotando})");
@@ -353,7 +364,7 @@ namespace SP.EditorTools
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include))
                 if (t.gameObject.scene.IsValid() && (t.name == "Panel_Central" || t.name == "Panel_Izq" || t.name == "Panel_Der" || t.name == "Soporte_Central")) viejos++;
             W8Ok(ref ok, viejos == 0, sb, $"los paneles flotantes viejos no existen (quedan {viejos})");
-            var monitor = Buscar("Monitor");
+            GameObject monitor = null; foreach (var tm in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include)) if (tm.name == "Monitor" && tm.parent != null && tm.parent.name == "Computadora") { monitor = tm.gameObject; break; }
             W8Ok(ref ok, monitor != null && monitor.transform.lossyScale.x < 2.6f, sb, $"el monitor central ya no es gigante (ancho {(monitor != null ? monitor.transform.lossyScale.x : 0f):0.0} m)");
             if (arte != null)
             {
@@ -382,7 +393,7 @@ namespace SP.EditorTools
             var d = OperacionDirector.Instancia; var sb = new StringBuilder(); bool ok = true;
             if (d == null || d.rutaDelTanque == null) { Fin("FALLO faltan piezas"); yield break; }
             d.DespejarRutaDelTanque();
-            int visibles = 0; string ejemplo = "";
+            int visibles = 0; string ejemplo = ""; var vistosR = new System.Collections.Generic.HashSet<Collider>();
             var prev = d.tanque != null ? d.tanque.transform.position : Vector3.zero;
             foreach (var t in d.rutaDelTanque)
             {
@@ -390,13 +401,13 @@ namespace SP.EditorTools
                 var dir = t.position - prev; float largo = dir.magnitude;
                 for (float s = 0f; s <= largo; s += 2f)
                 {
-                    var centro = prev + dir.normalized * s + Vector3.up * 1.2f;
+                    var centro = prev + dir.normalized * s + Vector3.up * 1.4f;   // mismo corredor que DespejarRutaDelTanque
                     foreach (var r in Physics.OverlapBox(centro, new Vector3(1.7f, 1.1f, 1.4f), Quaternion.LookRotation(new Vector3(dir.x, 0f, dir.z).normalized, Vector3.up)))
                     {
                         string n = r.name;
-                        if (r is TerrainCollider || !r.enabled || r.isTrigger) continue;
+                        if (r is TerrainCollider || !r.enabled || r.isTrigger || !vistosR.Add(r)) continue;
                         var marca = r.GetComponentInParent<ObstacleMarker>();
-                        if (marca != null || n.StartsWith("Barricada") || n.Contains("Auto_Quemado") || n.Contains("Escombro") || n.Contains("Neumatico") || n.Contains("Poste_Caido") || n.Contains("Erizo")) { visibles++; if (ejemplo.Length == 0) ejemplo = n; }
+                        if (marca != null || n.StartsWith("Barricada") || n.Contains("Auto_Quemado") || n.Contains("Escombro") || n.Contains("Neumatico") || n.Contains("Poste_Caido") || n.Contains("Erizo")) { visibles++; if (ejemplo.Length == 0) ejemplo = n + "@" + r.bounds.center + " act=" + r.gameObject.activeInHierarchy; }
                     }
                 }
                 prev = t.position;

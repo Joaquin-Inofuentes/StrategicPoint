@@ -67,7 +67,7 @@ namespace SP.UI
         public static bool Dibujar = true;
 
         // Bug #308: un aviso temporal que pulsa y tiembla ("debes acercarte y apretar E").
-        public static void MostrarVibrante(string mensaje, float segundos = 2.5f, Color? color = null, int prioridad = PrioridadAlta)
+        public static void MostrarVibrante(string mensaje, float segundos = 2.5f, Color? color = null, int prioridad = PrioridadCritica)
             => Mostrar(mensaje, segundos, color ?? new Color(1f, 0.92f, 0.55f), prioridad, true);
 
         public static void Mostrar(string mensaje, float segundos = 3f, Color? color = null, int prioridad = PrioridadMedia, bool vibra = false)

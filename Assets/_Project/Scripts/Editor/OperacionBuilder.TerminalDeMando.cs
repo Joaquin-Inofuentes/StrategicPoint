@@ -88,8 +88,8 @@ namespace SP.EditorTools
             float baseY = plataforma != null ? plataforma.position.y + plataforma.lossyScale.y * 0.5f : 0.15f;
             float zS = mz + 1.1f;
             foreach (float s in new[] { -1f, 1f })
-                CajaTM(arte, "Poste", new Vector3(cx + s * 1.7f, (baseY + 3.8f) * 0.5f, zS), new Vector3(0.12f, 3.8f - baseY, 0.12f), metal);
-            CajaTM(arte, "Travesano", new Vector3(cx, 3.8f, zS), new Vector3(3.5f, 0.12f, 0.12f), metal);
+                CajaTM(arte, "Poste", new Vector3(cx + s * 1.66f, (baseY + 3.8f) * 0.5f, zS), new Vector3(0.12f, 3.8f - baseY, 0.12f), metal);
+            CajaTM(arte, "Travesano", new Vector3(cx, 3.8f, zS), new Vector3(3.6f, 0.12f, 0.12f), metal);
             CajaTM(arte, "Marco_Superior", new Vector3(cx, 3.1f, zS + 0.03f), new Vector3(3.2f, 1.4f, 0.05f), negro);
             CajaTM(arte, "Pantalla_Superior", new Vector3(cx, 3.1f, zS - 0.01f), new Vector3(3.0f, 1.2f, 0.04f), holo);
 
