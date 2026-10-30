@@ -66,7 +66,7 @@ namespace SP.EditorTools
             var d = OperacionDirector.Instancia; var t = d.tanque; var j = d.Jefe;
             var hud = OperacionHud.Instancia; var drv = PlayerInputDriver.Activo;
             if (d == null || j == null || hud == null || drv == null) { Fin("FALLO sin director/jefe/HUD/driver"); yield break; }
-            ModoDios.Poner(true);
+            ModoDios.Poner(true); SP.Combat.WeaponHolder.MunicionInfinitaConModoDios = false;   // bug #324: este check mide con municion real
             try
             {
                 // Antes de la toma: dormido, enemigo, con su tripulacion adentro y sin disparar.
@@ -166,7 +166,7 @@ namespace SP.EditorTools
                 foreach (var x in Esperar(0.3f)) yield return x;
                 W8Ok(ref ok, d.Subfase == (int)SubfaseHuida.Reparacion && !hud.BarraDeJefeVisible, sb, $"pasa a Reparacion (subfase {d.Subfase}), barra de jefe oculta");
             }
-            finally { ModoDios.Poner(false); }
+            finally { ModoDios.Poner(false); SP.Combat.WeaponHolder.MunicionInfinitaConModoDios = true; }
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 

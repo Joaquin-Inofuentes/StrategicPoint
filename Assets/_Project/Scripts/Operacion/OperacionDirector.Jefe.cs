@@ -104,6 +104,7 @@ namespace SP.Operacion
             tanque.PisoDeVida01 = 0f; tanque.AjusteDeDano = null;
             if (tanque.Health != null && tanque.Health.IsAlive) tanque.PonerVida01(1f);
             tanque.AsignarBando(TeamId.Enemy, new Color(0.9f, 0.25f, 0.2f));
+            tanque.QuitarMetralleta(false);   // el jefe enemigo conserva su ametralladora (bug #322 la quita solo del tanque del jugador)
             jefe = TanqueJefe.Preparar(tanque);
             jefe.Reposo();
 
@@ -199,7 +200,10 @@ namespace SP.Operacion
             }
             if (hud != null)
             {
-                hud.BarraDeJefe(TanqueJefe.NombreDelJefe, frac);
+                // Bug #319: la barra solo vive mientras se pelea (el tanque ya abre fuego y no se rindio): antes quedaba desde la voladura
+                // de la salida, dentro del Centro de Datos, y despues de caer el jefe.
+                if (jefe.FuegoHabilitado && jefe.Situacion == TanqueJefe.Estado.Peleando && frac > 0f) hud.BarraDeJefe(TanqueJefe.NombreDelJefe, frac);
+                else hud.OcultarBarraDeJefe();
                 hud.Objetivo(TituloObjetivo(4, "DERRIBAR AL BLINDADO"), "COHETES o CARGAS del Asalto · esquiva el circulo rojo · recarga en las cajas del patio", 1f - frac, ColorDelJefe);
                 var yo = Poseido();
                 if (yo != null && yo.Health.IsAlive)
@@ -310,7 +314,6 @@ namespace SP.Operacion
                 foreach (var t in cajasDeCohetes) if (t != null) cajasDelJefe.Add(CajaDeSuministros.Crear(t.position, segundosDeRecargaDeCajas));
             PonerBaliza("BLINDADO", ColorDelJefe, tanque.transform.position, tanque.transform, 3f);
             Aviso(TanqueJefe.NombreDelJefe + "\nDERRIBALO CON COHETES O CARGAS · RECARGA EN LAS CAJAS");
-            if (hud != null) hud.BarraDeJefe(TanqueJefe.NombreDelJefe, jefe.Fraccion01);
         }
 
         void AlBajarLaTripulacionDelJefe()

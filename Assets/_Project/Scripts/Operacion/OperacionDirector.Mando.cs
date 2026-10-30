@@ -98,6 +98,7 @@ namespace SP.Operacion
             public int camionetas;             // 0 o 1 (sale por la calle indicada en "sectorDeCamioneta": 0 calle norte, 1 calle oeste)
             public int sectorDeCamioneta = -1;
             public float fraccion;             // del reloj efectivo total
+            public float factorDeVida = 1f;    // bug #325: factor con el que se escalaron las cantidades al anunciarse
             public bool anunciada, lanzada;
             public float segundosDesdeLanzada;
             public readonly List<Soldier> soldados = new List<Soldier>();
@@ -112,12 +113,28 @@ namespace SP.Operacion
         // Fraccion = cuando SALE sobre el reloj efectivo total; se anuncia 12 s antes. La camioneta sale por la calle norte (0) o la oeste (1).
         static readonly (int[] bocas, int[] cantidades, int camionetas, int calleCamioneta, float fraccion)[] PlanDeOleadas =
         {
-            (new[] { 0 }, new[] { 6 }, 0, -1, 0.13f),
-            (new[] { 1, 2 }, new[] { 3, 3 }, 0, -1, 0.31f),
-            (new[] { 0, 2 }, new[] { 4, 3 }, 1, 0, 0.50f),
-            (new[] { 0, 1, 2, 3 }, new[] { 3, 3, 2, 2 }, 0, -1, 0.68f),
-            (new[] { 3, 1, 2 }, new[] { 4, 2, 2 }, 1, 1, 0.84f),
+            // Bug #325 ("menos enemigos, secuencial de cada lado"): cada oleada entra por UN solo lado, uno despues de otro (N, E, O, S, N).
+            // Son las cantidades base (a vida de referencia): al anunciarse se multiplican por el factor de vida (ver FactorDeVidaDeLaOleada).
+            (new[] { 0 }, new[] { 4 }, 0, -1, 0.13f),
+            (new[] { 1 }, new[] { 4 }, 0, -1, 0.31f),
+            (new[] { 2 }, new[] { 5 }, 1, 0, 0.50f),
+            (new[] { 3 }, new[] { 5 }, 0, -1, 0.68f),
+            (new[] { 0 }, new[] { 6 }, 1, 1, 0.84f),
         };
+
+        // Bug #325: cuantos enemigos salen depende de la vida TOTAL de los soldados del jugador (escuadra + milicia, vivos, vida actual):
+        // con mucha vida entran muchos, con poca entran pocos. 1,0 = la vida de referencia (3 soldados de 486 + 4 milicianos de 160).
+        public const float VidaDeReferenciaDeLaDefensa = 3f * 486f + 4f * 160f;
+        public const float FactorMinimoDeOleada = 0.4f, FactorMaximoDeOleada = 1.6f;
+        public static float VidaTotalDelBando()
+        {
+            float total = 0f;
+            foreach (var a in ActorRegistry.All)
+                if (a != null && a.Team == TeamId.Player && a.Role != RoleType.Civilian && a.Health != null && a.Health.IsAlive && a.gameObject.activeInHierarchy) total += a.Health.Current;
+            return total;
+        }
+        public static float FactorDeVidaDeLaOleada(float vidaTotal) => Mathf.Clamp(vidaTotal / VidaDeReferenciaDeLaDefensa, FactorMinimoDeOleada, FactorMaximoDeOleada);
+        public static int CantidadEscalada(int baseN, float factor) => Mathf.Max(1, Mathf.RoundToInt(baseN * factor));
 
         // Salida y parada de la camioneta de cada sector (relativas a la plaza; siempre sobre una calle libre).
         static readonly (Vector2 salida, Vector2 parada)[] CallesDeCamioneta =
@@ -303,7 +320,7 @@ namespace SP.Operacion
             for (int i = 0; i < PlanDeOleadas.Length; i++)
             {
                 var p = PlanDeOleadas[i];
-                oleadasMando.Add(new OleadaDelMando { numero = i + 1, sectores = new[] { 0 }, bocas = p.bocas, cantidades = p.cantidades, camionetas = p.camionetas, sectorDeCamioneta = p.calleCamioneta, fraccion = p.fraccion });
+                oleadasMando.Add(new OleadaDelMando { numero = i + 1, sectores = new[] { 0 }, bocas = p.bocas, cantidades = (int[])p.cantidades.Clone(), camionetas = p.camionetas, sectorDeCamioneta = p.calleCamioneta, fraccion = p.fraccion });
             }
         }
 
@@ -747,6 +764,10 @@ namespace SP.Operacion
         void AnunciarOleada(OleadaDelMando o)
         {
             o.anunciada = true;
+            // Bug #325: se fija la cantidad ahora, con la vida de este momento (el aviso y la salida dicen lo mismo).
+            o.factorDeVida = FactorDeVidaDeLaOleada(VidaTotalDelBando());
+            var basePlan = PlanDeOleadas[Mathf.Clamp(o.numero - 1, 0, PlanDeOleadas.Length - 1)].cantidades;
+            for (int i = 0; i < o.cantidades.Length && i < basePlan.Length; i++) o.cantidades[i] = CantidadEscalada(basePlan[i], o.factorDeVida);
             string texto = $"OLEADA {o.numero}/{CantidadDeOleadas} · POR {LetrasDe(o)} EN {Mathf.RoundToInt(MandoTactico.SegundosDeAnuncio)} s · {EnemigosDe(o)} ENEMIGOS{(o.camionetas > 0 ? " + CAMIONETA" : "")}";
             if (hud != null) hud.Aviso(texto, 4f); else AlertQueue.Push(texto, AlertPriority.Alta, 4f);
             // Bug #295: una flecha por cada boca, apoyada sobre la calle un poco adentro del borde del mapa y apuntando a la plaza.

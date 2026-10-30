@@ -13,7 +13,7 @@ namespace SP.EditorTools
     // DEMOLIENDO) en una captura del Game View, (b) la trazadora de primera persona no se dibuja pegada al lente y si mas alla de 2,2 m.
     public static partial class ChecksBugs065
     {
-        static IEnumerator Bug318v()
+        static IEnumerator Bug298v()
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
             string r0 = OperacionPrueba.Arrancar(1, 1);

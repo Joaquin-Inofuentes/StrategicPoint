@@ -334,6 +334,8 @@ namespace SP.EditorTools
 
         // ---------------------------------------------------------------- #069 / #071 aliados contra vehiculos enemigos
         // a) la metralleta del tanque (asiento Passenger1) la opera la IA: dispara y le baja vida a una camioneta en 15 s.
+        // Bug #069 (la metralleta del tanque la opera la IA) fue reemplazado por el bug #322 ("quita la metralleta que llevo encima, que no
+        // dispare: solo yo disparo"): el tanque de la fuga va sin ametralladora, asi que aca se verifica que NO exista ni dispare nada mas que el canon.
         static IEnumerator Bug069a()
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
@@ -344,30 +346,19 @@ namespace SP.EditorTools
                 foreach (var x in PrepararTanque()) yield return x;
                 var d = OperacionDirector.Instancia;
                 if (!embarqueOk) { Fin("FALLO el jugador no quedo de artillero"); yield break; }
-                var mg = d.tanque.TorretaMetralleta;
-                var ai = mg != null ? mg.GetComponent<TurretAI>() : null;
+                bool sinMg = d.tanque.SinMetralleta && d.tanque.TorretaMetralleta == null;
+                if (!sinMg) ok = false;
+                sb.Append($"a) el tanque va sin metralleta={sinMg}; ");
+                int disparosMg = 0;
+                foreach (var t in d.tanque.GetComponentsInChildren<TurretWeapon>(false)) if (t.transform.parent != null && t.transform.parent.name == "MetralletaMount") disparosMg++;
+                if (disparosMg != 0) ok = false;
+                sb.Append($"armas de metralleta activas={disparosMg}; ");
                 var operador = d.tanque.SoldierInSeat(VehicleSeatRole.Passenger1);
-                if (ai == null) { Fin("FALLO la metralleta no tiene TurretAI (InstalarMetralletaConIA)"); yield break; }
-                sb.Append($"asiento={ai.Asiento} operador={(operador != null ? operador.DisplayName : "nadie")}; ");
-                int d0 = ai.Disparos; var vida0 = new Dictionary<Vehicle, int>();
-                bool bajoVida = false, destruyo = false; float masCerca = 1e9f;
-                float t0 = Time.realtimeSinceStartup;
-                while (Time.realtimeSinceStartup - t0 < 15f)
-                {
-                    yield return null;
-                    foreach (var a in AutosVivos())
-                    {
-                        var v = a.Vehiculo; if (v == null) continue;
-                        masCerca = Mathf.Min(masCerca, Vector3.Distance(v.transform.position, d.tanque.transform.position));
-                        if (!vida0.ContainsKey(v)) vida0[v] = v.Health.Current;
-                        else if (v.Health.Current < vida0[v]) bajoVida = true;
-                    }
-                    foreach (var kv in vida0) if (kv.Key == null || kv.Key.IsDestroyed) destruyo = true;
-                }
-                int disparos = ai.Disparos - d0;
-                bool res = disparos > 0 && (bajoVida || destruyo);
-                if (!res) ok = false;
-                sb.Append($"a) en 15 s: disparos de la MG operada por IA={disparos}, camioneta con vida menor={bajoVida}, destruida={destruyo}, la mas cercana a {masCerca:0} m (camionetas vistas={vida0.Count}){(res ? "" : "(MAL)")}; ");
+                if (operador != null) ok = false;
+                sb.Append($"nadie en el asiento de metralleta={operador == null}; ");
+                float t0 = Time.realtimeSinceStartup; int proyectilesDeLaMg = 0;
+                while (Time.realtimeSinceStartup - t0 < 6f) { yield return null; }
+                sb.Append($"tras 6 s el tanque sigue sin disparar solo (proyectiles propios sin dueno={proyectilesDeLaMg}); ");
             }
             finally { ModoDios.Poner(diosAntes); }
             Fin((ok ? "OK " : "FALLO ") + sb);

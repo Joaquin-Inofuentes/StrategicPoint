@@ -55,6 +55,7 @@ namespace SP.Operacion
         void IniciarCarrera()
         {
             halconLanzado = false;
+            ReiniciarDespliegues();
             HalconesDerribados = 0;
             if (Halcon != null) Destroy(Halcon.gameObject);
             Halcon = null;
@@ -63,6 +64,7 @@ namespace SP.Operacion
 
         void TickCarreraExtras()
         {
+            TickDespliegues();
             if (HalconEnLaCarrera && !halconLanzado && Reloj >= HelicopteroEnemigo.SegundoDeEntrada && halcon != null)
             {
                 halconLanzado = true;

@@ -793,11 +793,7 @@ namespace SP.Player
                         var bajoRombo = AliadoBajoElRombo(mousePos);
                         if (bajoRombo != null) result = new AimResult { Type = AimTargetType.Ally, Soldier = bajoRombo, Point = bajoRombo.transform.position, HitTransform = bajoRombo.transform };
                     }
-                    if (result.Type == AimTargetType.Ally)
-                    {
-                        if (shift) Selection.AddToSelection(result.Soldier);
-                        else Selection.SelectSingle(result.Soldier);
-                    }
+                    if (result.Type == AimTargetType.Ally) ClicSobreAliado(result.Soldier, shift);
                     else if (result.Type == AimTargetType.Vehicle)
                     {
                         // El tanque se selecciona solo (no se combina con
@@ -815,6 +811,18 @@ namespace SP.Player
                     SelectAlliesInScreenRect(dragStart, mousePos, shift);
                 }
             }
+        }
+
+        // Bug #323 ("si hago doble click en un soldado me entre a el para FPS"): un segundo clic sobre el MISMO aliado dentro de la ventana lo posee.
+        public const float VentanaDeDobleClic = 0.4f;
+        Soldier ultimoClicAliado; float ultimoClicAliadoT = -99f;
+        public bool ClicSobreAliado(Soldier s, bool shift)
+        {
+            bool doble = !shift && s != null && s == ultimoClicAliado && Time.unscaledTime - ultimoClicAliadoT <= VentanaDeDobleClic;
+            ultimoClicAliado = doble ? null : s; ultimoClicAliadoT = Time.unscaledTime;
+            if (doble) { TryPossess(s); return true; }
+            if (shift) Selection.AddToSelection(s); else Selection.SelectSingle(s);
+            return false;
         }
 
         // #115: aliado cuyo rombo (sobre la cabeza) cae a menos de RadioDeRomboPx del cursor. Publico para los checks.

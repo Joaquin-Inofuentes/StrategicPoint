@@ -28,7 +28,8 @@ namespace SP.UI
             if (vistaArma == null) vistaArma = Hud_FPS.GetComponentInChildren<WeaponStatusView>(true);
             var vista = vistaArma;
             if (vista == null) return;
-            var lider = SP.Ai.AjustesDeEscuadra.Lider;
+            // Bug #324: el panel (granadas y municion) sigue al soldado SELECCIONADO; sin seleccion, al lider.
+            var lider = SoldadoSeleccionado() ?? SP.Ai.AjustesDeEscuadra.Lider;
             if (lider == null || lider.Health == null || !lider.Health.IsAlive)
             {
                 lider = null;
@@ -36,6 +37,14 @@ namespace SP.UI
                     if (s != null && s.Team == SP.Combat.TeamId.Player && s.Role != SP.Combat.RoleType.Civilian && s.Health != null && s.Health.IsAlive) { lider = s; break; }
             }
             vista.UpdateFrom(lider != null ? lider.Weapon : null);
+        }
+
+        public static SP.Actors.Soldier SoldadoSeleccionado()
+        {
+            var drv = SP.Player.PlayerInputDriver.Activo;
+            if (drv == null || drv.Selection == null) return null;
+            foreach (var s in drv.Selection.Selected) if (s != null && s.Health != null && s.Health.IsAlive) return s;
+            return null;
         }
 
         void OnDestroy()

@@ -144,6 +144,18 @@ namespace SP.Vehicles
         }
         public bool FinalExplosionDone { get; private set; }
 
+        // Bug #322 ("quita la metralleta que llevo encima, que no dispare: solo yo disparo"): el tanque de la fuga va sin ametralladora.
+        // Se apaga el montaje entero (arma, modelo y asiento de tiro); quitar=false lo devuelve (el jefe enemigo si la usa).
+        public bool SinMetralleta { get; private set; }
+        public void QuitarMetralleta(bool quitar)
+        {
+            SinMetralleta = quitar;
+            var mount = transform.Find("MetralletaMount");
+            if (mount != null) mount.gameObject.SetActive(!quitar);
+            if (quitar) { torretasResueltas = true; torretaMetralleta = null; }
+            else torretasResueltas = false;
+        }
+
         // Todos los vehiculos activos (para que la IA de las torretas pueda
         // elegir un tanque enemigo como blanco).
         public static readonly List<Vehicle> Todos = new List<Vehicle>();

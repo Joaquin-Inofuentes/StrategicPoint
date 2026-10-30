@@ -97,12 +97,18 @@ namespace SP.EditorTools
             return $"Generador: {ad.childCount} piezas en Adjuntos";
         }
 
+        // Bug #318 ("corregi la geometria, mejorala"): la carga era un cajon rojo con una cinta. Ahora es una bomba reconocible: haz de 5 cartuchos
+        // de explosivo atados con dos correas, temporizador con pantalla verde, cables, antena, asa, placa de peligro y base. El tinte de armado
+        // (CargaExplosiva.caja) pasa al cuerpo del temporizador. Sin colliders: el del cajon original (Caja_Carga) sigue siendo el de la carga.
         static string BombasHero()
         {
+            var dinamita = Mat("BombaDinamita", new Color(0.55f, 0.07f, 0.05f));
+            var tapa = Mat("BombaTapa", new Color(0.82f, 0.74f, 0.55f));
+            var placa = Mat("BombaPlaca", new Color(0.12f, 0.13f, 0.12f));
+            var correa = Mat("BombaCorrea", new Color(0.05f, 0.05f, 0.06f));
+            var temporizador = Mat("BombaTemporizador", new Color(0.55f, 0.1f, 0.08f));
             var verde = Mat("BombaPantalla", new Color(0.2f, 1f, 0.4f), 1.6f);
-            var tan = Mat("BombaExplosivo", new Color(0.55f, 0.50f, 0.32f));
             var negro = Negro;
-            var correa = Mat("BombaCorrea", new Color(0.12f, 0.13f, 0.12f));
             var amarillo = Mat("PortonPeligroAmarillo", new Color(0.95f, 0.72f, 0.08f));
             var cRoja = Mat("CableRojo", new Color(0.55f, 0.08f, 0.08f));
             var cAzul = Mat("CableAzul", new Color(0.10f, 0.25f, 0.55f));
@@ -110,24 +116,55 @@ namespace SP.EditorTools
             int n = 0;
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (t.name != "Caja_Carga" || !t.gameObject.scene.IsValid() || t.parent == null || !t.parent.name.StartsWith("Carga_")) continue;
-                var d = ContenedorInverso(t, "DetalleDeBomba");
-                // caja de 1.1 x 0.85 x 0.8 centrada en el contenedor
+                if (t == null || t.name != "Caja_Carga" || !t.gameObject.scene.IsValid() || t.parent == null || !t.parent.name.StartsWith("Carga_")) continue;
+                var viejo = t.Find("DetalleDeBomba"); if (viejo != null) Object.DestroyImmediate(viejo.gameObject);
+                var viejoArte = t.parent.Find("ArteBomba"); if (viejoArte != null) Object.DestroyImmediate(viejoArte.gameObject);
+                var ls = t.parent.lossyScale;
+                var d = new GameObject("ArteBomba").transform;
+                d.SetParent(t.parent, false);
+                d.position = t.position; d.rotation = Quaternion.identity;
+                d.localScale = new Vector3(1f / ls.x, 1f / ls.y, 1f / ls.z);
+                // el cajon original y su cinta quedan como colision / sin dibujar
+                var rc = t.GetComponent<MeshRenderer>(); if (rc != null) rc.enabled = false;
+                var cinta = t.parent.Find("Caja_Cinta"); if (cinta != null) { var rr = cinta.GetComponent<MeshRenderer>(); if (rr != null) rr.enabled = false; }
+
+                CajaPB(d, "Base", new Vector3(0f, -0.39f, 0f), new Vector3(1.3f, 0.07f, 1.0f), placa, 0f, false);
+                // haz de cartuchos tumbados a lo largo de X: 3 abajo, 2 arriba
+                float[] zs = { -0.22f, 0f, 0.22f, -0.11f, 0.11f }; float[] ys = { -0.22f, -0.22f, -0.22f, -0.01f, -0.01f };
+                for (int i = 0; i < 5; i++)
+                {
+                    FormaPBc(PrimitiveType.Cylinder, d, "Cartucho", new Vector3(0f, ys[i], zs[i]), new Vector3(0.2f, 0.48f, 0.2f), dinamita, new Vector3(0f, 0f, 90f));
+                    for (int e = -1; e <= 1; e += 2)
+                        FormaPBc(PrimitiveType.Cylinder, d, "Tapa", new Vector3(e * 0.485f, ys[i], zs[i]), new Vector3(0.17f, 0.012f, 0.17f), tapa, new Vector3(0f, 0f, 90f));
+                }
                 for (int s = -1; s <= 1; s += 2)
-                    CajaPB(d, "Correa", new Vector3(s * 0.3f, 0f, 0f), new Vector3(0.08f, 0.9f, 0.84f), correa, 0f, false);
-                for (int s = -1; s <= 1; s += 2)
-                    CajaPB(d, "Explosivo", new Vector3(s * 0.34f, 0.5f, 0.05f), new Vector3(0.3f, 0.12f, 0.5f), tan, 0f, false);
-                CajaPB(d, "Temporizador", new Vector3(0f, 0.47f, 0f), new Vector3(0.36f, 0.07f, 0.26f), negro, 0f, false);
-                CajaPB(d, "Pantalla", new Vector3(0f, 0.52f, 0f), new Vector3(0.28f, 0.02f, 0.14f), verde, 0f, false);
-                CajaPB(d, "Cable_Rojo", new Vector3(-0.17f, 0.5f, 0.03f), new Vector3(0.18f, 0.025f, 0.025f), cRoja, 0f, false);
-                CajaPB(d, "Cable_Azul", new Vector3(0.17f, 0.5f, -0.03f), new Vector3(0.18f, 0.025f, 0.025f), cAzul, 0f, false);
-                CajaPB(d, "Cable_Amarillo", new Vector3(0f, 0.5f, -0.13f), new Vector3(0.025f, 0.025f, 0.1f), cAmar, 0f, false);
-                FormaPBc(PrimitiveType.Cylinder, d, "Antena", new Vector3(0.45f, 0.62f, 0.28f), new Vector3(0.025f, 0.2f, 0.025f), negro);
-                CajaPB(d, "Asa", new Vector3(-0.58f, 0.1f, 0f), new Vector3(0.05f, 0.05f, 0.4f), negro, 0f, false);
-                CajaPB(d, "Placa_Peligro", new Vector3(0f, -0.1f, -0.41f), new Vector3(0.5f, 0.3f, 0.02f), amarillo, 0f, false);
+                    CajaPB(d, "Correa", new Vector3(s * 0.27f, -0.11f, 0f), new Vector3(0.07f, 0.5f, 0.68f), correa, 0f, false);
+                // temporizador al frente (el que se tine al armarse), con pantalla verde, botones y placa de peligro atras
+                var cuerpo = CajaPB(d, "Temporizador", new Vector3(0f, -0.06f, -0.45f), new Vector3(0.62f, 0.38f, 0.2f), temporizador, 0f, false);
+                cuerpo.name = "Temporizador";
+                CajaPB(d, "Pantalla", new Vector3(0f, -0.01f, -0.555f), new Vector3(0.42f, 0.16f, 0.02f), verde, 0f, false);
+                CajaPB(d, "Boton_Rojo", new Vector3(-0.15f, -0.15f, -0.555f), new Vector3(0.1f, 0.05f, 0.025f), cRoja, 0f, false);
+                CajaPB(d, "Boton_Verde", new Vector3(0.15f, -0.15f, -0.555f), new Vector3(0.1f, 0.05f, 0.025f), verde, 0f, false);
+                CajaPB(d, "Placa_Peligro", new Vector3(0f, -0.1f, 0.45f), new Vector3(0.5f, 0.24f, 0.02f), amarillo, 0f, false);
+                // cables del temporizador a los cartuchos
+                CajaPB(d, "Cable_Rojo", new Vector3(-0.18f, 0.12f, -0.3f), new Vector3(0.025f, 0.025f, 0.3f), cRoja, 0f, false);
+                CajaPB(d, "Cable_Azul", new Vector3(0.0f, 0.12f, -0.3f), new Vector3(0.025f, 0.025f, 0.3f), cAzul, 0f, false);
+                CajaPB(d, "Cable_Amarillo", new Vector3(0.18f, 0.12f, -0.3f), new Vector3(0.025f, 0.025f, 0.3f), cAmar, 0f, false);
+                CajaPB(d, "Cable_Rojo_Tendido", new Vector3(-0.18f, 0.13f, -0.05f), new Vector3(0.3f, 0.025f, 0.025f), cRoja, 0f, false);
+                // asa y antena
+                for (int s = -1; s <= 1; s += 2) CajaPB(d, "Asa_Poste", new Vector3(s * 0.24f, 0.19f, 0f), new Vector3(0.05f, 0.14f, 0.05f), negro, 0f, false);
+                CajaPB(d, "Asa", new Vector3(0f, 0.27f, 0f), new Vector3(0.53f, 0.05f, 0.05f), negro, 0f, false);
+                FormaPBc(PrimitiveType.Cylinder, d, "Antena", new Vector3(0.32f, 0.3f, -0.45f), new Vector3(0.025f, 0.32f, 0.025f), negro);
+                FormaPBc(PrimitiveType.Sphere, d, "Antena_Punta", new Vector3(0.32f, 0.62f, -0.45f), new Vector3(0.06f, 0.06f, 0.06f), cRoja);
+                // el LED de estado deja de flotar sobre el cajon: pasa a la cara superior del temporizador
+                var led = t.parent.Find("Led");
+                if (led != null) { led.position = d.position + new Vector3(0.2f, 0.17f, -0.45f); led.localScale = new Vector3(0.12f, 0.06f, 0.12f); }
+                // el tinte de armado va al cuerpo del temporizador
+                var ce = t.parent.GetComponent<SP.Operacion.CargaExplosiva>();
+                if (ce != null) { ce.caja = cuerpo.GetComponent<MeshRenderer>(); EditorUtility.SetDirty(ce); }
                 n++;
             }
-            return $"Bombas con detalle: {n}";
+            return $"Bombas rehechas: {n}";
         }
     }
 }

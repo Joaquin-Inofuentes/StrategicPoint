@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using SP.Actors;
 using SP.Combat;
 using SP.Core;
 using SP.Presentation;
@@ -22,7 +23,7 @@ namespace SP.Operacion
         public const int CohetesPorPasada = 3, DanoDeCohete = 80, DanoDeMetralla = 6;
         public const float RadioDeCohete = 4.5f, AlcanceDeMetralla = 70f;
 
-        public enum Estado { Dormido, Entrando, Orbitando, Cinematica, Cayendo, Muerto }
+        public enum Estado { Dormido, Entrando, Orbitando, Cinematica, Cayendo, Muerto, Desplegando }
 
         public static HelicopteroEnemigo Instancia { get; private set; }
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -90,6 +91,156 @@ namespace SP.Operacion
             return h;
         }
 
+        // ---- Bug #321: helicoptero de DESPLIEGUE ----
+        // "Quiero ver helicopteros enemigos que se acercan para soltar enemigos en cuerdas y que luego vengan a atacarme, que sea frenetico."
+        // Vuela hasta un punto de la ruta del tanque, queda suspendido a 10 m, cuelga dos cuerdas y baja a N soldados por ellas (uno cada 0,6 s);
+        // al terminar recoge las cuerdas y pasa a lo de siempre: orbita al tanque y lo ametralla. Vida reducida (VidaDeAsalto): se lo derriba.
+        public const float AlturaDeDespliegue = 10f, SegundosEntreSoldados = 0.6f, VelocidadDeDescenso = 7f;
+        public bool EsDeDespliegue { get; private set; }
+        public int SoldadosBajados { get; private set; }
+        public int SoldadosPedidos { get; private set; }
+        public bool SogasColgadas { get; private set; }
+        public Vector3 PuntoDeDespliegue { get; private set; }
+        GameObject plantillaSoldado; System.Action<Soldier> alBajar;
+        float proximoSoldado, tFinDeDespliegue; LineRenderer[] sogas;
+        readonly List<Soldier> bajando = new List<Soldier>();
+        readonly List<Soldier> entregados = new List<Soldier>();
+        public IReadOnlyList<Soldier> SoldadosDelDespliegue => entregados;
+
+        public static HelicopteroEnemigo IniciarDespliegue(Transform plantillaHeli, Vehicle tanque, GameObject plantillaDeSoldado, Vector3 punto, int soldados, System.Action<Soldier> alBajar = null, float distanciaDeEntrada = 110f)
+        {
+            if (plantillaHeli == null || tanque == null || plantillaDeSoldado == null) return null;
+            var go = Instantiate(plantillaHeli.gameObject, plantillaHeli.parent);
+            go.name = "Halcon_Despliegue_" + (++Creados);
+            var fwd = tanque.transform.forward; fwd.y = 0f; fwd.Normalize();
+            var lado = new Vector3(fwd.z, 0f, -fwd.x);
+            var pos = punto + lado * distanciaDeEntrada * 0.8f + fwd * distanciaDeEntrada * 0.5f;
+            pos.y = AlturaMaxima + 8f;
+            go.transform.position = pos;
+            go.SetActive(true);
+            var h = go.GetComponent<HelicopteroEnemigo>();
+            if (h == null) { Destroy(go); return null; }
+            h.EsDeDespliegue = true;
+            h.Armar(tanque);
+            if (h.Vehiculo != null && h.Vehiculo.Health != null) h.Vehiculo.Health.Initialize(-1, VidaDeAsalto);
+            h.plantillaSoldado = plantillaDeSoldado; h.alBajar = alBajar; h.SoldadosPedidos = soldados; h.PuntoDeDespliegue = punto;
+            h.Situacion = Estado.Desplegando;
+            return h;
+        }
+
+        void TickDespliegue(float dt)
+        {
+            var meta = PuntoDeDespliegue + Vector3.up * AlturaDeDespliegue;
+            var antes = transform.position;
+            transform.position = Vector3.MoveTowards(transform.position, meta, VelocidadDeVuelo * 1.7f * dt);
+            VelocidadActual = ((transform.position - antes) / Mathf.Max(0.0001f, dt)).magnitude;
+            var mira = SogasColgadas && tanque != null ? tanque.transform.position - transform.position : meta - transform.position;
+            mira.y = 0f;
+            if (mira.sqrMagnitude > 0.1f)
+                transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(mira.normalized, Vector3.up) * Quaternion.Euler(SogasColgadas ? 0f : 10f, 0f, 0f), 1f - Mathf.Exp(-3f * dt));
+            if (!SogasColgadas && Vector3.Distance(transform.position, meta) < 2.5f)
+            {
+                SogasColgadas = true; proximoSoldado = Time.time + 0.4f; tFinDeDespliegue = 0f;
+                CrearSogas();
+                AvisoCentral.Mostrar("¡HELICOPTERO ENEMIGO SOLTANDO TROPAS EN CUERDAS!", 2f, new Color(0.55f, 0.07f, 0.05f, 0.9f));
+                SesionLog.Evento("HALCON: despliegue sobre " + PuntoDeDespliegue);
+            }
+            if (!SogasColgadas) return;
+            ActualizarSogas();
+            if (SoldadosBajados < SoldadosPedidos && Time.time >= proximoSoldado)
+            {
+                proximoSoldado = Time.time + SegundosEntreSoldados;
+                BajarSoldado();
+            }
+            for (int i = bajando.Count - 1; i >= 0; i--)
+            {
+                var s = bajando[i];
+                if (s == null) { bajando.RemoveAt(i); continue; }
+                var p = s.transform.position;
+                float sueloY = PuntoDeDespliegue.y;
+                p.y = Mathf.MoveTowards(p.y, sueloY, VelocidadDeDescenso * dt);
+                s.transform.position = p;
+                if (p.y <= sueloY + 0.02f) { bajando.RemoveAt(i); Aterrizar(s); }
+            }
+            if (SoldadosBajados >= SoldadosPedidos && bajando.Count == 0)
+            {
+                if (tFinDeDespliegue <= 0f) tFinDeDespliegue = Time.time;
+                if (Time.time - tFinDeDespliegue > 1.2f) TerminarDespliegue();
+            }
+        }
+
+        void BajarSoldado()
+        {
+            int i = SoldadosBajados++;
+            var arriba = transform.position + transform.right * (i % 2 == 0 ? -1f : 1f) * 1.0f + Vector3.down * 1.1f;
+            var haciaTanque = tanque != null ? tanque.transform.position - arriba : transform.forward; haciaTanque.y = 0f;
+            var go = Instantiate(plantillaSoldado, arriba, Quaternion.LookRotation(haciaTanque.sqrMagnitude > 0.01f ? haciaTanque.normalized : Vector3.forward, Vector3.up), plantillaSoldado.transform.parent);
+            go.name = $"Rapelero_{Creados}_{i + 1}";
+            var s = go.GetComponent<Soldier>();
+            if (s == null) { Destroy(go); return; }
+            go.SetActive(true);
+            if (s.Brain != null) s.Brain.Pasivo = true;
+            s.transform.position = arriba;
+            bajando.Add(s); entregados.Add(s);
+            WorldUiDirector.Revelar(s, 6f);
+        }
+
+        void Aterrizar(Soldier s)
+        {
+            ApoyoEnElPiso.Apoyar(s.transform);
+            if (s.Brain != null)
+            {
+                s.Brain.Pasivo = false;
+                s.Brain.ReactivarNavegacion();
+                if (tanque != null) s.Brain.SetPatrolRoute(new[] { tanque.transform.position, tanque.transform.position + tanque.transform.forward * 20f });
+            }
+            alBajar?.Invoke(s);
+        }
+
+        void CrearSogas()
+        {
+            sogas = new LineRenderer[2];
+            for (int k = 0; k < 2; k++)
+            {
+                var go = new GameObject("Soga_" + k);
+                go.transform.SetParent(transform, false);
+                var lr = go.AddComponent<LineRenderer>();
+                lr.useWorldSpace = true; lr.positionCount = 2; lr.startWidth = lr.endWidth = 0.07f;
+                lr.material = SafeMaterial.Create(new Color(0.12f, 0.1f, 0.07f));
+                lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                sogas[k] = lr;
+            }
+            ActualizarSogas();
+        }
+
+        void ActualizarSogas()
+        {
+            if (sogas == null) return;
+            for (int k = 0; k < sogas.Length; k++)
+            {
+                if (sogas[k] == null) continue;
+                var arriba = transform.position + transform.right * (k == 0 ? -1f : 1f) * 1.0f + Vector3.down * 0.9f;
+                sogas[k].SetPosition(0, arriba);
+                sogas[k].SetPosition(1, new Vector3(arriba.x, PuntoDeDespliegue.y + 0.05f, arriba.z));
+            }
+        }
+
+        void QuitarSogas()
+        {
+            if (sogas != null) foreach (var l in sogas) if (l != null) Destroy(l.gameObject);
+            sogas = null; SogasColgadas = false;
+        }
+
+        void TerminarDespliegue()
+        {
+            QuitarSogas();
+            var d = transform.position - tanque.transform.position;
+            anguloDeEntrada = Mathf.Atan2(d.z, d.x); angulo = anguloDeEntrada;
+            Situacion = Estado.Entrando;
+            proximaPasada = Time.time + 4f;
+            SesionLog.Evento($"HALCON: despliegue terminado ({SoldadosBajados} soldados), pasa a atacar");
+        }
+
         // Blanco de la metralleta: el tanque en la carrera; en el asalto, el soldado propio vivo mas cercano al helicoptero.
         Vector3 BlancoDeMetralla()
         {
@@ -123,11 +274,11 @@ namespace SP.Operacion
             angulo = anguloDeEntrada;
             Situacion = Estado.Entrando;
             proximaPasada = Time.time + 4f;
-            if (ancla == null) Instancia = this;   // los de asalto no son "el" Halcon de la carrera (barra de jefe, cinematica)
+            if (ancla == null && !EsDeDespliegue) Instancia = this;   // los de asalto no son "el" Halcon de la carrera (barra de jefe, cinematica)
             SesionLog.Evento("HALCON: entra el helicoptero enemigo");
         }
 
-        void OnDestroy() { if (Instancia == this) Instancia = null; }
+        void OnDestroy() { if (Instancia == this) Instancia = null; QuitarSogas(); }
 
         // La cinematica final lo deja suspendido en un punto, sin atacar.
         public void FijarParaLaCinematica(Vector3 pos, Quaternion rot)
@@ -149,6 +300,7 @@ namespace SP.Operacion
             if (ancla == null && (tanque == null || tanque.IsDestroyed && Situacion != Estado.Cinematica)) return;
 
             float dt = Time.deltaTime;
+            if (Situacion == Estado.Desplegando && !CinematicaDeOperacion.IntroActiva) { TickDespliegue(dt); return; }
             if (Situacion == Estado.Cinematica)
             {
                 if (cineFija)

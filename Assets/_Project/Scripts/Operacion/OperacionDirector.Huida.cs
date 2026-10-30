@@ -91,7 +91,7 @@ namespace SP.Operacion
                 otros.Remove(conductor);
                 tanque.Mount(conductor, VehicleSeatRole.Driver, true);
             }
-            var libres = new[] { VehicleSeatRole.Passenger1, VehicleSeatRole.Passenger2 };
+            var libres = new[] { VehicleSeatRole.Passenger2, VehicleSeatRole.Passenger1 };   // bug #322: sin metralleta, el Passenger1 es el ultimo recurso
             for (int i = 0; i < otros.Count && i < libres.Length; i++) tanque.Mount(otros[i], libres[i], true);
 
             driver.Vehicle = tanque;   // el driver trabaja sobre "su" vehiculo (campo serializado en la escena)
@@ -124,7 +124,7 @@ namespace SP.Operacion
                 }
             }
             PotenciarCanon();
-            InstalarMetralletaConIA();
+            tanque.QuitarMetralleta(true);
             if (baliza != null) { baliza.Quitar(); baliza = null; }
             Aviso("A BORDO · TRAYECTO DE " + Mathf.RoundToInt(segundosDeTrayecto) + " s\nDESTRUI A LOS AUTOS CON EL CANON");
             DespejarRutaDelTanque();

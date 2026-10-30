@@ -223,6 +223,8 @@ namespace SP.Combat
         bool[] reservaInicializada = new bool[16];
         public bool UsaReservas => ReservasActivas && LimitaMunicion;
         public int ReservaActual { get { if (!UsaReservas) return -1; InicializarReserva(CurrentWeaponKind); return reservaPorArma[(int)CurrentWeaponKind]; } }
+        public static bool MunicionInfinitaConModoDios = true;   // bug #324; los checks de combate largo lo apagan para medir con municion real
+        public bool MunicionInfinitaPorModoDios => MunicionInfinitaConModoDios && ModoDios.Activo && owner != null && owner.Team == TeamId.Player && owner.Brain != null && owner.Brain.IsPossessedByPlayer;   // solo el soldado que manejas
         public bool SinMunicionTotal => UsaReservas && CurrentAmmo <= 0 && ReservaActual <= 0;
 
         void InicializarReserva(WeaponKind k)
@@ -748,7 +750,7 @@ namespace SP.Combat
             else
                 pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor);
             cooldownTimer = fireCooldown;
-            CurrentAmmo--;
+            if (!MunicionInfinitaPorModoDios) CurrentAmmo--;   // bug #324: con [F4] la municion no baja; sin [F4] es la de siempre
             if (CurrentAmmo <= 0 && !SinMunicionTotal) StartReload();
             EventBus.Instance.Publish(new ShotFiredEvent(owner.Id));
             return true;
@@ -857,7 +859,7 @@ namespace SP.Combat
         public bool ConsumirGranada()
         {
             if (Granadas <= 0) return false;
-            Granadas--;
+            if (!MunicionInfinitaPorModoDios) Granadas--;
             return true;
         }
         public void ReponerGranadas(int cantidad = GranadasMaximas) => Granadas = Mathf.Clamp(cantidad, 0, GranadasMaximas);
