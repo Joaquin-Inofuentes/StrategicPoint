@@ -274,8 +274,8 @@ namespace SP.EditorTools
                 // El Flanqueador y el Medico no pueden: el motivo dice que solo el ASALTO.
                 bool kesNo = !carga.EnviarA(kes, out string motivoKes) && motivoKes.Contains("ASALTO");
                 var doc = Escuadrista(RoleType.Medic);
-                bool docNo = doc != null && !carga.EnviarA(doc, out string motivoDoc) && motivoDoc.Contains("ASALTO");
-                W8Ok(ref ok, kesNo && docNo, sb, $"A) EnviarA(Kes)='{motivoKes}', EnviarA(Doc)='{(doc != null ? "no" : "sin doc")}': solo el Asalto puede");
+                string motivoDoc = null; bool docNo = doc != null && !carga.EnviarA(doc, out motivoDoc) && motivoDoc.Contains("ASALTO");
+                W8Ok(ref ok, kesNo && docNo, sb, $"A) EnviarA(Kes)='{motivoKes}', EnviarA(Doc)='{(doc != null ? motivoDoc : "sin doc")}': solo el Asalto puede");
                 // Con [Q] (la misma ruta del radial: EnviarA) el Asalto camina, coloca solo y la carga arde.
                 Junto(vega, carga.transform.position, 12f, vega.transform.position);
                 string motivo;
@@ -287,12 +287,12 @@ namespace SP.EditorTools
                 // Bug #158: el porton del cuartel de reserva se levanta antes de que salgan: se espera a que terminen de salir.
                 int act = 0;
                 float tSal = Time.realtimeSinceStartup;
-                while (act < OperacionDirector.ContraatacantesPrimera && Time.realtimeSinceStartup - tSal < 15f)
+                while (act < OperacionDirector.ContraatacantesSegunda && Time.realtimeSinceStartup - tSal < 15f)
                 {
                     act = 0; foreach (var s in d.puestos[0].contraataque.soldados) if (s != null && s.gameObject.activeSelf) act++;
                     yield return null;
                 }
-                W8Ok(ref ok, act == OperacionDirector.ContraatacantesPrimera, sb, $"B) y el contraataque salio igual ({act}/4)");
+                W8Ok(ref ok, act == OperacionDirector.ContraatacantesSegunda, sb, $"B) la carga unica despierta la reserva completa ({act}/{OperacionDirector.ContraatacantesSegunda})");
                 foreach (var x in CapturarPantalla("v2_082_orden_q.png")) yield return x;
             }
             finally { Poseer(vega); ModoDios.Poner(diosAntes); }
