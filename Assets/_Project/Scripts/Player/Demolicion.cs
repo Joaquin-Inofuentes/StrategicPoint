@@ -393,7 +393,7 @@ namespace SP.Player
             {
                 var go = new GameObject("DemolicionEtiqueta");
                 go.transform.SetParent(transform, false);
-                go.transform.localPosition = new Vector3(0f, 1.6f, 0f);
+                go.transform.localPosition = new Vector3(0f, 1.7f, 0f);
                 etiqueta = go.AddComponent<TextMesh>();
                 var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
                 etiqueta.font = font;
@@ -415,7 +415,13 @@ namespace SP.Player
                 gi.transform.localScale = Vector3.one * (0.7f / Mathf.Max(0.01f, lado));
             }
             etiqueta.text = $"{Mathf.RoundToInt(Progreso * 100f)}%";
-            if (SP.Core.CamaraPrincipal.Actual != null) etiqueta.transform.rotation = Quaternion.LookRotation(etiqueta.transform.position - SP.Core.CamaraPrincipal.Actual.transform.position);
+            if (SP.Core.CamaraPrincipal.Actual != null)
+            {
+                var haciaLaCamara = etiqueta.transform.position - SP.Core.CamaraPrincipal.Actual.transform.position;
+                etiqueta.transform.rotation = Quaternion.LookRotation(haciaLaCamara);
+                // De cerca (camara al hombro, 3-5 m) el texto ocupaba media pantalla y se pisaba con el engranaje animado: escala con la distancia.
+                etiqueta.transform.localScale = Vector3.one * Mathf.Clamp(haciaLaCamara.magnitude / 9f, 0.3f, 1f);
+            }
 
             // La carga: un cubito rojo que parpadea pegado al muro.
             var col = objetivo.GetComponent<Collider>();

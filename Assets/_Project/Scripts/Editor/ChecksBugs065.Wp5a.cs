@@ -220,6 +220,9 @@ namespace SP.EditorTools
             if (kb == null) return;
             PonerEntradaSinFoco();
             InputSystem.QueueStateEvent(kb, new KeyboardState(teclas));
+            // Sin foco el editor descarta los eventos de teclado en el filtro de foco: se fuerza el procesado ahora y se reaplica el estado directo.
+            try { InputSystem.Update(); } catch { }
+            if (teclas.Length == 0 ? kb.anyKey.isPressed : !kb[teclas[0]].isPressed) InputState.Change(kb, new KeyboardState(teclas));
         }
 
         // ---------------------------------------------------------------- #088 revivir: animacion y bloqueo

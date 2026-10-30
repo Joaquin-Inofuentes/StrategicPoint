@@ -207,6 +207,7 @@ namespace SP.EditorTools
                 Junto(vega, d.cargaPorton.transform.position, 9f, vega.transform.position);
                 // Los aliados NO pueden operar la carga (solo el Asalto, y el Asalto sos vos): se los saca de la escena de la prueba.
                 var kes = Escuadrista(RoleType.Flanker); var doc = Escuadrista(RoleType.Medic);
+                foreach (var x in Esperar(0.7f)) yield return x;   // la escuadra se acomoda al teletransporte antes de tomar el estado de referencia
                 var estK = kes != null ? kes.Brain.State : default; var estD = doc != null ? doc.Brain.State : default;
                 var aim = new AimResult { Type = AimTargetType.Interactuar, HitTransform = d.cargaPorton.transform, Point = d.cargaPorton.transform.position };
                 string accion = drv.AccionContextualDeQ(aim);

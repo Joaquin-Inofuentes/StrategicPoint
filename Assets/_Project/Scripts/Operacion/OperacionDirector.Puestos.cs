@@ -270,7 +270,7 @@ namespace SP.Operacion
             var n = portonBlindado.transform.forward; n.y = 0f; n.Normalize();
             if (Vector3.Dot(origenCarga - c, n) < 0f) n = -n;
             var lado = portonBlindado.transform.right; lado.y = 0f; lado.Normalize();
-            var p0 = c + n * 13f + lado * 4f + Vector3.up * 3.5f;
+            var p0 = c + n * 13f + lado * 8f + Vector3.up * 5f;   // de costado y mas alto: el humo de la carga (entre la camara y el porton) no tapa los primeros 0,5 s
             var p1 = p0 - n * 1.5f;
             var mira = c + Vector3.up * 1.5f;
             bool liberado = false;
