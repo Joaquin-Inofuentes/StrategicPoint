@@ -10,7 +10,8 @@ namespace SP.Operacion
     // ponen a atacar al tanque (HelicopteroEnemigo.IniciarDespliegue). Tres desembarcos repartidos en la carrera, tres soldados cada uno.
     public partial class OperacionDirector
     {
-        public static bool DesplieguesActivos = true;
+        // Apagado a pedido: los helicopteros que bajaban soldados y perseguian al tanque ya no aparecen en la ruta (LanzarDespliegue sigue disponible).
+        public static bool DesplieguesActivos = false;
         public static readonly float[] SegundosDeLosDespliegues = { 7f, 22f, 38f };
         public const int SoldadosPorDespliegue = 3;
         public const float MetrosPorDelanteDelDespliegue = 95f;
