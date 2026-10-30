@@ -192,6 +192,16 @@ namespace SP.Operacion
             {
                 if (computadora.luz != null) computadora.luz.material.color = Color.black;
                 if (computadora.indicador != null) computadora.indicador.gameObject.SetActive(false);
+                // Bug #315: las pantallas del arte nuevo de la terminal tambien se apagan, y la superior se inclina.
+                var arteTerminal = computadora.transform.parent != null ? computadora.transform.parent.Find("ArteTerminal") : null;
+                if (arteTerminal != null)
+                    foreach (var r in arteTerminal.GetComponentsInChildren<Renderer>(true))
+                        if (r.name.StartsWith("Pantalla_"))
+                        {
+                            r.material.color = Color.black;
+                            if (r.material.HasProperty("_EmissionColor")) r.material.SetColor("_EmissionColor", Color.black);
+                            if (r.name == "Pantalla_Superior") r.transform.localRotation *= Quaternion.Euler(0f, 0f, 12f);
+                        }
             }
             for (int i = 0; i < 6; i++)
                 SpriteFx.Lanzar("smoke_02", centro + UnityEngine.Random.insideUnitSphere * 0.6f, new Color(0.35f, 0.34f, 0.33f, 0.6f), 0.6f, 2.6f, UnityEngine.Random.Range(1.6f, 2.6f), UnityEngine.Random.Range(-30f, 30f), Vector3.up * UnityEngine.Random.Range(1.2f, 2.4f), 1.5f, 1);

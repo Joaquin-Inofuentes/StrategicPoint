@@ -164,6 +164,24 @@ namespace SP.Operacion
         public const float AnchoDelCorredorDelTanque = 1.7f, AlturaMaximaDeUnPropDespejable = 4f, TamanoMaximoDeUnPropDespejable = 12f;
         public int PropsDespejadosDeLaRuta { get; private set; }
 
+        // Apaga tambien lo VISIBLE del prop: el propio objeto del collider y, si su padre inmediato es chico (el prop completo, p. ej. auto + collider hijo), el padre.
+        static void OcultarPropDespejado(Collider c)
+        {
+            var t = c.transform;
+            var p = t.parent;
+            if (p != null && p.childCount <= 6)
+            {
+                var rs = p.GetComponentsInChildren<Renderer>(true);
+                if (rs.Length > 0)
+                {
+                    var b = rs[0].bounds;
+                    for (int i = 1; i < rs.Length; i++) b.Encapsulate(rs[i].bounds);
+                    if (Mathf.Max(b.size.x, b.size.z) <= TamanoMaximoDeUnPropDespejable && b.max.y <= AlturaMaximaDeUnPropDespejable) t = p;
+                }
+            }
+            t.gameObject.SetActive(false);
+        }
+
         public int DespejarRutaDelTanque()
         {
             PropsDespejadosDeLaRuta = 0;
@@ -193,6 +211,7 @@ namespace SP.Operacion
                             var b = c.bounds;
                             if (b.max.y > AlturaMaximaDeUnPropDespejable || Mathf.Max(b.size.x, b.size.z) > TamanoMaximoDeUnPropDespejable) continue;
                             c.enabled = false;
+                            OcultarPropDespejado(c);   // bug #316: "elimina los elementos que estan en el camino": no basta quitarles la colision
                             PropsDespejadosDeLaRuta++;
                         }
                     }

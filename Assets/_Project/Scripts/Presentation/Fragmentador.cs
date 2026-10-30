@@ -201,7 +201,7 @@ namespace SP.Presentation
             puntosUv.Clear();
             foreach (var mf in o.GetComponentsInChildren<MeshFilter>(true))
             {
-                if (mf.transform == o) continue;
+                if (mf.transform == o || EsAdjunto(mf.transform, o)) continue;
                 var m = mf.sharedMesh;
                 if (m == null || !m.isReadable) continue;
                 var uvs = m.uv; var tri = m.triangles;
@@ -214,13 +214,20 @@ namespace SP.Presentation
             }
         }
 
+        // Bug #314: LEDs, tapa y cables del rack viven en un hijo "Adjuntos" (para que caigan con el); no deben dar el material de los trozos.
+        static bool EsAdjunto(Transform r, Transform raiz)
+        {
+            for (var t = r; t != null && t != raiz; t = t.parent) if (t.name == "Adjuntos") return true;
+            return false;
+        }
+
         // Material que se ve en el objeto: el del arte hijo (con textura) o, si no lo hay, el del propio cubo con su tinte.
         static Material MaterialDe(Transform o, out Color tinte, out bool usarTinte)
         {
             tinte = Color.white; usarTinte = false;
             var rends = o.GetComponentsInChildren<MeshRenderer>(true);
             foreach (var r in rends)
-                if (r.enabled && r.sharedMaterial != null && r.transform != o) return r.sharedMaterial;
+                if (r.enabled && r.sharedMaterial != null && r.transform != o && !EsAdjunto(r.transform, o)) return r.sharedMaterial;
             var propio = o.GetComponent<MeshRenderer>();
             if (propio != null && propio.sharedMaterial != null)
             {

@@ -243,11 +243,57 @@ namespace SP.Operacion
             SesionLog.Evento($"Puesto {p.lado} volado ({volados}/{CargasRequeridas})");
             if (volados < CargasRequeridas) { SonarObjetivoCumplido(); BalizaDelPuesto(); return; }
             // La carga del porton: la muralla cae (el porton blindado se hunde) y sigue el Centro de Datos.
-            if (portonBlindado != null && portonBlindado.activeSelf) StartCoroutine(Hundir(portonBlindado));
+            if (portonBlindado != null && portonBlindado.activeSelf) StartCoroutine(VoladuraDelPortonBlindado(c.transform.position));
             LimpiarCamionetasDePuestos();
             EntrarFase(FaseOperacion.CentroDeDatos);
             if (hud != null) hud.Aviso("¡LA MURALLA CAYÓ!\nAL CENTRO DE DATOS", 3.4f);
             StartCoroutine(AvisoDiferido("CENTRO DE DATOS\nUN SOLDADO INTERACTUA 30 s · LOS DEMAS DEFIENDEN", 3.6f));
+        }
+
+        public const float SegundosDeLaCinematicaDelPorton = 4f;
+
+        // Bug #309: el portón blindado vuela (hojas que se abren y se rompen) con una cinematica de 4 s; el bloqueo invisible y el
+        // NavMesh se liberan a los 1,2 s, como antes con Hundir(). Sin arte (escena vieja) cae al hundimiento de siempre.
+        IEnumerator VoladuraDelPortonBlindado(Vector3 origenCarga)
+        {
+            var arte = FindFirstObjectByType<PortonBlindadoAnimado>();
+            var cine = arte != null ? CineDeHuida.Abrir(true) : null;
+            if (arte == null || cine == null || cine.Camara == null)
+            {
+                CineDeHuida.Cancelar();
+                if (arte != null) arte.Volar();
+                yield return Hundir(portonBlindado);
+                yield break;
+            }
+            arte.Volar();
+            var c = portonBlindado.transform.position;
+            var n = portonBlindado.transform.forward; n.y = 0f; n.Normalize();
+            if (Vector3.Dot(origenCarga - c, n) < 0f) n = -n;
+            var lado = portonBlindado.transform.right; lado.y = 0f; lado.Normalize();
+            var p0 = c + n * 13f + lado * 4f + Vector3.up * 3.5f;
+            var p1 = p0 - n * 1.5f;
+            var mira = c + Vector3.up * 1.5f;
+            bool liberado = false;
+            float t = 0f;
+            while (t < SegundosDeLaCinematicaDelPorton)
+            {
+                t += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(t / SegundosDeLaCinematicaDelPorton);
+                var pos = Vector3.Lerp(p0, p1, k * k * (3f - 2f * k));
+                cine.PonerCamara(pos, Quaternion.LookRotation(mira - pos, Vector3.up), 50f);
+                cine.Barras(Mathf.Clamp01(t / 0.5f) * Mathf.Clamp01((SegundosDeLaCinematicaDelPorton - t) / 0.4f));
+                cine.Subtitulo("¡PORTÓN VOLADO!", Mathf.Clamp01((t - 1f) / 0.4f) * Mathf.Clamp01((3.2f - t) / 0.4f));
+                if (!liberado && t >= PortonBlindadoAnimado.SegundosDeApertura)
+                {
+                    liberado = true;
+                    portonBlindado.SetActive(false);
+                    NavService.Invalidate();
+                    NavMeshViva.Solicitar();
+                    Coberturas.Registrar();
+                }
+                yield return null;
+            }
+            CineDeHuida.Cancelar();
         }
 
         IEnumerator AvisoDiferido(string texto, float segundos)
@@ -272,6 +318,8 @@ namespace SP.Operacion
         void ApagarMuralla()
         {
             if (portonBlindado != null) portonBlindado.SetActive(false);
+            var arteDelPorton = FindFirstObjectByType<PortonBlindadoAnimado>();
+            if (arteDelPorton != null) arteDelPorton.DejarAbierto();
             if (soldadosDeTrinchera != null) foreach (var s in soldadosDeTrinchera) if (s != null) s.gameObject.SetActive(false);
             if (soldadosDelCorredor != null) foreach (var s in soldadosDelCorredor) if (s != null) s.gameObject.SetActive(false);
             LimpiarCamionetasDePuestos();
