@@ -389,7 +389,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, c.pasadas >= 3 && c.avisos >= 3 && (HelicopteroEnemigo.CohetesActivos ? c.cohetesHalcon >= 9 : c.cohetesHalcon == 0), sb, $"pasadas={c.pasadas} avisos={c.avisos} cohetes={c.cohetesHalcon} (bug #202: el Halcon ya no suelta cohetes: {(HelicopteroEnemigo.CohetesActivos ? "activos" : "apagados")})");
             W8Ok(ref ok, c.altMin >= 17f && c.altMax <= 25f, sb, $"altura {c.altMin:0.0}..{c.altMax:0.0} m (18-24)");
             W8Ok(ref ok, (HelicopteroEnemigo.CohetesActivos ? c.cohetesEmbo >= 3 : c.cohetesEmbo == 0) && c.tiradores0 == 6, sb, $"emboscadas: {c.tiradores0} tiradores, {c.cohetesEmbo} cohetes (sin cohetes enemigos desde el bug #202)");
-            W8Ok(ref ok, c.barricadas >= 1, sb, $"barricadas aplastadas={c.barricadas} (de {OperacionBuilderBarricadas()})");
+            W8Ok(ref ok, c.barricadas == 0 && Buscar("Barricada_Madera_0") == null && Buscar("Barricada_Cemento_1") == null, sb, $"bug #316: el canadon no tiene barricadas en el camino (aplastadas={c.barricadas})");
             bool finOk = false;
             foreach (var x in W9bObservarFinal(d, false, sb, v => finOk = v)) yield return x;
             OperacionDirector.HalconEnLaCarrera = false;

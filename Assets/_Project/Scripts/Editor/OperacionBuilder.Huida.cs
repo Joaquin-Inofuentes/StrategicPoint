@@ -334,7 +334,7 @@ namespace SP.EditorTools
         // ---------------------------------------------------------------
         // WP9b-2: canadon, barricadas, cornisas con tiradores de cohetes, puente y Halcon
         // ---------------------------------------------------------------
-        public const int BarricadasDelCanadon = 4, EmboscadasDelCanadon = 2, TiradoresPorEmboscada = 3, CornisaAltura = 6;
+        public const int BarricadasDelCanadon = 0, EmboscadasDelCanadon = 2, TiradoresPorEmboscada = 3, CornisaAltura = 6;
         public const float MuroAltura = 10f;
         static EmboscadaDeCohetes[] emboscadasEscena;
         static Transform halconPlantilla;
