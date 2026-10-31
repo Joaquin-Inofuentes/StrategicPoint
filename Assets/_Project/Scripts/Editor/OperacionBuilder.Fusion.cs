@@ -135,6 +135,8 @@ namespace SP.EditorTools
             var o = GameObject.Find("Operacion");
             if (o == null) return "no hay un objeto 'Operacion' en " + activa.name;
             string r = FusionarMallas(o.transform);
+            // CreateAsset renombra la malla al nombre del archivo (0001...): el orden las agrupa, las nombra por material y zona y arma los prefabs.
+            r += " | " + OrdenarFusionadosEscenaAbierta();
             EditorSceneManager.MarkSceneDirty(activa);
             EditorSceneManager.SaveScene(activa);
             AssetDatabase.SaveAssets();
