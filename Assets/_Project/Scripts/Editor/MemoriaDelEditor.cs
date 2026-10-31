@@ -40,8 +40,16 @@ namespace SP.EditorTools
         static void AlCambiarDeModo(PlayModeStateChange estado)
         {
             if (estado == PlayModeStateChange.ExitingEditMode) BarrerTexturasHuerfanas();
-            else if (estado == PlayModeStateChange.EnteredEditMode) EditorApplication.delayCall += () => { BarrerRenderTexturesSueltas(); Liberar(); };
+            else if (estado == PlayModeStateChange.EnteredEditMode)
+            {
+                // Directo y no por delayCall: con el editor sin foco el delayCall no se ejecuta.
+                BarrerRenderTexturesSueltas();
+                Liberar();
+            }
         }
+
+        // NO se barren mallas/sprites/texturas genericas creadas en Play: probado, destruirlas dejo referencias colgando y el editor se cerro
+        // (crash en EditorSceneManager::RestoreSceneBackups al entrar al Play siguiente). Solo se barre lo que ningun material/UI usa (ver abajo).
 
         [MenuItem("Strategic Point/Memoria/Liberar RAM ahora")]
         static void LiberarMenu() => Debug.Log(LiberarYMedir());
