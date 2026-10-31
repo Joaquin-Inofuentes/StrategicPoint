@@ -183,6 +183,99 @@ namespace SP.EditorTools
             return $"Fusionados: {movidas} mallas repartidas por sector, {prefabs} prefabs";
         }
 
+
+        // ---- Barrido de lo estatico que quedaba suelto en los grupos de juego ----
+        static bool EsComponenteDeJuego(Component c)
+        {
+            if (c == null) return true;                       // script faltante: por las dudas, juego
+            if (c is Transform || c is Renderer || c is MeshFilter || c is Collider || c is Light || c is Camera || c is AudioListener) return false;
+            if (c is Rigidbody || c is Animator || c is Canvas || c is AudioSource || c is ParticleSystem) return true;
+            if (c is MonoBehaviour)
+            {
+                string n = c.GetType().Name;
+                return !(n == "NavMeshModifier" || n == "NavMeshModifierVolume" || n == "UniversalAdditionalLightData" || n == "UniversalAdditionalCameraData");
+            }
+            return false;
+        }
+
+        // Objetos a los que apunta algun script de la escena (campos serializados): bloqueos invisibles, anclas, puntos de ruta...
+        static HashSet<GameObject> ObjetosReferenciadosPorScripts(UnityEngine.SceneManagement.Scene escena)
+        {
+            var refs = new HashSet<GameObject>();
+            foreach (var raiz in escena.GetRootGameObjects())
+                foreach (var m in raiz.GetComponentsInChildren<MonoBehaviour>(true))
+                {
+                    if (m == null || !EsComponenteDeJuego(m)) continue;
+                    var so = new SerializedObject(m);
+                    for (var it = so.GetIterator(); it.NextVisible(true);)
+                    {
+                        if (it.propertyType != SerializedPropertyType.ObjectReference) continue;
+                        var o = it.objectReferenceValue;
+                        GameObject go = o is GameObject g ? g : o is Component c ? c.gameObject : null;
+                        if (go != null && go.scene == escena && !go.transform.IsChildOf(m.transform)) refs.Add(go);   // lo propio no cuenta
+                    }
+                }
+            return refs;
+        }
+
+        public static string BarridoDeEstaticosEscenaAbierta()
+        {
+            var escena = EditorSceneManager.GetActiveScene();
+            var env = RaizEntorno(); var op = GameObject.Find("Operacion");
+            if (env == null || op == null) return "falta Environment u Operacion";
+            var refs = ObjetosReferenciadosPorScripts(escena);
+
+            var seQueda = new Dictionary<Transform, bool>();   // el nodo o algo dentro suyo es de juego o esta referenciado
+            bool Juego(Transform t)
+            {
+                if (seQueda.TryGetValue(t, out var v)) return v;
+                bool d = refs.Contains(t.gameObject);
+                if (!d) foreach (var c in t.GetComponents<Component>()) if (EsComponenteDeJuego(c)) { d = true; break; }
+                if (!d) foreach (Transform h in t) if (Juego(h)) { d = true; break; }
+                seQueda[t] = d; return d;
+            }
+            // El que se queda por si mismo (no por un hijo): script propio, Rigidbody, referencia directa.
+            bool PropioDeJuego(Transform t)
+            {
+                if (refs.Contains(t.gameObject)) return true;
+                foreach (var c in t.GetComponents<Component>()) if (EsComponenteDeJuego(c)) return true;
+                return false;
+            }
+
+            var movidos = new Dictionary<string, int>(); var quedan = new Dictionary<string, int>(); int total = 0, noSePudo = 0;
+            void Barrer(Transform nodo, string origen)
+            {
+                var hijos = new List<Transform>(); foreach (Transform h in nodo) hijos.Add(h);
+                foreach (var h in hijos)
+                {
+                    if (h == null) continue;
+                    if (h.name == "Computadora") continue;   // el terminal se busca por hijos (Mesa, Monitor): se queda entero
+                    if (PropioDeJuego(h)) { quedan[origen] = (quedan.TryGetValue(origen, out var q) ? q : 0) + 1; continue; }   // entero se queda
+                    if (!Juego(h))
+                    {
+                        if (h.GetComponentInChildren<Renderer>(true) == null) continue;   // sin dibujo (marcadores, colliders sueltos): no es entorno visual
+                        var sector = SectorDelEntorno(CentroDe(h));
+                        if (Mover(h, Hijo(Hijo(env, sector), origen))) { movidos[origen] = (movidos.TryGetValue(origen, out var m) ? m : 0) + 1; total++; } else noSePudo++;
+                    }
+                    else Barrer(h, origen);   // mezcla: se baja un nivel y se separa lo estatico
+                }
+            }
+
+            foreach (Transform grupo in op.transform)
+            {
+                string n = grupo.name;
+                if (!(char.IsDigit(n[0]) || n == "CiudadDeCubos") || n == NombreRaizFusion) continue;
+                if (PropioDeJuego(grupo)) continue;
+                Barrer(grupo, n);
+            }
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"Barrido: {total} nodos estaticos pasaron a Environment ({noSePudo} no se pudieron mover)");
+            foreach (var kv in movidos) sb.AppendLine($"  desde {kv.Key}: {kv.Value} movidos, {(quedan.TryGetValue(kv.Key, out var q2) ? q2 : 0)} se quedan por tener juego");
+            EditorSceneManager.MarkSceneDirty(escena);
+            return sb.ToString();
+        }
+
         // Todo el entorno en una raiz: sectores + Mundo, sin tocar lo interactuable.
         public static string OrdenarEntornoEscenaAbierta()
         {
@@ -234,6 +327,8 @@ namespace SP.EditorTools
                 if (detalle.transform.childCount == 0) Object.DestroyImmediate(detalle);
                 sb.AppendLine($"  DetalleDeEdificios: {movidos} piezas a su sector, {quedan} se quedan");
             }
+
+            sb.AppendLine(BarridoDeEstaticosEscenaAbierta());
 
             // Restos de pruebas de camara dejados sueltos en la escena.
             foreach (var go in escena.GetRootGameObjects())
