@@ -30,7 +30,7 @@ namespace SP.EditorTools
 
         static string RutaDeValidacion(string archivo)
         {
-            string dir = System.IO.Path.Combine(Application.dataPath, "Validacion");
+            string dir = System.IO.Path.Combine(Application.dataPath, "Validacion~");
             System.IO.Directory.CreateDirectory(dir);
             return System.IO.Path.Combine(dir, archivo);
         }

@@ -17,7 +17,7 @@ namespace SP.EditorTools
 
         static Transform HijoDe(Transform raiz, string nombre) => SP.Core.BuscarHijo.Ruta(raiz, nombre);
 
-        static string RutaValidacion(string archivo) => Path.Combine(Application.dataPath, "Validacion", archivo).Replace('\\', '/');
+        static string RutaValidacion(string archivo) => Path.Combine(Application.dataPath, "Validacion~", archivo).Replace('\\', '/');
 
         // Dibuja un canvas overlay a w x h con una camara temporal (canvas -> ScreenSpaceCamera un momento) y lo guarda como PNG.
         // recorte: x,y,ancho,alto en px (origen abajo-izquierda) o null para la imagen entera.
