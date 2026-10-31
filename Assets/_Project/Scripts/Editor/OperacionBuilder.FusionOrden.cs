@@ -67,6 +67,21 @@ namespace SP.EditorTools
             return t;
         }
 
+        // Con el entorno repartido en escenas (SC_Operacion_<Sector>) cada sector es la raiz de su propia escena; si todavia
+        // vive dentro de Environment (escena unica) se busca ahi.
+        static Transform RaizDeSector(string sector)
+        {
+            for (int i = 0; i < UnityEngine.SceneManagement.SceneManager.sceneCount; i++)
+            {
+                var esc = UnityEngine.SceneManagement.SceneManager.GetSceneAt(i);
+                if (!esc.isLoaded) continue;
+                foreach (var r in esc.GetRootGameObjects()) if (r.name == sector) return r.transform;
+            }
+            return null;
+        }
+        static Transform Sec(Transform env, string sector) => RaizDeSector(sector) ?? (env != null ? env.Find(sector) : null);
+        static Transform SecH(Transform env, string sector) => Sec(env, sector) ?? Hijo(env, sector);
+
         static void AsegurarCarpeta(string ruta)
         {
             if (AssetDatabase.IsValidFolder(ruta) || Directory.Exists(ruta)) return;   // Directory.Exists: antes del Refresh CreateFolder inventaba "Calles 2"
@@ -84,6 +99,11 @@ namespace SP.EditorTools
             {
                 var raiz = PrefabUtility.GetOutermostPrefabInstanceRoot(t.gameObject);
                 if (raiz != null) PrefabUtility.UnpackPrefabInstance(raiz, PrefabUnpackMode.OutermostRoot, InteractionMode.AutomatedAction);
+            }
+            if (t.gameObject.scene != nuevoPadre.gameObject.scene)   // entre escenas: se suelta, se pasa a la otra escena y recien ahi se cuelga
+            {
+                t.SetParent(null, true);
+                UnityEngine.SceneManagement.SceneManager.MoveGameObjectToScene(t.gameObject, nuevoPadre.gameObject.scene);
             }
             t.SetParent(nuevoPadre, true);
             return t.parent == nuevoPadre;
@@ -126,7 +146,7 @@ namespace SP.EditorTools
             var fuentes = new List<Transform>();
             var viejo = op != null ? op.transform.Find(NombreRaizFusion) : null;
             if (viejo != null) fuentes.Add(viejo);
-            foreach (var s in SectoresDelEntorno) { var sec = env.Find(s); var f = sec != null ? sec.Find(NombreRaizFusion) : null; if (f != null) fuentes.Add(f); }
+            foreach (var s in SectoresDelEntorno) { var sec = Sec(env, s); var f = sec != null ? sec.Find(NombreRaizFusion) : null; if (f != null) fuentes.Add(f); }
             if (fuentes.Count == 0) return "no hay mallas fusionadas";
 
             // un prefab conectado no deja reordenar sus hijos: se desempaqueta primero (se vuelve a armar al final)
@@ -146,7 +166,7 @@ namespace SP.EditorTools
                 string sector = SectorDelEntorno(r.bounds.center), grupo = GrupoDeFusion(r.sharedMaterial.name);
                 string baseNombre = NombreDeFusion(r.sharedMaterial.name, r.bounds.center), nombre = baseNombre;
                 for (int i = 2; !usados.Add(sector + "/" + grupo + "/" + nombre); i++) nombre = baseNombre + "_" + i;
-                var destino = Hijo(Hijo(Hijo(env, sector), NombreRaizFusion), grupo);
+                var destino = Hijo(Hijo(SecH(env, sector), NombreRaizFusion), grupo);
                 r.transform.name = nombre;
                 if (Mover(r.transform, destino)) movidas++;
             }
@@ -154,7 +174,7 @@ namespace SP.EditorTools
             // orden fijo y limpieza de grupos vacios (incluida la vieja Operacion/Fusionados)
             foreach (var s in SectoresDelEntorno)
             {
-                var sec = env.Find(s); var f = sec != null ? sec.Find(NombreRaizFusion) : null; if (f == null) continue;
+                var sec = Sec(env, s); var f = sec != null ? sec.Find(NombreRaizFusion) : null; if (f == null) continue;
                 int orden = 0;
                 foreach (var g in GruposDeFusion)
                 {
@@ -174,7 +194,7 @@ namespace SP.EditorTools
             int prefabs = 0;
             foreach (var s in SectoresDelEntorno)
             {
-                var sec = env.Find(s); var f = sec != null ? sec.Find(NombreRaizFusion) : null; if (f == null) continue;
+                var sec = Sec(env, s); var f = sec != null ? sec.Find(NombreRaizFusion) : null; if (f == null) continue;
                 PrefabUtility.SaveAsPrefabAssetAndConnect(f.gameObject, $"{CarpetaPrefabsFusion}/Fus_{s}.prefab", InteractionMode.AutomatedAction);
                 prefabs++;
             }
@@ -255,7 +275,7 @@ namespace SP.EditorTools
                     {
                         if (h.GetComponentInChildren<Renderer>(true) == null) continue;   // sin dibujo (marcadores, colliders sueltos): no es entorno visual
                         var sector = SectorDelEntorno(CentroDe(h));
-                        if (Mover(h, Hijo(Hijo(env, sector), origen))) { movidos[origen] = (movidos.TryGetValue(origen, out var m) ? m : 0) + 1; total++; } else noSePudo++;
+                        if (Mover(h, Hijo(SecH(env, sector), origen))) { movidos[origen] = (movidos.TryGetValue(origen, out var m) ? m : 0) + 1; total++; } else noSePudo++;
                     }
                     else Barrer(h, origen);   // mezcla: se baja un nivel y se separa lo estatico
                 }
@@ -302,12 +322,12 @@ namespace SP.EditorTools
                     if (h.childCount > 1 && Mathf.Max(caja.size.x, caja.size.z) > contenedorGrande) { Repartir(h, sectorActual, origen); continue; }
                     string sec = SectorDelEntorno(caja.center);
                     if (sec == sectorActual) continue;
-                    if (Mover(h, Hijo(Hijo(env, sec), origen))) movidos++; else noSePudo++;
+                    if (Mover(h, Hijo(SecH(env, sec), origen))) movidos++; else noSePudo++;
                 }
             }
             foreach (var sector in SectoresDelEntorno)
             {
-                var s = env.Find(sector); if (s == null) continue;
+                var s = Sec(env, sector); if (s == null) continue;
                 var grupos = new List<Transform>(); foreach (Transform g in s) grupos.Add(g);
                 foreach (var g in grupos)
                     if (g.name != NombreRaizFusion && g.name != "Edificios") Repartir(g, sector, g.name);
@@ -315,7 +335,7 @@ namespace SP.EditorTools
             int vacios = 0;
             foreach (var sector in SectoresDelEntorno)
             {
-                var s = env.Find(sector); if (s == null) continue;
+                var s = Sec(env, sector); if (s == null) continue;
                 for (int i = s.childCount - 1; i >= 0; i--)
                 {
                     var g = s.GetChild(i);
@@ -335,7 +355,7 @@ namespace SP.EditorTools
             if (env == null) return "no hay Environment";
             var sb = new System.Text.StringBuilder();
 
-            foreach (var s in SectoresDelEntorno) Hijo(env, s);
+            foreach (var s in SectoresDelEntorno) SecH(env, s);
             var mundo = Hijo(env, "Mundo");
             // el suelo y el sol de siempre pasan a Mundo
             foreach (var n in new[] { "Ground", "SunLight" }) { var t = env.Find(n); if (t != null) t.SetParent(mundo, true); }
@@ -360,7 +380,7 @@ namespace SP.EditorTools
                 if (g == null) { sb.AppendLine("  (ya movido o no existe) " + f.ruta); continue; }
                 if (!EsSoloVisual(g.transform)) { sb.AppendLine("  SE QUEDA (tiene scripts de juego): " + f.ruta); continue; }
                 g.name = f.nombre;
-                if (Mover(g.transform, Hijo(env, f.sector))) sb.AppendLine("  -> " + f.sector + "/" + f.nombre); else sb.AppendLine("  NO SE PUDO MOVER: " + f.ruta);
+                if (Mover(g.transform, SecH(env, f.sector))) sb.AppendLine("  -> " + f.sector + "/" + f.nombre); else sb.AppendLine("  NO SE PUDO MOVER: " + f.ruta);
             }
 
             // Los edificios sueltos del detalle: cada uno al sector donde esta.
@@ -372,7 +392,7 @@ namespace SP.EditorTools
                 foreach (var h in hijos)
                 {
                     if (!EsSoloVisual(h)) { quedan++; continue; }
-                    if (Mover(h, Hijo(Hijo(env, SectorDelEntorno(CentroDe(h))), "Edificios"))) movidos++; else quedan++;
+                    if (Mover(h, Hijo(SecH(env, SectorDelEntorno(CentroDe(h))), "Edificios"))) movidos++; else quedan++;
                 }
                 if (detalle.transform.childCount == 0) Object.DestroyImmediate(detalle);
                 sb.AppendLine($"  DetalleDeEdificios: {movidos} piezas a su sector, {quedan} se quedan");
@@ -387,9 +407,9 @@ namespace SP.EditorTools
 
             // orden de la raiz: sectores, Mundo
             int orden = 0;
-            foreach (var s in SectoresDelEntorno) env.Find(s).SetSiblingIndex(orden++);
+            foreach (var s in SectoresDelEntorno) { var sr = Sec(env, s); if (sr != null && sr.parent == env) sr.SetSiblingIndex(orden++); }
             mundo.SetSiblingIndex(orden);
-            foreach (var s in SectoresDelEntorno) { var sec = env.Find(s); if (sec.childCount == 0) Object.DestroyImmediate(sec.gameObject); }
+            foreach (var s in SectoresDelEntorno) { var sec = Sec(env, s); if (sec != null && sec.childCount == 0) Object.DestroyImmediate(sec.gameObject); }
 
             EditorSceneManager.MarkSceneDirty(escena);
             return sb.ToString();

@@ -28,7 +28,9 @@ namespace SP.EditorTools
                 if (n.EndsWith("_Limpia")) limpias++;
                 else if (n == "SM_Mod_Muro_Recto" || n == "SM_Mod_Muro_Medio" || n == "SM_Mod_Muro_Pilar" || n == "SM_Mod_Muro_Puerta" || n == "SM_Mod_Losa") sinLimpiar++;
             }
-            W8Ok(ref ok, limpias > 1000 && sinLimpiar == 0, sb, $"las piezas del kit usan la malla limpia (limpias={limpias}, con la original={sinLimpiar})");
+            // En Play el static batching cambia sharedMesh por la malla combinada de cada escena (el entorno vive en 3 escenas aditivas), asi que el conteo de nombres
+            // baja segun como se agrupe; lo que de verdad importa es que no quede ninguna malla original del kit (sinLimpiar == 0).
+            W8Ok(ref ok, limpias > 300 && sinLimpiar == 0, sb, $"las piezas del kit usan la malla limpia (limpias={limpias}, con la original={sinLimpiar})");
 
             // Una pieza consigo misma: dos caras iguales en el mismo plano que se pisan. Solo cuentan las del kit; los pisos fusionados se separan aparte.
             var l = DetectorDeSolapes.Escanear(new Bounds(new Vector3(0f, 6f, -60f), new Vector3(60f, 20f, 60f)), 2000, 0.004f, 0.05f);
