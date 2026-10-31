@@ -40,7 +40,7 @@ namespace SP.EditorTools
         static void AlCambiarDeModo(PlayModeStateChange estado)
         {
             if (estado == PlayModeStateChange.ExitingEditMode) BarrerTexturasHuerfanas();
-            else if (estado == PlayModeStateChange.EnteredEditMode) EditorApplication.delayCall += Liberar;
+            else if (estado == PlayModeStateChange.EnteredEditMode) EditorApplication.delayCall += () => { BarrerRenderTexturesSueltas(); Liberar(); };
         }
 
         [MenuItem("Strategic Point/Memoria/Liberar RAM ahora")]
@@ -51,8 +51,32 @@ namespace SP.EditorTools
             long antes = Profiler_Reservada();
             int tex = BarrerTexturasHuerfanas();
             int mat = PlaymodeCleanup.BarrerMaterialesHuerfanos();
+            int rts = BarrerRenderTexturesSueltas();
             Liberar();
-            return $"texturas huerfanas={tex}, materiales huerfanos={mat}, reservado {antes / 1048576} -> {Profiler_Reservada() / 1048576} MB";
+            return $"texturas huerfanas={tex}, materiales huerfanos={mat}, RT sueltas={rts}, reservado {antes / 1048576} -> {Profiler_Reservada() / 1048576} MB";
+        }
+
+        // RenderTextures creadas por codigo (sin nombre, sin asset, sin HideFlags) que ninguna camara ni UI usa: capturas que no se soltaron.
+        public static int BarrerRenderTexturesSueltas()
+        {
+            if (EditorApplication.isPlayingOrWillChangePlaymode) return 0;
+            var usadas = new HashSet<Texture>();
+            foreach (var c in Resources.FindObjectsOfTypeAll<Camera>()) if (c != null && c.targetTexture != null) usadas.Add(c.targetTexture);
+            foreach (var r in Resources.FindObjectsOfTypeAll<UnityEngine.UI.RawImage>()) if (r != null && r.texture != null) usadas.Add(r.texture);
+            foreach (var m in Resources.FindObjectsOfTypeAll<Material>())
+            {
+                if (m == null || m.shader == null) continue;
+                foreach (var n in m.GetTexturePropertyNames()) { var t = m.GetTexture(n); if (t != null) usadas.Add(t); }
+            }
+            int n2 = 0;
+            foreach (var rt in Resources.FindObjectsOfTypeAll<RenderTexture>())
+            {
+                if (rt == null || rt.hideFlags != HideFlags.None || !string.IsNullOrEmpty(rt.name) || EditorUtility.IsPersistent(rt) || usadas.Contains(rt)) continue;
+                rt.Release();
+                UnityEngine.Object.DestroyImmediate(rt);
+                n2++;
+            }
+            return n2;
         }
 
         static long Profiler_Reservada() => UnityEngine.Profiling.Profiler.GetTotalReservedMemoryLong();
