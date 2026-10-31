@@ -276,6 +276,56 @@ namespace SP.EditorTools
             return sb.ToString();
         }
 
+        [MenuItem("Strategic Point/Arte/Reordenar Entorno por Sector (SC_Operacion)")]
+        static void ReordenarPorSectorMenu() => Debug.Log(ReordenarEntornoPorSectorEscenaAbierta());
+
+        // Limpieza continua: cada nodo de Cuarteles/Ruta/Ciudad vive en el sector donde esta su centro. Un contenedor de mas de 60 m
+        // (arte repartido por todo el nivel) se abre y se reparte por hijos; lo demas se mueve entero. Conserva el nombre del grupo de origen.
+        public static string ReordenarEntornoPorSectorEscenaAbierta()
+        {
+            var env = RaizEntorno(); if (env == null) return "falta Environment";
+            const float contenedorGrande = 60f;
+            int movidos = 0, noSePudo = 0;
+            Bounds CajaDe(Transform t)
+            {
+                bool ini = false; var b = new Bounds(t.position, Vector3.zero);
+                foreach (var r in t.GetComponentsInChildren<Renderer>(true)) { if (!ini) { b = r.bounds; ini = true; } else b.Encapsulate(r.bounds); }
+                return b;
+            }
+            void Repartir(Transform nodo, string sectorActual, string origen)
+            {
+                var hijos = new List<Transform>(); foreach (Transform h in nodo) hijos.Add(h);
+                foreach (var h in hijos)
+                {
+                    if (h == null || h.GetComponentInChildren<Renderer>(true) == null) continue;
+                    var caja = CajaDe(h);
+                    if (h.childCount > 1 && Mathf.Max(caja.size.x, caja.size.z) > contenedorGrande) { Repartir(h, sectorActual, origen); continue; }
+                    string sec = SectorDelEntorno(caja.center);
+                    if (sec == sectorActual) continue;
+                    if (Mover(h, Hijo(Hijo(env, sec), origen))) movidos++; else noSePudo++;
+                }
+            }
+            foreach (var sector in SectoresDelEntorno)
+            {
+                var s = env.Find(sector); if (s == null) continue;
+                var grupos = new List<Transform>(); foreach (Transform g in s) grupos.Add(g);
+                foreach (var g in grupos)
+                    if (g.name != NombreRaizFusion && g.name != "Edificios") Repartir(g, sector, g.name);
+            }
+            int vacios = 0;
+            foreach (var sector in SectoresDelEntorno)
+            {
+                var s = env.Find(sector); if (s == null) continue;
+                for (int i = s.childCount - 1; i >= 0; i--)
+                {
+                    var g = s.GetChild(i);
+                    if (g.childCount == 0 && g.GetComponents<Component>().Length == 1) { Object.DestroyImmediate(g.gameObject); vacios++; }
+                }
+            }
+            EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+            return $"Reordenado por sector: {movidos} nodos movidos ({noSePudo} no se pudieron), {vacios} grupos vacios borrados";
+        }
+
         // Todo el entorno en una raiz: sectores + Mundo, sin tocar lo interactuable.
         public static string OrdenarEntornoEscenaAbierta()
         {
