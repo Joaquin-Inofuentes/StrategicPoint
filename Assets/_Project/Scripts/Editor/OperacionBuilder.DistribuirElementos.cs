@@ -47,8 +47,8 @@ namespace SP.EditorTools
                     if (c == null) { sb.Append("null;"); continue; }
                     sb.Append(c.GetType().Name);
                     if (c is Light l) sb.Append($"[{l.type},{l.color},{l.intensity:0.00},{l.range:0.0},{l.spotAngle:0},{l.shadows}]");
-                    if (c is MeshFilter mf && mf.sharedMesh != null) sb.Append("[" + mf.sharedMesh.name + "]");
-                    if (c is Renderer r) foreach (var m in r.sharedMaterials) sb.Append("{" + (m != null ? m.name : "-") + "}");
+                    if (c is MeshFilter mf && mf.sharedMesh != null) sb.Append("[" + mf.sharedMesh.GetEntityId() + "]");   // identidad real: dos mallas distintas con el mismo nombre no se mezclan
+                    if (c is Renderer r) foreach (var m in r.sharedMaterials) sb.Append("{" + (m != null ? m.GetEntityId().ToString() : "-") + "}");
                     sb.Append(';');
                 }
                 foreach (Transform h in t) Rec(h, false);
@@ -65,7 +65,7 @@ namespace SP.EditorTools
             return b.center;
         }
 
-        public static string DistribuirElementosEnSectores()
+        public static string DistribuirElementosEnSectores(bool simular = false)
         {
             var baseEsc = SceneManager.GetSceneByPath(EscenaBase);
             if (!baseEsc.IsValid() || !baseEsc.isLoaded) return "abri SC_Operacion primero";
@@ -105,11 +105,12 @@ namespace SP.EditorTools
             }
 
             var elementos = new List<(Transform t, string origen)>();
-            void Buscar(Transform nodo, string origen)
+            void Buscar(Transform nodo, string origen, string solo = null)
             {
                 var hijos = new List<Transform>(); foreach (Transform h in nodo) hijos.Add(h);
                 foreach (var h in hijos)
                 {
+                    if (solo != null && h.name != solo) continue;
                     if (h.name == NombreRaizFusion || h.name == "Computadora") continue;   // el terminal se busca por hijos (Mesa, Monitor)
                     bool dibuja = h.GetComponentInChildren<Renderer>(true) != null || h.GetComponentInChildren<Light>(true) != null;
                     if (!dibuja) continue;
@@ -117,13 +118,37 @@ namespace SP.EditorTools
                     {
                         // un contenedor propio de mas de 60 m (no prefab) reparte arte de varios sectores: se abre y viaja cada elemento
                         var caja = new Bounds(h.position, Vector3.zero); foreach (var r in h.GetComponentsInChildren<Renderer>(true)) caja.Encapsulate(r.bounds);
-                        if (!PrefabUtility.IsOutermostPrefabInstanceRoot(h.gameObject) && h.childCount > 1 && Mathf.Max(caja.size.x, caja.size.z) > 60f) Buscar(h, origen);
+                        if (!PrefabUtility.IsOutermostPrefabInstanceRoot(h.gameObject) && h.childCount >= 1 && Mathf.Max(caja.size.x, caja.size.z) > 60f) Buscar(h, origen);
                         else elementos.Add((h, origen));
                     }
                     else if (!PropioDeJuegoORef(h) && h.childCount > 0) Buscar(h, origen);
                 }
             }
             foreach (Transform g in op.transform) { if (g.name == "Reservas") continue; Buscar(g, g.name); }
+            // el mundo comun: terreno, suelo y perimetro se reparten por sector; el sol, el horizonte y el collider del suelo se quedan
+            var mundo = GameObject.Find(RaizDelEntorno + "/Mundo");
+            if (mundo != null)
+                foreach (Transform g in mundo.transform)
+                {
+                    if (g.name == "SunLight" || g.name == "8_Horizonte" || g.name == "Fondo_Horizonte") continue;
+                    Buscar(mundo.transform, g.name, g.name);   // Ground conserva su collider (no viaja); sus losetas si
+                }
+
+            if (simular)
+            {
+                int pf = 0, np = 0; var firmas = new HashSet<string>(); var sec = new SortedDictionary<string, int>(); var porOrigen = new SortedDictionary<string, int>();
+                foreach (var (t, origen) in elementos)
+                {
+                    if (PrefabUtility.IsOutermostPrefabInstanceRoot(t.gameObject)) pf++; else { np++; firmas.Add(FirmaDeElemento(t)); }
+                    string sc = SectorDelEntorno(CentroDeElemento(t)); sec[sc] = (sec.TryGetValue(sc, out var a0) ? a0 : 0) + 1;
+                    porOrigen[origen] = (porOrigen.TryGetValue(origen, out var b0) ? b0 : 0) + 1;
+                }
+                var r0 = new StringBuilder($"SIMULACION: {elementos.Count} elementos (ya prefab: {pf}; no prefab: {np} -> {firmas.Count} prefabs nuevos)");
+                foreach (var kv in sec) r0.AppendLine($"  {kv.Key}: {kv.Value}");
+                foreach (var kv in porOrigen) r0.AppendLine($"  origen {kv.Key}: {kv.Value}");
+                File.WriteAllText("Temp/distribuir_simulacion.txt", r0.ToString());
+                return r0.ToString();
+            }
 
             var env = RaizEntorno();
             var porFirma = new Dictionary<string, GameObject>(); var nombresUsados = new Dictionary<string, int>();
