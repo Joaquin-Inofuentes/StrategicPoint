@@ -162,5 +162,26 @@ namespace SP.EditorTools
             W8Ok(ref ok, pas >= 8, sb, $"{pas} rampas de pasarela en los callejones largos (esperadas >= 8)");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
+
+        // ---------------------------------------------------------------- 405u patios abiertos: se atraviesan las manzanas a nivel del suelo
+        static IEnumerator Bug405u()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(5);
+            foreach (var x in Esperar(1.0f)) yield return x;
+            // (desde, hacia, directo maximo permitido): de la calle del anillo a la calle de afuera por el medio de cada manzana.
+            var casos = new[] { ("NO", new Vector3(293f, 0f, 264f), new Vector3(268f, 0f, 264f)), ("NE", new Vector3(351f, 0f, 264f), new Vector3(377f, 0f, 264f)), ("SO", new Vector3(279f, 0f, 226f), new Vector3(268f, 0f, 213f)), ("SE", new Vector3(367f, 0f, 226f), new Vector3(377f, 0f, 213f)) };
+            foreach (var (n, a, b) in casos)
+            {
+                var path = new UnityEngine.AI.NavMeshPath();
+                bool sa = UnityEngine.AI.NavMesh.SamplePosition(a, out var ha, 3f, UnityEngine.AI.NavMesh.AllAreas), sb2 = UnityEngine.AI.NavMesh.SamplePosition(b, out var hb, 3f, UnityEngine.AI.NavMesh.AllAreas);
+                bool hay = sa && sb2 && UnityEngine.AI.NavMesh.CalculatePath(ha.position, hb.position, UnityEngine.AI.NavMesh.AllAreas, path) && path.status == UnityEngine.AI.NavMeshPathStatus.PathComplete;
+                float largo = 0f; if (hay) for (int i = 1; i < path.corners.Length; i++) largo += Vector3.Distance(path.corners[i - 1], path.corners[i]);
+                float directo = Vector3.Distance(a, b);
+                W8Ok(ref ok, hay && largo < directo * 1.6f, sb, $"{n}: camino por el patio {(hay ? largo.ToString("0") : "sin ruta")} m contra {directo:0} m en linea recta (maximo x1,6)");
+            }
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
     }
 }
