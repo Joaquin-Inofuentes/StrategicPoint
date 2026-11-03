@@ -186,6 +186,29 @@ namespace SP.EditorTools
                 }
         }
 
+        // Puertas de servicio de los muros laterales (oeste: z 262..266; este: z 262..266 arriba y 266..270 abajo): planta baja y primer piso.
+        public static List<(float z0, float z1, float y0, float y1)> PuertasLaterales(bool oeste) => new List<(float, float, float, float)>
+        {
+            oeste ? (262f, 266f, 0f, 4.4f) : (266f, 270f, 0f, 4.4f),
+            (262f, 266f, G.Nivel(1), G.Nivel(1) + 4.4f),
+        };
+
+        static void MuroConPuertas(Transform casco, string n, float xa, float xb, float yMax, List<(float z0, float z1, float y0, float y1)> puertas)
+        {
+            var zs = new SortedSet<float> { G.Z0, G.Z1 };
+            foreach (var p in puertas) { zs.Add(p.z0); zs.Add(p.z1); }
+            var l = new List<float>(zs); int c = 0;
+            for (int i = 0; i + 1 < l.Count; i++)
+            {
+                float za = l[i], zb = l[i + 1], zm = (za + zb) * 0.5f;
+                var huecos = new List<(float, float)>();
+                foreach (var p in puertas) if (zm > p.z0 && zm < p.z1) huecos.Add((p.y0, p.y1));
+                huecos.Sort(); float y = 0f;
+                foreach (var h in huecos) { if (h.Item1 > y + 0.01f) Caja(casco, $"{n}_{++c}", xa, xb, y, h.Item1, za, zb, MMuro); y = h.Item2; }
+                if (yMax > y + 0.01f) Caja(casco, $"{n}_{++c}", xa, xb, y, yMax, za, zb, MMuro);
+            }
+        }
+
         static GameObject ArmarMansion()
         {
             var raiz = new GameObject("P_Op_8_Mansion");
@@ -204,8 +227,8 @@ namespace SP.EditorTools
             Caja(casco, "Muro_S_Este", gx1, G.X1, 0f, yMax, G.Z0, G.Z0 + G.Muro, MMuro);
             Caja(casco, "Muro_S_Dintel", gx0, gx1, G.PortonAlto, yMax, G.Z0, G.Z0 + G.Muro, MMuro);
             Caja(casco, "Muro_N", G.X0, G.X1, 0f, yMax, G.Z1 - G.Muro, G.Z1, MMuro);
-            Caja(casco, "Muro_O", G.X0, G.X0 + G.Muro, 0f, yMax, G.Z0, G.Z1, MMuro);
-            Caja(casco, "Muro_E", G.X1 - G.Muro, G.X1, 0f, yMax, G.Z0, G.Z1, MMuro);
+            MuroConPuertas(casco, "Muro_O", G.X0, G.X0 + G.Muro, yMax, PuertasLaterales(true));
+            MuroConPuertas(casco, "Muro_E", G.X1 - G.Muro, G.X1, yMax, PuertasLaterales(false));
             float medio = (gx0 + gx1) * 0.5f;
             foreach (int lado in new[] { -1, 1 })
             {
