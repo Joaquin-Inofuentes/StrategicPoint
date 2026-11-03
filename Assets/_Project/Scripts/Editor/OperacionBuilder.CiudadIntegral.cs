@@ -77,6 +77,22 @@ namespace SP.EditorTools
             }
             // Toldo de la tienda y equipos del techo.
             Caja(t, "Toldo", x0 + 1.5f, x1 - 1.5f, 2.9f, 3.15f, z0 - 1.1f, z0, MChapa(rnd.Next(0, 3)), false);
+            // Iter 18: letrero de neon sobre el toldo, segundo toldo al norte y tanque de agua en varios techos.
+            {
+                var neon = Mat("Ciudad_Neon" + (semilla % 4), semilla % 4 == 0 ? new Color(1f, 0.25f, 0.35f) : semilla % 4 == 1 ? new Color(0.25f, 0.85f, 1f) : semilla % 4 == 2 ? new Color(1f, 0.8f, 0.2f) : new Color(0.5f, 1f, 0.5f), 2.5f);
+                float nx = cx + (float)(rnd.NextDouble() - 0.5) * w * 0.3f;
+                Caja(t, "Letrero_Neon", nx - w * 0.18f, nx + w * 0.18f, 3.45f, 4.15f, z0 - 0.3f, z0 - 0.15f, neon, false);
+                Caja(t, "Letrero_Marco", nx - w * 0.18f - 0.1f, nx + w * 0.18f + 0.1f, 3.35f, 4.25f, z0 - 0.15f, z0 - 0.05f, MetalOsc, false);
+                Caja(t, "Toldo_N", x0 + 1.5f, x1 - 1.5f, 2.9f, 3.15f, z1, z1 + 1.1f, MChapa(rnd.Next(0, 3)), false);
+                if (rnd.NextDouble() < 0.5)
+                {
+                    float tx = cx - w * 0.3f, tz = cz + d * 0.2f;
+                    var cil = GameObject.CreatePrimitive(PrimitiveType.Cylinder); cil.name = "Techo_Tanque"; cil.transform.SetParent(t, false);
+                    cil.transform.position = new Vector3(tx, h + 1.9f, tz); cil.transform.localScale = new Vector3(2.2f, 0.9f, 2.2f);
+                    cil.GetComponent<MeshRenderer>().sharedMaterial = trim; Object.DestroyImmediate(cil.GetComponent<Collider>()); cil.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+                    Caja(t, "Techo_Tanque_Patas", tx - 0.9f, tx + 0.9f, h + 0.25f, h + 1.0f, tz - 0.9f, tz + 0.9f, MetalOsc, false);
+                }
+            }
             Caja(t, "Techo_Equipo_A", cx - w * 0.25f - 1.2f, cx - w * 0.25f + 1.2f, h + 0.25f, h + 1.6f, cz - 1f, cz + 1f, MetalOsc, false);
             if (rnd.NextDouble() < 0.6) Caja(t, "Techo_Caseta", cx + w * 0.2f - 1.5f, cx + w * 0.2f + 1.5f, h + 0.25f, h + 2.6f, cz - 1.5f, cz + 1.5f, trim, false);
             return raiz;
@@ -174,6 +190,26 @@ namespace SP.EditorTools
                 Caja(t, "Refugio_Techo", bx - 1.6f, bx + 1.6f, 2.4f, 2.55f, bz - 0.6f, bz + 0.6f, MChapa(1), false);
                 Caja(t, "Refugio_Fondo", bx - 1.6f, bx + 1.6f, 0f, 2.4f, bz + 0.5f, bz + 0.6f, MVidrioOscuro, true);
                 Caja(t, "Refugio_Banco", bx - 1.0f, bx + 1.0f, 0f, 0.5f, bz - 0.1f, bz + 0.3f, MMueble);
+            }
+            // Iter 19: hidrantes y buzones sobre las veredas de las manzanas, y semaforos en las esquinas de la cruz.
+            foreach (var m in Manzanas)
+            {
+                bool oeste = (m.x0 + m.x1) * 0.5f < 322f;
+                float bx = oeste ? m.x1 + 1.2f : m.x0 - 1.2f;
+                foreach (float bz in new[] { m.z0 + 3f, (m.z0 + m.z1) * 0.5f + 5f, m.z1 - 3f })
+                {
+                    var h = GameObject.CreatePrimitive(PrimitiveType.Cylinder); h.name = "Hidrante"; h.transform.SetParent(t, false);
+                    h.transform.position = new Vector3(bx, 0.45f, bz); h.transform.localScale = new Vector3(0.35f, 0.45f, 0.35f);
+                    h.GetComponent<MeshRenderer>().sharedMaterial = MChapa(0); Object.DestroyImmediate(h.GetComponent<Collider>()); h.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+                }
+                Caja(t, "Buzon", bx - 0.3f, bx + 0.3f, 0f, 1.1f, m.z0 + 7f - 0.3f, m.z0 + 7f + 0.3f, MChapa(1), false);
+            }
+            foreach (var (sx, sz) in new[] { (303f, 233f), (341f, 233f), (303f, 223f), (341f, 223f) })
+            {
+                Caja(t, "Semaforo_Poste", sx - 0.08f, sx + 0.08f, 0f, 4.2f, sz - 0.08f, sz + 0.08f, MetalOsc, false);
+                Caja(t, "Semaforo_Caja", sx - 0.22f, sx + 0.22f, 3.4f, 4.5f, sz - 0.2f, sz + 0.2f, MBarrote, false);
+                Caja(t, "Semaforo_Rojo", sx - 0.12f, sx + 0.12f, 4.05f, 4.3f, sz - 0.22f, sz - 0.2f, Mat("Ciudad_SemRojo", new Color(1f, 0.1f, 0.1f), 2.5f), false);
+                Caja(t, "Semaforo_Verde", sx - 0.12f, sx + 0.12f, 3.5f, 3.75f, sz - 0.22f, sz - 0.2f, Mat("Ciudad_SemVerde", new Color(0.1f, 1f, 0.3f), 2.5f), false);
             }
             foreach (var (cx2, cz2) in new[] { (300f, 232f), (344f, 224f), (300f, 190f), (346f, 205f) })
                 Caja(t, "Contenedor", cx2 - 1.2f, cx2 + 1.2f, 0f, 1.3f, cz2 - 0.7f, cz2 + 0.7f, MChapa(0));

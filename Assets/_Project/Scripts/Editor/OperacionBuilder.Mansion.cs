@@ -346,6 +346,7 @@ namespace SP.EditorTools
             disco.transform.position = new Vector3(322f, y3 + 0.02f, 266f); disco.transform.localScale = new Vector3(11f, 0.01f, 11f);
             disco.GetComponent<MeshRenderer>().sharedMaterial = Mat("Mansion_Helipuerto", new Color(0.85f, 0.75f, 0.2f));
             disco.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+            PasadasDeLujo(interior, deco);
             return raiz;
         }
 
