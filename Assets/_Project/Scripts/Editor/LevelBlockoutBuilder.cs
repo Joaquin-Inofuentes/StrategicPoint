@@ -714,6 +714,7 @@ namespace SP.EditorTools
             {
                 if (c.isTrigger || c.name == "Ground") continue;
                 if (c.name.StartsWith("Campanario_")) continue;   // WP10: la plataforma y la rampa del campanario tienen que quedar caminables
+                if (c.GetComponent<SP.Operacion.RampaCaminable>() != null || c.GetComponent<SP.Operacion.PortonDeMansion>() != null) continue;
                 if (c.GetComponentInParent<Soldier>() != null) continue;
                 if (c.GetComponentInParent<Vehicle>() != null) continue;
                 if (c.GetComponentInParent<SP.Combat.Projectile>() != null) continue;
@@ -732,7 +733,7 @@ namespace SP.EditorTools
                 {
                     if (c.isTrigger || c.name == "Ground" || c is TerrainCollider || c is WheelCollider) continue;
                     if (c.GetComponentInParent<Soldier>() != null || c.GetComponentInParent<Vehicle>() != null || c.GetComponentInParent<SP.Combat.Projectile>() != null) continue;
-                    if (c.name.StartsWith("Campanario_") || c.GetComponent<Unity.AI.Navigation.NavMeshModifierVolume>() != null) continue;
+                    if (c.name.StartsWith("Campanario_") || c.GetComponent<SP.Operacion.RampaCaminable>() != null || c.GetComponent<Unity.AI.Navigation.NavMeshModifierVolume>() != null) continue;
                     var mod = c.GetComponentInParent<Unity.AI.Navigation.NavMeshModifier>();
                     if (mod != null && mod.ignoreFromBuild) continue;            // calzada de la autopista, decorado, "Pisable": no carvan
                     var marca = c.GetComponentInParent<SP.Presentation.ObstacleMarker>();

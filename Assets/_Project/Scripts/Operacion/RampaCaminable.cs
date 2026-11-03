@@ -13,6 +13,7 @@ namespace SP.Operacion
     {
         public Vector3 abajo = new Vector3(323f, 0f, 265.3f);     // inicio (a ras del piso)
         public Vector3 arriba = new Vector3(337f, 0f, 265.3f);    // fin (borde de la plataforma)
+        public float alturaInicial = 0f;                           // altura del inicio (las escaleras de la mansion arrancan en un piso de arriba)
         public float alturaDelFinal = 6.5f;
         public float anchoMedio = 1.15f;
         public const float MargenDeAltura = 0.6f;
@@ -40,7 +41,7 @@ namespace SP.Operacion
             if (s < -0.3f || s > largo + 0.3f) return false;
             float lateral = Mathf.Abs(d.x * eje.z - d.z * eje.x);
             if (lateral > anchoMedio) return false;
-            y = Mathf.Lerp(0f, alturaDelFinal, Mathf.Clamp01(s / largo));
+            y = Mathf.Lerp(alturaInicial, alturaDelFinal, Mathf.Clamp01(s / largo));
             return true;
         }
 

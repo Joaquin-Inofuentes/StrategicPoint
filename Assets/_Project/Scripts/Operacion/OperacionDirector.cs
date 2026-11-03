@@ -293,7 +293,7 @@ namespace SP.Operacion
         public void EntrarFase(FaseOperacion f)
         {
             bool terminoUnObjetivo = Application.isPlaying && f != FaseOperacion.Infiltrar && f != Fase;
-            if (Fase == FaseOperacion.Resistir && f != FaseOperacion.Resistir) { AbandonarElMando(); ResistirSinMando = false; }   // WP10: suelta la radio y quita el panel
+            if (Fase == FaseOperacion.Resistir && f != FaseOperacion.Resistir) { AbandonarElMando(); ResistirSinMando = false; SalirDeLaMansion(); }   // WP10: suelta la radio y quita el panel
             if (f != FaseOperacion.Infiltrar && hud != null) hud.Subobjetivos(null);   // la linea de torres/torretas/reflectores es solo del cuartel
             Fase = f;
             Subfase = 0;
@@ -334,6 +334,7 @@ namespace SP.Operacion
                     Aviso("DATOS DESCARGADOS\nLA SALIDA NORTE SE ABRIO\nAVANZA AL PATIO: UN BLINDADO ENEMIGO CUSTODIA LA FUGA");
                     break;
                 case FaseOperacion.Resistir:
+                    if (PuedeUsarLaMansion()) { AbandonarElMando(); IniciarMansion(); break; }   // el asalto a la mansion reemplaza a la defensa de los flancos
                     if (MandoActivo)
                     {
                         // WP10 (#101): el objetivo 5 se juega desde la radio del ayuntamiento, en vista tactica.

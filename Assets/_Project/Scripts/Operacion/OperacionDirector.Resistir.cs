@@ -304,6 +304,7 @@ namespace SP.Operacion
 
         void TickResistir(float dt)
         {
+            if (MansionActiva) { TickMansion(dt); return; }
             if (MandoActivo)
             {
                 // WP10 (#101): el reloj del helicoptero es el "reloj efectivo" del mando (OperacionDirector.Mando.cs).

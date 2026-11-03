@@ -94,6 +94,8 @@ namespace SP.Operacion
             cazadores.RemoveWhere(s => s == null || s.Health == null || !s.Health.IsAlive);
             foreach (var s in cazadores)
             {
+                // Un clon recien creado puede quedar con SI MISMO como blanco (estado Attack contra si, sin moverse nunca): se lo suelta.
+                if (s.Brain != null && s.Brain.CurrentTarget == s) s.Brain.CancelOrder();
                 if (!s.gameObject.activeInHierarchy || !Libre(s.Brain)) continue;
                 var objetivo = AliadoMasCercano(s.transform.position, out float d);
                 if (objetivo == null) continue;

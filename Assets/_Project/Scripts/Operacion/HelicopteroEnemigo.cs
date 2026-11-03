@@ -281,6 +281,18 @@ namespace SP.Operacion
         void OnDestroy() { if (Instancia == this) Instancia = null; QuitarSogas(); }
 
         // La cinematica final lo deja suspendido en un punto, sin atacar.
+        // Para el que ataca desde mas arriba que el suelo del mapa (la azotea de la mansion): suma altura a la orbita y la achica.
+        public float desnivel = 0f, radioPropio = -1f;
+
+        // Termina la cinematica: vuelve a ser vulnerable y pasa a orbitar y atacar.
+        public void LiberarDeLaCinematica()
+        {
+            cineFija = false;
+            Situacion = Estado.Orbitando;
+            proximaPasada = Time.time + 3f;
+            if (Vehiculo != null && Vehiculo.Health != null) Vehiculo.Health.Invulnerable = false;
+        }
+
         public void FijarParaLaCinematica(Vector3 pos, Quaternion rot)
         {
             Situacion = Estado.Cinematica;
@@ -315,11 +327,12 @@ namespace SP.Operacion
             var centro = ancla != null ? ancla.position : tanque.transform.position;
             float vTanque = motorTanque != null ? motorTanque.CurrentSpeed : 0f;
             // Orbita alrededor del tanque (que avanza): el angulo gira a VelocidadDeVuelo / radio.
-            float radio = Situacion == Estado.Entrando ? Mathf.Lerp(RadioDeOrbita * 2.2f, RadioDeOrbita, Mathf.Clamp01(Mathf.InverseLerp(0f, 5f, Time.time - (proximaPasada - 4f)))) : RadioDeOrbita;
+            float r0 = radioPropio > 0f ? radioPropio : RadioDeOrbita;
+            float radio = Situacion == Estado.Entrando ? Mathf.Lerp(r0 * 2.2f, r0, Mathf.Clamp01(Mathf.InverseLerp(0f, 5f, Time.time - (proximaPasada - 4f)))) : r0;
             angulo += (VelocidadDeVuelo / Mathf.Max(20f, radio)) * dt;
             float alto = Mathf.Lerp(AlturaMinima, AlturaMaxima, 0.5f + 0.5f * Mathf.Sin(Time.time * 0.45f));
             var meta = centro + new Vector3(Mathf.Cos(angulo), 0f, Mathf.Sin(angulo)) * radio;
-            meta.y = alto;
+            meta.y = alto + desnivel;
             var antes = transform.position;
             transform.position = Vector3.MoveTowards(transform.position, meta, (VelocidadDeVuelo + Mathf.Abs(vTanque)) * 1.15f * dt);
             var vel = (transform.position - antes) / Mathf.Max(0.0001f, dt);
