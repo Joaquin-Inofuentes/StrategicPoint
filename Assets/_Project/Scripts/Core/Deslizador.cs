@@ -34,9 +34,14 @@ namespace SP.Core
         // Toma el desplazamiento pedido y devuelve el que de verdad se
         // puede hacer. La componente vertical pasa intacta: este es un
         // juego sobre un piso unico, sin salto ni gravedad que resolver.
-        public static Vector3 Resolver(Transform cuerpo, Collider propio, Vector3 delta, float radio)
+        // Quien se esta moviendo es un enemigo: las BarreraSoloEnemigos (entradas de reservas) no lo frenan. Se fija durante Resolver.
+        static bool moverEsEnemigo;
+        static bool Bloquea(Collider c) => NavService.BlocksMovement(c) && !(moverEsEnemigo && BarreraSoloEnemigos.Contiene(c));
+
+        public static Vector3 Resolver(Transform cuerpo, Collider propio, Vector3 delta, float radio, bool esEnemigo = false)
         {
             if (cuerpo == null) return delta;
+            moverEsEnemigo = esEnemigo;
 
             float vertical = delta.y;
             var horizontal = new Vector3(delta.x, 0f, delta.z);
@@ -103,7 +108,7 @@ namespace SP.Core
                 // la cara. De eso se ocupa Despenetrar, no este barrido.
                 if (h.distance <= 0f) continue;
                 if (h.distance >= mejor) continue;
-                if (!NavService.BlocksMovement(h.collider)) continue;
+                if (!Bloquea(h.collider)) continue;
 
                 mejor = h.distance;
                 normal = h.normal;
@@ -126,7 +131,7 @@ namespace SP.Core
                 var otro = BufferSolapes[i];
                 if (otro == null || otro == propio) continue;
                 if (otro.transform.IsChildOf(cuerpo)) continue;
-                if (!NavService.BlocksMovement(otro)) continue;
+                if (!Bloquea(otro)) continue;
 
                 if (!Physics.ComputePenetration(propio, pos, cuerpo.rotation,
                                                 otro, otro.transform.position, otro.transform.rotation,

@@ -77,7 +77,13 @@ namespace SP.Operacion
             // WP9b: si todavia no se derribo al jefe ni se lo reparo (checks viejos, restauraciones), se da por hecho.
             if (Subfase < (int)SubfaseHuida.Abordaje) SaltearJefeYReparacion();
             QuitarRestosDelPatio();
-            tanque.PisoDeVida01 = PisoDeVidaDelTanque;
+            // PUNTO DE CONTROL al subir: si el tanque cae (o la escuadra muere dentro), "reintentar" vuelve justo aca, a pie y junto al tanque.
+            // Se guarda ANTES de montar: el guardado exige que el soldado poseido este vivo y a pie.
+            PartidaGuardada.AutoGuardar("subir al tanque");
+            // Sin piso de vida: el tanque se puede DESTRUIR en la carrera. A cambio el dano es parejo (ver CurvaDeDanoDelTanque) y no
+            // "mucho al principio y casi nada despues" como con el piso del 20 %.
+            tanque.PisoDeVida01 = 0f;
+            tanque.AjusteDeDano = CurvaDeDanoDelTanque();
 
             var otros = Escuadra();
             otros.Remove(yo);
@@ -311,9 +317,36 @@ namespace SP.Operacion
             }
         }
 
+        // Balance del dano al tanque (valores razonados sobre las fuentes: camioneta 7/bala, cohete 60-80, metralla 6, embestida 24):
+        //  - factor segun la vida restante: 0,55 hasta el 60 %, baja lineal a 0,35 en el 15 % y ahi queda (nunca 0, el tanque cae);
+        //  - tope por golpe del 7 % de la vida maxima (un cohete de 60 pasa a 18);
+        //  - presupuesto en ventana de 1 s: 1,6 % de la vida maxima por segundo con el tanque sano y 1,2 % debajo del 50 %;
+        //  - los primeros 6 s de la carrera, todo a la mitad (el jugador todavia se esta acomodando).
+        // Con fuego continuo ininterrumpido el tanque dura ~65 s (el trayecto); con presion normal llega al final con 30-50 % de vida.
+        System.Func<int, int> CurvaDeDanoDelTanque()
+        {
+            float ventanaInicio = -10f, gastado = 0f;
+            return dano =>
+            {
+                if (tanque == null || tanque.Health == null) return dano;
+                float max = tanque.Health.MaxHealth, v = Mathf.Clamp01(tanque.Health.Current / Mathf.Max(1f, max));
+                float f = v >= 0.60f ? 0.55f : Mathf.Lerp(0.35f, 0.55f, Mathf.InverseLerp(0.15f, 0.60f, v));
+                if (Reloj < 6f) f *= 0.5f;
+                float d = Mathf.Min(dano * f, max * 0.07f);
+                float ahora = Time.time;
+                if (ahora - ventanaInicio >= 1f) { ventanaInicio = ahora; gastado = 0f; }
+                float tope = max * (v > 0.5f ? 0.016f : 0.012f);   // con 1600 de vida: ~26 HP/s sano, ~19 HP/s herido
+                d = Mathf.Min(d, Mathf.Max(1f, tope - gastado));
+                gastado += d;
+                return Mathf.Max(1, Mathf.RoundToInt(d));
+            };
+        }
+
         void TickTrayecto(float dt)
         {
             var vb = tanque.GetComponent<VehicleBrain>();
+            // Sin piso de vida el tanque puede caer: se pierde y el reintento vuelve al punto de control de cuando se subio.
+            if (tanque != null && tanque.IsDestroyed && Subfase == (int)SubfaseHuida.Carrera) { Perder("EL TANQUE FUE DESTRUIDO"); return; }
             // El tanque no se detiene: cuando esta cerca del punto actual, ya se pide el siguiente.
             if (indiceRuta < rutaDelTanque.Length)
             {

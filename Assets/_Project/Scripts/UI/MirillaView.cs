@@ -23,7 +23,10 @@ namespace SP.UI
     // dependan de ningun asset y se vean nitidas sin importar la escala.
     public class MirillaView : MonoBehaviour
     {
-        const int Lado = 256;
+        // 2048 px con mipmaps trilineales: la mira se dibuja a 48-100 unidades en pantalla, asi que la textura SIEMPRE se reduce y sin mipmaps
+        // (256 px a 96) se rompia en escalones. Los grosores de abajo estan expresados en px de una textura de 256 y se escalan con Escala.
+        const int Lado = 2048;
+        const float Escala = Lado / 256f;
 
         static Sprite[] sprites;
         static Sprite mascara;
@@ -79,7 +82,7 @@ namespace SP.UI
             // Borde oscuro: la reticula blanca se perdia contra el cielo y las paredes claras.
             var borde = retGO.AddComponent<Outline>();
             borde.effectColor = new Color(0f, 0f, 0f, 0.75f);
-            borde.effectDistance = new Vector2(1.5f, -1.5f);
+            borde.effectDistance = new Vector2(1f, -1f);   // entero: con el escalador a 1080p son 2 px exactos, sin pelusa
             var rrt = (RectTransform)retGO.transform;
             rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, 0.5f);
             rrt.sizeDelta = new Vector2(260f, 260f);
@@ -102,7 +105,7 @@ namespace SP.UI
                 var rc = transform.parent as RectTransform;
                 float altoCanvas = rc != null && rc.rect.height > 1f ? rc.rect.height : 720f;
                 float ventana = altoCanvas * 0.64f / 640f;
-                float lado = periscopio ? altoCanvas * 1.5f : scope ? 380f : (estilo == ReticleStyle.Mildot ? 200f : 96f);
+                float lado = periscopio ? altoCanvas * 1.5f : scope ? 380f : (estilo == ReticleStyle.Mildot ? 100f : 48f);
                 reticula.rectTransform.sizeDelta = new Vector2(lado, lado);
                 tubo.gameObject.SetActive(scope || periscopio || estilo == ReticleStyle.Mildot);
                 // Ronda 12: el artillero del tanque mira por un PERISCOPIO RECTANGULAR (ventana ancha y baja con esquinas
@@ -226,7 +229,7 @@ namespace SP.UI
         }
 
         // Rasterizador minimo con cobertura por distancia (anti-alias de ~1 px).
-        static float Cov(float d, float grosor) => Mathf.Clamp01(grosor * 0.5f - d + 0.5f);
+        static float Cov(float d, float grosor) => Mathf.Clamp01(grosor * Escala * 0.5f - d + 0.5f);
 
         static float DistSegmento(Vector2 p, Vector2 a, Vector2 b)
         {
@@ -237,18 +240,21 @@ namespace SP.UI
 
         static Sprite Generar(ReticleStyle estilo)
         {
-            var tex = new Texture2D(Lado, Lado, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
+            Cuatro();   // se inicializa antes de entrar en los hilos
+            var tex = new Texture2D(Lado, Lado, TextureFormat.RGBA32, true) { filterMode = FilterMode.Trilinear, anisoLevel = 4, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
             var px = new Color32[Lado * Lado];
             float h = Lado * 0.5f;
-            for (int y = 0; y < Lado; y++)
+            System.Threading.Tasks.Parallel.For(0, Lado, y =>
+            {
                 for (int x = 0; x < Lado; x++)
                 {
                     var p = new Vector2(x + 0.5f - h, y + 0.5f - h);   // centro en (0,0), unidades = px de la textura
                     float a = Pintar(estilo, p, h);
                     px[y * Lado + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(a) * 255f));
                 }
-            tex.SetPixels32(px); tex.Apply();
-            var sp = Sprite.Create(tex, new Rect(0, 0, Lado, Lado), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
+            });
+            tex.SetPixels32(px); tex.Apply(true);
+            var sp = Sprite.Create(tex, new Rect(0, 0, Lado, Lado), new Vector2(0.5f, 0.5f), Lado / 2.56f, 0, SpriteMeshType.FullRect);
             sp.name = "Mirilla_" + estilo;
             sp.hideFlags = HideFlags.HideAndDontSave;
             return sp;

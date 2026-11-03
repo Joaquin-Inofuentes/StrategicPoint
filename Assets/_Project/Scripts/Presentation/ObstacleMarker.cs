@@ -217,6 +217,7 @@ namespace SP.Presentation
             var origen = ultimoGolpe ?? (transform.position + Vector3.up * baseScale.y * 0.5f);
             if (SP.Presentation.Fragmentador.Romper(transform, origen, fuerzaDeRotura) == 0) SpawnDebris(14, 7f);
             else SpawnDebris(5, 6f);
+            OcultarAdornosHuerfanos();
             gameObject.SetActive(false);
             // El obstaculo que se cayo abrio un paso que la grilla de
             // navegacion todavia cree cerrado: sin esto los soldados
@@ -231,6 +232,29 @@ namespace SP.Presentation
             // ya no cubren de nada: sin reregistrar, la IA seguiria yendo a
             // esconderse detras de un escombro.
             SP.Core.Coberturas.AlDerrumbarse(transform);   // sacar sus puntos, no re-escanear toda la escena (20-45 ms por derrumbe)
+        }
+
+        // Los builders ponen muchos adornos (ventilas, franjas, pantallas, carteles) en grupos PARALELOS, sin parentesco con el cubo que
+        // decoran: al desaparecer el cubo quedaban flotando. Se apagan los renderers sueltos (sin collider propio, no de otro destruible)
+        // cuyo centro cae dentro del volumen del que se derrumbo y que no son mas grandes que el. Solo corre en juego, una vez por derrumbe.
+        void OcultarAdornosHuerfanos()
+        {
+            if (!Application.isPlaying) return;
+            var col = GetComponent<Collider>(); if (col == null) return;
+            var b = col.bounds; b.Expand(0.35f);
+            float maxLado = Mathf.Max(b.size.x, b.size.y, b.size.z) * 1.3f;
+            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude))
+            {
+                if (r == null || !r.enabled || r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer || r is SpriteRenderer) continue;
+                if (r.transform.IsChildOf(transform)) continue;
+                var rb = r.bounds;
+                if (rb.max.y <= 0.15f || !b.Contains(rb.center)) continue;               // decals de piso y lo que cae fuera del volumen
+                if (Mathf.Max(rb.size.x, rb.size.y, rb.size.z) > maxLado) continue;      // suelos, muros contiguos, fusionados
+                if (r.GetComponentInParent<Collider>() != null) continue;                  // algo solido propio: no es un adorno suelto
+                if (r.GetComponentInParent<ObstacleMarker>() != null) continue;           // pertenece a otro destruible
+                if (r.GetComponentInParent<SP.Actors.Soldier>() != null || r.GetComponentInParent<Canvas>() != null || r.GetComponentInParent<SP.Presentation.Fragmento>() != null) continue;
+                r.gameObject.SetActive(false);
+            }
         }
 
         void Encender()

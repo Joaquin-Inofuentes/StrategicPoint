@@ -411,7 +411,8 @@ namespace SP.Actors
         Vector3 Resolve(Vector3 delta)
         {
             EnsureBody();
-            return Deslizador.Resolver(transform, body, delta, bodyRadius);
+            if (soldierCacheado == null) soldierCacheado = GetComponent<Soldier>();
+            return Deslizador.Resolver(transform, body, delta, bodyRadius, soldierCacheado != null && soldierCacheado.Team == SP.Combat.TeamId.Enemy);
         }
     }
 }

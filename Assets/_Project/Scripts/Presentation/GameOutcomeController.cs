@@ -306,8 +306,16 @@ namespace SP.Presentation
         {
             if (actionTaken) return;
             actionTaken = true;
-            GameLog.Line("Se selecciono reintentar");
             Time.timeScale = 1f;
+            // En la operacion, REINTENTAR vuelve al ultimo punto de control (el de subir al tanque, el de inicio de cada objetivo...):
+            // antes reiniciaba la mision entera aunque hubiera guardado.
+            if (SceneManager.GetActiveScene().name == SP.Core.PartidaGuardada.EscenaDeLaOperacion && SP.Core.PartidaGuardada.HayPartida())
+            {
+                GameLog.Line("Se selecciono reintentar: se carga el ultimo punto de control");
+                SP.Core.PartidaGuardada.Continuar();
+                return;
+            }
+            GameLog.Line("Se selecciono reintentar");
             SceneLoader.Cargar(SceneManager.GetActiveScene().name);
         }
 

@@ -348,7 +348,7 @@ namespace SP.EditorTools
                 }
                 previa = a;
                 int hablando = 0;
-                foreach (var f in Object.FindObjectsByType<AudioSource>(FindObjectsSortMode.None)) if (f.isPlaying && f.clip != null && f.clip.name.StartsWith("cmd_")) hablando++;
+                if (VozDeCinematica.Hablando) hablando = 1;   // sin voz: la linea se muestra como dialogo escrito (una sola caja)
                 if (hablando > maxJuntas) maxJuntas = hablando;
                 yield return null;
             }
@@ -356,12 +356,12 @@ namespace SP.EditorTools
             var esperado = new[] { "cmd_01_inicio", "cmd_02_torretas", "cmd_03_cuartel", "cmd_04_centro", "cmd_05_blindado", "cmd_06_ciudad", "cmd_07_helipuerto", "cmd_08_rapel_a", "cmd_09_rapel_b" };
             bool orden = ids.Count == 9; for (int i = 0; i < ids.Count && i < 9; i++) if (ids[i] != esperado[i]) orden = false;
             W8Ok(ref ok, orden, sb, "orden correcto: " + string.Join(",", ids));
-            W8Ok(ref ok, maxJuntas <= 1, sb, $"nunca hay dos voces sonando a la vez (maximo {maxJuntas})");
+            W8Ok(ref ok, maxJuntas <= 1, sb, $"nunca hay dos dialogos a la vez (maximo {maxJuntas})");
             var rep = new StringBuilder();
             for (int i = 0; i < ids.Count; i++)
             {
                 var l = System.Array.Find(VozDeCinematica.Todas, z => z.Id == ids[i]);
-                float largo = VozDeCinematica.Clip(l).length;
+                float largo = l.Ventana;   // el dialogo dura su ventana
                 float fin = i + 1 < ids.Count ? inicio[i + 1] : float.MaxValue;
                 bool termino = inicio[i] + largo <= fin + 0.1f;
                 rep.Append($"[{ids[i]} entra a {inicio[i]:0.0} s dura {largo:0.0} s termina a {inicio[i] + largo:0.0} s]");

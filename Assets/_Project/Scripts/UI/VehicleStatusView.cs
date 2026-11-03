@@ -208,9 +208,27 @@ namespace SP.UI
                 return;
             }
             gameObject.SetActive(true);
-            if (crewPanelRoot != null && !crewPanelRoot.activeSelf) crewPanelRoot.SetActive(true);
+            bool minimo = CapasDeHud.EnModoTanque;   // modo tanque: solo vida del tanque + municion (los 3 soldados los muestra el Roster)
+            if (crewPanelRoot != null && crewPanelRoot.activeSelf == minimo) crewPanelRoot.SetActive(!minimo);
+            if (minimo)
+            {
+                if (seatBadgeRoot != null && seatBadgeRoot.activeSelf) seatBadgeRoot.SetActive(false);
+                if (speedLabel != null && speedLabel.gameObject.activeSelf) speedLabel.gameObject.SetActive(false);
+                if (gunnerLabel != null)
+                {
+                    var torre = vehicle.GetComponentInChildren<SP.Vehicles.TurretWeapon>(true);
+                    if (torre != null)
+                    {
+                        bool lista = torre.CooldownFraction01 >= 0.999f;
+                        gunnerLabel.text = $"MUNICIÓN  {(torre.Ammo == SP.Vehicles.TurretWeapon.AmmoType.Explosive ? "EXPLOSIVA" : "PERFORANTE")}  ·  {(lista ? "LISTA" : "CARGANDO " + Mathf.RoundToInt(torre.CooldownFraction01 * 100f) + "%")}";
+                        gunnerLabel.color = lista ? Color.white : new Color(1f, 0.75f, 0.3f);
+                    }
+                    else gunnerLabel.text = "";
+                }
+            }
+            else if (speedLabel != null && !speedLabel.gameObject.activeSelf) speedLabel.gameObject.SetActive(true);
 
-            if (speedLabel != null)
+            if (speedLabel != null && !minimo)
             {
                 // Marcha atras: antes CurrentSpeed negativo se mostraba
                 // identico a positivo (con Abs), sin ningun indicio de
@@ -235,7 +253,7 @@ namespace SP.UI
                 healthFill.color = Color.Lerp(new Color(0.85f, 0.2f, 0.15f), new Color(0.4f, 0.85f, 0.45f), healthFill.fillAmount);
             }
 
-            if (gunnerLabel != null)
+            if (gunnerLabel != null && !minimo)
             {
                 // Pedido explicito: si hay UN solo tripulante tiene que
                 // notarse a simple vista -- esa persona maneja O dispara,
@@ -250,7 +268,7 @@ namespace SP.UI
                 gunnerLabel.color = Color.white;
             }
 
-            UpdateCrewRows(vehicle);
+            if (!minimo) UpdateCrewRows(vehicle);
         }
 
         // Fila por asiento: icono de color + letras de rol, nombre del

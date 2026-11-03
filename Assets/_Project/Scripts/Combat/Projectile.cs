@@ -168,6 +168,7 @@ namespace SP.Combat
             ConfigurarHalo(esDeVehiculoEnemigo || esObus);
             ocultaPorCamara = false;
             if (cachedRenderer != null) cachedRenderer.enabled = true;
+            escalaBase = transform.localScale; origenDeVuelo = transform.position;
             OcultarSiPegadaALaCamara();
         }
 
@@ -208,11 +209,28 @@ namespace SP.Combat
         // como una barra gigante pegada al lente. Mientras la bala esta a menos de DistanciaMinimaVisible de la camara no se dibuja.
         const float DistanciaMinimaVisible = 2.2f;
         bool ocultaPorCamara;
+        Vector3 escalaBase = Vector3.one, origenDeVuelo;
+        // La barra de la trazadora es un cubo centrado en su pivote: nacia con media barra DETRAS de la boca del arma (hacia el lente) y,
+        // con zoom, esa barra se veia 3-6 veces mas grande entrando por el borde de la mira ("se ve el spawn, la parte de atras").
+        // Ahora (1) el largo crece con lo recorrido: la cola nunca queda detras del punto de disparo; (2) cerca de la camara no se corta
+        // de golpe: se afina y se desvanece segun la distancia, y esa distancia crece con el zoom (el aumento agranda lo que esta cerca).
         void OcultarSiPegadaALaCamara()
         {
             var cam = SP.Core.CamaraPrincipal.Actual;
-            if (cam == null) return;
-            bool cerca = (transform.position - cam.transform.position).sqrMagnitude < DistanciaMinimaVisible * DistanciaMinimaVisible;
+            float recorrido = (transform.position - origenDeVuelo).magnitude;
+            float largoMax = escalaBase.z;
+            float largo = Mathf.Min(largoMax, Mathf.Max(0.02f, recorrido * 2f));   // cola (mitad del largo) <= recorrido: nunca detras del origen
+            float grosor = 1f;
+            bool cerca = false;
+            if (cam != null)
+            {
+                float zoom = Mathf.Max(1f, 60f / Mathf.Max(8f, cam.fieldOfView));
+                float dMin = DistanciaMinimaVisible * zoom;
+                float d = (transform.position - cam.transform.position).magnitude;
+                grosor = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(dMin, dMin * 1.8f, d));
+                cerca = grosor < 0.02f;
+            }
+            if (!cerca && escalaBase.z > 0.0001f) transform.localScale = new Vector3(escalaBase.x * grosor, escalaBase.y * grosor, largo);
             if (cerca == ocultaPorCamara) return;
             ocultaPorCamara = cerca;
             if (cachedRenderer != null) cachedRenderer.enabled = !cerca;

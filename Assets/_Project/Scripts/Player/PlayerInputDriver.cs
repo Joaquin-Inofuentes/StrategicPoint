@@ -437,7 +437,7 @@ namespace SP.Player
             mirilla.Actualizar(Rig.EstaConZoom && Rig.AdsBlend > 0.55f, spec.Reticle, tinte);
             if (AimUiRef != null)
             {
-                AimUiRef.SetCrosshairStyle(MirillaView.SpriteDe(spec.Reticle), spec.Reticle == ReticleStyle.Punto ? 46f : 54f);
+                AimUiRef.SetCrosshairStyle(MirillaView.SpriteDe(spec.Reticle), spec.Reticle == ReticleStyle.Punto ? 23f : 27f);
                 AimUiRef.SetBaseCrosshairHidden(mirilla.Alfa > 0.5f);
                 MiraInteractivaActual = icono != null ? result.Type.ToString() : null;
             }

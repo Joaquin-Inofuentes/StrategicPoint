@@ -164,6 +164,7 @@ namespace SP.Player
         public bool EstaCargando => cargando;
         TextMesh etiqueta;
         SpriteRenderer icono;
+        SP.UI.CirculoDeProgreso radial;
         GameObject carga;
         PlayerInputDriver driver;
 
@@ -414,7 +415,20 @@ namespace SP.Player
                 float lado = icono.sprite != null ? icono.sprite.bounds.size.x : 1f;
                 gi.transform.localScale = Vector3.one * (0.7f / Mathf.Max(0.01f, lado));
             }
-            etiqueta.text = $"{Mathf.RoundToInt(Progreso * 100f)}%";
+            // Sin texto: icono de demolicion al centro de un circulo que se va llenando a modo torta (mismo CirculoDeProgreso del HUD).
+            etiqueta.text = "";
+            if (radial == null)
+            {
+                var gc = new GameObject("DemolicionRadial", typeof(RectTransform));
+                gc.transform.SetParent(etiqueta.transform, false);
+                gc.transform.localPosition = new Vector3(0f, 0.55f, 0.01f);
+                var cv = gc.AddComponent<Canvas>(); cv.renderMode = RenderMode.WorldSpace; cv.sortingOrder = 50;
+                ((RectTransform)gc.transform).sizeDelta = new Vector2(100f, 100f);
+                gc.transform.localScale = Vector3.one * 0.0095f;   // 100 unidades = ~0,95 m
+                radial = SP.UI.CirculoDeProgreso.Construir(gc.transform, 100f, new Color(0f, 0f, 0f, 0.6f), new Color(1f, 0.62f, 0.2f, 0.95f));
+                if (icono != null) { icono.sortingOrder = 60; icono.transform.localScale *= 0.62f; }
+            }
+            radial.SetProgreso(Progreso);
             if (SP.Core.CamaraPrincipal.Actual != null)
             {
                 var haciaLaCamara = etiqueta.transform.position - SP.Core.CamaraPrincipal.Actual.transform.position;
@@ -444,7 +458,7 @@ namespace SP.Player
 
         void LimpiarVisuales()
         {
-            if (etiqueta != null) { Destroy(etiqueta.gameObject); etiqueta = null; icono = null; }
+            if (etiqueta != null) { Destroy(etiqueta.gameObject); etiqueta = null; icono = null; radial = null; }
             if (carga != null) { Destroy(carga); carga = null; }
         }
     }

@@ -842,6 +842,9 @@ namespace SP.Vehicles
 
         void LateUpdate()
         {
+            // Los montados estan inactivos y se quedaban en el punto donde subieron: los enemigos que cazan al escuadron caminaban hacia
+            // ese punto viejo en vez de hacia el tanque. Se los lleva pegados al vehiculo.
+            foreach (var o in seats.Values) if (o != null && !o.gameObject.activeSelf) o.transform.position = transform.position;
             if (carritoDeParado != null)
             {
                 ResolverTorretas();

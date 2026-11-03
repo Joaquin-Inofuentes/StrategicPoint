@@ -33,7 +33,7 @@ namespace SP.Actors
             {
                 if (matAliado == null) matAliado = SP.Core.RecursosCache.Cargar<Material>("Soldados/MAT_Trimsheet_Aliado");
                 if (matEnemigo == null) matEnemigo = SP.Core.RecursosCache.Cargar<Material>("Soldados/MAT_Trimsheet_Enemigo");
-                var mat = def.Enemigo ? MaterialEnemigoVisible() : (def.Nombre == "MEDICO" ? MaterialMedico() : MaterialAliado());
+                var mat = def.Enemigo ? MaterialEnemigoVisible() : (def.Nombre == "MEDICO" ? MaterialMedico() : def.Nombre == "ASALTO" ? MaterialAsalto() : def.Nombre == "FRANCOTIRADOR" ? MaterialFrancotirador() : MaterialAliado());
                 if (s.Role == RoleType.Civilian) mat = MaterialCivil();
                 smr.sharedMesh = malla;
                 if (mat != null) smr.sharedMaterial = mat;
@@ -198,6 +198,45 @@ namespace SP.Actors
             if (matMedico.HasProperty("_EmissionColor")) matMedico.SetColor("_EmissionColor", new Color(0.02f, 0.05f, 0.12f));
             return matMedico;
         }
+
+        // Asalto y francotirador compartian el mismo azul y solo cambiaba la malla: de lejos no se distinguian. Un tinte multiplicado sobre la
+        // textura ya azul no alcanza (da gris o el mismo azul), asi que cada clase lleva su PROPIA copia de la textura original recoloreada
+        // (la luminosidad se conserva y el dibujo de cada pieza sigue legible): asalto = naranja/arena claro, francotirador = verde bosque
+        // casi negro (ghillie). Medico queda blanco azulado y el resto de la escuadra azul.
+        static Material matAsalto, matFrancotirador;
+        static Material MaterialDeClase(ref Material cache, string nombre, System.Func<float, Color> mapa, Color emision)
+        {
+            if (cache != null) return cache;
+            if (matAliado == null) return null;
+            cache = new Material(matAliado) { name = nombre };
+            Teñir(cache, Color.white);
+            if (matAliado.HasProperty("_BaseMap") && matAliado.GetTexture("_BaseMap") is Texture2D tx)
+            {
+                var copia = LeerCopia(tx, "_" + nombre);
+                if (copia != null)
+                {
+                    var px = copia.GetPixels32();
+                    for (int i = 0; i < px.Length; i++)
+                    {
+                        var q = px[i];
+                        bool rojo = q.r > 70 && q.r > q.g * 1.5f && q.r > q.b * 1.5f;
+                        bool verde = q.g > 40 && q.g > q.r * 1.15f && q.g > q.b * 1.15f;
+                        bool azul = q.b > 40 && q.b > q.r * 1.15f && q.b >= q.g;
+                        if (!rojo && !verde && !azul) continue;
+                        float lum = (0.3f * q.r + 0.59f * q.g + 0.11f * q.b) / 255f;
+                        var c = mapa(lum);
+                        px[i] = new Color32((byte)Mathf.Clamp(c.r * 255f, 0f, 255f), (byte)Mathf.Clamp(c.g * 255f, 0f, 255f), (byte)Mathf.Clamp(c.b * 255f, 0f, 255f), q.a);
+                    }
+                    copia.SetPixels32(px); copia.Apply(true, false);
+                    cache.SetTexture("_BaseMap", copia);
+                    if (cache.HasProperty("_MainTex")) cache.SetTexture("_MainTex", copia);
+                }
+            }
+            if (cache.HasProperty("_EmissionColor")) { cache.EnableKeyword("_EMISSION"); cache.SetColor("_EmissionColor", emision); cache.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None; }
+            return cache;
+        }
+        static Material MaterialAsalto() => MaterialDeClase(ref matAsalto, "MAT_Trimsheet_Aliado_Asalto", l => new Color(Mathf.Min(1f, l * 1.9f), Mathf.Min(1f, l * 1.05f), l * 0.35f), new Color(0.12f, 0.05f, 0f));
+        static Material MaterialFrancotirador() => MaterialDeClase(ref matFrancotirador, "MAT_Trimsheet_Aliado_Francotirador", l => new Color(l * 0.35f, l * 0.75f, l * 0.3f), new Color(0.005f, 0.03f, 0.012f));
 
         static Material matCivil;
         static Material MaterialCivil()

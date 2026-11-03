@@ -850,6 +850,8 @@ namespace SP.Operacion
                 s.Brain.ReactivarNavegacion();
                 var jit = new Vector3(UnityEngine.Random.Range(-4f, 4f), 0f, UnityEngine.Random.Range(-4f, 4f));
                 s.Brain.SetPatrolRoute(new[] { sec.Centro + jit, sec.Centro - jit });
+                // Los atacantes de Resistir salian SIN marcar como cazadores: iban a la plaza del sector y solo peleaban si te veian de casualidad.
+                CazaDeEnemigos.Marcar(new[] { s });
             }
             LiberadosEscalonados++;
         }
@@ -915,6 +917,7 @@ namespace SP.Operacion
                     // Bug #295: mientras marchan hacia la plaza se los ve (minimapa); ya cerca, rige la niebla de siempre.
                     if (Plano(s.transform.position, sec.Centro).sqrMagnitude > 24f * 24f) WorldUiDirector.Revelar(s, 3f);
                     if (b.CurrentTarget != null || b.State == AiState.Chase || b.State == AiState.Attack) continue;   // peleando: su IA manda
+                    if (CazaDeEnemigos.EsCazador(s)) continue;   // los cazadores van a por el jugador: este rumbo de sector les pisaba la ruta cada 1,5 s
                     var meta = sec.Caido ? radioDeCampana.position : sec.Centro;
                     var jit = new Vector3(Mathf.Sin(s.Id * 2.3f), 0f, Mathf.Cos(s.Id * 2.3f)) * (sec.Caido ? 3f : 4f);
                     b.SetPatrolRoute(new[] { meta + jit, meta - jit * 0.5f });

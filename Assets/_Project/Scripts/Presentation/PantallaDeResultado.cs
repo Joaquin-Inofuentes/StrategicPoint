@@ -37,7 +37,7 @@ namespace SP.Presentation
             var canvas = panel.GetComponent<Canvas>();
             if (canvas == null) { canvas = panel.AddComponent<Canvas>(); panel.AddComponent<GraphicRaycaster>(); }
             canvas.overrideSorting = true;
-            canvas.sortingOrder = 800;
+            canvas.sortingOrder = 900;   // por encima de AvisoUnico (860): un aviso del juego se dibujaba sobre los botones
 
             var fondo = panel.GetComponent<Image>();
             var colorFondo = fondo != null ? fondo.color : Color.clear;
@@ -52,20 +52,33 @@ namespace SP.Presentation
             var razon = panel.transform.Find("Reason") as RectTransform;
             var grupoRazon = Grupo(razon);
 
-            // Botones lado a lado abajo: deja lugar a la tabla de estadisticas.
+            // Botones en una fila anclada ABAJO del panel (no a un pixel fijo desde el centro): su ancho se calcula con el ancho real del lienzo,
+            // asi con 3 botones, otra relacion de aspecto o una escala de HUD mayor nunca se pisan entre si ni con la tabla de estadisticas.
             var botones = new List<CanvasGroup>();
-            if (reintentar != null) { reintentar.sizeDelta = new Vector2(340f, 78f); reintentar.anchoredPosition = new Vector2(-185f, -205f); botones.Add(Grupo(reintentar)); }
-            if (salir != null) { salir.sizeDelta = new Vector2(340f, 78f); salir.anchoredPosition = new Vector2(185f, -205f); botones.Add(Grupo(salir)); }
-            // CARGAR ULTIMO GUARDADO (solo en la derrota): centrado debajo de la fila, antes quedaba pisando a REINTENTAR y SALIR.
             var cargar = panel.transform.Find("LoadSaveButton") as RectTransform;
-            if (cargar != null && cargar.gameObject.activeSelf)
+            var fila_botones = new List<RectTransform>();
+            if (reintentar != null) { fila_botones.Add(reintentar); botones.Add(Grupo(reintentar)); }
+            if (cargar != null && cargar.gameObject.activeSelf) { fila_botones.Add(cargar); botones.Add(Grupo(cargar)); }
+            if (salir != null) { fila_botones.Add(salir); botones.Add(Grupo(salir)); }
+            // El ancho que cuenta es el del LIENZO real (el panel puede ser mas ancho que la pantalla visible en relaciones 4:3).
+            var cvPanel = panel.GetComponentInParent<Canvas>();
+            var rectPanel = cvPanel != null ? cvPanel.rootCanvas.GetComponent<RectTransform>() : panel.GetComponent<RectTransform>();
+            float anchoPanel = rectPanel != null && rectPanel.rect.width > 100f ? rectPanel.rect.width : 960f;
+            float altoPanel = rectPanel != null && rectPanel.rect.height > 100f ? rectPanel.rect.height : 540f;
+            const float MargenBotones = 48f, AireBotones = 20f, AltoBoton = 78f;
+            // Anclas PROPORCIONALES: cada boton ocupa una fraccion del ancho del lienzo (4 % de margen a cada lado, 1,5 % entre botones),
+            // asi se adapta solo a cualquier resolucion o relacion de aspecto aunque cambie despues de armar la pantalla.
+            int nb = Mathf.Max(1, fila_botones.Count);
+            const float MargenX = 0.04f, AireX = 0.015f;
+            float celda = (1f - 2f * MargenX - AireX * (nb - 1)) / nb;
+            for (int i = 0; i < fila_botones.Count; i++)
             {
-                // Tres botones en la misma fila (el lienzo mide 960 de ancho como minimo): no hay alto de sobra para una segunda fila.
-                var tam = new Vector2(290f, 78f);
-                if (reintentar != null) { reintentar.sizeDelta = tam; reintentar.anchoredPosition = new Vector2(-300f, -205f); }
-                if (salir != null) { salir.sizeDelta = tam; salir.anchoredPosition = new Vector2(300f, -205f); }
-                cargar.sizeDelta = tam; cargar.anchoredPosition = new Vector2(0f, -205f);
-                botones.Add(Grupo(cargar));
+                var r = fila_botones[i];
+                float x0 = MargenX + i * (celda + AireX);
+                r.anchorMin = new Vector2(x0, 0f); r.anchorMax = new Vector2(x0 + celda, 0f);
+                r.pivot = new Vector2(0.5f, 0f);
+                r.offsetMin = new Vector2(0f, MargenBotones); r.offsetMax = new Vector2(0f, MargenBotones + AltoBoton);
+                foreach (var tx in r.GetComponentsInChildren<Text>(true)) { tx.resizeTextForBestFit = true; tx.resizeTextMinSize = 10; tx.resizeTextMaxSize = Mathf.Max(tx.fontSize, 14); tx.horizontalOverflow = HorizontalWrapMode.Wrap; }
             }
             foreach (var b in botones) { b.alpha = 0f; b.interactable = false; b.blocksRaycasts = false; }
 
@@ -79,6 +92,13 @@ namespace SP.Presentation
             tabla.pivot = new Vector2(0.5f, 1f);
             tabla.anchoredPosition = new Vector2(0f, yInicio);
             tabla.sizeDelta = new Vector2(820f, AltoFila * filas.Count);
+            {
+                // La tabla no puede bajar hasta los botones: si no entra, se achica toda (pivote arriba).
+                float arriba = (0.6f - 0.5f) * altoPanel + yInicio, abajo = arriba - AltoFila * filas.Count;
+                float techoBotones = -altoPanel * 0.5f + MargenBotones + AltoBoton + 16f;
+                if (abajo < techoBotones) tabla.localScale = Vector3.one * Mathf.Clamp((arriba - techoBotones) / Mathf.Max(1f, arriba - abajo), 0.45f, 1f);
+                if (anchoPanel < 840f) tabla.localScale = tabla.localScale * Mathf.Clamp(anchoPanel * 0.96f / 820f, 0.5f, 1f);
+            }
             var fuente = statsViejo != null ? statsViejo.font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             var filasUi = new List<(CanvasGroup g, RectTransform rt, Text valor, EstadisticasDeMision.Fila f)>();
             for (int i = 0; i < filas.Count; i++)

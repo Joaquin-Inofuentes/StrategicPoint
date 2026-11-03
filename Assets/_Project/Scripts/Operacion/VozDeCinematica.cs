@@ -41,47 +41,91 @@ namespace SP.Operacion
 
         public static readonly Linea[] Todas = { Inicio, Torretas, Cuartel, CentroDeDatos, Blindado, Ciudad, Helipuerto, RapelPreparar, RapelBajar };
 
-        public const string Carpeta = "Audio/Cine/";
-        public const float Volumen = 1f;
 
         public static readonly List<string> Reproducidas = new List<string>();
         public static readonly List<string> Faltantes = new List<string>();
         public static string Actual { get; private set; } = "";
 
-        static AudioSource fuente;
-
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { fuente = null; Reproducidas.Clear(); Faltantes.Clear(); Actual = ""; }
+        static void Reiniciar() { vista = null; Reproducidas.Clear(); Faltantes.Clear(); Actual = ""; }
 
-        public static AudioClip Clip(Linea l) => SP.Core.RecursosCache.Cargar<AudioClip>(Carpeta + l.Id);
+        // Ya no hay voz grabada ni sintetizada: cada linea se muestra como DIALOGO escrito abajo (caja con el nombre de quien habla),
+        // el tiempo que dura su ventana. Se mantiene el nombre de la clase y de Decir para no tocar las cinematicas que la llaman.
+        public static AudioClip Clip(Linea l) => null;
 
-        static AudioSource Fuente()
-        {
-            if (fuente != null) return fuente;
-            var go = new GameObject("VozDeCinematica");
-            Object.DontDestroyOnLoad(go);
-            fuente = go.AddComponent<AudioSource>();
-            fuente.spatialBlend = 0f; fuente.playOnAwake = false; fuente.priority = 0;
-            return fuente;
-        }
+        static DialogoView vista;
 
-        // La linea anterior se corta si la nueva arranca (nunca se encimen dos voces).
+        // La linea anterior se reemplaza si la nueva arranca (nunca se encimen dos cajas).
         public static bool Decir(Linea l)
         {
-            var clip = Clip(l);
-            if (clip == null) { if (!Faltantes.Contains(l.Id)) Faltantes.Add(l.Id); return false; }
-            var f = Fuente();
-            f.Stop();
-            f.clip = clip;
-            f.volume = Mathf.Clamp01(Volumen * AudioDirector.GainFor(SfxChannel.Voice));
-            f.Play();
+            if (vista == null) vista = DialogoView.Crear();
+            vista.Mostrar("COMANDANTE", l.Texto, l.Ventana);
             Actual = l.Id;
             Reproducidas.Add(l.Id);
             return true;
         }
 
-        public static void Callar() { if (fuente != null) fuente.Stop(); Actual = ""; }
-        public static bool Hablando => fuente != null && fuente.isPlaying;
+        public static void Callar() { if (vista != null) vista.Ocultar(); Actual = ""; }
+        public static bool Hablando => vista != null && vista.Visible;
+        public static string TextoVisible => vista != null ? vista.TextoActual : "";
+
+        // Caja de dialogo en pantalla: nombre del que habla (dorado) y su linea, con fondo oscuro para leerse sobre cualquier escena.
+        sealed class DialogoView : MonoBehaviour
+        {
+            UnityEngine.UI.Text nombre, texto; CanvasGroup grupo; float hasta; bool visible;
+            public bool Visible => visible;
+            public string TextoActual => visible ? texto.text : "";
+
+            public static DialogoView Crear()
+            {
+                var go = new GameObject("DialogoDeCinematica");
+                Object.DontDestroyOnLoad(go);
+                var canvas = go.AddComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceOverlay; canvas.sortingOrder = 950;
+                var sc = go.AddComponent<UnityEngine.UI.CanvasScaler>();
+                sc.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize; sc.referenceResolution = new Vector2(960f, 540f); sc.matchWidthOrHeight = 0.5f;
+                var v = go.AddComponent<DialogoView>();
+                var fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+                var caja = new GameObject("Caja", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(CanvasGroup));
+                caja.transform.SetParent(go.transform, false);
+                var rt = (RectTransform)caja.transform;
+                rt.anchorMin = new Vector2(0.5f, 0f); rt.anchorMax = new Vector2(0.5f, 0f); rt.pivot = new Vector2(0.5f, 0f);
+                rt.sizeDelta = new Vector2(700f, 84f); rt.anchoredPosition = new Vector2(0f, 46f);
+                var img = caja.GetComponent<UnityEngine.UI.Image>(); img.color = new Color(0f, 0f, 0f, 0.62f); img.raycastTarget = false;
+                v.grupo = caja.GetComponent<CanvasGroup>(); v.grupo.alpha = 0f; v.grupo.blocksRaycasts = false; v.grupo.interactable = false;
+
+                v.nombre = NuevoTexto(caja.transform, "Nombre", fuente, 14, new Color(1f, 0.82f, 0.3f), TextAnchor.UpperLeft, new Vector2(16f, 58f), new Vector2(-16f, -6f));
+                v.texto = NuevoTexto(caja.transform, "Linea", fuente, 18, Color.white, TextAnchor.UpperLeft, new Vector2(16f, 6f), new Vector2(-16f, -26f));
+                v.texto.horizontalOverflow = HorizontalWrapMode.Wrap; v.texto.resizeTextForBestFit = true; v.texto.resizeTextMinSize = 11; v.texto.resizeTextMaxSize = 18;
+                return v;
+            }
+
+            static UnityEngine.UI.Text NuevoTexto(Transform padre, string n, Font f, int tam, Color c, TextAnchor al, Vector2 offMin, Vector2 offMax)
+            {
+                var go = new GameObject(n, typeof(RectTransform), typeof(UnityEngine.UI.Text));
+                go.transform.SetParent(padre, false);
+                var rt = (RectTransform)go.transform; rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one; rt.offsetMin = offMin; rt.offsetMax = offMax;
+                var t = go.GetComponent<UnityEngine.UI.Text>(); t.font = f; t.fontSize = tam; t.color = c; t.alignment = al; t.raycastTarget = false;
+                return t;
+            }
+
+            public void Mostrar(string quien, string linea, float segundos)
+            {
+                nombre.text = quien; texto.text = linea; visible = true;
+                hasta = Time.unscaledTime + Mathf.Max(2.5f, segundos);
+                grupo.alpha = 1f;
+            }
+
+            public void Ocultar() { visible = false; if (grupo != null) grupo.alpha = 0f; }
+
+            void Update()
+            {
+                if (!visible) return;
+                float resto = hasta - Time.unscaledTime;
+                if (resto <= 0f) { Ocultar(); return; }
+                grupo.alpha = Mathf.Clamp01(resto / 0.4f);   // se desvanece al final
+            }
+        }
 
         // Lineas cuyo clip real dura mas que su ventana (o no existe). Vacia = todo encaja.
         public static List<string> Validar(bool exigirClips = false)

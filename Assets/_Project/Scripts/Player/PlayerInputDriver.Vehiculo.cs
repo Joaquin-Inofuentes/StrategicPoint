@@ -124,6 +124,7 @@ namespace SP.Player
 
         void ClearVehicleSeatState()
         {
+            SP.UI.CapasDeHud.ModoTanque(false);
             MiraDeTorreta.Ocultar();
             if (currentSeat.HasValue && Vehicle != null)
             {
@@ -165,6 +166,7 @@ namespace SP.Player
             // artillero lo vuelve a prender (ver mas abajo). Conducir o ir
             // de pasajero no tiene mira que acercar.
             Rig.SetZoomed(false);
+            SP.UI.CapasDeHud.ModoTanque(Vehicle != null && !Vehicle.IsDestroyed && Brain.Current != null && Vehicle.RoleOf(Brain.Current) != null);
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
             if (AimUiRef != null) AimUiRef.SetVisible(false);

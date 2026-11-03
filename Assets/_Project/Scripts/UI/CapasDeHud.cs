@@ -21,6 +21,69 @@ namespace SP.UI
 
         WeaponStatusView vistaArma;
 
+        // MODO TANQUE: dentro del tanque solo se ven los 3 soldados con su vida (Roster), la vida del tanque y la municion del canon.
+        // LISTA BLANCA: todo lo que cuelga del Canvas principal se apaga por alfa salvo lo permitido, asi cualquier panel nuevo (objetivo,
+        // guia, minimapa, avisos, kill feed, teclas...) queda oculto sin tener que nombrarlo. Se restaura al bajar.
+        public static bool EnModoTanque { get; private set; }
+        static readonly string[] PermitidasEnTanque = { "Roster", "Hud_FPS", "TurretAim", "VehicleInfoPanel", "DamageVignette", "LowHealthPulse", "ScreenFlash", "DamageDirection", "GameOutcome", "PauseController", "EventSystem", "DeadNotice", "Crosshair", "AimUI" };
+        static readonly string[] CanvasSueltosOcultos = { "SesionLog_Indicador", "AvisoUnico" };
+        static readonly string[] HijosDeHudFpsOcultos = { "VehicleSeatBadge", "VehicleCrewPanel", "OffscreenKillMarker", "OffscreenAllies", "PlayerHealth", "WeaponStatus" };
+        static readonly System.Collections.Generic.List<(CanvasGroup g, float alfa)> apagadas = new System.Collections.Generic.List<(CanvasGroup, float)>();
+        static readonly System.Collections.Generic.List<Canvas> canvasApagados = new System.Collections.Generic.List<Canvas>();
+
+        public static void ModoTanque(bool activo)
+        {
+            if (Instancia == null) return;
+            if (activo == EnModoTanque)
+            {
+                if (activo)
+                {
+                    foreach (var (g, _) in apagadas) if (g != null) g.alpha = 0f;   // los sistemas que animan su alfa lo pisan: se reaplica
+                    // Paneles que se crean DESPUES de subir (el de teclas, la insignia de asiento): se apagan apenas aparecen.
+                    var cv2 = Instancia.GetComponentInParent<Canvas>();
+                    if (cv2 != null) foreach (Transform hijo in cv2.transform)
+                    {
+                        if (System.Array.IndexOf(PermitidasEnTanque, hijo.name) >= 0) continue;
+                        if (!hijo.TryGetComponent<CanvasGroup>(out var g2)) g2 = hijo.gameObject.AddComponent<CanvasGroup>();
+                        if (g2.alpha == 0f) continue;
+                        apagadas.Add((g2, g2.alpha)); g2.alpha = 0f;
+                    }
+                }
+                return;
+            }
+            EnModoTanque = activo;
+            if (activo)
+            {
+                apagadas.Clear(); canvasApagados.Clear();
+                void Apagar(GameObject go)
+                {
+                    if (go == null) return;
+                    if (!go.TryGetComponent<CanvasGroup>(out var g)) g = go.AddComponent<CanvasGroup>();
+                    apagadas.Add((g, g.alpha)); g.alpha = 0f;
+                }
+                var cv = Instancia.GetComponentInParent<Canvas>();
+                if (cv != null)
+                {
+                    foreach (Transform hijo in cv.transform)
+                    {
+                        // Tambien los inactivos: el panel de teclas y la insignia de asiento se activan DESPUES de subir.
+                        if (System.Array.IndexOf(PermitidasEnTanque, hijo.name) < 0) Apagar(hijo.gameObject);
+                    }
+                    var fps = Instancia.Hud_FPS;
+                    if (fps != null) foreach (Transform hijo in fps.transform)
+                        if (System.Array.IndexOf(HijosDeHudFpsOcultos, hijo.name) >= 0) Apagar(hijo.gameObject);
+                }
+                foreach (var c in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Exclude))
+                    if (c.isRootCanvas && c.enabled && System.Array.IndexOf(CanvasSueltosOcultos, c.name) >= 0) { c.enabled = false; canvasApagados.Add(c); }
+            }
+            else
+            {
+                foreach (var (g, a) in apagadas) if (g != null) g.alpha = a;
+                foreach (var c in canvasApagados) if (c != null) c.enabled = true;
+                apagadas.Clear(); canvasApagados.Clear();
+            }
+        }
+
         // En RTS no hay soldado poseido que actualice el panel de arma: muestra el arma del lider de la escuadra.
         void LateUpdate()
         {

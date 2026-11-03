@@ -742,7 +742,7 @@ namespace SP.Ai
                 if (Ignorando(s)) continue;   // descartado por inalcanzable (ver VigilarInalcanzable)
                 // Un enemigo INACTIVO (oculto o apagado) no se puede ni ver ni alcanzar: los aliados lo elegian igual, entraban en Attack,
                 // volvian a Patrol y lo re-sensaban en bucle, quedando clavados lejos del lider (bug "aliados que no avanzan").
-                if (equipo == TeamId.Player && !s.gameObject.activeInHierarchy) continue;
+                if (!s.gameObject.activeInHierarchy) continue;   // el soldado montado esta inactivo: al tanque lo ataca TickAtaqueAVehiculo, no se lo "ve" en el punto donde subio
                 float dist = Vector3.Distance(self.transform.position, s.transform.position);
                 // De noche un enemigo ve a distancia completa solo a quien esta iluminado (ver IluminacionTactica).
                 if (equipo == TeamId.Enemy && dist > IluminacionTactica.VisionContra(s.transform.position, vision)) continue;

@@ -88,17 +88,17 @@ namespace SP.UI
         static Sprite AnilloConPunto()
         {
             if (anilloConPunto != null) return anilloConPunto;
-            const int n = 64;
-            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
+            const int n = 1024; const float k = n / 64f;   // mismas medidas que la de 64 px, a 1024 y con mipmaps
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, true) { filterMode = FilterMode.Trilinear, wrapMode = TextureWrapMode.Clamp, hideFlags = HideFlags.HideAndDontSave };
             var px = new Color32[n * n];
             for (int y = 0; y < n; y++)
                 for (int x = 0; x < n; x++)
                 {
                     float r = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(n * 0.5f, n * 0.5f));
-                    float a = Mathf.Max(Mathf.Clamp01(1.6f - Mathf.Abs(r - 22f) + 0.5f), Mathf.Clamp01(5f - r + 0.5f));
+                    float a = Mathf.Max(Mathf.Clamp01(1.6f * k - Mathf.Abs(r - 22f * k) + 0.5f), Mathf.Clamp01(5f * k - r + 0.5f));
                     px[y * n + x] = new Color32(255, 255, 255, (byte)(a * 255f));
                 }
-            tex.SetPixels32(px); tex.Apply();
+            tex.SetPixels32(px); tex.Apply(true);
             anilloConPunto = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
             anilloConPunto.hideFlags = HideFlags.HideAndDontSave;
             return anilloConPunto;
@@ -130,9 +130,9 @@ namespace SP.UI
         static Sprite AnilloDeMira()
         {
             if (anilloCache != null) return anilloCache;
-            const int lado = 64;
-            const float grosor = 7f;
-            var tex = new Texture2D(lado, lado, TextureFormat.RGBA32, false);
+            const int lado = 1024;
+            const float grosor = 7f * (lado / 64f);
+            var tex = new Texture2D(lado, lado, TextureFormat.RGBA32, true) { filterMode = FilterMode.Trilinear, wrapMode = TextureWrapMode.Clamp };
             float radioExterior = lado * 0.5f;
             float radioInterior = radioExterior - grosor;
             var centro = new Vector2(radioExterior, radioExterior);
@@ -149,7 +149,7 @@ namespace SP.UI
                 }
             }
             tex.SetPixels32(pixeles);
-            tex.Apply();
+            tex.Apply(true);
             tex.hideFlags = HideFlags.HideAndDontSave;
 
             anilloCache = Sprite.Create(tex, new Rect(0f, 0f, lado, lado), new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect);
