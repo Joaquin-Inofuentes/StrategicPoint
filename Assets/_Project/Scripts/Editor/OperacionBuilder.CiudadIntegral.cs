@@ -93,6 +93,52 @@ namespace SP.EditorTools
                     Caja(t, "Techo_Tanque_Patas", tx - 0.9f, tx + 0.9f, h + 0.25f, h + 1.0f, tz - 0.9f, tz + 0.9f, MetalOsc, false);
                 }
             }
+            // Iter 61-80 (prestigio): remate LED, antena con baliza, neon vertical, pilastras de esquina, balcones, jardineras, luz de vidriera,
+            // franja del toldo, puerta con dintel y placa, luz de pie de muro, jardin y cartelera de techo, equipos, escalera de incendio,
+            // chimenea, reloj, dinteles de color, luces de feria sobre el toldo y farolitos en las esquinas del techo.
+            {
+                var led = Mat("Prestigio_Led" + (semilla % 3), semilla % 3 == 0 ? new Color(1f, 0.8f, 0.4f) : semilla % 3 == 1 ? new Color(0.4f, 0.9f, 1f) : new Color(1f, 0.4f, 0.7f), 3f);
+                Caja(t, "Remate_Led_S", x0 - 0.3f, x1 + 0.3f, h - 0.55f, h - 0.5f, z0 - 0.36f, z0 - 0.3f, led, false);
+                Caja(t, "Remate_Led_N", x0 - 0.3f, x1 + 0.3f, h - 0.55f, h - 0.5f, z1 + 0.3f, z1 + 0.36f, led, false);
+                Caja(t, "Remate_Led_O", x0 - 0.36f, x0 - 0.3f, h - 0.55f, h - 0.5f, z0 - 0.3f, z1 + 0.3f, led, false);
+                Caja(t, "Remate_Led_E", x1 + 0.3f, x1 + 0.36f, h - 0.55f, h - 0.5f, z0 - 0.3f, z1 + 0.3f, led, false);
+                Caja(t, "Antena_Techo", cx + w * 0.3f - 0.05f, cx + w * 0.3f + 0.05f, h + 0.25f, h + 5.5f, cz + d * 0.25f - 0.05f, cz + d * 0.25f + 0.05f, MetalOsc, false);
+                {
+                    var gb = new GameObject("Baliza_Techo"); gb.transform.SetParent(t, false); gb.transform.position = new Vector3(cx + w * 0.3f, h + 5.7f, cz + d * 0.25f);
+                    Esfera(gb.transform, "Baliza_Techo_Foco", gb.transform.position, 0.4f, Mat("Prestigio_BalizaRoja", new Color(1f, 0.1f, 0.1f), 3f));
+                    var lb = gb.AddComponent<Light>(); lb.type = LightType.Point; lb.range = 9f; lb.intensity = 2.2f; lb.color = new Color(1f, 0.15f, 0.1f); lb.shadows = LightShadows.None;
+                    var jb = gb.AddComponent<SP.Operacion.JuegoDeLuces>(); jb.modo = SP.Operacion.JuegoDeLuces.Modo.Parpadeo; jb.velocidad = 0.8f + (semilla % 5) * 0.1f; jb.fase = semilla * 0.7f;
+                }
+                Caja(t, "Neon_Vertical", x1 + 0.1f, x1 + 0.25f, 4.2f, Mathf.Min(h - 1.2f, 4.2f + 3.6f * 2f), cz - 0.4f, cz + 0.4f, led, false);
+                foreach (var (px, pz) in new[] { (x0, z0), (x1, z0), (x0, z1), (x1, z1) }) Caja(t, "Pilastra_Esquina", px - 0.3f, px + 0.3f, 0.9f, h - 0.5f, pz - 0.3f, pz + 0.3f, trim, false);
+                for (int f = 1; f < pisos; f++)
+                {
+                    float yf = 1.7f + f * 3.6f; if (yf + 0.8f > h - 0.7f) break;
+                    if (f == 1 && w > 8f) { Caja(t, "Balcon_Losa", cx - 1.6f, cx + 1.6f, yf - 1.0f, yf - 0.85f, z0 - 0.9f, z0, trim, false); Caja(t, "Balcon_Baranda", cx - 1.6f, cx + 1.6f, yf - 0.85f, yf - 0.1f, z0 - 0.9f, z0 - 0.84f, MetalOsc, false); }
+                    for (float fx = x0 + 3f; fx < x1 - 2f; fx += 5.2f) { Caja(t, "Jardinera_Ventana", fx - 0.7f, fx + 0.7f, yf - 1.05f, yf - 0.8f, z0 - 0.3f, z0, MMueble, false); for (int q = 0; q < 3; q++) Esfera(t, "Flor_Ventana", new Vector3(fx - 0.45f + q * 0.45f, yf - 0.72f, z0 - 0.18f), 0.3f, MFlor(q + semilla)); }
+                    Caja(t, "Aire_Acond", x0 - 0.5f, x0, yf - 0.4f, yf + 0.2f, cz - 0.6f, cz + 0.6f, MetalOsc, false);
+                }
+                { var gl = new GameObject("Luz_Vidriera"); gl.transform.SetParent(t, false); gl.transform.position = new Vector3(cx, 1.8f, z0 - 1.6f); var ll = gl.AddComponent<Light>(); ll.type = LightType.Point; ll.range = 8f; ll.intensity = 1.2f; ll.color = new Color(1f, 0.85f, 0.6f); ll.shadows = LightShadows.None; }
+                Caja(t, "Toldo_Franja", x0 + 1.5f, x1 - 1.5f, 3.15f, 3.28f, z0 - 1.1f, z0 - 1.0f, MBlanco, false);
+                Caja(t, "Puerta_Dintel", cx - 1.0f, cx + 1.0f, 2.6f, 2.8f, z0 - 0.5f, z0 + 0.02f, MMueble, false);
+                Caja(t, "Placa_Dorada", x0 + 0.5f, x0 + 1.1f, 1.4f, 1.8f, z0 - 0.12f, z0 - 0.02f, MDorado, false);
+                for (float fx = x0 + 2f; fx < x1 - 1.5f; fx += 0.8f) Esfera(t, "Feria_Bombilla", new Vector3(fx, 3.0f - 0.12f * Mathf.Sin((fx - x0) / (w) * Mathf.PI * 6f), z0 - 1.12f), 0.14f, MBombilla);
+                if (rnd.NextDouble() < 0.6)
+                {
+                    Caja(t, "Techo_Jardin", cx - w * 0.3f, cx - w * 0.3f + 3f, h + 0.25f, h + 0.7f, cz - d * 0.3f, cz - d * 0.3f + 2f, MMarmolOsc, false);
+                    for (int q = 0; q < 4; q++) Esfera(t, "Techo_Jardin_Planta", new Vector3(cx - w * 0.3f + 0.5f + q * 0.7f, h + 1.0f, cz - d * 0.3f + 1f), 0.7f, MHoja);
+                }
+                if (rnd.NextDouble() < 0.4)
+                {
+                    Caja(t, "Cartelera_Poste", cx - 0.1f, cx + 0.1f, h + 0.25f, h + 3.2f, cz - 0.1f, cz + 0.1f, MetalOsc, false);
+                    Caja(t, "Cartelera_Pantalla", cx - 2.4f, cx + 2.4f, h + 2.6f, h + 5.0f, cz - 0.2f, cz + 0.2f, led, false);
+                }
+                if (semilla % 2 == 0) { Caja(t, "Chimenea", x1 - 2.2f, x1 - 1.0f, h + 0.25f, h + 2.4f, z1 - 2.2f, z1 - 1.0f, trim, false); Caja(t, "Chimenea_Tapa", x1 - 2.4f, x1 - 0.8f, h + 2.4f, h + 2.6f, z1 - 2.4f, z1 - 0.8f, MetalOsc, false); }
+                if (semilla % 3 == 0) { Cilindro(t, "Reloj_Pared", x1 + 0.12f, 6.0f, 6.06f, z0 + 1.5f, 1.3f, MCristal); }
+                for (float fx = x0 + 1.2f; fx < x1 - 1.0f; fx += 3.4f) Caja(t, "Dintel_Color", fx, fx + 2.2f, 2.95f + 0.2f, 3.25f + 0.1f, z0 - 0.14f, z0 - 0.04f, led, false);
+                foreach (var (px, pz) in new[] { (x0 + 0.5f, z0 + 0.5f), (x1 - 0.5f, z0 + 0.5f), (x0 + 0.5f, z1 - 0.5f), (x1 - 0.5f, z1 - 0.5f) }) Esfera(t, "Farolito_Techo", new Vector3(px, h + 1.35f, pz), 0.35f, MBombilla);
+                for (int f = 0; f < pisos - 1 && f < 5; f++) { float yp = 3.6f + f * 3.6f; if (yp > h - 1.5f) break; Caja(t, "Escalera_Incendio_Plataforma", x1 + 0.0f, x1 + 1.1f, yp, yp + 0.08f, cz - 1.2f, cz + 1.2f, MetalOsc, false); Caja(t, "Escalera_Incendio_Baranda", x1 + 1.05f, x1 + 1.1f, yp + 0.08f, yp + 1.0f, cz - 1.2f, cz + 1.2f, MetalOsc, false); }
+            }
             Caja(t, "Techo_Equipo_A", cx - w * 0.25f - 1.2f, cx - w * 0.25f + 1.2f, h + 0.25f, h + 1.6f, cz - 1f, cz + 1f, MetalOsc, false);
             if (rnd.NextDouble() < 0.6) Caja(t, "Techo_Caseta", cx + w * 0.2f - 1.5f, cx + w * 0.2f + 1.5f, h + 0.25f, h + 2.6f, cz - 1.5f, cz + 1.5f, trim, false);
             return raiz;
