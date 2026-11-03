@@ -94,6 +94,8 @@ namespace SP.EditorTools
             foreach (var s in ActorRegistry.All)
             {
                 if (s == null || s.Role == RoleType.Civilian) continue;
+                var look = s.GetComponent<SP.Actors.SoldierLook>();
+                if (look != null && (look.Clase == "ASALTO" || look.Clase == "FRANCOTIRADOR")) continue;   // asalto y francotirador llevan su propia textura recoloreada con tinte blanco: el tinte de bando se mide en el resto
                 var smr = s.GetComponentInChildren<SkinnedMeshRenderer>(true);
                 if (smr == null || smr.sharedMaterial == null) continue;
                 var mc = smr.sharedMaterial.color; Color.RGBToHSV(mc, out float ht, out _, out _);

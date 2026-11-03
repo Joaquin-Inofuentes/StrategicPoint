@@ -30,6 +30,7 @@ namespace SP.Presentation
             public Image relleno;
             public Text tiempo;
             public Text verbo;
+            public Image icono;
             public LineRenderer linea;
         }
 
@@ -168,6 +169,9 @@ namespace SP.Presentation
             b.relleno.fillOrigin = (int)Image.OriginHorizontal.Left;
 
             b.verbo = Texto("Verbo", go.transform, 24, TextAnchor.LowerLeft, new Vector2(0f, 0.42f), new Vector2(0.62f, 1f));
+            b.verbo.enabled = false;   // sin la palabra (DETONANDO, REVIVIENDO...): la accion se lee por el icono, igual que la demolicion
+            b.icono = Imagen("Icono", go.transform, Color.white, new Vector2(0.02f, 0.44f), new Vector2(0.24f, 1f), 1f);
+            b.icono.preserveAspect = true;
             b.tiempo = Texto("Tiempo", go.transform, 28, TextAnchor.LowerRight, new Vector2(0.55f, 0.42f), new Vector2(1f, 1f));
 
             var lg = new GameObject("Union", typeof(LineRenderer));
@@ -241,6 +245,8 @@ namespace SP.Presentation
                 if (cam != null) b.raiz.transform.rotation = cam.transform.rotation;
                 b.relleno.fillAmount = a.Progreso01;
                 b.verbo.text = Loc.T(a.VerboEs);
+                b.icono.sprite = IconoDeAccion(a.VerboEs);
+                b.icono.color = new Color(1f, 0.86f, 0.35f);
                 b.tiempo.text = a.Restante.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " s";
                 b.linea.SetPosition(0, desde);
                 b.linea.SetPosition(1, hasta);
@@ -249,6 +255,18 @@ namespace SP.Presentation
             BarrasVisibles = usadas;
 
             RefrescarHud();
+        }
+
+        // Icono de cada verbo (los mismos del anillo de ordenes): demoler = estallido, curar/revivir = cruz, afinar punteria = mira.
+        static Sprite IconoDeAccion(string verboEs)
+        {
+            switch (verboEs)
+            {
+                case "DETONANDO": return SP.UI.RadialIconFactory.ForCategoria(SP.UI.MenuDeOrdenes.Demoler);
+                case "AFINANDO PUNTERIA": return SP.UI.RadialIconFactory.ForCategoria(SP.UI.MenuDeOrdenes.Atacar);
+                case "REVIVIENDO": case "CURANDO": case "USANDO BOTIQUIN": return SP.UI.RadialIconFactory.ForCategoria(SP.UI.MenuDeOrdenes.Curar);
+                default: return SP.UI.RadialIconFactory.ForCategoria(SP.UI.MenuDeOrdenes.Interactuar);
+            }
         }
 
         void RefrescarHud()

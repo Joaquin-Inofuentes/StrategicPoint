@@ -204,7 +204,10 @@ namespace SP.Actors
         // (la luminosidad se conserva y el dibujo de cada pieza sigue legible): asalto = naranja/arena claro, francotirador = verde bosque
         // casi negro (ghillie). Medico queda blanco azulado y el resto de la escuadra azul.
         static Material matAsalto, matFrancotirador;
-        static Material MaterialDeClase(ref Material cache, string nombre, System.Func<float, Color> mapa, Color emision)
+        // El mapa recibe la familia del pixel (0 rojo, 1 verde, 2 azul) y su H, S, V originales: cada familia va a su propio matiz de la clase
+        // y conserva su saturacion y valor, asi casco, chaleco, pantalon y correaje siguen siendo piezas distintas (el mapeo anterior, solo por
+        // luminosidad, dejaba todo en un unico degradado liso).
+        static Material MaterialDeClase(ref Material cache, string nombre, System.Func<int, float, float, float, Color> mapa, Color emision)
         {
             if (cache != null) return cache;
             if (matAliado == null) return null;
@@ -223,8 +226,8 @@ namespace SP.Actors
                         bool verde = q.g > 40 && q.g > q.r * 1.15f && q.g > q.b * 1.15f;
                         bool azul = q.b > 40 && q.b > q.r * 1.15f && q.b >= q.g;
                         if (!rojo && !verde && !azul) continue;
-                        float lum = (0.3f * q.r + 0.59f * q.g + 0.11f * q.b) / 255f;
-                        var c = mapa(lum);
+                        Color.RGBToHSV(new Color32(q.r, q.g, q.b, 255), out float h, out float sa, out float v);
+                        var c = mapa(rojo ? 0 : verde ? 1 : 2, h, sa, v);
                         px[i] = new Color32((byte)Mathf.Clamp(c.r * 255f, 0f, 255f), (byte)Mathf.Clamp(c.g * 255f, 0f, 255f), (byte)Mathf.Clamp(c.b * 255f, 0f, 255f), q.a);
                     }
                     copia.SetPixels32(px); copia.Apply(true, false);
@@ -235,8 +238,15 @@ namespace SP.Actors
             if (cache.HasProperty("_EmissionColor")) { cache.EnableKeyword("_EMISSION"); cache.SetColor("_EmissionColor", emision); cache.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None; }
             return cache;
         }
-        static Material MaterialAsalto() => MaterialDeClase(ref matAsalto, "MAT_Trimsheet_Aliado_Asalto", l => new Color(Mathf.Min(1f, l * 1.9f), Mathf.Min(1f, l * 1.05f), l * 0.35f), new Color(0.12f, 0.05f, 0f));
-        static Material MaterialFrancotirador() => MaterialDeClase(ref matFrancotirador, "MAT_Trimsheet_Aliado_Francotirador", l => new Color(l * 0.35f, l * 0.75f, l * 0.3f), new Color(0.005f, 0.03f, 0.012f));
+        // Asalto: arena (verde), naranja (azul) y rojo quemado (rojo). Francotirador: verde bosque (verde), oliva (azul) y cuero oscuro (rojo).
+        static Material MaterialAsalto() => MaterialDeClase(ref matAsalto, "MAT_Trimsheet_Aliado_Asalto",
+            (f, h, sa, v) => f == 1 ? Color.HSVToRGB(0.11f, Mathf.Clamp01(sa * 0.55f), Mathf.Clamp01(v * 1.35f))
+                           : f == 2 ? Color.HSVToRGB(0.065f, Mathf.Clamp01(sa * 1.05f + 0.1f), Mathf.Clamp01(v * 1.5f))
+                           : Color.HSVToRGB(0.02f, Mathf.Clamp01(sa * 0.9f), Mathf.Clamp01(v * 0.95f)), new Color(0.10f, 0.045f, 0f));
+        static Material MaterialFrancotirador() => MaterialDeClase(ref matFrancotirador, "MAT_Trimsheet_Aliado_Francotirador",
+            (f, h, sa, v) => f == 1 ? Color.HSVToRGB(0.33f, Mathf.Clamp01(sa * 0.9f), Mathf.Clamp01(v * 0.5f))
+                           : f == 2 ? Color.HSVToRGB(0.16f, Mathf.Clamp01(sa * 0.75f), Mathf.Clamp01(v * 1.05f))
+                           : Color.HSVToRGB(0.07f, Mathf.Clamp01(sa * 0.7f), Mathf.Clamp01(v * 0.5f)), new Color(0.005f, 0.025f, 0.01f));
 
         static Material matCivil;
         static Material MaterialCivil()
