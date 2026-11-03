@@ -231,8 +231,7 @@ namespace SP.Operacion
                     {
                         int i = torre[ondasDeAzotea++];
                         var t = G.Torres[i];
-                        var rellano = t.Mundo(G.CarrilA, 7.6f);
-                        var p = new Vector3(rellano.x, G.Nivel(t.nivelBase) + G.Piso * 0.5f, rellano.y);
+                        var p = G.RellanoDeTorre(i);
                         for (int k = 0; k < 4; k++) pendientesMansion.Add(new SpawnMansion { pos = p, radio = 0f, dispararEn = relojMansion + k * 1.1f, nivel = 3, desdeEscalera = true });
                         if (hud != null) hud.Aviso($"REFUERZOS POR LA ESCALERA {t.nombre}", 2.6f);
                     }
@@ -428,14 +427,13 @@ namespace SP.Operacion
 
         IEnumerator CinematicaDeLasCeldas(Vector3 desde)
         {
-            var celdas = G.Centro(2) + new Vector3(-9f, 1.4f, 9.4f);
             var llegada = new Vector3(desde.x, desde.y + 2.4f, desde.z);
-            var alto = new Vector3(329f, G.Nivel(2) + 4.0f, 254.5f);
-            var cerca = new Vector3(318f, G.Nivel(2) + 2.6f, 262.5f);
-            var mirada = new Vector3(313f, G.Nivel(2) + 1.3f, 269f);
+            var alto = new Vector3(334f, G.Nivel(2) + 5.5f, 256f);
+            var cerca = new Vector3(318f, G.Nivel(2) + 3.0f, 268f);
+            var mirada = new Vector3(306f, G.Nivel(2) + 1.3f, 283f);
             yield return CineCorta(6.5f,
                 u => u < 0.45f ? Vector3.Lerp(llegada, alto, Mathf.SmoothStep(0f, 1f, u / 0.45f)) : Vector3.Lerp(alto, cerca, Mathf.SmoothStep(0f, 1f, (u - 0.45f) / 0.55f)),
-                u => Vector3.Lerp(new Vector3(322f, G.Nivel(2) + 1.2f, 259f), mirada, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(u * 1.6f))),
+                u => Vector3.Lerp(new Vector3(322f, G.Nivel(2) + 1.2f, 265f), mirada, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(u * 1.6f))),
                 null, LineaCeldas, 60f);
             foreach (var s in prisioneros) if (s != null) WorldUiDirector.Revelar(s, 6f);
             segundoIniciado = true;

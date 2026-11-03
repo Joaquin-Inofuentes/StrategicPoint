@@ -68,6 +68,7 @@ namespace SP.EditorTools
                 if (m == null) { Fin("FALLO " + sb); yield break; }
                 foreach (var x in P7AFps()) yield return x;
                 var yo = drv.Brain.Current;
+                if (yo == m) m = d.Milicianos[0];   // la vista FPS puede poseer a MILICIANO 2 segun donde quede la camara: el caido es otro miliciano
                 P6Ok(ref ok, drv.Rig.Mode == ControlMode.Fps && yo != null && !MandoTactico.EsOperadorDeRadio(yo), sb, $"FPS controlando a {yo.DisplayName} (el operador sigue en la radio)");
                 ComandosDeDepuracion.Matar(m.Id);
                 for (int i = 0; i < 4; i++) yield return null;
@@ -97,7 +98,7 @@ namespace SP.EditorTools
                 Junto(yo, m.transform.position, 1.5f);
                 for (int i = 0; i < 3; i++) yield return null;
                 var cand = drv.FindNearestDownedAlly();
-                P6Ok(ref ok, cand == m, sb, $"DESPUES: candidato a revivir = {(cand != null ? cand.DisplayName : "ninguno")}");
+                P6Ok(ref ok, cand == m, sb, $"DESPUES: candidato a revivir = {(cand != null ? cand.DisplayName : "ninguno")} (yo {yo.DisplayName} {yo.transform.position:0.0}, caido {m.DisplayName} {m.transform.position:0.0} vivo={m.Health.IsAlive})");
                 KeyBindings.ForzarInicioDePulsacion(KeyBindings.Interactuar, 0f);
                 Teclas(kE);
                 t0 = Time.realtimeSinceStartup; float tRevivio = -1f; bool capturado = false;

@@ -15,8 +15,8 @@ namespace SP.Operacion
 
         void Update()
         {
-            float meta = Abierto ? 1f : 0f;
-            Avance = Mathf.MoveTowards(Avance, meta, Time.deltaTime / Mathf.Max(0.1f, segundos));
+            float meta = Abierto || OperacionDirector.ApagarMansion ? 1f : 0f;   // sin mansion (checks de la defensa de flancos) el porton no cierra el paso
+            Avance = OperacionDirector.ApagarMansion ? 1f : Mathf.MoveTowards(Avance, meta, Time.deltaTime / Mathf.Max(0.1f, segundos));
             transform.position = Vector3.Lerp(cerrada, abierta, Mathf.SmoothStep(0f, 1f, Avance));
             var c = GetComponent<Collider>();
             if (c != null) c.enabled = Avance < 0.6f;

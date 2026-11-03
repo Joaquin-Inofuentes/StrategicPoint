@@ -36,7 +36,7 @@ namespace SP.EditorTools
         // Manzanas (x0, x1, z0, z1): la cruz y el anillo de calles quedan libres; la mansion ocupa x 300..344, z 248..272.
         static readonly (float x0, float x1, float z0, float z1)[] Manzanas =
         {
-            (272f, 296f, 238f, 290f), (350f, 374f, 238f, 290f), (272f, 302f, 172f, 220f), (342f, 374f, 172f, 220f),
+            (272f, 291f, 238f, 290f), (353f, 374f, 238f, 290f), (272f, 302f, 172f, 220f), (342f, 374f, 172f, 220f),
         };
 
         static GameObject ArmarEdificio(string nombre, float cx, float cz, float w, float d, float h, Color color, int semilla)
@@ -114,20 +114,23 @@ namespace SP.EditorTools
         {
             var raiz = new GameObject("P_Op_Ciudad_PlazaCivica"); var t = raiz.transform;
             const float cx = 322f, cz = 228f;
-            // Adoquines: tablero de losas claras y oscuras (sin collider; el suelo de siempre queda abajo).
+            // Adoquines: tablero de losas claras y oscuras, apoyado sobre la pintura vieja de la plaza (H y anillo amarillo, ya fusionados en las calles) para taparla; sin collider.
             for (int i = -5; i < 5; i++)
                 for (int j = -5; j < 5; j++)
-                    Caja(t, "Adoquin", cx + i * 3.2f, cx + i * 3.2f + 3.2f, 0.01f, 0.07f, cz + j * 3.2f, cz + j * 3.2f + 3.2f, ((i + j) & 1) == 0 ? MAdoquinA : MAdoquinB, false);
-            // Fuente central: cuenco, agua y columna.
+                    Caja(t, "Adoquin", cx + i * 3.2f, cx + i * 3.2f + 3.2f, 0.17f, 0.23f, cz + j * 3.2f, cz + j * 3.2f + 3.2f, ((i + j) & 1) == 0 ? MAdoquinA : MAdoquinB, false);
+            // El centro de la plaza (322, 228) es el puesto de la defensa: queda libre, con un rosetón de piedra al ras. La fuente va al sur, lejos del camino al porton.
+            Caja(t, "Roseton_Exterior", cx - 3.4f, cx + 3.4f, 0.23f, 0.27f, cz - 3.4f, cz + 3.4f, MPilar, false);
+            Caja(t, "Roseton_Interior", cx - 2.2f, cx + 2.2f, 0.27f, 0.30f, cz - 2.2f, cz + 2.2f, MAdoquinB, false);
+            const float fz = cz - 12.5f;
             var cuenco = GameObject.CreatePrimitive(PrimitiveType.Cylinder); cuenco.name = "Fuente_Cuenco"; cuenco.transform.SetParent(t, false);
-            cuenco.transform.position = new Vector3(cx, 0.45f, cz); cuenco.transform.localScale = new Vector3(7f, 0.45f, 7f); cuenco.GetComponent<MeshRenderer>().sharedMaterial = MPilar;
+            cuenco.transform.position = new Vector3(cx, 0.45f, fz); cuenco.transform.localScale = new Vector3(6f, 0.45f, 6f); cuenco.GetComponent<MeshRenderer>().sharedMaterial = MPilar;
             var agua = GameObject.CreatePrimitive(PrimitiveType.Cylinder); agua.name = "Fuente_Agua"; agua.transform.SetParent(t, false);
-            agua.transform.position = new Vector3(cx, 0.88f, cz); agua.transform.localScale = new Vector3(6.2f, 0.02f, 6.2f); agua.GetComponent<MeshRenderer>().sharedMaterial = MAgua;
+            agua.transform.position = new Vector3(cx, 0.88f, fz); agua.transform.localScale = new Vector3(5.2f, 0.02f, 5.2f); agua.GetComponent<MeshRenderer>().sharedMaterial = MAgua;
             Object.DestroyImmediate(agua.GetComponent<Collider>()); agua.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
-            Caja(t, "Fuente_Columna", cx - 0.5f, cx + 0.5f, 0.9f, 3.4f, cz - 0.5f, cz + 0.5f, MPilar);
-            Caja(t, "Fuente_Copa", cx - 1.2f, cx + 1.2f, 3.2f, 3.5f, cz - 1.2f, cz + 1.2f, MPilar, false);
-            // Bancos en cruz alrededor de la fuente y jardineras en las esquinas.
-            foreach (var (bx, bz, giro) in new[] { (cx - 6.5f, cz, true), (cx + 6.5f, cz, true), (cx, cz - 6.5f, false), (cx, cz + 6.5f, false) })
+            Caja(t, "Fuente_Columna", cx - 0.5f, cx + 0.5f, 0.9f, 3.4f, fz - 0.5f, fz + 0.5f, MPilar);
+            Caja(t, "Fuente_Copa", cx - 1.2f, cx + 1.2f, 3.2f, 3.5f, fz - 1.2f, fz + 1.2f, MPilar, false);
+            // Bancos a los lados de la fuente (el punto de la plaza que usa la defensa queda libre) y jardineras en las esquinas.
+            foreach (var (bx, bz, giro) in new[] { (cx - 5.5f, fz, true), (cx + 5.5f, fz, true), (cx - 9.5f, cz - 9.5f, false), (cx + 9.5f, cz - 9.5f, false) })
             {
                 if (giro) Caja(t, "Banco", bx - 0.4f, bx + 0.4f, 0f, 0.5f, bz - 1.6f, bz + 1.6f, MMueble);
                 else Caja(t, "Banco", bx - 1.6f, bx + 1.6f, 0f, 0.5f, bz - 0.4f, bz + 0.4f, MMueble);
@@ -137,9 +140,6 @@ namespace SP.EditorTools
                 Caja(t, "Jardinera", jx - 1.6f, jx + 1.6f, 0f, 0.8f, jz - 1.6f, jz + 1.6f, MPilar);
                 ArmarArbol(t, "Arbol_Jardinera", jx, jz, 0.8f);
             }
-            // Monumento al norte (frente a la mansion): pedestal y obelisco.
-            Caja(t, "Monumento_Base", cx - 1.8f, cx + 1.8f, 0f, 0.7f, cz + 11.2f, cz + 14.8f, MPilar);
-            Caja(t, "Monumento_Obelisco", cx - 0.6f, cx + 0.6f, 0.7f, 5.4f, cz + 12.4f, cz + 13.6f, MMuro);
             // Arboles en las esquinas exteriores de la plaza.
             foreach (var (ax, az) in new[] { (cx - 15f, cz - 6f), (cx - 15f, cz + 6f), (cx + 15f, cz - 6f), (cx + 15f, cz + 6f), (cx - 6f, cz - 15f), (cx + 6f, cz - 15f) })
                 ArmarArbol(t, "Arbol_Plaza", ax, az, 1f);
@@ -193,11 +193,17 @@ namespace SP.EditorTools
 
             // 1) fuera el helipuerto de la plaza: la losa con la H y las luces. El Transform "Plaza" se queda (el director lo usa de centro).
             int apagados = 0;
-            foreach (var tr in ciudad.GetComponentsInChildren<Transform>(true))
+            // La losa y las luces viven en SC_Operacion (6_Ciudad), no en la escena Ciudad: se barren todas las escenas abiertas.
+            for (int k = 0; k < SceneManager.sceneCount; k++)
             {
-                if (tr.name == "LucesDelHelipuerto" && tr.gameObject.activeSelf) { tr.gameObject.SetActive(false); apagados++; }
-                if (tr.name == "Plaza" && tr.parent != null && tr.parent.name == "6_Ciudad")
-                    foreach (var rr in tr.GetComponentsInChildren<Renderer>(true)) if (rr.enabled) { rr.enabled = false; apagados++; }
+                var sc = SceneManager.GetSceneAt(k);
+                foreach (var raiz in sc.GetRootGameObjects())
+                    foreach (var tr in raiz.GetComponentsInChildren<Transform>(true))
+                    {
+                        if ((tr.name == "LucesDelHelipuerto" || tr.name == "Helipad") && tr.gameObject.activeSelf) { tr.gameObject.SetActive(false); apagados++; EditorSceneManager.MarkSceneDirty(sc); }
+                        if (tr.name == "Plaza" && tr.parent != null && tr.parent.name == "6_Ciudad")
+                            foreach (var rr in tr.GetComponentsInChildren<Renderer>(true)) if (rr.enabled) { rr.enabled = false; apagados++; EditorSceneManager.MarkSceneDirty(sc); }
+                    }
             }
             res.AppendLine("helipuerto de la plaza quitado (" + apagados + ")");
 

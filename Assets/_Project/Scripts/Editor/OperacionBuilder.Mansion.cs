@@ -85,41 +85,105 @@ namespace SP.EditorTools
             return partes;
         }
 
+        static Material MMarmol => Mat("Mansion_Marmol", new Color(0.86f, 0.84f, 0.80f));
+        static Material MMarmolOsc => Mat("Mansion_MarmolOsc", new Color(0.22f, 0.22f, 0.25f));
+        static Material MAlfombra => Mat("Mansion_Alfombra", new Color(0.46f, 0.08f, 0.10f));
+        static Material MDorado => Mat("Mansion_Dorado", new Color(0.78f, 0.60f, 0.22f), 0.25f);
+        static Material MCuadroA => Mat("Mansion_CuadroA", new Color(0.18f, 0.32f, 0.45f));
+        static Material MCuadroB => Mat("Mansion_CuadroB", new Color(0.55f, 0.36f, 0.18f));
+        static Material MCristal => Mat("Mansion_Cristal", new Color(1f, 0.90f, 0.70f), 3f);
+
+        static GameObject Columna(Transform p, string n, float x, float z, float y0, float y1, float radio = 0.55f)
+        {
+            var c = GameObject.CreatePrimitive(PrimitiveType.Cylinder); c.name = n; c.transform.SetParent(p, false);
+            c.transform.position = new Vector3(x, (y0 + y1) * 0.5f, z); c.transform.localScale = new Vector3(radio * 2f, (y1 - y0) * 0.5f, radio * 2f);
+            c.GetComponent<MeshRenderer>().sharedMaterial = MMarmol;
+            Caja(p, n + "_Base", x - radio * 1.4f, x + radio * 1.4f, y0, y0 + 0.4f, z - radio * 1.4f, z + radio * 1.4f, MMarmolOsc, false);
+            Caja(p, n + "_Capitel", x - radio * 1.5f, x + radio * 1.5f, y1 - 0.45f, y1, z - radio * 1.5f, z + radio * 1.5f, MDorado, false);
+            return c;
+        }
+
+        static void Arana(Transform p, float x, float y, float z, float escala = 1f)
+        {
+            Caja(p, "Cadena", x - 0.04f, x + 0.04f, y, y + 1.2f, z - 0.04f, z + 0.04f, MDorado, false);
+            Caja(p, "Lampara_Aro", x - 0.9f * escala, x + 0.9f * escala, y - 0.15f, y, z - 0.9f * escala, z + 0.9f * escala, MDorado, false);
+            Caja(p, "Lampara_Cristal", x - 0.55f * escala, x + 0.55f * escala, y - 0.55f, y - 0.15f, z - 0.55f * escala, z + 0.55f * escala, MCristal, false);
+            var g = new GameObject("Luz_Arana"); g.transform.SetParent(p, false); g.transform.position = new Vector3(x, y - 0.8f, z);
+            var l = g.AddComponent<Light>(); l.type = LightType.Point; l.range = 15f; l.intensity = 1.2f; l.color = new Color(1f, 0.88f, 0.68f); l.shadows = LightShadows.None;
+        }
+
         // Una torre de escalera: devuelve el hueco que hay que dejar en la losa del piso de arriba.
         static Rect ArmarTorre(Transform p, G.Torre t)
         {
             float y0 = G.Nivel(t.nivelBase), H = G.Piso, yTop = y0 + H;
             float W = G.TorreAncho, F = G.TorreFondo, run = G.TramoLargo;
+            float u0 = G.PuertaU0, uA = G.DivisoriaU0, uB = G.DivisoriaU1, uS = W - 0.4f;
             const float ini = 0.3f;
             string k = "Torre_" + t.nombre + "_";
-            // Pared de la puerta (v 0..0.3) con la puerta del carril A abierta (u 0.3..2.6, 3 m de alto).
-            CajaTorre(p, t, k + "Puerta_I", 0f, 0.3f, 0f, ini, y0, yTop, MMuro);
+            // Pared de la puerta (v 0..0.3) con la puerta del carril A (4,6 m de ancho, 4,4 m de alto).
+            CajaTorre(p, t, k + "Puerta_I", 0f, u0, 0f, ini, y0, yTop, MMuro);
+            CajaTorre(p, t, k + "Puerta_Dintel", u0, uA, 0f, ini, y0 + G.PuertaAlto, yTop, MMuro);
             // Bajo el final del carril B la pared queda 0,9 m mas baja que el piso de arriba: si llegara al piso, el NavMesh dejaria una franja
             // muerta justo donde se sale de la escalera. El hueco se tapa con una pieza solo visual.
-            CajaTorre(p, t, k + "Puerta_D1", 2.6f, 3.0f, 0f, ini, y0, yTop, MMuro);
-            CajaTorre(p, t, k + "Puerta_D2", 3.0f, W, 0f, ini, y0, yTop - 0.9f, MMuro);
-            CajaTorre(p, t, k + "Puerta_D2_Relleno", 3.0f, W, 0f, ini, yTop - 0.9f, yTop - 0.05f, MMuro, false);
-            CajaTorre(p, t, k + "Puerta_Dintel", 0.3f, 2.6f, 0f, ini, y0 + 3f, yTop, MMuro);
-            if (t.nombre == "E") CajaTorre(p, t, k + "Lado_Exterior", -0.3f, 0f, 0f, F, y0, yTop + 1.1f, MMuro);
-            // Pared del lado de adentro: llega al techo en el rellano y funciona de baranda arriba del hueco.
-            CajaTorre(p, t, k + "Lado_Interior", W - 0.3f, W, 0f, F, y0, yTop, MMuro);
-            CajaTorre(p, t, k + "Baranda_Lado", W - 0.3f, W, 0f, run + ini, yTop, yTop + 1.1f, MMuro);
-            // Divisoria entre los dos carriles.
-            CajaTorre(p, t, k + "Divisoria", 2.6f, 3.0f, ini, run + ini, y0, yTop + 1.1f, MPilar);
-            CajaTorre(p, t, k + "Baranda_Fondo", 3.0f, W - 0.3f, run + ini, run + ini + 0.3f, yTop, yTop + 1.1f, MMuro);
-            // Rellano a media altura.
+            CajaTorre(p, t, k + "Puerta_D1", uA, uB, 0f, ini, y0, yTop, MMuro);
+            CajaTorre(p, t, k + "Puerta_D2", uB, W, 0f, ini, y0, yTop - 0.9f, MMuro);
+            CajaTorre(p, t, k + "Puerta_D2_Relleno", uB, W, 0f, ini, yTop - 0.9f, yTop - 0.05f, MMuro, false);
+            if (t.nombre == "E") CajaTorre(p, t, k + "Lado_Exterior", -0.4f, 0f, 0f, F, y0, yTop + 1.1f, MMuro);
+            CajaTorre(p, t, k + "Lado_Interior", uS, W, 0f, F, y0, yTop, MMuro);
+            CajaTorre(p, t, k + "Baranda_Lado", uS, W, 0f, run + ini, yTop, yTop + 1.1f, MMuro);
+            CajaTorre(p, t, k + "Divisoria", uA, uB, ini, run + ini, y0, yTop + 1.1f, MPilar);
+            CajaTorre(p, t, k + "Baranda_Fondo", uB, uS, run + ini, run + ini + 0.3f, yTop, yTop + 1.1f, MMuro);
+            // Pasamanos dorado sobre la baranda del hueco (solo visual).
+            CajaTorre(p, t, k + "Pasamanos", uS - 0.05f, uS + 0.1f, ini, run + ini, yTop + 1.1f, yTop + 1.25f, MDorado, false);
             float yMed = y0 + H * 0.5f;
             CajaTorre(p, t, k + "Rellano", 0f, W, run + ini, F, yMed - G.Losa, yMed, MRampa);
-            // Tramos.
             Vector3 P(float cu, float cv, float y) { var w = t.Mundo(cu, cv); return new Vector3(w.x, y, w.y); }
-            Tramo(p, k + "Tramo_A", P(G.CarrilA, ini, y0), P(G.CarrilA, run + ini, yMed), 2.3f, MRampa);
-            Tramo(p, k + "Tramo_B", P(G.CarrilB, run + ini, yMed), P(G.CarrilB, ini, yTop), 2.3f, MRampa);
-            // Luz del hueco de la escalera.
+            float ancho = G.MedioCarril * 2f;
+            Tramo(p, k + "Tramo_A", P(G.CarrilA, ini, y0), P(G.CarrilA, run + ini, yMed), ancho, MRampa);
+            Tramo(p, k + "Tramo_B", P(G.CarrilB, run + ini, yMed), P(G.CarrilB, ini, yTop), ancho, MRampa);
+            // Alfombra roja sobre los dos tramos (solo visual, apenas por encima de la superficie).
+            for (int c = 0; c < 2; c++)
+            {
+                var a = c == 0 ? P(G.CarrilA, ini, y0) : P(G.CarrilB, run + ini, yMed);
+                var b = c == 0 ? P(G.CarrilA, run + ini, yMed) : P(G.CarrilB, ini, yTop);
+                var alf = Tramo(p, k + "Alfombra_" + c, a + Vector3.up * 0.17f, b + Vector3.up * 0.17f, 1.6f, MAlfombra);
+                alf.transform.localScale = new Vector3(1.6f, 0.04f, alf.transform.localScale.z);
+                Object.DestroyImmediate(alf.GetComponent<RampaCaminable>()); Object.DestroyImmediate(alf.GetComponent<BoxCollider>());
+                alf.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+            }
             var luz = new GameObject(k + "Luz"); luz.transform.SetParent(p, false);
-            luz.transform.position = P(W * 0.5f, run * 0.5f, y0 + 4.2f);
-            var l = luz.AddComponent<Light>(); l.type = LightType.Point; l.range = 9f; l.intensity = 1.1f; l.color = new Color(1f, 0.9f, 0.7f); l.shadows = LightShadows.None;
-            var a = t.Mundo(3.0f, ini); var b = t.Mundo(W - 0.3f, run + ini);
-            return Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
+            luz.transform.position = P(W * 0.5f, run * 0.5f, y0 + H - 1.5f);
+            var l = luz.AddComponent<Light>(); l.type = LightType.Point; l.range = 13f; l.intensity = 1.3f; l.color = new Color(1f, 0.9f, 0.7f); l.shadows = LightShadows.None;
+            var a2 = t.Mundo(uB, ini); var b2 = t.Mundo(uS, run + ini);
+            return Rect.MinMaxRect(Mathf.Min(a2.x, b2.x), Mathf.Min(a2.y, b2.y), Mathf.Max(a2.x, b2.x), Mathf.Max(a2.y, b2.y));
+        }
+
+        static bool SobreTorre(float x0, float x1, float z0, float z1, int nivel)
+        {
+            foreach (var t in G.Torres)
+            {
+                if (t.nivelBase != nivel && t.nivelBase + 1 != nivel) continue;   // solo las torres que tocan este piso
+                var a = t.Mundo(0f, 0f); var b = t.Mundo(G.TorreAncho, G.TorreFondo);
+                if (x1 > Mathf.Min(a.x, b.x) - 0.1f && x0 < Mathf.Max(a.x, b.x) + 0.1f && z1 > Mathf.Min(a.y, b.y) - 0.1f && z0 < Mathf.Max(a.y, b.y) + 0.1f) return true;
+            }
+            return false;
+        }
+
+        // Piso de marmol en damero (solo visual).
+        static void PisoDeLujo(Transform p, int nivel, float xa, float xb, float za, float zb)
+        {
+            float y = G.Nivel(nivel) + (nivel == 0 ? 0.13f : 0.005f);   // la calle pasa por debajo de la PB: el marmol va por encima del asfalto
+            Caja(p, "Marmol_Base_" + nivel, xa, xb, y, y + 0.02f, za, zb, MMarmol, false);
+            const float L = 4f;
+            for (float x = xa; x < xb - 0.1f; x += L)
+                for (float z = za; z < zb - 0.1f; z += L)
+                {
+                    int ix = Mathf.FloorToInt((x - xa) / L), iz = Mathf.FloorToInt((z - za) / L);
+                    if (((ix + iz) & 1) == 0) continue;
+                    float x1 = Mathf.Min(x + L, xb), z1 = Mathf.Min(z + L, zb);
+                    if (SobreTorre(x, x1, z, z1, nivel)) continue;
+                    Caja(p, "Marmol_Oscuro", x, x1, y + 0.02f, y + 0.035f, z, z1, MMarmolOsc, false);
+                }
         }
 
         static GameObject ArmarMansion()
@@ -134,6 +198,7 @@ namespace SP.EditorTools
 
             float yMax = G.Nivel(3) + G.Parapeto;
             float gx0 = G.PortonX - G.PortonAncho * 0.5f, gx1 = G.PortonX + G.PortonAncho * 0.5f;
+            float xi0 = G.X0 + G.Muro, xi1 = G.X1 - G.Muro, zi0 = G.Z0 + G.Muro, zi1 = G.Z1 - G.Muro;
             // ---- casco: cuatro muros con el hueco del porton al sur ----
             Caja(casco, "Muro_S_Oeste", G.X0, gx0, 0f, yMax, G.Z0, G.Z0 + G.Muro, MMuro);
             Caja(casco, "Muro_S_Este", gx1, G.X1, 0f, yMax, G.Z0, G.Z0 + G.Muro, MMuro);
@@ -141,7 +206,6 @@ namespace SP.EditorTools
             Caja(casco, "Muro_N", G.X0, G.X1, 0f, yMax, G.Z1 - G.Muro, G.Z1, MMuro);
             Caja(casco, "Muro_O", G.X0, G.X0 + G.Muro, 0f, yMax, G.Z0, G.Z1, MMuro);
             Caja(casco, "Muro_E", G.X1 - G.Muro, G.X1, 0f, yMax, G.Z0, G.Z1, MMuro);
-            // Porton: dos hojas que se deslizan hacia adentro y a los costados.
             float medio = (gx0 + gx1) * 0.5f;
             foreach (int lado in new[] { -1, 1 })
             {
@@ -151,37 +215,39 @@ namespace SP.EditorTools
                 var pd = hoja.AddComponent<PortonDeMansion>();
                 pd.cerrada = hoja.transform.position;
                 pd.abierta = hoja.transform.position + new Vector3(lado * (G.PortonAncho * 0.5f + 0.2f), 0f, 1.0f);
+                Caja(deco, "Porton_Dorado", xa + 0.2f, xb - 0.2f, 2.3f, 2.5f, G.Z0 - 0.04f, G.Z0 + 0.05f, MDorado, false);
             }
-            // Pilastras del porton y cornisas de cada piso (solo visuales).
-            Caja(deco, "Pilastra_Porton_O", gx0 - 0.9f, gx0, 0f, G.PortonAlto + 1.2f, G.Z0 - 0.35f, G.Z0 + 0.1f, MPilar, false);
-            Caja(deco, "Pilastra_Porton_E", gx1, gx1 + 0.9f, 0f, G.PortonAlto + 1.2f, G.Z0 - 0.35f, G.Z0 + 0.1f, MPilar, false);
-            Caja(deco, "Frontis_Porton", gx0 - 0.9f, gx1 + 0.9f, G.PortonAlto + 0.2f, G.PortonAlto + 1.4f, G.Z0 - 0.45f, G.Z0 + 0.1f, MPilar, false);
+            // Portico de entrada: cuatro columnas, frontis y escalinata (solo visual).
+            foreach (float cx in new[] { 313.5f, 318f, 326f, 330.5f }) Columna(deco, "Portico_Columna", cx, G.Z0 - 1.6f, 0f, 8.4f, 0.6f);
+            Caja(deco, "Portico_Arquitrabe", 311.5f, 332.5f, 8.4f, 9.4f, G.Z0 - 2.6f, G.Z0 + 0.1f, MPilar, false);
+            Caja(deco, "Portico_Frontis", 312.5f, 331.5f, 9.4f, 10.3f, G.Z0 - 2.2f, G.Z0, MMuro, false);
+            Caja(deco, "Portico_Frontis_Alto", 316f, 328f, 10.3f, 11.0f, G.Z0 - 1.8f, G.Z0, MMuro, false);
+            for (int e = 0; e < 4; e++) Caja(deco, "Escalinata_" + e, 310f + e * 0.2f, 334f - e * 0.2f, 0f, 0.14f * (4 - e), G.Z0 - 3.4f + e * 0.55f, G.Z0 - 2.9f + e * 0.55f + 0.5f, MMarmol, false);
+            Caja(deco, "Alfombra_Entrada", 319.6f, 324.4f, 0.09f, 0.12f, G.Z0 - 3.3f, G.Z0 + 0.6f, MAlfombra, false);
             for (int n = 1; n <= 3; n++)
             {
                 float y = G.Nivel(n);
-                Caja(deco, "Cornisa_S_" + n, G.X0 - 0.25f, G.X1 + 0.25f, y - 0.25f, y + 0.1f, G.Z0 - 0.25f, G.Z0, MPilar, false);
-                Caja(deco, "Cornisa_N_" + n, G.X0 - 0.25f, G.X1 + 0.25f, y - 0.25f, y + 0.1f, G.Z1, G.Z1 + 0.25f, MPilar, false);
-                Caja(deco, "Cornisa_O_" + n, G.X0 - 0.25f, G.X0, y - 0.25f, y + 0.1f, G.Z0 - 0.25f, G.Z1 + 0.25f, MPilar, false);
-                Caja(deco, "Cornisa_E_" + n, G.X1, G.X1 + 0.25f, y - 0.25f, y + 0.1f, G.Z0 - 0.25f, G.Z1 + 0.25f, MPilar, false);
+                Caja(deco, "Cornisa_S_" + n, G.X0 - 0.3f, G.X1 + 0.3f, y - 0.3f, y + 0.12f, G.Z0 - 0.3f, G.Z0, MDorado, false);
+                Caja(deco, "Cornisa_N_" + n, G.X0 - 0.3f, G.X1 + 0.3f, y - 0.3f, y + 0.12f, G.Z1, G.Z1 + 0.3f, MDorado, false);
+                Caja(deco, "Cornisa_O_" + n, G.X0 - 0.3f, G.X0, y - 0.3f, y + 0.12f, G.Z0 - 0.3f, G.Z1 + 0.3f, MDorado, false);
+                Caja(deco, "Cornisa_E_" + n, G.X1, G.X1 + 0.3f, y - 0.3f, y + 0.12f, G.Z0 - 0.3f, G.Z1 + 0.3f, MDorado, false);
             }
-            // Ventanas encendidas en las fachadas sur y norte, con marco oscuro.
+            // Ventanales altos con marco dorado.
             for (int n = 0; n < 3; n++)
             {
-                float yc = G.Nivel(n) + 2.9f;
-                foreach (float x in new[] { 305f, 311f, 316f, 328f, 333f, 339f })
+                float yc = G.Nivel(n) + 3.4f;
+                for (float x = 300f; x < 346f; x += 5.4f)
                 {
-                    Caja(deco, "Marco_S", x - 0.9f, x + 0.9f, yc - 1.2f, yc + 1.2f, G.Z0 - 0.12f, G.Z0, MBarrote, false);
-                    Caja(deco, "Ventana_S", x - 0.7f, x + 0.7f, yc - 1.0f, yc + 1.0f, G.Z0 - 0.16f, G.Z0 - 0.1f, Ventana, false);
+                    if (n == 0 && x > gx0 - 3f && x < gx1 + 3f) continue;
+                    Caja(deco, "Marco_S", x - 1.1f, x + 1.1f, yc - 1.7f, yc + 1.7f, G.Z0 - 0.12f, G.Z0, MDorado, false);
+                    Caja(deco, "Ventana_S", x - 0.9f, x + 0.9f, yc - 1.5f, yc + 1.5f, G.Z0 - 0.16f, G.Z0 - 0.1f, Ventana, false);
+                    Caja(deco, "Marco_N", x - 1.1f, x + 1.1f, yc - 1.7f, yc + 1.7f, G.Z1, G.Z1 + 0.12f, MDorado, false);
+                    Caja(deco, "Ventana_N", x - 0.9f, x + 0.9f, yc - 1.5f, yc + 1.5f, G.Z1 + 0.1f, G.Z1 + 0.16f, Ventana, false);
                 }
-                foreach (float x in new[] { 305f, 311f, 316f, 322f, 328f, 333f, 339f })
+                for (float z = 252f; z < 284f; z += 6f)
                 {
-                    Caja(deco, "Marco_N", x - 0.9f, x + 0.9f, yc - 1.2f, yc + 1.2f, G.Z1, G.Z1 + 0.12f, MBarrote, false);
-                    Caja(deco, "Ventana_N", x - 0.7f, x + 0.7f, yc - 1.0f, yc + 1.0f, G.Z1 + 0.1f, G.Z1 + 0.16f, Ventana, false);
-                }
-                foreach (float z in new[] { 254f, 260f, 266f })
-                {
-                    Caja(deco, "Ventana_O", G.X0 - 0.16f, G.X0 - 0.1f, yc - 1.0f, yc + 1.0f, z - 0.7f, z + 0.7f, Ventana, false);
-                    Caja(deco, "Ventana_E", G.X1 + 0.1f, G.X1 + 0.16f, yc - 1.0f, yc + 1.0f, z - 0.7f, z + 0.7f, Ventana, false);
+                    Caja(deco, "Ventana_O", G.X0 - 0.16f, G.X0 - 0.1f, yc - 1.5f, yc + 1.5f, z - 0.9f, z + 0.9f, Ventana, false);
+                    Caja(deco, "Ventana_E", G.X1 + 0.1f, G.X1 + 0.16f, yc - 1.5f, yc + 1.5f, z - 0.9f, z + 0.9f, Ventana, false);
                 }
             }
 
@@ -190,87 +256,96 @@ namespace SP.EditorTools
             for (int i = 0; i < G.Torres.Length; i++)
             {
                 var torre = G.Torres[i];
-                var h = ArmarTorre(escaleras, torre);
-                huecos[torre.nivelBase + 1].Add(h);
+                huecos[torre.nivelBase + 1].Add(ArmarTorre(escaleras, torre));
             }
-            var total = Rect.MinMaxRect(G.X0 + G.Muro, G.Z0 + G.Muro, G.X1 - G.Muro, G.Z1 - G.Muro);
+            var total = Rect.MinMaxRect(xi0, zi0, xi1, zi1);
             for (int n = 1; n <= 3; n++)
             {
                 int c = 0;
                 foreach (var r in RestarHuecos(total, huecos[n]))
-                    Caja(pisos, $"Losa_{n}_{++c}", r.xMin, r.xMax, G.Nivel(n) - G.Losa, G.Nivel(n), r.yMin, r.yMax, n == 3 ? MLosa : MLosa);
+                    Caja(pisos, $"Losa_{n}_{++c}", r.xMin, r.xMax, G.Nivel(n) - G.Losa, G.Nivel(n), r.yMin, r.yMax, MLosa);
             }
-            // Piso de la planta baja (visual).
-            Caja(deco, "Piso_PB", G.X0 + G.Muro, G.X1 - G.Muro, 0.005f, 0.04f, G.Z0 + G.Muro, G.Z1 - G.Muro, MPiso, false);
+            for (int n = 0; n <= 2; n++) PisoDeLujo(deco, n, xi0, xi1, zi0, zi1);
 
-            // ---- planta baja: pilares, mostrador, mamparas y muebles de cobertura ----
-            foreach (float x in new[] { 308f, 316f, 328f, 336f })
-                foreach (float z in new[] { 253f, 266f })
-                    Caja(interior, "PB_Pilar", x - 0.5f, x + 0.5f, 0f, G.Piso - G.Losa, z - 0.5f, z + 0.5f, MPilar);
-            Caja(interior, "PB_Mostrador", 317.5f, 326.5f, 0f, 1.15f, 258.6f, 259.5f, MMueble);
-            Caja(interior, "PB_Mampara_O", 316.8f, 319.4f, 0f, 1.3f, 250.4f, 250.8f, MBarrote);
-            Caja(interior, "PB_Mampara_E", 324.6f, 327.2f, 0f, 1.3f, 250.4f, 250.8f, MBarrote);
-            foreach (var (x, z, w) in new[] { (311f, 258f, 2.4f), (333f, 258f, 2.4f), (311f, 262f, 2.4f), (333f, 262f, 2.4f), (322f, 268f, 3.2f) })
-                Caja(interior, "PB_Sofa", x - w * 0.5f, x + w * 0.5f, 0f, 0.95f, z - 0.5f, z + 0.5f, MMueble);
+            // ---- planta baja: vestibulo con columnas, mostrador, chimenea, alfombra y sofas ----
+            float hPB = G.Piso - G.Losa;
+            foreach (float x in new[] { 308f, 317f, 327f, 336f })
+                foreach (float z in new[] { 254f, 268f })
+                    Columna(interior, "PB_Columna", x, z, 0f, hPB, 0.6f);
+            Caja(deco, "PB_Alfombra", 319f, 325f, 0.17f, 0.2f, zi0, 272f, MAlfombra, false);
+            Caja(interior, "PB_Mostrador", 316f, 328f, 0f, 1.2f, 262.6f, 263.8f, MMueble);
+            Caja(deco, "PB_Mostrador_Tapa", 315.8f, 328.2f, 1.2f, 1.3f, 262.5f, 263.9f, MMarmol, false);
+            Caja(interior, "PB_Mampara_O", 316f, 319f, 0f, 1.4f, 251f, 251.4f, MBarrote);
+            Caja(interior, "PB_Mampara_E", 325f, 328f, 0f, 1.4f, 251f, 251.4f, MBarrote);
+            foreach (var (x, z, w) in new[] { (308f, 262f, 3f), (336f, 262f, 3f), (308f, 274f, 3f), (336f, 274f, 3f), (322f, 280f, 4f) })
+                Caja(interior, "PB_Sofa", x - w * 0.5f, x + w * 0.5f, 0f, 1f, z - 0.55f, z + 0.55f, MMueble);
+            // Chimenea monumental en el muro oeste y cuadros en el muro norte.
+            Caja(deco, "PB_Chimenea", xi0, xi0 + 0.9f, 0f, 3.2f, 280f, 285f, MMarmolOsc, false);
+            Caja(deco, "PB_Chimenea_Fuego", xi0 + 0.9f, xi0 + 1.0f, 0.4f, 1.4f, 281.6f, 283.4f, Mat("Mansion_Fuego", new Color(1f, 0.5f, 0.15f), 3f), false);
+            foreach (float x in new[] { 305f, 313f, 331f, 339f })
+                Caja(deco, "PB_Cuadro", x - 1.4f, x + 1.4f, 2.0f, 4.4f, zi1 - 0.06f, zi1, x < 322f ? MCuadroA : MCuadroB, false);
+            foreach (float z in new[] { 254f, 268f }) Arana(deco, 322f, hPB - 0.2f, z, 1.6f);
+            Arana(deco, 322f, hPB - 0.2f, 278f, 1.2f);
 
-            // ---- primer piso: pasillo central y seis cuartos (tres al norte, tres al sur) ----
+            // ---- primer piso: galeria ancha y seis salones ----
             float y1 = G.Nivel(1), y1t = G.Nivel(2) - G.Losa;
-            // Tabique sur (z 256.7..257) con tres puertas; tabique norte (z 263..263.3) con tres puertas.
             void Tabique(string n, float x0, float x1, float z0, float z1, float[] puertas, float yb, float yt)
             {
                 float cur = x0; int i = 0;
                 var ord = new List<float>(puertas); ord.Sort();
                 foreach (float px in ord)
                 {
-                    Caja(interior, $"{n}_{++i}", cur, px - 1.6f, yb, yt, z0, z1, MTabique);
-                    Caja(interior, $"{n}_Dintel_{i}", px - 1.6f, px + 1.6f, yb + 3.2f, yt, z0, z1, MTabique);
-                    cur = px + 1.6f;
+                    Caja(interior, $"{n}_{++i}", cur, px - 1.8f, yb, yt, z0, z1, MTabique);
+                    Caja(interior, $"{n}_Dintel_{i}", px - 1.8f, px + 1.8f, yb + 3.8f, yt, z0, z1, MTabique);
+                    Caja(deco, $"{n}_Marco_{i}", px - 1.9f, px + 1.9f, yb + 3.8f, yb + 4.0f, z0 - 0.05f, z1 + 0.05f, MDorado, false);
+                    cur = px + 1.8f;
                 }
                 Caja(interior, $"{n}_{++i}", cur, x1, yb, yt, z0, z1, MTabique);
             }
-            Tabique("P1_TabiqueS", G.X0 + G.Muro, 337.8f, 256.7f, 257.0f, new[] { 309f, 322f, 331f }, y1, y1t);
-            Tabique("P1_TabiqueN", 306.2f, G.X1 - G.Muro, 263.0f, 263.3f, new[] { 312f, 324.5f, 337f }, y1, y1t);
-            // Medianeras entre cuartos.
-            foreach (float x in new[] { 315.5f, 328.5f })
-            {
-                Caja(interior, "P1_Medianera_S", x - 0.15f, x + 0.15f, y1, y1t, G.Z0 + G.Muro, 256.7f, MTabique);
-                Caja(interior, "P1_Medianera_N", x - 0.15f, x + 0.15f, y1, y1t, 263.3f, G.Z1 - G.Muro, MTabique);
-            }
-            // Cajones de cobertura en el pasillo.
-            Caja(interior, "P1_Cajon_1", 313.5f, 316.5f, y1, y1 + 1.1f, 258.6f, 259.6f, MMueble);
-            Caja(interior, "P1_Cajon_2", 328.5f, 331.5f, y1, y1 + 1.1f, 260.6f, 261.6f, MMueble);
+            Tabique("P1_TabiqueS", xi0, 336.2f, 258.9f, 259.2f, new[] { 303f, 316f, 329f }, y1, y1t);
+            Tabique("P1_TabiqueN", 307.8f, xi1, 272.8f, 273.1f, new[] { 313f, 326f, 340f }, y1, y1t);
+            foreach (float x in new[] { 309.5f, 322.5f })
+                Caja(interior, "P1_Medianera_S", x - 0.15f, x + 0.15f, y1, y1t, zi0, 258.9f, MTabique);
+            foreach (float x in new[] { 320f, 333.5f })
+                Caja(interior, "P1_Medianera_N", x - 0.15f, x + 0.15f, y1, y1t, 273.1f, zi1, MTabique);
+            Caja(deco, "P1_Alfombra", xi0, xi1, y1 + 0.04f, y1 + 0.07f, 264.4f, 267.6f, MAlfombra, false);
+            Caja(interior, "P1_Cajon_1", 311f, 315f, y1, y1 + 1.2f, 262.4f, 263.6f, MMueble);
+            Caja(interior, "P1_Cajon_2", 330f, 334f, y1, y1 + 1.2f, 268.4f, 269.6f, MMueble);
+            Caja(interior, "P1_Aparador", 322f, 326f, y1, y1 + 1.0f, 259.4f, 260.2f, MMueble);
+            foreach (var (x, z) in new[] { (303f, 252.5f), (316f, 252.5f), (329f, 252.5f), (313.5f, 279f), (327f, 279f), (340.5f, 279f) })
+                Caja(interior, "P1_Mesa", x - 1.4f, x + 1.4f, y1, y1 + 0.95f, z - 0.9f, z + 0.9f, MMueble);
+            for (float x = 305f; x < 345f; x += 13f) Arana(deco, x, y1t - 0.2f, 266f, 1.3f);
 
-            // ---- segundo piso: salon abierto, islas de cobertura y las celdas de los milicianos ----
+            // ---- segundo piso: salon de baile con columnas, barra y las celdas ----
             float y2 = G.Nivel(2), y2t = G.Nivel(3) - G.Losa;
-            foreach (var (x, z) in new[] { (312f, 255f), (330f, 255f), (316f, 259f), (328f, 262f), (334f, 266f) })
-                Caja(interior, "P2_Isla", x - 1.2f, x + 1.2f, y2, y2 + 1.1f, z - 1.0f, z + 1.0f, MMueble);
-            Caja(interior, "P2_Mesa_Central", 319f, 325f, y2, y2 + 1.0f, 256.5f, 258.0f, MMueble);
-            // Tres celdas contra el muro norte (x 307.4..318.6, z 267.4..271.4), frente de barrotes.
-            Caja(interior, "P2_Celdas_Fondo_Piso", 307.4f, 318.6f, y2 + 0.005f, y2 + 0.05f, 267.4f, G.Z1 - G.Muro, MPiso, false);
-            foreach (float x in new[] { 307.4f, 311.1f, 314.9f, 318.6f })
-                Caja(interior, "P2_Celda_Division", x - 0.15f, x + 0.15f, y2, y2t, 267.4f, G.Z1 - G.Muro, MTabique);
-            for (float x = 307.7f; x < 318.5f; x += 0.45f)
-                Caja(interior, "P2_Barrote", x - 0.04f, x + 0.04f, y2, y2 + 3.2f, 267.3f, 267.4f, MBarrote, true);
-            Caja(interior, "P2_Celdas_Dintel", 307.4f, 318.6f, y2 + 3.2f, y2t, 267.25f, 267.45f, MTabique);
+            foreach (float x in new[] { 308f, 320f, 332f, 342f })
+                foreach (float z in new[] { 252f, 266f })
+                    Columna(interior, "P2_Columna", x, z, y2, y2t, 0.6f);
+            Caja(deco, "P2_Alfombra", 306f, 338f, y2 + 0.04f, y2 + 0.07f, 258.4f, 261.6f, MAlfombra, false);
+            Caja(interior, "P2_Barra", 332f, 345f, y2, y2 + 1.2f, 280f, 281.2f, MMueble);
+            Caja(deco, "P2_Barra_Tapa", 331.8f, 345.2f, y2 + 1.2f, y2 + 1.3f, 279.8f, 281.4f, MMarmolOsc, false);
+            foreach (var (x, z) in new[] { (312f, 256f), (330f, 256f), (314f, 262f), (326f, 262f), (338f, 264f) })
+                Caja(interior, "P2_Sofa", x - 1.6f, x + 1.6f, y2, y2 + 1.1f, z - 0.7f, z + 0.7f, MMueble);
+            Caja(interior, "P2_Piano", 320f, 324f, y2, y2 + 1.4f, 252.5f, 254.5f, MBarrote);
+            // Celdas contra el muro norte (x 297..315,4, z 279,5..285,4), frente de barrotes.
+            Caja(interior, "P2_Celdas_Fondo_Piso", 297f, 315.4f, y2 + 0.005f, y2 + 0.05f, 279.5f, zi1, MPiso, false);
+            foreach (float x in new[] { 297f, 301.6f, 306.2f, 310.8f, 315.4f })
+                Caja(interior, "P2_Celda_Division", x - 0.15f, x + 0.15f, y2, y2t, 279.5f, zi1, MTabique);
+            for (float x = 297.4f; x < 315.3f; x += 0.45f)
+                Caja(interior, "P2_Barrote", x - 0.04f, x + 0.04f, y2, y2 + 3.6f, 279.4f, 279.5f, MBarrote, true);
+            Caja(interior, "P2_Celdas_Dintel", 297f, 315.4f, y2 + 3.6f, y2t, 279.3f, 279.6f, MTabique);
+            foreach (float x in new[] { 310f, 322f, 334f }) Arana(deco, x, y2t - 0.2f, 258f, 1.6f);
 
-            // ---- azotea: coberturas sobre el techo, rotulo del helipuerto y luces ----
+            // ---- azotea: coberturas y helipuerto ----
             float y3 = G.Nivel(3);
-            foreach (var (x, z, w, d, h) in new[] { (311f, 255f, 3f, 1.6f, 1.3f), (333f, 256f, 3f, 1.6f, 1.3f), (312f, 266f, 3.4f, 1.8f, 1.4f), (333f, 266f, 3.4f, 1.8f, 1.4f), (322f, 254f, 4f, 1.4f, 1.2f), (322f, 267f, 4f, 1.4f, 1.2f) })
+            foreach (var (x, z, w, d, h) in new[] { (308f, 254f, 3.6f, 1.8f, 1.3f), (336f, 254f, 3.6f, 1.8f, 1.3f), (306f, 278f, 3.6f, 1.8f, 1.3f), (338f, 278f, 3.6f, 1.8f, 1.3f), (322f, 252f, 4.4f, 1.5f, 1.2f), (322f, 281f, 4.4f, 1.5f, 1.2f), (312f, 266f, 3f, 1.6f, 1.2f), (332f, 266f, 3f, 1.6f, 1.2f) })
                 Caja(interior, "Azotea_Equipo", x - w * 0.5f, x + w * 0.5f, y3, y3 + h, z - d * 0.5f, z + d * 0.5f, MBarrote);
             var disco = GameObject.CreatePrimitive(PrimitiveType.Cylinder); disco.name = "Azotea_Helipuerto";
             Object.DestroyImmediate(disco.GetComponent<Collider>());
             disco.transform.SetParent(deco, false);
-            disco.transform.position = new Vector3(322f, y3 + 0.02f, 260f); disco.transform.localScale = new Vector3(9f, 0.01f, 9f);
+            disco.transform.position = new Vector3(322f, y3 + 0.02f, 266f); disco.transform.localScale = new Vector3(11f, 0.01f, 11f);
             disco.GetComponent<MeshRenderer>().sharedMaterial = Mat("Mansion_Helipuerto", new Color(0.85f, 0.75f, 0.2f));
             disco.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
-            for (int n = 0; n <= 2; n++)
-                foreach (var (x, z) in new[] { (309f, 254f), (322f, 254f), (335f, 254f), (309f, 266f), (322f, 266f), (335f, 266f) })
-                {
-                    var g = new GameObject($"Luz_{n}"); g.transform.SetParent(deco, false);
-                    g.transform.position = new Vector3(x, G.Nivel(n) + 4.6f, z);
-                    var l = g.AddComponent<Light>(); l.type = LightType.Point; l.range = 11f; l.intensity = 0.9f; l.color = new Color(1f, 0.92f, 0.78f); l.shadows = LightShadows.None;
-                    Caja(deco, "Panel_Luz", x - 0.6f, x + 0.6f, G.Nivel(n) + 4.85f, G.Nivel(n) + 4.95f, z - 0.3f, z + 0.3f, MLuz, false);
-                }
             return raiz;
         }
 
@@ -293,7 +368,7 @@ namespace SP.EditorTools
                     foreach (var tr in raiz.GetComponentsInChildren<Transform>(true))
                     {
                         string n = tr.name;
-                        bool candidato = n.StartsWith("Radio_") || n.StartsWith("Rotulo_RADIO") || n.StartsWith("Campanario") || n.StartsWith("Farola") || n.StartsWith("Auto_Viejo") || n.StartsWith("Lampara_x") || n.StartsWith("Pantalla_x") || n.StartsWith("Op_EquipoAire") || n == "Plaza_Banco";
+                        bool candidato = n.StartsWith("Ayuntamiento") || n.StartsWith("Rotulo_AYUNTAMIENTO") || n.StartsWith("Radio_") || n.StartsWith("Rotulo_RADIO") || n.StartsWith("Campanario") || n.StartsWith("Farola") || n.StartsWith("Auto_Viejo") || n.StartsWith("Lampara_x") || n.StartsWith("Pantalla_x") || n.StartsWith("Op_EquipoAire") || n == "Plaza_Banco";
                         if (!candidato || !tr.gameObject.activeSelf) continue;
                         var rr = tr.GetComponent<Renderer>(); var cc = tr.GetComponent<Collider>();
                         Vector3 c = rr != null ? rr.bounds.center : cc != null ? cc.bounds.center : tr.position;
