@@ -23,6 +23,11 @@ namespace SP.Operacion
         public const int CohetesPorPasada = 3, DanoDeCohete = 80, DanoDeMetralla = 6;
         public const float RadioDeCohete = 4.5f, AlcanceDeMetralla = 70f;
 
+        public const float FactorDeVueloEnLaAzotea = 0.4f, SuspensionMinima = 4f, SuspensionMaxima = 8f;
+        float proximaSuspension, suspendidoHasta;
+        public bool Suspendido { get; private set; }
+        public int Suspensiones { get; private set; }
+
         public enum Estado { Dormido, Entrando, Orbitando, Cinematica, Cayendo, Muerto, Desplegando }
 
         public static HelicopteroEnemigo Instancia { get; private set; }
@@ -355,12 +360,28 @@ namespace SP.Operacion
             // Orbita alrededor del tanque (que avanza): el angulo gira a VelocidadDeVuelo / radio.
             float r0 = radioPropio > 0f ? radioPropio : RadioDeOrbita;
             float radio = Situacion == Estado.Entrando ? Mathf.Lerp(r0 * 2.2f, r0, Mathf.Clamp01(Mathf.InverseLerp(0f, 5f, Time.time - (proximaPasada - 4f)))) : r0;
-            angulo += (VelocidadDeVuelo / Mathf.Max(20f, radio)) * dt;
+            // Bug #005 (build): los helicopteros de la azotea (con ancla) se movian muy rapido y sin parar. Ahora vuelan a ~40 % y cada tanto se
+            // QUEDAN suspendidos 4-8 s disparando rafagas largas (ahi son un blanco facil); luego retoman la orbita lenta.
+            bool suspendido = false;
+            if (ancla != null && Situacion == Estado.Orbitando)
+            {
+                if (proximaSuspension <= 0f) proximaSuspension = Time.time + Random.Range(2f, 5f);
+                if (Time.time >= proximaSuspension && Time.time >= suspendidoHasta)
+                {
+                    suspendidoHasta = Time.time + Random.Range(SuspensionMinima, SuspensionMaxima);
+                    proximaSuspension = suspendidoHasta + Random.Range(7f, 12f);
+                    Suspensiones++;
+                }
+                suspendido = Time.time < suspendidoHasta;
+            }
+            Suspendido = suspendido;
+            float vuelo = ancla != null ? VelocidadDeVuelo * FactorDeVueloEnLaAzotea : VelocidadDeVuelo;
+            if (!suspendido) angulo += (vuelo / Mathf.Max(20f, radio)) * dt;
             float alto = Mathf.Lerp(AlturaMinima, AlturaMaxima, 0.5f + 0.5f * Mathf.Sin(Time.time * 0.45f));
             var meta = centro + new Vector3(Mathf.Cos(angulo), 0f, Mathf.Sin(angulo)) * radio;
             meta.y = alto + desnivel;
             var antes = transform.position;
-            transform.position = Vector3.MoveTowards(transform.position, meta, (VelocidadDeVuelo + Mathf.Abs(vTanque)) * 1.15f * dt);
+            transform.position = Vector3.MoveTowards(transform.position, meta, (vuelo + Mathf.Abs(vTanque)) * 1.15f * dt);
             var vel = (transform.position - antes) / Mathf.Max(0.0001f, dt);
             VelocidadActual = vel.magnitude;
             // Mira al tanque, cabeceando hacia adelante segun la velocidad y ladeado en la curva.
@@ -423,7 +444,11 @@ namespace SP.Operacion
             var objetivo = BlancoDeMetralla();
             var origen = transform.position + transform.forward * 1.2f + Vector3.down * 0.7f;
             if (Vector3.Distance(origen, objetivo) > AlcanceDeMetralla) return;
-            if (Time.time >= pausaHasta && Time.time >= rafagaHasta) { rafagaHasta = Time.time + 1.0f; pausaHasta = rafagaHasta + Random.Range(1.2f, 2.2f); }
+            if (Time.time >= pausaHasta && Time.time >= rafagaHasta)
+            {
+                if (Suspendido) { rafagaHasta = Time.time + 2.2f; pausaHasta = rafagaHasta + Random.Range(0.3f, 0.7f); }   // suspendido: rafagas largas
+                else { rafagaHasta = Time.time + 1.0f; pausaHasta = rafagaHasta + Random.Range(1.2f, 2.2f); }
+            }
             if (Time.time >= proximoTiroMg && Time.time < rafagaHasta)
             {
                 proximoTiroMg = Time.time + 0.1f;

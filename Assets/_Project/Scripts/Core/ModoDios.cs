@@ -6,7 +6,7 @@ using SP.Vehicles;
 namespace SP.Core
 {
     // MODO DIOS ([F4]): nadie del bando del jugador recibe dano. Ni el soldado que manejas,
-    // ni la escuadra, ni el civil, ni el tanque propio. Los enemigos siguen siendo normales.
+    // ni la escuadra, ni el civil, y el tanque propio pierde vida pero queda en 1 (nunca lo destruyen). Los enemigos siguen siendo normales.
     // Sirve para probar, para mirar el mapa sin morir y para practicar ordenes.
     public static class ModoDios
     {
@@ -55,8 +55,18 @@ namespace SP.Core
         {
             if (!Activo || h == null) return false;
             if (h.TryGetComponent<Soldier>(out var s)) return s.Team == TeamId.Player;
-            if (h.TryGetComponent<Vehicle>(out var v)) return v.Bando == TeamId.Player;
+            // Bug #004 (build): con el modo dios el tanque propio no mostraba ningun dano ("no me quitan vida"). Ahora los vehiculos del
+            // jugador SI pierden vida (se ve la barra), pero no pasan de 1 punto: los golpes se topan en TopeDeDano y el guion puede destruirlos igual.
+            if (h.TryGetComponent<Vehicle>(out var v)) return v.Bando == TeamId.Player && h.Current <= 1;
             return false;
+        }
+
+        // Dano que puede recibir de verdad esta vida con el modo dios activo: un vehiculo del jugador baja hasta 1 y ahi se frena.
+        public static int TopeDeDano(Health h, int amount)
+        {
+            if (!Activo || h == null || amount <= 0) return amount;
+            if (h.TryGetComponent<Vehicle>(out var v) && v.Bando == TeamId.Player) return Mathf.Max(0, Mathf.Min(amount, h.Current - 1));
+            return amount;
         }
     }
 

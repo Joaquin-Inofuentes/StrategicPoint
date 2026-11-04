@@ -198,6 +198,25 @@ namespace SP.UI
             if (seatBadgeLabel != null) seatBadgeLabel.text = RoleLabel(role);
         }
 
+        Text textoDeVida;
+
+        void CrearTextoDeVida()
+        {
+            var fondo = healthFill != null ? healthFill.transform.parent as RectTransform : null;
+            if (fondo == null) return;
+            var go = new GameObject("VidaTexto", typeof(RectTransform), typeof(Text));
+            go.transform.SetParent(fondo, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = new Vector2(0f, 1f); rt.anchorMax = new Vector2(1f, 1f); rt.pivot = new Vector2(0.5f, 0f);
+            rt.anchoredPosition = new Vector2(0f, 2f); rt.sizeDelta = new Vector2(0f, 22f);
+            textoDeVida = go.GetComponent<Text>();
+            textoDeVida.font = gunnerLabel != null ? gunnerLabel.font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            textoDeVida.fontSize = gunnerLabel != null ? Mathf.Max(12, gunnerLabel.fontSize - 2) : 14;
+            textoDeVida.alignment = TextAnchor.LowerCenter; textoDeVida.color = Color.white; textoDeVida.raycastTarget = false;
+            textoDeVida.horizontalOverflow = HorizontalWrapMode.Overflow; textoDeVida.verticalOverflow = VerticalWrapMode.Overflow;
+            go.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.9f);
+        }
+
         public void UpdateFrom(Vehicle vehicle, VehicleMotor motor, bool braking = false)
         {
             if (vehicle == null || motor == null)
@@ -251,6 +270,9 @@ namespace SP.UI
                 var hp = vehicle.Health;
                 healthFill.fillAmount = hp.MaxHealth > 0 ? (float)hp.Current / hp.MaxHealth : 0f;
                 healthFill.color = Color.Lerp(new Color(0.85f, 0.2f, 0.15f), new Color(0.4f, 0.85f, 0.45f), healthFill.fillAmount);
+                // Bug #004 (build, "datos visibles"): la barra verde no decia que era la vida del tanque ni cuanto quedaba. Rotulo con el numero.
+                if (textoDeVida == null) CrearTextoDeVida();
+                if (textoDeVida != null) textoDeVida.text = $"VIDA DEL TANQUE  {hp.Current} / {hp.MaxHealth}  ({Mathf.RoundToInt(healthFill.fillAmount * 100f)} %)";
             }
 
             if (gunnerLabel != null && !minimo)

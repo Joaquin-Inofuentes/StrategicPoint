@@ -33,6 +33,9 @@ namespace SP.Operacion
             if (b.min.y < 3f) return false;                                                // calle, planta baja y pies de los muros
             if (b.center.x < G.X0 - 1f || b.center.x > G.X1 + 1f || b.center.z < G.Z0 - 1f || b.center.z > G.Z1 + 1f) return false;
             for (var t = r.transform; t != null; t = t.parent) if (t.name == "Casco") return false;   // los muros exteriores quedan siempre
+            // Bug #006 (build, "no se ve el helicoptero"): el helicoptero de rescate espera a 32 m, por encima del techo, y se ocultaba con la mansion.
+            // Los vehiculos y los helicopteros nunca son parte del edificio.
+            if (r.GetComponentInParent<SP.Vehicles.Vehicle>() != null || r.GetComponentInParent<HelicopteroEnemigo>() != null) return false;
             return true;
         }
 
@@ -64,6 +67,7 @@ namespace SP.Operacion
             var cam = CamaraPrincipal.Actual;
             if (d == null || !d.MansionActiva || yo == null || cam == null) { Restaurar(); return; }
             int nivel = G.NivelDe(yo.transform.position);
+            if (nivel >= 3) { Restaurar(); return; }   // en la azotea no hay nada por encima que recortar
             var rig = CameraRig.Instance;
             bool rts = rig != null && rig.Mode == ControlMode.Rts;
             float techo = nivel >= 0 ? G.Nivel(nivel + 1) : 0f;

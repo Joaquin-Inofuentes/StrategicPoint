@@ -66,7 +66,9 @@ namespace SP.EditorTools
                 var mfh = huerfano.GetComponent<MeshFilter>();
                 if (mfh == null || mfh.sharedMesh == null || mfh.sharedMesh.name != "Cube" || huerfano.transform.Find(Raiz) != null) continue;
                 string claveH = Regex.Replace(huerfano.transform.name, @"[\s_()0-9]+$", "");
-                if (EsMuro(claveH, huerfano.transform.localScale)) huerfano.enabled = true;
+                // Bug #003 (build, "aun hay casas rotas"): Edificio_3..7 de la autopista quedaron con el cubo apagado y sin muros: solo se veian zocalo,
+                // cornisa y pilares flotando. Los edificios conservan su cubo encendido (ver la cabecera), asi que un edificio apagado tambien se rescata.
+                if (EsMuro(claveH, huerfano.transform.localScale) || EsEdificio(claveH, huerfano.transform.localScale)) huerfano.enabled = true;
             }
 
             var rocas = MallasDeRoca();

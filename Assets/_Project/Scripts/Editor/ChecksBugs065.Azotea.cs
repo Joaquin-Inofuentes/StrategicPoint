@@ -142,5 +142,74 @@ namespace SP.EditorTools
             W8Ok(ref ok, plantas != null && plantas.NivelMostrado == 2 && plantas.Ocultos > 20, sb, $"vista tactica: se muestra la planta {(plantas != null ? plantas.NivelMostrado : -9)} y se ocultan {(plantas != null ? plantas.Ocultos : 0)} piezas de arriba");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
+        // ---------------------------------------------------------------- 408u bugs de la build (#003-#006 de LocalLow): casas, vida del tanque, helicopteros
+        static IEnumerator Bug408u()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(5);
+            foreach (var x in Esperar(1.0f)) yield return x;
+            var d = OperacionDirector.Instancia;
+            // #003 "aun hay casas rotas": todo Edificio_N con collider dibuja su cuerpo.
+            int edificios = 0, apagados = 0;
+            foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include))
+            {
+                if (!t.name.StartsWith("Edificio_") || t.name.StartsWith("Edificio_Borde")) continue;
+                var mr = t.GetComponent<MeshRenderer>(); if (mr == null || t.GetComponent<BoxCollider>() == null) continue;
+                edificios++; if (!mr.enabled) apagados++;
+            }
+            W8Ok(ref ok, edificios >= 5 && apagados == 0, sb, $"{edificios} edificios de la autopista dibujan su cuerpo ({apagados} apagados)");
+            // #006 "no se ve el helicoptero": el helicoptero del director tiene fuselaje (no solo la tripulacion) y no queda un duplicado huerfano.
+            int piezas = 0; foreach (var r in d.heli.GetComponentsInChildren<MeshRenderer>(true)) if (r.name == "Cola" || r.name == "Piso" || r.name == "Cabina_Cristal" || r.name == "Pala_1" || r.name == "Nariz") piezas++;
+            int duplicados = 0; foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include)) if (t.name == "Helicoptero_Extraccion" && t != d.heli && t.childCount > 0) duplicados++;
+            W8Ok(ref ok, piezas >= 5 && duplicados == 0, sb, $"el helicoptero de rescate tiene fuselaje y rotor ({piezas} piezas clave, {duplicados} duplicados)");
+            // #006: en la azotea (o en vista tactica) el recorte de plantas no oculta al helicoptero.
+            d.SaltarALaAzotea();
+            foreach (var x in Esperar(1.5f)) yield return x;
+            d.heli.gameObject.SetActive(true); d.heli.position = new Vector3(322f, 35.5f, 266f);
+            var rig = SP.CameraSystem.CameraRig.Instance;
+            rig.SetMode(SP.CameraSystem.ControlMode.Rts, G.CentroDeLaAzotea);
+            foreach (var x in Esperar(1.0f)) yield return x;
+            int ocultosDelHeli = 0; foreach (var r in d.heli.GetComponentsInChildren<MeshRenderer>(true)) if (r.shadowCastingMode == UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly) ocultosDelHeli++;
+            W8Ok(ref ok, ocultosDelHeli == 0, sb, $"el recorte de plantas no oculta al helicoptero ({ocultosDelHeli} piezas ocultas)");
+            rig.SetMode(SP.CameraSystem.ControlMode.Fps);
+            // #005 helicopteros de la azotea: mas lentos y con pausas suspendidos de 4 a 8 s.
+            ModoDios.Poner(true);
+            var campo = typeof(OperacionDirector).GetField("tAzotea", NoPublico);
+            campo.SetValue(d, OperacionDirector.CuandoCuelgan[0] - 0.2f);
+            foreach (var x in Esperar(1.0f)) yield return x;
+            var h = d.HelisDeLaAzotea.Count > 0 ? d.HelisDeLaAzotea[0] : null;
+            float limite = Time.realtimeSinceStartup + 40f;
+            while (h != null && Time.realtimeSinceStartup < limite && h.SoldadosBajados < h.SoldadosPedidos) yield return null;
+            float velMax = 0f, finSusp = 0f, inicioSusp = -1f, mayorSusp = 0f; bool vistoSusp = false;
+            limite = Time.realtimeSinceStartup + 75f;
+            while (h != null && Time.realtimeSinceStartup < limite && !vistoSusp)
+            {
+                if (h.Vehiculo != null) h.Vehiculo.Health.Invulnerable = true;   // se mide el vuelo, no la punteria de la escuadra
+                if (h.Situacion == HelicopteroEnemigo.Estado.Orbitando) velMax = Mathf.Max(velMax, h.VelocidadActual);
+                if (h.Suspendido) { if (inicioSusp < 0f) inicioSusp = Time.time; mayorSusp = Mathf.Max(mayorSusp, Time.time - inicioSusp); finSusp = Time.time; }
+                else if (inicioSusp >= 0f) { vistoSusp = true; }
+                yield return null;
+            }
+            W8Ok(ref ok, h != null && vistoSusp && mayorSusp >= 3.5f && mayorSusp <= 9f, sb, $"el helicoptero se queda suspendido {mayorSusp:0.0} s (4 a 8 s)");
+            W8Ok(ref ok, velMax > 0.5f && velMax <= HelicopteroEnemigo.VelocidadDeVuelo * HelicopteroEnemigo.FactorDeVueloEnLaAzotea * 1.2f, sb, $"vuela a {velMax:0.0} m/s como maximo (antes {HelicopteroEnemigo.VelocidadDeVuelo * 1.15f:0.0})");
+            // #004 "no me quitan vida": con el modo dios el tanque propio baja de vida pero nunca pasa de 1.
+            SP.Vehicles.Vehicle tanque = null;
+            foreach (var v in Object.FindObjectsByType<SP.Vehicles.Vehicle>(FindObjectsInactive.Include)) if (v.name.StartsWith("Tanque")) { tanque = v; break; }
+            if (tanque != null)
+            {
+                var bandoAntes = tanque.Bando; tanque.MarcarBando(TeamId.Player); var ajuste = tanque.AjusteDeDano; tanque.AjusteDeDano = null; int piso = tanque.PisoDeVida01 > 0f ? 1 : 0; tanque.PisoDeVida01 = 0f;
+                tanque.Health.RestaurarVida(tanque.Health.MaxHealth);
+                ModoDios.Poner(true);
+                tanque.TakeDamage(100, -1);
+                int tras1 = tanque.Health.Current;
+                tanque.TakeDamage(100000, -1);
+                int tras2 = tanque.Health.Current;
+                W8Ok(ref ok, tras1 < tanque.Health.MaxHealth && tras2 == 1 && !tanque.IsDestroyed, sb, $"modo dios: el tanque baja ({tanque.Health.MaxHealth} -> {tras1}) y queda en {tras2} sin destruirse");
+                tanque.Health.RestaurarVida(tanque.Health.MaxHealth); tanque.MarcarBando(bandoAntes); tanque.AjusteDeDano = ajuste;
+            }
+            else W8Ok(ref ok, false, sb, "no se encontro el tanque");
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
     }
 }

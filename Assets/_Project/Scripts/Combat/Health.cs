@@ -170,6 +170,8 @@ namespace SP.Combat
                 GameLog.Line("HEADSHOT");
             }
 
+            amount = ModoDios.TopeDeDano(this, amount);   // [F4]: el tanque propio baja pero no pasa de 1
+            if (amount <= 0) return;
             Current = Mathf.Clamp(Current - amount, 0, maxHealth);
             LastAttackerId = attackerId;
             EventBus.Instance.Publish(new DamageTakenEvent(ActorId, attackerId, amount, Current));
