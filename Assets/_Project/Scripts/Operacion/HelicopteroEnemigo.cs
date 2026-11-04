@@ -528,7 +528,7 @@ namespace SP.Operacion
         public void ExplotarEnElAire()
         {
             if (Situacion == Estado.Muerto) return;
-            if (Situacion != Estado.Cayendo) { Situacion = Estado.Cayendo; AlDerribarse?.Invoke(); }
+            if (Situacion != Estado.Cayendo) { SoltarALosQueCuelgan(); Situacion = Estado.Cayendo; AlDerribarse?.Invoke(); }
             if (Vehiculo != null && !Vehiculo.IsDestroyed) Vehiculo.DestruirPorGuion();
             Estallar();
         }

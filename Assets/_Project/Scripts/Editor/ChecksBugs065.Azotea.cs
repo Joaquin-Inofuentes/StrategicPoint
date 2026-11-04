@@ -37,6 +37,8 @@ namespace SP.EditorTools
             float limite = Time.realtimeSinceStartup + 40f;
             while (h != null && Time.realtimeSinceStartup < limite && h.SoldadosBajados < h.SoldadosPedidos) { if (h.Vehiculo != null) h.Vehiculo.Health.Invulnerable = true; yield return null; }   // #012: ahora se lo puede derribar al bajar tropas; aca se mide el despliegue, no la punteria
             foreach (var x in Esperar(3.0f)) { if (h != null && h.Vehiculo != null && h.Situacion == HelicopteroEnemigo.Estado.Desplegando) h.Vehiculo.Health.Invulnerable = true; yield return x; }
+            limite = Time.realtimeSinceStartup + 10f;
+            while (h != null && h.Situacion == HelicopteroEnemigo.Estado.Desplegando && Time.realtimeSinceStartup < limite) { if (h.Vehiculo != null) h.Vehiculo.Health.Invulnerable = true; yield return null; }
             if (h != null && h.Vehiculo != null && h.Situacion != HelicopteroEnemigo.Estado.Desplegando) h.Vehiculo.Health.Invulnerable = false;
             W8Ok(ref ok, h != null && h.SoldadosBajados == h.SoldadosPedidos && h.SoldadosPedidos > 0, sb, $"bajo a todos por las cuerdas ({(h != null ? h.SoldadosBajados : 0)}/{(h != null ? h.SoldadosPedidos : 0)})");
             int enElTecho = 0;

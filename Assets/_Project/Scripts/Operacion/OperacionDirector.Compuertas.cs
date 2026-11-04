@@ -19,7 +19,7 @@ namespace SP.Operacion
         sealed class CompuertaDeTorre
         {
             public GameObject go; public BoxCollider col; public UnityEngine.AI.NavMeshObstacle obs;
-            public int torre, nivelBase; public bool subida, cerrada = true;
+            public int torre, nivelBase; public bool subida, cerrada = true, trabada;
         }
 
         readonly List<CompuertaDeTorre> compuertasDeTorre = new List<CompuertaDeTorre>();
@@ -28,6 +28,17 @@ namespace SP.Operacion
         public int CompuertasTotales => compuertasDeTorre.Count;
         public bool CompuertaDeSubidaCerrada(int piso) { foreach (var c in compuertasDeTorre) if (c.subida && c.nivelBase == piso && c.cerrada) return true; return false; }
         public bool CompuertaDeBajadaCerrada(int piso) { foreach (var c in compuertasDeTorre) if (!c.subida && c.nivelBase + 1 == piso && c.cerrada) return true; return false; }
+
+        bool HayEnemigoEnLaTorre(int torre)
+        {
+            for (int i = 0; i < enemigosMansion.Count; i++)
+            {
+                var e = enemigosMansion[i];
+                if (e == null || e.Health == null || !e.Health.IsAlive) continue;
+                if (G.EnTorre(e.transform.position, out int idx, 0.5f) && idx == torre) return true;
+            }
+            return false;
+        }
 
         void QuitarCompuertas()
         {
@@ -85,8 +96,16 @@ namespace SP.Operacion
             if (piso != pisoDeLasCompuertas) { pisoDeLasCompuertas = piso; inicioDelPiso = relojMansion; }
             bool forzar = relojMansion - inicioDelPiso > SegundosParaForzarCompuerta;
             bool pisoLimpio = faltan == 0 && (piso != 2 || MilicianosLiberados);
+            // La torre es un zigzag (los dos tramos suben): la reja de BAJADA esta en la boca del tramo B, por donde tambien se sale al subir. Solo se
+            // cierra cuando el jugador ya esta en el piso de arriba y fuera de toda torre (se traba: ya no se reabre).
+            bool yoAfuera = yo != null && !G.EnTorre(yo.transform.position, out _, 0.8f);
             foreach (var c in compuertasDeTorre)
-                Poner(c, c.subida ? (c.nivelBase == piso && !pisoLimpio && !forzar) : piso >= c.nivelBase + 1);
+            {
+                bool dentro = HayEnemigoEnLaTorre(c.torre);   // los que salen del rellano (bajan o suben) no se quedan encerrados por la reja
+                if (c.subida) { Poner(c, c.nivelBase == piso && !pisoLimpio && !forzar && !dentro); continue; }
+                if (!c.trabada && piso >= c.nivelBase + 1 && yoAfuera && yo.transform.position.y >= G.Nivel(c.nivelBase + 1) - 0.3f) c.trabada = true;
+                Poner(c, c.trabada && !dentro);
+            }
             // Aviso cuando el que manejas se para frente a una reja de subida cerrada.
             if (yo != null && hud != null)
                 foreach (var c in compuertasDeTorre)
@@ -112,17 +131,19 @@ namespace SP.Operacion
         {
             if (heli == null || Time.time < proximaAyudaAlHeli) return;
             proximaAyudaAlHeli = Time.time + 1.5f;
-            if (heli.position.y < 10f) return;   // el helicoptero no esta en la azotea: nada que subir
+            // El helicoptero de rescate espera en el aire (pad + 16 m): la altura del techo es la del helipad, no la del helicoptero.
+            float techo = heliAterrizaje != null ? heliAterrizaje.position.y : heli.position.y;
+            if (techo < 10f) return;   // el helicoptero no esta en la azotea: nada que subir
             foreach (var a in AliadosAEvacuar(false))
             {
                 if (a == null || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy || a.Brain == null || a.Brain.IsPossessedByPlayer) continue;
-                if (a.transform.position.y >= heli.position.y - 4f) { rezagadosDelHeli.Remove(a.Id); continue; }
+                if (a.transform.position.y >= techo - 4f) { rezagadosDelHeli.Remove(a.Id); continue; }
                 rezagadosDelHeli.TryGetValue(a.Id, out float t);
                 t += 1.5f;
                 if (t < SegundosDeRezagoAlHeli) { rezagadosDelHeli[a.Id] = t; continue; }
                 rezagadosDelHeli.Remove(a.Id);
                 float ang = UnityEngine.Random.value * Mathf.PI * 2f, r = UnityEngine.Random.Range(3.5f, 7f);
-                var destino = heli.position + new Vector3(Mathf.Cos(ang) * r, -0.3f, Mathf.Sin(ang) * r);
+                var destino = new Vector3(heli.position.x + Mathf.Cos(ang) * r, techo - 0.3f, heli.position.z + Mathf.Sin(ang) * r);
                 if (UnityEngine.AI.NavMesh.SamplePosition(destino, out var h, 3f, UnityEngine.AI.NavMesh.AllAreas)) destino = h.position;
                 ColocarEnElPiso(a.transform, destino);
                 a.Brain.CancelOrder(); a.Brain.ReactivarNavegacion();

@@ -80,7 +80,13 @@ namespace SP.Presentation
         {
             nombres.Clear();
             var previo = RaicesDeEscena.Buscar(NombreRaiz);
-            if (previo != null) { if (Application.isPlaying) Object.Destroy(previo); else Object.DestroyImmediate(previo); }
+            if (previo != null)
+            {
+                var mf = previo.GetComponent<MeshFilter>(); var mrPrev = previo.GetComponent<MeshRenderer>();
+                if (mf != null && mf.sharedMesh != null) { if (Application.isPlaying) Object.Destroy(mf.sharedMesh); else Object.DestroyImmediate(mf.sharedMesh); }
+                if (mrPrev != null && mrPrev.sharedMaterial != null) { if (Application.isPlaying) Object.Destroy(mrPrev.sharedMaterial); else Object.DestroyImmediate(mrPrev.sharedMaterial); }
+                if (Application.isPlaying) Object.Destroy(previo); else Object.DestroyImmediate(previo);
+            }
             Raiz = null;
 
             var verts = new List<Vector3>();

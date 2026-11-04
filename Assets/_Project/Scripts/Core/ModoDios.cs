@@ -16,7 +16,7 @@ namespace SP.Core
         public static event System.Action<bool> Cambio;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { Activo = false; Cambio = null; }
+        static void Reiniciar() { Activo = false; Cambio = null; VelocidadActiva = true; }
 
         public static void Poner(bool activo)
         {

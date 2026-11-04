@@ -238,7 +238,7 @@ namespace SP.UI
                 if (speedLabel != null && speedLabel.gameObject.activeSelf) speedLabel.gameObject.SetActive(false);
                 if (gunnerLabel != null)
                 {
-                    var torre = vehicle.GetComponentInChildren<SP.Vehicles.TurretWeapon>(true);
+                    var torre = vehicle.TorretaCanon != null ? vehicle.TorretaCanon : vehicle.GetComponentInChildren<SP.Vehicles.TurretWeapon>(true);
                     if (torre != null)
                     {
                         bool lista = torre.CooldownFraction01 >= 0.999f;

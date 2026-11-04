@@ -716,6 +716,10 @@ namespace SP.Operacion
             if (teletransportar && iDestino < entradas.Length && entradas[iDestino] != null) TeletransportarEscuadra(entradas[iDestino].position, entradas[iDestino].rotation);
             if (destino == FaseOperacion.Extraer)
             {
+                // Reintento / salto de fase en el mismo Play: la extraccion arranca de cero (contadores, subida a medias, ayuda al heli).
+                EnemigosDeExtraccionCreados = 0; TandasDeExtraccion = 0; enemigosDeExtraccion.Clear(); proximaTandaDeExtraccion = 0f; indiceEntradaExtraccion = 0;
+                segundosTodosEnZona = 0f; rezagadosDelHeli.Clear(); AliadosAyudadosAlHeli = 0; proximaAyudaAlHeli = 0f;
+                if (SubiendoAlHeli) { SubiendoAlHeli = false; TerminarEmbarque(); }
                 // Atajo de pruebas: el helicoptero ya esta posado en la zona de aterrizaje. Con la mansion en juego esa zona es el techo (bug #339: F10
                 // lo dejaba en la plaza): la escuadra y los milicianos tambien aparecen arriba.
                 bool enElTecho = Application.isPlaying && PuedeUsarLaMansion();

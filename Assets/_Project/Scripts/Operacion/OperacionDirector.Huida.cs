@@ -296,7 +296,7 @@ namespace SP.Operacion
                 {
                     if (c == null || c.isTrigger || !c.enabled || c is TerrainCollider || System.Array.IndexOf(propios, c) >= 0) continue;
                     var otro = c.GetComponentInParent<Vehicle>();
-                    if (otro == tanque) continue;
+                    if (otro == tanque || (otro != null && !otro.IsDestroyed)) continue;   // vehiculos vivos (camionetas) no pierden su collider
                     var sol = c.GetComponentInParent<Soldier>();
                     if (sol != null && sol.Team == TeamId.Player && sol.Health.IsAlive) continue;   // la escuadra del jugador no se toca
                     var b = c.bounds;

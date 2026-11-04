@@ -62,7 +62,10 @@ namespace SP.Operacion
             MansionActiva = true;
             EtapaMansion = EtapaDeLaMansion.Plaza;
             hojasDelPorton = FindObjectsByType<PortonDeMansion>();
+            foreach (var e in enemigosMansion) if (e != null) Destroy(e.gameObject);   // una corrida anterior en el mismo Play no deja enemigos huerfanos fuera de la cuenta
+            if (HeliDeLaAzotea != null) Destroy(HeliDeLaAzotea.gameObject);
             enemigosMansion.Clear(); pendientesMansion.Clear(); prisioneros.Clear();
+            proximaSincronizacion = 0f; bajoElNivelDesde = 0f;
             relojMansion = 0f; proximoSpawnPlaza = 1.5f; plazaRestantes = 8; ondasDeAzotea = 0; tAzotea = 0f;
             porton = false; azoteaIniciada = false; segundoIniciado = false; MilicianosLiberados = false; CineDeMansionEnCurso = false;
             MansionEnemigosCreados = 0; HeliDeLaAzotea = null;
@@ -105,6 +108,7 @@ namespace SP.Operacion
         {
             if (!MansionActiva) return;
             MansionActiva = false;
+            QuitarCompuertas();   // en Extraer la escuadra tiene que poder subir por las torres hasta el techo
             if (anclaDelHeli != null) Destroy(anclaDelHeli.gameObject);
         }
 
@@ -252,7 +256,7 @@ namespace SP.Operacion
                     }
                     int restan = plazaRestantes + faltan;
                     if (hud != null) hud.Objetivo(TituloObjetivo(5, "TOMAR LA MANSION"), $"Plaza: elimina a los enemigos que entran por las calles · {restan} restantes", 0.05f, new Color(1f, 0.55f, 0.25f));
-                    if (plazaRestantes == 0 && faltan == 0) AbrirElPorton();
+                    if (plazaRestantes == 0 && VivosDeLaMansion() + pendientesMansion.Count == 0) AbrirElPorton();   // 'faltan' se calculo antes de spawnear el ultimo
                     break;
                 }
                 case EtapaDeLaMansion.PlantaBaja:
