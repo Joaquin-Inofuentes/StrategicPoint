@@ -162,6 +162,9 @@ namespace SP.Operacion
         // 1,7 m del techo, y sube despacio (grua) mientras el helicoptero se va sobre la ciudad iluminada; los enemigos que quedan en el techo le disparan.
         // No se usa la orbita de la escuadra (TomaDeVictoria): la escuadra va adentro del helicoptero.
         public bool TomaFinalEnLaAzotea { get; private set; }
+        public const int TiradoresEnLaAzotea = 8;
+        float proximaExplosionDeLaToma, proximaExplosionEnElTecho;
+        public int ExplosionesDeLaToma { get; private set; }
 
         void PrepararTomaFinalEnLaAzotea(Camera cam, Vector3 heliBase, Vector3 rumbo)
         {
@@ -179,7 +182,28 @@ namespace SP.Operacion
                 if (s != null && s.Team == TeamId.Enemy && s.Health != null && s.Health.IsAlive && s.gameObject.activeInHierarchy && s.transform.position.y > 15f && MansionGeometria.Dentro(s.transform.position, 1f))
                     cand.Add(s);
             cand.Sort((a, b) => Plano(a.transform.position, heliBase).sqrMagnitude.CompareTo(Plano(b.transform.position, heliBase).sqrMagnitude));
-            for (int i = 0; i < cand.Count && tiradoresFinales.Count < 3; i++) tiradoresFinales.Add(cand[i]);
+            for (int i = 0; i < cand.Count && tiradoresFinales.Count < TiradoresEnLaAzotea; i++) tiradoresFinales.Add(cand[i]);
+            // Frenesi: si en el techo quedan pocos, se completan con enemigos de la reserva (apagados) puestos entre el helipuerto y el parapeto.
+            if (tiradoresFinales.Count < TiradoresEnLaAzotea)
+            {
+                int k = tiradoresFinales.Count;
+                foreach (var s in ActorRegistry.All)
+                {
+                    if (tiradoresFinales.Count >= TiradoresEnLaAzotea) break;
+                    if (s == null || s.Team != TeamId.Enemy || s.Health == null || !s.Health.IsAlive || s.gameObject.activeInHierarchy || tiradoresFinales.Contains(s)) continue;
+                    float ang = (k * 47f + Random.Range(-12f, 12f)) * Mathf.Deg2Rad, rad = Random.Range(5.5f, 10f);
+                    var deseada = new Vector3(heliBase.x + Mathf.Cos(ang) * rad * 1.5f, heliBase.y, heliBase.z + Mathf.Sin(ang) * rad);
+                    deseada.x = Mathf.Clamp(deseada.x, MansionGeometria.X0 + 2f, MansionGeometria.X1 - 2f);
+                    deseada.z = Mathf.Clamp(deseada.z, MansionGeometria.Z0 + 2f, MansionGeometria.Z1 - 2f);
+                    if (UnityEngine.AI.NavMesh.SamplePosition(deseada, out var h, 3f, UnityEngine.AI.NavMesh.AllAreas)) deseada = h.position;
+                    s.transform.position = deseada;
+                    s.gameObject.SetActive(true);
+                    ApoyoEnElPiso.Apoyar(s.transform);
+                    tiradoresFinales.Add(s);
+                    FigurantesDeLaTomaFinal++;
+                    k++;
+                }
+            }
             int n = tiradoresFinales.Count;
             proximoTiro = new float[n]; pausaTiro = new float[n]; restantesTiro = new int[n];
             for (int i = 0; i < n; i++)
@@ -187,8 +211,9 @@ namespace SP.Operacion
                 var s = tiradoresFinales[i];
                 if (s.Brain != null) { s.Brain.Pasivo = true; s.Brain.Quieto = true; }
                 if (s.Motor != null) s.Motor.SetCrouching(false);
-                proximoTiro[i] = Time.time + 0.1f + i * 0.17f;
+                proximoTiro[i] = Time.time + 0.05f + i * 0.09f;
             }
+            proximaExplosionDeLaToma = Time.time + 0.4f; proximaExplosionEnElTecho = Time.time + 0.9f;
 
             var pos = heliBase + atras * 12f + lateral * 2.5f;
             pos.x = Mathf.Clamp(pos.x, MansionGeometria.X0 + 1.5f, MansionGeometria.X1 - 1.5f);
@@ -310,7 +335,8 @@ namespace SP.Operacion
             if (cam == null || heli == null) return;
             float udt = Time.unscaledDeltaTime;
             if (TomaFinalEnLaAzotea) posCamaraFinal += Vector3.up * (0.22f * udt);   // grua lenta hacia arriba
-            cam.transform.position = posCamaraFinal + new Vector3(Mathf.Sin(Time.unscaledTime * 1.3f), Mathf.Sin(Time.unscaledTime * 1.9f) * 0.5f, 0f) * 0.02f;
+            cam.transform.position = posCamaraFinal + new Vector3(Mathf.Sin(Time.unscaledTime * 1.3f), Mathf.Sin(Time.unscaledTime * 1.9f) * 0.5f, 0f) * 0.02f
+                + (TomaFinalEnLaAzotea ? Random.insideUnitSphere * 0.05f : Vector3.zero);   // temblor: el techo se sacude con cada explosion
             cam.transform.rotation = Quaternion.Slerp(cam.transform.rotation, RotacionHaciaElHeli(posCamaraFinal, heli.position), 1f - Mathf.Exp(-5f * udt));
             DistanciaCamaraHeli = (heli.position - cam.transform.position).magnitude;
             DistanciaMaximaCamaraHeli = Mathf.Max(DistanciaMaximaCamaraHeli, DistanciaCamaraHeli);
@@ -331,11 +357,11 @@ namespace SP.Operacion
                 if (restantesTiro[i] <= 0)
                 {
                     if (Time.time < pausaTiro[i]) continue;
-                    restantesTiro[i] = Random.Range(7, 12);
+                    restantesTiro[i] = TomaFinalEnLaAzotea ? Random.Range(12, 24) : Random.Range(7, 12);
                 }
                 restantesTiro[i]--;
-                proximoTiro[i] = Time.time + (restantesTiro[i] > 0 ? 0.11f : 0f);
-                if (restantesTiro[i] <= 0) pausaTiro[i] = Time.time + Random.Range(0.5f, 1.0f);
+                proximoTiro[i] = Time.time + (restantesTiro[i] > 0 ? (TomaFinalEnLaAzotea ? 0.07f : 0.11f) : 0f);
+                if (restantesTiro[i] <= 0) pausaTiro[i] = Time.time + (TomaFinalEnLaAzotea ? Random.Range(0.1f, 0.35f) : Random.Range(0.5f, 1.0f));
                 var boca = s.Weapon != null && s.Weapon.Muzzle != null ? s.Weapon.Muzzle.position : s.transform.position + Vector3.up * 1.4f + s.transform.forward * 0.5f;
                 var dir = (miraHeli - boca).normalized;
                 dir = (dir + Random.insideUnitSphere * 0.03f).normalized;
@@ -346,6 +372,31 @@ namespace SP.Operacion
                 if ((restantesTiro[i] & 1) == 0) AudioDirector.PlayAt(SfxKind.Shoot, boca, 0.3f);
                 ultimoTiro[s] = Time.unscaledTime;
                 DisparosDeLaTomaFinal++;
+            }
+            if (TomaFinalEnLaAzotea) FrenesiDeLaAzotea();
+        }
+
+        // Bug #341 (frenesi): mientras el helicoptero se va, revientan rafagas antiaereas alrededor suyo y explosiones sacuden el techo.
+        void FrenesiDeLaAzotea()
+        {
+            if (Time.time >= proximaExplosionDeLaToma && heli != null && heli.gameObject.activeSelf)
+            {
+                proximaExplosionDeLaToma = Time.time + Random.Range(0.12f, 0.3f);
+                var alrededor = Random.onUnitSphere * Random.Range(5f, 13f);
+                var p = heli.position + alrededor;
+                SpriteFx.Explosion(p, Random.Range(1.6f, 3.2f));
+                AudioDirector.PlayAt(SfxKind.Explosion, p, 0.5f);
+                ExplosionesDeLaToma++;
+            }
+            if (Time.time >= proximaExplosionEnElTecho)
+            {
+                proximaExplosionEnElTecho = Time.time + Random.Range(0.45f, 0.95f);
+                var c = posCamaraFinal; c.y = heli != null ? heli.position.y : posCamaraFinal.y;
+                var p = new Vector3(Random.Range(MansionGeometria.X0 + 3f, MansionGeometria.X1 - 3f), MansionGeometria.Nivel(3) + 0.2f, Random.Range(MansionGeometria.Z0 + 3f, MansionGeometria.Z1 - 3f));
+                SpriteFx.Explosion(p, Random.Range(2.2f, 3.6f));
+                AudioDirector.PlayAt(SfxKind.Explosion, p, 0.7f);
+                ScreenFlashView.Explosion(0.18f);
+                ExplosionesDeLaToma++;
             }
         }
 

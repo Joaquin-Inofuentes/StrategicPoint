@@ -378,8 +378,14 @@ namespace SP.EditorTools
             Caja(interior, "P2_Celdas_Fondo_Piso", 297f, 315.4f, y2 + 0.005f, y2 + 0.05f, 279.5f, zi1, MPiso, false);
             foreach (float x in new[] { 297f, 301.6f, 306.2f, 310.8f, 315.4f })
                 Caja(interior, "P2_Celda_Division", x - 0.15f, x + 0.15f, y2, y2t, 279.5f, zi1, MTabique);
+            // La reja es un solo grupo (P2_Reja): el director la hunde en el piso al liberar a los milicianos. Los barrotes no entran al navmesh
+            // (si no, las celdas quedaban aisladas y los liberados no podian salir aunque la reja se abriera).
+            var reja = new GameObject("P2_Reja").transform; reja.SetParent(interior, false);
             for (float x = 297.4f; x < 315.3f; x += 0.45f)
-                Caja(interior, "P2_Barrote", x - 0.04f, x + 0.04f, y2, y2 + 3.6f, 279.4f, 279.5f, MBarrote, true);
+            {
+                var barrote = Caja(reja, "P2_Barrote", x - 0.04f, x + 0.04f, y2, y2 + 3.6f, 279.4f, 279.5f, MBarrote, true);
+                barrote.AddComponent<NavMeshModifier>().ignoreFromBuild = true;
+            }
             Caja(interior, "P2_Celdas_Dintel", 297f, 315.4f, y2 + 3.6f, y2t, 279.3f, 279.6f, MTabique);
             foreach (float x in new[] { 310f, 322f, 334f }) Arana(deco, x, y2t - 0.2f, 258f, 1.6f);
 

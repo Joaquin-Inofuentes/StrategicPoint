@@ -121,7 +121,7 @@ namespace SP.EditorTools
             foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && a.name.StartsWith("Mansion_Enemigo")) a.gameObject.SetActive(false);
             ActorRegistry.Invalidate();
             typeof(OperacionDirector).GetMethod("LiberarMilicianos", NoPublico).Invoke(d, null);
-            foreach (var x in Esperar(3.0f)) yield return x;
+            foreach (var x in Esperar(12.0f)) yield return x;
             int siguen = 0, total = 0; var estados = new StringBuilder();
             foreach (var a in ActorRegistry.All)
                 if (a != null && a.Team == TeamId.Player && a.gameObject.activeInHierarchy && a.DisplayName.StartsWith("MILICIANO"))
@@ -129,6 +129,10 @@ namespace SP.EditorTools
                     total++; estados.Append(a.Brain.State).Append('/').Append(Vector3.Distance(a.transform.position, yo.transform.position).ToString("0")).Append("m ");
                     if (a.Brain.FollowTarget == yo || a.Brain.State == SP.Ai.AiState.Follow) siguen++;   // en pelea con la guardia siguen teniendo al jugador de lider
                 }
+            int afuera = 0;
+            foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Player && a.gameObject.activeInHierarchy && a.DisplayName.StartsWith("MILICIANO") && a.transform.position.z < 278.5f) afuera++;
+            var reja = GameObject.Find("P2_Reja");
+            W8Ok(ref ok, d.RejaAbierta && (reja == null || !reja.transform.GetChild(0).gameObject.activeSelf) && afuera >= 3, sb, $"reja de las celdas abierta (abierta={d.RejaAbierta}) y {afuera} milicianos ya salieron de las celdas");
             W8Ok(ref ok, total >= 4 && siguen == total, sb, $"{siguen}/{total} milicianos liberados tienen al jugador de lider ({estados})");
             // Recorte de plantas (#336): con la camara cenital se ocultan las plantas de arriba.
             var rig = SP.CameraSystem.CameraRig.Instance;

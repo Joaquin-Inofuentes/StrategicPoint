@@ -66,7 +66,7 @@ namespace SP.Operacion
             relojMansion = 0f; proximoSpawnPlaza = 1.5f; plazaRestantes = 8; ondasDeAzotea = 0; tAzotea = 0f;
             porton = false; azoteaIniciada = false; segundoIniciado = false; MilicianosLiberados = false; CineDeMansionEnCurso = false;
             MansionEnemigosCreados = 0; HeliDeLaAzotea = null;
-            ReiniciarAzotea();
+            ReiniciarAzotea(); CerrarLaReja();
             HelipadEnLaAzotea();   // el rescate y la extraccion son en el techo, no en la plaza
             if (GetComponent<PlantasDeLaMansion>() == null) gameObject.AddComponent<PlantasDeLaMansion>();   // #336: recorta las plantas de arriba en la vista tactica
             foreach (var h in hojasDelPorton) if (h != null) h.Cerrar();
@@ -216,8 +216,8 @@ namespace SP.Operacion
                     if (!MilicianosLiberados)
                     {
                         if (hud != null) hud.Objetivo(TituloObjetivo(5, "TOMAR LA MANSION"), faltan > 0 ? $"2.o piso: elimina a la guardia · {faltan} enemigos" : "Llega a las celdas del norte y libera a los milicianos", 0.65f, new Color(1f, 0.55f, 0.25f));
-                        // Bug #333 ("no puedo interactuar, deberia apretarlo y abrir las carceles"): se abren desde 7 m aunque queden guardias.
-                        if (nivel == 2 && dCeldas < 7f)
+                        // Bug #333 ("no puedo interactuar, deberia apretarlo y abrir las carceles"): se abren desde 9 m aunque queden guardias.
+                        if (nivel == 2 && dCeldas < 9f)
                         {
                             if (hud != null) hud.Prompt("[E] LIBERAR A LOS MILICIANOS");
                             if (OperacionTerminal.EToque()) LiberarMilicianos();
@@ -343,9 +343,59 @@ namespace SP.Operacion
             ActorRegistry.Invalidate();
         }
 
+        // La reja de las celdas (grupo P2_Reja, ver el constructor): al liberar a los milicianos se hunde en el piso y deja de ser solida.
+        Transform rejaDeCeldas; Vector3[] rejaOrigen;
+        public bool RejaAbierta { get; private set; }
+
+        void BuscarLaReja()
+        {
+            if (rejaDeCeldas != null) return;
+            var go = GameObject.Find("P2_Reja");
+            if (go == null) return;
+            rejaDeCeldas = go.transform;
+            rejaOrigen = new Vector3[rejaDeCeldas.childCount];
+            for (int i = 0; i < rejaOrigen.Length; i++) rejaOrigen[i] = rejaDeCeldas.GetChild(i).position;
+        }
+
+        void CerrarLaReja()
+        {
+            BuscarLaReja();
+            RejaAbierta = false;
+            if (rejaDeCeldas == null) return;
+            for (int i = 0; i < rejaOrigen.Length; i++)
+            {
+                var b = rejaDeCeldas.GetChild(i);
+                b.position = rejaOrigen[i]; b.gameObject.SetActive(true);
+                var c = b.GetComponent<Collider>(); if (c != null) c.enabled = true;
+            }
+        }
+
+        void AbrirLaReja()
+        {
+            BuscarLaReja();
+            if (rejaDeCeldas == null || RejaAbierta) return;
+            RejaAbierta = true;
+            for (int i = 0; i < rejaDeCeldas.childCount; i++) { var c = rejaDeCeldas.GetChild(i).GetComponent<Collider>(); if (c != null) c.enabled = false; }
+            StartCoroutine(HundirLaReja());
+        }
+
+        IEnumerator HundirLaReja()
+        {
+            const float duracion = 1.3f;
+            for (float t = 0f; t < duracion; t += Time.deltaTime)
+            {
+                float k = Mathf.SmoothStep(0f, 1f, t / duracion);
+                for (int i = 0; i < rejaOrigen.Length; i++)
+                    rejaDeCeldas.GetChild(i).position = rejaOrigen[i] + Vector3.down * (3.7f * k) + Vector3.right * (Mathf.Sin((t * 40f) + i) * 0.015f * (1f - k));
+                yield return null;
+            }
+            for (int i = 0; i < rejaOrigen.Length; i++) rejaDeCeldas.GetChild(i).gameObject.SetActive(false);
+        }
+
         void LiberarMilicianos()
         {
             MilicianosLiberados = true;
+            AbrirLaReja();
             if (baliza != null) { baliza.Quitar(); baliza = null; }
             foreach (var s in prisioneros)
             {
