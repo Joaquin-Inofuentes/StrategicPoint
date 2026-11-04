@@ -62,6 +62,7 @@ namespace SP.Vehicles
                 if (tripulacion.HasValue && s.Team == tripulacion.Value) continue;
 
                 var d = s.transform.position - vehiculo.position;
+                if (Mathf.Abs(d.y) > 2f) continue;   // en una azotea o torre justo encima de la ruta no se lo atropella
                 d.y = 0f;
                 if (d.sqrMagnitude > alcance * alcance) continue;
 

@@ -866,6 +866,7 @@ namespace SP.Combat
             {
                 var vehicle = explosionVehicles[i];
                 if (vehicle == null || vehicle == ignoreVehicle) continue;
+                if (spareTeam.HasValue && vehicle.Bando == spareTeam.Value && !(spareTeam.Value == TeamId.Player && Dificultad.FuegoAmigoExplosivo)) continue;   // mismo criterio que con los soldados
                 float distV = Vector3.Distance(vehicle.transform.position, point);
                 if (distV > radius) continue;
                 if (!LaExplosionAlcanzaVehiculo(point, vehicle)) continue;

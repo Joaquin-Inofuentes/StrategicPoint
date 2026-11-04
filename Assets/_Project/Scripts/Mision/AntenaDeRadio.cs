@@ -20,6 +20,8 @@ namespace SP.Mision
         void OnEnable()
         {
             Activa = this;
+            Destruida = false;   // una antena nueva (reintento / segunda partida) nace en pie
+
             marca = GetComponent<ObstacleMarker>();
             ObstacleMarker.Derrumbado += AlDerrumbarse;
         }

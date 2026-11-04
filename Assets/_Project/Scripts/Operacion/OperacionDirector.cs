@@ -158,6 +158,8 @@ namespace SP.Operacion
         void Awake()
         {
             Instancia = this;
+            EntradaDeReserva.Reiniciar();                  // un reintento levanta las compuertas de reserva otra vez
+            RomboVisibilidad.Suprimidos = false;           // la toma final de una corrida anterior no deja los marcadores ocultos
             SP.Core.SesionLog.RegistrarGuardable(this);   // el registro de sesion lo lee sin barrer la escena
             ResistirSinMando = false;
             AnuncioDeZonas.Desactivado = true;
@@ -536,6 +538,7 @@ namespace SP.Operacion
         {
             if (Fase == FaseOperacion.Victoria || Fase == FaseOperacion.Derrota) return;
             Motivo = motivo;
+            if (Fase == FaseOperacion.Resistir) AbandonarElMando();   // no quedan el panel de mando ni el limite de paneo RTS
             Fase = FaseOperacion.Derrota;
             QuitarFlechaHeli();
             var outcome = GameOutcomeController.Activo;

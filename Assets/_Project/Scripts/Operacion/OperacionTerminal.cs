@@ -271,6 +271,7 @@ namespace SP.Operacion
         public void Enganchar(Soldier s)
         {
             if (s == null || Completo) return;
+            if (Operador != null && Operador != s) SoltarOperador();   // el operador anterior no queda Quieto/Pasivo para siempre
             Operador = s;
             // Bug #242 ("cuando inicie no se distraiga con enemigos"): el que hackea se concentra en la computadora; no contesta el fuego ni
             // se da vuelta a pelear (lo cubre el resto de la escuadra). Al terminar o caer vuelve a su postura.

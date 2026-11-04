@@ -10,6 +10,10 @@ namespace SP.Operacion
         static readonly List<Vector3> hechas = new List<Vector3>();
         static Material mMarco, mHoja, mLuz;
 
+        // Al reintentar (la escena se recarga y los estaticos sobreviven) las compuertas tienen que poder levantarse de nuevo.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        public static void Reiniciar() { hechas.Clear(); }
+
         static Material Mat(ref Material m, Color c, bool emisivo = false)
         {
             if (m != null) return m;

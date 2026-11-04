@@ -83,6 +83,8 @@ namespace SP.Core
         static void Iniciar()
         {
             Actual = PlayerPrefs.GetInt(Pref, 0) == 1 ? Idioma.En : Idioma.Es;
+            var viejo = UnityEngine.Object.FindFirstObjectByType<LocTraductor>();   // HideAndDontSave sobrevive al Play: un traductor por corrida se acumulaba (F12 alternaba N veces)
+            if (viejo != null) UnityEngine.Object.DestroyImmediate(viejo.gameObject);
             var go = new GameObject("LocTraductor") { hideFlags = HideFlags.HideAndDontSave };
             UnityEngine.Object.DontDestroyOnLoad(go);
             go.AddComponent<LocTraductor>();

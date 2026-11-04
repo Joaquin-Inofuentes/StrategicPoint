@@ -568,8 +568,7 @@ namespace SP.Player
             if (Brain.Current == null && Squad != null && Squad.Count > 0)
             {
                 var inicial = SoldadoInicial();
-                Brain.Possess(inicial);
-                Rig.FollowOverShoulder(inicial.transform);
+                if (inicial != null && Brain.Possess(inicial)) Rig.FollowOverShoulder(inicial.transform);
 
                 // CameraRig.Mode arranca en Fps por default en el codigo,
                 // pero eso nunca llegaba a CapasDeHud: nada llama a SetMode

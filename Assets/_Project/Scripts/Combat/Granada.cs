@@ -153,6 +153,8 @@ namespace SP.Combat
             if (Application.isPlaying) Destroy(c); else DestroyImmediate(c);
         }
 
+        static Material matLuz, matEstela, matEsfera;
+
         void ConstruirVisual()
         {
             var prefab = SP.Core.RecursosCache.Cargar<GameObject>("Weapons/P_Wpn_Granada");
@@ -180,7 +182,8 @@ namespace SP.Combat
                 QuitarCollider(modelo.GetComponent<Collider>());
                 modelo.transform.SetParent(transform, false);
                 modelo.transform.localScale = Vector3.one * 0.2f;
-                modelo.GetComponent<Renderer>().sharedMaterial = SafeMaterial.Create(new Color(0.22f, 0.3f, 0.18f));
+                if (matEsfera == null) matEsfera = SafeMaterial.Create(new Color(0.22f, 0.3f, 0.18f));
+                modelo.GetComponent<Renderer>().sharedMaterial = matEsfera;
             }
             modelo.name = "Modelo";
 
@@ -191,7 +194,8 @@ namespace SP.Combat
             l.transform.SetParent(transform, false);
             l.transform.localPosition = new Vector3(0f, 0.12f, 0f);
             l.transform.localScale = Vector3.one * 0.07f;
-            l.GetComponent<Renderer>().sharedMaterial = SafeMaterial.Create(new Color(1f, 0.15f, 0.1f));
+            if (matLuz == null) matLuz = SafeMaterial.Create(new Color(1f, 0.15f, 0.1f));
+            l.GetComponent<Renderer>().sharedMaterial = matLuz;
             l.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             luz = l.transform;
 
@@ -199,7 +203,8 @@ namespace SP.Combat
             tr.time = 0.5f;
             tr.startWidth = 0.09f; tr.endWidth = 0f;
             tr.minVertexDistance = 0.1f;
-            tr.sharedMaterial = SafeMaterial.Create(new Color(1f, 0.75f, 0.3f));
+            if (matEstela == null) matEstela = SafeMaterial.Create(new Color(1f, 0.75f, 0.3f));   // compartidos: antes cada granada dejaba 2-3 materiales huerfanos
+            tr.sharedMaterial = matEstela;
             tr.startColor = new Color(1f, 0.8f, 0.4f, 0.9f);
             tr.endColor = new Color(1f, 0.5f, 0.1f, 0f);
             tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;

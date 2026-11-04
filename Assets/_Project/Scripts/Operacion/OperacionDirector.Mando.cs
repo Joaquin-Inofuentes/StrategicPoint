@@ -1484,6 +1484,8 @@ namespace SP.Operacion
         {
             DesuscribirMando();
             if (MandoTactico.RadioTomada) MandoTactico.Soltar();
+            MandoTactico.PosicionDeLaRadio = null;
+            CameraRig.LimiteDePaneoRts = null;   // no se filtra a otras escenas
             WorldUiDirector.RevelarEnemigos = false;
         }
     }

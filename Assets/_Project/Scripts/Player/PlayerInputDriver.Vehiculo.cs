@@ -144,6 +144,7 @@ namespace SP.Player
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
             Vehicle.PlayerAboard = false;
             currentSeat = null;
+            SP.UI.CapasDeHud.ModoTanque(false);   // sin esto el HUD de a pie quedaba en alfa 0 (modo tanque) al bajar con [E]
             // Bug #060: al bajar (fin del viaje) la mira del cañon y la mirilla quedaban pegadas en pantalla a pie.
             MirillaView.Instancia?.Ocultar();
             MiraDeTorreta.Ocultar();

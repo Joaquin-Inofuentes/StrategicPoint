@@ -123,8 +123,10 @@ namespace SP.Player
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Suscribirse()
         {
-            EventBus.Instance.Subscribe<EntityDiedEvent>(OnEnemigoMuerto);
+            subMuerte?.Dispose();   // sin recarga de dominio cada Play sumaba otra suscripcion y cada baja tiraba N monedas
+            subMuerte = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEnemigoMuerto);
         }
+        static System.IDisposable subMuerte;
 
         // Pedido explicito: "de manera aleatoria que suelte o no municion" --
         // antes CUALQUIER enemigo caido soltaba una caja, sin excepcion. Una

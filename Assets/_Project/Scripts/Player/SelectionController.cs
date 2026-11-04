@@ -14,6 +14,7 @@ namespace SP.Player
         // hacia FindAnyObjectByType en cada clic simple en vez de esto.
         public static SelectionController Instance { get; private set; }
         void Awake() => Instance = this;
+        void Reasignar() => Instance = this;   // OnDisable la anula: al reactivar el componente vuelve a ser el unico
 
         readonly List<Soldier> selected = new List<Soldier>();
         public IReadOnlyList<Soldier> Selected => selected;
@@ -24,6 +25,7 @@ namespace SP.Player
         readonly HashSet<Soldier> seleccionadosAlMorir = new HashSet<Soldier>();
         void OnEnable()
         {
+            Reasignar();
             deathSub = EventBus.Instance.Subscribe<EntityDiedEvent>(OnEntityDied);
             Reanimacion.Revivido += OnRevivido;
         }

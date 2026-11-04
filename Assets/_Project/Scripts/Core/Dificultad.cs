@@ -102,6 +102,7 @@ namespace SP.Core
         public static int AplicarVida()
         {
             int n = 0;
+            ActorRegistry.EnsureAllRegistered();   // los que arrancan desactivados (dentro de un vehiculo) todavia no estan registrados
             foreach (var s in ActorRegistry.All) if (AjustarVida(s)) n++;
             return n;
         }

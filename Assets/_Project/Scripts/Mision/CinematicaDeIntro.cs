@@ -85,6 +85,14 @@ namespace SP.Mision
         // Para las pruebas (y para no dejar jamas una sesion automatizada colgada esperando una
         // tecla que nadie va a apretar): corta la cinematica YA y devuelve el control, sin pasar
         // por el resto de los waypoints ni por la espera final.
+        // Si la escena se destruye en plena cinematica (volver al menu, reintentar) la IA y los rombos no quedan congelados/ocultos.
+        void OnDestroy()
+        {
+            if (!EnCurso) return;
+            SP.Ai.AiBrain.IAPausada = false;
+            RomboVisibilidad.Suprimidos = false;
+        }
+
         public void Saltar()
         {
             if (!EnCurso) return;

@@ -133,6 +133,7 @@ namespace SP.Presentation
 
             var newEntry = new Entry { Text = text, Total = evt.Amount, MergeUntil = Time.time + mergeWindow };
             activeByTarget[evt.TargetId] = newEntry;
+            activeOrder.Remove(evt.TargetId);   // sin ids huerfanos: con el pool lleno GetFromPool tomaba uno sin entrada y perdia el numero
             activeOrder.Add(evt.TargetId);
             newEntry.Routine = StartCoroutine(RiseAndFade(newEntry, evt.TargetId, target.transform));
         }

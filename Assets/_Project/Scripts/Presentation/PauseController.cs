@@ -475,7 +475,9 @@ namespace SP.Presentation
             // congelado por otra cosa, despausar tiene que devolver el
             // control igual y no dejar el juego clavado.
             AudioListener.pause = false;
-            Time.timeScale = escalaPrevia > 0.0001f ? escalaPrevia : 1f;
+            // Una camara lenta (<1) que ya vencio mientras estaba pausado no se vuelve a aplicar; el modo dios (>1) sigue.
+            bool lentoVigente = (KillFeedbackDirector.Instance != null && KillFeedbackDirector.Instance.SlowMotionActive) || CuchilladaLenta.Activa;
+            Time.timeScale = escalaPrevia > 0.0001f && (escalaPrevia >= 1f || lentoVigente) ? escalaPrevia : 1f;
             escalaPrevia = 1f;
             AplicarHudPendiente();
             if (settingsPanel != null) settingsPanel.SetActive(false);

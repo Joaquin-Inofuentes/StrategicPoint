@@ -573,6 +573,7 @@ namespace SP.Vehicles
                 if (rend.sharedMaterial != null) rend.sharedMaterial = new Material(rend.sharedMaterial);
                 barrelBaseColor = rend.sharedMaterial != null ? rend.sharedMaterial.color : Color.white; 
             }
+            if (rend.sharedMaterial == null) return;   // canon sin material: sin esto era un NRE por tick que cortaba el paso de la simulacion
             rend.sharedMaterial.color = Color.Lerp(barrelBaseColor, new Color(1f, 0.25f, 0.1f), Heat);
         }
     }

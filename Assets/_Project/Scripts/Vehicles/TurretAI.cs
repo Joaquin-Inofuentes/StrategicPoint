@@ -141,7 +141,7 @@ namespace SP.Vehicles
             // Si hay un artillero de carne y hueso adentro, la IA se
             // aparta: el mouse de quien lo maneje manda (jugador o, si
             // algun dia hay un enemigo humano-controlado, ese enemigo).
-            bool hasHumanGunner = vehicle.Gunner != null;
+            bool hasHumanGunner = vehicle.Gunner != null && vehicle.Gunner.Brain != null && vehicle.Gunner.Brain.IsPossessedByPlayer;   // un aliado de IA sentado no deja mudo el canon
             if (!EsMetralleta)
             {
                 PublishControlChange(!hasHumanGunner);
