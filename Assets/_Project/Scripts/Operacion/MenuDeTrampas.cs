@@ -17,8 +17,9 @@ namespace SP.Operacion
             "3 · OBJ 2  Muralla: puesto ESTE",
             "4 · OBJ 3  Centro de datos",
             "5 · OBJ 4  Huir en el tanque",
-            "6 · OBJ 5  Resistir en la ciudad",
-            "7 · OBJ 6  Subir al helicoptero",
+            "6 · OBJ 5  Resistir en la ciudad (mansion)",
+            "7 · OBJ 5  Resistir en la azotea (rescate)",
+            "8 · OBJ 6  Subir al helicoptero",
         };
         public static bool Abierto { get; private set; }
         bool abierto;
@@ -49,7 +50,7 @@ namespace SP.Operacion
             if (kb.f10Key.wasPressedThisFrame) { if (abierto) Cerrar(); else Abrir(); }
             if (!abierto) return;
             if (kb.escapeKey.wasPressedThisFrame) { Cerrar(); return; }
-            Key[] teclas = { Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5, Key.Digit6, Key.Digit7 };
+            Key[] teclas = { Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5, Key.Digit6, Key.Digit7, Key.Digit8 };
             for (int i = 0; i < teclas.Length; i++) if (kb[teclas[i]].wasPressedThisFrame) { Ir(i); return; }
             if (kb.gKey.wasPressedThisFrame) { Mensaje(ModoDios.Alternar() ? "MODO DIOS: ACTIVADO" : "MODO DIOS: APAGADO"); }
             if (kb.cKey.wasPressedThisFrame) { CinematicaDeOperacion.Saltar(); Mensaje("CINEMATICA SALTADA"); }
@@ -76,10 +77,18 @@ namespace SP.Operacion
         {
             var d = OperacionDirector.Instancia;
             if (d == null) return;
-            int objetivo = i == 0 ? 1 : i <= 2 ? 2 : i;   // 0 = obj 1; 1 y 2 = obj 2 (puesto oeste / este); 3..6 = obj 3..6
+            // 0 = obj 1; 1 y 2 = obj 2 (puesto oeste / este); 3..5 = obj 3..5 (ciudad); 6 = la azotea del obj 5; 7 = obj 6
+            int objetivo = i == 0 ? 1 : i <= 2 ? 2 : i == 7 ? 6 : i;
             int puesto = i == 2 ? 2 : 1;
             PartidaGuardada.ModoPrueba = true;
             CinematicaDeOperacion.Saltar();
+            if (i == 6)
+            {
+                d.SaltarALaAzotea();
+                Mensaje("SALTO A: " + Opciones[i].Substring(4));
+                Cerrar();
+                return;
+            }
             d.SaltarA(OperacionDirector.Orden[objetivo - 1], true, 0);
             if (objetivo == 2) d.SaltarAPuesto(Mathf.Clamp(puesto, 1, OperacionDirector.TotalDePuestos) - 1);
             Mensaje("SALTO A: " + Opciones[i].Substring(4));
@@ -114,7 +123,7 @@ namespace SP.Operacion
             y += 38f;
             if (GUI.Button(new Rect(r.x + 16f, y, w - 32f, 34f), "C · Saltar la cinematica", estilo)) { CinematicaDeOperacion.Saltar(); Mensaje("CINEMATICA SALTADA"); }
             y += 38f;
-            GUI.Label(new Rect(r.x + 16f, y, w - 32f, 30f), "Teclas 1-7 eligen · Esc cierra", estiloTitulo);
+            GUI.Label(new Rect(r.x + 16f, y, w - 32f, 30f), "Teclas 1-8 eligen · Esc cierra", estiloTitulo);
         }
     }
 }

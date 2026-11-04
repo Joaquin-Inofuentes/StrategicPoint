@@ -48,6 +48,22 @@ namespace SP.Operacion
             new Torre { nombre = "E", origen = new Vector2(316.4f, 272.8f), u = new Vector2(1, 0), v = new Vector2(0, 1), nivelBase = 2 },   // 2.o -> azotea, norte-centro
         };
 
+        // Bug #337: los ultimos enemigos del 2.o piso aparecian entre los muros de una torre de escalera (el punto de aparicion caia adentro). Dice si el
+        // punto (con su altura) esta dentro de la huella de alguna torre, entre el piso de su nivel base y el de arriba.
+        public static bool EnTorre(Vector3 p, out int indice, float margen = 0.3f)
+        {
+            for (int i = 0; i < Torres.Length; i++)
+            {
+                var t = Torres[i];
+                if (p.y < Nivel(t.nivelBase) - 1f || p.y > Nivel(t.nivelBase + 1) + 1.5f) continue;
+                var d = new Vector2(p.x, p.z) - t.origen;
+                float cu = Vector2.Dot(d, t.u), cv = Vector2.Dot(d, t.v);
+                if (cu > -margen && cu < TorreAncho + margen && cv > -margen && cv < TorreFondo + margen) { indice = i; return true; }
+            }
+            indice = -1;
+            return false;
+        }
+
         // Donde sale la escalera al piso de arriba (final del carril B, lado de la puerta), a la altura del piso nivelBase+1.
         public static Vector3 SalidaDeTorre(int i)
         {
@@ -76,7 +92,7 @@ namespace SP.Operacion
         public static readonly Vector3[] EnemigosPB =
         {
             new Vector3(306f, 0f, 251f), new Vector3(340f, 0f, 251f), new Vector3(312f, 0f, 262f), new Vector3(332f, 0f, 262f),
-            new Vector3(322f, 0f, 270f), new Vector3(308f, 0f, 279f), new Vector3(338f, 0f, 281f), new Vector3(322f, 0f, 256f),
+            new Vector3(322f, 0f, 270f), new Vector3(311f, 0f, 279f), new Vector3(338f, 0f, 281f), new Vector3(322f, 0f, 256f),
             new Vector3(312f, 0f, 276f), new Vector3(334f, 0f, 270f),
         };
         public static readonly Vector3[] EnemigosPrimero =
@@ -87,9 +103,9 @@ namespace SP.Operacion
         };
         public static readonly Vector3[] EnemigosSegundo =
         {
-            new Vector3(308f, 13f, 252f), new Vector3(330f, 13f, 252f), new Vector3(312f, 13f, 264f), new Vector3(332f, 13f, 264f),
-            new Vector3(322f, 13f, 258f), new Vector3(340f, 13f, 278f), new Vector3(306f, 13f, 268f), new Vector3(322f, 13f, 250f),
-            new Vector3(344f, 13f, 262f), new Vector3(300f, 13f, 262f),
+            new Vector3(311f, 13f, 252f), new Vector3(330f, 13f, 252f), new Vector3(312f, 13f, 264f), new Vector3(332f, 13f, 264f),
+            new Vector3(322f, 13f, 258f), new Vector3(332f, 13f, 279f), new Vector3(306f, 13f, 268f), new Vector3(322f, 13f, 250f),
+            new Vector3(341f, 13f, 264f), new Vector3(300f, 13f, 262f),
         };
         // Celdas contra el muro norte (x 297..315,4, z 279,5..285,4), puerta al sur.
         public static readonly Vector3[] CeldasDeMilicianos =

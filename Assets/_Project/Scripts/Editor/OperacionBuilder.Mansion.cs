@@ -136,7 +136,9 @@ namespace SP.EditorTools
             // Pasamanos dorado sobre la baranda del hueco (solo visual).
             CajaTorre(p, t, k + "Pasamanos", uS - 0.05f, uS + 0.1f, ini, run + ini, yTop + 1.1f, yTop + 1.25f, MDorado, false);
             float yMed = y0 + H * 0.5f;
-            CajaTorre(p, t, k + "Rellano", 0f, W, run + ini, F, yMed - G.Losa, yMed, MRampa);
+            // Bug #331 ("hay algo q solapa alli"): el rellano atravesaba todo el muro lateral (hasta u = W) y su sombra dejaba una franja oscura sobre la
+            // cara del muro que da al salon; ahora termina en la cara interior del muro (u = uS) y no entra en el.
+            CajaTorre(p, t, k + "Rellano", 0f, uS, run + ini, F, yMed - G.Losa, yMed, MRampa);
             Vector3 P(float cu, float cv, float y) { var w = t.Mundo(cu, cv); return new Vector3(w.x, y, w.y); }
             float ancho = G.MedioCarril * 2f;
             Tramo(p, k + "Tramo_A", P(G.CarrilA, ini, y0), P(G.CarrilA, run + ini, yMed), ancho, MRampa);
@@ -173,7 +175,19 @@ namespace SP.EditorTools
         static void PisoDeLujo(Transform p, int nivel, float xa, float xb, float za, float zb)
         {
             float y = G.Nivel(nivel) + (nivel == 0 ? 0.13f : 0.005f);   // la calle pasa por debajo de la PB: el marmol va por encima del asfalto
-            Caja(p, "Marmol_Base_" + nivel, xa, xb, y, y + 0.02f, za, zb, MMarmol, false);
+            // Bug #329 ("quitar ese obstaculo"): la base de marmol era una sola caja sobre todo el piso y tapaba como una tapa el hueco de cada escalera
+            // (se subia contra ella). Desde el 1.er piso se parte restando la huella de las torres que tocan el nivel.
+            var huecosTorres = new List<Rect>();
+            if (nivel >= 1)
+                foreach (var t in G.Torres)
+                {
+                    if (t.nivelBase != nivel && t.nivelBase + 1 != nivel) continue;
+                    var ta = t.Mundo(0f, 0f); var tb = t.Mundo(G.TorreAncho, G.TorreFondo);
+                    huecosTorres.Add(Rect.MinMaxRect(Mathf.Min(ta.x, tb.x), Mathf.Min(ta.y, tb.y), Mathf.Max(ta.x, tb.x), Mathf.Max(ta.y, tb.y)));
+                }
+            int partes = 0;
+            foreach (var r in RestarHuecos(Rect.MinMaxRect(xa, za, xb, zb), huecosTorres))
+                Caja(p, "Marmol_Base_" + nivel + (partes++ == 0 ? "" : "_" + partes), r.xMin, r.xMax, y, y + 0.02f, r.yMin, r.yMax, MMarmol, false);
             const float L = 4f;
             for (float x = xa; x < xb - 0.1f; x += L)
                 for (float z = za; z < zb - 0.1f; z += L)
@@ -192,6 +206,13 @@ namespace SP.EditorTools
             oeste ? (262f, 266f, 0f, 4.4f) : (266f, 270f, 0f, 4.4f),
             (262f, 266f, G.Nivel(1), G.Nivel(1) + 4.4f),
         };
+
+        static bool VentanaChocaConPuerta(bool oeste, float z, float yc)
+        {
+            foreach (var p in PuertasLaterales(oeste))
+                if (z + 0.9f > p.z0 && z - 0.9f < p.z1 && yc + 1.5f > p.y0 && yc - 1.5f < p.y1) return true;
+            return false;
+        }
 
         static void MuroConPuertas(Transform casco, string n, float xa, float xb, float yMax, List<(float z0, float z1, float y0, float y1)> puertas)
         {
@@ -238,7 +259,9 @@ namespace SP.EditorTools
                 var pd = hoja.AddComponent<PortonDeMansion>();
                 pd.cerrada = hoja.transform.position;
                 pd.abierta = hoja.transform.position + new Vector3(lado * (G.PortonAncho * 0.5f + 0.2f), 0f, 1.0f);
-                Caja(deco, "Porton_Dorado", xa + 0.2f, xb - 0.2f, 2.3f, 2.5f, G.Z0 - 0.04f, G.Z0 + 0.05f, MDorado, false);
+                // Bug #326 ("corrije esas 2 franjas"): las franjas doradas del porton eran del Detalle y quedaban flotando al abrirse la hoja; ahora son de la hoja.
+                var franja = Caja(deco, "Porton_Dorado", xa + 0.2f, xb - 0.2f, 2.3f, 2.5f, G.Z0 - 0.04f, G.Z0 + 0.05f, MDorado, false);
+                franja.transform.SetParent(hoja.transform, true);
             }
             // Portico de entrada: cuatro columnas, frontis y escalinata (solo visual).
             foreach (float cx in new[] { 313.5f, 318f, 326f, 330.5f }) Columna(deco, "Portico_Columna", cx, G.Z0 - 1.6f, 0f, 8.4f, 0.6f);
@@ -269,8 +292,9 @@ namespace SP.EditorTools
                 }
                 for (float z = 252f; z < 284f; z += 6f)
                 {
-                    Caja(deco, "Ventana_O", G.X0 - 0.16f, G.X0 - 0.1f, yc - 1.5f, yc + 1.5f, z - 0.9f, z + 0.9f, Ventana, false);
-                    Caja(deco, "Ventana_E", G.X1 + 0.1f, G.X1 + 0.16f, yc - 1.5f, yc + 1.5f, z - 0.9f, z + 0.9f, Ventana, false);
+                    // Bug #335 ("quita eso q esta levitando"): la ventana luminosa de las puertas de servicio laterales quedaba flotando en el hueco.
+                    if (!VentanaChocaConPuerta(true, z, yc)) Caja(deco, "Ventana_O", G.X0 - 0.16f, G.X0 - 0.1f, yc - 1.5f, yc + 1.5f, z - 0.9f, z + 0.9f, Ventana, false);
+                    if (!VentanaChocaConPuerta(false, z, yc)) Caja(deco, "Ventana_E", G.X1 + 0.1f, G.X1 + 0.16f, yc - 1.5f, yc + 1.5f, z - 0.9f, z + 0.9f, Ventana, false);
                 }
             }
 

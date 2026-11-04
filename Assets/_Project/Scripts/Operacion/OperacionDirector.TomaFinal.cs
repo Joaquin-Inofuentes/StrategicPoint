@@ -67,6 +67,8 @@ namespace SP.Operacion
         // esconde el HUD. heliBase = donde estaba posado; rumbo = hacia donde se va.
         void PrepararTomaFinal(Camera cam, Vector3 heliBase, Vector3 rumbo)
         {
+            if (heliBase.y > 10f && MansionGeometria.Dentro(heliBase, 2f)) { PrepararTomaFinalEnLaAzotea(cam, heliBase, rumbo); return; }
+            TomaFinalEnLaAzotea = false;
             TomaFinalActiva = true;
             camaraFinal = cam;
             tiradoresFinales.Clear(); ultimoTiro.Clear();
@@ -154,6 +156,52 @@ namespace SP.Operacion
             if (baliza != null) { baliza.Quitar(); baliza = null; }   // el cartel "HELICOPTERO" del piso no entra en la toma
             DistanciaInicialCamaraHeli = (heli.position - pos).magnitude;
             GameLog.Line($"[Operacion] Toma final: {n} tiradores ({FigurantesDeLaTomaFinal} figurantes), camara a {AlturaDeCamaraFinal:0.0} m, heli a {DistanciaInicialCamaraHeli:0} m");
+        }
+
+        // Bug #341 ("la toma final deberia ser distinta"): con el rescate en el techo la camara se queda ARRIBA de la mansion, detras del helipuerto y a
+        // 1,7 m del techo, y sube despacio (grua) mientras el helicoptero se va sobre la ciudad iluminada; los enemigos que quedan en el techo le disparan.
+        // No se usa la orbita de la escuadra (TomaDeVictoria): la escuadra va adentro del helicoptero.
+        public bool TomaFinalEnLaAzotea { get; private set; }
+
+        void PrepararTomaFinalEnLaAzotea(Camera cam, Vector3 heliBase, Vector3 rumbo)
+        {
+            TomaFinalEnLaAzotea = true;
+            TomaFinalActiva = true;
+            camaraFinal = cam;
+            tiradoresFinales.Clear(); ultimoTiro.Clear();
+            DisparosDeLaTomaFinal = 0; FigurantesDeLaTomaFinal = 0;
+            DistanciaMaximaCamaraHeli = 0f; DistanciaInicialCamaraHeli = 0f;
+
+            var atras = -Plano(rumbo, Vector3.zero); atras = atras.sqrMagnitude > 0.01f ? atras.normalized : Vector3.back;
+            var lateral = Vector3.Cross(Vector3.up, atras);
+            var cand = new List<Soldier>();
+            foreach (var s in ActorRegistry.All)
+                if (s != null && s.Team == TeamId.Enemy && s.Health != null && s.Health.IsAlive && s.gameObject.activeInHierarchy && s.transform.position.y > 15f && MansionGeometria.Dentro(s.transform.position, 1f))
+                    cand.Add(s);
+            cand.Sort((a, b) => Plano(a.transform.position, heliBase).sqrMagnitude.CompareTo(Plano(b.transform.position, heliBase).sqrMagnitude));
+            for (int i = 0; i < cand.Count && tiradoresFinales.Count < 3; i++) tiradoresFinales.Add(cand[i]);
+            int n = tiradoresFinales.Count;
+            proximoTiro = new float[n]; pausaTiro = new float[n]; restantesTiro = new int[n];
+            for (int i = 0; i < n; i++)
+            {
+                var s = tiradoresFinales[i];
+                if (s.Brain != null) { s.Brain.Pasivo = true; s.Brain.Quieto = true; }
+                if (s.Motor != null) s.Motor.SetCrouching(false);
+                proximoTiro[i] = Time.time + 0.1f + i * 0.17f;
+            }
+
+            var pos = heliBase + atras * 12f + lateral * 2.5f;
+            pos.x = Mathf.Clamp(pos.x, MansionGeometria.X0 + 1.5f, MansionGeometria.X1 - 1.5f);
+            pos.z = Mathf.Clamp(pos.z, MansionGeometria.Z0 + 1.5f, MansionGeometria.Z1 - 1.5f);
+            pos.y = heliBase.y + 1.7f;
+            posCamaraFinal = pos;
+            cam.transform.position = pos;
+            cam.fieldOfView = 55f;
+            cam.transform.rotation = RotacionHaciaElHeli(pos, heli.position);
+            OcultarHudDeLaToma();
+            if (baliza != null) { baliza.Quitar(); baliza = null; }
+            DistanciaInicialCamaraHeli = (heli.position - pos).magnitude;
+            GameLog.Line($"[Operacion] Toma final en la azotea: {n} tiradores, camara a {pos.y - heliBase.y:0.0} m del techo, heli a {DistanciaInicialCamaraHeli:0} m");
         }
 
         static readonly RaycastHit[] bufferVista = new RaycastHit[16];
@@ -261,6 +309,7 @@ namespace SP.Operacion
         {
             if (cam == null || heli == null) return;
             float udt = Time.unscaledDeltaTime;
+            if (TomaFinalEnLaAzotea) posCamaraFinal += Vector3.up * (0.22f * udt);   // grua lenta hacia arriba
             cam.transform.position = posCamaraFinal + new Vector3(Mathf.Sin(Time.unscaledTime * 1.3f), Mathf.Sin(Time.unscaledTime * 1.9f) * 0.5f, 0f) * 0.02f;
             cam.transform.rotation = Quaternion.Slerp(cam.transform.rotation, RotacionHaciaElHeli(posCamaraFinal, heli.position), 1f - Mathf.Exp(-5f * udt));
             DistanciaCamaraHeli = (heli.position - cam.transform.position).magnitude;

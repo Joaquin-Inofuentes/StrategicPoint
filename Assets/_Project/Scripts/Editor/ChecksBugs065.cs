@@ -125,11 +125,12 @@ namespace SP.EditorTools
         // Estos checks piden la radio clasica (Arrancar la deja tomada) y el resto se prueba con el modo de fabrica.
         public static bool RadioClasica;
         static readonly Regex reRadio = new Regex(@"^Bug(10[1-9]|11\d|12[0-4])", RegexOptions.Compiled);
+        static readonly Regex reMansion = new Regex(@"^Bug(406|407)u$", RegexOptions.Compiled);   // checks de la mansion y la azotea (ChecksBugs065.Azotea.cs)
         static void PrepararModoDelMando(string nombre)
         {
             RadioClasica = !string.IsNullOrEmpty(nombre) && reRadio.IsMatch(nombre);
             // Los checks de Resistir anteriores a la mansion prueban la defensa de los flancos: la mansion se apaga salvo en los checks de la mansion.
-            SP.Operacion.OperacionDirector.ApagarMansion = string.IsNullOrEmpty(nombre) || nombre.IndexOf("Mansion", StringComparison.Ordinal) < 0;
+            SP.Operacion.OperacionDirector.ApagarMansion = string.IsNullOrEmpty(nombre) || !reMansion.IsMatch(nombre);
         }
 
         static string DetalleDeExcepcion(Exception e)

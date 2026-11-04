@@ -128,6 +128,31 @@ namespace SP.Operacion
             return h;
         }
 
+        // Despliegue sobre un punto fijo (la azotea de la mansion): entra desde anguloGrados, queda suspendido a AlturaDeDespliegue sobre 'punto',
+        // baja a los soldados por las cuerdas y despues orbita el ancla (a 'desnivel' de altura y 'radio' de radio) ametrallando a los aliados.
+        public static HelicopteroEnemigo IniciarDespliegueEnAncla(Transform plantillaHeli, Transform ancla, GameObject plantillaDeSoldado, Vector3 punto, int soldados,
+            float anguloGrados, float desnivel, float radio, System.Action<Soldier> alBajar = null, float distanciaDeEntrada = 150f)
+        {
+            if (plantillaHeli == null || ancla == null || plantillaDeSoldado == null) return null;
+            var go = Instantiate(plantillaHeli.gameObject, plantillaHeli.parent);
+            go.name = "Halcon_Cuerdas_" + (++Creados);
+            var dir = new Vector3(Mathf.Cos(anguloGrados * Mathf.Deg2Rad), 0f, Mathf.Sin(anguloGrados * Mathf.Deg2Rad));
+            var pos = punto + dir * distanciaDeEntrada;
+            pos.y = punto.y + AlturaMaxima + 12f;
+            go.transform.position = pos;
+            go.SetActive(true);
+            var h = go.GetComponent<HelicopteroEnemigo>();
+            if (h == null) { Destroy(go); return null; }
+            h.EsDeDespliegue = true;
+            h.Armar(null, ancla);
+            if (h.Vehiculo != null && h.Vehiculo.Health != null) h.Vehiculo.Health.Initialize(-1, VidaDeAsalto);
+            h.desnivel = desnivel; h.radioPropio = radio;
+            if (h.Vehiculo != null && h.Vehiculo.Health != null) h.Vehiculo.Health.Invulnerable = true;   // la escuadra lo derribaba en la aproximacion, antes de bajar a nadie: es vulnerable cuando termina de soltar las cuerdas
+            h.plantillaSoldado = plantillaDeSoldado; h.alBajar = alBajar; h.SoldadosPedidos = soldados; h.PuntoDeDespliegue = punto;
+            h.Situacion = Estado.Desplegando;
+            return h;
+        }
+
         void TickDespliegue(float dt)
         {
             var meta = PuntoDeDespliegue + Vector3.up * AlturaDeDespliegue;
@@ -234,7 +259,8 @@ namespace SP.Operacion
         void TerminarDespliegue()
         {
             QuitarSogas();
-            var d = transform.position - tanque.transform.position;
+            if (tanque == null && Vehiculo != null && Vehiculo.Health != null) Vehiculo.Health.Invulnerable = false;
+            var d = transform.position - (tanque != null ? tanque.transform.position : ancla.position);
             anguloDeEntrada = Mathf.Atan2(d.z, d.x); angulo = anguloDeEntrada;
             Situacion = Estado.Entrando;
             proximaPasada = Time.time + 4f;

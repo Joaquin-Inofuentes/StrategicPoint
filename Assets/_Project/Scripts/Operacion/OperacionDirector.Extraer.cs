@@ -403,7 +403,7 @@ namespace SP.Operacion
             PartidaGuardada.Borrar();   // P10 (#120): misión cumplida, ya no hay nada que continuar
             var outcome = GameOutcomeController.Activo;
             if (outcome != null) outcome.ShowVictory(false, AlfaDeFondoDeVictoria);   // bug #077: se ve la toma final detras, en camara lenta
-            SP.Presentation.TomaDeVictoria.Iniciar();   // bug #220: toma de cierre orbitando a la escuadra
+            if (!TomaFinalEnLaAzotea) SP.Presentation.TomaDeVictoria.Iniciar();   // bug #220: toma de cierre orbitando a la escuadra (en el techo sigue la toma del helicoptero yendose)
         }
     }
 }

@@ -408,10 +408,12 @@ namespace SP.Operacion
 
         void Aviso(string t) { if (hud != null) hud.Aviso(t, 4f); GameLog.Line("[Operacion] " + t.Replace("\n", " · ")); }
 
-        void PonerBaliza(string texto, Color c, Vector3 pos, Transform sigue, float radio = 3f)
+        // 'y' = altura del piso donde se apoya la baliza (0,15 en la calle; en la mansion, la del piso del objetivo: bugs #327/#328/#330, el rombo del
+        // objetivo quedaba siempre en la planta baja).
+        void PonerBaliza(string texto, Color c, Vector3 pos, Transform sigue, float radio = 3f, float y = 0.15f)
         {
             if (baliza != null) baliza.Quitar();
-            baliza = TutorialBeacon.Crear(texto, c, new Vector3(pos.x, 0.15f, pos.z), sigue, radio, 26f);
+            baliza = TutorialBeacon.Crear(texto, c, new Vector3(pos.x, y, pos.z), sigue, radio, 26f);
         }
 
 
@@ -714,7 +716,14 @@ namespace SP.Operacion
             if (teletransportar && iDestino < entradas.Length && entradas[iDestino] != null) TeletransportarEscuadra(entradas[iDestino].position, entradas[iDestino].rotation);
             if (destino == FaseOperacion.Extraer)
             {
-                // Atajo de pruebas: el helicoptero ya esta posado en la plaza.
+                // Atajo de pruebas: el helicoptero ya esta posado en la zona de aterrizaje. Con la mansion en juego esa zona es el techo (bug #339: F10
+                // lo dejaba en la plaza): la escuadra y los milicianos tambien aparecen arriba.
+                bool enElTecho = Application.isPlaying && PuedeUsarLaMansion();
+                if (enElTecho)
+                {
+                    HelipadEnLaAzotea();
+                    if (teletransportar) PonerLaEscuadraEnElPiso(MansionGeometria.CentroDeLaAzotea + new Vector3(-9f, 0f, 2f));
+                }
                 ArrancarHeli();
                 heli.position = heliAterrizaje.position;
                 if (ScriptHeli != null) ScriptHeli.Volando = false;

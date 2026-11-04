@@ -66,6 +66,9 @@ namespace SP.Operacion
             relojMansion = 0f; proximoSpawnPlaza = 1.5f; plazaRestantes = 8; ondasDeAzotea = 0; tAzotea = 0f;
             porton = false; azoteaIniciada = false; segundoIniciado = false; MilicianosLiberados = false; CineDeMansionEnCurso = false;
             MansionEnemigosCreados = 0; HeliDeLaAzotea = null;
+            ReiniciarAzotea();
+            HelipadEnLaAzotea();   // el rescate y la extraccion son en el techo, no en la plaza
+            if (GetComponent<PlantasDeLaMansion>() == null) gameObject.AddComponent<PlantasDeLaMansion>();   // #336: recorta las plantas de arriba en la vista tactica
             foreach (var h in hojasDelPorton) if (h != null) h.Cerrar();
             if (baliza != null) { baliza.Quitar(); baliza = null; }
             PonerBaliza("MANSION", new Color(1f, 0.55f, 0.25f), new Vector3(G.PortonX, 1f, G.Z0 - 6f), null, 3.2f);
@@ -93,6 +96,13 @@ namespace SP.Operacion
         Soldier CrearEnemigoMansion(Vector3 pos, bool desdeEscalera = false)
         {
             if (plantillaDeRefuerzo == null) return null;
+            // Red de seguridad (#337): fuera de las torres de escalera salvo que salga justo de una (los refuerzos de la azotea).
+            if (!desdeEscalera)
+                for (int k = 0; k < 8 && G.EnTorre(pos, out _); k++)
+                {
+                    var haciaCentro = Plano(G.Centro(0), pos);
+                    pos += (haciaCentro.sqrMagnitude > 0.01f ? haciaCentro.normalized : Vector3.right) * 2.5f;
+                }
             var yo = Poseido();
             var haciaYo = yo != null ? Plano(yo.transform.position, pos) : Vector3.forward;
             if (haciaYo.sqrMagnitude < 0.01f) haciaYo = Vector3.forward;
@@ -157,6 +167,7 @@ namespace SP.Operacion
             int faltan = vivos + pendientesMansion.Count;
             TickSpawnsPendientes(yo);
             SincronizarEscuadraEnLaMansion(yo, nivel);
+            RevelarEnemigosDeLaMansion(yo, faltan);
 
             switch (EtapaMansion)
             {
@@ -186,14 +197,14 @@ namespace SP.Operacion
                 {
                     if (!porton) break;
                     if (hud != null) hud.Objetivo(TituloObjetivo(5, "TOMAR LA MANSION"), faltan > 0 ? $"Planta baja: limpia el salon · {faltan} enemigos · usa los pilares y el mostrador" : "Planta baja libre: sube por la escalera del noroeste", 0.25f, new Color(1f, 0.55f, 0.25f));
-                    if (faltan == 0 && nivel == 0 && baliza == null) PonerBaliza("ESCALERA", new Color(0.35f, 0.8f, 1f), G.EntradaDeTorre(0) + Vector3.up, null, 2.4f);
+                    if (G.Dentro(yo.transform.position, 0.5f) && nivel == 0) BalizaDeLaMansion("ESCALERA", new Color(0.35f, 0.8f, 1f), G.EntradaDeTorre(0), 0);
                     if (nivel >= 1) EntrarPrimerPiso();
                     break;
                 }
                 case EtapaDeLaMansion.PrimerPiso:
                 {
                     if (hud != null) hud.Objetivo(TituloObjetivo(5, "TOMAR LA MANSION"), faltan > 0 ? $"1.er piso: emboscada · {faltan} enemigos · cada cuarto esconde un grupo" : "1.er piso libre: cruza el pasillo hasta la escalera del sureste", 0.45f, new Color(1f, 0.55f, 0.25f));
-                    if (faltan == 0 && nivel == 1 && baliza == null) PonerBaliza("ESCALERA", new Color(0.35f, 0.8f, 1f), G.EntradaDeTorre(1) + Vector3.up, null, 2.4f);
+                    if (nivel == 1) BalizaDeLaMansion("ESCALERA", new Color(0.35f, 0.8f, 1f), G.EntradaDeTorre(1), 1);
                     if (nivel >= 2) EntrarSegundoPiso();
                     break;
                 }
@@ -205,17 +216,18 @@ namespace SP.Operacion
                     if (!MilicianosLiberados)
                     {
                         if (hud != null) hud.Objetivo(TituloObjetivo(5, "TOMAR LA MANSION"), faltan > 0 ? $"2.o piso: elimina a la guardia · {faltan} enemigos" : "Llega a las celdas del norte y libera a los milicianos", 0.65f, new Color(1f, 0.55f, 0.25f));
-                        if (faltan == 0 && nivel == 2 && dCeldas < 4f)
+                        // Bug #333 ("no puedo interactuar, deberia apretarlo y abrir las carceles"): se abren desde 7 m aunque queden guardias.
+                        if (nivel == 2 && dCeldas < 7f)
                         {
                             if (hud != null) hud.Prompt("[E] LIBERAR A LOS MILICIANOS");
                             if (OperacionTerminal.EToque()) LiberarMilicianos();
                         }
-                        else if (faltan == 0 && baliza == null) PonerBaliza("CELDAS", new Color(1f, 0.82f, 0.25f), puertaCeldas, null, 2.4f);
+                        else if (nivel == 2) BalizaDeLaMansion("CELDAS", new Color(1f, 0.82f, 0.25f), puertaCeldas, 2);   // el rombo marca las celdas desde que se entra al piso (#330)
                     }
                     else
                     {
                         if (hud != null) hud.Objetivo(TituloObjetivo(5, "TOMAR LA MANSION"), "Milicianos liberados: sube a la azotea por la escalera del noreste", 0.78f, new Color(0.45f, 1f, 0.55f));
-                        if (baliza == null) PonerBaliza("AZOTEA", new Color(0.35f, 0.8f, 1f), G.EntradaDeTorre(2) + Vector3.up, null, 2.4f);
+                        if (nivel == 2) BalizaDeLaMansion("AZOTEA", new Color(0.35f, 0.8f, 1f), G.EntradaDeTorre(2), 2);
                         if (nivel >= 3) EntrarAzotea();
                     }
                     break;
@@ -223,28 +235,35 @@ namespace SP.Operacion
                 case EtapaDeLaMansion.Azotea:
                 {
                     if (!azoteaIniciada) break;
-                    tAzotea += dt;
-                    // Tres oleadas salen por las otras escaleras; cada una asoma desde el rellano y sube por el carril de bajada.
-                    float[] cuando = { 4f, 16f, 30f };
-                    int[] torre = { 3, 4, 2 };
-                    while (ondasDeAzotea < cuando.Length && tAzotea >= cuando[ondasDeAzotea])
-                    {
-                        int i = torre[ondasDeAzotea++];
-                        var t = G.Torres[i];
-                        var p = G.RellanoDeTorre(i);
-                        for (int k = 0; k < 4; k++) pendientesMansion.Add(new SpawnMansion { pos = p, radio = 0f, dispararEn = relojMansion + k * 1.1f, nivel = 3, desdeEscalera = true });
-                        if (hud != null) hud.Aviso($"REFUERZOS POR LA ESCALERA {t.nombre}", 2.6f);
-                    }
-                    bool heliVivo = HeliDeLaAzotea != null && !HeliDeLaAzotea.Derribado;
-                    if (hud != null)
-                    {
-                        float f = HeliDeLaAzotea != null ? HeliDeLaAzotea.Fraccion01 : 0f;
-                        hud.Objetivo(TituloObjetivo(5, "TOMAR LA MANSION"), heliVivo ? $"Azotea: derriba al helicoptero ({Mathf.RoundToInt(f * 100f)} %) · {faltan} soldados" : $"Azotea: helicoptero derribado · quedan {faltan} soldados", 0.85f + 0.12f * (heliVivo ? 1f - f : 1f), new Color(1f, 0.4f, 0.3f));
-                        if (heliVivo) hud.BarraDeJefe(HelicopteroEnemigo.Nombre, f);
-                    }
-                    if (!heliVivo && ondasDeAzotea >= cuando.Length && faltan == 0) TerminarLaMansion();
+                    TickAzotea(dt, faltan);   // OperacionDirector.Azotea.cs: resistir hasta que llegue el helicoptero de rescate
                     break;
                 }
+            }
+        }
+
+        // El rombo del objetivo sigue a la baliza del director: se reemplaza solo si cambia el objetivo y se apoya en el piso del nivel donde esta.
+        string nombreDeLaBaliza;
+        void BalizaDeLaMansion(string nombre, Color color, Vector3 pos, int nivel)
+        {
+            if (baliza != null && nombreDeLaBaliza == nombre) return;
+            PonerBaliza(nombre, color, pos, null, 2.4f, G.Nivel(nivel) + 0.15f);
+            nombreDeLaBaliza = nombre;
+        }
+
+        // Bug #334 ("falta señalizar mejor a los enemigos"): los enemigos de la mansion llevan su rombo rojo aunque haya paredes en el medio cuando
+        // estan en el mismo piso que vos y a menos de 28 m, o cuando quedan pocos (<= 4) en cualquier lugar del edificio.
+        float proximoRevelado;
+        void RevelarEnemigosDeLaMansion(Soldier yo, int faltan)
+        {
+            if (Time.time < proximoRevelado) return;
+            proximoRevelado = Time.time + 0.5f;
+            for (int i = 0; i < enemigosMansion.Count; i++)
+            {
+                var s = enemigosMansion[i];
+                if (s == null || s.Health == null || !s.Health.IsAlive) continue;
+                bool pocos = faltan <= 4;
+                bool cerca = Mathf.Abs(s.transform.position.y - yo.transform.position.y) < 3.2f && Plano(s.transform.position, yo.transform.position).magnitude < 28f;
+                if (pocos || cerca) { SP.Core.InteligenciaDeEnemigos.Revelar(s.Id); WorldUiDirector.Revelar(s, 1.5f); }
             }
         }
 
@@ -284,22 +303,18 @@ namespace SP.Operacion
         void EntrarAzotea()
         {
             if (azoteaIniciada) return;
-            azoteaIniciada = true;
-            EtapaMansion = EtapaDeLaMansion.Azotea;
-            if (baliza != null) { baliza.Quitar(); baliza = null; }
-            SesionLog.Evento("MANSION: azotea");
-            StartCoroutine(CinematicaDelHelicoptero());
+            ArrancarLaAzotea(true);
         }
 
-        void TerminarLaMansion()
+        // Sin cinematica (F10): el Halcon ya esta orbitando el techo.
+        void IniciarHalconDeLaAzotea()
         {
-            EtapaMansion = EtapaDeLaMansion.Cerrada;
-            if (heliAterrizaje != null) heliAterrizaje.position = G.CentroDeLaAzotea;
-            Aviso("AZOTEA ASEGURADA\nEL HELICOPTERO ATERRIZA PARA EXTRAERTE");
-            SesionLog.Evento("MANSION: terminada");
-            ArrancarHeli();
-            if (hud != null) { hud.OcultarTimer(); hud.OcultarBarraDeJefe(); }
-            EntrarFase(FaseOperacion.Extraer);
+            if (anclaDelHeli == null) { var g = new GameObject("Mansion_AnclaHeli"); g.transform.position = G.CentroDeLaAzotea; anclaDelHeli = g.transform; }
+            var h = HelicopteroEnemigo.IniciarSobre(halcon, anclaDelHeli, 25f, 120f);
+            HeliDeLaAzotea = h;
+            if (h == null) return;
+            h.desnivel = G.Nivel(3); h.radioPropio = 34f;
+            h.LiberarDeLaCinematica();
         }
 
         // ------------------------------------------------------------------ milicianos
@@ -346,6 +361,11 @@ namespace SP.Operacion
             }
             ActorRegistry.Invalidate();
             if (RosterView.Activo != null) RosterView.Activo.Rebuild();
+            // Bug #338: liberados no seguian al jugador (quedaban parados en las celdas). Ahora salen siguiendolo, y suena un logro.
+            var lider = Poseido();
+            if (lider != null) foreach (var s in prisioneros) if (s != null && s.Brain != null) OrderService.IssueFollowOrder(s, lider, default, 0f, true);
+            GenericSfx.PlayOneShot2D(GenericSfx.Get(SfxKind.Logro), 0.8f * AudioDirector.GainFor(SfxChannel.Sfx), 1.05f, "Logro");
+            GenericSfx.PlayOneShot2D(GenericSfx.Get(SfxKind.ObjetivoCumplido), 0.7f * AudioDirector.GainFor(SfxChannel.Sfx), 1f, "ObjetivoCumplido");
             AlertQueue.Push($"{prisioneros.Count} MILICIANOS LIBERADOS", AlertPriority.Alta, 3.2f);
             Aviso("MILICIANOS LIBERADOS\nSUBE A LA AZOTEA POR LA ESCALERA NORESTE");
             prisioneros.Clear();

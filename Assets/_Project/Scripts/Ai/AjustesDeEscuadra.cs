@@ -25,16 +25,16 @@ namespace SP.Ai
         }
         // Ronda 13 (punto 4): "seguirme" a la MITAD de la distancia anterior (25 / 8 m pasan a 12,5 / 4 m).
         public float distanciaParaSeguir = 12.5f;
-        public float distanciaParaDetenerse = 4f;
+        public float distanciaParaDetenerse = 6f;
         public bool seguirDesdeCobertura = true;
-        public float distanciaLateralFormacion = 2.5f;
-        public float distanciaAtrasFormacion = 1.5f;
+        public float distanciaLateralFormacion = 4.5f;
+        public float distanciaAtrasFormacion = 3f;
 
         public static float DistanciaParaSeguir = 12.5f;
-        public static float DistanciaParaDetenerse = 4f;
+        public static float DistanciaParaDetenerse = 6f;
         public static bool SeguirDesdeCobertura = true;
-        public static float DistanciaLateralFormacion = 2.5f;
-        public static float DistanciaAtrasFormacion = 1.5f;
+        public static float DistanciaLateralFormacion = 4.5f;
+        public static float DistanciaAtrasFormacion = 3f;
 
         // El soldado que maneja el jugador en primera persona (null en RTS o
         // sin nadie): PlayerInputDriver lo actualiza cada frame.
@@ -52,13 +52,17 @@ namespace SP.Ai
         }
         void OnValidate() => Aplicar();
 
+        // Bug #332 ("se me pegan demasiado al seguirme"): la ranura de la formacion estaba a 2,5 m al costado y 1,5 m atras, y se detenian a 4 m. Piso minimo
+        // de lo que viene serializado en la escena, para que no vuelva a quedar pegado por un valor viejo.
+        public const float LateralMinimaDeFormacion = 4.5f, AtrasMinimaDeFormacion = 3f, DetenerseMinimo = 6f;
+
         public void Aplicar()
         {
             DistanciaParaSeguir = Mathf.Max(2f, distanciaParaSeguir);
-            DistanciaParaDetenerse = Mathf.Clamp(distanciaParaDetenerse, 1f, DistanciaParaSeguir - 1f);
+            DistanciaParaDetenerse = Mathf.Clamp(Mathf.Max(DetenerseMinimo, distanciaParaDetenerse), 1f, DistanciaParaSeguir - 1f);
             SeguirDesdeCobertura = seguirDesdeCobertura;
-            DistanciaLateralFormacion = Mathf.Max(0f, distanciaLateralFormacion);
-            DistanciaAtrasFormacion = Mathf.Max(0f, distanciaAtrasFormacion);
+            DistanciaLateralFormacion = Mathf.Max(LateralMinimaDeFormacion, distanciaLateralFormacion);
+            DistanciaAtrasFormacion = Mathf.Max(AtrasMinimaDeFormacion, distanciaAtrasFormacion);
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
