@@ -213,7 +213,10 @@ namespace SP.UI
             textoDeVida.font = gunnerLabel != null ? gunnerLabel.font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             textoDeVida.fontSize = gunnerLabel != null ? Mathf.Max(12, gunnerLabel.fontSize - 2) : 14;
             textoDeVida.alignment = TextAnchor.LowerCenter; textoDeVida.color = Color.white; textoDeVida.raycastTarget = false;
-            textoDeVida.horizontalOverflow = HorizontalWrapMode.Overflow; textoDeVida.verticalOverflow = VerticalWrapMode.Overflow;
+            // Bug #009 (build, "corrige la UI de vida del tanque"): con Overflow el rotulo era mas ancho que el marco y se salia por la izquierda.
+            // Se ajusta al ancho de la barra (tamano de letra automatico) y no se sale nunca.
+            textoDeVida.horizontalOverflow = HorizontalWrapMode.Wrap; textoDeVida.verticalOverflow = VerticalWrapMode.Truncate;
+            textoDeVida.resizeTextForBestFit = true; textoDeVida.resizeTextMinSize = 8; textoDeVida.resizeTextMaxSize = textoDeVida.fontSize;
             go.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.9f);
         }
 
@@ -272,7 +275,7 @@ namespace SP.UI
                 healthFill.color = Color.Lerp(new Color(0.85f, 0.2f, 0.15f), new Color(0.4f, 0.85f, 0.45f), healthFill.fillAmount);
                 // Bug #004 (build, "datos visibles"): la barra verde no decia que era la vida del tanque ni cuanto quedaba. Rotulo con el numero.
                 if (textoDeVida == null) CrearTextoDeVida();
-                if (textoDeVida != null) textoDeVida.text = $"VIDA DEL TANQUE  {hp.Current} / {hp.MaxHealth}  ({Mathf.RoundToInt(healthFill.fillAmount * 100f)} %)";
+                if (textoDeVida != null) textoDeVida.text = $"VIDA DEL TANQUE {hp.Current}/{hp.MaxHealth} · {Mathf.RoundToInt(healthFill.fillAmount * 100f)} %";
             }
 
             if (gunnerLabel != null && !minimo)

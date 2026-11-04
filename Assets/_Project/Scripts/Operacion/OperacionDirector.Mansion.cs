@@ -39,7 +39,7 @@ namespace SP.Operacion
         public HelicopteroEnemigo HeliDeLaAzotea { get; private set; }
         public int MansionNivelDelJugador { get; private set; }
 
-        class SpawnMansion { public Vector3 pos; public float radio; public float dispararEn; public int nivel; public bool desdeEscalera; }
+        class SpawnMansion { public Vector3 pos; public float radio; public float dispararEn; public int nivel; public bool desdeEscalera; public bool escalonado; }
 
         PortonDeMansion[] hojasDelPorton;
         readonly List<Soldier> enemigosMansion = new List<Soldier>();
@@ -67,6 +67,8 @@ namespace SP.Operacion
             porton = false; azoteaIniciada = false; segundoIniciado = false; MilicianosLiberados = false; CineDeMansionEnCurso = false;
             MansionEnemigosCreados = 0; HeliDeLaAzotea = null;
             ReiniciarAzotea(); CerrarLaReja();
+            QuitarPropsDelInterior();
+            QuitarCompuertas();
             HelipadEnLaAzotea();   // el rescate y la extraccion son en el techo, no en la plaza
             if (GetComponent<PlantasDeLaMansion>() == null) gameObject.AddComponent<PlantasDeLaMansion>();   // #336: recorta las plantas de arriba en la vista tactica
             foreach (var h in hojasDelPorton) if (h != null) h.Cerrar();
@@ -74,6 +76,29 @@ namespace SP.Operacion
             PonerBaliza("MANSION", new Color(1f, 0.55f, 0.25f), new Vector3(G.PortonX, 1f, G.Z0 - 6f), null, 3.2f);
             Aviso("TANQUE DESTRUIDO\nLIMPIA LA PLAZA Y TOMA LA MANSION");
             SesionLog.Evento("MANSION: arranca el asalto (plaza)");
+        }
+
+        public int PropsQuitadosDelInterior { get; private set; }
+
+        // Bug #010 (build, "hay un collider invisible aqui"): los props de la ciudad (P_Env_*: neumaticos, barriles, barricadas, carteles) quedaron
+        // adentro de la huella de la mansion; sus mallas se fusionaron o quedan bajo el piso, pero el collider seguia ahi y frenaba al soldado en el
+        // vestibulo. Al armarse la mansion se sacan los que caen adentro (con su marcador de cobertura, si lo tienen).
+        void QuitarPropsDelInterior()
+        {
+            PropsQuitadosDelInterior = 0;
+            var centro = new Vector3((G.X0 + G.X1) * 0.5f, 3f, (G.Z0 + G.Z1) * 0.5f);
+            var mitad = new Vector3((G.X1 - G.X0) * 0.5f - 0.3f, 3.5f, (G.Z1 - G.Z0) * 0.5f - 0.3f);
+            var vistos = new HashSet<GameObject>();
+            foreach (var c in Physics.OverlapBox(centro, mitad, Quaternion.identity, ~0, QueryTriggerInteraction.Collide))
+            {
+                if (c == null) continue;
+                var go = c.gameObject;
+                while (go != null && !go.name.StartsWith("P_Env_", System.StringComparison.Ordinal)) go = go.transform.parent != null ? go.transform.parent.gameObject : null;
+                if (go == null || !vistos.Add(go)) continue;
+                Destroy(go);
+                PropsQuitadosDelInterior++;
+            }
+            if (PropsQuitadosDelInterior > 0) GameLog.Line($"[Operacion] Mansion: se quitaron {PropsQuitadosDelInterior} props de la ciudad que quedaban adentro");
         }
 
         void SalirDeLaMansion()
@@ -142,15 +167,51 @@ namespace SP.Operacion
                 pendientesMansion.Add(new SpawnMansion { pos = p, radio = radio, nivel = nivel, dispararEn = relojMansion + fallbackSegundos });
         }
 
+        // Bug #011 (build, "los enemigos deberian bajar de las escaleras, no aparecer magicamente frente a mi"): en el 1.er y 2.o piso la guardia
+        // aparecia de golpe en su punto al acercarse el jugador. Ahora, al llegar al piso, cada uno sale del RELLANO de una escalera que
+        // baja a ese piso (la que esta mas lejos del jugador), uno cada ~0,9 s, y llega caminando por el tramo hasta la puerta del salon.
+        // Entre ellos y el jugador hay siempre una torre cerrada: nadie se materializa a la vista.
+        bool RellanoParaBajar(int nivel, Soldier yo, out Vector3 rellano)
+        {
+            rellano = Vector3.zero;
+            float mejor = -1f; int idx = -1;
+            for (int i = 0; i < G.Torres.Length; i++)
+            {
+                if (G.Torres[i].nivelBase != nivel) continue;
+                var r = G.RellanoDeTorre(i);
+                float d = Plano(yo.transform.position, r).magnitude + UnityEngine.Random.value * 6f;   // algo de azar entre torres parecidas
+                if (d > mejor) { mejor = d; idx = i; }
+            }
+            if (idx < 0) return false;
+            rellano = G.RellanoDeTorre(idx);
+            return true;
+        }
+
+        public int EnemigosBajadosPorEscalera { get; private set; }
+
         void TickSpawnsPendientes(Soldier yo)
         {
+            int escalonados = 0;
             for (int i = pendientesMansion.Count - 1; i >= 0; i--)
             {
                 var sp = pendientesMansion[i];
+                bool porEscalera = !sp.desdeEscalera && sp.nivel >= 1 && sp.nivel <= 2;
                 bool cerca = Plano(yo.transform.position, sp.pos).magnitude < sp.radio && MansionNivelDelJugador >= sp.nivel;
-                if (!cerca && relojMansion < sp.dispararEn) continue;
+                if (porEscalera && !sp.escalonado)
+                {
+                    if (!cerca && relojMansion < sp.dispararEn) continue;
+                    sp.escalonado = true; sp.dispararEn = relojMansion + 0.5f + 0.9f * escalonados++;
+                    continue;
+                }
+                if (sp.escalonado ? relojMansion < sp.dispararEn : (!cerca && relojMansion < sp.dispararEn)) continue;
                 pendientesMansion.RemoveAt(i);
-                CrearEnemigoMansion(sp.pos, sp.desdeEscalera);
+                var pos = sp.pos; bool desdeEscalera = sp.desdeEscalera;
+                if (sp.escalonado && RellanoParaBajar(sp.nivel, yo, out var rellano))
+                {
+                    pos = rellano + new Vector3(UnityEngine.Random.Range(-0.8f, 0.8f), 0f, UnityEngine.Random.Range(-0.8f, 0.8f));
+                    desdeEscalera = true; EnemigosBajadosPorEscalera++;
+                }
+                CrearEnemigoMansion(pos, desdeEscalera);
             }
         }
 
@@ -168,6 +229,7 @@ namespace SP.Operacion
             TickSpawnsPendientes(yo);
             SincronizarEscuadraEnLaMansion(yo, nivel);
             RevelarEnemigosDeLaMansion(yo, faltan);
+            ActualizarCompuertas(faltan, yo);
 
             switch (EtapaMansion)
             {

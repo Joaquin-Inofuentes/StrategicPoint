@@ -323,6 +323,8 @@ namespace SP.Operacion
         //  - presupuesto en ventana de 1 s: 1,6 % de la vida maxima por segundo con el tanque sano y 1,2 % debajo del 50 %;
         //  - los primeros 6 s de la carrera, todo a la mitad (el jugador todavia se esta acomodando).
         // Con fuego continuo ininterrumpido el tanque dura ~65 s (el trayecto); con presion normal llega al final con 30-50 % de vida.
+        // Bug #009 (build, "me deberian hacer el doble de dano"): el factor, el tope por golpe y el presupuesto por segundo se duplican (x2).
+        public const float MultiplicadorDeDanoDelTanque = 2f;
         System.Func<int, int> CurvaDeDanoDelTanque()
         {
             float ventanaInicio = -10f, gastado = 0f;
@@ -332,10 +334,11 @@ namespace SP.Operacion
                 float max = tanque.Health.MaxHealth, v = Mathf.Clamp01(tanque.Health.Current / Mathf.Max(1f, max));
                 float f = v >= 0.60f ? 0.55f : Mathf.Lerp(0.35f, 0.55f, Mathf.InverseLerp(0.15f, 0.60f, v));
                 if (Reloj < 6f) f *= 0.5f;
-                float d = Mathf.Min(dano * f, max * 0.07f);
+                f *= MultiplicadorDeDanoDelTanque;
+                float d = Mathf.Min(dano * f, max * 0.07f * MultiplicadorDeDanoDelTanque);
                 float ahora = Time.time;
                 if (ahora - ventanaInicio >= 1f) { ventanaInicio = ahora; gastado = 0f; }
-                float tope = max * (v > 0.5f ? 0.016f : 0.012f);   // con 1600 de vida: ~26 HP/s sano, ~19 HP/s herido
+                float tope = max * (v > 0.5f ? 0.016f : 0.012f) * MultiplicadorDeDanoDelTanque;   // con 1600 de vida: ~51 HP/s sano, ~38 HP/s herido
                 d = Mathf.Min(d, Mathf.Max(1f, tope - gastado));
                 gastado += d;
                 return Mathf.Max(1, Mathf.RoundToInt(d));

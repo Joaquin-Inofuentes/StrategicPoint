@@ -71,6 +71,7 @@ namespace SP.Operacion
         void TickExtraer()
         {
             TickOleadasDeExtraer();
+            AyudarALaEscuadraAlHeli();
             if (SubiendoAlHeli) return;
             if (CoberturaActiva) { TickCoberturaDeExtraer(Time.deltaTime); return; }   // #127: estacionario cubriendo hasta que todos esten en la zona
             var yo = Poseido();

@@ -21,8 +21,47 @@ namespace SP.Presentation
         const float LadoMinimo = 1.2f;
 
         // Raices de escena que se recorren y prefijos de nombre (distingue mayusculas) que cuentan como "muro".
-        static readonly string[] Raices = { "Nivel_Blockout", "Operacion" };
+        static readonly string[] Raices = { "Nivel_Blockout", "Operacion", "Cuarteles", "Ruta", "Ciudad", "Environment" };
         static readonly string[] Prefijos = { "Muro", "Borde", "Valle", "Cuartel", "Cierre", "CD_", "Porton", "Barrera", "Puesto", "Brecha", "Pilar", "Portico" };
+
+        // Bug #007 (build, "el minimapa no muestra los muros y obstaculos"): SC_Operacion tiene el entorno en tres escenas aditivas (Cuarteles,
+        // Ruta, Ciudad) que se cargan un frame DESPUES del arranque, asi que Registrar() corria sin ver nada (4 siluetas en la build). Ademas los
+        // edificios, barracas y contenedores no tenian prefijo de muro. Ahora: (1) se recorren tambien esas raices, (2) en las raices del
+        // entorno entra todo BoxCollider solido y alto que no sea unidad ni vehiculo, y (3) se vuelve a armar cada vez que carga una escena aditiva.
+        static readonly string[] RaicesDeEntorno = { "Cuarteles", "Ruta", "Ciudad", "Operacion" };
+        static readonly string[] Excluidos = { "Farola", "Poste", "Lampara", "Reflector", "Gabinete", "Enemigo", "Soldado", "Reserva", "Halo", "Haz", "Luz" };
+        const float AlturaMinima = 1.5f;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        static void Suscribir()
+        {
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded -= AlCargarEscena;
+            UnityEngine.SceneManagement.SceneManager.sceneLoaded += AlCargarEscena;
+        }
+
+        static void AlCargarEscena(UnityEngine.SceneManagement.Scene s, UnityEngine.SceneManagement.LoadSceneMode modo)
+        {
+            if (modo != UnityEngine.SceneManagement.LoadSceneMode.Additive || !s.name.StartsWith("SC_Operacion_", System.StringComparison.Ordinal)) return;
+            Registrar();
+        }
+
+        static bool EsDeEntorno(string raiz) { foreach (var r in RaicesDeEntorno) if (r == raiz) return true; return false; }
+
+        static bool EsExcluido(string n)
+        {
+            foreach (var p in Excluidos) if (n.StartsWith(p, System.StringComparison.Ordinal)) return true;
+            return false;
+        }
+
+        // Pared o edificio del entorno: solido, alto, con huella de verdad y que no sea una unidad ni un vehiculo.
+        static bool EsEstructura(BoxCollider bc)
+        {
+            if (EsExcluido(bc.name)) return false;
+            var s = bc.bounds.size;
+            if (s.y < AlturaMinima || s.x < 0.4f || s.z < 0.4f || s.x > 300f || s.z > 300f) return false;
+            if (bc.GetComponentInParent<SP.Combat.Health>() != null || bc.GetComponentInParent<SP.Vehicles.Vehicle>() != null) return false;
+            return true;
+        }
 
         static readonly List<string> nombres = new List<string>();
         public static IReadOnlyList<string> Nombres => nombres;
@@ -53,7 +92,7 @@ namespace SP.Presentation
                 {
                     if (bc == null || bc.isTrigger || !bc.enabled) continue;
                     bool marcado = bc.GetComponent<SiluetaMinimapa>() != null;
-                    if (!marcado && !EsMuro(bc.name)) continue;
+                    if (!marcado && !EsMuro(bc.name) && !(EsDeEntorno(nombreRaiz) && EsEstructura(bc))) continue;
                     if (bc.GetComponent<ObstacleMarker>() != null) continue;   // ya tiene su icono de obstaculo
                     Agregar(bc, verts, tris);
                 }

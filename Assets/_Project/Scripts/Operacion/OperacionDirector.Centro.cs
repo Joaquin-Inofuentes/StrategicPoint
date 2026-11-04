@@ -146,11 +146,11 @@ namespace SP.Operacion
             if (hud != null)
             {
                 string det = computadora.Operador != null
-                    ? $"{computadora.Operador.DisplayName} esta hackeando · {Mathf.CeilToInt((1f - computadora.Progreso01) * computadora.duracion)} s · oleadas {oleadasLanzadas.Count}/{oleadasDelCentro.Length}"
+                    ? $"{computadora.Operador.DisplayName} esta hackeando · {Mathf.CeilToInt((1f - computadora.Progreso01) * computadora.DuracionEfectiva)} s · oleadas {oleadasLanzadas.Count}/{oleadasDelCentro.Length}"
                       + (CamionetasDelCentroVivas > 0 ? $" · ¡{CamionetasDelCentroVivas} vehiculos! cohetes o granadas" : "")
                     : "Entra al centro de datos y apreta [E] en la computadora";
                 hud.Objetivo(TituloObjetivo(3, "CENTRO DE DATOS"), det, computadora.Progreso01, new Color(0.35f, 0.8f, 1f));
-                if (computadora.Operador != null) hud.Timer("DESCARGANDO DATOS", Mathf.CeilToInt((1f - computadora.Progreso01) * computadora.duracion), new Color(0.5f, 0.9f, 1f));
+                if (computadora.Operador != null) hud.Timer("DESCARGANDO DATOS", Mathf.CeilToInt((1f - computadora.Progreso01) * computadora.DuracionEfectiva), new Color(0.5f, 0.9f, 1f));
                 else hud.OcultarTimer();
             }
             if (computadora.Completo)

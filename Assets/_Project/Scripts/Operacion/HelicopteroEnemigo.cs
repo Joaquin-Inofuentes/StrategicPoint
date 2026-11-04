@@ -171,6 +171,9 @@ namespace SP.Operacion
             if (!SogasColgadas && Vector3.Distance(transform.position, meta) < 2.5f)
             {
                 SogasColgadas = true; proximoSoldado = Time.time + 0.4f; tFinDeDespliegue = 0f;
+                // Bug #012 (build, "deberia ser derribable el helicoptero que suelta enemigos"): desde que cuelga las cuerdas ya se lo puede derribar
+                // (antes era invulnerable hasta terminar de bajar a todos). En la aproximacion sigue protegido.
+                if (ancla != null && Vehiculo != null && Vehiculo.Health != null) Vehiculo.Health.Invulnerable = false;
                 CrearSogas();
                 AvisoCentral.Mostrar("¡HELICOPTERO ENEMIGO SOLTANDO TROPAS EN CUERDAS!", 2f, new Color(0.55f, 0.07f, 0.05f, 0.9f));
                 SesionLog.Evento("HALCON: despliegue sobre " + PuntoDeDespliegue);
@@ -471,9 +474,25 @@ namespace SP.Operacion
             giroCaida = Random.value < 0.5f ? -1f : 1f;
             velocidadCaida = transform.forward * Mathf.Max(8f, VelocidadActual * 0.6f);
             avisando = false;
+            SoltarALosQueCuelgan();
             AlDerribarse?.Invoke();
             SesionLog.Evento("HALCON: derribado");
             AvisoCentral.Mostrar("¡HALCON DERRIBADO!", 2f, new Color(0.08f, 0.3f, 0.2f, 0.92f));
+        }
+
+        // Si lo derriban mientras baja tropas, los que cuelgan de las cuerdas caen al suelo y siguen (no se quedan congelados en el aire).
+        void SoltarALosQueCuelgan()
+        {
+            for (int i = bajando.Count - 1; i >= 0; i--)
+            {
+                var s = bajando[i];
+                if (s == null) continue;
+                var p = s.transform.position; p.y = PuntoDeDespliegue.y;
+                s.transform.position = p;
+                Aterrizar(s);
+            }
+            bajando.Clear();
+            QuitarSogas();
         }
 
         void TickCaida(float dt)

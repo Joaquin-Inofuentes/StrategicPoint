@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 using SP.CameraSystem;
+using SP.Combat;
 using SP.Core;
 using SP.Player;
 using G = SP.Operacion.MansionGeometria;
@@ -39,6 +40,39 @@ namespace SP.Operacion
             return true;
         }
 
+        readonly int[] porNivel = new int[4];
+        int ultimoNivel = -1;
+
+        // Piso (0..3) donde esta la mayoria de la escuadra viva dentro de la mansion; -1 si no hay nadie adentro. Empate: el piso del que manejas,
+        // y si tampoco decide, el que ya se estaba mostrando (sin parpadeo cuando dos grupos iguales cruzan un rellano).
+        int NivelDeLaEscuadra(SP.Actors.Soldier yo)
+        {
+            for (int i = 0; i < porNivel.Length; i++) porNivel[i] = 0;
+            foreach (var s in ActorRegistry.All)
+            {
+                if (s == null || s.Team != TeamId.Player || s.Role == RoleType.Civilian) continue;
+                var h = s.GetComponent<SP.Combat.Health>();
+                if (h == null || !h.IsAlive) continue;
+                int n = G.NivelDe(s.transform.position);
+                if (n >= 0) porNivel[n]++;
+            }
+            int mejor = -1, cuenta = 0; bool empate = false;
+            for (int n = 0; n < porNivel.Length; n++)
+            {
+                if (porNivel[n] > cuenta) { mejor = n; cuenta = porNivel[n]; empate = false; }
+                else if (porNivel[n] == cuenta && cuenta > 0) empate = true;
+            }
+            if (mejor < 0) return yo != null ? G.NivelDe(yo.transform.position) : -1;
+            if (empate)
+            {
+                int propio = yo != null ? G.NivelDe(yo.transform.position) : -1;
+                if (propio >= 0 && porNivel[propio] == cuenta) mejor = propio;
+                else if (ultimoNivel >= 0 && porNivel[ultimoNivel] == cuenta) mejor = ultimoNivel;
+            }
+            ultimoNivel = mejor;
+            return mejor;
+        }
+
         void Construir()
         {
             var lista = new List<MeshRenderer>();
@@ -65,11 +99,16 @@ namespace SP.Operacion
             var drv = PlayerInputDriver.Activo;
             var yo = drv != null && drv.Brain != null ? drv.Brain.Current : null;
             var cam = CamaraPrincipal.Actual;
-            if (d == null || !d.MansionActiva || yo == null || cam == null) { Restaurar(); return; }
-            int nivel = G.NivelDe(yo.transform.position);
-            if (nivel >= 3) { Restaurar(); return; }   // en la azotea no hay nada por encima que recortar
+            // Bug #014 (build, fase Extraer): "falta recorte de planta en donde estan la mayoria de soldados". Al pasar a Extraer el director da la
+            // mansion por terminada (MansionActiva=false) y el recorte se apagaba justo cuando la escuadra sube piso por piso. El componente solo
+            // existe si hubo mansion, asi que ya no depende de ese flag; y el piso que se muestra es donde esta la MAYORIA de la escuadra (el soldado
+            // que manejas desempata), no solo donde esta el que manejas.
+            if (d == null || cam == null) { Restaurar(); return; }
             var rig = CameraRig.Instance;
             bool rts = rig != null && rig.Mode == ControlMode.Rts;
+            // Con la vista tactica manda la mayoria; en primera/tercera persona, el piso del soldado que manejas (la camara esta con el).
+            int nivel = rts ? NivelDeLaEscuadra(yo) : (yo != null ? G.NivelDe(yo.transform.position) : -1);
+            if (nivel >= 3) { Restaurar(); return; }   // en la azotea no hay nada por encima que recortar
             float techo = nivel >= 0 ? G.Nivel(nivel + 1) : 0f;
             bool camaraArriba = nivel >= 0 && (rts || cam.transform.position.y > techo + 1f);
             if (!camaraArriba) { Restaurar(); return; }

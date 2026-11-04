@@ -21,6 +21,9 @@ namespace SP.Operacion
     {
         public string titulo = "PANEL";
         public float duracion = 4f;
+        // Bug #008 (build): en el modo dios el hackeo (y cualquier terminal) dura 3 s, no los 30 s normales.
+        public const float SegundosEnModoDios = 3f;
+        public float DuracionEfectiva => SP.Core.ModoDios.Activo ? Mathf.Min(duracion, SegundosEnModoDios) : duracion;
         public bool soloUnRol;
         public RoleType rol = RoleType.Flanker;
         public string nombreDelRol = "FRANCOTIRADOR";
@@ -164,7 +167,7 @@ namespace SP.Operacion
                     if (dir.sqrMagnitude > 0.01f) s.transform.rotation = Quaternion.LookRotation(dir.normalized);
                 }
                 Avanzar(dt, s);
-                AccionesEnCurso.Reportar(s, "DESACTIVANDO", transform.position, Progreso01, (1f - Progreso01) * duracion, transform);
+                AccionesEnCurso.Reportar(s, "DESACTIVANDO", transform.position, Progreso01, (1f - Progreso01) * DuracionEfectiva, transform);
                 return;
             }
             // Todavia no llego (o el combate lo desvio): se le reitera el destino.
@@ -224,7 +227,7 @@ namespace SP.Operacion
                     UltimoMensaje = $"MANTEN [E] PARA DESACTIVAR {titulo} · {Mathf.RoundToInt(Progreso01 * 100f)} %";
                     if (hud != null) hud.Prompt(UltimoMensaje, Progreso01);
                     // El que mantiene [E] tambien se ve trabajando (igual que el aliado mandado con [Q]).
-                    if (sosteniendo) AccionesEnCurso.Reportar(yo, "DESACTIVANDO", transform.position, Progreso01, (1f - Progreso01) * duracion, transform);
+                    if (sosteniendo) AccionesEnCurso.Reportar(yo, "DESACTIVANDO", transform.position, Progreso01, (1f - Progreso01) * DuracionEfectiva, transform);
                 }
             }
             // Si hay un aliado trabajando (mandado con [Q]) el progreso no decae aunque nadie mantenga [E].
@@ -261,8 +264,8 @@ namespace SP.Operacion
             bool pegado = Distancia(Operador) <= radio + 1.2f;
             if (pegado) Avanzar(dt, Operador);
             else if (hud != null) hud.Prompt("EL SOLDADO SE ALEJO DE LA COMPUTADORA: EL PROGRESO ESTA PAUSADO");
-            if (pegado && yo == Operador && hud != null) hud.Prompt($"HACKEANDO · {Mathf.CeilToInt((1f - Progreso01) * duracion)} s · defiende a {Operador.DisplayName} (podes cambiar de soldado con [TAB])", Progreso01);
-            if (pegado) AccionesEnCurso.Reportar(Operador, "HACKEANDO", transform.position, Progreso01, (1f - Progreso01) * duracion, transform);
+            if (pegado && yo == Operador && hud != null) hud.Prompt($"HACKEANDO · {Mathf.CeilToInt((1f - Progreso01) * DuracionEfectiva)} s · defiende a {Operador.DisplayName} (podes cambiar de soldado con [TAB])", Progreso01);
+            if (pegado) AccionesEnCurso.Reportar(Operador, "HACKEANDO", transform.position, Progreso01, (1f - Progreso01) * DuracionEfectiva, transform);
         }
 
         public void Enganchar(Soldier s)
@@ -287,7 +290,7 @@ namespace SP.Operacion
         public void Avanzar(float dt, Soldier quien = null)
         {
             if (Completo || duracion <= 0f) return;
-            Progreso01 = Mathf.Clamp01(Progreso01 + dt / duracion);
+            Progreso01 = Mathf.Clamp01(Progreso01 + dt / DuracionEfectiva);
             if (Progreso01 >= 1f) Terminar();
         }
 
