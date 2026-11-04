@@ -42,7 +42,8 @@ namespace SP.Presentation
         static void AlCargarEscena(UnityEngine.SceneManagement.Scene s, UnityEngine.SceneManagement.LoadSceneMode modo)
         {
             if (modo != UnityEngine.SceneManagement.LoadSceneMode.Additive || !s.name.StartsWith("SC_Operacion_", System.StringComparison.Ordinal)) return;
-            Registrar();
+            int n = Registrar();
+            GameLog.Line($"Se rearmaron {n} siluetas de muros al cargar {s.name}");
         }
 
         static bool EsDeEntorno(string raiz) { foreach (var r in RaicesDeEntorno) if (r == raiz) return true; return false; }
