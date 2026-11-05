@@ -79,9 +79,12 @@ namespace SP.Presentation
         public static int Registrar()
         {
             nombres.Clear();
-            var previo = RaicesDeEscena.Buscar(NombreRaiz);
-            if (previo != null)
+            // Destroy() se aplica al final del frame: si Registrar corre dos veces en el mismo frame (arranque + escena aditiva) el viejo seguia
+            // "encontrable" y quedaban 2-3 raices apiladas. Se renombra y apaga al instante y se barren TODAS las que haya.
+            GameObject previo;
+            while ((previo = RaicesDeEscena.Buscar(NombreRaiz)) != null)
             {
+                previo.name = NombreRaiz + "_viejo"; previo.SetActive(false);
                 var mf = previo.GetComponent<MeshFilter>(); var mrPrev = previo.GetComponent<MeshRenderer>();
                 if (mf != null && mf.sharedMesh != null) { if (Application.isPlaying) Object.Destroy(mf.sharedMesh); else Object.DestroyImmediate(mf.sharedMesh); }
                 if (mrPrev != null && mrPrev.sharedMaterial != null) { if (Application.isPlaying) Object.Destroy(mrPrev.sharedMaterial); else Object.DestroyImmediate(mrPrev.sharedMaterial); }

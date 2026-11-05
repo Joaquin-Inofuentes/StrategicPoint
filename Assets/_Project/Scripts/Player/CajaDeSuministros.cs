@@ -65,9 +65,7 @@ namespace SP.Player
         {
             var raiz = new GameObject("CajaDeSuministros");
             raiz.transform.position = suelo + Vector3.up * 0.45f;
-            Pieza(raiz.transform, "Caja", new Vector3(0f, 0f, 0f), new Vector3(0.9f, 0.6f, 0.6f), new Color(0.32f, 0.42f, 0.22f));
-            Pieza(raiz.transform, "CruzH", new Vector3(0f, 0.31f, 0f), new Vector3(0.5f, 0.03f, 0.14f), Color.white);
-            Pieza(raiz.transform, "CruzV", new Vector3(0f, 0.31f, 0f), new Vector3(0.14f, 0.03f, 0.5f), Color.white);
+            ArmarBotiquin(raiz.transform);
             var caja = raiz.AddComponent<CajaDeSuministros>();
             caja.renderers = raiz.GetComponentsInChildren<Renderer>();
             caja.basePos = raiz.transform.position;
@@ -82,6 +80,39 @@ namespace SP.Player
                 rombo.Condicion = () => caja.Disponible;
             }
             return caja;
+        }
+
+        // Bug #007 (Sheets): "actualizar modelo de 'vida', que sea un modelado menos primitivo". Antes: un cubo verde con una cruz blanca. Ahora un
+        // botiquin de campana: maletin blanco con zocalo y tapa, asa, dos cierres metalicos, brazalete rojo y cruz roja en cuatro caras y arriba.
+        static void ArmarBotiquin(Transform r)
+        {
+            var blanco = new Color(0.92f, 0.93f, 0.9f); var gris = new Color(0.25f, 0.27f, 0.28f); var metal = new Color(0.62f, 0.64f, 0.66f);
+            var rojo = new Color(0.82f, 0.08f, 0.08f); var tapa = new Color(0.8f, 0.82f, 0.8f);
+            Pieza(r, "Cuerpo", Vector3.zero, new Vector3(0.86f, 0.46f, 0.56f), blanco);
+            Pieza(r, "Zocalo", new Vector3(0f, -0.2f, 0f), new Vector3(0.9f, 0.1f, 0.6f), gris);
+            Pieza(r, "Tapa", new Vector3(0f, 0.25f, 0f), new Vector3(0.9f, 0.1f, 0.6f), tapa);
+            Pieza(r, "BrazaleteRojo", new Vector3(0f, 0.12f, 0f), new Vector3(0.88f, 0.05f, 0.58f), rojo);
+            // Asa: dos postes y un travesano.
+            Pieza(r, "AsaIzq", new Vector3(-0.15f, 0.36f, 0f), new Vector3(0.04f, 0.14f, 0.05f), gris);
+            Pieza(r, "AsaDer", new Vector3(0.15f, 0.36f, 0f), new Vector3(0.04f, 0.14f, 0.05f), gris);
+            Pieza(r, "AsaBarra", new Vector3(0f, 0.44f, 0f), new Vector3(0.34f, 0.04f, 0.06f), gris);
+            // Cierres metalicos (frente y dorso).
+            foreach (float z in new[] { -0.29f, 0.29f })
+                foreach (float x in new[] { -0.28f, 0.28f }) Pieza(r, "Cierre", new Vector3(x, 0.2f, z), new Vector3(0.1f, 0.12f, 0.03f), metal);
+            // Cruz roja sobre un disco blanco: frente, dorso, y sobre la tapa.
+            foreach (float z in new[] { -0.285f, 0.285f })
+            {
+                Pieza(r, "CruzH", new Vector3(0f, -0.02f, z), new Vector3(0.28f, 0.08f, 0.02f), rojo);
+                Pieza(r, "CruzV", new Vector3(0f, -0.02f, z), new Vector3(0.08f, 0.28f, 0.02f), rojo);
+            }
+            Pieza(r, "CruzTapaH", new Vector3(0f, 0.305f, 0f), new Vector3(0.3f, 0.02f, 0.09f), rojo);
+            Pieza(r, "CruzTapaV", new Vector3(0f, 0.305f, 0f), new Vector3(0.09f, 0.02f, 0.3f), rojo);
+            // Cruces laterales (extremos).
+            foreach (float x in new[] { -0.435f, 0.435f })
+            {
+                Pieza(r, "CruzLatH", new Vector3(x, 0f, 0f), new Vector3(0.02f, 0.08f, 0.26f), rojo);
+                Pieza(r, "CruzLatV", new Vector3(x, 0f, 0f), new Vector3(0.02f, 0.26f, 0.08f), rojo);
+            }
         }
 
         static void Pieza(Transform padre, string nombre, Vector3 local, Vector3 escala, Color color)

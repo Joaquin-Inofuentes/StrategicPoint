@@ -416,6 +416,7 @@ namespace SP.Operacion
         {
             if (baliza != null) baliza.Quitar();
             baliza = TutorialBeacon.Crear(texto, c, new Vector3(pos.x, y, pos.z), sigue, radio, 26f);
+            baliza.OcultarAnillo();   // bug #005 (Sheets): "sacar cuadrado azul (dejar solo UI rombo)": el disco/cuadrado del piso ya no se dibuja
         }
 
 

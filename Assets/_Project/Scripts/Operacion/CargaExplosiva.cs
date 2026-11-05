@@ -342,6 +342,11 @@ namespace SP.Operacion
             else { txt = Titulo; c = new Color(1f, 0.82f, 0.1f); }
             if (forzar || etiqueta.text != txt) etiqueta.text = txt;
             etiqueta.color = c;
+            // Bug #004 (Sheets): "titulos de nombres de objeto" -> el cartel con el nombre ("CARGA PORTON NORTE") solo se ve mientras arde la mecha
+            // (ahi lleva el contador); en reposo la carga se marca solo con el rombo.
+            var rotulo = etiqueta.transform.parent != null && etiqueta.transform.parent.gameObject != gameObject ? etiqueta.transform.parent.gameObject : etiqueta.gameObject;
+            bool mostrar = Situacion == Estado.Ardiendo;
+            if (rotulo.activeSelf != mostrar) rotulo.SetActive(mostrar);
         }
 
         // El rotulo mira a la camara (de lejos se lee igual desde cualquier lado).
