@@ -207,6 +207,7 @@ namespace SP.Operacion
         {
             // El cuartel se rediseño sobre el NavMesh horneado (contenedores, plaza): al arrancar se rehace con los colliders reales de la escena.
             NavMeshViva.Solicitar();
+            Invoke(nameof(AmbientarLaRuta), 2f);   // bug #006: las escenas del entorno cargan un frame despues; con 2 s los colliders ya estan para no poner faroles dentro de un edificio
             // P10: si se llega por CONTINUAR, la partida se restaura al arrancar (en un host que sobrevive a SaltarA) y no se repiten las cinematicas.
             bool continuando = Application.isPlaying && PartidaGuardada.HayPendiente;
             if (continuando) PartidaGuardada.ProgramarRestauracion();
@@ -406,6 +407,16 @@ namespace SP.Operacion
             var rs = ReflectorVigia.Todos;
             for (int i = 0; i < rs.Count; i++) if (rs[i] != null && rs[i].operador == s) return true;
             return false;
+        }
+
+        void AmbientarLaRuta()
+        {
+            // La escena principal no dispara sceneLoaded para estos barridos (se suscriben despues de su carga): se repiten aca, son idempotentes.
+            SP.Presentation.LimpiezaDeDuplicados.Limpiar(out _);
+            SP.Presentation.LimpiezaDeDuplicados.SepararClaraboya();
+            SP.Presentation.FuentesDeAgua.Aplicar();
+            int n = AmbientacionDeRuta.Armar(rutaDelTanque);
+            if (n > 0) GameLog.Line($"[Operacion] Ruta ambientada: {AmbientacionDeRuta.Faroles} faroles, {AmbientacionDeRuta.Flechas} flechas, {AmbientacionDeRuta.Conos} conos");
         }
 
         void Aviso(string t) { if (hud != null) hud.Aviso(t, 4f); GameLog.Line("[Operacion] " + t.Replace("\n", " · ")); }

@@ -26,6 +26,29 @@ namespace SP.Presentation
             if (!s.name.StartsWith("SC_Operacion", System.StringComparison.Ordinal)) return;
             int n = Limpiar(out int c);
             if (n > 0) GameLog.Line($"Geometria duplicada: {n} piezas repetidas apagadas ({c} colliders) al cargar {s.name}");
+            if (SepararClaraboya()) GameLog.Line("Geometria solapada: la claraboya de la azotea se corrio del equipo que la atravesaba");
+        }
+
+        // Bug #001 (Sheets, azotea): "Solapamiento de geometrias". La claraboya (cupula de vidrio de 3,2 m) estaba en el mismo punto que la caja del
+        // equipo de la azotea (4,4 m): el equipo la atravesaba. Se corre 8 m al costado libre (verificado sin otras piezas ahi).
+        public static bool SepararClaraboya()
+        {
+            // La mansion puede estar apagada (se enciende en el objetivo 5): se busca tambien entre los inactivos y se compara por posicion.
+            var claras = new List<Transform>(); var equipos = new List<Transform>();
+            foreach (var t in Resources.FindObjectsOfTypeAll<Transform>())
+            {
+                if (!t.gameObject.scene.IsValid()) continue;
+                if (t.name == "Claraboya") claras.Add(t); else if (t.name == "Azotea_Equipo") equipos.Add(t);
+            }
+            bool movida = false;
+            foreach (var c in claras)
+                foreach (var e in equipos)
+                {
+                    var d = c.position - e.position;
+                    if (Mathf.Abs(d.x) > 3f || Mathf.Abs(d.z) > 3f) continue;   // ya esta separada
+                    c.position += Vector3.left * 8f; movida = true; break;
+                }
+            return movida;
         }
 
         struct Clave : System.IEquatable<Clave>

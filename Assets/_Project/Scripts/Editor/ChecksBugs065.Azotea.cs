@@ -311,5 +311,57 @@ namespace SP.EditorTools
             Time.timeScale = 1f;
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
+
+        // ---------------------------------------------------------------- 410u bugs del Sheets (04/11): claraboya, camara final, ruta, agua, botiquin, balizas
+        static IEnumerator Bug410u()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(5);
+            foreach (var x in Esperar(3.5f)) yield return x;
+            var d = OperacionDirector.Instancia;
+            // #001 la claraboya ya no atraviesa el equipo de la azotea.
+            SP.Presentation.LimpiezaDeDuplicados.SepararClaraboya();
+            Transform clara = null, equipo = null;
+            foreach (var t in Resources.FindObjectsOfTypeAll<Transform>()) { if (!t.gameObject.scene.IsValid()) continue; if (t.name == "Claraboya") clara = t; else if (t.name == "Azotea_Equipo") equipo = t; }
+            var rc = clara != null ? clara.GetComponent<Renderer>() : null; var re = equipo != null ? equipo.GetComponent<Renderer>() : null;
+            W8Ok(ref ok, rc != null && re != null && !rc.bounds.Intersects(re.bounds), sb, $"claraboya separada del equipo de la azotea (intersecta={(rc != null && re != null && rc.bounds.Intersects(re.bounds))})");
+            // #002 la camara de la toma final en la azotea no cae sobre una torre ni metida en un solido, desde 8 rumbos.
+            var heliBase = new Vector3(322f, 19.5f, 266f);
+            var m = typeof(OperacionDirector).GetMethod("ElegirCamaraDeLaAzotea", NoPublico);
+            int malas = 0, ensayos = 0;
+            if (m != null)
+                for (int k = 0; k < 8; k++)
+                {
+                    var rumbo = Quaternion.Euler(0f, k * 45f, 0f) * Vector3.forward; var atras = -rumbo; var lateral = Vector3.Cross(Vector3.up, atras);
+                    var p = (Vector3)m.Invoke(d, new object[] { heliBase, atras, lateral }); ensayos++;
+                    bool enTorre = MansionGeometria.EnTorre(p, out _, 1.5f); bool metida = false;
+                    foreach (var c in Physics.OverlapSphere(p, 0.9f, ~0, QueryTriggerInteraction.Ignore)) if (SP.Core.NavService.BlocksMovement(c)) { metida = true; break; }
+                    if (enTorre || metida) malas++;
+                }
+            W8Ok(ref ok, m != null && ensayos == 8 && malas == 0, sb, $"camara final de la azotea: {malas} de {ensayos} rumbos caen en una torre o dentro de un solido");
+            // #006 la ruta del tanque esta ambientada.
+            SP.Operacion.AmbientacionDeRuta.Armar(d.rutaDelTanque);
+            W8Ok(ref ok, SP.Operacion.AmbientacionDeRuta.Faroles >= 50 && SP.Operacion.AmbientacionDeRuta.Flechas >= 50, sb, $"ruta ambientada: {SP.Operacion.AmbientacionDeRuta.Faroles} faroles, {SP.Operacion.AmbientacionDeRuta.Flechas} flechas, {SP.Operacion.AmbientacionDeRuta.Conos} conos");
+            // #008 el agua de las fuentes usa el shader animado.
+            SP.Presentation.FuentesDeAgua.Aplicar();
+            int agua = 0, aguaMal = 0;
+            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include)) if (SP.Presentation.FuentesDeAgua.EsAgua(r.name) && !(r is ParticleSystemRenderer)) { agua++; if (r.sharedMaterial == null || r.sharedMaterial.shader.name != "SP/AguaDeFuente") aguaMal++; }
+            W8Ok(ref ok, agua >= 20 && aguaMal == 0, sb, $"agua de fuentes: {agua} piezas, {aguaMal} sin el shader");
+            // #007 el botiquin es un modelo con detalle (no un cubo con una cruz).
+            var caja = SP.Player.CajaDeSuministros.Crear(new Vector3(300f, 0f, 200f));
+            int piezas = caja != null ? caja.GetComponentsInChildren<Renderer>().Length : 0;
+            W8Ok(ref ok, piezas >= 15, sb, $"botiquin armado con {piezas} piezas");
+            if (caja != null) Object.Destroy(caja.gameObject);
+            // #004/#005 la baliza no dibuja el disco del piso; el cartel de la carga solo se ve con la mecha.
+            var baliza = typeof(OperacionDirector).GetField("baliza", NoPublico)?.GetValue(d) as SP.Tutorial.TutorialBeacon;
+            W8Ok(ref ok, baliza == null || !baliza.AnilloVisible, sb, $"baliza del objetivo sin disco en el piso (anillo visible={(baliza != null && baliza.AnilloVisible)})");
+            int siluetas = 0; foreach (var g in Resources.FindObjectsOfTypeAll<GameObject>()) if (g.name == "SiluetasMinimapaRoot" && g.scene.IsValid() && g.activeInHierarchy) siluetas++;
+            SP.Presentation.SiluetasDeMinimapa.Registrar(); SP.Presentation.SiluetasDeMinimapa.Registrar();
+            int siluetas2 = 0; foreach (var g in Resources.FindObjectsOfTypeAll<GameObject>()) if (g.name == "SiluetasMinimapaRoot" && g.scene.IsValid() && g.activeInHierarchy) siluetas2++;
+            W8Ok(ref ok, siluetas <= 1 && siluetas2 == 1, sb, $"siluetas del minimapa: {siluetas} raiz antes y {siluetas2} despues de registrar dos veces seguidas");
+            Time.timeScale = 1f;
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
     }
 }

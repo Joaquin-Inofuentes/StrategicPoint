@@ -215,10 +215,7 @@ namespace SP.Operacion
             }
             proximaExplosionDeLaToma = Time.time + 0.4f; proximaExplosionEnElTecho = Time.time + 0.9f;
 
-            var pos = heliBase + atras * 12f + lateral * 2.5f;
-            pos.x = Mathf.Clamp(pos.x, MansionGeometria.X0 + 1.5f, MansionGeometria.X1 - 1.5f);
-            pos.z = Mathf.Clamp(pos.z, MansionGeometria.Z0 + 1.5f, MansionGeometria.Z1 - 1.5f);
-            pos.y = heliBase.y + 1.7f;
+            var pos = ElegirCamaraDeLaAzotea(heliBase, atras, lateral);
             posCamaraFinal = pos;
             cam.transform.position = pos;
             cam.fieldOfView = 55f;
@@ -227,6 +224,44 @@ namespace SP.Operacion
             if (baliza != null) { baliza.Quitar(); baliza = null; }
             DistanciaInicialCamaraHeli = (heli.position - pos).magnitude;
             GameLog.Line($"[Operacion] Toma final en la azotea: {n} tiradores, camara a {pos.y - heliBase.y:0.0} m del techo, heli a {DistanciaInicialCamaraHeli:0} m");
+        }
+
+        // Bug #002 (Sheets, Victoria): "Tapado por bloqueo". La camara de la toma final en la azotea se ponia 12 m detras del helipuerto sin mirar que
+        // habia ahi; con ciertos rumbos caia pegada a la caseta de una torre de escalera (Torre E) y un bloque llenaba todo el cuadro. Ahora se
+        // prueban varias posiciones (distancia y desplazamiento lateral) y se elige la primera que no este sobre una torre, ni metida en un solido,
+        // ni con el campo de vision tapado a 7 m al frente; si ninguna sirve se queda con la de mas campo libre.
+        Vector3 ElegirCamaraDeLaAzotea(Vector3 heliBase, Vector3 atras, Vector3 lateral)
+        {
+            Vector3 mejor = Vector3.zero; int mejorLibres = -1;
+            foreach (float dist in new[] { 12f, 9f, 15f, 6f })
+                foreach (float lat in new[] { 2.5f, -2.5f, 0f, 6f, -6f, 10f, -10f })
+                {
+                    var p = heliBase + atras * dist + lateral * lat;
+                    p.x = Mathf.Clamp(p.x, MansionGeometria.X0 + 1.5f, MansionGeometria.X1 - 1.5f);
+                    p.z = Mathf.Clamp(p.z, MansionGeometria.Z0 + 1.5f, MansionGeometria.Z1 - 1.5f);
+                    p.y = heliBase.y + 1.7f;
+                    if (MansionGeometria.EnTorre(p, out _, 3.5f)) continue;
+                    bool metida = false;
+                    foreach (var c in Physics.OverlapSphere(p, 1.2f, ~0, QueryTriggerInteraction.Ignore))
+                        if (NavService.BlocksMovement(c)) { metida = true; break; }
+                    if (metida) continue;
+                    var rot = RotacionHaciaElHeli(p, heli.position);
+                    int libres = 0;
+                    for (int gx = -2; gx <= 2; gx++)
+                        for (int gy = -1; gy <= 1; gy++)
+                        {
+                            var dir = rot * Quaternion.Euler(gy * 12f, gx * 13f, 0f) * Vector3.forward;
+                            if (SolidoEntre(p, p + dir * 7f) < 0f) libres++;
+                        }
+                    if (libres > mejorLibres) { mejorLibres = libres; mejor = p; }
+                    if (libres >= 14) return p;
+                }
+            if (mejorLibres >= 0) return mejor;
+            var pos = heliBase + atras * 12f + lateral * 2.5f;
+            pos.x = Mathf.Clamp(pos.x, MansionGeometria.X0 + 1.5f, MansionGeometria.X1 - 1.5f);
+            pos.z = Mathf.Clamp(pos.z, MansionGeometria.Z0 + 1.5f, MansionGeometria.Z1 - 1.5f);
+            pos.y = heliBase.y + 1.7f;
+            return pos;
         }
 
         static readonly RaycastHit[] bufferVista = new RaycastHit[16];
