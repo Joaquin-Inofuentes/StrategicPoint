@@ -70,7 +70,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, tr != null, sb, "la compuerta de reserva se arma");
             if (tr == null) { Fin("FALLO " + sb); yield break; }
             var barrera = tr.GetComponentInChildren<BarreraSoloEnemigos>(true);
-            W8Ok(ref ok, barrera != null && BarreraSoloEnemigos.Contiene(barrera.GetComponent<Collider>()), sb, "tiene barrera registrada como solo-enemigos");
+            W8Ok(ref ok, barrera == null, sb, "ya no tiene tapon: se puede entrar a la reserva (2026-11-06)");
             Physics.SyncTransforms();
             var adentro = tr.forward; adentro.y = 0f;
             foreach (var esEnemigo in new[] { false, true })
@@ -82,7 +82,7 @@ namespace SP.EditorTools
                 for (int i = 0; i < 40; i++) { cuerpo.position += Deslizador.Resolver(cuerpo, cap, adentro * 0.2f, 0.4f, esEnemigo); Physics.SyncTransforms(); }
                 float avance = Vector3.Dot(cuerpo.position - (pos - adentro * 4f + Vector3.up * 0.8f), adentro);
                 if (esEnemigo) W8Ok(ref ok, avance > 7f, sb, $"el enemigo cruza la compuerta (avanzo {avance:0.0} de 8 m)");
-                else W8Ok(ref ok, avance < 3f, sb, $"el jugador/aliado NO cruza la compuerta (avanzo {avance:0.0} de 8 m)");
+                else W8Ok(ref ok, avance > 7f, sb, $"el jugador/aliado TAMBIEN cruza la compuerta (avanzo {avance:0.0} de 8 m)");
                 Object.DestroyImmediate(cuerpo.gameObject);
             }
             Fin((ok ? "OK " : "FALLO ") + sb);

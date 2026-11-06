@@ -126,6 +126,7 @@ namespace SP.Core
             DontDestroyOnLoad(go);
             Instancia = go.AddComponent<SesionLog>();
             ReporteDeBug.Asegurar();
+            SubidaDeBug.ReintentarPendientes();   // lo que no se pudo subir en partidas anteriores
         }
 
         // --- API estatica ---
@@ -542,9 +543,10 @@ namespace SP.Core
             int vivosE = 0, vivosA = 0;
             foreach (var s in e.soldados) { if (!s.vivo || !s.activo) continue; if (s.equipo == "Enemy") vivosE++; else vivosA++; }
             string fase = kv.TryGetValue("Operacion.fase", out var f) ? f : (kv.TryGetValue("MisionDirector.fase", out var f2) ? f2 : "?");
-            e.resumen = $"fase={fase} | {e.jugador.soldado} en {V(e.jugador.pos)} | aliados vivos={vivosA} enemigos vivos={vivosE} | vehiculos={e.vehiculos.Count}";
             using (new CulturaInvariante())
             {
+                // Con coma decimal la posicion salia "(315,5,20,4,269,0)": ilegible. Siempre punto.
+                e.resumen = $"fase={fase} | {e.jugador.soldado} en {V(e.jugador.pos)} | aliados vivos={vivosA} enemigos vivos={vivosE} | vehiculos={e.vehiculos.Count}";
                 try { Diagnosticar(e.diagnostico); } catch (Exception ex) { e.diagnostico.Add("(error armando diagnostico: " + ex.Message + ")"); }
             }
             e.ultimasLineas.AddRange(UltimasLineas);
@@ -704,10 +706,11 @@ namespace SP.Core
                 try { Directory.CreateDirectory(Carpeta); File.WriteAllBytes(png, captura.EncodeToPNG()); capturaGuardada = true; }
                 catch (Exception ex) { Debug.LogWarning("[SesionLog] No se pudo guardar la captura: " + ex.Message); }
             }
+            string jsonTexto = JsonUtility.ToJson(e, true);
             try
             {
                 Directory.CreateDirectory(Carpeta);
-                File.WriteAllText(json, JsonUtility.ToJson(e, true), new UTF8Encoding(false));
+                File.WriteAllText(json, jsonTexto, new UTF8Encoding(false));
                 File.AppendAllText(Path.Combine(Carpeta, "bugs.txt"),
                     $"BUG #{n:000} | {e.fecha} | escena {e.escena} | sesion T+{e.tiempoSesion:0.0}s | {e.resumen} | nota: {nota} | estado: {Path.GetFileName(json)} | captura: {Path.GetFileName(png)} | log: {(archivo != null ? Path.GetFileName(archivo) : "-")}{Environment.NewLine}",
                     new UTF8Encoding(false));
@@ -716,17 +719,38 @@ namespace SP.Core
             EscribirLinea("BUG", $"*** BUG #{n:000} MARCADO *** {e.resumen} | json={Path.GetFileName(json)} | captura={Path.GetFileName(png)}");
             // Se vuelca tambien un bloque completo asi el txt queda con el estado exacto de ese instante.
             if (escritor != null) EscribirBloque();
-            StartCoroutine(CapturaYCartel(n, capturaGuardada ? null : png, e));
+
+            // Subida al Sheet (despues de lo local: si no hay red, el registro de arriba ya esta a salvo). La decision y los bytes se
+            // toman AHORA: el dialogo destruye la textura apenas vuelve esta funcion.
+            // El reporte (columnas + comentarios + estado .json) se arma AHORA, con el estado exacto del instante.
+            ReporteSubida reporte = SubidaDeBug.Disponible ? SubidaDeBug.Armar(e, nota, json, png, jsonTexto) : null;
+            if (reporte != null && captura != null)
+            {
+                reporte.imagen = SubidaDeBug.Comprimir(captura);
+                if (reporte.imagen != null) SubidaDeBug.Subir(reporte);
+                else Debug.LogWarning("[SesionLog] No se pudo comprimir la captura del bug #" + n + ": no se sube");
+                reporte = null;   // ya resuelto
+            }
+            StartCoroutine(CapturaYCartel(n, capturaGuardada ? null : png, e, reporte));
             return n;
         }
 
-        IEnumerator CapturaYCartel(int n, string png, EstadoDeSesion e)
+        IEnumerator CapturaYCartel(int n, string png, EstadoDeSesion e, ReporteSubida subirReporte = null)
         {
             // La captura sale ANTES del cartel: el cartel no tiene que aparecer en la imagen del bug.
             if (png != null) { try { ScreenCapture.CaptureScreenshot(png); } catch { } }
             yield return null;
             yield return null;
             yield return new WaitForEndOfFrame();
+            // Sin textura en memoria (captura asincrona a disco): se sube desde el archivo recien escrito.
+            if (subirReporte != null)
+            {
+                float limite = Time.realtimeSinceStartup + 5f;
+                while (png != null && !File.Exists(png) && Time.realtimeSinceStartup < limite) yield return null;
+                subirReporte.imagen = png != null ? SubidaDeBug.ComprimirArchivo(png) : null;
+                if (subirReporte.imagen != null) SubidaDeBug.Subir(subirReporte);
+                else Debug.LogWarning("[SesionLog] El bug #" + n + " no tiene captura legible: no se sube");
+            }
             int enemigos = 0, aliados = 0;
             foreach (var s in e.soldados) { if (!s.vivo || !s.activo) continue; if (s.equipo == "Enemy") enemigos++; else aliados++; }
             string t = $"BUG #{n:000} REGISTRADO";

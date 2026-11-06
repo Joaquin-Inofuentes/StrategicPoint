@@ -93,12 +93,12 @@ namespace SP.Operacion
         {
             new Vector3(306f, 0f, 251f), new Vector3(340f, 0f, 251f), new Vector3(312f, 0f, 262f), new Vector3(332f, 0f, 262f),
             new Vector3(322f, 0f, 270f), new Vector3(311f, 0f, 279f), new Vector3(338f, 0f, 281f), new Vector3(322f, 0f, 256f),
-            new Vector3(312f, 0f, 276f), new Vector3(334f, 0f, 270f),
+            new Vector3(316f, 0f, 276f), new Vector3(334f, 0f, 270f),
         };
         public static readonly Vector3[] EnemigosPrimero =
         {
-            new Vector3(314f, 6.5f, 279f), new Vector3(327f, 6.5f, 279f), new Vector3(341f, 6.5f, 279f),
-            new Vector3(303f, 6.5f, 252f), new Vector3(316f, 6.5f, 252f), new Vector3(329f, 6.5f, 252f),
+            new Vector3(314f, 6.5f, 275.5f), new Vector3(327f, 6.5f, 275.5f), new Vector3(341f, 6.5f, 275.5f),   // z 275,5: delante de las mesas del norte (estaban sobre ellas)
+            new Vector3(303f, 6.5f, 255.5f), new Vector3(316f, 6.5f, 255.5f), new Vector3(329f, 6.5f, 255.5f),   // z 255,5: delante de las mesas del sur
             new Vector3(334f, 6.5f, 266f), new Vector3(312f, 6.5f, 266f), new Vector3(322f, 6.5f, 266f),
         };
         public static readonly Vector3[] EnemigosSegundo =

@@ -38,8 +38,8 @@ namespace SP.Operacion
             Pieza(raiz, new Vector3(0f, 3.3f, 0f), new Vector3(3.2f, 0.4f, 0.5f), mMarco);
             Pieza(raiz, new Vector3(0f, 1.5f, 0.15f), new Vector3(2.45f, 3f, 0.15f), Mat(ref mHoja, new Color(0.04f, 0.04f, 0.05f)));
             Pieza(raiz, new Vector3(0f, 3.75f, 0f), new Vector3(0.4f, 0.25f, 0.4f), Mat(ref mLuz, new Color(1f, 0.55f, 0.1f), true));
-            // Tapon invisible en la puerta: el jugador y los aliados no pueden entrar a la reserva, los enemigos si (salen por ahi).
-            SP.Core.BarreraSoloEnemigos.Crear(raiz, new Vector3(0f, 1.8f, 0f), new Vector3(3.2f, 3.6f, 2.4f), "Barrera_Reserva_SoloEnemigos");
+            // 2026-11-06 (pedido del dueno: "poder entrar a los spawners"): ya no hay tapon invisible. Las piezas no tienen collider, asi que el
+            // jugador y los aliados cruzan la compuerta igual que los enemigos que salen por ahi. (BarreraSoloEnemigos queda disponible.)
             Polvo(pos);
         }
 

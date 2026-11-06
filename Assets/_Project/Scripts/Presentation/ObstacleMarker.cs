@@ -215,9 +215,12 @@ namespace SP.Presentation
             SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.Explosion, transform.position, 0.55f);
             // Se parte en trozos reales con fisica (Fragmentador); si no se pudo (fuera de Play), quedan los cubitos de antes.
             var origen = ultimoGolpe ?? (transform.position + Vector3.up * baseScale.y * 0.5f);
+            // El Fragmentador apaga el collider: los limites del volumen se toman ANTES (con el collider apagado "bounds" queda vacio).
+            var colAntes = GetComponent<Collider>();
+            var limitesAntes = colAntes != null ? colAntes.bounds : new Bounds(transform.position, Vector3.zero);
             if (SP.Presentation.Fragmentador.Romper(transform, origen, fuerzaDeRotura) == 0) SpawnDebris(14, 7f);
             else SpawnDebris(5, 6f);
-            OcultarAdornosHuerfanos();
+            OcultarAdornosHuerfanos(limitesAntes);
             gameObject.SetActive(false);
             // El obstaculo que se cayo abrio un paso que la grilla de
             // navegacion todavia cree cerrado: sin esto los soldados
@@ -235,26 +238,52 @@ namespace SP.Presentation
         }
 
         // Los builders ponen muchos adornos (ventilas, franjas, pantallas, carteles) en grupos PARALELOS, sin parentesco con el cubo que
-        // decoran: al desaparecer el cubo quedaban flotando. Se apagan los renderers sueltos (sin collider propio, no de otro destruible)
-        // cuyo centro cae dentro del volumen del que se derrumbo y que no son mas grandes que el. Solo corre en juego, una vez por derrumbe.
-        void OcultarAdornosHuerfanos()
+        // decoran: al desaparecer el cubo quedaban flotando. Se apagan los renderers sueltos cuyo centro cae dentro del volumen del que se
+        // derrumbo (y no son mas grandes que el) o que estaban APOYADOS sobre su tapa (la cabina de un auto quemado, el dintel sobre un
+        // muro, el arte de unos sacos). Lo que tiene collider propio o esta encima solo se va si se QUEDA SIN NADA DEBAJO (si otro
+        // muro lo sostiene, sigue en pie).
+        // Solo corre en juego, una vez por derrumbe.
+        void OcultarAdornosHuerfanos(Bounds tapa)
         {
-            if (!Application.isPlaying) return;
-            var col = GetComponent<Collider>(); if (col == null) return;
-            var b = col.bounds; b.Expand(0.35f);
+            if (!Application.isPlaying || tapa.size == Vector3.zero) return;
+            var b = tapa; b.Expand(0.35f);
             float maxLado = Mathf.Max(b.size.x, b.size.y, b.size.z) * 1.3f;
             foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude))
             {
                 if (r == null || !r.enabled || r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer || r is SpriteRenderer) continue;
                 if (r.transform.IsChildOf(transform)) continue;
                 var rb = r.bounds;
-                if (rb.max.y <= 0.15f || !b.Contains(rb.center)) continue;               // decals de piso y lo que cae fuera del volumen
+                if (rb.max.y <= 0.15f) continue;                                          // decals de piso
                 if (Mathf.Max(rb.size.x, rb.size.y, rb.size.z) > maxLado) continue;      // suelos, muros contiguos, fusionados
-                if (r.GetComponentInParent<Collider>() != null) continue;                  // algo solido propio: no es un adorno suelto
+                bool dentro = b.Contains(rb.center);
+                bool sobreLaHuella = rb.center.x >= b.min.x && rb.center.x <= b.max.x && rb.center.z >= b.min.z && rb.center.z <= b.max.z;
+                bool encima = !dentro && sobreLaHuella && rb.min.y >= tapa.max.y - 0.4f && rb.min.y <= tapa.max.y + 0.4f;
+                if (!dentro && !encima) continue;
                 if (r.GetComponentInParent<ObstacleMarker>() != null) continue;           // pertenece a otro destruible
                 if (r.GetComponentInParent<SP.Actors.Soldier>() != null || r.GetComponentInParent<Canvas>() != null || r.GetComponentInParent<SP.Presentation.Fragmento>() != null) continue;
+                var rbd = r.GetComponentInParent<Rigidbody>(); if (rbd != null && !rbd.isKinematic) continue;
+                bool solido = r.GetComponentInParent<Collider>() != null;
+                if ((solido || encima) && !QuedaSinApoyo(r, rb)) continue;
                 r.gameObject.SetActive(false);
             }
+        }
+
+        // true si, sin este obstaculo ni su propio collider, no hay nada solido debajo de la pieza (y no esta en el piso).
+        bool QuedaSinApoyo(Renderer r, Bounds rb)
+        {
+            if (rb.min.y < 0.35f) return false;
+            var centro = new Vector3(rb.center.x, rb.min.y - 0.12f, rb.center.z);
+            var mitad = new Vector3(Mathf.Max(rb.extents.x * 0.9f, 0.05f), 0.2f, Mathf.Max(rb.extents.z * 0.9f, 0.05f));
+            foreach (var c in Physics.OverlapBox(centro, mitad, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (c == null || !c.enabled) continue;
+                var cuerpo = c.attachedRigidbody; if (cuerpo != null && !cuerpo.isKinematic) continue;   // escombros en vuelo no sostienen nada
+                if (c.GetComponentInParent<SP.Presentation.Fragmento>() != null) continue;
+                var t = c.transform;
+                if (t.IsChildOf(transform) || t == r.transform || t.IsChildOf(r.transform) || r.transform.IsChildOf(t)) continue;
+                return false;
+            }
+            return true;
         }
 
         void Encender()

@@ -403,7 +403,9 @@ namespace SP.EditorTools
                 bool noSeMovio = yo == null || Plano(p0, yo.transform.position) < 0.05f;
                 Captura("bug_dialogo");
                 foreach (var x in Esperar(0.4f)) yield return x;
+                bool subidaPrevia = SP.Core.SubidaDeBug.Habilitada; SP.Core.SubidaDeBug.Habilitada = false;   // la validacion no sube filas de prueba al Sheet
                 int n = ReporteDeBug.Confirmar(Inv($"validacion automatica iteracion {iteracion}: dialogo + miniatura + diagnostico"));
+                SP.Core.SubidaDeBug.Habilitada = subidaPrevia;
                 foreach (var x in Esperar(1f)) yield return x;
                 string json = SesionLog.ArchivoDeBug(n);
                 string txt = json != null && File.Exists(json) ? File.ReadAllText(json) : "";

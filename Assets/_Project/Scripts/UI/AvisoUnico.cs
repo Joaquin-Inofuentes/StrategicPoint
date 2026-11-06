@@ -16,6 +16,8 @@ namespace SP.UI
     {
         public const int PrioridadBaja = 0, PrioridadMedia = 1, PrioridadAlta = 2, PrioridadCritica = 3;
         const float VidaDeUnFijo = 0.4f, EsperaMaximaEnCola = 6f, PermanenciaMinima = 0.9f, AlturaBase = 140f;   // Bug #173: AlturaBase sube la caja sobre la barra de unidades y la etiqueta del asiento
+        // Item #001 de la hoja (inicio): el cartel "OPERACION CUARTEL" caia encima de la caja del dialogo del comandante (abajo, hasta ~260 px). Mientras habla, el cartel sube por encima.
+        static float AlturaActual => AlturaBase + (SP.Operacion.VozDeCinematica.Hablando ? 140f : 0f);
         const int MaximoEnCola = 6;
 
         struct Aviso { public string texto; public Color color; public float segundos, encolado; public int prioridad; public bool vibra; }
@@ -235,10 +237,10 @@ namespace SP.UI
             if (vibrando && t.Length > 0)
             {
                 caja.localScale = Vector3.one * (1f + 0.07f * Mathf.Sin(ahora * 13f));
-                caja.anchoredPosition = new Vector2(Mathf.Sin(ahora * 47f) * 4f, AlturaBase + Mathf.Sin(ahora * 53f) * 2.5f);
+                caja.anchoredPosition = new Vector2(Mathf.Sin(ahora * 47f) * 4f, AlturaActual + Mathf.Sin(ahora * 53f) * 2.5f);
                 texto.color = Color.Lerp(col, new Color(1f, 0.85f, 0.7f), 0.5f + 0.5f * Mathf.Sin(ahora * 9f));
             }
-            else { caja.localScale = Vector3.one; caja.anchoredPosition = new Vector2(0f, AlturaBase); }
+            else { caja.localScale = Vector3.one; caja.anchoredPosition = new Vector2(0f, AlturaActual); }
             if (alfa <= 0.001f && mostrado.Length > 0 && t.Length == 0) mostrado = "";
             // El cuadro se ajusta al largo del texto (hasta 1500 px), no queda una barra enorme para tres palabras.
             if (t.Length > 0) caja.sizeDelta = new Vector2(Mathf.Clamp(texto.preferredWidth + 80f, 320f, 1500f), t.Length > 62 ? 92f : 64f);

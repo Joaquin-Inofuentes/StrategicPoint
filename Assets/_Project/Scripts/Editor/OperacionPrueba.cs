@@ -101,7 +101,9 @@ namespace SP.EditorTools
                 string r = Arrancar(o);
                 float t0 = Time.realtimeSinceStartup;
                 while (Time.realtimeSinceStartup - t0 < seg) yield return null;
+                bool subidaPrevia = SP.Core.SubidaDeBug.Habilitada; SP.Core.SubidaDeBug.Habilitada = false;   // las pruebas CLI no suben filas al Sheet
                 int bug = SesionLog.MarcarBug("prueba CLI objetivo " + o + " " + Nombres[o]);
+                SP.Core.SubidaDeBug.Habilitada = subidaPrevia;
                 yield return null; yield return null; yield return null;
                 sb.AppendLine($"| {o} · {Nombres[o]} | {r} | #{bug:000} | {Resumen()} |");
                 Informe = sb.ToString();
