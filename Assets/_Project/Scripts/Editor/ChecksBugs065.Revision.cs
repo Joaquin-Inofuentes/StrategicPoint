@@ -109,7 +109,8 @@ namespace SP.EditorTools
             int ini = t.Health.Current; float t0 = Time.realtimeSinceStartup; int balas = 0;
             float proximo = t0; while (Time.realtimeSinceStartup - t0 < 10f && !t.IsDestroyed) { if (Time.realtimeSinceStartup >= proximo) { t.TakeDamage(7, -1); balas++; proximo += 0.1f; } yield return null; }   // 10 impactos/s: una camioneta enemiga a quemarropa
             int perdida = ini - t.Health.Current; float pct = perdida / max * 100f;
-            W8Ok(ref ok, pct >= 8f && pct <= 22f, sb, $"10 s de fuego continuo ({balas} impactos de 7, 10 por s) bajan {pct:0.0}% de la vida (esperado 8-22%: ~1,6 %/s con el redondeo por golpe)");
+            float mult = OperacionDirector.MultiplicadorDeDanoDelTanque;   // el dano al tanque se duplico a proposito (409u lo exige): el rango base 8-22 % escala con el multiplicador
+            W8Ok(ref ok, pct >= 8f * mult && pct <= 22f * mult, sb, $"10 s de fuego continuo ({balas} impactos de 7, 10 por s) bajan {pct:0.0}% de la vida (esperado {8f * mult:0}-{22f * mult:0}%: ~1,6 %/s x{mult:0} con el redondeo por golpe)");
             W8Ok(ref ok, !t.IsDestroyed, sb, "el tanque sano aguanta 10 s de fuego continuo");
             Fin((ok ? "OK " : "FALLO ") + sb + $"(arranque: {r0})");
         }
