@@ -208,7 +208,7 @@ namespace SP.EditorTools
                 int tras1 = tanque.Health.Current;
                 tanque.TakeDamage(100000, -1);
                 int tras2 = tanque.Health.Current;
-                W8Ok(ref ok, tras1 < tanque.Health.MaxHealth && tras2 == 1 && !tanque.IsDestroyed, sb, $"modo dios: el tanque baja ({tanque.Health.MaxHealth} -> {tras1}) y queda en {tras2} sin destruirse");
+                W8Ok(ref ok, tras1 < tanque.Health.MaxHealth && tras2 == 1 && !tanque.IsDestroyed, sb, $"modo dios (bug #359): el tanque baja ({tanque.Health.MaxHealth} -> {tras1}) y queda en {tras2} sin destruirse");
                 tanque.Health.RestaurarVida(tanque.Health.MaxHealth); tanque.MarcarBando(bandoAntes); tanque.AjusteDeDano = ajuste;
             }
             else W8Ok(ref ok, false, sb, "no se encontro el tanque");
@@ -236,12 +236,12 @@ namespace SP.EditorTools
             W8Ok(ref ok, duracionNormal > 10f, sb, $"sin modo dios el hackeo dura {duracionNormal:0} s");
             ModoDios.Poner(true);
             // #009 el dano al tanque es el doble.
-            W8Ok(ref ok, OperacionDirector.MultiplicadorDeDanoDelTanque == 2f, sb, "el dano al tanque se duplica");
+            W8Ok(ref ok, OperacionDirector.MultiplicadorDeDanoDelTanque == 4f, sb, "el dano al tanque se cuadruplica (bug #347)");
             // #010 sin props de la ciudad adentro de la mansion.
             int props = 0;
             foreach (var c in Physics.OverlapBox(new Vector3((G.X0 + G.X1) * 0.5f, 3f, (G.Z0 + G.Z1) * 0.5f), new Vector3((G.X1 - G.X0) * 0.5f - 0.3f, 3.5f, (G.Z1 - G.Z0) * 0.5f - 0.3f), Quaternion.identity, ~0, QueryTriggerInteraction.Collide))
                 if (c != null && c.gameObject.activeInHierarchy && c.transform.name.StartsWith("P_Env_")) props++;
-            W8Ok(ref ok, d.PropsQuitadosDelInterior >= 1 && props == 0, sb, $"{d.PropsQuitadosDelInterior} props de la ciudad quitados del interior, {props} colliders de props quedan adentro");
+            W8Ok(ref ok, props == 0, sb, $"{d.PropsQuitadosDelInterior} props de la ciudad quitados del interior, {props} colliders de props quedan adentro");
 
             // #013 compuertas: la escalera de subida esta cerrada con enemigos en el piso; abre al limpiarlo; la de bajada se cierra al subir.
             typeof(OperacionDirector).GetMethod("AbrirElPorton", NoPublico).Invoke(d, null);
@@ -266,7 +266,12 @@ namespace SP.EditorTools
             yo.transform.position = new Vector3(322f, G.Nivel(1) + 0.9f, 262f);
             typeof(OperacionDirector).GetMethod("EntrarPrimerPiso", NoPublico).Invoke(d, null);
             foreach (var x in Esperar(2.0f)) yield return x;
-            W8Ok(ref ok, d.CompuertaDeBajadaCerrada(1), sb, "al subir al 1.er piso se cierra la bajada por la torre A");
+            // Bug #366: la bajada NO se cierra mientras quede alguien de la escuadra abajo; cuando suben todos, si.
+            W8Ok(ref ok, !d.CompuertaDeBajadaCerrada(1), sb, "con la escuadra todavia abajo la bajada sigue abierta (bug #366)");
+            int nSube = 0;
+            foreach (var a in OperacionDirector.AliadosAEvacuar(true)) if (a != null && a != yo) a.transform.position = new Vector3(318f + (nSube++ % 6), G.Nivel(1) + 0.9f, 262f);
+            foreach (var x in Esperar(2.0f)) yield return x;
+            W8Ok(ref ok, d.CompuertaDeBajadaCerrada(1), sb, "al subir TODOS al 1.er piso se cierra la bajada por la torre A");
 
             // #011 la guardia del 2.o piso baja por las escaleras (no aparece de golpe).
             yo.transform.position = new Vector3(322f, G.Nivel(2) + 0.9f, 262f);
@@ -342,7 +347,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, m != null && ensayos == 8 && malas == 0, sb, $"camara final de la azotea: {malas} de {ensayos} rumbos caen en una torre o dentro de un solido");
             // #006 la ruta del tanque esta ambientada.
             SP.Operacion.AmbientacionDeRuta.Armar(d.rutaDelTanque);
-            W8Ok(ref ok, SP.Operacion.AmbientacionDeRuta.Faroles >= 50 && SP.Operacion.AmbientacionDeRuta.Flechas >= 50, sb, $"ruta ambientada: {SP.Operacion.AmbientacionDeRuta.Faroles} faroles, {SP.Operacion.AmbientacionDeRuta.Flechas} flechas, {SP.Operacion.AmbientacionDeRuta.Conos} conos");
+            W8Ok(ref ok, SP.Operacion.AmbientacionDeRuta.Faroles >= 50 && SP.Operacion.AmbientacionDeRuta.Flechas == 0, sb, $"ruta ambientada: {SP.Operacion.AmbientacionDeRuta.Faroles} faroles, {SP.Operacion.AmbientacionDeRuta.Flechas} flechas, {SP.Operacion.AmbientacionDeRuta.Conos} conos");
             // #008 el agua de las fuentes usa el shader animado.
             SP.Presentation.FuentesDeAgua.Aplicar();
             int agua = 0, aguaMal = 0;

@@ -52,7 +52,48 @@ namespace SP.Presentation
                 n++;
             }
             Aplicadas += n;
+            n += CorregirSolapes();
             return n;
+        }
+
+        // Bug #362 (2026-11-06: "el agua se ve mal y solapado"): la fuente de la Plaza Civica y la de Prestigio estan en el MISMO punto y se pisaban:
+        // la copa de una se metia en la taza alta de la otra (agua adentro de piedra) y el espejo de abajo estaba a ras del borde del cuenco (parpadeo).
+        // Se oculta la copa duplicada y el agua se apoya apenas por encima del borde de su cuenco.
+        public static int Solapes { get; private set; }
+        static int CorregirSolapes()
+        {
+            int c = 0;
+            Renderer copa = null, tazaAlta = null;
+            var aguasDeAbajo = new System.Collections.Generic.List<Renderer>(); var cuencos = new System.Collections.Generic.List<Renderer>();
+            foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include))
+            {
+                if (r == null) continue;
+                switch (r.name)
+                {
+                    case "Fuente_Copa": copa = r; break;
+                    case "Fuente_Taza_Alta": tazaAlta = r; break;
+                    case "Fuente_Agua": aguasDeAbajo.Add(r); break;
+                    case "Fuente_Cuenco": cuencos.Add(r); break;
+                }
+            }
+            if (copa != null && tazaAlta != null && copa.enabled)
+            {
+                var d = copa.bounds.center - tazaAlta.bounds.center; d.y = 0f;
+                if (d.magnitude < 1.5f) { copa.enabled = false; foreach (var col in copa.GetComponentsInChildren<Collider>(true)) col.enabled = false; c++; }
+            }
+            foreach (var agua in aguasDeAbajo)
+                foreach (var cuenco in cuencos)
+                {
+                    var d = agua.bounds.center - cuenco.bounds.center; d.y = 0f;
+                    if (d.magnitude > 1f) continue;
+                    float techo = cuenco.bounds.max.y + 0.05f;
+                    if (agua.bounds.center.y < techo - 0.001f)
+                    {
+                        var p = agua.transform.position; p.y += techo - agua.bounds.center.y; agua.transform.position = p; c++;
+                    }
+                }
+            Solapes += c;
+            return c;
         }
     }
 }

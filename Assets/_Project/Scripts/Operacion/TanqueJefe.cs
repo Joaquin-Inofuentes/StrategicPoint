@@ -172,6 +172,8 @@ namespace SP.Operacion
             float dt = Time.deltaTime;
             if (Vehiculo.IsDestroyed) { CancelarAnillo(); return; }
             if (Situacion == Estado.Rendido) { TickRendido(dt); return; }
+            // Bug #356: un aviso vencido que nadie resolvio (impacto pendiente hace mas de 2 s) se descarta: no deja la marca pegada ni bloquea el siguiente canonazo.
+            if (impactoEn >= 0f && Time.time > impactoEn + 2f) { CancelarAnillo(); fogonazoHecho = false; }
 
             if (Vehiculo.Health.Current <= Vehiculo.PisoDeVida) { Rendirse(); return; }
             TickCarga(dt);

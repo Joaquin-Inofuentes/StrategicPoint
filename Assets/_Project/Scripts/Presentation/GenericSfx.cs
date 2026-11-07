@@ -231,6 +231,8 @@ namespace SP.Presentation
                 case WeaponKind.Pistol: freq = 1300f; duration = 0.05f; decay = 26f; break;
                 // Heavy: grave y sostenido, se siente mas pesado.
                 case WeaponKind.Heavy: freq = 220f; duration = 0.16f; decay = 8f; break;
+                // Minigun del enemigo pesado: mucho mas grave y largo que cualquier otra arma (retumba).
+                case WeaponKind.Minigun: freq = 70f; duration = 0.32f; decay = 4f; break;
                 case WeaponKind.Smg: freq = 1100f; duration = 0.05f; decay = 24f; break;
                 case WeaponKind.Rocket: freq = 130f; duration = 0.34f; decay = 5f; break;
                 case WeaponKind.Shotgun: freq = 300f; duration = 0.13f; decay = 9f; break;

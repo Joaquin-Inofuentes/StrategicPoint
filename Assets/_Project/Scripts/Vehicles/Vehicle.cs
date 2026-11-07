@@ -55,11 +55,18 @@ namespace SP.Vehicles
         public Func<int, int> AjusteDeDano { get; set; }
         // Verdadero mientras una EXPLOSION (cohete, granada, obus, carga) reparte dano a vehiculos: lo pone Projectile.ExplodeAt. Un golpe directo de bala no lo enciende.
         public static bool DanoDeExplosionEnCurso { get; set; }
+        public const float DanoMinimoDeExplosion01 = 0.15f;
 
         public void TakeDamage(int amount, int attackerId)
         {
             if (SP.Core.ModoDios.Protege(Health)) return;   // [F4]
             if (AjusteDeDano != null && amount > 0) amount = Mathf.Max(1, AjusteDeDano(amount));
+            // Bug #359: cada EXPLOSION enemiga (cohete, obus del blindado) le saca al tanque del jugador al menos el 15 % de su vida maxima.
+            if (Bando == SP.Combat.TeamId.Player && DanoDeExplosionEnCurso && amount > 0 && attackerId >= 0 && !IsDestroyed)
+            {
+                var atacante = SP.Core.ActorRegistry.FindById(attackerId);
+                if (atacante == null || atacante.Team != SP.Combat.TeamId.Player) amount = Mathf.Max(amount, Mathf.CeilToInt(Health.MaxHealth * DanoMinimoDeExplosion01));
+            }
             int piso = PisoDeVida;
             if (piso > 0 && Health.IsAlive)
             {

@@ -24,6 +24,9 @@ namespace SP.Vehicles
 
         public float CurrentSpeed { get; private set; }
         public float MaxSpeed => maxSpeed;
+        // Pedido 2026-11-07: en la huida la velocidad de navegacion del tanque VARIA entre la normal (x1) y rapida (x1,6), en ondas lentas.
+        public bool VariarRitmo { get; set; }
+        public float FactorDeRitmo => VariarRitmo ? Mathf.Lerp(1f, 1.6f, 0.5f + 0.5f * Mathf.Sin(Time.time * 0.35f)) : 1f;
         // WP9b: velocidad maxima y aceleracion por codigo (el jefe patrulla a 4 m/s; la carrera la calcula del largo de la ruta).
         public float Aceleracion => acceleration;
         public void Configurar(float velocidadMaxima, float aceleracionNueva = -1f)
@@ -44,9 +47,10 @@ namespace SP.Vehicles
                 CurrentSpeed = Mathf.MoveTowards(CurrentSpeed, 0f, dragWhenIdle * dt);
             }
 
-            CurrentSpeed = Mathf.Clamp(CurrentSpeed, -maxSpeed * 0.5f, maxSpeed);
+            float tope = maxSpeed * FactorDeRitmo;
+            CurrentSpeed = Mathf.Clamp(CurrentSpeed, -tope * 0.5f, tope);
 
-            float speedFactor = Mathf.Clamp01(Mathf.Abs(CurrentSpeed) / maxSpeed);
+            float speedFactor = Mathf.Clamp01(Mathf.Abs(CurrentSpeed) / tope);
             if (Mathf.Abs(CurrentSpeed) > 0.05f)
                 transform.Rotate(Vector3.up, steer * turnDegPerSec * speedFactor * Mathf.Sign(CurrentSpeed) * dt, Space.World);
 

@@ -109,6 +109,7 @@ namespace SP.Presentation
         public const float EscalaRtsPorMetro = 1f / 26f, EscalaRtsMax = 6f, ExtraYo = 1.3f, ExtraSeleccionado = 1.3f;
         bool yoPintado, rombosApuntado;
         public float EscalaActual => marcador != null ? marcador.transform.localScale.x : 0f;
+        public static bool OcultarRombosAliadosFueraDeRts = true;
         public bool MarcadorVisible => marcador != null && marcador.activeSelf;
 
         public static bool EnRts() => SP.CameraSystem.CameraRig.Instance != null && SP.CameraSystem.CameraRig.Instance.Mode == SP.CameraSystem.ControlMode.Rts;
@@ -401,7 +402,10 @@ namespace SP.Presentation
                     && soldier.Brain.State == SP.Ai.AiState.Follow
                     && distancia <= DistanciaOcultarSiguiendo;
 
-                marcador.SetActive(anguloOk && inteligenciaOk && !ocultoPorSeguirCerca);
+                // Pedido 2026-11-07 ("sacar los cuadrados amarillo y azul": rombos de unidades): fuera de RTS los rombos de aliado (azul, y amarillo
+                // el del jugador / el apuntado) no se dibujan; en RTS siguen, porque ahi son el blanco del clic. Los de enemigo (rojos) quedan.
+                bool sinRomboAliado = OcultarRombosAliadosFueraDeRts && !esEnemigo && !EnRts();
+                marcador.SetActive(anguloOk && inteligenciaOk && !ocultoPorSeguirCerca && !sinRomboAliado);
 
             }
 

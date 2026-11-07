@@ -61,7 +61,9 @@ namespace SP.Operacion
                     acFarol += 1f; acFlecha += 1f;
                     var p = a + dir * s;
                     if (acFarol >= SeparacionFarol) { acFarol = 0f; lado = -lado; if (PonerFarol(raiz, p + normal * (MargenDeCalzada * lado))) Faroles++; }
-                    if (acFlecha >= SeparacionFlecha) { acFlecha = 0f; if (PonerFlecha(raiz, p, dir)) Flechas++; }
+                    // Bug #346 ("quitar las marcas de flechas de la ruta, solo dejar las lineas"): ya no se pintan chevrones sobre la calzada.
+                    // PonerFlecha queda disponible pero no se llama; Flechas vale siempre 0.
+                    if (acFlecha >= SeparacionFlecha) acFlecha = 0f;
                 }
             }
             // Un lote por material: pocos draw calls.

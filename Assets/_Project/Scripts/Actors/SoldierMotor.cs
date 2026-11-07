@@ -64,7 +64,18 @@ namespace SP.Actors
         // Bug #079: multiplicador de velocidad de la FURIA (RachaDeBajas). Aparte de SpeedMultiplier porque la IA lo pisa en cada tick.
         public float FactorDeBuff = 1f;
         public bool Atado { get; set; }
-        public float MoveSpeed => Atado ? 0f : moveSpeed * SpeedMultiplier * FactorDeBuff * (Corriendo ? FactorDeCarrera : (IsCrouching ? FactorDeVelocidadAgachado : 1f));
+        public float MoveSpeed => Atado ? 0f : moveSpeed * SpeedMultiplier * FactorDeBuff * (Corriendo ? FactorDeCarrera * FactorDeCarreraDios : (IsCrouching ? FactorDeVelocidadAgachado : 1f));
+        // Bug #354: con el modo dios el soldado que maneja el jugador corre x2 (y la escena va a x2 aparte).
+        Soldier yoSoldado;
+        float FactorDeCarreraDios
+        {
+            get
+            {
+                if (!SP.Core.ModoDios.Activo || SP.Core.ModoDios.EnRts) return 1f;
+                if (yoSoldado == null) yoSoldado = GetComponent<Soldier>();
+                return yoSoldado != null && yoSoldado.Brain != null && yoSoldado.Brain.IsPossessedByPlayer ? SP.Core.ModoDios.FactorDeCarreraDelModoDios : 1f;
+            }
+        }
 
         // [Shift]: correr. El jugador lo pide a pie y los aliados libres corren con el
         // (AjustesDeEscuadra.Correr). No se corre agachado ni en el aire.

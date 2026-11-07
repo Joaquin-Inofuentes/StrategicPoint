@@ -307,11 +307,12 @@ namespace SP.EditorTools
                 var d = OperacionDirector.Instancia;
                 if (!embarqueOk) { Fin("FALLO el jugador no quedo de artillero"); yield break; }
                 lineasAplasto = 0;
-                float vMax = 0f; float t0 = Time.realtimeSinceStartup;
+                float vMax = 0f, vTanque = 0f, recorrido = 0f; Vector3? tPrev = null; float t0 = Time.realtimeSinceStartup; float r0 = d.Reloj;
                 while (Time.realtimeSinceStartup - t0 < 75f)
                 {
                     yield return null;
                     foreach (var a in AutosVivos()) vMax = Mathf.Max(vMax, a.VelocidadActual);
+                    if (d.tanque != null) { var mt = d.tanque.GetComponent<VehicleMotor>(); if (mt != null) vTanque = Mathf.Max(vTanque, Mathf.Abs(mt.CurrentSpeed)); if (tPrev.HasValue) recorrido += Vector3.Distance(tPrev.Value, d.tanque.transform.position); tPrev = d.tanque.transform.position; }
                 }
                 int jerseys = 0, otros = 0, indestructibles = 0; var nombres = new HashSet<string>();
                 foreach (var m in UnityEngine.Object.FindObjectsByType<ObstacleMarker>(FindObjectsInactive.Include))
@@ -322,7 +323,7 @@ namespace SP.EditorTools
                 }
                 bool res = lineasAplasto >= 3 && jerseys + otros >= 2 && indestructibles == 0 && vMax <= 19.5f;
                 if (!res) ok = false;
-                sb.Append($"en 75 s de tanque: {lineasAplasto} lineas 'aplasto', Jersey de ruta colapsados={jerseys}, otros destruibles caidos={otros}, indestructibles (rocas/edificios/casas) caidos={indestructibles}{(indestructibles > 0 ? " [" + string.Join(",", nombres) + "]" : "")}, velocidad maxima de camionetas={vMax:0.0} m/s (tope 19.5), reloj={d.Reloj:0.0}{(res ? "" : "(MAL)")}; ");
+                sb.Append($"en 75 s de tanque: {lineasAplasto} lineas 'aplasto', Jersey de ruta colapsados={jerseys}, otros destruibles caidos={otros}, indestructibles (rocas/edificios/casas) caidos={indestructibles}{(indestructibles > 0 ? " [" + string.Join(",", nombres) + "]" : "")}, velocidad maxima de camionetas={vMax:0.0} m/s (tope 19.5), reloj={d.Reloj:0.0} tanque: vmax={vTanque:0.0} recorrido={recorrido:0} m fase={d.Fase} tanque en {(d.tanque != null ? d.tanque.transform.position.ToString("0") + " v=" + d.tanque.GetComponent<VehicleMotor>()?.CurrentSpeed.ToString("0.0") + " vida=" + d.tanque.Health.Current.ToString("0") : "null")}{(res ? "" : "(MAL)")}; ");
             }
             finally
             {

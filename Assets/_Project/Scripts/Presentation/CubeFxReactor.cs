@@ -136,7 +136,7 @@ namespace SP.Presentation
             bool propioConZoom = yo != null && yo.Brain != null && yo.Brain.Current == soldier && yo.Rig != null && yo.Rig.EstaConZoom;
             if (!propioConZoom) ImpactFx.Spawn(flashPos, MuzzleFlashColor, 0.22f, 0.08f);
             // Bug #162: las metralletas del enemigo (artilleros de torre, soldados con subfusil) no mostraban particulas.
-            bool automatica = kind == SP.Combat.WeaponKind.Smg || kind == SP.Combat.WeaponKind.Heavy;
+            bool automatica = kind == SP.Combat.WeaponKind.Smg || kind == SP.Combat.WeaponKind.Heavy || kind == SP.Combat.WeaponKind.Minigun;
             if (!propioConZoom && (automatica || soldier.Team == TeamId.Enemy))
                 ImpactFx.SpawnMuzzleBlastLite(flashPos, muzzle != null ? muzzle.forward : transform.forward, kind == SP.Combat.WeaponKind.Heavy ? 0.8f : (automatica ? 0.55f : 0.4f),
                     soldier.Team == TeamId.Enemy ? new Color(1f, 0.5f, 0.25f, 1f) : (Color?)null);
@@ -151,6 +151,9 @@ namespace SP.Presentation
             // muerte o el cañon, que son sucesos unicos.
             // Perfil de disparo (5-120 m, logaritmico): lo que suena lejos se oye lejos y lo cercano pega (bug #095).
             AudioDirector.PlayClipAt(GenericSfx.GetWeaponShot(kind), flashPos, 0.9f, 0.6f, PerfilEspacial.Disparo);
+            // Minigun: se suma un golpe grave (el disparo de la Heavy bajado de tono) y el disparo sale a todo volumen: tiene que retumbar.
+            if (kind == SP.Combat.WeaponKind.Minigun) AudioDirector.PlayClipAt(GenericSfx.GetWeaponShot(SP.Combat.WeaponKind.Heavy), flashPos, 1f, 0.5f, PerfilEspacial.Disparo);
+            if (kind == SP.Combat.WeaponKind.Minigun && !propioConZoom) MinigunFx.Disparo(flashPos, muzzle != null ? muzzle.forward : transform.forward);   // chispas, casquillos, humo y empujon de camara
             // Bug #241: el francotirador tiene su propio efecto (fogonazo largo, onda de presion, estampido con ecos y golpe de camara).
             if (kind == SP.Combat.WeaponKind.Sniper)
                 SniperFx.Disparo(flashPos, muzzle != null ? muzzle.forward : transform.forward, yo != null && yo.Brain != null && yo.Brain.Current == soldier, !propioConZoom);

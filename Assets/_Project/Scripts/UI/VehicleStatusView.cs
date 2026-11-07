@@ -275,7 +275,7 @@ namespace SP.UI
                 healthFill.color = Color.Lerp(new Color(0.85f, 0.2f, 0.15f), new Color(0.4f, 0.85f, 0.45f), healthFill.fillAmount);
                 // Bug #004 (build, "datos visibles"): la barra verde no decia que era la vida del tanque ni cuanto quedaba. Rotulo con el numero.
                 if (textoDeVida == null) CrearTextoDeVida();
-                if (textoDeVida != null) textoDeVida.text = $"VIDA DEL TANQUE {hp.Current}/{hp.MaxHealth} · {Mathf.RoundToInt(healthFill.fillAmount * 100f)} %";
+                if (textoDeVida != null) textoDeVida.text = "TANQUE";   // bug #359: solo "TANQUE" (la barra ya dice que es la vida)
             }
 
             if (gunnerLabel != null && !minimo)

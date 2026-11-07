@@ -46,10 +46,10 @@ namespace SP.EditorTools
         static Material MLuna => Mat("Prestigio_Luna", new Color(0.92f, 0.95f, 1f), 2.2f);
         static Material MLunaHalo => MatTrans("Prestigio_LunaHalo", new Color(0.7f, 0.8f, 1f, 0.12f), 1f, true);
         static Material MAguaViva => Mat("Prestigio_AguaViva", new Color(0.35f, 0.75f, 1f), 1.6f);
-        static Material MBombilla => Mat("Prestigio_Bombilla", new Color(1f, 0.82f, 0.45f), 3.5f);
-        static Material MFlama => Mat("Prestigio_Flama", new Color(1f, 0.5f, 0.12f), 3.5f);
-        static Material MNeonRosa => Mat("Prestigio_NeonRosa", new Color(1f, 0.25f, 0.6f), 3f);
-        static Material MNeonCian => Mat("Prestigio_NeonCian", new Color(0.2f, 0.9f, 1f), 3f);
+        static Material MBombilla => Mat("Prestigio_Bombilla", new Color(1f, 0.82f, 0.45f), 1.0f);
+        static Material MFlama => Mat("Prestigio_Flama", new Color(1f, 0.5f, 0.12f), 2f);
+        static Material MNeonRosa => Mat("Prestigio_NeonRosa", new Color(1f, 0.25f, 0.6f), 2f);
+        static Material MNeonCian => Mat("Prestigio_NeonCian", new Color(0.2f, 0.9f, 1f), 2f);
         static Material MBlanco => Mat("Prestigio_Blanco", new Color(0.92f, 0.92f, 0.9f));
         static Material MFlor(int i) => Mat("Prestigio_Flor" + (i % 4), i % 4 == 0 ? new Color(0.95f, 0.3f, 0.45f) : i % 4 == 1 ? new Color(0.98f, 0.85f, 0.3f) : i % 4 == 2 ? new Color(0.75f, 0.45f, 0.95f) : new Color(1f, 0.6f, 0.25f));
 

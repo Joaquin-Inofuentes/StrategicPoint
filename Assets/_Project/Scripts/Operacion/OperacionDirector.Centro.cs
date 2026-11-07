@@ -171,6 +171,8 @@ namespace SP.Operacion
         public const float SegundosAntesDeLaToma = 2.5f;
         // Para las pruebas: lo que hace el hackeo al completarse (con o sin la explosion de la terminal).
         public void AbrirSalidaNortePorPrueba(bool conExplosion) => AbrirSalidaNorte(conExplosion);
+        public bool MuroDeSalidaCaidoPorPrueba => !MuroDeSalidaEnPie();
+        public void ExplotarLaTerminalPorPrueba() { var pc = computadora != null ? computadora.transform.position : Vector3.zero; StartCoroutine(VoladuraDeLaTerminal(pc)); }
 
         void AbrirSalidaNorte(bool conExplosion)
         {
@@ -183,30 +185,70 @@ namespace SP.Operacion
             else muroDeSalida.Demoler(pc, 6f);
         }
 
+        // Bug #345 ("al destruir la computadora deberia destruirse el porton Y la maquina, una gran explosion"): la terminal ya no queda en pie con las
+        // pantallas apagadas. Estalla en una cadena (fogonazo central + tres secundarias), el arte de la maquina se hace trozos y vuela, y la
+        // salida norte cae casi en el mismo instante (0,35 s) para que se lea como UNA sola explosion grande.
+        public bool TerminalDestruida { get; private set; }
         IEnumerator VoladuraDeLaTerminal(Vector3 pc)
         {
             var centro = pc + Vector3.up * 1.4f;
-            ImpactFx.SpawnExplosion(centro, 3.2f, false);
-            AudioDirector.PlayAt(SfxKind.Explosion, pc, 0.8f);
+            StartCoroutine(DerribarElMuroTrasElEstallido(pc));   // aparte: si algo del efecto fallara, el muro igual cae
+            ImpactFx.SpawnExplosion(centro, 6.5f, false);
+            AudioDirector.PlayAt(SfxKind.Explosion, pc, 1f);
+            for (int i = 0; i < 12; i++)
+                SpriteFx.Lanzar("smoke_02", centro + UnityEngine.Random.insideUnitSphere * 1.4f, new Color(0.30f, 0.29f, 0.28f, 0.7f), 0.8f, 4.2f, UnityEngine.Random.Range(2.0f, 3.4f), UnityEngine.Random.Range(-30f, 30f), Vector3.up * UnityEngine.Random.Range(1.4f, 3.2f), 1.5f, 1);
             if (computadora != null)
             {
                 if (computadora.luz != null) computadora.luz.material.color = Color.black;
                 if (computadora.indicador != null) computadora.indicador.gameObject.SetActive(false);
-                // Bug #315: las pantallas del arte nuevo de la terminal tambien se apagan, y la superior se inclina.
                 var arteTerminal = computadora.transform.parent != null ? computadora.transform.parent.Find("ArteTerminal") : null;
+                if (arteTerminal == null)
+                {
+                    // El arte no siempre cuelga del mismo padre que la terminal: se toma el "ArteTerminal" mas cercano (a menos de 8 m).
+                    float mejor = 64f;
+                    foreach (var t in FindObjectsByType<Transform>(FindObjectsSortMode.None))
+                    {
+                        if (t.name != "ArteTerminal") continue;
+                        // El grupo "ArteTerminal" cuelga del origen del centro de datos (su transform no esta en la terminal): se mide contra sus piezas.
+                        var rs = t.GetComponentsInChildren<Renderer>(true); if (rs.Length == 0) continue;
+                        var caja = rs[0].bounds; for (int i = 1; i < rs.Length; i++) caja.Encapsulate(rs[i].bounds);
+                        float dd = caja.SqrDistance(computadora.transform.position);
+                        if (dd < mejor) { mejor = dd; arteTerminal = t; }
+                    }
+                }
                 if (arteTerminal != null)
-                    foreach (var r in arteTerminal.GetComponentsInChildren<Renderer>(true))
-                        if (r.name.StartsWith("Pantalla_"))
-                        {
-                            r.material.color = Color.black;
-                            if (r.material.HasProperty("_EmissionColor")) r.material.SetColor("_EmissionColor", Color.black);
-                            if (r.name == "Pantalla_Superior") r.transform.localRotation *= Quaternion.Euler(0f, 0f, 12f);
-                        }
+                {
+                    // La maquina vuela en pedazos (con el color de sus propias piezas) y el arte entero se retira: no queda nada en pie.
+                    int trozos = SP.Presentation.Fragmentador.Romper(arteTerminal, centro, 16f, 40);
+                    foreach (var r in arteTerminal.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+                    foreach (var c in arteTerminal.GetComponentsInChildren<Collider>(true)) c.enabled = false;
+                    TerminalDestruida = true;
+                }
+                foreach (var r in computadora.GetComponentsInChildren<Renderer>(true)) if (r != null && !(r is ParticleSystemRenderer)) r.enabled = false;
+                foreach (var c in computadora.GetComponentsInChildren<Collider>(true)) if (c != null && !c.isTrigger) c.enabled = false;
+                // Bug #355 ("estan flotando los elementos"): el Monitor emisivo vive en un grupo hermano ("Computadora"), no bajo la terminal, y
+                // quedaba flotando en el aire cuando la maquina volaba en pedazos. Se apaga todo lo que cuelga de ese grupo cerca de la terminal.
+                foreach (var r in computadora.transform.root.GetComponentsInChildren<Renderer>(true))
+                {
+                    if (r == null || r is ParticleSystemRenderer || r.transform.parent == null || r.transform.parent.name != "Computadora") continue;
+                    var dp = r.bounds.center - computadora.transform.position; dp.y = 0f;
+                    if (dp.magnitude > 5f) continue;
+                    r.enabled = false;
+                    foreach (var c in r.GetComponentsInChildren<Collider>(true)) if (!c.isTrigger) c.enabled = false;
+                }
             }
-            for (int i = 0; i < 6; i++)
-                SpriteFx.Lanzar("smoke_02", centro + UnityEngine.Random.insideUnitSphere * 0.6f, new Color(0.35f, 0.34f, 0.33f, 0.6f), 0.6f, 2.6f, UnityEngine.Random.Range(1.6f, 2.6f), UnityEngine.Random.Range(-30f, 30f), Vector3.up * UnityEngine.Random.Range(1.2f, 2.4f), 1.5f, 1);
-            yield return new WaitForSeconds(1.2f);
-            if (muroDeSalida != null && !muroDeSalida.IsCollapsed) muroDeSalida.Demoler(pc, 6f);
+            for (int i = 0; i < 3; i++)
+            {
+                yield return new WaitForSeconds(0.12f);
+                ImpactFx.SpawnExplosion(centro + new Vector3(UnityEngine.Random.Range(-2.2f, 2.2f), UnityEngine.Random.Range(-0.4f, 0.8f), UnityEngine.Random.Range(-2.2f, 2.2f)), 3.4f, false);
+            }
+        }
+
+        IEnumerator DerribarElMuroTrasElEstallido(Vector3 pc)
+        {
+            yield return new WaitForSeconds(0.35f);
+            MuroDeSalidaEnPie();   // busca el muro si todavia no se lo busco
+            if (muroDeSalida != null && !muroDeSalida.IsCollapsed) muroDeSalida.Demoler(pc, 9f);
         }
 
         DefensaDelCentro defensaDelCentro;

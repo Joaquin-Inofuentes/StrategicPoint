@@ -199,15 +199,15 @@ namespace SP.Actors
             return matMedico;
         }
 
-        // Asalto y francotirador compartian el mismo azul y solo cambiaba la malla: de lejos no se distinguian. Un tinte multiplicado sobre la
-        // textura ya azul no alcanza (da gris o el mismo azul), asi que cada clase lleva su PROPIA copia de la textura original recoloreada
-        // (la luminosidad se conserva y el dibujo de cada pieza sigue legible): asalto = naranja/arena claro, francotirador = verde bosque
-        // casi negro (ghillie). Medico queda blanco azulado y el resto de la escuadra azul.
+        // Asalto y francotirador se confundian (mismo azul, solo cambiaba la malla) y la version por familias de color los dejo como dos
+        // manchas lisas ("se ve medio roto"). El trimsheet es una paleta de 8x8 celdas de 128 px y cada pieza del soldado usa UNA celda
+        // (uniforme, chaleco/casco, pantalon, correaje...): en vez de teñir pixeles se cambia el color de las celdas de cada clase en una copia
+        // de la paleta. Asi cada pieza conserva su color propio y la silueta se lee: ASALTO = uniforme azul vivo con chaleco/casco dorado,
+        // FRANCOTIRADOR = musgo oscuro con capucha casi negra. Los dos llevan correaje azul claro (identifica al bando aliado).
+        // La celda c = columna + 8 * fila contando desde ABAJO (igual que el UV y que Texture2D.GetPixels).
         static Material matAsalto, matFrancotirador;
-        // El mapa recibe la familia del pixel (0 rojo, 1 verde, 2 azul) y su H, S, V originales: cada familia va a su propio matiz de la clase
-        // y conserva su saturacion y valor, asi casco, chaleco, pantalon y correaje siguen siendo piezas distintas (el mapeo anterior, solo por
-        // luminosidad, dejaba todo en un unico degradado liso).
-        static Material MaterialDeClase(ref Material cache, string nombre, System.Func<int, float, float, float, Color> mapa, Color emision)
+        static readonly Color AzulBando = new Color(0.30f, 0.65f, 1.00f);
+        static Material MaterialPorCeldas(ref Material cache, string nombre, (int celda, Color color)[] celdas, Color emision)
         {
             if (cache != null) return cache;
             if (matAliado == null) return null;
@@ -218,35 +218,39 @@ namespace SP.Actors
                 var copia = LeerCopia(tx, "_" + nombre);
                 if (copia != null)
                 {
-                    var px = copia.GetPixels32();
-                    for (int i = 0; i < px.Length; i++)
+                    int lado = copia.width / 8;
+                    foreach (var (celda, color) in celdas)
                     {
-                        var q = px[i];
-                        bool rojo = q.r > 70 && q.r > q.g * 1.5f && q.r > q.b * 1.5f;
-                        bool verde = q.g > 40 && q.g > q.r * 1.15f && q.g > q.b * 1.15f;
-                        bool azul = q.b > 40 && q.b > q.r * 1.15f && q.b >= q.g;
-                        if (!rojo && !verde && !azul) continue;
-                        Color.RGBToHSV(new Color32(q.r, q.g, q.b, 255), out float h, out float sa, out float v);
-                        var c = mapa(rojo ? 0 : verde ? 1 : 2, h, sa, v);
-                        px[i] = new Color32((byte)Mathf.Clamp(c.r * 255f, 0f, 255f), (byte)Mathf.Clamp(c.g * 255f, 0f, 255f), (byte)Mathf.Clamp(c.b * 255f, 0f, 255f), q.a);
+                        int x0 = (celda % 8) * lado, y0 = (celda / 8) * lado;
+                        var bloque = new Color[lado * lado];
+                        for (int i = 0; i < bloque.Length; i++) bloque[i] = color;
+                        copia.SetPixels(x0, y0, lado, lado, bloque);
                     }
-                    copia.SetPixels32(px); copia.Apply(true, false);
+                    copia.Apply(true, false);
                     cache.SetTexture("_BaseMap", copia);
                     if (cache.HasProperty("_MainTex")) cache.SetTexture("_MainTex", copia);
+                    // Brillo tenue con la misma paleta (de noche no se apaga a negro): proporcional a cada color, sin teñir todo parejo.
+                    if (cache.HasProperty("_EmissionMap")) cache.SetTexture("_EmissionMap", copia);
                 }
             }
             if (cache.HasProperty("_EmissionColor")) { cache.EnableKeyword("_EMISSION"); cache.SetColor("_EmissionColor", emision); cache.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None; }
             return cache;
         }
-        // Asalto: arena (verde), naranja (azul) y rojo quemado (rojo). Francotirador: verde bosque (verde), oliva (azul) y cuero oscuro (rojo).
-        static Material MaterialAsalto() => MaterialDeClase(ref matAsalto, "MAT_Trimsheet_Aliado_Asalto",
-            (f, h, sa, v) => f == 1 ? Color.HSVToRGB(0.11f, Mathf.Clamp01(sa * 0.55f), Mathf.Clamp01(v * 1.35f))
-                           : f == 2 ? Color.HSVToRGB(0.065f, Mathf.Clamp01(sa * 1.05f + 0.1f), Mathf.Clamp01(v * 1.5f))
-                           : Color.HSVToRGB(0.02f, Mathf.Clamp01(sa * 0.9f), Mathf.Clamp01(v * 0.95f)), new Color(0.10f, 0.045f, 0f));
-        static Material MaterialFrancotirador() => MaterialDeClase(ref matFrancotirador, "MAT_Trimsheet_Aliado_Francotirador",
-            (f, h, sa, v) => f == 1 ? Color.HSVToRGB(0.33f, Mathf.Clamp01(sa * 0.9f), Mathf.Clamp01(v * 0.5f))
-                           : f == 2 ? Color.HSVToRGB(0.16f, Mathf.Clamp01(sa * 0.75f), Mathf.Clamp01(v * 1.05f))
-                           : Color.HSVToRGB(0.07f, Mathf.Clamp01(sa * 0.7f), Mathf.Clamp01(v * 0.5f)), new Color(0.005f, 0.025f, 0.01f));
+        static Material MaterialAsalto() => MaterialPorCeldas(ref matAsalto, "MAT_Trimsheet_Aliado_Asalto", new[]
+        {
+            (8, new Color(0.15f, 0.40f, 0.90f)),    // uniforme: azul vivo
+            (52, new Color(0.94f, 0.72f, 0.18f)),   // chaleco y casco: dorado
+            (19, new Color(0.13f, 0.17f, 0.26f)),   // pantalon: azul pizarra
+            (32, AzulBando), (33, AzulBando),       // correaje de bando
+        }, new Color(0.22f, 0.22f, 0.26f));
+        static Material MaterialFrancotirador() => MaterialPorCeldas(ref matFrancotirador, "MAT_Trimsheet_Aliado_Francotirador", new[]
+        {
+            (10, new Color(0.20f, 0.31f, 0.17f)),   // uniforme: musgo
+            (12, new Color(0.20f, 0.31f, 0.17f)),   // (el flanqueador usa la misma malla con otra celda de uniforme)
+            (52, new Color(0.07f, 0.09f, 0.06f)),   // capucha / boina: casi negra
+            (19, new Color(0.27f, 0.21f, 0.12f)),   // pantalon: tierra
+            (32, AzulBando), (33, AzulBando),
+        }, new Color(0.22f, 0.22f, 0.24f));
 
         static Material matCivil;
         static Material MaterialCivil()

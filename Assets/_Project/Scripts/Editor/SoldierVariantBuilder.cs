@@ -55,6 +55,8 @@ namespace SP.EditorTools
             // pieza de equipo (sin casco, sin cuchillo al cinto): es lo mas
             // lejos de "soldado" que da el paquete de arte actual. El tinte
             // azul de SoldierLook.MaterialCivil() termina de diferenciarlo.
+            // Enemigo PESADO: cuerpo del Comando SIN casco (calvo); PesadoArteBuilder lo engorda, lo repinta por zonas y le suma chaleco, cinturon, bandolera, etc.
+            new Variante { Nombre = "Pesado", FbxCuerpo = "SM_Chr_Soldado_Comando", Extras = new Pieza[0] },
             new Variante { Nombre = "Civil", FbxCuerpo = "SM_Chr_Soldado_Explorador", Extras = new Pieza[0] },
         };
 
@@ -74,6 +76,16 @@ namespace SP.EditorTools
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Debug.Log($"[SoldierVariantBuilder] {ok}/{Variantes.Length} variantes generadas en {SalidaDir}");
+        }
+
+        public static void GenerarSoloPesado()
+        {
+            var goRig = AssetDatabase.LoadAssetAtPath<GameObject>(MallaRiggeada);
+            var piel = goRig != null ? goRig.GetComponentInChildren<SkinnedMeshRenderer>(true) : null;
+            if (piel == null) { Debug.LogError("[SoldierVariantBuilder] Falta " + MallaRiggeada); return; }
+            Directory.CreateDirectory(SalidaDir);
+            foreach (var v in Variantes) if (v.Nombre == "Pesado") Generar(v, piel);
+            AssetDatabase.SaveAssets();
         }
 
         static bool Generar(Variante v, SkinnedMeshRenderer piel)
@@ -142,6 +154,8 @@ namespace SP.EditorTools
                 }
                 foreach (var t in tr) tris.Add(baseIdx + t);
             }
+
+            if (v.Nombre == "Pesado") PesadoArteBuilder.ArmarCuerpo(verts, norms, uvs, tris, pesos, piel);
 
             var malla = new Mesh { name = "Mesh_" + v.Nombre };
             malla.indexFormat = UnityEngine.Rendering.IndexFormat.UInt16;

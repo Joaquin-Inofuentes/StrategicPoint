@@ -608,11 +608,22 @@ namespace SP.Player
         float inclinacionArtillero = InclinacionInicialArtillero;
         public float InclinacionArtillero => inclinacionArtillero;
         readonly RaycastHit[] golpesDeMira = new RaycastHit[24];
+        public const float PuntoDeMiraSuavizado = 9f;
+        Vector3 puntoDeMiraSuave; bool puntoDeMiraInit; float puntoDeMiraT;
 
         void ApuntarConLaCamara(TurretWeapon arma, float deltaY)
         {
             inclinacionArtillero = Mathf.Clamp(inclinacionArtillero - deltaY * turretSensitivity, InclinacionMinArtillero, InclinacionMaxArtillero);
-            if (arma != null && PuntoBajoLaMira(out var punto)) arma.ElevarHacia(punto);
+            // Pedido 2026-11-07 ("snapeo raro al apuntar, se snapea a la ruta"): el rayo de la mira salta entre un obstaculo cercano (Jersey, calzada) y un
+            // punto lejano, y la elevacion con arco balistico pegaba un salto en cada cambio. Se persigue el punto con suavizado exponencial.
+            if (arma != null && PuntoBajoLaMira(out var punto))
+            {
+                float dtMira = Time.unscaledDeltaTime;
+                if (!puntoDeMiraInit || Time.unscaledTime - puntoDeMiraT > 0.4f) puntoDeMiraSuave = punto;
+                else puntoDeMiraSuave = Vector3.Lerp(puntoDeMiraSuave, punto, 1f - Mathf.Exp(-PuntoDeMiraSuavizado * dtMira));
+                puntoDeMiraInit = true; puntoDeMiraT = Time.unscaledTime;
+                arma.ElevarHacia(puntoDeMiraSuave);
+            }
         }
 
         // Primer obstaculo real bajo el centro de la camara (sin el propio vehiculo ni triggers); si no hay nada, un punto lejano.

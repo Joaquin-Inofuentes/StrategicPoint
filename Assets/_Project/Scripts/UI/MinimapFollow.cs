@@ -117,6 +117,13 @@ namespace SP.UI
             }
             Giro = girarConLaCamara && rig != null ? rig.transform.eulerAngles.y : 0f;
             transform.rotation = Quaternion.Euler(90f, Giro, 0f);
+            // Bug #364 (2026-11-06: "el minimapa que haga zoom para que se vea mejor en este edificio"): dentro de la mansion el encuadre se cierra a su tamano.
+            var camZoom = ResolveCamera();
+            if (camZoom != null && Application.isPlaying)
+            {
+                float objetivoOrtho = SP.Operacion.MansionGeometria.Dentro(transform.position, 3f) ? OrthoSizeEnLaMansion : OrthoSizeMinimo;
+                if (Mathf.Abs(camZoom.orthographicSize - objetivoOrtho) > 0.01f) camZoom.orthographicSize = Mathf.MoveTowards(camZoom.orthographicSize, objetivoOrtho, 140f * Time.unscaledDeltaTime);
+            }
             UbicarNorte();
             ActualizarRecuadroRts(rts, rig);
         }
@@ -403,6 +410,7 @@ namespace SP.UI
         // 110 m derecho, ~155 m en diagonal) sin llegar a mostrar el mapa
         // entero. Se fuerza (mismo patron que backgroundColor arriba).
         public const float OrthoSizeMinimo = 110f;
+        public const float OrthoSizeEnLaMansion = 38f;   // bug #364: zoom al entrar al edificio
 
         public void AplicarTamanoInicial()
         {

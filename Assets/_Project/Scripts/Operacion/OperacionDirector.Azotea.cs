@@ -168,10 +168,29 @@ namespace SP.Operacion
             ArrancarLaAzotea(false);
         }
 
+        // Bug #352 ("los enemigos no logran pasar; el obstaculo es solo para mi y mis aliados"): las barandas y el equipo del techo frenan al jugador y a la
+        // escuadra pero NO a los enemigos (Deslizador ya ignora los colliders con BarreraSoloEnemigos cuando quien se mueve es un enemigo).
+        public int ObstaculosDelTechoSoloParaAliados { get; private set; }
+        void HacerPasablesParaEnemigosLosObstaculosDelTecho()
+        {
+            int n = 0;
+            foreach (var c in FindObjectsByType<Collider>(FindObjectsSortMode.None))
+            {
+                if (c == null || c.isTrigger || !c.enabled) continue;
+                string nom = c.name;
+                if (!(nom.Contains("Baranda") || nom.Contains("Equipo") || nom.Contains("Parapeto") || nom.Contains("Claraboya"))) continue;
+                var b = c.bounds;
+                if (b.center.y < 18f || b.center.y > 30f || !G.Dentro(b.center, 2f)) continue;
+                if (c.GetComponent<SP.Core.BarreraSoloEnemigos>() == null) { c.gameObject.AddComponent<SP.Core.BarreraSoloEnemigos>(); n++; }
+            }
+            ObstaculosDelTechoSoloParaAliados += n;
+        }
+
         void ArrancarLaAzotea(bool conCinematica)
         {
             azoteaIniciada = true;
             EtapaMansion = EtapaDeLaMansion.Azotea;
+            HacerPasablesParaEnemigosLosObstaculosDelTecho();
             if (baliza != null) { baliza.Quitar(); baliza = null; }
             ReiniciarAzotea();
             ondasDeAzotea = 0; tAzotea = 0f;

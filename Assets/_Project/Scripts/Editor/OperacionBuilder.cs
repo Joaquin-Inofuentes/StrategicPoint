@@ -284,6 +284,7 @@ namespace SP.EditorTools
         // Flecha amarilla pintada en el piso (la senalizacion del camino): apunta hacia "yaw".
         static void FlechaPiso(Transform p, float x, float z, float yaw)
         {
+            return;   // 2026-11-06 (bug #346): sin chevrones pintados en el camino, solo las lineas. Las que habia se quitaron de las escenas.
             var g = new GameObject("FlechaPiso").transform;
             g.SetParent(p, false);
             g.position = new Vector3(x, 0f, z);

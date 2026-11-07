@@ -7,10 +7,10 @@ Shader "SP/AguaDeFuente"
     {
         _ColorProfundo ("Color profundo", Color) = (0.08, 0.35, 0.62, 1)
         _ColorClaro ("Color claro", Color) = (0.55, 0.88, 1, 1)
-        _Alfa ("Opacidad", Range(0, 1)) = 0.82
+        _Alfa ("Opacidad", Range(0, 1)) = 0.93
         _Escala ("Escala de las ondas", Float) = 2.4
         _Velocidad ("Velocidad", Float) = 1.2
-        _Brillo ("Brillo de crestas", Float) = 1.6
+        _Brillo ("Brillo de crestas", Float) = 0.7
         _Flujo ("0 = superficie, 1 = chorro", Range(0, 1)) = 0
     }
     SubShader
@@ -21,8 +21,8 @@ Shader "SP/AguaDeFuente"
             Name "Agua"
             Tags { "LightMode" = "UniversalForward" }
             Blend SrcAlpha OneMinusSrcAlpha
-            ZWrite Off
-            Cull Off
+            ZWrite On
+            Cull Back
 
             HLSLPROGRAM
             #pragma vertex vert
@@ -65,8 +65,8 @@ Shader "SP/AguaDeFuente"
 
                 float3 v = normalize(GetCameraPositionWS() - p);
                 float fres = pow(1.0 - saturate(abs(dot(normalize(i.nWS), v))), 3.0);
-                half3 col = lerp(_ColorProfundo.rgb, _ColorClaro.rgb, saturate(onda * 0.85 + fres * 0.5));
-                col += smoothstep(0.82, 1.0, onda) * _Brillo * _ColorClaro.rgb * 0.55;   // destellos en las crestas
+                half3 col = lerp(_ColorProfundo.rgb, _ColorClaro.rgb, saturate(onda * 0.55 + fres * 0.35));
+                col += smoothstep(0.9, 1.0, onda) * _Brillo * _ColorClaro.rgb * 0.3;   // destellos en las crestas
                 half a = saturate(_Alfa + fres * 0.18 + _Flujo * 0.1);
                 return half4(col, a);
             }

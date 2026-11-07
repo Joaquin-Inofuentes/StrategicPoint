@@ -18,8 +18,8 @@ namespace SP.EditorTools
     public static partial class OperacionBuilder
     {
         const string GrupoCaminos = "12_Caminos";
-        static Material MNeonAmbar => Mat("Caminos_NeonAmbar", new Color(1f, 0.62f, 0.12f), 3f);
-        static Material MNeonVerde => Mat("Caminos_NeonVerde", new Color(0.3f, 1f, 0.45f), 3f);
+        static Material MNeonAmbar => Mat("Caminos_NeonAmbar", new Color(1f, 0.62f, 0.12f), 2f);
+        static Material MNeonVerde => Mat("Caminos_NeonVerde", new Color(0.3f, 1f, 0.45f), 2f);
         static Material MHormigon => Mat("Caminos_Hormigon", new Color(0.52f, 0.52f, 0.50f));
         static Material MCajon => Mat("Caminos_Cajon", new Color(0.45f, 0.33f, 0.2f));
         static Material MAndamio => Mat("Caminos_Andamio", new Color(0.30f, 0.32f, 0.34f));

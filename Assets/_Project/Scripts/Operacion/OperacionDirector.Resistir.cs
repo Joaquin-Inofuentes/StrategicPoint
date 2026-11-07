@@ -126,6 +126,7 @@ namespace SP.Operacion
             go.SetActive(true);
             var s = go.GetComponent<Soldier>();
             if (s == null) { Destroy(go); return; }
+            if (RefuerzosCreados % 6 == 0) EnemigoPesado.Aplicar(s);   // 2026-11-07: cada 6.o refuerzo es un PESADO
             refuerzosCiudad.Add(s);
             ApoyoEnElPiso.Apoyar(s.transform);
             if (s.Brain != null)

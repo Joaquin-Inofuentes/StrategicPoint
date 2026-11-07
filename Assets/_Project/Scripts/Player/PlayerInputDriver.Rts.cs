@@ -67,11 +67,17 @@ namespace SP.Player
             }
 
             // #124: [Q] baja y [E] sube la camara RTS (la accion contextual de [Q] queda solo en FPS; la radio ya no se suelta con [E]).
+            // Pedido 2026-11-07: en RTS, [Q] posee al aliado que se apunta (se resalta con un aro) igual que en FPS; sin aliado apuntado [Q] sigue bajando la camara.
+            var apuntadoParaPoseer = ActualizarResaltadoDePosesion();
+            bool qPoseyo = false;
+            if (apuntadoParaPoseer != null && KeyBindings.WasPressed(KeyBindings.CiclarPosesion) && (OrdenesMenu == null || !OrdenesMenu.Abierto)) { TryPossess(apuntadoParaPoseer); qPoseyo = true; }
+            if (qPoseyo) return;
+
             float ejeAltura = 0f;
             if (OrdenesMenu == null || !OrdenesMenu.Abierto)
             {
                 if (KeyBindings.IsPressed(KeyBindings.Interactuar) || AlturaRtsPruebaE) ejeAltura += 1f;
-                if (KeyBindings.IsPressed(KeyBindings.CiclarPosesion) || AlturaRtsPruebaQ) ejeAltura -= 1f;
+                if ((apuntadoParaPoseer == null && KeyBindings.IsPressed(KeyBindings.CiclarPosesion)) || AlturaRtsPruebaQ) ejeAltura -= 1f;
             }
             Rig.MoverAlturaRts(ejeAltura, Time.deltaTime);
 
@@ -507,6 +513,33 @@ namespace SP.Player
                 }
                 if (count > 0) Rig.RecenterOn(sum / count);
             }
+        }
+
+        // ---- [Q] poseer en RTS: aro de resalte sobre el aliado apuntado
+        SelectionRingFx aroDePosesion; Soldier aroDePosesionDe;
+        public Soldier AliadoApuntadoRts { get; private set; }
+        public string MotivoDelResalte { get; private set; } = "";
+        static readonly Color ColorAroPosesion = new Color(1f, 0.92f, 0.3f);
+        Soldier ActualizarResaltadoDePosesion()
+        {
+            Soldier objetivo = null; MotivoDelResalte = "sin mouse/rig/aim";
+            var mouse = Mouse.current;
+            if (mouse != null && Rig != null && Rig.Cam != null && Aim != null && (OrdenesMenu == null || !OrdenesMenu.Abierto) && !UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            {
+                var pos = mouse.position.ReadValue(); MotivoDelResalte = "sobre UI";
+                var res = Aim.Evaluate(Rig.Cam.ScreenPointToRay(pos), null); MotivoDelResalte = "aim=" + res.Type + " pos=" + pos;
+                if (res.Type == AimTargetType.Ally) objetivo = res.Soldier;
+                else if (res.Type != AimTargetType.Vehicle) objetivo = AliadoBajoElRombo(pos);
+                if (objetivo != null && (objetivo == Brain?.Current || objetivo.Health == null || !objetivo.Health.IsAlive || objetivo.Role == RoleType.Civilian)) objetivo = null;
+            }
+            AliadoApuntadoRts = objetivo;
+            if (objetivo != aroDePosesionDe)
+            {
+                if (aroDePosesion != null) Destroy(aroDePosesion.gameObject);
+                aroDePosesion = objetivo != null ? SelectionRingFx.Spawn(objetivo.transform, ColorAroPosesion, 1.15f) : null;
+                aroDePosesionDe = objetivo;
+            }
+            return objetivo;
         }
 
         // Anillo de selección para el vehículo (mismo look que el de los

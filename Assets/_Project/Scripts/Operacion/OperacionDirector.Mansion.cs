@@ -66,7 +66,7 @@ namespace SP.Operacion
             if (HeliDeLaAzotea != null) Destroy(HeliDeLaAzotea.gameObject);
             enemigosMansion.Clear(); pendientesMansion.Clear(); prisioneros.Clear();
             proximaSincronizacion = 0f; bajoElNivelDesde = 0f;
-            relojMansion = 0f; proximoSpawnPlaza = 1.5f; plazaRestantes = 8; ondasDeAzotea = 0; tAzotea = 0f;
+            relojMansion = 0f; proximoSpawnPlaza = 1.5f; plazaRestantes = EnemigosDeLaPlaza; ondasDeAzotea = 0; tAzotea = 0f;
             porton = false; azoteaIniciada = false; segundoIniciado = false; MilicianosLiberados = false; CineDeMansionEnCurso = false;
             MansionEnemigosCreados = 0; HeliDeLaAzotea = null;
             ReiniciarAzotea(); CerrarLaReja();
@@ -122,6 +122,21 @@ namespace SP.Operacion
         }
 
         // ------------------------------------------------------------------ enemigos
+        // Bug #349 ("faltan enemigos, deberian venir a mi y verse facilmente"): la plaza pasa de 8 a 16 enemigos, entran mas seguido, se ven todos
+        // desde que entran y cada tanto se les vuelve a dar la posicion del jugador (ver ReorientarALosDeLaPlaza).
+        public const int EnemigosDeLaPlaza = 16;
+        float proximaReorientacion;
+        void ReorientarALosDeLaPlaza(Soldier yo)
+        {
+            if (Time.time < proximaReorientacion) return;
+            proximaReorientacion = Time.time + 2.5f;
+            foreach (var e in enemigosMansion)
+            {
+                if (e == null || e.Brain == null || e.Health == null || !e.Health.IsAlive) continue;
+                e.Brain.SetPatrolRoute(new[] { yo.transform.position, yo.transform.position });
+            }
+        }
+
         Soldier CrearEnemigoMansion(Vector3 pos, bool desdeEscalera = false)
         {
             if (plantillaDeRefuerzo == null) return null;
@@ -140,6 +155,7 @@ namespace SP.Operacion
             go.SetActive(true);
             var s = go.GetComponent<Soldier>();
             if (s == null) { Destroy(go); return null; }
+            if (MansionEnemigosCreados % 8 == 0) EnemigoPesado.Aplicar(s);   // 2026-11-07: cada 8.o enemigo de la mansion es un PESADO
             if (G.Dentro(pos, 1f) || pos.y > 1f) ColocarEnElPiso(s.transform, pos); else ApoyoEnElPiso.Apoyar(s.transform);
             if (s.Brain != null)
             {
@@ -233,6 +249,7 @@ namespace SP.Operacion
             TickSpawnsPendientes(yo);
             SincronizarEscuadraEnLaMansion(yo, nivel);
             RevelarEnemigosDeLaMansion(yo, faltan);
+            RescatarEnemigosAtascados(yo, faltan);
             ActualizarCompuertas(faltan, yo);
 
             switch (EtapaMansion)
@@ -241,7 +258,7 @@ namespace SP.Operacion
                 {
                     if (plazaRestantes > 0 && relojMansion >= proximoSpawnPlaza)
                     {
-                        proximoSpawnPlaza = relojMansion + UnityEngine.Random.Range(1.2f, 2.4f);
+                        proximoSpawnPlaza = relojMansion + UnityEngine.Random.Range(0.8f, 1.6f);   // bug #349: llegan mas seguido
                         var bocas = BocasEnElNavMesh();
                         if (bocas.Count > 0 && plaza != null)
                         {
@@ -254,6 +271,7 @@ namespace SP.Operacion
                         else CrearEnemigoMansion(plaza != null ? plaza.position + new Vector3(18f, 0f, 0f) : yo.transform.position);
                         plazaRestantes--;
                     }
+                    ReorientarALosDeLaPlaza(yo);
                     int restan = plazaRestantes + faltan;
                     if (hud != null) hud.Objetivo(TituloObjetivo(5, "TOMAR LA MANSION"), $"Plaza: elimina a los enemigos que entran por las calles · {restan} restantes", 0.05f, new Color(1f, 0.55f, 0.25f));
                     if (plazaRestantes == 0 && VivosDeLaMansion() + pendientesMansion.Count == 0) AbrirElPorton();   // 'faltan' se calculo antes de spawnear el ultimo
@@ -281,14 +299,16 @@ namespace SP.Operacion
                     float dCeldas = Plano(yo.transform.position, puertaCeldas).magnitude;
                     if (!MilicianosLiberados)
                     {
-                        if (hud != null) hud.Objetivo(TituloObjetivo(5, "TOMAR LA MANSION"), faltan > 0 ? $"2.o piso: elimina a la guardia · {faltan} enemigos" : "Llega a las celdas del norte y libera a los milicianos", 0.65f, new Color(1f, 0.55f, 0.25f));
+                        if (hud != null) hud.Objetivo(TituloObjetivo(5, "TOMAR LA MANSION"), faltan > 0 ? $"2.o piso: elimina a la guardia · {faltan} enemigos" : "Llega a la terminal junto a las celdas del norte y libera a los milicianos", 0.65f, new Color(1f, 0.55f, 0.25f));
                         // Bug #333 ("no puedo interactuar, deberia apretarlo y abrir las carceles"): se abren desde 9 m aunque queden guardias.
-                        if (nivel == 2 && dCeldas < 9f)
+                        var posTerminal = PosTerminalDeCeldas; posTerminal.y = G.Nivel(2);
+                        float dTerminal = Plano(yo.transform.position, posTerminal).magnitude;
+                        if (nivel == 2 && dTerminal < AlcanceDeLaTerminalDeCeldas)
                         {
-                            if (hud != null) hud.Prompt("[E] LIBERAR A LOS MILICIANOS");
+                            if (hud != null) hud.Prompt("[E] USAR LA TERMINAL · ABRIR LAS CELDAS");
                             if (OperacionTerminal.EToque()) LiberarMilicianos();
                         }
-                        else if (nivel == 2) BalizaDeLaMansion("CELDAS", new Color(1f, 0.82f, 0.25f), puertaCeldas, 2);   // el rombo marca las celdas desde que se entra al piso (#330)
+                        else if (nivel == 2) BalizaDeLaMansion("TERMINAL", new Color(1f, 0.95f, 0.2f), posTerminal + Vector3.up * 0.8f, 2);   // el rombo marca las celdas desde que se entra al piso (#330)
                     }
                     else
                     {
@@ -328,8 +348,39 @@ namespace SP.Operacion
                 var s = enemigosMansion[i];
                 if (s == null || s.Health == null || !s.Health.IsAlive) continue;
                 bool pocos = faltan <= 4;
+                bool enLaPlaza = EtapaMansion == EtapaDeLaMansion.Plaza;   // bug #349: en la plaza se ven todos, vengan de donde vengan (a cielo abierto, sin paredes)
                 bool cerca = Mathf.Abs(s.transform.position.y - yo.transform.position.y) < 3.2f && Plano(s.transform.position, yo.transform.position).magnitude < 28f;
-                if (pocos || cerca) { SP.Core.InteligenciaDeEnemigos.Revelar(s.Id); WorldUiDirector.Revelar(s, 1.5f); }
+                if (pocos || cerca || enLaPlaza) { SP.Core.InteligenciaDeEnemigos.Revelar(s.Id); WorldUiDirector.Revelar(s, 1.5f); }
+            }
+        }
+
+        // Bug #364 (2026-11-06: "al finalizar queda pendiente 1 enemigo"): un enemigo que se queda trabado (sin camino, detras de una compuerta) deja la
+        // mision sin terminar. Cuando quedan pocos y uno lleva 15 s casi sin moverse lejos del jugador, se lo acerca a un punto del piso del jugador.
+        readonly Dictionary<int, (Vector3 pos, float desde)> vigiaDeAtascados = new Dictionary<int, (Vector3, float)>();
+        float proximoVigiaDeAtascados;
+        public int EnemigosRescatadosDeUnAtasco { get; private set; }
+        public const float SegundosParaRescatarAtascado = 15f;
+
+        void RescatarEnemigosAtascados(Soldier yo, int faltan)
+        {
+            if (Time.time < proximoVigiaDeAtascados) return;
+            proximoVigiaDeAtascados = Time.time + 2f;
+            if (faltan > 3 || pendientesMansion.Count > 0) { vigiaDeAtascados.Clear(); return; }
+            for (int i = 0; i < enemigosMansion.Count; i++)
+            {
+                var s = enemigosMansion[i];
+                if (s == null || s.Health == null || !s.Health.IsAlive) continue;
+                var p = s.transform.position;
+                if (!vigiaDeAtascados.TryGetValue(s.Id, out var v) || (p - v.pos).sqrMagnitude > 2.25f || Plano(p, yo.transform.position).magnitude < 10f) { vigiaDeAtascados[s.Id] = (p, Time.time); continue; }
+                if (Time.time - v.desde < SegundosParaRescatarAtascado) continue;
+                var lado = UnityEngine.Random.insideUnitCircle.normalized * UnityEngine.Random.Range(8f, 11f);
+                var destino = new Vector3(yo.transform.position.x + lado.x, yo.transform.position.y, yo.transform.position.z + lado.y);
+                if (UnityEngine.AI.NavMesh.SamplePosition(destino, out var h, 5f, UnityEngine.AI.NavMesh.AllAreas)) destino = h.position;
+                ColocarEnElPiso(s.transform, destino);
+                if (s.Brain != null) { s.Brain.CancelOrder(); s.Brain.ReactivarNavegacion(); }
+                vigiaDeAtascados[s.Id] = (destino, Time.time);
+                EnemigosRescatadosDeUnAtasco++;
+                GameLog.Line($"[Operacion] Mansion: {s.DisplayName} llevaba {SegundosParaRescatarAtascado:0} s trabado; se lo acerca al jugador");
             }
         }
 
@@ -361,9 +412,22 @@ namespace SP.Operacion
             if (baliza != null) { baliza.Quitar(); baliza = null; }
             SesionLog.Evento("MANSION: 2.o piso");
             PonerPrisioneros();
+            CrearTerminalDeCeldas();
             var yo = Poseido();
             var p0 = yo != null ? yo.transform.position : G.Centro(2);
             StartCoroutine(CinematicaDeLasCeldas(p0));
+        }
+
+        // Atajo de pruebas: deja hecha la plaza y el 1.er piso y arranca el 2.o con la escuadra arriba.
+        public void SaltarAlSegundoPisoPorPrueba()
+        {
+            SaltarA(FaseOperacion.Resistir, true);
+            if (!MansionActiva) return;
+            plazaRestantes = 0; porton = true;
+            foreach (var h in hojasDelPorton) if (h != null) h.Abrir();
+            PonerLaEscuadraEnElPiso(G.Centro(2) + new Vector3(0f, 0f, -6f));
+            segundoIniciado = true;
+            EntrarSegundoPiso();
         }
 
         void EntrarAzotea()

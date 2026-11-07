@@ -127,6 +127,7 @@ namespace SP.Operacion
                     f.SetValue(motor, LargoDeLaRuta() / (segundosDeTrayecto * 0.97f));
                     var fa = typeof(VehicleMotor).GetField("acceleration", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
                     if (fa != null) fa.SetValue(motor, 16f);
+                    motor.VariarRitmo = true;   // pedido 2026-11-07: la marcha varia entre normal y rapida
                 }
             }
             PotenciarCanon();
@@ -324,7 +325,7 @@ namespace SP.Operacion
         //  - los primeros 6 s de la carrera, todo a la mitad (el jugador todavia se esta acomodando).
         // Con fuego continuo ininterrumpido el tanque dura ~65 s (el trayecto); con presion normal llega al final con 30-50 % de vida.
         // Bug #009 (build, "me deberian hacer el doble de dano"): el factor, el tope por golpe y el presupuesto por segundo se duplican (x2).
-        public const float MultiplicadorDeDanoDelTanque = 2f;
+        public const float MultiplicadorDeDanoDelTanque = 4f;   // bug #347 ("deberian quitarme mucha mas vida"): era x2; llegando al final de la ruta sin repararlo el tanque queda casi destruido
         System.Func<int, int> CurvaDeDanoDelTanque()
         {
             float ventanaInicio = -10f, gastado = 0f;
@@ -389,6 +390,7 @@ namespace SP.Operacion
         {
             var motor = tanque.GetComponent<VehicleMotor>();
             var campoVel = typeof(VehicleMotor).GetField("maxSpeed", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (motor != null) motor.VariarRitmo = false;
             if (llegadaDesde < 0f)
             {
                 llegadaDesde = Reloj;

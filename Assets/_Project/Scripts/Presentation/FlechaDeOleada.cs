@@ -110,6 +110,9 @@ namespace SP.Presentation
             f.rMundo = gm.AddComponent<MeshRenderer>();
             f.rMundo.sharedMaterial = matMundo;
             f.rMundo.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; f.rMundo.receiveShadows = false;
+            // Bug #350 ("quitar flecha"): la flecha roja gigante apoyada en la calle tapaba la vista. El aviso de oleada sigue en el minimapa
+            // (la flecha gemela) y en el cartel; solo se apaga el dibujo en el mundo.
+            f.rMundo.enabled = false;
             f.mundo = gm.transform;
 
             int layer = LayerMask.NameToLayer("Minimap");
@@ -120,6 +123,8 @@ namespace SP.Presentation
             f.rMapa = gp.AddComponent<MeshRenderer>();
             f.rMapa.sharedMaterial = matMapa;
             f.rMapa.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; f.rMapa.receiveShadows = false;
+            // Bug #364 (2026-11-06: "quita las flechas del minimapa"): tampoco se dibuja la flecha gemela del minimapa; el aviso queda en el cartel.
+            f.rMapa.enabled = false;
             f.mapa = gp.transform;
             go.SetActive(false);
             return f;

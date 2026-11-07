@@ -66,7 +66,7 @@ namespace SP.EditorTools
                     Caja(deco, "Tanque_Pata", 344f + dx - 0.1f, 344f + dx + 0.1f, y3, y3 + 1.6f, 262f + dz - 0.1f, 262f + dz + 0.1f, MBarrote, false);
             Caja(deco, "Antena_1", 300.9f, 301.1f, y3, y3 + 7f, 267.9f, 268.1f, MBarrote, false);
             Caja(deco, "Antena_1_Travesano", 300.2f, 301.8f, y3 + 5.5f, y3 + 5.6f, 267.95f, 268.05f, MBarrote, false);
-            Esfera(deco, "Antena_Baliza", new Vector3(301f, y3 + 7.1f, 268f), 0.3f, Mat("Mansion_Baliza", new Color(1f, 0.1f, 0.1f), 3f));
+            Esfera(deco, "Antena_Baliza", new Vector3(301f, y3 + 7.1f, 268f), 0.3f, Mat("Mansion_Baliza", new Color(1f, 0.1f, 0.1f), 2f));
             float pt = y3 + G.Parapeto;
             Caja(deco, "Parapeto_Tapa_S", G.X0, G.X1, pt, pt + 0.1f, G.Z0 - 0.1f, G.Z0 + G.Muro + 0.1f, MDorado, false);
             Caja(deco, "Parapeto_Tapa_N", G.X0, G.X1, pt, pt + 0.1f, G.Z1 - G.Muro - 0.1f, G.Z1 + 0.1f, MDorado, false);

@@ -51,6 +51,7 @@ namespace SP.Operacion
                 go.SetActive(true);
                 var s = go.GetComponent<Soldier>();
                 if (s == null) { Destroy(go); continue; }
+                if (EnemigosDeExtraccionCreados % 10 == 0) EnemigoPesado.Aplicar(s);   // 2026-11-07: cada 10.o es un PESADO
                 enemigosDeExtraccion.Add(s);
                 ApoyoEnElPiso.Apoyar(s.transform);
                 if (s.Brain != null)

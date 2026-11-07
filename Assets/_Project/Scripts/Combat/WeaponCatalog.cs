@@ -49,6 +49,9 @@ namespace SP.Combat
                     // y cargador intactos: sigue siendo la mas rapida de
                     // sacar y recargar, solo pega menos por tiro.
                     return new Spec { Damage = 8, Cooldown = 0.15f, Color = new Color(0.95f, 0.88f, 0.20f), VisualScale = new Vector3(0.13f, 0.13f, 0.28f), MagazineSize = 12, ReloadDuration = 1.0f, ZoomFactor = 1.6f, Reticle = ReticleStyle.Cruz, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Pistola", MultiplicadorVsVehiculo = 1f };
+                // Pedido 2026-11-07: minigun del enemigo PESADO: cadencia altisima, cargador enorme, recarga larga (se siente pesada) y disparo grave.
+                case WeaponKind.Minigun:
+                    return new Spec { Damage = 6, Cooldown = 0.055f, Color = new Color(0.25f, 0.25f, 0.28f), VisualScale = new Vector3(0.24f, 0.24f, 0.85f), MagazineSize = 160, ReloadDuration = 4.2f, ZoomFactor = 1.2f, Reticle = ReticleStyle.Anillo, Pellets = 1, ProjectileSpeed = 1f, DisplayName = "Minigun", MultiplicadorVsVehiculo = 0.5f };
                 case WeaponKind.Heavy:
                     // Grande y gruesa. Naranja quemado a proposito: el rosa/
                     // magenta anterior (0.80, 0.20, 0.55) se confundia a

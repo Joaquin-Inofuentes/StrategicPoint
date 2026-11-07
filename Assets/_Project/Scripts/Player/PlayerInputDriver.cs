@@ -808,6 +808,7 @@ namespace SP.Player
             }
 
             // [F1]/[F2]/[F3]: poseen en FPS o seleccionan en RTS (funciona en vehículos también).
+            if (Rig.Mode == ControlMode.Fps && aroDePosesion != null) { Destroy(aroDePosesion.gameObject); aroDePosesion = null; aroDePosesionDe = null; AliadoApuntadoRts = null; }
             if (Rig.Mode == ControlMode.Fps)
             {
                 PoseerConFuncion(kb);   // pedido explicito: F1/F2/F3 cambian de soldado en FPS (ya no dependen de los atajos heredados)

@@ -91,7 +91,7 @@ namespace SP.EditorTools
         static Material MDorado => Mat("Mansion_Dorado", new Color(0.78f, 0.60f, 0.22f), 0.25f);
         static Material MCuadroA => Mat("Mansion_CuadroA", new Color(0.18f, 0.32f, 0.45f));
         static Material MCuadroB => Mat("Mansion_CuadroB", new Color(0.55f, 0.36f, 0.18f));
-        static Material MCristal => Mat("Mansion_Cristal", new Color(1f, 0.90f, 0.70f), 3f);
+        static Material MCristal => Mat("Mansion_Cristal", new Color(1f, 0.90f, 0.70f), 2f);
 
         static GameObject Columna(Transform p, string n, float x, float z, float y0, float y1, float radio = 0.55f)
         {
@@ -328,7 +328,7 @@ namespace SP.EditorTools
                 Caja(interior, "PB_Sofa", x - w * 0.5f, x + w * 0.5f, 0f, 1f, z - 0.55f, z + 0.55f, MMueble);
             // Chimenea monumental en el muro oeste y cuadros en el muro norte.
             Caja(deco, "PB_Chimenea", xi0, xi0 + 0.9f, 0f, 3.2f, 280f, 285f, MMarmolOsc, false);
-            Caja(deco, "PB_Chimenea_Fuego", xi0 + 0.9f, xi0 + 1.0f, 0.4f, 1.4f, 281.6f, 283.4f, Mat("Mansion_Fuego", new Color(1f, 0.5f, 0.15f), 3f), false);
+            Caja(deco, "PB_Chimenea_Fuego", xi0 + 0.9f, xi0 + 1.0f, 0.4f, 1.4f, 281.6f, 283.4f, Mat("Mansion_Fuego", new Color(1f, 0.5f, 0.15f), 2f), false);
             foreach (float x in new[] { 305f, 313f, 331f, 339f })
                 Caja(deco, "PB_Cuadro", x - 1.4f, x + 1.4f, 2.0f, 4.4f, zi1 - 0.06f, zi1, x < 322f ? MCuadroA : MCuadroB, false);
             foreach (float z in new[] { 254f, 268f }) Arana(deco, 322f, hPB - 0.2f, z, 1.6f);

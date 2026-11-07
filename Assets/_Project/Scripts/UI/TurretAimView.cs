@@ -148,20 +148,57 @@ namespace SP.UI
             float fase = Vibra ? Mathf.Sin(Time.unscaledTime * VibracionHz * Mathf.PI * 2f) : 0f;
             radio *= 1f + VibracionRadio * fase;
             float ancho = Vibra ? Mathf.Lerp(AnchoMin, AnchoMax, 0.5f + 0.5f * fase) : AnchoFijo;
-            radiusRing.widthMultiplier = ancho;
             var color = ColorDe(impacto.Tipo);
             // Bug #245: el anillo de la zona es lo UNICO que queda del cursor del canon: mientras recarga se atenua (en vez del anillo de recarga de la UI).
             if (SoloAnilloDeZona && turret.CooldownFraction01 < 0.999f) color.a = 0.4f;
+            // Bug #360 (2026-11-06: "que cambie el tamano del circulo cuando recarga, cuando dispara y cuando impacta, que cambie de color y vibre"):
+            // recargando se achica y se pone naranja hasta llenarse; al disparar da un golpe (grande, amarillo) y vibra; al impactar otro (blanco) y vibra;
+            // al quedar listo hace un pulso verde.
+            float escalaFeedback = AplicarFeedback(turret, impacto, ref color, ref ancho);
+            radio *= escalaFeedback;
+            radiusRing.widthMultiplier = ancho;
             radiusRing.startColor = color; radiusRing.endColor = color;
             // Pedido 2026-10-21: "la mira del tanque siempre contra el suelo, jamas vertical, asi siempre es legible". Contra un muro, un
             // vehiculo o un edificio el anillo ya no se pega a la cara: se apoya en el piso al pie de lo que se apunta, siempre horizontal.
             var centro = PuntoEnElPiso(impacto.Punto);
+            if (sacudida > 0.001f) centro += new Vector3(Mathf.Sin(Time.unscaledTime * 83f), 0f, Mathf.Cos(Time.unscaledTime * 71f)) * (0.3f * sacudida);
             UltimoTipo = impacto.Tipo; UltimoPunto = impacto.Punto; UltimaNormal = Vector3.up; UltimoCentroDibujado = centro;
             UltimoRadioDibujado = radio; UltimoAnchoDibujado = ancho; UltimoColor = color;
             DrawCircle(centro, radio, Vector3.up);
         }
 
         public static Vector3 UltimoCentroDibujado { get; private set; }
+
+        // ---- Bug #360: feedback del circulo (estado por vista; se anima con el tiempo sin escalar)
+        float cdPrevio = 1f, golpeDeDisparo, golpeDeImpacto, pulsoDeListo, sacudida, impactoEn = -1f;
+        public static float UltimaEscalaDeFeedback { get; private set; } = 1f;
+        public static readonly Color ColorRecarga = new Color(1f, 0.45f, 0.1f), ColorDisparo = new Color(1f, 0.95f, 0.35f), ColorImpacto = Color.white, ColorListo = new Color(0.35f, 1f, 0.45f);
+
+        float AplicarFeedback(TurretWeapon turret, Impacto impacto, ref Color color, ref float ancho)
+        {
+            float cd = turret.CooldownFraction01, ahora = Time.unscaledTime, dt = Time.unscaledDeltaTime;
+            if (cdPrevio >= 0.999f && cd < 0.999f) { golpeDeDisparo = 1f; sacudida = 1f; impactoEn = ahora + Mathf.Max(0.2f, impacto.Tiempo); }   // acaba de disparar
+            if (cdPrevio < 0.999f && cd >= 0.999f) pulsoDeListo = 1f;                                                                            // recarga completa
+            if (impactoEn > 0f && ahora >= impactoEn) { impactoEn = -1f; golpeDeImpacto = 1f; sacudida = Mathf.Max(sacudida, 0.8f); }          // el obus llego
+            cdPrevio = cd;
+            golpeDeDisparo = Mathf.MoveTowards(golpeDeDisparo, 0f, dt * 3.5f);
+            golpeDeImpacto = Mathf.MoveTowards(golpeDeImpacto, 0f, dt * 3f);
+            pulsoDeListo = Mathf.MoveTowards(pulsoDeListo, 0f, dt * 3f);
+            sacudida = Mathf.MoveTowards(sacudida, 0f, dt * 2.5f);
+
+            float escala = 1f;
+            if (cd < 0.999f)
+            {
+                escala *= Mathf.Lerp(0.55f, 1f, cd);                                        // recargando: el circulo se achica y crece al llenarse
+                var c = Color.Lerp(ColorRecarga, color, cd * cd); c.a = Mathf.Max(color.a, 0.4f + 0.3f * cd); color = c;
+            }
+            if (pulsoDeListo > 0f) { color = Color.Lerp(color, ColorListo, pulsoDeListo); escala *= 1f + 0.15f * pulsoDeListo; ancho *= 1f + 0.6f * pulsoDeListo; }
+            if (golpeDeDisparo > 0f) { color = Color.Lerp(color, ColorDisparo, golpeDeDisparo); escala *= 1f + 0.45f * golpeDeDisparo; ancho *= 1f + 1.2f * golpeDeDisparo; }
+            if (golpeDeImpacto > 0f) { color = Color.Lerp(color, ColorImpacto, golpeDeImpacto); escala *= 1f + 0.35f * golpeDeImpacto; ancho *= 1f + 1.0f * golpeDeImpacto; }
+            if (sacudida > 0.001f) escala *= 1f + 0.10f * sacudida * Mathf.Sin(ahora * 70f);   // vibra
+            UltimaEscalaDeFeedback = escala;
+            return escala;
+        }
 
         static readonly RaycastHit[] golpesDePiso = new RaycastHit[8];
         // El piso justo bajo (o al pie de) el punto de impacto: el primer golpe hacia abajo que sea suelo (no soldado ni vehiculo).
@@ -182,7 +219,7 @@ namespace SP.UI
 
         public static Color ColorDe(TipoDeImpacto t) => t == TipoDeImpacto.Enemigo ? ColorEnemigo : t == TipoDeImpacto.Destructible ? ColorDestructible : ColorNeutro;
 
-        public struct Impacto { public Vector3 Punto; public Vector3 Normal; public TipoDeImpacto Tipo; public Collider Collider; }
+        public struct Impacto { public Vector3 Punto; public Vector3 Normal; public TipoDeImpacto Tipo; public Collider Collider; public float Tiempo; }
 
         // Con balistica de arco, apuntar sin ninguna ayuda seria pura
         // adivinanza. Se SIMULA la trayectoria real (misma gravedad y
@@ -250,14 +287,14 @@ namespace SP.UI
                 }
                 if (mejorC != null)
                 {
-                    res.Punto = mejorP; res.Normal = mejorN; res.Collider = mejorC;
+                    res.Punto = mejorP; res.Normal = mejorN; res.Collider = mejorC; res.Tiempo = t;
                     res.Tipo = Clasificar(mejorC, mejorP);
                     return res;
                 }
                 if (distPiso < float.MaxValue)
                 {
                     res.Punto = new Vector3(a.x + u.x * distPiso, groundY + 0.05f, a.z + u.z * distPiso);
-                    res.Normal = Vector3.up;
+                    res.Normal = Vector3.up; res.Tiempo = t;
                     res.Tipo = Clasificar(null, res.Punto);
                     return res;
                 }

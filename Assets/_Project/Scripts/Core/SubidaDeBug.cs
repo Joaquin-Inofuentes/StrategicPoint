@@ -64,7 +64,10 @@ namespace SP.Core
             public string imagen, estado;   // nombres de los archivos hermanos
         }
 
-        public static bool Disponible => Habilitada && Application.isPlaying && !Application.isBatchMode;
+        // 2026-11-06 (pedido del dueno): un bug marcado desde el EDITOR queda solo en local (Registros/); al Sheet suben unicamente los
+        // marcados desde el .exe (build). Los registros locales se guardan igual en los dos casos.
+        public static bool SubeAlSheet => !Application.isEditor;
+        public static bool Disponible => Habilitada && SubeAlSheet && Application.isPlaying && !Application.isBatchMode;
 
         static string CarpetaPendientes => Path.Combine(SesionLog.Carpeta, "pendientes");
 

@@ -6,7 +6,7 @@ using SP.Vehicles;
 namespace SP.Core
 {
     // MODO DIOS ([F4]): nadie del bando del jugador recibe dano. Ni el soldado que manejas,
-    // ni la escuadra, ni el civil, y el tanque propio pierde vida pero queda en 1 (nunca lo destruyen). Los enemigos siguen siendo normales.
+    // ni la escuadra ni el civil. El tanque propio pierde vida pero es indestructible: no baja de 1 (bugs #347/#359). Los enemigos siguen siendo normales.
     // Sirve para probar, para mirar el mapa sin morir y para practicar ordenes.
     public static class ModoDios
     {
@@ -30,7 +30,11 @@ namespace SP.Core
 
         // Bugs #276/#279: con el modo dios el bando del jugador pega x3 y la escena corre a x4 de velocidad (pedido 2026-10-21: antes x2, luego x3).
         public const float MultiplicadorDeDanoPropio = 3f;
-        public const float EscalaDeTiempo = 4f;
+        // Bug #354 (2026-11-06): la escena corre a x2 (antes x4) y el soldado que manejas corre x2 mas rapido; en la camara RTS (dar ordenes) todo va normal.
+        public const float EscalaDeTiempo = 2f;
+        public const float FactorDeCarreraDelModoDios = 2f;
+        // Lo lee SoldierMotor: el modo dios solo acelera al soldado que maneja el jugador.
+        public static bool EnRts { get { var r = SP.CameraSystem.CameraRig.Instance; return r != null && r.Mode == SP.CameraSystem.ControlMode.Rts; } }
 
         // Multiplicador de un golpe segun quien lo da (solo el bando del jugador, y solo con el modo dios activo).
         public static float MultiplicadorDeDano(int atacanteId)
@@ -46,8 +50,10 @@ namespace SP.Core
         {
             if (!VelocidadActiva) return;
             float t = Time.timeScale;
-            if (Activo && Mathf.Abs(t - 1f) < 0.001f) Time.timeScale = EscalaDeTiempo;
-            else if (!Activo && Mathf.Abs(t - EscalaDeTiempo) < 0.001f) Time.timeScale = 1f;
+            bool gestionada = Mathf.Abs(t - 1f) < 0.001f || Mathf.Abs(t - EscalaDeTiempo) < 0.001f;   // no pisa la pausa (0) ni la camara lenta (<1)
+            if (!gestionada) return;
+            float objetivo = Activo && !EnRts ? EscalaDeTiempo : 1f;
+            if (Mathf.Abs(t - objetivo) > 0.001f) Time.timeScale = objetivo;
         }
 
         // true si a esta vida no se le puede quitar nada ahora mismo.
@@ -57,7 +63,9 @@ namespace SP.Core
             if (h.TryGetComponent<Soldier>(out var s)) return s.Team == TeamId.Player;
             // Bug #004 (build): con el modo dios el tanque propio no mostraba ningun dano ("no me quitan vida"). Ahora los vehiculos del
             // jugador SI pierden vida (se ve la barra), pero no pasan de 1 punto: los golpes se topan en TopeDeDano y el guion puede destruirlos igual.
-            if (h.TryGetComponent<Vehicle>(out var v)) return v.Bando == TeamId.Player && h.Current <= 1;
+            // Bug #347 (2026-11-06: "en modo dios deberia ser indestructible"): el tanque propio ya no pierde NADA de vida con el modo dios (antes bajaba hasta 1).
+            // Bug #359 (2026-11-06: "no me quitan nada de vida, quiero que cada disparo me saque al menos 15-20 %"): el tanque SI pierde vida con el modo dios
+            // (se ve la barra) y no se destruye nunca: baja hasta 1 (ver TopeDeDano).
             return false;
         }
 

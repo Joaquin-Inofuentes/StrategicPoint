@@ -91,7 +91,17 @@ namespace SP.Vehicles
         public float Heat { get; private set; }
         const float HeatPerShot = 0.34f;
         const float HeatCoolPerSec = 0.22f;
-        public float EffectiveCooldown => fireCooldown * (1f + Heat * 1.6f);
+        // Pedido 2026-11-07: el canon del tanque DEL JUGADOR dispara al doble de ritmo (cooldown a la mitad y menos calor por tiro).
+        public const float FactorDeCadenciaDelJugador = 2f;
+        public float FactorDeCadencia
+        {
+            get
+            {
+                var v = vehicle != null ? vehicle : GetComponentInParent<Vehicle>();
+                return v != null && v.Bando == SP.Combat.TeamId.Player && v.TorretaCanon == this ? FactorDeCadenciaDelJugador : 1f;
+            }
+        }
+        public float EffectiveCooldown => fireCooldown * (1f + Heat * 1.6f / FactorDeCadencia) / FactorDeCadencia;
 
         // Antes el cooldown de medio segundo era completamente invisible:
         // se apretaba y no pasaba nada, sin saber cuanto faltaba.

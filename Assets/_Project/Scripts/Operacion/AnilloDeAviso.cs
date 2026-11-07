@@ -22,7 +22,7 @@ namespace SP.Operacion
         Transform aro, relleno;
         MeshRenderer rAro, rRelleno;
         MaterialPropertyBlock bloque;
-        float edad, duracion, radio;
+        float edad, duracion, radio, edadReal;
         Color color;
 
         public bool Activo { get; private set; }
@@ -171,7 +171,7 @@ namespace SP.Operacion
 
         void Iniciar(Vector3 c, float r, float seg, Color col)
         {
-            radio = r; duracion = Mathf.Max(0.05f, seg); edad = 0f; color = col;
+            radio = r; duracion = Mathf.Max(0.05f, seg); edad = 0f; edadReal = 0f; color = col;
             float y = AlturaDelPiso(c) + 0.3f;
             Centro = new Vector3(c.x, y, c.z);
             transform.position = Centro;
@@ -193,7 +193,10 @@ namespace SP.Operacion
         {
             if (!Activo) return;
             edad += Time.deltaTime;
-            if (edad >= duracion) { Cancelar(); return; }
+            // Bug #356 ("la marca quedo trabada"): salvaguarda. Si por lo que sea el reloj del juego no lo termina, expira por tiempo real
+            // (solo cuenta con el juego corriendo: una pausa no lo mata).
+            if (Time.timeScale > 0.5f) edadReal += Time.unscaledDeltaTime;
+            if (edad >= duracion || edadReal > duracion * 3f + 2f) { Cancelar(); return; }
             Pintar();
         }
 

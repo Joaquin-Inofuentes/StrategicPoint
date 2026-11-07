@@ -79,7 +79,7 @@ namespace SP.EditorTools
             Caja(t, "Toldo", x0 + 1.5f, x1 - 1.5f, 2.9f, 3.15f, z0 - 1.1f, z0, MChapa(rnd.Next(0, 3)), false);
             // Iter 18: letrero de neon sobre el toldo, segundo toldo al norte y tanque de agua en varios techos.
             {
-                var neon = Mat("Ciudad_Neon" + (semilla % 4), semilla % 4 == 0 ? new Color(1f, 0.25f, 0.35f) : semilla % 4 == 1 ? new Color(0.25f, 0.85f, 1f) : semilla % 4 == 2 ? new Color(1f, 0.8f, 0.2f) : new Color(0.5f, 1f, 0.5f), 2.5f);
+                var neon = Mat("Ciudad_Neon" + (semilla % 4), semilla % 4 == 0 ? new Color(1f, 0.25f, 0.35f) : semilla % 4 == 1 ? new Color(0.25f, 0.85f, 1f) : semilla % 4 == 2 ? new Color(1f, 0.8f, 0.2f) : new Color(0.5f, 1f, 0.5f), 2f);
                 float nx = cx + (float)(rnd.NextDouble() - 0.5) * w * 0.3f;
                 Caja(t, "Letrero_Neon", nx - w * 0.18f, nx + w * 0.18f, 3.45f, 4.15f, z0 - 0.3f, z0 - 0.15f, neon, false);
                 Caja(t, "Letrero_Marco", nx - w * 0.18f - 0.1f, nx + w * 0.18f + 0.1f, 3.35f, 4.25f, z0 - 0.15f, z0 - 0.05f, MetalOsc, false);
@@ -97,7 +97,7 @@ namespace SP.EditorTools
             // franja del toldo, puerta con dintel y placa, luz de pie de muro, jardin y cartelera de techo, equipos, escalera de incendio,
             // chimenea, reloj, dinteles de color, luces de feria sobre el toldo y farolitos en las esquinas del techo.
             {
-                var led = Mat("Prestigio_Led" + (semilla % 3), semilla % 3 == 0 ? new Color(1f, 0.8f, 0.4f) : semilla % 3 == 1 ? new Color(0.4f, 0.9f, 1f) : new Color(1f, 0.4f, 0.7f), 3f);
+                var led = Mat("Prestigio_Led" + (semilla % 3), semilla % 3 == 0 ? new Color(1f, 0.8f, 0.4f) : semilla % 3 == 1 ? new Color(0.4f, 0.9f, 1f) : new Color(1f, 0.4f, 0.7f), 2f);
                 Caja(t, "Remate_Led_S", x0 - 0.3f, x1 + 0.3f, h - 0.55f, h - 0.5f, z0 - 0.36f, z0 - 0.3f, led, false);
                 Caja(t, "Remate_Led_N", x0 - 0.3f, x1 + 0.3f, h - 0.55f, h - 0.5f, z1 + 0.3f, z1 + 0.36f, led, false);
                 Caja(t, "Remate_Led_O", x0 - 0.36f, x0 - 0.3f, h - 0.55f, h - 0.5f, z0 - 0.3f, z1 + 0.3f, led, false);
@@ -105,7 +105,7 @@ namespace SP.EditorTools
                 Caja(t, "Antena_Techo", cx + w * 0.3f - 0.05f, cx + w * 0.3f + 0.05f, h + 0.25f, h + 5.5f, cz + d * 0.25f - 0.05f, cz + d * 0.25f + 0.05f, MetalOsc, false);
                 {
                     var gb = new GameObject("Baliza_Techo"); gb.transform.SetParent(t, false); gb.transform.position = new Vector3(cx + w * 0.3f, h + 5.7f, cz + d * 0.25f);
-                    Esfera(gb.transform, "Baliza_Techo_Foco", gb.transform.position, 0.4f, Mat("Prestigio_BalizaRoja", new Color(1f, 0.1f, 0.1f), 3f));
+                    Esfera(gb.transform, "Baliza_Techo_Foco", gb.transform.position, 0.4f, Mat("Prestigio_BalizaRoja", new Color(1f, 0.1f, 0.1f), 2f));
                     var lb = gb.AddComponent<Light>(); lb.type = LightType.Point; lb.range = 9f; lb.intensity = 2.2f; lb.color = new Color(1f, 0.15f, 0.1f); lb.shadows = LightShadows.None;
                     var jb = gb.AddComponent<SP.Operacion.JuegoDeLuces>(); jb.modo = SP.Operacion.JuegoDeLuces.Modo.Parpadeo; jb.velocidad = 0.8f + (semilla % 5) * 0.1f; jb.fase = semilla * 0.7f;
                 }
@@ -254,8 +254,8 @@ namespace SP.EditorTools
             {
                 Caja(t, "Semaforo_Poste", sx - 0.08f, sx + 0.08f, 0f, 4.2f, sz - 0.08f, sz + 0.08f, MetalOsc, false);
                 Caja(t, "Semaforo_Caja", sx - 0.22f, sx + 0.22f, 3.4f, 4.5f, sz - 0.2f, sz + 0.2f, MBarrote, false);
-                Caja(t, "Semaforo_Rojo", sx - 0.12f, sx + 0.12f, 4.05f, 4.3f, sz - 0.22f, sz - 0.2f, Mat("Ciudad_SemRojo", new Color(1f, 0.1f, 0.1f), 2.5f), false);
-                Caja(t, "Semaforo_Verde", sx - 0.12f, sx + 0.12f, 3.5f, 3.75f, sz - 0.22f, sz - 0.2f, Mat("Ciudad_SemVerde", new Color(0.1f, 1f, 0.3f), 2.5f), false);
+                Caja(t, "Semaforo_Rojo", sx - 0.12f, sx + 0.12f, 4.05f, 4.3f, sz - 0.22f, sz - 0.2f, Mat("Ciudad_SemRojo", new Color(1f, 0.1f, 0.1f), 2f), false);
+                Caja(t, "Semaforo_Verde", sx - 0.12f, sx + 0.12f, 3.5f, 3.75f, sz - 0.22f, sz - 0.2f, Mat("Ciudad_SemVerde", new Color(0.1f, 1f, 0.3f), 2f), false);
             }
             foreach (var (cx2, cz2) in new[] { (300f, 232f), (344f, 224f), (300f, 190f), (346f, 205f) })
                 Caja(t, "Contenedor", cx2 - 1.2f, cx2 + 1.2f, 0f, 1.3f, cz2 - 0.7f, cz2 + 0.7f, MChapa(0));

@@ -19,7 +19,7 @@ namespace SP.Operacion
         sealed class CompuertaDeTorre
         {
             public GameObject go; public BoxCollider col; public UnityEngine.AI.NavMeshObstacle obs;
-            public int torre, nivelBase; public bool subida, cerrada = true, trabada;
+            public int torre, nivelBase; public bool subida, cerrada = true, trabada, abiertaFija;   // abiertaFija (#367): una vez abierta la de subida no vuelve a cerrarse en ese piso (evita el "se activan y desactivan")
         }
 
         readonly List<CompuertaDeTorre> compuertasDeTorre = new List<CompuertaDeTorre>();
@@ -38,6 +38,19 @@ namespace SP.Operacion
                 if (G.EnTorre(e.transform.position, out int idx, 0.5f) && idx == torre) return true;
             }
             return false;
+        }
+
+        // #366: true cuando todos los aliados vivos (escuadra y milicianos) ya estan en la planta de arriba; los que se atascan mas de la cuenta no
+        // retienen la compuerta para siempre (AyudarALaEscuadraAlHeli ya los acerca despues).
+        bool TodosLosAliadosYaSubieron(int nivelDestino)
+        {
+            float yMin = G.Nivel(nivelDestino) - 0.8f;
+            foreach (var a in AliadosAEvacuar(true))
+            {
+                if (a == null || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy) continue;
+                if (a.transform.position.y < yMin) return false;
+            }
+            return true;
         }
 
         void QuitarCompuertas()
@@ -59,14 +72,8 @@ namespace SP.Operacion
             var col = go.AddComponent<BoxCollider>(); col.size = size;
             var obs = go.AddComponent<UnityEngine.AI.NavMeshObstacle>();
             obs.shape = UnityEngine.AI.NavMeshObstacleShape.Box; obs.size = size; obs.carving = true; obs.carveOnlyStationary = false;
-            // La reja se ve: una placa fina rojiza (no un muro opaco) para que se lea como "cerrado".
-            var vis = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            vis.name = "Reja";
-            var vc = vis.GetComponent<Collider>(); if (vc != null) Destroy(vc);
-            vis.transform.SetParent(go.transform, false);
-            vis.transform.localScale = new Vector3(AnchoDeCompuerta, AltoDeCompuerta, 0.12f);
-            var mr = vis.GetComponent<Renderer>();
-            if (mr != null) { mr.sharedMaterial = SP.Presentation.SafeMaterial.Create(new Color(0.85f, 0.1f, 0.07f)); mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; }
+            // Bug #366 (2026-11-06: "los bloques de colliders para mi solo son colliders sin render, no se deberian ver"): la compuerta ya no dibuja
+            // la placa roja; es solo un collider invisible. Al chocar con ella sale el aviso (ver ActualizarCompuertas).
             return new CompuertaDeTorre { go = go, col = col, obs = obs, torre = torre, nivelBase = t.nivelBase, subida = subida };
         }
 
@@ -93,7 +100,7 @@ namespace SP.Operacion
                 case EtapaDeLaMansion.Azotea: case EtapaDeLaMansion.Cerrada: piso = 3; break;
                 default: piso = -1; break;
             }
-            if (piso != pisoDeLasCompuertas) { pisoDeLasCompuertas = piso; inicioDelPiso = relojMansion; }
+            if (piso != pisoDeLasCompuertas) { pisoDeLasCompuertas = piso; inicioDelPiso = relojMansion; foreach (var cc in compuertasDeTorre) cc.abiertaFija = false; }
             bool forzar = relojMansion - inicioDelPiso > SegundosParaForzarCompuerta;
             bool pisoLimpio = faltan == 0 && (piso != 2 || MilicianosLiberados);
             // La torre es un zigzag (los dos tramos suben): la reja de BAJADA esta en la boca del tramo B, por donde tambien se sale al subir. Solo se
@@ -102,18 +109,24 @@ namespace SP.Operacion
             foreach (var c in compuertasDeTorre)
             {
                 bool dentro = HayEnemigoEnLaTorre(c.torre);   // los que salen del rellano (bajan o suben) no se quedan encerrados por la reja
-                if (c.subida) { Poner(c, c.nivelBase == piso && !pisoLimpio && !forzar && !dentro); continue; }
-                if (!c.trabada && piso >= c.nivelBase + 1 && yoAfuera && yo.transform.position.y >= G.Nivel(c.nivelBase + 1) - 0.3f) c.trabada = true;
+                if (c.subida)
+                {
+                    if (c.nivelBase == piso && (pisoLimpio || forzar)) c.abiertaFija = true;   // #367: abre una vez y se queda abierta
+                    Poner(c, c.nivelBase == piso && !c.abiertaFija && !dentro);
+                    continue;
+                }
+                // #366: la de BAJADA solo se cierra cuando ya subieron TODOS los aliados (primero pasan todos, despues se bloquea).
+                if (!c.trabada && piso >= c.nivelBase + 1 && yoAfuera && yo.transform.position.y >= G.Nivel(c.nivelBase + 1) - 0.3f && TodosLosAliadosYaSubieron(c.nivelBase + 1)) c.trabada = true;
                 Poner(c, c.trabada && !dentro);
             }
-            // Aviso cuando el que manejas se para frente a una reja de subida cerrada.
+            // Aviso (#363) cuando el que manejas choca o se para frente a una compuerta cerrada.
             if (yo != null && hud != null)
                 foreach (var c in compuertasDeTorre)
                 {
-                    if (!c.cerrada || !c.subida || c.nivelBase != G.NivelDe(yo.transform.position)) continue;
-                    if (Plano(yo.transform.position, c.go.transform.position).magnitude < 5f)
+                    if (!c.cerrada || c.nivelBase != G.NivelDe(yo.transform.position) && c.nivelBase + 1 != G.NivelDe(yo.transform.position)) continue;
+                    if (Plano(yo.transform.position, c.go.transform.position).magnitude < 3.2f)
                     {
-                        hud.Prompt(faltan > 0 ? $"ESCALERA CERRADA · ELIMINA A LOS {faltan} ENEMIGOS DEL PISO" : "ESCALERA CERRADA · LIBERA A LOS MILICIANOS");
+                        hud.Prompt(!c.subida ? "NO SE PUEDE VOLVER ATRAS" : (faltan > 0 ? $"PRIMERO DEBES LIQUIDAR A TODOS · QUEDAN {faltan} ENEMIGOS" : "PRIMERO LIBERA A LOS MILICIANOS"));
                         break;
                     }
                 }
