@@ -17,7 +17,9 @@ namespace SP.EditorTools
     public static class PesadoArteBuilder
     {
         // Celdas del trimsheet (columna + 8 * fila contando desde ABAJO). Se evitan los azules/verdes: el material enemigo los vuelve oxido.
-        const int Roja = 2, Piel = 24, PielOscura = 25, Negro = 1, Chaleco = 46, Cuero = 29, CueroOscuro = 60, Laton = 38, Oliva = 19, Barba = 63, Metal = 45, Acero = 47, Laton2 = 28;
+        // 2026-11-07: paleta propia del pesado (mono NARANJA + pantalon gris acero) para que no se confunda con el resto de los enemigos, que son rojos/oxido.
+        // "Roja" y "Oliva" conservan el nombre por historia: ahora son naranja (celda 12) y acero (celda 34).
+        const int Roja = 12, Piel = 24, PielOscura = 25, Negro = 1, Chaleco = 46, Cuero = 29, CueroOscuro = 60, Laton = 38, Oliva = 34, Barba = 63, Metal = 45, Acero = 47, Laton2 = 28;
 
         static Vector2 Celda(int c) => new Vector2((c % 8 + 0.5f) / 8f, (c / 8 + 0.5f) / 8f);
 

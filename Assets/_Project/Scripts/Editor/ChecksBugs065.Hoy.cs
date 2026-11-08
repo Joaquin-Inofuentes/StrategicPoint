@@ -1118,7 +1118,9 @@ namespace SP.EditorTools
             int capa = -1; for (int i = 0; i < anim.layerCount; i++) if (anim.GetLayerName(i) == "Recarga") capa = i;
             W8Ok(ref ok, capa >= 0, sb, $"AC_Pesado tiene la capa de recarga (indice {capa})");
             float peso0 = capa >= 0 ? anim.GetLayerWeight(capa) : -1f;
+            s.Weapon.RestaurarMunicion(s.Weapon.MagazineSize / 2);   // con el cargador lleno Reload() no hace nada
             s.Weapon.Reload();
+            sb.Append($"[diag: recargando {s.Weapon.IsReloading}, propia {p.AnimacionPropia}, activo {p.isActiveAndEnabled}, ctrl {(anim.runtimeAnimatorController != null ? anim.runtimeAnimatorController.name : "null")}] ");
             float t0 = Time.time, tTope = 0f, pesoMax = 0f;
             while (Time.time - t0 < 6f)
             {
