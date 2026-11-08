@@ -134,7 +134,7 @@ namespace SP.Operacion
             tanque.QuitarMetralleta(true);
             if (baliza != null) { baliza.Quitar(); baliza = null; }
             Aviso("A BORDO · TRAYECTO DE " + Mathf.RoundToInt(segundosDeTrayecto) + " s\nDESTRUI A LOS AUTOS CON EL CANON");
-            DespejarRutaDelTanque();
+            StartCoroutine(DespejarRutaPorLotes());   // #373: por lotes, sin tiron al subir
             EmitirOrdenDeRuta();
         }
 
@@ -199,34 +199,58 @@ namespace SP.Operacion
             foreach (var t in rutaDelTanque)
             {
                 if (t == null) continue;
-                var dir = t.position - prev; dir.y = 0f;
-                float largo = dir.magnitude;
-                if (largo > 0.1f)
-                {
-                    dir /= largo;
-                    var rot = Quaternion.LookRotation(dir, Vector3.up);
-                    for (float d = 0f; d <= largo + 1f; d += 2f)
-                    {
-                        var centro = prev + dir * Mathf.Min(d, largo) + Vector3.up * 1.4f;
-                        foreach (var c in Physics.OverlapBox(centro, new Vector3(AnchoDelCorredorDelTanque, 1.1f, 1.4f), rot))
-                        {
-                            if (c == null || c.isTrigger || !c.enabled || !vistos.Add(c) || c is TerrainCollider) continue;
-                            if (System.Array.IndexOf(propios, c) >= 0) continue;
-                            if (c.GetComponentInParent<Soldier>() != null || c.GetComponentInParent<Vehicle>() != null) continue;
-                            var marca = c.GetComponentInParent<ObstacleMarker>();
-                            if (marca != null && marca.EsDestruible) continue;
-                            var b = c.bounds;
-                            if (b.max.y > AlturaMaximaDeUnPropDespejable || Mathf.Max(b.size.x, b.size.z) > TamanoMaximoDeUnPropDespejable) continue;
-                            c.enabled = false;
-                            OcultarPropDespejado(c);   // bug #316: "elimina los elementos que estan en el camino": no basta quitarles la colision
-                            PropsDespejadosDeLaRuta++;
-                        }
-                    }
-                }
+                DespejarTramo(prev, t.position, propios, vistos);
                 prev = t.position;
             }
             SesionLog.Evento($"HUIDA: ruta del tanque despejada ({PropsDespejadosDeLaRuta} props sin vida sin colision)");
             return PropsDespejadosDeLaRuta;
+        }
+
+        // Bug #373 ("se trabo mucho al entrar"): barrer toda la ruta (~870 m, cientos de OverlapBox) de golpe en el frame de subir al tanque era un
+        // tiron justo al arrancar. Por lotes: un tramo por cuadro, empezando por el primero (el tanque tarda ~0,7 s en recorrer cada tramo).
+        public bool RutaDespejadaPorLotes { get; private set; }
+        System.Collections.IEnumerator DespejarRutaPorLotes()
+        {
+            PropsDespejadosDeLaRuta = 0; RutaDespejadaPorLotes = false;
+            if (tanque == null || rutaDelTanque == null) yield break;
+            var propios = tanque.GetComponentsInChildren<Collider>(true);
+            var vistos = new HashSet<Collider>();
+            var prev = tanque.transform.position;
+            foreach (var t in rutaDelTanque)
+            {
+                if (t == null) continue;
+                DespejarTramo(prev, t.position, propios, vistos);
+                prev = t.position;
+                yield return null;
+            }
+            RutaDespejadaPorLotes = true;
+            SesionLog.Evento($"HUIDA: ruta del tanque despejada por lotes ({PropsDespejadosDeLaRuta} props sin vida sin colision)");
+        }
+
+        void DespejarTramo(Vector3 prev, Vector3 hasta, Collider[] propios, HashSet<Collider> vistos)
+        {
+            var dir = hasta - prev; dir.y = 0f;
+            float largo = dir.magnitude;
+            if (largo <= 0.1f) return;
+            dir /= largo;
+            var rot = Quaternion.LookRotation(dir, Vector3.up);
+            for (float d = 0f; d <= largo + 1f; d += 2f)
+            {
+                var centro = prev + dir * Mathf.Min(d, largo) + Vector3.up * 1.4f;
+                foreach (var c in Physics.OverlapBox(centro, new Vector3(AnchoDelCorredorDelTanque, 1.1f, 1.4f), rot))
+                {
+                    if (c == null || c.isTrigger || !c.enabled || !vistos.Add(c) || c is TerrainCollider) continue;
+                    if (System.Array.IndexOf(propios, c) >= 0) continue;
+                    if (c.GetComponentInParent<Soldier>() != null || c.GetComponentInParent<Vehicle>() != null) continue;
+                    var marca = c.GetComponentInParent<ObstacleMarker>();
+                    if (marca != null && marca.EsDestruible) continue;
+                    var b = c.bounds;
+                    if (b.max.y > AlturaMaximaDeUnPropDespejable || Mathf.Max(b.size.x, b.size.z) > TamanoMaximoDeUnPropDespejable) continue;
+                    c.enabled = false;
+                    OcultarPropDespejado(c);   // bug #316: "elimina los elementos que estan en el camino": no basta quitarles la colision
+                    PropsDespejadosDeLaRuta++;
+                }
+            }
         }
 
         void EmitirOrdenDeRuta()
@@ -269,6 +293,8 @@ namespace SP.Operacion
         // general: si con orden activa el tanque no avanza ni 1,5 m en 1,2 s, se le libera lo que tiene delante (cadaveres, restos de vehiculos,
         // props y barricadas: se les apaga la colision, el tanque los aplasta) y, si a la 2.a vez sigue clavado, se lo adelanta 7 m por la ruta.
         public const float SegundosParaDestrabar = 1.2f, AvanceMinimoParaNoEstarTrabado = 1.5f, SaltoDeRescate = 7f;
+        public const float FinDeRutaRadio = 7f;
+        public bool RutaTerminadaAntesDeTiempo { get; private set; }
         public int DestrabadasDelTanque { get; private set; }
         public int RescatesDelTanque { get; private set; }
         float destrabeDesde; Vector3 destrabePos; int destrabeIntentos;
@@ -382,6 +408,14 @@ namespace SP.Operacion
                 else if (vb != null && !vb.HasOrder) EmitirOrdenDeRuta();
             }
 
+            // Bug #379 ("se bugeo no avanza en esta parte"): en el ULTIMO punto de la ruta el tanque ya no tiene a donde ir y el destrabador lo
+            // "rescataba" una y otra vez contra el muro de la ciudad hasta que se cumplia el reloj. Al llegar al final se cierra el viaje.
+            if (rutaDelTanque.Length > 0 && indiceRuta >= rutaDelTanque.Length - 1 && Reloj > 5f
+                && Plano(rutaDelTanque[rutaDelTanque.Length - 1].position, tanque.transform.position).magnitude < FinDeRutaRadio)
+            {
+                RutaTerminadaAntesDeTiempo = true;
+                IniciarCinematicaFinal(); return;
+            }
             DestrabarTanque(dt);
 
             // El tanque aguanta hasta el final del trayecto (el guion lo destruye). Bug #073: solo tiene un PISO del 20 % de la vida

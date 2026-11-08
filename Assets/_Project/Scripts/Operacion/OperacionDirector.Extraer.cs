@@ -113,6 +113,7 @@ namespace SP.Operacion
             foreach (var s in AliadosAEvacuar(false))
             {
                 if (s == null || s.Health == null || !s.Health.IsAlive) continue;
+                if (!s.gameObject.activeInHierarchy) continue;   // #395: el que ya esta a bordo (oculto) no se cuenta: antes trababa el "todos a bordo" para siempre
                 vivos++;
                 if (Plano(s.transform.position, heli.position).magnitude > RadioDeLaZonaDeSubida) return false;
             }

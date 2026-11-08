@@ -166,7 +166,7 @@ namespace SP.Operacion
         // Bug #013 (build, Extraer): "no logran subir los pisos para subirse al helicoptero y se perdieron". Con el helicoptero posado en la azotea, el
         // aliado (escuadra o miliciano) que lleva mas de 8 s sin llegar al techo (trabado en una escalera o en otro piso, sin camino) se
         // acerca al helicoptero; asi nadie queda atras y se puede subir.
-        public const float SegundosDeRezagoAlHeli = 8f;
+        public const float SegundosDeRezagoAlHeli = 8f, SegundosDeRezagoEnElTecho = 12f;
         readonly Dictionary<int, float> rezagadosDelHeli = new Dictionary<int, float>();
         float proximaAyudaAlHeli;
         public int AliadosAyudadosAlHeli { get; private set; }
@@ -181,10 +181,12 @@ namespace SP.Operacion
             foreach (var a in AliadosAEvacuar(false))
             {
                 if (a == null || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy || a.Brain == null || a.Brain.IsPossessedByPlayer) continue;
-                if (a.transform.position.y >= techo - 4f) { rezagadosDelHeli.Remove(a.Id); continue; }
+                // #395 ("se trabo no avanza"): ya en el techo pero parado contra un parapeto/mueble lejos del heli: tambien se lo acerca (a los 12 s).
+                bool enElTecho = a.transform.position.y >= techo - 4f;
+                if (enElTecho && Plano(a.transform.position, heli.position).magnitude <= RadioDeLaZonaDeSubida - 1f) { rezagadosDelHeli.Remove(a.Id); continue; }
                 rezagadosDelHeli.TryGetValue(a.Id, out float t);
                 t += 1.5f;
-                if (t < SegundosDeRezagoAlHeli) { rezagadosDelHeli[a.Id] = t; continue; }
+                if (t < (enElTecho ? SegundosDeRezagoEnElTecho : SegundosDeRezagoAlHeli)) { rezagadosDelHeli[a.Id] = t; continue; }
                 rezagadosDelHeli.Remove(a.Id);
                 float ang = UnityEngine.Random.value * Mathf.PI * 2f, r = UnityEngine.Random.Range(3.5f, 7f);
                 var destino = new Vector3(heli.position.x + Mathf.Cos(ang) * r, techo - 0.3f, heli.position.z + Mathf.Sin(ang) * r);

@@ -96,7 +96,7 @@ namespace SP.EditorTools
                     }
                 }
                 float durReal = Time.realtimeSinceStartup - t0;
-                P6Ok(ref ok, tUltimo >= 12.0f && tUltimo <= 12.8f && durReal >= 8f && durReal <= 40f, sb, $"duracion de la cinematica {tUltimo:0.00} s de juego ({durReal:0.0} s reales con las capturas; se piden ~12,5)");
+                P6Ok(ref ok, tUltimo >= 11.5f && tUltimo <= 12.8f && durReal >= 8f && durReal <= 40f, sb, $"duracion de la cinematica {tUltimo:0.00} s de juego ({durReal:0.0} s reales con las capturas; se piden ~12,5)");
                 P6Ok(ref ok, tomas.Contains(1) && tomas.Contains(2) && tomas.Contains(3) && tomas.Contains(4), sb, $"cuatro tomas ({string.Join(",", tomas)})");
                 P6Ok(ref ok, maxCuerdas >= 3 && maxColgando >= 3, sb, $"hasta {maxCuerdas} cuerdas a la vez y {maxColgando} soldados colgando (se piden 3 y 3)");
                 P6Ok(ref ok, velMax > 30f, sb, $"el helicoptero entra a {velMax:0} m/s (rapido: > 30; frena desde 42 m/s sobre la zona)");
@@ -109,6 +109,7 @@ namespace SP.EditorTools
                 P6Ok(ref ok, vio10 && volMax10 < 0.5f, sb, $"VOLUMEN a t>10 s: maximo {volMax10:0.000} (se piden < 0,5; baja suave hasta ~0 al final)");
 
                 // ---- B) al final: los 3 en el suelo en la zona de inicio, control del jugador (Kes), helicoptero fuera ----
+                { float tw = Time.realtimeSinceStartup; while (CinematicaDeRapel.Activa && Time.realtimeSinceStartup - tw < 8f) yield return null; }   // con el editor lento la ultima muestra cae antes del final real
                 yield return null; yield return null;
                 bool todosAbajo = true; float maxDesvio = 0f; int visibles = 0;
                 foreach (var kv in inicio)

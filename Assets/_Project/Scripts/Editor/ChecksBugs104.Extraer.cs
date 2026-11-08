@@ -214,7 +214,7 @@ namespace SP.EditorTools
                 int esperado = milicianosSuben ? todos.Count : 3;
                 P6Ok(ref ok, despego && aBordoAlDespegar == esperado, sb, $"al despegar hay {aBordoAlDespegar} de {todos.Count} a bordo (se esperan {esperado}); el embarque tomo {Time.realtimeSinceStartup - t0:0.0} s, afuera a la vez (max) {maxAfuera}");
                 int milicianosAfuera = 0; foreach (var m in mils) if (m != null && m.gameObject.activeInHierarchy) milicianosAfuera++;
-                P6Ok(ref ok, milicianosSuben ? milicianosAfuera == 0 : milicianosAfuera == 4, sb, $"milicianos que quedaron en tierra: {milicianosAfuera} (se esperan {(milicianosSuben ? 0 : 4)})");
+                P6Ok(ref ok, milicianosSuben ? milicianosAfuera == 0 : milicianosAfuera == MandoTactico.CantidadDeMilicianos, sb, $"milicianos que quedaron en tierra: {milicianosAfuera} (se esperan {(milicianosSuben ? 0 : MandoTactico.CantidadDeMilicianos)})");
                 P6Ok(ref ok, copias == Mathf.Min(esperado, 7), sb, $"copias sentadas en la cabina: {copias} (capacidad {TripulacionDelHeli.Capacidad})");
                 if (milicianosSuben) RenderTemporal(P8Prefijo + "128_cabina", heli.position + heli.right * 3.2f + Vector3.up * 1.6f, heli.position + Vector3.up * 1.3f - heli.right * 0.2f, 55f);
 
@@ -226,7 +226,7 @@ namespace SP.EditorTools
                 foreach (var f in filas) if (f.Etiqueta == "SUPERVIVIENTES") { sup = f; hay = true; }
                 P6Ok(ref ok, d.Fase == FaseOperacion.Victoria && OperacionDirector.SubidosAlHeli == esperado && EstadisticasDeMision.SupervivientesForzados == esperado, sb,
                     $"Victoria: subidos={OperacionDirector.SubidosAlHeli}, SupervivientesForzados={EstadisticasDeMision.SupervivientesForzados} (se esperan {esperado})");
-                P6Ok(ref ok, hay && sup.Numero == esperado && sup.Valor.Contains("/ 7"), sb, $"fila SUPERVIVIENTES = {(hay ? sup.Numero + " " + sup.Valor.Replace("{0}", "n") : "falta")} (se espera {esperado} / 7)");
+                P6Ok(ref ok, hay && sup.Numero == esperado && sup.Valor.Contains("/ " + (3 + MandoTactico.CantidadDeMilicianos)), sb, $"fila SUPERVIVIENTES = {(hay ? sup.Numero + " " + sup.Valor.Replace("{0}", "n") : "falta")} (se espera {esperado} / {3 + MandoTactico.CantidadDeMilicianos})");
                 foreach (var x in Esperar(2.0f)) yield return x;
                 foreach (var x in CapturarPantalla(P8Prefijo + "128_victoria_" + (milicianosSuben ? "7de7" : "3de7_antes") + ".png")) yield return x;
             }

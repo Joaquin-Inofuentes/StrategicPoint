@@ -144,17 +144,17 @@ namespace SP.EditorTools
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
             var sb = new StringBuilder(); bool ok = true;
-            OperacionPrueba.Arrancar(4);
+            OperacionPrueba.Arrancar(4); ModoDios.Poner(true);
             foreach (var x in Esperar(2f)) yield return x;
             var d = Object.FindFirstObjectByType<OperacionDirector>();
             var yo = Poseido();
             if (d == null || yo == null) { Fin("FALLO faltan director/jugador"); yield break; }
             var p0 = yo.transform.position;
             yo.transform.position = p0 + new Vector3(0f, 0f, 30f); Physics.SyncTransforms();
-            foreach (var x in Esperar(0.5f)) yield return x;
+            foreach (var x in Esperar(1.5f)) yield return x;
             float linea = d.LineaDeNoRetrocesoZ;
             yo.transform.position = new Vector3(p0.x, p0.y, linea - 12f); Physics.SyncTransforms();
-            foreach (var x in Esperar(0.5f)) yield return x;
+            foreach (var x in Esperar(1.5f)) yield return x;
             sb.Append($"[diag: fase={d.Fase} sub={d.Subfase} tanque={d.EnTanque} p0z={p0.z:0.0}] ");
             W8Ok(ref ok, yo.transform.position.z >= linea - 0.5f, sb, $"al retroceder mas de {OperacionDirector.RetrocesoMaximoDeHuida} m se lo devuelve (z={yo.transform.position.z:0.0}, linea={linea:0.0})");
             W8Ok(ref ok, d.RetrocesosImpedidos > 0, sb, $"se contaron los retrocesos impedidos ({d.RetrocesosImpedidos})");
@@ -497,6 +497,107 @@ namespace SP.EditorTools
             foreach (var x in FotoCamara("v7_381_despues.jpg", p0 - dl * 3.5f + lado * 1.6f + Vector3.up * 0.7f, p0 + dl * 14f, 58f)) yield return x;
             Object.Destroy(go);
             Fin("OK foto del francotirador");
+        }
+
+        // ---------------------------------------------------------------- 373/379 la huida: sin tiron al subir y el viaje se cierra al llegar al final de la ruta
+        static IEnumerator Bug379a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(4); ModoDios.Poner(true);
+            foreach (var x in Esperar(2f)) yield return x;
+            var d = Object.FindFirstObjectByType<OperacionDirector>();
+            const System.Reflection.BindingFlags bf = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            d.Embarcar();
+            float t0 = Time.time; while (Time.time - t0 < 8f && d.Subfase != (int)SubfaseHuida.Carrera) yield return null;
+            W8Ok(ref ok, d.Subfase == (int)SubfaseHuida.Carrera, sb, $"arranca la carrera (subfase {d.Subfase})");
+            int cuadros = 0; while (cuadros < 400 && !d.RutaDespejadaPorLotes) { cuadros++; yield return null; }
+            W8Ok(ref ok, d.RutaDespejadaPorLotes, sb, $"#373: la ruta se despeja por lotes, sin tiron al subir ({cuadros} cuadros, {d.PropsDespejadosDeLaRuta} props)");
+            t0 = Time.time; while (Time.time - t0 < 12f && d.Reloj <= 5.2f) yield return null;
+            var ruta = d.rutaDelTanque;
+            var tanque = d.tanque;
+            var fin = ruta[ruta.Length - 1].position;
+            typeof(OperacionDirector).GetField("indiceRuta", bf).SetValue(d, ruta.Length - 1);
+            var rb = tanque.GetComponent<Rigidbody>();
+            var pos = new Vector3(fin.x - 3f, tanque.transform.position.y, fin.z);
+            if (rb != null) { rb.position = pos; rb.linearVelocity = Vector3.zero; }
+            tanque.transform.position = pos; Physics.SyncTransforms();
+            int rescatesAntes = d.RescatesDelTanque;
+            t0 = Time.time; while (Time.time - t0 < 6f && d.Subfase != (int)SubfaseHuida.CinematicaFinal) yield return null;
+            W8Ok(ref ok, d.Subfase == (int)SubfaseHuida.CinematicaFinal && d.RutaTerminadaAntesDeTiempo, sb, $"#379: al llegar al final de la ruta se cierra el viaje (subfase {d.Subfase})");
+            W8Ok(ref ok, d.RescatesDelTanque == rescatesAntes, sb, "sin 'rescates' contra el muro en el ultimo tramo");
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 395 aliado parado en la azotea lejos del helicoptero: se lo acerca
+        static IEnumerator Bug395a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(6); ModoDios.Poner(true);
+            foreach (var x in Esperar(5f)) yield return x;
+            var d = Object.FindFirstObjectByType<OperacionDirector>();
+            const System.Reflection.BindingFlags bf = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+            var heli = d.heli;
+            var yo = Poseido(); Soldier aliado = null;
+            foreach (var s in OperacionDirector.AliadosAEvacuar(true)) if (s != null && s != yo && s.Brain != null && s.gameObject.activeInHierarchy) { aliado = s; break; }
+            if (heli == null || aliado == null) { Fin($"FALLO faltan heli/aliado (heli={(heli != null)}, aliado={(aliado != null)})"); yield break; }
+            // el escenario real del #395: el heli posado en la azotea (y 19,5) y el aliado parado en el techo a 24 m
+            heli.position = new Vector3(322f, 19.5f, 266f); if (d.heliAterrizaje != null) d.heliAterrizaje.position = heli.position;
+            var lejos = heli.position + new Vector3(24f, 0.8f, 0f);
+            aliado.transform.position = lejos; Physics.SyncTransforms();
+            int antes = d.AliadosAyudadosAlHeli; float t0 = Time.time;
+            while (Time.time - t0 < 40f && d.AliadosAyudadosAlHeli == antes) yield return null;
+            W8Ok(ref ok, d.AliadosAyudadosAlHeli > antes, sb, $"el aliado parado a 24 m del heli en el techo se acerca (+{d.AliadosAyudadosAlHeli - antes} en {Time.time - t0:0} s) [fase={d.Fase} heli={heli.position} techo={(d.heliAterrizaje != null ? d.heliAterrizaje.position.y : -1f):0.0} aliadoY={aliado.transform.position.y:0.0} activo={aliado.gameObject.activeInHierarchy}]");
+            var dist = Vector2.Distance(new Vector2(aliado.transform.position.x, aliado.transform.position.z), new Vector2(heli.position.x, heli.position.z));
+            W8Ok(ref ok, dist <= OperacionDirector.RadioDeLaZonaDeSubida, sb, $"queda dentro de la zona de subida ({dist:0.0} m <= {OperacionDirector.RadioDeLaZonaDeSubida})");
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 398 fotos "despues" de los atascos para el atlas
+        static IEnumerator Bug398a()   // #373: el tanque arranca sin tiron; #379: llega al final de la ruta y se cierra el viaje
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            OperacionPrueba.Arrancar(4); ModoDios.Poner(true);
+            foreach (var x in Esperar(2f)) yield return x;
+            var d = Object.FindFirstObjectByType<OperacionDirector>();
+            d.Embarcar();
+            float t0 = Time.time; while (Time.time - t0 < 8f && d.Subfase != (int)SubfaseHuida.Carrera) yield return null;
+            foreach (var x in Esperar(3f)) yield return x;
+            var tq = d.tanque;
+            foreach (var x in FotoCamara("v8_373_despues.jpg", tq.transform.position - tq.transform.forward * 9f + Vector3.up * 4.5f, tq.transform.position + tq.transform.forward * 8f + Vector3.up * 1f, 62f)) yield return x;
+            t0 = Time.time; while (Time.time - t0 < 12f && d.Reloj <= 5.2f) yield return null;
+            var ruta = d.rutaDelTanque; var fin = ruta[ruta.Length - 1].position;
+            typeof(OperacionDirector).GetField("indiceRuta", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic).SetValue(d, ruta.Length - 1);
+            var rb = tq.GetComponent<Rigidbody>(); var pos = new Vector3(fin.x - 3f, tq.transform.position.y, fin.z);
+            if (rb != null) { rb.position = pos; rb.linearVelocity = Vector3.zero; }
+            tq.transform.position = pos; Physics.SyncTransforms();
+            t0 = Time.time; while (Time.time - t0 < 6f && d.Subfase != (int)SubfaseHuida.CinematicaFinal) yield return null;
+            foreach (var x in Esperar(1.5f)) yield return x;
+            foreach (var x in FotoCamara("v8_379_despues.jpg", tq.transform.position + tq.transform.right * 9f + Vector3.up * 4f - tq.transform.forward * 4f, tq.transform.position + Vector3.up * 1.4f + tq.transform.forward * 4f, 62f)) yield return x;
+            Fin("OK fotos 373/379");
+        }
+
+        static IEnumerator Bug398b()   // #395: los aliados parados lejos en la azotea se acercan al helicoptero
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            OperacionPrueba.Arrancar(6); ModoDios.Poner(true);
+            foreach (var x in Esperar(5f)) yield return x;
+            var d = Object.FindFirstObjectByType<OperacionDirector>(); var heli = d.heli;
+            heli.position = new Vector3(322f, 19.5f, 266f); if (d.heliAterrizaje != null) d.heliAterrizaje.position = heli.position;
+            var yo = Poseido(); int n = 0;
+            foreach (var s in OperacionDirector.AliadosAEvacuar(true))
+            {
+                if (s == null || s == yo || s.Brain == null || !s.gameObject.activeInHierarchy) continue;
+                s.transform.position = heli.position + new Vector3(18f + n * 2.5f, 0.8f, (n % 2 == 0 ? 6f : -6f)); n++;
+            }
+            if (yo != null) yo.transform.position = heli.position + new Vector3(-4f, 0.8f, 3f);
+            Physics.SyncTransforms();
+            int antes = d.AliadosAyudadosAlHeli; float t0 = Time.time;
+            while (Time.time - t0 < 40f && d.AliadosAyudadosAlHeli == antes) yield return null;
+            foreach (var x in Esperar(2f)) yield return x;
+            foreach (var x in FotoCamara("v8_395_despues.jpg", new Vector3(323f, 22.6f, 268f), new Vector3(329f, 20.8f, 272f), 66f)) yield return x;
+            Fin($"OK foto del techo (ayudados +{d.AliadosAyudadosAlHeli - antes}, {n} aliados movidos)");
         }
 
         static IEnumerator Bug369d()

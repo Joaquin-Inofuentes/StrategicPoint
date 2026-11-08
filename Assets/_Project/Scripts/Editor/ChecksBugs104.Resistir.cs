@@ -352,8 +352,8 @@ namespace SP.EditorTools
                 var libres = new List<Soldier>();
                 foreach (var s in todos) if (!MandoTactico.EsOperadorDeRadio(s)) libres.Add(s);
                 int escuadra = 0; foreach (var s in todos) if (!MandoTactico.EsMiliciano(s)) escuadra++;
-                P6Ok(ref ok, d.Milicianos.Count == MandoTactico.CantidadDeMilicianos && MandoTactico.Milicianos.Count == 4, sb, $"DESPUES: milicianos activos={d.Milicianos.Count}");
-                P6Ok(ref ok, escuadra + d.Milicianos.Count - 1 >= MandoTactico.CantidadDeSectores * MandoTactico.AliadosParaRecuperar && libres.Count >= 6, sb, $"escuadra {escuadra} + milicianos {d.Milicianos.Count} - operador 1 = {libres.Count} >= {MandoTactico.CantidadDeSectores} x {MandoTactico.AliadosParaRecuperar}");
+                P6Ok(ref ok, d.Milicianos.Count == MandoTactico.CantidadDeMilicianos && MandoTactico.Milicianos.Count == MandoTactico.CantidadDeMilicianos, sb, $"DESPUES: milicianos activos={d.Milicianos.Count}");
+                P6Ok(ref ok, escuadra + d.Milicianos.Count - 1 >= MandoTactico.CantidadDeSectores * MandoTactico.AliadosParaRecuperar && libres.Count >= 3 + MandoTactico.CantidadDeMilicianos - 1, sb, $"escuadra {escuadra} + milicianos {d.Milicianos.Count} - operador 1 = {libres.Count} >= {MandoTactico.CantidadDeSectores} x {MandoTactico.AliadosParaRecuperar}");
                 var roles = ""; foreach (var m in d.Milicianos) roles += m.Role + " ";
                 sb.Append("roles " + roles + "; ");
                 // Se cubren los tres sectores con 2 aliados cada uno.

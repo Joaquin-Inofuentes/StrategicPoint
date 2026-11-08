@@ -82,9 +82,9 @@ namespace SP.EditorTools
             foreach (var x in Esperar(2.5f)) yield return x;
             var d = OperacionDirector.Instancia; var drv = PlayerInputDriver.Activo;
             ModoDios.Poner(false);
-            var vega = SoldadoPor("Vega"); var kes = SoldadoPor("Kes"); var doc = SoldadoPor("Doc"); var m3 = SoldadoPor("Miliciano_3"); var m1 = SoldadoPor("Miliciano_1");
+            var vega = SoldadoPor("Vega"); var kes = SoldadoPor("Kes"); var doc = SoldadoPor("Doc"); var m3 = SoldadoPor("Miliciano_2"); var m1 = SoldadoPor("Miliciano_1");
             if (vega == null || kes == null || doc == null || m3 == null || m1 == null || d.Subfase != 1) { Fin("FALLO faltan soldados o no esta en la subfase 1: vega=" + (vega != null) + " kes=" + (kes != null) + " doc=" + (doc != null) + " m3=" + (m3 != null) + " subfase=" + d.Subfase); yield break; }
-            // Estado conocido: Kes poseida, Vega opera la radio (IA), Doc a 37, reserva de Kes en 3, una sola granada de Kes, MILICIANO 3 caido, plaza caida.
+            // Estado conocido: Kes poseida, Vega opera la radio (IA), Doc a 37, reserva de Kes en 3, una sola granada de Kes, MILICIANO 2 caido, plaza caida.
             drv.TryPossess(kes);
             foreach (var x in Esperar(0.4f)) yield return x;
             d.RelevarOperador(vega);
@@ -114,14 +114,14 @@ namespace SP.EditorTools
             if (!cargo) { Dificultad.Actual = dificultadPrevia; ModoDios.Poner(true); Fin("FALLO " + sb); yield break; }
             // Despues de Continuar: la escena nueva, la fase y todo lo guardado.
             d = OperacionDirector.Instancia; drv = PlayerInputDriver.Activo;
-            vega = SoldadoPor("Vega"); kes = SoldadoPor("Kes"); doc = SoldadoPor("Doc"); m3 = SoldadoPor("Miliciano_3"); m1 = SoldadoPor("Miliciano_1");
+            vega = SoldadoPor("Vega"); kes = SoldadoPor("Kes"); doc = SoldadoPor("Doc"); m3 = SoldadoPor("Miliciano_2"); m1 = SoldadoPor("Miliciano_1");
             W8Ok(ref ok, d.Fase == FaseOperacion.Resistir && d.Subfase == 1 && !CinematicaDeRapel.Activa && !CinematicaDeOperacion.Activa, sb, $"fase={d.Fase}/{d.Subfase} sin cinematicas");
             W8Ok(ref ok, MandoTactico.RadioTomada && MandoTactico.Operador != null && MandoTactico.Operador.name == vega.name, sb, $"radio tomada, operador={(MandoTactico.Operador != null ? MandoTactico.Operador.name : "-")} (esperaba {vega.name})");
             W8Ok(ref ok, NombreDelPoseido() == kes.name && MandoTactico.OperadorEsElJugador == false, sb, $"poseido={NombreDelPoseido()} (esperaba {kes.name}), el operador es IA");
             W8Ok(ref ok, (hpDocAlRestaurar >= hpDoc - 8 && hpDocAlRestaurar <= hpDoc + 30), sb, $"vida de Doc al restaurar {hpDocAlRestaurar} (guardada {hpDoc}; ahora {doc.Health.Current}, regenera sola)");
             W8Ok(ref ok, Armas(kes) == armasKes && kes.Weapon.Granadas == 1, sb, $"armas/reserva de Kes {Armas(kes)} (guardado {armasKes})");
             W8Ok(ref ok, Armas(vega) == armasVega && Armas(doc) == armasDoc, sb, "armas de Vega y Doc iguales");
-            W8Ok(ref ok, m3 != null && !m3.Health.IsAlive && m1 != null && m1.Health.IsAlive && MandoTactico.Milicianos.Count == 4, sb, $"milicianos={MandoTactico.Milicianos.Count}, M3 caido={(m3 != null && !m3.Health.IsAlive)}, M1 vivo={(m1 != null && m1.Health.IsAlive)}");
+            W8Ok(ref ok, m3 != null && !m3.Health.IsAlive && m1 != null && m1.Health.IsAlive && MandoTactico.Milicianos.Count == MandoTactico.CantidadDeMilicianos, sb, $"milicianos={MandoTactico.Milicianos.Count}, M3 caido={(m3 != null && !m3.Health.IsAlive)}, M1 vivo={(m1 != null && m1.Health.IsAlive)}");
             W8Ok(ref ok, d.sectoresDeDefensa[0].Caido, sb, $"plaza caida={d.sectoresDeDefensa[0].Caido}");
             W8Ok(ref ok, Cerca(d.RelojEfectivo, relojAntes, 3f), sb, $"reloj efectivo {d.RelojEfectivo:0.0} (guardado {relojAntes:0.0})");
             W8Ok(ref ok, string.Join(",", d.PasoHecho) == pasosAntes, sb, $"pasos del panel {string.Join(",", d.PasoHecho)} (guardado {pasosAntes})");

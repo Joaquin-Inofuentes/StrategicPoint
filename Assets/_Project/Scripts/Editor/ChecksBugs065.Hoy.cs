@@ -1121,15 +1121,17 @@ namespace SP.EditorTools
             s.Weapon.RestaurarMunicion(s.Weapon.MagazineSize / 2);   // con el cargador lleno Reload() no hace nada
             s.Weapon.Reload();
             sb.Append($"[diag: recargando {s.Weapon.IsReloading}, propia {p.AnimacionPropia}, activo {p.isActiveAndEnabled}, ctrl {(anim.runtimeAnimatorController != null ? anim.runtimeAnimatorController.name : "null")}] ");
-            float t0 = Time.time, tTope = 0f, pesoMax = 0f;
+            float t0 = Time.time, tTope = 0f, pesoMax = 0f; bool vioRecarga = false, terminoRecarga = false;
             while (Time.time - t0 < 6f)
             {
                 yield return null;
                 if (capa >= 0) pesoMax = Mathf.Max(pesoMax, anim.GetLayerWeight(capa));
                 if (p.Recargando && tTope <= 0f) tTope = Time.time - t0;
+                // En frenesi el pesado vacia el cargador de nuevo y vuelve a recargar: lo que importa es que la recarga TERMINA (se ve el fin al menos una vez).
+                if (s.Weapon.IsReloading) vioRecarga = true; else if (vioRecarga && !p.Recargando) terminoRecarga = true;
             }
             W8Ok(ref ok, peso0 == 0f && pesoMax > 0.9f, sb, $"al recargar la capa sube a {pesoMax:0.00} (antes {peso0:0.00}) y se nota a los {tTope:0.00} s");
-            W8Ok(ref ok, s.Weapon.IsReloading == false && !p.Recargando, sb, "al terminar la recarga vuelve a la pose de disparo");
+            W8Ok(ref ok, terminoRecarga || (s.Weapon.IsReloading == false && !p.Recargando), sb, "al terminar la recarga vuelve a la pose de disparo");
             int antes = SP.Presentation.MinigunFx.Disparos;
             SP.Presentation.MinigunFx.Disparo(s.transform.position + Vector3.up * 1.2f, s.transform.forward);
             W8Ok(ref ok, SP.Presentation.MinigunFx.Disparos == antes + 1, sb, "cada disparo de minigun lanza sus particulas");
