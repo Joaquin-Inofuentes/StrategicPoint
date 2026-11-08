@@ -1134,6 +1134,30 @@ namespace SP.EditorTools
             Object.Destroy(go);
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
+        // ---------------------------------------------------------------- 603h foto de las particulas de la minigun del pesado
+        static IEnumerator Bug603h()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            OperacionPrueba.Arrancar(5);
+            foreach (var x in Esperar(2f)) yield return x;
+            ModoDios.Poner(true);
+            var yo = Poseido();
+            Soldier molde = null;
+            foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && a.Health != null && a.Health.IsAlive && a.GetComponent<EnemigoPesado>() == null && !a.name.StartsWith("Pesado")) { molde = a; break; }
+            if (yo == null || molde == null) { Fin("FALLO faltan jugador/molde"); yield break; }
+            Vector3 f = yo.transform.forward; Vector3 baseP = yo.transform.position + f * 10f;
+            var go = Object.Instantiate(molde.gameObject, baseP + Vector3.up * 0.1f, Quaternion.LookRotation(-f), molde.transform.parent); go.SetActive(true);
+            var s = go.GetComponent<Soldier>(); EnemigoPesado.Aplicar(s);
+            var b = s.Brain; if (b != null) b.enabled = false;
+            foreach (var x in Esperar(0.8f)) yield return x;
+            var luz = new GameObject("LuzFoto_Prueba").AddComponent<Light>(); luz.type = LightType.Point; luz.range = 16f; luz.intensity = 3.5f; luz.transform.position = baseP - f * 3f + Vector3.up * 3f;
+            var boca = s.Weapon != null && s.Weapon.Muzzle != null ? s.Weapon.Muzzle : s.transform;
+            for (int k = 0; k < 8; k++) { SP.Presentation.MinigunFx.Disparo(boca.position, boca.forward); yield return null; }
+            var lado = Vector3.Cross(Vector3.up, f).normalized;
+            foreach (var x in FotoCamara("v6_pesado_particulas_despues.jpg", boca.position + lado * 4.5f + Vector3.up * 1.2f - f * 1.0f, boca.position + boca.forward * 1.2f, 40f, 1600, 900)) yield return x;
+            Object.Destroy(luz.gameObject); Object.Destroy(go);
+            Fin("OK foto v6_pesado_particulas_despues");
+        }
         static int SalaDespejadaEnRts_PiezasOcultas() => SP.Presentation.SalaDespejadaEnRts.PiezasOcultas;
 
         // ---------------------------------------------------------------- 601v fotos de #346 y #350 en las poses del Sheet + regla "el Editor no sube bugs al Sheet"
