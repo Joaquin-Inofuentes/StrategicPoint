@@ -308,6 +308,28 @@ namespace SP.Operacion
                 SesionLog.Evento($"HUIDA: tanque trabado en {pos}: se liberaron {n} colisiones de adelante");
                 var vb = tanque.GetComponent<VehicleBrain>(); if (vb != null) vb.IssueMoveOrder(objetivo);
             }
+            else if (destrabeIntentos == 2)
+            {
+                // Bugs #374/#376 (2026-11-08: "se me snapea al obstaculo, corrigelo... quiero que no snapee o quita esos obstaculos"): el salto de 7 m
+                // se veia como un tiron. Antes de saltar se prueba algo suave: se libera un corredor mas ancho y largo (props sin vida) y se le da un
+                // empujon hacia adelante por velocidad (sin teletransportar).
+                int n = 0;
+                var propios = tanque.GetComponentsInChildren<Collider>(true);
+                var rot = Quaternion.LookRotation(hacia, Vector3.up);
+                foreach (var c in Physics.OverlapBox(pos + hacia * 5f + Vector3.up * 1.4f, new Vector3(3.6f, 2.2f, 8f), rot))
+                {
+                    if (c == null || c.isTrigger || !c.enabled || c is TerrainCollider || System.Array.IndexOf(propios, c) >= 0) continue;
+                    var otro = c.GetComponentInParent<Vehicle>();
+                    if (otro != null && !otro.IsDestroyed) continue;
+                    var sol = c.GetComponentInParent<Soldier>();
+                    if (sol != null && sol.Team == TeamId.Player && sol.Health.IsAlive) continue;
+                    var b = c.bounds;
+                    if (b.max.y > 9f || Mathf.Max(b.size.x, b.size.z) > 20f) continue;
+                    c.enabled = false; OcultarPropDespejado(c); n++;
+                }
+                if (rb != null) rb.linearVelocity = hacia * 7f;
+                SesionLog.Evento($"HUIDA: tanque trabado en {pos}: corredor ancho ({n} colisiones) y empujon suave");
+            }
             else
             {
                 var nueva = pos + hacia * SaltoDeRescate;
@@ -464,6 +486,8 @@ namespace SP.Operacion
             go.name = "Auto_Perseguidor_" + (++AutosCreados);
             var a = go.GetComponent<OperacionAuto>();
             a.objetivo = tanque.transform;
+            // #378: de la tercera en adelante, una de cada cuatro sale como TANQUE ENEMIGO (rojo, 3x vida, obus y rafaga mas fuerte).
+            if (AutosCreados >= 3 && UnityEngine.Random.value < ProporcionDeTanquesEnemigos) a.ConvertirEnTanque();
             a.offsetDeseado = new Vector3(lat, 0f, atras);
             if (porDelante) a.tacticaInicial = OperacionAuto.Tactica.Adelantar;
             // Arranca a la marcha del tanque (antes salia desde cero y tardaba varios segundos en alcanzar velocidad).
@@ -474,6 +498,7 @@ namespace SP.Operacion
         }
 
         public int AutosPorDelante { get; private set; }
+        public const float ProporcionDeTanquesEnemigos = 0.25f;
 
         void DestruirTanque()
         {

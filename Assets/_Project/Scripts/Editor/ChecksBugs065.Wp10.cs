@@ -141,14 +141,15 @@ namespace SP.EditorTools
             // 6) milicianos y aliados seleccionables.
             int milicianos = 0; bool rolesOk = true;
             foreach (var m in d.Milicianos) { if (m != null && m.Team == TeamId.Player && m.gameObject.activeInHierarchy && m.Health.IsAlive && MandoTactico.EsMiliciano(m)) milicianos++; }
-            rolesOk = d.Milicianos.Count == MandoTactico.CantidadDeMilicianos && d.Milicianos[0].Role == RoleType.Assault && d.Milicianos[1].Role == RoleType.Medic && d.Milicianos[2].Role == RoleType.Flanker && d.Milicianos[3].Role == RoleType.Assault;
+            rolesOk = d.Milicianos.Count == MandoTactico.CantidadDeMilicianos && d.Milicianos[0].Role == RoleType.Assault && d.Milicianos[1].Role == RoleType.Medic;   // #388: 2 milicianos (antes 4)
             var elegibles = new List<Soldier>();
             foreach (var s in ActorRegistry.All)
                 if (s != null && s.Team == TeamId.Player && s.Role != RoleType.Civilian && s.Health.IsAlive && s.gameObject.activeInHierarchy && !MandoTactico.EsOperadorDeRadio(s)) elegibles.Add(s);
             drv.Selection.SelectAll(elegibles);
             int seleccionados = drv.Selection.Selected.Count;
             drv.Selection.Clear();
-            W8Ok(ref ok, milicianos == 4 && rolesOk && elegibles.Count == 6 && seleccionados == 6, sb, $"P7/#122: 4 milicianos (Assault, Medic, Flanker, Assault), aliados seleccionables={elegibles.Count}, seleccion de todos={seleccionados} (pide 6 = 3 + 4 - el operador)");
+            int esperados = 3 + MandoTactico.CantidadDeMilicianos - 1;
+            W8Ok(ref ok, milicianos == MandoTactico.CantidadDeMilicianos && rolesOk && elegibles.Count == esperados && seleccionados == esperados, sb, $"P7/#122/#388: {MandoTactico.CantidadDeMilicianos} milicianos (Assault, Medic), aliados seleccionables={elegibles.Count}, seleccion de todos={seleccionados} (pide {esperados} = 3 + milicianos - el operador)");
             // 7) panel guiado y anillo guia en el paso 1.
             var panel = PanelDeMando.Instancia;
             W8Ok(ref ok, panel != null && panel.Filas == OperacionDirector.PasosDelMando && panel.Actual == 0 && panel.TextoActual.Contains("SELECCION"), sb, $"panel: filas={(panel != null ? panel.Filas : -1)} actual={(panel != null ? panel.Actual : -9)} '{(panel != null ? panel.TextoActual : "-")}'");

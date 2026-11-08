@@ -503,7 +503,24 @@ namespace SP.Operacion
         {
             tCaida += dt;
             velocidadCaida += Vector3.down * 9f * dt;
-            transform.position += velocidadCaida * dt;
+            // Bug #390 (2026-11-08): "no veo la explosion del helicoptero al impactar, quiero verla cuando impacta con el edificio". Antes atravesaba los
+            // techos y estallaba recien a 1,2 m del piso, dentro del edificio. Ahora el tramo de cada cuadro se barre con una esfera: al tocar cualquier
+            // collider solido (techo, pared, suelo) que no sea el propio helicoptero ni un soldado, estalla ahi.
+            var paso = velocidadCaida * dt;
+            if (paso.sqrMagnitude > 1e-6f && tCaida > 0.15f)
+            {
+                var hits = Physics.SphereCastAll(transform.position, 1.2f, paso.normalized, paso.magnitude, ~0, QueryTriggerInteraction.Ignore);
+                foreach (var h in hits)
+                {
+                    if (h.collider == null || h.collider.transform.IsChildOf(transform) || h.collider.GetComponentInParent<SP.Actors.Soldier>() != null) continue;
+                    if (h.collider.GetComponentInParent<SP.Vehicles.Vehicle>() != null) continue;
+                    ImpactoConElEscenario = true;
+                    transform.position = h.distance > 0.01f ? transform.position + paso.normalized * h.distance : transform.position;
+                    Estallar();
+                    return;
+                }
+            }
+            transform.position += paso;
             transform.Rotate(0f, giroCaida * 420f * dt, 0f, Space.World);
             transform.Rotate(0f, 0f, giroCaida * 90f * dt, Space.Self);
             if (Time.time >= proxChispa)
@@ -515,13 +532,26 @@ namespace SP.Operacion
             if (transform.position.y <= 1.2f || tCaida > 3.2f) Estallar();
         }
         float proxChispa;
+        // true si la caida termino contra un techo, pared o suelo (y no por el tiempo); lo lee el check del bug #390
+        public bool ImpactoConElEscenario { get; private set; }
+        public int Explosiones { get; private set; }
 
         void Estallar()
         {
             if (Situacion == Estado.Muerto) return;
             Situacion = Estado.Muerto;
+            Explosiones++;
             var p = transform.position; p.y = Mathf.Max(p.y, 1.2f);
-            ImpactFx.SpawnExplosion(p, 6f, false);
+            ImpactFx.SpawnExplosion(p, ImpactoConElEscenario ? 9f : 6f, false);
+            if (ImpactoConElEscenario)
+            {
+                // bola de fuego grande y humo negro que se ven desde lejos
+                ImpactFx.SpawnExplosion(p + Vector3.up * 1.5f, 6f, false);
+                for (int i = 0; i < 6; i++)
+                    SpriteFx.Lanzar("fire_02", p + Random.insideUnitSphere * 1.5f, new Color(1f, 0.55f, 0.15f, 0.95f), 1.2f, 3.2f, 1.1f, Random.Range(-60f, 60f), Vector3.up * Random.Range(2f, 5f), 0.5f, 4);
+                for (int i = 0; i < 4; i++)
+                    SpriteFx.Lanzar("smoke_04", p + Random.insideUnitSphere, new Color(0.08f, 0.08f, 0.08f, 0.9f), 1.5f, 5f, 2.8f, Random.Range(-30f, 30f), Vector3.up * 3f, 0.3f, 2);
+            }
             AudioDirector.PlayAt(SfxKind.Explosion, p, 1f, 0.9f, PerfilEspacial.Explosion);
             foreach (var r in GetComponentsInChildren<Renderer>(true)) if (r != null) r.enabled = false;
             var col = GetComponent<Collider>(); if (col != null) col.enabled = false;

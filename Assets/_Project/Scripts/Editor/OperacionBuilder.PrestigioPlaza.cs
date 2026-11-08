@@ -24,7 +24,7 @@ namespace SP.EditorTools
             Cilindro(t, "Fuente_Agua_Alta", cx, 3.25f, 3.3f, fz, 2.8f, MAguaViva);
             for (int i = 0; i < 8; i++)
             {
-                float a = i * Mathf.PI / 4f, x = cx + Mathf.Cos(a) * 2.3f, z = fz + Mathf.Sin(a) * 2.3f;
+                float a = i * Mathf.PI / 4f, x = cx + Mathf.Cos(a) * 2.0f, z = fz + Mathf.Sin(a) * 2.0f;
                 Cilindro(t, "Fuente_Chorro", x, 0.9f, 2.0f, z, 0.1f, MAguaViva);
                 Esfera(t, "Fuente_Gota", new Vector3(x, 2.05f, z), 0.22f, MAguaViva);
             }

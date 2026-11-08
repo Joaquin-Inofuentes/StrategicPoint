@@ -126,6 +126,15 @@ namespace SP.Combat
 
         public void TakeDamage(int amount, int attackerId) => TakeDamage(amount, attackerId, false);
 
+        bool EsFuegoAmigoEnemigo(int attackerId)
+        {
+            if (attackerId == -1) return false;
+            if (!TryGetComponent<SP.Actors.Soldier>(out var victima) || victima.Team != TeamId.Enemy) return false;
+            if (attackerId == -2 || attackerId == -3) return true;   // vehiculos enemigos (OperacionAuto, TanqueJefe, helicoptero)
+            var atacante = attackerId >= 0 ? ActorRegistry.FindById(attackerId) : null;
+            return atacante != null && atacante.Team == TeamId.Enemy && atacante.gameObject != gameObject;
+        }
+
         // headshot: instakill SOLO lo decide el llamador (Projectile), que ya sabe si
         // quien pega es jugador/aliado (Team.Player) y a quien: pegarle en la cabeza a
         // un enemigo mata al toque; un enemigo pegandole en la cabeza al jugador/aliado
@@ -151,6 +160,10 @@ namespace SP.Combat
 
             // [F4] modo dios: el bando del jugador no recibe dano.
             if (Invulnerable || ModoDios.Protege(this)) return;
+
+            // Bug #394 (2026-11-08: "creo que los enemigos se disparan entre ellos"): lo que dispara un enemigo (soldado, vehiculo -2/-3) nunca
+            // le saca vida a otro enemigo. Los barriles y explosiones sin duenio (id -1) siguen contando.
+            if (EsFuegoAmigoEnemigo(attackerId)) return;
 
             if (FactorDeDano != 1f) amount = Mathf.Max(1, Mathf.RoundToInt(amount * FactorDeDano));
 

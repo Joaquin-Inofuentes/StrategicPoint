@@ -170,7 +170,7 @@ namespace SP.EditorTools
                     var s = a as Soldier;
                     if (s != null && s.Team == TeamId.Player && s.Role != RoleType.Civilian && s.Health != null && s.Health.IsAlive && s.gameObject.activeInHierarchy) todos.Add(s);
                 }
-                P6Ok(ref ok, mils.Count == 4 && todos.Count == 7, sb, $"{mils.Count} milicianos + escuadra = {todos.Count} aliados vivos (se esperan 4 y 7)");
+                P6Ok(ref ok, mils.Count == MandoTactico.CantidadDeMilicianos && todos.Count == 3 + MandoTactico.CantidadDeMilicianos, sb, $"{mils.Count} milicianos + escuadra = {todos.Count} aliados vivos (se esperan {MandoTactico.CantidadDeMilicianos} y {3 + MandoTactico.CantidadDeMilicianos})");
                 var heli = d.heli; var zona = d.heliAterrizaje.position;
                 // El jugador lleva a su escuadra a la zona (aca: se lo pone a 8 m del punto de aterrizaje y los aliados lo siguen).
                 Junto(drv.Brain.Current, zona, 8f);

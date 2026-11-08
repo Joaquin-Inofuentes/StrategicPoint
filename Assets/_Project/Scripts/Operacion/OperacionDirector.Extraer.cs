@@ -22,7 +22,8 @@ namespace SP.Operacion
         // ---- Bug #284: "aqui quiero que empiecen a venir muchos muchos enemigos de manera secuencial" ----
         // Mientras se espera/cubre el helicoptero llega un flujo continuo de enemigos en tandas (cada 2,5 s), por las mismas calles que usa la
         // resistencia en la ciudad, hasta un tope de vivos a la vez (rendimiento) y un total muy alto. Se corta al empezar la subida.
-        public const int EnemigosPorTandaDeExtraccion = 3, TopeDeVivosEnExtraccion = 18, TotalDeEnemigosEnExtraccion = 60;
+        // Bug #391 (2026-11-08: "faltan mas enemigos aqui"): tandas de 3 -> 5, tope de vivos 18 -> 30 y total 60 -> 90.
+        public const int EnemigosPorTandaDeExtraccion = 5, TopeDeVivosEnExtraccion = 30, TotalDeEnemigosEnExtraccion = 90;
         public const float SegundosEntreTandasDeExtraccion = 2.5f;
         public int EnemigosDeExtraccionCreados { get; private set; }
         public int TandasDeExtraccion { get; private set; }

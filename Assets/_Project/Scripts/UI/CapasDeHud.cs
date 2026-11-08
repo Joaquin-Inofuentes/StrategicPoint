@@ -25,7 +25,9 @@ namespace SP.UI
         // LISTA BLANCA: todo lo que cuelga del Canvas principal se apaga por alfa salvo lo permitido, asi cualquier panel nuevo (objetivo,
         // guia, minimapa, avisos, kill feed, teclas...) queda oculto sin tener que nombrarlo. Se restaura al bajar.
         public static bool EnModoTanque { get; private set; }
-        static readonly string[] PermitidasEnTanque = { "Roster", "Hud_FPS", "TurretAim", "VehicleInfoPanel", "DamageVignette", "LowHealthPulse", "ScreenFlash", "DamageDirection", "GameOutcome", "PauseController", "EventSystem", "DeadNotice", "Crosshair", "AimUI" };
+        // Bug #374 (2026-11-08): en el tanque solo la barra de vida y una barra de recarga fina (HudDeTanqueSimple); se quitan "Roster" (aliados) y "VehicleInfoPanel".
+        // Bug #377 (2026-11-08: "falta el minimapa"): el minimapa SI se ve dentro del tanque.
+        static readonly string[] PermitidasEnTanque = { "MinimapBorder", "Hud_FPS", "TurretAim", "DamageVignette", "LowHealthPulse", "ScreenFlash", "DamageDirection", "GameOutcome", "PauseController", "EventSystem", "DeadNotice", "Crosshair", "AimUI" };
         static readonly string[] CanvasSueltosOcultos = { "SesionLog_Indicador", "AvisoUnico" };
         static readonly string[] HijosDeHudFpsOcultos = { "VehicleSeatBadge", "VehicleCrewPanel", "OffscreenKillMarker", "OffscreenAllies", "PlayerHealth", "WeaponStatus" };
         static readonly System.Collections.Generic.List<(CanvasGroup g, float alfa)> apagadas = new System.Collections.Generic.List<(CanvasGroup, float)>();
@@ -52,6 +54,7 @@ namespace SP.UI
                 return;
             }
             EnModoTanque = activo;
+            if (!activo) HudDeTanqueSimple.Ocultar();
             if (activo)
             {
                 apagadas.Clear(); canvasApagados.Clear();

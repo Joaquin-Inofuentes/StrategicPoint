@@ -143,9 +143,33 @@ namespace SP.Operacion
         // ---------------------------------------------------------------
         // Ticks
         // ---------------------------------------------------------------
+        // Bugs #370/#371 (2026-11-08): "si intento huir no me deje y aparezca un cartel 'debes avanzar no retroceder'" y "esos bloqueos son solo para mi y
+        // mis aliados, no para los enemigos ni las balas". No se usan colliders: es una linea de progreso. La fase Huir avanza hacia el norte (+Z);
+        // si el soldado que manejas se aleja mas de RetrocesoMaximoDeHuida metros de lo mas al norte que llego, se lo devuelve a la linea y sale el cartel.
+        // Los enemigos y las balas no se enteran (no hay nada fisico), y la escuadra lo sigue sola.
+        public const float RetrocesoMaximoDeHuida = 14f;
+        float zMaximoDeHuida = float.NegativeInfinity;
+        public float LineaDeNoRetrocesoZ => zMaximoDeHuida - RetrocesoMaximoDeHuida;
+        public int RetrocesosImpedidos { get; private set; }
+
+        void LimitarRetrocesoEnHuida()
+        {
+            var yo = Poseido();
+            if (yo == null || yo.Health == null || !yo.Health.IsAlive || EnTanque || Subfase >= (int)SubfaseHuida.CinematicaFinal) return;
+            float z = yo.transform.position.z;
+            if (z > zMaximoDeHuida) zMaximoDeHuida = z;
+            if (z >= LineaDeNoRetrocesoZ) return;
+            var p = yo.transform.position; p.z = LineaDeNoRetrocesoZ + 0.2f;
+            ColocarEnElPiso(yo.transform, p);
+            RetrocesosImpedidos++;
+            if (hud != null) hud.Prompt("DEBES AVANZAR · NO RETROCEDER");
+            AlertQueue.Push("DEBES AVANZAR · NO RETROCEDER", AlertPriority.Media, 1.5f);
+        }
+
         void TickHuir(float dt)
         {
             relojSub += dt;
+            LimitarRetrocesoEnHuida();
             if (EnTanque && Subfase < (int)SubfaseHuida.CinematicaFinal) { TickTrayecto(dt); return; }
             switch ((SubfaseHuida)Subfase)
             {

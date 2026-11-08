@@ -240,6 +240,7 @@ namespace SP.Operacion
                 if (dirM.sqrMagnitude > 0.01f) metralleta.rotation = Quaternion.LookRotation(dirM.normalized, Vector3.up);
             }
             float dist = distancia;
+            if (EsTanque) DispararObus(hacia, distancia);   // #378
             if (dist > alcance || Time.time < pausaHasta) return;
             if (Time.time > rafagaHasta)
             {
@@ -256,8 +257,8 @@ namespace SP.Operacion
                 var dir = (hacia - origen).normalized;
                 float disp = dispersionGrados * Mathf.Clamp(dist / 30f, 0.45f, 1.25f);
                 dir = (dir + Random.insideUnitSphere * Mathf.Tan(disp * Mathf.Deg2Rad)).normalized;
-                pool.Spawn(origen, dir, -2, TeamId.Enemy, danoPorBala, new Color(1f, 0.35f, 0.2f));
-                SP.Presentation.MuzzleLightPool.Flash(origen, new Color(1f, 0.6f, 0.3f), 4f, 8f);
+                pool.Spawn(origen, dir, -2, TeamId.Enemy, danoPorBala, new Color(1f, 0.8f, 0.2f));   // #378: trazadora amarilla brillante, bien visible
+                SP.Presentation.MuzzleLightPool.Flash(origen, new Color(1f, 0.65f, 0.3f), 6f, 11f);
                 EfectoDeDisparo(origen, dir);   // bug #058: fogonazo + estampido real de ametralladora
                 Disparos++;
             }

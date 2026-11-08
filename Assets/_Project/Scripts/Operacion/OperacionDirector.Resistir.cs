@@ -127,6 +127,7 @@ namespace SP.Operacion
             var s = go.GetComponent<Soldier>();
             if (s == null) { Destroy(go); return; }
             if (RefuerzosCreados % 6 == 0) EnemigoPesado.Aplicar(s);   // 2026-11-07: cada 6.o refuerzo es un PESADO
+            else if (RefuerzosCreados % 5 == 0) EnemigoFrancotirador.Aplicar(s);   // #381: cada 5.o es FRANCOTIRADOR
             refuerzosCiudad.Add(s);
             ApoyoEnElPiso.Apoyar(s.transform);
             if (s.Brain != null)
@@ -305,6 +306,7 @@ namespace SP.Operacion
 
         void TickResistir(float dt)
         {
+            RescatarAliadosDeOtroPiso(Poseido());   // #384/#386: tambien en la ciudad (se limita a 1 vez por segundo)
             if (MansionActiva) { TickMansion(dt); return; }
             if (MandoActivo)
             {

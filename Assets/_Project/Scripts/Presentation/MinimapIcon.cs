@@ -864,7 +864,9 @@ namespace SP.Presentation
         // oscuro" -- el gris piedra apagado de antes casi se fundia con el
         // fondo del minimapa; un gris CLARO sobre el fondo casi negro
         // (MinimapFollow.ColorDeFondo) se lee de un vistazo.
-        public static readonly Color ObstacleMinimapColor = new Color(0.80f, 0.82f, 0.85f);
+        // Bug #380 (2026-11-08): "en el minimapa los obstaculos deberian verse transparentes y grises leves, mientras que los enemigos deben hacer mucho
+        // contraste". Antes un gris casi blanco (0,80) competia con los rombos; ahora es un gris oscuro y leve (el rojo de los enemigos resalta solo).
+        public static readonly Color ObstacleMinimapColor = new Color(0.30f, 0.32f, 0.35f, 0.55f);
 
         const string ObstaclesRootName = "ObstaculoIconosRoot";
 

@@ -167,7 +167,9 @@ namespace SP.Player
             // artillero lo vuelve a prender (ver mas abajo). Conducir o ir
             // de pasajero no tiene mira que acercar.
             Rig.SetZoomed(false);
-            SP.UI.CapasDeHud.ModoTanque(Vehicle != null && !Vehicle.IsDestroyed && Brain.Current != null && Vehicle.RoleOf(Brain.Current) != null);
+            bool modoTanque = Vehicle != null && !Vehicle.IsDestroyed && Brain.Current != null && Vehicle.RoleOf(Brain.Current) != null;
+            SP.UI.CapasDeHud.ModoTanque(modoTanque);
+            if (modoTanque && !SP.UI.HudDeTanqueSimple.Visible) SP.UI.HudDeTanqueSimple.Mostrar(Vehicle);   // bug #374: vida + recarga fina, abajo al centro
             if (WeaponStatus != null) WeaponStatus.gameObject.SetActive(false);
             if (weaponViewmodel != null) weaponViewmodel.SetActive(false);
             if (AimUiRef != null) AimUiRef.SetVisible(false);

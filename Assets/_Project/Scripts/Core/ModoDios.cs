@@ -32,7 +32,10 @@ namespace SP.Core
         public const float MultiplicadorDeDanoPropio = 3f;
         // Bug #354 (2026-11-06): la escena corre a x2 (antes x4) y el soldado que manejas corre x2 mas rapido; en la camara RTS (dar ordenes) todo va normal.
         public const float EscalaDeTiempo = 2f;
-        public const float FactorDeCarreraDelModoDios = 2f;
+        // Bug #393 (2026-11-08: "quiero que sea el doble de la de ahora"): 2 -> 4.
+        public const float FactorDeCarreraDelModoDios = 4f;
+        // Bug #368: con el modo dios las cargas explosivas tardan 3 s (reales) en explotar.
+        public const float SegundosDeMechaEnModoDios = 3f;
         // Lo lee SoldierMotor: el modo dios solo acelera al soldado que maneja el jugador.
         public static bool EnRts { get { var r = SP.CameraSystem.CameraRig.Instance; return r != null && r.Mode == SP.CameraSystem.ControlMode.Rts; } }
 

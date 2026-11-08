@@ -870,7 +870,10 @@ namespace SP.Vehicles
                     // Pulido de UI: con la camara RTS casi encima del tanque el rombo se veia gigante y tapaba el HUD;
                     // por debajo de 20 m se achica en proporcion a la distancia (piso 0.4) y de ahi para arriba queda igual.
                     float dist = Vector3.Distance(cam.transform.position, diamondMarker.transform.position);
-                    float k = 0.62f * Mathf.Clamp(dist / 20f, 0.4f, 1f);   // 0.62 = tamano base de CrearCara
+                    // Bug #377 (2026-11-08: "su rombo enemigo no se ve"): los vehiculos ENEMIGOS lejanos (camionetas a 80-150 m) tenian el rombo de 0,62 m
+                    // fijo y desaparecia; ahora crece con la distancia hasta x4 (se ve a lo lejos igual que el de los soldados enemigos).
+                    float tope = Bando == SP.Combat.TeamId.Enemy ? 4f : 1f;
+                    float k = 0.62f * Mathf.Clamp(dist / 20f, 0.4f, tope);   // 0.62 = tamano base de CrearCara
                     // El casco del tanque esta escalado y no uniforme (~1.4 x 1.7 x 1.4): se compensa para que el rombo mida lo mismo que el de los soldados.
                     var ps = transform.lossyScale;
                     diamondMarker.transform.localScale = new Vector3(k / Mathf.Max(0.01f, ps.x), k / Mathf.Max(0.01f, ps.y), k / Mathf.Max(0.01f, ps.z));

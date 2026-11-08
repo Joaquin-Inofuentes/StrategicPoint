@@ -83,9 +83,11 @@ namespace SP.Core
         }
 
         // Arma las columnas del Sheet a partir de la foto del estado. Todo en formato invariante (punto decimal).
-        public static ReporteSubida Armar(EstadoDeSesion e, string nota, string rutaJson, string rutaPng, string jsonTexto)
+        public static ReporteSubida Armar(EstadoDeSesion e, string nota, string rutaJson, string rutaPng, string jsonTexto, List<KeyValuePair<string, string>> extra = null)
         {
             var c = new Columnas();
+            // Columnas nuevas (Docs/PLAN_columnas_bugs_opus.md): el script del Sheet las escribe por nombre de columna.
+            if (extra != null) foreach (var kv in extra) c.S(kv.Key, kv.Value);
             string fase = Mision(e, "Operacion.fase") ?? Mision(e, "MisionDirector.fase") ?? "?";
             c.I("Bug", e.numero);
             c.S("Escena", e.escena);
@@ -125,12 +127,14 @@ namespace SP.Core
             c.I("Aliados_vivos", vivosA);
             c.I("Enemigos_vivos", vivosE);
             c.I("Enemigos_vivos_total", totalE);
-            c.I("Vehiculos", e.vehiculos.Count);
+            int vehiculosReales = 0; foreach (var v0 in e.vehiculos) if (!(!v0.activo && v0.nombre != null && v0.nombre.Contains("Plantilla"))) vehiculosReales++;   // H7: las plantillas inactivas no cuentan
+            c.I("Vehiculos", vehiculosReales);
             c.S("Aliados", aliados.ToString());
 
             var veh = new StringBuilder();
             foreach (var v in e.vehiculos)
             {
+                if (!v.activo && v.nombre != null && v.nombre.Contains("Plantilla")) continue;
                 if (veh.Length > 0) veh.Append('\n');
                 veh.Append(v.nombre).Append(' ').Append(v.bando).Append(" hp=").Append(v.vida).Append('/').Append(v.vidaMax)
                    .Append(v.destruido ? " DESTRUIDO" : "").Append(v.activo ? "" : " INACTIVO")

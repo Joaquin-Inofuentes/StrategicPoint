@@ -119,6 +119,7 @@ namespace SP.Operacion
                 if (!c.trabada && piso >= c.nivelBase + 1 && yoAfuera && yo.transform.position.y >= G.Nivel(c.nivelBase + 1) - 0.3f && TodosLosAliadosYaSubieron(c.nivelBase + 1)) c.trabada = true;
                 Poner(c, c.trabada && !dentro);
             }
+            RescatarAliadosDeOtroPiso(yo);   // #384/#386
             // Aviso (#363) cuando el que manejas choca o se para frente a una compuerta cerrada.
             if (yo != null && hud != null)
                 foreach (var c in compuertasDeTorre)
@@ -130,6 +131,36 @@ namespace SP.Operacion
                         break;
                     }
                 }
+        }
+
+        // Bugs #384/#386 (2026-11-08: "mis aliados no pasaron... continuan atrapados, solucionalo, quiza que reaparezcan en cada planta"): el aliado
+        // (escuadra o miliciano) que lleva mas de SegundosDeRezagoDePiso en otro piso (mas de 3,5 m de diferencia de altura) o a mas de 40 m del que
+        // manejas se acerca al jugador: reaparece a 2-4 m de el, sobre el NavMesh de SU piso.
+        public const float SegundosDeRezagoDePiso = 8f, DiferenciaDePisoParaRezago = 3.5f, DistanciaDeRezago = 40f;
+        readonly Dictionary<int, float> rezagadosDePiso = new Dictionary<int, float>();
+        float proximoRescateDePiso;
+        public int AliadosReubicadosDePiso { get; private set; }
+
+        void RescatarAliadosDeOtroPiso(Soldier yo)
+        {
+            if (yo == null || Time.time < proximoRescateDePiso) return;
+            proximoRescateDePiso = Time.time + 1f;
+            foreach (var a in AliadosAEvacuar(true))
+            {
+                if (a == null || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy || a.Brain == null || a.Brain.IsPossessedByPlayer || a == yo) continue;
+                bool lejos = Mathf.Abs(a.transform.position.y - yo.transform.position.y) > DiferenciaDePisoParaRezago || Plano(a.transform.position, yo.transform.position).magnitude > DistanciaDeRezago;
+                if (!lejos) { rezagadosDePiso.Remove(a.Id); continue; }
+                rezagadosDePiso.TryGetValue(a.Id, out float t);
+                t += 1f;
+                if (t < SegundosDeRezagoDePiso) { rezagadosDePiso[a.Id] = t; continue; }
+                rezagadosDePiso.Remove(a.Id);
+                float ang = UnityEngine.Random.value * Mathf.PI * 2f, r = UnityEngine.Random.Range(2f, 4f);
+                var destino = new Vector3(yo.transform.position.x + Mathf.Cos(ang) * r, yo.transform.position.y - SP.Actors.SoldierMotor.PivoteSobrePiso, yo.transform.position.z + Mathf.Sin(ang) * r);
+                ColocarEnElPiso(a.transform, destino);
+                a.Brain.CancelOrder(); a.Brain.ReactivarNavegacion();
+                AliadosReubicadosDePiso++;
+                GameLog.Line($"[Operacion] {a.DisplayName} estaba trabado en otro piso/lejos: reaparece junto al jugador");
+            }
         }
 
         // Bug #013 (build, Extraer): "no logran subir los pisos para subirse al helicoptero y se perdieron". Con el helicoptero posado en la azotea, el

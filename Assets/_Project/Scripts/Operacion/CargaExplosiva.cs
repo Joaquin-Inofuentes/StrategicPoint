@@ -293,12 +293,15 @@ namespace SP.Operacion
             Situacion = Estado.Ardiendo;
             Plantador = quien;
             Progreso01 = 1f;
-            MechaRestante = segundosDeMecha;
+            // Bug #368 (2026-11-08): "en modo dios eso demore 3 segundos". La mecha se mide en tiempo de juego, y el modo dios corre la escena a x2:
+            // se multiplica por la escala para que sean 3 s reales.
+            float mecha = ModoDios.Activo ? Mathf.Min(segundosDeMecha, ModoDios.SegundosDeMechaEnModoDios * Mathf.Max(1f, Time.timeScale)) : segundosDeMecha;
+            MechaRestante = mecha;
             if (!armadas.Contains(this)) armadas.Add(this);
             SoltarAsignado();
             proximoBip = 0f;
             AudioDirector.PlayAt(SfxKind.BombPlant, transform.position, 0.9f, 1f);
-            AlertQueue.Push($"{Titulo} COLOCADA · EXPLOTA EN {Mathf.CeilToInt(segundosDeMecha)} s", AlertPriority.Alta, 2.5f);
+            AlertQueue.Push($"{Titulo} COLOCADA · EXPLOTA EN {Mathf.CeilToInt(mecha / Mathf.Max(1f, Time.timeScale))} s", AlertPriority.Alta, 2.5f);
             GameLog.Line($"[Operacion] {Titulo} colocada por {(quien != null ? quien.DisplayName : "?")}");
             AlPlantar?.Invoke(this);
         }

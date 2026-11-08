@@ -13,7 +13,8 @@ namespace SP.Operacion
     // recarga de 4,2 s. El comportamiento es una maquina de tres estados encima del AiBrain.
     public sealed class EnemigoPesado : MonoBehaviour
     {
-        public const int MultiplicadorDeVida = 4;
+        // Bugs #385/#389 (2026-11-08): "que tenga 3 veces la vida que tiene ahora" -> de x4 a x12.
+        public const int MultiplicadorDeVida = 12;
         public const float SegundosDeEstacionamiento = 2f, SegundosSinVerParaRelajarse = 3f;
         public static readonly Vector3 Ensanche = new Vector3(1.12f, 1.04f, 1.12f);
         public enum Fase { Patrulla, Estacionando, Frenesi }
@@ -49,6 +50,8 @@ namespace SP.Operacion
             soldado.Health.Initialize(soldado.Id, VidaMaxima);
             var arma = soldado.Weapon;
             if (arma != null && !arma.Loadout.Contains(WeaponKind.Minigun)) { arma.Loadout.Insert(0, WeaponKind.Minigun); arma.EquipFromLoadout(0); }
+            // Bug #389: en movimiento dispara rafaga continua (minigun); detenido, obuses explosivos como los tanques (el lanzacohetes: explosion de 5 m).
+            if (arma != null && !arma.Loadout.Contains(WeaponKind.Rocket)) arma.Loadout.Add(WeaponKind.Rocket);
             // animacion propia (Mixamo "Gunplay": disparo sostenido): AC_Pesado es un override de AC_Soldado con el clip de disparo cambiado
             anim = GetComponentInChildren<Animator>(true);
             var ac = SP.Core.RecursosCache.Cargar<RuntimeAnimatorController>("Soldados/AC_Pesado");
@@ -69,9 +72,22 @@ namespace SP.Operacion
             Recargando = pesoRecarga > 0.5f;
         }
 
+        // Arma segun el movimiento: en marcha la minigun, detenido (estacionando o en frenesi) el lanzacohetes.
+        public WeaponKind ArmaEsperada => Estado == Fase.Frenesi ? WeaponKind.Rocket : WeaponKind.Minigun;
+        void ElegirArma()
+        {
+            var arma = soldado != null ? soldado.Weapon : null;
+            if (arma == null || VidaMaxima <= 0) return;   // VidaMaxima > 0 = Start ya corrio (arsenal armado)
+            var quiero = ArmaEsperada;
+            if (arma.CurrentWeaponKind == quiero || arma.IsReloading) return;
+            int i = arma.Loadout.IndexOf(quiero);
+            if (i >= 0) arma.EquipFromLoadout(i);
+        }
+
         void Update()
         {
             ManejarRecarga();
+            ElegirArma();
             if (cerebro == null || soldado == null || soldado.Health == null || !soldado.Health.IsAlive) return;
             var objetivo = cerebro.CurrentTarget;
             bool ve = objetivo != null && objetivo.Health != null && objetivo.Health.IsAlive;

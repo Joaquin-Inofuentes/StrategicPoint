@@ -22,7 +22,8 @@ namespace SP.Operacion
         public const float SegundosParaRecuperar = 4f;    // recuperarlo: aliados adentro durante 4 s
         public const int AliadosParaRecuperar = 1;   // pedido: "no importa con quien": con un soldado adentro alcanza
         // #122: 3 de escuadra + 4 milicianos = 7; menos el operador = 6 = 3 sectores x 2 aliados. (Todos los textos salen de estas constantes.)
-        public const int CantidadDeMilicianos = 4;
+        // Bug #388 (2026-11-08): "deberian ser solamente 2 milicianos" -> de 4 a 2 (la barra de aliados queda con 5 tarjetas, no 7).
+        public const int CantidadDeMilicianos = 2;
         public const int CantidadDeSectores = 1;   // bug #295: un solo puesto, la plaza (antes 2: A calle norte, B mercado oeste)
         // Interruptores SOLO para los checks (reproducir el comportamiento de antes de P7 y medir el "despues"). En el juego quedan en su valor por defecto.
         public static int MilicianosAActivar = CantidadDeMilicianos;   // #122 (antes 2)

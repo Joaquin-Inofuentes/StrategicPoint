@@ -469,6 +469,7 @@ namespace SP.Core
         // ---------------------------------------------------------------
         public EstadoDeSesion Capturar(string nota = "")
         {
+            using var _cultura = new CulturaInvariante();   // 2026-11-08 (plan de columnas, H2): sin esto la mision salia con coma decimal ("322,0,19,5,266,0")
             var e = new EstadoDeSesion
             {
                 nota = nota ?? "",
@@ -707,13 +708,20 @@ namespace SP.Core
                 catch (Exception ex) { Debug.LogWarning("[SesionLog] No se pudo guardar la captura: " + ex.Message); }
             }
             string jsonTexto = JsonUtility.ToJson(e, true);
+            // Columnas nuevas (plan de Opus): se arman SIEMPRE (tambien en el Editor), con el estado exacto del instante.
+            List<KeyValuePair<string, string>> columnasExtra = null;
+            try { columnasExtra = ContextoDeBug.Columnas(e, ContextoDeBug.SiguienteOrdenEnSesion()); }
+            catch (Exception ex) { Debug.LogWarning("[SesionLog] No se pudieron armar las columnas nuevas: " + ex.Message); }
             try
             {
                 Directory.CreateDirectory(Carpeta);
                 File.WriteAllText(json, jsonTexto, new UTF8Encoding(false));
+                // H3: una nota con saltos de linea partia la linea de bugs.txt en dos.
+                string notaUnaLinea = (nota ?? "").Replace("\r", "").Replace("\n", " ⏎ ").Trim();
                 File.AppendAllText(Path.Combine(Carpeta, "bugs.txt"),
-                    $"BUG #{n:000} | {e.fecha} | escena {e.escena} | sesion T+{e.tiempoSesion:0.0}s | {e.resumen} | nota: {nota} | estado: {Path.GetFileName(json)} | captura: {Path.GetFileName(png)} | log: {(archivo != null ? Path.GetFileName(archivo) : "-")}{Environment.NewLine}",
+                    $"BUG #{n:000} | {e.fecha} | escena {e.escena} | sesion T+{e.tiempoSesion:0.0}s | {e.resumen} | nota: {notaUnaLinea} | estado: {Path.GetFileName(json)} | captura: {Path.GetFileName(png)} | log: {(archivo != null ? Path.GetFileName(archivo) : "-")}{Environment.NewLine}",
                     new UTF8Encoding(false));
+                if (columnasExtra != null) ContextoDeBug.AgregarFilaCsv(Carpeta, ContextoDeBug.FilaLocal(e, nota, json, png, columnasExtra));
             }
             catch (Exception ex) { Debug.LogWarning("[SesionLog] No se pudo guardar el bug: " + ex.Message); }
             EscribirLinea("BUG", $"*** BUG #{n:000} MARCADO *** {e.resumen} | json={Path.GetFileName(json)} | captura={Path.GetFileName(png)}");
@@ -723,7 +731,7 @@ namespace SP.Core
             // Subida al Sheet (despues de lo local: si no hay red, el registro de arriba ya esta a salvo). La decision y los bytes se
             // toman AHORA: el dialogo destruye la textura apenas vuelve esta funcion.
             // El reporte (columnas + comentarios + estado .json) se arma AHORA, con el estado exacto del instante.
-            ReporteSubida reporte = SubidaDeBug.Disponible ? SubidaDeBug.Armar(e, nota, json, png, jsonTexto) : null;
+            ReporteSubida reporte = SubidaDeBug.Disponible ? SubidaDeBug.Armar(e, nota, json, png, jsonTexto, columnasExtra) : null;
             if (reporte != null && captura != null)
             {
                 reporte.imagen = SubidaDeBug.Comprimir(captura);
