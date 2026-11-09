@@ -27,8 +27,11 @@ namespace SP.Operacion
         public int PasoGuiado { get; private set; } = -1;
         public bool FlechaVisible => flecha != null && flecha.gameObject.activeSelf;
         public Vector3 PosicionDeLaFlecha => flecha != null ? flecha.position : Vector3.zero;
-        public bool RutaActiva => ruta != null && ruta.enabled && ruta.positionCount >= 2;
-        public int PuntosDeRuta => ruta != null && ruta.enabled ? ruta.positionCount : 0;
+        // #404 ("quita esa linea punteada"): la ruta se sigue CALCULANDO (la usan los pasos del mando y sus checks) pero ya no se dibuja.
+        public static bool DibujarRuta = false;
+        bool rutaCalculada;
+        public bool RutaActiva => ruta != null && rutaCalculada && ruta.positionCount >= 2;
+        public int PuntosDeRuta => ruta != null && rutaCalculada ? ruta.positionCount : 0;
         public Vector3 FinDeLaRuta => RutaActiva ? ruta.GetPosition(ruta.positionCount - 1) : Vector3.zero;
         public Vector3 InicioDeLaRuta => RutaActiva ? ruta.GetPosition(0) : Vector3.zero;
         public float AnchoDeLaRuta => ruta != null ? ruta.widthMultiplier : 0f;
@@ -40,6 +43,10 @@ namespace SP.Operacion
         {
             if (!Application.isPlaying) return null;
             if (instancia != null) return instancia;
+            // #404: restos de corridas anteriores (objetos vivos sin instancia, con la linea encendida): se destruyen antes de crear la guia.
+            foreach (var vieja in Object.FindObjectsByType<GuiaDeMando>(FindObjectsInactive.Include)) if (vieja != null) Object.Destroy(vieja.gameObject);
+            foreach (var lr in Object.FindObjectsByType<LineRenderer>(FindObjectsInactive.Include))
+                if (lr != null && lr.name == "RutaDelPaso" && lr.transform.parent != null && lr.transform.parent.name == "GuiaDeMando") Object.Destroy(lr.transform.parent.gameObject);
             var go = new GameObject("GuiaDeMando") { hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild };
             instancia = go.AddComponent<GuiaDeMando>();
             return instancia;
@@ -88,7 +95,7 @@ namespace SP.Operacion
         {
             Activa = false; PasoGuiado = -1;
             if (flecha != null && flecha.gameObject.activeSelf) flecha.gameObject.SetActive(false);
-            if (ruta != null && ruta.enabled) ruta.enabled = false;
+            rutaCalculada = false; if (ruta != null && ruta.enabled) ruta.enabled = false;
         }
 
         void Mostrar(OperacionDirector.GuiaDePaso g)
@@ -110,22 +117,22 @@ namespace SP.Operacion
             flechaRend.sharedMaterial.color = Color.Lerp(new Color(1f, 0.82f, 0.25f), new Color(1f, 0.55f, 0.15f), 0.5f + 0.5f * Mathf.Sin(t * 7.5f));
 
             // Punteado del piso del soldado al sector.
-            if (!g.hayRuta) { if (ruta.enabled) ruta.enabled = false; return; }
+            if (!g.hayRuta) { rutaCalculada = false; if (ruta.enabled) ruta.enabled = false; return; }
             float ancho = Mathf.Clamp(dCam * 0.014f, 0.32f, 2.2f);
             ruta.widthMultiplier = ancho;
             ruta.textureScale = new Vector2(1f / (ancho * 2.8f), 1f);
             proximaRuta -= Time.deltaTime;
             bool cambio = (g.origen - ultimoOrigen).sqrMagnitude > 1f || (g.destino - ultimoDestino).sqrMagnitude > 0.25f;
-            if (proximaRuta > 0f && ruta.enabled && !cambio) return;
+            if (proximaRuta > 0f && rutaCalculada && !cambio) return;
             proximaRuta = 0.3f; ultimoOrigen = g.origen; ultimoDestino = g.destino;
             if (!NavMesh.SamplePosition(g.origen, out var h0, 4f, NavMesh.AllAreas) || !NavMesh.SamplePosition(g.destino, out var h1, 10f, NavMesh.AllAreas)
                 || !NavMesh.CalculatePath(h0.position, h1.position, NavMesh.AllAreas, camino) || camino.corners.Length < 2)
             {
-                ruta.enabled = false;
+                ruta.enabled = false; rutaCalculada = false;
                 return;
             }
             var esq = camino.corners;
-            ruta.enabled = true;
+            ruta.enabled = DibujarRuta; rutaCalculada = true;
             ruta.positionCount = esq.Length;
             for (int i = 0; i < esq.Length; i++) ruta.SetPosition(i, esq[i] + Vector3.up * 0.2f);
         }

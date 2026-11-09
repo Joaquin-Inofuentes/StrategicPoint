@@ -110,10 +110,37 @@ namespace SP.Player
                 var info = Resolver(h.collider);
                 if (info.soldier != null && (info.soldier == excludeSelf || info.soldier.Team == TeamId.Player)) continue;
                 if (info.vehicle != null && info.vehicle.Bando == TeamId.Player) continue;
+                if (SP.Combat.NoFrenaBalas.Tiene(h.collider)) continue;   // #409/#410
                 mejor = h.distance;
                 punto = h.point;
             }
             return punto;
+        }
+
+
+        // #412 ("las ordenes estan rotas, que cada piso tenga su plano"): en la vista por planta de la mansion (PlantasDeLaMansion) los pisos de arriba se dejan
+        // de DIBUJAR pero conservan el collider: una orden dada mirando el piso 1 caia sobre la losa invisible del 2. Con el recorte activo, los impactos dentro
+        // de la mansion por encima del cielo raso del nivel mostrado se descartan.
+        static readonly RaycastHit[] bufferDeRecorte = new RaycastHit[48];
+        bool RayoDeApuntado(Ray ray, out RaycastHit hit)
+        {
+            var pl = SP.Operacion.PlantasDeLaMansion.Activa;
+            if (pl == null || pl.NivelMostrado < 0)
+            {
+                bool pego = Physics.Raycast(ray, out hit, maxDistance, ~0, QueryTriggerInteraction.Collide);
+                if (!pego || !SP.Combat.NoFrenaBalas.Tiene(hit.collider)) return pego;   // #409/#410: la reja invisible no es un blanco: se sigue de largo
+            }
+            int n = Physics.RaycastNonAlloc(ray, bufferDeRecorte, maxDistance, ~0, QueryTriggerInteraction.Collide);
+            float corte = pl != null && pl.NivelMostrado >= 0 ? SP.Operacion.MansionGeometria.Nivel(pl.NivelMostrado + 1) - 0.4f : float.MaxValue;
+            hit = default; float mejor = float.MaxValue; bool alguno = false;
+            for (int i = 0; i < n; i++)
+            {
+                var h = bufferDeRecorte[i];
+                if (h.collider == null || h.distance >= mejor || SP.Combat.NoFrenaBalas.Tiene(h.collider)) continue;
+                if (corte < float.MaxValue && SP.Operacion.MansionGeometria.Dentro(h.point) && h.point.y > corte) continue;
+                mejor = h.distance; hit = h; alguno = true;
+            }
+            return alguno;
         }
 
         public AimResult Evaluate(Ray ray, Soldier excludeSelf)
@@ -122,7 +149,7 @@ namespace SP.Player
             Physics.SyncTransforms();
             UnityEngine.Profiling.Profiler.EndSample();
             UnityEngine.Profiling.Profiler.BeginSample("Aim.Raycast");
-            bool golpeo = Physics.Raycast(ray, out var hit, maxDistance, ~0, QueryTriggerInteraction.Collide);
+            bool golpeo = RayoDeApuntado(ray, out var hit);
             UnityEngine.Profiling.Profiler.EndSample();
 
             // Los aliados CAIDOS no tienen collider (se apaga al morir): se los apunta por cercania al rayo.

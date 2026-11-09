@@ -236,7 +236,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, duracionNormal > 10f, sb, $"sin modo dios el hackeo dura {duracionNormal:0} s");
             ModoDios.Poner(true);
             // #009 el dano al tanque es el doble.
-            W8Ok(ref ok, OperacionDirector.MultiplicadorDeDanoDelTanque == 4f, sb, "el dano al tanque se cuadruplica (bug #347)");
+            W8Ok(ref ok, OperacionDirector.MultiplicadorDeDanoDelTanque == 8f, sb, "el dano al tanque se multiplica por 8 (bug #347 y #398)");
             // #010 sin props de la ciudad adentro de la mansion.
             int props = 0;
             foreach (var c in Physics.OverlapBox(new Vector3((G.X0 + G.X1) * 0.5f, 3f, (G.Z0 + G.Z1) * 0.5f), new Vector3((G.X1 - G.X0) * 0.5f - 0.3f, 3.5f, (G.Z1 - G.Z0) * 0.5f - 0.3f), Quaternion.identity, ~0, QueryTriggerInteraction.Collide))

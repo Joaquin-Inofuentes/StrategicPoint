@@ -373,7 +373,7 @@ namespace SP.Operacion
         //  - los primeros 6 s de la carrera, todo a la mitad (el jugador todavia se esta acomodando).
         // Con fuego continuo ininterrumpido el tanque dura ~65 s (el trayecto); con presion normal llega al final con 30-50 % de vida.
         // Bug #009 (build, "me deberian hacer el doble de dano"): el factor, el tope por golpe y el presupuesto por segundo se duplican (x2).
-        public const float MultiplicadorDeDanoDelTanque = 4f;   // bug #347 ("deberian quitarme mucha mas vida"): era x2; llegando al final de la ruta sin repararlo el tanque queda casi destruido
+        public const float MultiplicadorDeDanoDelTanque = 8f;   // #398 ("los danos enemigos duplicalos por 2"): de 4 a 8. Bug #347: era x2 y se subio a x4; llegando al final de la ruta sin repararlo el tanque queda casi destruido   // bug #347 ("deberian quitarme mucha mas vida"): era x2; llegando al final de la ruta sin repararlo el tanque queda casi destruido
         System.Func<int, int> CurvaDeDanoDelTanque()
         {
             float ventanaInicio = -10f, gastado = 0f;
@@ -520,8 +520,9 @@ namespace SP.Operacion
             go.name = "Auto_Perseguidor_" + (++AutosCreados);
             var a = go.GetComponent<OperacionAuto>();
             a.objetivo = tanque.transform;
-            // #378: de la tercera en adelante, una de cada cuatro sale como TANQUE ENEMIGO (rojo, 3x vida, obus y rafaga mas fuerte).
-            if (AutosCreados >= 3 && UnityEngine.Random.value < ProporcionDeTanquesEnemigos) a.ConvertirEnTanque();
+            // #378/#398 ("no veo los tanques enemigos, quiero al menos 3 o 6"): desde el auto #2, uno de cada dos sale como TANQUE ENEMIGO (rojo, 3x vida, obus y
+            // rafaga mas fuerte), sin azar: entre 3 y 6 por fuga (TanquesMinimos..TanquesMaximos).
+            if (DebeSerTanqueEnemigo(AutosCreados)) { a.ConvertirEnTanque(); TanquesEnemigosCreados++; }
             a.offsetDeseado = new Vector3(lat, 0f, atras);
             if (porDelante) a.tacticaInicial = OperacionAuto.Tactica.Adelantar;
             // Arranca a la marcha del tanque (antes salia desde cero y tardaba varios segundos en alcanzar velocidad).
@@ -532,7 +533,10 @@ namespace SP.Operacion
         }
 
         public int AutosPorDelante { get; private set; }
-        public const float ProporcionDeTanquesEnemigos = 0.25f;
+        public const float ProporcionDeTanquesEnemigos = 0.25f;   // (obsoleta desde el #398: ahora es determinista)
+        public const int TanquesMinimos = 3, TanquesMaximos = 6;
+        public int TanquesEnemigosCreados { get; private set; }
+        bool DebeSerTanqueEnemigo(int numeroDeAuto) => numeroDeAuto >= 2 && numeroDeAuto % 2 == 0 && TanquesEnemigosCreados < TanquesMaximos;
 
         void DestruirTanque()
         {

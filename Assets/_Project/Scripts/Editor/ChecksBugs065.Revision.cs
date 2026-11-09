@@ -89,6 +89,8 @@ namespace SP.EditorTools
         }
 
         // ---------------------------------------------------------------- 403u balance del danio al tanque de la fuga (parejo, sin piso, nunca inmune)
+        // #398: con el dano al tanque x8 el fuego continuo lo baja ~13 %/s; se mide 4 s (antes 10 s con x4) y el rango escala con la duracion.
+        const float DuracionDelFuegoContinuo = 4f;
         static IEnumerator Bug403u()
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
@@ -104,14 +106,15 @@ namespace SP.EditorTools
             int antes = t.Health.Current;
             t.TakeDamage(70, -1);   // un cohete
             int unCohete = antes - t.Health.Current;
-            W8Ok(ref ok, unCohete > 0 && unCohete <= max * 0.07f + 1f, sb, $"un cohete de 70 baja {unCohete} HP (tope {max * 0.07f:0})");
+            float topeCohete = max * 0.07f * OperacionDirector.MultiplicadorDeDanoDelTanque / 4f;   // calibrado con x4 (7 %); #398 lo duplico a x8 (14 %)
+            W8Ok(ref ok, unCohete > 0 && unCohete <= topeCohete + 1f, sb, $"un cohete de 70 baja {unCohete} HP (tope {topeCohete:0})");
             foreach (var x in Esperar(1.2f)) yield return x;
             int ini = t.Health.Current; float t0 = Time.realtimeSinceStartup; int balas = 0;
-            float proximo = t0; while (Time.realtimeSinceStartup - t0 < 10f && !t.IsDestroyed) { if (Time.realtimeSinceStartup >= proximo) { t.TakeDamage(7, -1); balas++; proximo += 0.1f; } yield return null; }   // 10 impactos/s: una camioneta enemiga a quemarropa
+            float proximo = t0; while (Time.realtimeSinceStartup - t0 < DuracionDelFuegoContinuo && !t.IsDestroyed) { if (Time.realtimeSinceStartup >= proximo) { t.TakeDamage(7, -1); balas++; proximo += 0.1f; } yield return null; }   // 10 impactos/s: una camioneta enemiga a quemarropa
             int perdida = ini - t.Health.Current; float pct = perdida / max * 100f;
             float mult = OperacionDirector.MultiplicadorDeDanoDelTanque;   // el dano al tanque se duplico a proposito (409u lo exige): el rango base 8-22 % escala con el multiplicador
-            W8Ok(ref ok, pct >= 8f * mult && pct <= 22f * mult, sb, $"10 s de fuego continuo ({balas} impactos de 7, 10 por s) bajan {pct:0.0}% de la vida (esperado {8f * mult:0}-{22f * mult:0}%: ~1,6 %/s x{mult:0} con el redondeo por golpe)");
-            W8Ok(ref ok, !t.IsDestroyed, sb, "el tanque sano aguanta 10 s de fuego continuo");
+            W8Ok(ref ok, pct >= 8f * mult * (DuracionDelFuegoContinuo / 10f) && pct <= 22f * mult * (DuracionDelFuegoContinuo / 10f), sb, $"{DuracionDelFuegoContinuo:0} s de fuego continuo ({balas} impactos de 7, 10 por s) bajan {pct:0.0}% de la vida (esperado {8f * mult * (DuracionDelFuegoContinuo / 10f):0}-{22f * mult * (DuracionDelFuegoContinuo / 10f):0}%: ~1,6 %/s x{mult:0} con el redondeo por golpe)");
+            W8Ok(ref ok, !t.IsDestroyed, sb, $"el tanque sano aguanta {DuracionDelFuegoContinuo:0} s de fuego continuo");
             Fin((ok ? "OK " : "FALLO ") + sb + $"(arranque: {r0})");
         }
 

@@ -195,9 +195,9 @@ namespace SP.EditorTools
             Cilindro(deco, "Pista_Oscura", 322f, y2 + 0.09f, y2 + 0.11f, 260f, 11.4f, MMarmolOsc);
             Cilindro(deco, "Pista_Clara", 322f, y2 + 0.11f, y2 + 0.13f, 260f, 8f, MMarmol);
             Cilindro(deco, "Pista_Centro", 322f, y2 + 0.13f, y2 + 0.15f, 260f, 3.2f, MDorado);
-            Caja(deco, "Escenario", XI0 + 0.2f, XI0 + 5.2f, y2, y2 + 0.5f, 262f, 272f, MMueble, false);
-            Caja(deco, "Escenario_Borde", XI0 + 5.2f, XI0 + 5.35f, y2, y2 + 0.5f, 262f, 272f, MDorado, false);
-            Caja(deco, "Escenario_Telon", XI0 + 0.2f, XI0 + 0.5f, y2 + 0.5f, y2 + 5f, 262f, 272f, MTela, false);
+            // #408: se quito Escenario (plataforma sin collider que no aportaba nada)
+            // #408: se quito Escenario_Borde (plataforma sin collider que no aportaba nada)
+            // #408: se quito Escenario_Telon (plataforma sin collider que no aportaba nada)
             for (float z = 250f; z < 258f; z += 3.7f) Caja(deco, "Espejo", XI1 - 0.12f, XI1 - 0.05f, y2 + 0.8f, y2 + 4.4f, z, z + 3.1f, MEspejo, false);
             for (float z = 262f; z < 272f; z += 3.7f) Caja(deco, "Espejo", XI1 - 0.12f, XI1 - 0.05f, y2 + 0.8f, y2 + 4.4f, z, z + 3.1f, MEspejo, false);
         }

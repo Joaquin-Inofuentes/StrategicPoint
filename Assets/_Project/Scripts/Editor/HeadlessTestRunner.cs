@@ -1817,12 +1817,12 @@ namespace SP.EditorTools
             if (shellFired != null)
             {
                 Check($"El proyectil real del cañon usa el multiplicador del cañon (velocidad={shellFired.Velocity.magnitude:0.0} = base {speedNormal:0.0} x {TurretWeapon.SpeedMultiplier})",
-                    Mathf.Approximately(shellFired.Velocity.magnitude, speedNormal * TurretWeapon.SpeedMultiplier));
+                    Mathf.Approximately(shellFired.Velocity.magnitude, speedNormal * turret.MultiplicadorDeVelocidad));
                 // Todos los proyectiles se aceleraron (pedido: "mas rapidos"): la
                 // bala de mano sale a VelocidadBase (260 m/s) y el obus, a la
                 // mitad (130 m/s) para que siga siendo un arco legible.
                 Check($"El obus sale a la mitad de la bala de mano (velocidad={shellFired.Velocity.magnitude:0.0} = {Projectile.VelocidadBase:0} x {TurretWeapon.SpeedMultiplier})",
-                    Mathf.Abs(shellFired.Velocity.magnitude - Projectile.VelocidadBase * TurretWeapon.SpeedMultiplier) < 0.5f);
+                    Mathf.Abs(shellFired.Velocity.magnitude - Projectile.VelocidadBase * turret.MultiplicadorDeVelocidad) < 0.5f);
             }
 
             // --- Sin vibracion de camara al disparar (pedido explicito) ---

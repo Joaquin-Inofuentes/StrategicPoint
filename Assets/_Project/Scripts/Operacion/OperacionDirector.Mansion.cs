@@ -455,7 +455,7 @@ namespace SP.Operacion
             if (prefabsDeMiliciano == null) return;
             string[] nombres = { "MILICIANO 1", "MILICIANO 2", "MILICIANO 3", "MILICIANO 4" };
             RoleType[] roles = { RoleType.Assault, RoleType.Medic, RoleType.Flanker, RoleType.Assault };
-            for (int i = 0; i < prefabsDeMiliciano.Length && i < G.CeldasDeMilicianos.Length; i++)
+            for (int i = 0; i < prefabsDeMiliciano.Length && i < G.CeldasDeMilicianos.Length && i < MandoTactico.CantidadDeMilicianos; i++)   // #414: sólo 2 milicianos
             {
                 if (prefabsDeMiliciano[i] == null) continue;
                 var p = G.CeldasDeMilicianos[i];

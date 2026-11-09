@@ -143,7 +143,7 @@ namespace SP.Presentation
         }
         Renderer rendSombra, rendBorde, rendIcono;
         Texture texturaIcono;
-        bool SiempreEncima => equipoPintado != TeamId.Enemy;
+        public bool SiempreEncima => true;   // #401 ("los rombos de los enemigos los debo ver aun detras de los obstaculos"): revierte el #174; el revelado (InteligenciaDeEnemigos) sigue mandando
 
         static Material MaterialDeColor(Color c)
         {

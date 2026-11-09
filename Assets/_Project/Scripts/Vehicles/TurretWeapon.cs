@@ -93,6 +93,17 @@ namespace SP.Vehicles
         const float HeatCoolPerSec = 0.22f;
         // Pedido 2026-11-07: el canon del tanque DEL JUGADOR dispara al doble de ritmo (cooldown a la mitad y menos calor por tiro).
         public const float FactorDeCadenciaDelJugador = 2f;
+        // #400 ("que la velocidad del proyectil sea el triple"): el obus del canon del tanque DEL JUGADOR sale a 3x (de 130 a 390 m/s). SpeedMultiplier sigue
+        // siendo la constante base (la IA de las torretas y los tests la usan); esta propiedad de instancia es la que vale para cada arma.
+        public const float FactorDeVelocidadDelJugador = 3f;
+        public float MultiplicadorDeVelocidad
+        {
+            get
+            {
+                var v = vehicle != null ? vehicle : GetComponentInParent<Vehicle>();
+                return v != null && v.Bando == SP.Combat.TeamId.Player && v.TorretaCanon == this ? SpeedMultiplier * FactorDeVelocidadDelJugador : SpeedMultiplier;
+            }
+        }
         public float FactorDeCadencia
         {
             get
@@ -204,7 +215,7 @@ namespace SP.Vehicles
             var d = punto - origen;
             float horiz = new Vector2(d.x, d.z).magnitude;
             if (horiz < 0.5f) return;
-            float v = ProjectileSpeed * SpeedMultiplier;
+            float v = ProjectileSpeed * MultiplicadorDeVelocidad;
             float balistico = ProjectileGravity > 0f ? 0.5f * Mathf.Asin(Mathf.Clamp(ProjectileGravity * horiz / (v * v), -1f, 1f)) * Mathf.Rad2Deg : 0f;
             DesiredPitch = Mathf.Clamp(-(Mathf.Atan2(d.y, horiz) * Mathf.Rad2Deg + balistico), minPitchDeg, maxPitchDeg);
         }
@@ -299,7 +310,7 @@ namespace SP.Vehicles
             // tambien ELEVA hacia el blanco (altura relativa + el pequeño angulo balistico que compensa la caida del obus).
             float horiz = dir.magnitude;
             float dy = worldPoint.y - (Muzzle != null ? Muzzle.position.y : transform.position.y);
-            float v = ProjectileSpeed * SpeedMultiplier;
+            float v = ProjectileSpeed * MultiplicadorDeVelocidad;
             float balistico = 0.5f * Mathf.Asin(Mathf.Clamp(ProjectileGravity * horiz / (v * v), -1f, 1f)) * Mathf.Rad2Deg;
             float pitchObjetivo = Mathf.Clamp(-(Mathf.Atan2(dy, horiz) * Mathf.Rad2Deg + balistico), minPitchDeg, maxPitchDeg);
             float newPitch = Mathf.MoveTowardsAngle(NormalizePitch(transform.eulerAngles.x), pitchObjetivo, turnSpeedDegPerSec * 0.6f * dt);
@@ -413,7 +424,7 @@ namespace SP.Vehicles
             // simular la MISMA velocidad real para que el anillo de impacto
             // no quede corto.
             pool.Spawn(spawnPos, fireDir, shooterId, team, CurrentDamage,
-                CurrentProjectileColor, ExplosionRadius, ProjectileGravity, vehicle, speedMultiplier: SpeedMultiplier);
+                CurrentProjectileColor, ExplosionRadius, ProjectileGravity, vehicle, speedMultiplier: MultiplicadorDeVelocidad);
             cooldownTimer = EffectiveCooldown;
             Heat = Mathf.Clamp01(Heat + HeatPerShot);
 

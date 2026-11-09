@@ -628,6 +628,16 @@ namespace SP.Player
             }
         }
 
+        public const float DistanciaMinimaDeMira = 2f, RadioDeCoberturaIgnorada = 15f, AlturaDeCoberturaBaja = 1.6f, TamanoMaximoDeCobertura = 12f;
+        static bool EsBlancoVivo(Collider c) => c.GetComponentInParent<SP.Actors.Soldier>() != null || c.GetComponentInParent<SP.Vehicles.Vehicle>() != null;
+        // Cobertura baja y chica (no el suelo ni un muro grande): se atraviesa para apuntar. Un enemigo (soldado o vehiculo) nunca cuenta como cobertura.
+        static bool EsCoberturaBaja(Collider c)
+        {
+            if (EsBlancoVivo(c)) return false;
+            var e = c.bounds.size;
+            return e.y < AlturaDeCoberturaBaja && Mathf.Max(e.x, e.z) < TamanoMaximoDeCobertura;
+        }
+
         // Primer obstaculo real bajo el centro de la camara (sin el propio vehiculo ni triggers); si no hay nada, un punto lejano.
         public bool PuntoBajoLaMira(out Vector3 punto)
         {
@@ -637,12 +647,18 @@ namespace SP.Player
             const float alcance = 350f;
             int n = Physics.RaycastNonAlloc(ray, golpesDeMira, alcance, ~0, QueryTriggerInteraction.Ignore);
             float mejor = float.MaxValue;
+            // #397 ("aqui snapea porque solapa contra el obstaculo, no me deja apuntar bien"): la camara del artillero esta unos 8 m atras del tanque, asi que una
+            // barrera o un bulto pegado al casco era "lo primero que toca el rayo" y el canon bajaba de golpe hacia ese punto. Se sigue de largo por los impactos
+            // que quedan pegados al vehiculo y por la cobertura baja y chica (valla, jersey, caja) cercana; el suelo, las paredes grandes y los enemigos si cuentan.
+            float minimo = Vehicle != null ? Vector3.Distance(ray.origin, Vehicle.transform.position) + DistanciaMinimaDeMira : 0f;
             for (int i = 0; i < n; i++)
             {
                 var h = golpesDeMira[i];
                 if (h.distance >= mejor || h.collider == null) continue;
                 if (Vehicle != null && h.collider.transform.IsChildOf(Vehicle.transform)) continue;
                 if (Brain != null && Brain.Current != null && h.collider.transform.IsChildOf(Brain.Current.transform)) continue;
+                if (h.distance < minimo && !EsBlancoVivo(h.collider)) continue;
+                if (Vehicle != null && EsCoberturaBaja(h.collider) && Vector3.Distance(h.point, Vehicle.transform.position) < RadioDeCoberturaIgnorada) continue;
                 mejor = h.distance;
                 punto = h.point;
             }

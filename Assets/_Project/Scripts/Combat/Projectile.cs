@@ -461,7 +461,7 @@ namespace SP.Combat
                 // Los soldados quedan afuera: tienen su propio camino unas
                 // lineas mas arriba, con su daño y sus efectos, y su
                 // radio de impacto propio.
-                bool esPared = SP.Core.NavService.BlocksMovement(h.collider);
+                bool esPared = SP.Core.NavService.BlocksMovement(h.collider) && !NoFrenaBalas.Tiene(h.collider);   // #409/#410: la reja invisible no frena balas
                 bool esVehiculo = false;
                 bool esLuminaria = false;
                 if (!esPared && !h.collider.isTrigger)
@@ -693,7 +693,7 @@ namespace SP.Combat
                 var c = BufferExplosion[i].collider;
                 if (c == null) continue;
                 if (ignorar != null && c.transform.IsChildOf(ignorar)) continue;
-                if (!SP.Core.NavService.BlocksMovement(c)) continue;
+                if (!SP.Core.NavService.BlocksMovement(c) || NoFrenaBalas.Tiene(c)) continue;
                 return false;
             }
             return true;

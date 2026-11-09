@@ -13,13 +13,7 @@ namespace SP.EditorTools
         {
             float y2 = G.Nivel(2), y3 = G.Nivel(3);
             // ---- Iter 11: salon de baile: lamparas de pie, mesas altas de coctel y plantas ----
-            foreach (var (x, z) in new[] { (309f, 254f), (335f, 254f), (309f, 268f), (335f, 270f), (322f, 250f), (322f, 270f) })
-            {
-                if (EnTorre(x, z, 2, 1.6f)) continue;
-                Cilindro(deco, "Lampara_Pie_Poste", x, y2, y2 + 2.2f, z, 0.1f, MDorado);
-                Caja(deco, "Lampara_Pie_Pantalla", x - 0.4f, x + 0.4f, y2 + 2.2f, y2 + 2.8f, z - 0.4f, z + 0.4f, MCristal, false);
-                LuzPuntual(deco, "Luz_Lampara_Pie", new Vector3(x, y2 + 2.5f, z), 10f, 0.9f, new Color(1f, 0.88f, 0.66f));
-            }
+            // #407: se quitaron las 6 lamparas de pie del salon (pedido del dueno); AjustesDeNivelNov08 tambien las apaga en una escena ya armada.
             foreach (var (x, z) in new[] { (314f, 276f), (326f, 276f), (338f, 262f), (306f, 266f), (316f, 256f) })
             {
                 if (EnTorre(x, z, 2, 1.6f)) continue;

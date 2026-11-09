@@ -257,7 +257,7 @@ namespace SP.UI
             // Predecir contra y=0 metia un error sistematico de casi un
             // metro en un tiro de 18 m.
             const float groundY = 0.15f;
-            Vector3 vel = dir * (TurretWeapon.ProjectileSpeed * TurretWeapon.SpeedMultiplier);
+            Vector3 vel = dir * (TurretWeapon.ProjectileSpeed * turret.MultiplicadorDeVelocidad);   // #400: la misma velocidad real que el disparo
             var propio = turret.GetComponentInParent<Vehicle>();
             var propioT = propio != null ? propio.transform : null;
             var res = new Impacto { Punto = origin + dir * 30f, Normal = Vector3.up };

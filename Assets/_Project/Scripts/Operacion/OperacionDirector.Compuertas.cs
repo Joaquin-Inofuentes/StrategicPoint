@@ -49,6 +49,8 @@ namespace SP.Operacion
             {
                 if (a == null || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy) continue;
                 if (a.transform.position.y < yMin) return false;
+                // #413: arriba del tramo B pero DENTRO de la torre (del lado de la reja) todavia no paso: la reja se trababa y lo dejaba encerrado.
+                if (G.EnTorre(a.transform.position, out _, 0.8f)) return false;
             }
             return true;
         }
@@ -70,6 +72,7 @@ namespace SP.Operacion
             go.transform.rotation = Quaternion.LookRotation(new Vector3(t.v.x, 0f, t.v.y), Vector3.up);
             var size = new Vector3(AnchoDeCompuerta, AltoDeCompuerta, 0.8f);
             var col = go.AddComponent<BoxCollider>(); col.size = size;
+            go.AddComponent<SP.Combat.NoFrenaBalas>();   // #409/#410: frena el movimiento, no las balas
             var obs = go.AddComponent<UnityEngine.AI.NavMeshObstacle>();
             obs.shape = UnityEngine.AI.NavMeshObstacleShape.Box; obs.size = size; obs.carving = true; obs.carveOnlyStationary = false;
             // Bug #366 (2026-11-06: "los bloques de colliders para mi solo son colliders sin render, no se deberian ver"): la compuerta ya no dibuja
@@ -100,7 +103,12 @@ namespace SP.Operacion
                 case EtapaDeLaMansion.Azotea: case EtapaDeLaMansion.Cerrada: piso = 3; break;
                 default: piso = -1; break;
             }
-            if (piso != pisoDeLasCompuertas) { pisoDeLasCompuertas = piso; inicioDelPiso = relojMansion; foreach (var cc in compuertasDeTorre) cc.abiertaFija = false; }
+            if (piso != pisoDeLasCompuertas)
+            {
+                pisoDeLasCompuertas = piso; inicioDelPiso = relojMansion; foreach (var cc in compuertasDeTorre) cc.abiertaFija = false;
+                pisoDeCortesia = piso; cortesiaDesde = -1f;   // #406: arranca la cuenta para traer a los aliados al piso nuevo
+            }
+            TraerAliadosAlPisoNuevo(yo);
             bool forzar = relojMansion - inicioDelPiso > SegundosParaForzarCompuerta;
             bool pisoLimpio = faltan == 0 && (piso != 2 || MilicianosLiberados);
             // La torre es un zigzag (los dos tramos suben): la reja de BAJADA esta en la boca del tramo B, por donde tambien se sale al subir. Solo se
@@ -141,6 +149,51 @@ namespace SP.Operacion
         float proximoRescateDePiso;
         public int AliadosReubicadosDePiso { get; private set; }
 
+        // #413 ("quedaron atrapados"): el aliado DENTRO de una torre cuya reja de bajada esta trabada y que esta en un piso <= al del jugador no
+        // tiene camino: se lo trae a los 3 s (no a los 8). #406: a cada piso nuevo, a los SegundosDeCortesiaDePiso se trae detras del jugador a los que
+        // quedaron abajo o en una torre. Contadores propios (AliadosReubicadosDePiso lo mide Bug384a y no cambia de semantica).
+        public const float SegundosDeRezagoEnReja = 3f, SegundosDeCortesiaDePiso = 6f;
+        public int AliadosLiberadosDeCompuerta { get; private set; }
+        public int AliadosTraidosAlCambiarDePiso { get; private set; }
+        int pisoDeCortesia = -1; float cortesiaDesde = -1f;
+
+        bool EncerradoTrasCompuerta(Soldier a, Soldier yo)
+        {
+            if (!G.EnTorre(a.transform.position, out int torre, 0.8f)) return false;
+            int nivelYo = G.NivelDe(yo.transform.position);
+            foreach (var c in compuertasDeTorre)
+                if (c.torre == torre && !c.subida && c.cerrada && c.nivelBase + 1 <= nivelYo + 1 && !G.EnTorre(yo.transform.position, out _, 0.8f)) return true;
+            return false;
+        }
+
+        // Pone al aliado 'atras' m detras del jugador (y 'lado' m al costado), sobre el NavMesh del piso del jugador.
+        void TraerAliadoAlJugador(Soldier a, Soldier yo, float atras, float lado)
+        {
+            var f = yo.transform.forward; f.y = 0f; if (f.sqrMagnitude < 0.01f) f = Vector3.forward; f.Normalize();
+            var d = yo.transform.position - f * atras + Vector3.Cross(Vector3.up, f) * lado;
+            d.y = yo.transform.position.y - SP.Actors.SoldierMotor.PivoteSobrePiso;
+            ColocarEnElPiso(a.transform, d);
+            a.Brain.CancelOrder(); a.Brain.ReactivarNavegacion();
+        }
+
+        void TraerAliadosAlPisoNuevo(Soldier yo)
+        {
+            if (yo == null || pisoDeCortesia < 1) return;
+            if (G.EnTorre(yo.transform.position, out _, 0.8f) || G.NivelDe(yo.transform.position) < pisoDeCortesia) { cortesiaDesde = -1f; return; }
+            if (cortesiaDesde < 0f) { cortesiaDesde = Time.time; return; }
+            if (Time.time - cortesiaDesde < SegundosDeCortesiaDePiso) return;
+            int n = 0;
+            foreach (var a in AliadosAEvacuar(true))
+            {
+                if (a == null || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy || a.Brain == null || a.Brain.IsPossessedByPlayer || a == yo) continue;
+                if (G.NivelDe(a.transform.position) >= pisoDeCortesia && !G.EnTorre(a.transform.position, out _, 0.8f)) continue;
+                TraerAliadoAlJugador(a, yo, 3f, (n % 2 == 0 ? 1f : -1f) * (0.8f + 0.5f * (n / 2)));
+                n++; AliadosTraidosAlCambiarDePiso++; rezagadosDePiso.Remove(a.Id);
+                GameLog.Line($"[Operacion] {a.DisplayName} no habia pasado al piso {pisoDeCortesia}: reaparece detras del jugador");
+            }
+            pisoDeCortesia = -1;
+        }
+
         void RescatarAliadosDeOtroPiso(Soldier yo)
         {
             if (yo == null || Time.time < proximoRescateDePiso) return;
@@ -148,12 +201,20 @@ namespace SP.Operacion
             foreach (var a in AliadosAEvacuar(true))
             {
                 if (a == null || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy || a.Brain == null || a.Brain.IsPossessedByPlayer || a == yo) continue;
-                bool lejos = Mathf.Abs(a.transform.position.y - yo.transform.position.y) > DiferenciaDePisoParaRezago || Plano(a.transform.position, yo.transform.position).magnitude > DistanciaDeRezago;
+                bool encerrado = EncerradoTrasCompuerta(a, yo);
+                bool lejos = encerrado || Mathf.Abs(a.transform.position.y - yo.transform.position.y) > DiferenciaDePisoParaRezago || Plano(a.transform.position, yo.transform.position).magnitude > DistanciaDeRezago;
                 if (!lejos) { rezagadosDePiso.Remove(a.Id); continue; }
                 rezagadosDePiso.TryGetValue(a.Id, out float t);
                 t += 1f;
-                if (t < SegundosDeRezagoDePiso) { rezagadosDePiso[a.Id] = t; continue; }
+                if (t < (encerrado ? SegundosDeRezagoEnReja : SegundosDeRezagoDePiso)) { rezagadosDePiso[a.Id] = t; continue; }
                 rezagadosDePiso.Remove(a.Id);
+                if (encerrado)
+                {
+                    TraerAliadoAlJugador(a, yo, 3f, 0.8f * ((a.Id % 3) - 1));
+                    AliadosLiberadosDeCompuerta++;
+                    GameLog.Line($"[Operacion] {a.DisplayName} estaba encerrado tras una reja: reaparece detras del jugador");
+                    continue;
+                }
                 float ang = UnityEngine.Random.value * Mathf.PI * 2f, r = UnityEngine.Random.Range(2f, 4f);
                 var destino = new Vector3(yo.transform.position.x + Mathf.Cos(ang) * r, yo.transform.position.y - SP.Actors.SoldierMotor.PivoteSobrePiso, yo.transform.position.z + Mathf.Sin(ang) * r);
                 ColocarEnElPiso(a.transform, destino);

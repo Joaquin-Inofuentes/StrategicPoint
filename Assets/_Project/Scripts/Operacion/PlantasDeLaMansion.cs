@@ -22,6 +22,8 @@ namespace SP.Operacion
         float proximo;
         int nivelRecortado = int.MinValue;   // nivel cuyo cielo raso se esta recortando (int.MinValue = nada oculto)
 
+        public static PlantasDeLaMansion Activa { get; private set; }
+        void OnEnable() { Activa = this; }
         public int NivelMostrado => nivelRecortado == int.MinValue ? -1 : nivelRecortado;
         public int Ocultos { get; private set; }
         public int Candidatos => renders != null ? renders.Length : 0;
@@ -89,7 +91,7 @@ namespace SP.Operacion
             nivelRecortado = int.MinValue; Ocultos = 0;
         }
 
-        void OnDisable() { Restaurar(); }
+        void OnDisable() { if (Activa == this) Activa = null; Restaurar(); }
 
         void Update()
         {
