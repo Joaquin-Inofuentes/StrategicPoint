@@ -725,13 +725,13 @@ namespace SP.EditorTools
             ModoDios.Poner(true);
             var yo = Poseido();
             Soldier molde = null;
-            foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && a.Health != null && a.Health.IsAlive && a.GetComponent<EnemigoPesado>() == null && !a.name.StartsWith("Pesado")) { molde = a; break; }
+            foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && a.Health != null && a.Health.IsAlive && a.gameObject.activeInHierarchy && a.GetComponent<EnemigoPesado>() == null && !a.name.StartsWith("Pesado")) { molde = a; break; }   // el molde tiene que estar activo en la jerarquia: un clon bajo un grupo apagado nunca corre su Start
             if (molde == null) { Fin("FALLO no hay enemigo molde"); yield break; }
             var go = Object.Instantiate(molde.gameObject, yo.transform.position + yo.transform.forward * 22f + Vector3.up * 0.1f, Quaternion.LookRotation(-yo.transform.forward), molde.transform.parent);
             go.SetActive(true);
             var s = go.GetComponent<Soldier>(); int vidaBase = s.Health.MaxHealth;
             var p = EnemigoPesado.Aplicar(s);
-            W8Ok(ref ok, p != null && s.name.StartsWith("Pesado"), sb, "se creo el pesado");
+            W8Ok(ref ok, p != null && s.name.StartsWith("Pesado"), sb, $"se creo el pesado (molde {molde.name} bajo {(molde.transform.parent != null ? molde.transform.parent.name : "-")}, clon activo en la jerarquia: {go.activeInHierarchy})");
             foreach (var x in Esperar(0.6f)) yield return x;
             W8Ok(ref ok, s.Health.MaxHealth == vidaBase * EnemigoPesado.MultiplicadorDeVida, sb, $"vida x4 ({vidaBase} -> {s.Health.MaxHealth})");
             W8Ok(ref ok, s.Weapon != null && s.Weapon.CurrentWeaponKind == WeaponKind.Minigun, sb, $"lleva la minigun ({(s.Weapon != null ? s.Weapon.CurrentWeaponKind.ToString() : "-")})");

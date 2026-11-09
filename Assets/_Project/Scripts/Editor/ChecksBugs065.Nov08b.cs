@@ -557,5 +557,52 @@ namespace SP.EditorTools
             foreach (var x in FotoCamara("v9_398_tanques.jpg", camPos, mira, 70f)) yield return x;
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
+
+        // ================================================================ 700 recorrido completo instrumentado: los 6 objetivos con modo dios, mirando errores y anomalias
+        static readonly Dictionary<string, int> logsDelRecorrido = new Dictionary<string, int>();
+        static void CapturarLog(string msg, string stack, LogType tipo)
+        {
+            if (tipo != LogType.Error && tipo != LogType.Exception && tipo != LogType.Assert) return;
+            string k = (tipo == LogType.Exception ? "EXC " : "ERR ") + (msg.Length > 140 ? msg.Substring(0, 140) : msg);
+            int n; logsDelRecorrido.TryGetValue(k, out n); if (logsDelRecorrido.Count < 60) logsDelRecorrido[k] = n + 1;
+        }
+
+        static IEnumerator Bug700a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            logsDelRecorrido.Clear(); Application.logMessageReceived += CapturarLog;
+            ModoDios.Poner(true);
+            for (int o = 1; o <= OperacionDirector.TotalObjetivos; o++)
+            {
+                string r = OperacionPrueba.Arrancar(o);
+                if (o == 5) { var dd = OperacionDirector.Instancia; }
+                float t0 = Time.time, r0 = Time.realtimeSinceStartup, fpsMin = 999f; int frames = 0; float ult = Time.realtimeSinceStartup;
+                var yo0 = Poseido(); Vector3 pos0 = yo0 != null ? yo0.transform.position : Vector3.zero;
+                while (Time.time - t0 < 20f && Time.realtimeSinceStartup - r0 < 90f)
+                {
+                    yield return null; frames++;
+                    float dt = Time.realtimeSinceStartup - ult; ult = Time.realtimeSinceStartup; if (dt > 0f && frames > 10) fpsMin = Mathf.Min(fpsMin, 1f / dt);
+                }
+                int bajoElMapa = 0, nan = 0, vivos = 0; var det = new StringBuilder();
+                foreach (var s in ActorRegistry.All)
+                {
+                    if (s == null || !s.gameObject.activeInHierarchy) continue;
+                    var p = s.transform.position;
+                    if (float.IsNaN(p.x) || float.IsNaN(p.y) || float.IsNaN(p.z) || float.IsInfinity(p.y)) { nan++; continue; }
+                    if (s.Health != null && s.Health.IsAlive) vivos++;
+                    if (p.y < -3f && s.Health != null && s.Health.IsAlive) { bajoElMapa++; if (det.Length < 300) det.Append(s.name).Append(p).Append(' '); }
+                }
+                var yo = Poseido(); string mov = yo != null ? $" mov={Vector3.Distance(pos0, yo.transform.position):0}m" : " sin-poseido";
+                var d = OperacionDirector.Instancia;
+                sb.Append($"[obj{o} {d.Fase} vivos={vivos} fpsMin={fpsMin:0} bajoMapa={bajoElMapa}{(det.Length > 0 ? "(" + det + ")" : "")} nan={nan}{mov}] ");
+                if (bajoElMapa > 0 || nan > 0 || (yo == null && d.Fase != FaseOperacion.Victoria)) ok = false;   // en el objetivo 6 el jugador ya subio al helicoptero y la partida termina en Victoria
+            }
+            Application.logMessageReceived -= CapturarLog;
+            var errores = new StringBuilder(); int totalErr = 0;
+            foreach (var kv in logsDelRecorrido) { totalErr += kv.Value; if (errores.Length < 1800) errores.Append("x").Append(kv.Value).Append(' ').Append(kv.Key.Replace('\n', ' ')).Append(" || "); }
+            W8Ok(ref ok, totalErr == 0, sb, $"sin errores ni excepciones en consola durante los 6 objetivos ({totalErr}): {errores}");
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
     }
 }

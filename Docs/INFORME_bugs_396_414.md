@@ -39,7 +39,7 @@ Checks nuevos en `Assets/_Project/Scripts/Editor/ChecksBugs065.Nov08b.cs`. Corre
 - **#403a** medía con segundos reales: los fragmentos envejecen con `Time.deltaTime`, y el Editor corre a ~17 FPS. Ahora espera tiempo de juego.
 - **#370a** (regresión): fallaba porque el control había pasado a otro soldado de la escuadra y el check seguía moviendo al primero. Ahora toma el poseído en ese momento. **Pendiente de entender:** por qué cambia el control en esa corrida.
 - **#403u** (regresión) topaba un cohete en el 7 % de la vida, calibrado con ×4; con ×8 es el 14 %: el tope ahora escala con `MultiplicadorDeDanoDelTanque`.
-- **#602c** (regresión) **sigue fallando**: el pesado clonado a mano desde un enemigo molde queda con `MaxHealth` 180 (esperaba ×12) y con el controlador `AC_Soldado`. El camino real sí funciona (`Bug389a` pasa: 180 → 2160). Sin evidencia de que lo cause este cambio; **hay que compararlo contra `cdbe52fd`** (puede ser una carrera: `Aplicar` corre antes del `Start` del clon).
+- **#602c** (regresión): **resuelto, era del check.** Tomaba como molde al primer enemigo del registro, que era un `Mansion_Enemigo_1` inactivo en la jerarquia; su clon nunca corría `Start` y quedaba con vida 180 y `AC_Soldado`. Ahora exige un molde activo y pasa (180 → 2160, `AC_Pesado`).
 - **`Bug402a`** necesitaba estar en `reMansion` (regex de checks con mansión).
 - El Editor se cerró solo a mitad de una regresión larga (apagado ordenado, sin traza de crash en el log). Tandas de ≤ 8 checks.
 - La carpeta temporal de la sesión se vació al reabrir el Editor: los scripts auxiliares (`c.sh`, atlas) se rehicieron.
@@ -59,5 +59,8 @@ Fotos en `Assets/Validacion~/v9_*`.
 
 ## 6. Regresión final
 En verde: `Bug369a Bug369d Bug370a Bug372a Bug374a Bug375d Bug378a Bug379a Bug381a Bug383a Bug384a Bug387a Bug389a Bug394a Bug395a Bug396a Bug397a-e Bug398a Bug398b Bug403u Bug409u Bug410u Bug101a Bug603g Bug128 Bug284a` y todos los nuevos (`Bug396b Bug397f Bug398c Bug398d Bug399a Bug400a Bug401a Bug402a Bug403a Bug404a Bug405a Bug406a Bug407a Bug408a Bug409a Bug411a Bug412a Bug413a Bug414a`).
-En rojo: `Bug602c` (ver arriba). No se corrieron `Bug122` ni `Bug123` (no existen con ese nombre en `ChecksBugs065*`).
+`Bug602c` en verde tras corregir el molde del check. No se corrieron `Bug122` ni `Bug123` (no existen con ese nombre en `ChecksBugs065*`).
 Atlas: `Docs/ATLAS_bugs_396_414.jpg`.
+
+## 7. Recorrido completo instrumentado (`Bug700a`, 2026-11-09)
+Salta por los 6 objetivos en modo dios, deja correr 20 s de juego en cada uno y mide: errores/excepciones de consola, soldados bajo el mapa o con NaN, jugador poseído. Resultado: **0 errores en consola, 0 anomalias**; el unico "fallo" inicial era una regla del check (en el objetivo 6 la partida termina en Victoria y no hay soldado poseido). No es una partida jugada a mano: el bot no mueve al jugador ni dispara, asi que no cubre combate real, puntería ni sensación de manejo.
