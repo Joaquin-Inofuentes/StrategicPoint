@@ -604,5 +604,48 @@ namespace SP.EditorTools
             W8Ok(ref ok, totalErr == 0, sb, $"sin errores ni excepciones en consola durante los 6 objetivos ({totalErr}): {errores}");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
+
+        // 701 diseno del nivel: mosaico de fotos cenitales (el nivel es demasiado grande para una sola) + anclas de zona y ruta del tanque a JSON
+        static IEnumerator Bug701a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var cultura = System.Threading.Thread.CurrentThread.CurrentCulture;
+            System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.InvariantCulture;
+            OperacionPrueba.Arrancar(5);
+            foreach (var x in Esperar(3f)) yield return x;
+            var d = OperacionDirector.Instancia;
+            var pts = new List<Vector3>();
+            var js = new StringBuilder("{\n  \"anclas\": [");
+            if (d.anclasDeZona != null) for (int i = 0; i < d.anclasDeZona.Length; i++) { var a = d.anclasDeZona[i]; if (a == null) continue; pts.Add(a.position); js.Append(i > 0 ? "," : "").Append($"[{a.position.x:0.0},{a.position.z:0.0},\"{a.name}\"]"); }
+            js.Append("],\n  \"ruta\": [");
+            if (d.rutaDelTanque != null) for (int i = 0; i < d.rutaDelTanque.Length; i++) { var r = d.rutaDelTanque[i]; if (r == null) continue; pts.Add(r.position); js.Append(i > 0 ? "," : "").Append($"[{r.position.x:0.0},{r.position.z:0.0}]"); }
+            js.Append("],\n");
+            if (d.plaza != null) js.Append($"  \"plaza\": [{d.plaza.position.x:0.0},{d.plaza.position.z:0.0}],\n");
+            js.Append($"  \"mansion\": [{G.X0:0.0},{G.Z0:0.0},{G.X1:0.0},{G.Z1:0.0}],\n");
+            pts.Add(new Vector3(G.X0, 0f, G.Z0)); pts.Add(new Vector3(G.X1, 0f, G.Z1));
+            var b = new Bounds(pts[0], Vector3.zero); foreach (var p in pts) b.Encapsulate(p);
+            const float fov = 40f, alto = 260f, paso = 150f; const int lado = 800;
+            float cobertura = 2f * alto * Mathf.Tan(fov * 0.5f * Mathf.Deg2Rad);
+            float x0 = b.min.x - 40f, x1 = b.max.x + 40f, z0 = b.min.z - 40f, z1 = b.max.z + 40f;
+            js.Append($"  \"mosaico\": {{\"cobertura\": {cobertura:0.00}, \"paso\": {paso}, \"lado\": {lado}, \"x0\": {x0:0.0}, \"z0\": {z0:0.0}, \"x1\": {x1:0.0}, \"z1\": {z1:0.0}, \"tiles\": [");
+            int n = 0, col = 0;
+            for (float cx = x0 + paso * 0.5f; cx < x1 + paso * 0.5f; cx += paso, col++)
+            {
+                int fila = 0;
+                for (float cz = z0 + paso * 0.5f; cz < z1 + paso * 0.5f; cz += paso, fila++)
+                {
+                    string f = $"v9_tile_{col}_{fila}.jpg";
+                    foreach (var x in FotoCamara(f, new Vector3(cx, alto, cz - 0.3f), new Vector3(cx, 0f, cz), fov, lado, lado)) yield return x;
+                    js.Append(n > 0 ? "," : "").Append($"[{cx:0.0},{cz:0.0},\"{f}\"]"); n++;
+                }
+            }
+            js.Append("]}\n}\n");
+            var dir = System.IO.Path.Combine(Application.dataPath, "Validacion~");
+            System.IO.File.WriteAllText(System.IO.Path.Combine(dir, "v9_diseno_nivel.json"), js.ToString());
+            var cm = new Vector3((G.X0 + G.X1) * 0.5f, 0f, (G.Z0 + G.Z1) * 0.5f);
+            foreach (var x in FotoCamara("v9_diseno_mansion.jpg", cm + new Vector3(0f, 120f, -0.5f), cm, 50f, 900, 900)) yield return x;
+            System.Threading.Thread.CurrentThread.CurrentCulture = cultura;
+            Fin($"OK mosaico de {n} fotos cenitales (cobertura {cobertura:0} m por foto) y json");
+        }
     }
 }
