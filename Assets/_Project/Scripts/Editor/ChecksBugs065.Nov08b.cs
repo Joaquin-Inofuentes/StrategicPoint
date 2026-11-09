@@ -152,11 +152,16 @@ namespace SP.EditorTools
             foreach (var x in Esperar(0.5f)) yield return x;
             var h = SP.UI.HudDeTanqueSimple.Instancia;
             var canon = v.TorretaCanon;
-            bool disparo = canon.TryFire();
-            float minimo = 1f, t0 = Time.time;
-            while (Time.time - t0 < 6f) { minimo = Mathf.Min(minimo, h.FraccionDeRecarga); if (minimo < 0.5f) break; yield return null; }
+            bool disparo = false; float minimo = 1f, t0 = Time.time;
+            // hasta 3 intentos: un tiron del Editor (~17 FPS) puede comerse el cooldown de 0,32 s entre dos muestras
+            for (int intento = 0; intento < 3 && minimo >= 0.5f; intento++)
+            {
+                while (canon.CooldownFraction01 < 0.999f) yield return null;
+                disparo |= canon.TryFire(); t0 = Time.time;
+                while (Time.time - t0 < 2f) { minimo = Mathf.Min(minimo, h.FraccionDeRecarga); if (minimo < 0.5f) break; yield return null; }
+            }
             W8Ok(ref ok, disparo, sb, "el canon dispara");
-            W8Ok(ref ok, minimo < 0.5f, sb, $"la barra de recarga baja al disparar el canon (minimo {minimo:0.00})");
+            W8Ok(ref ok, minimo < 0.5f, sb, $"la barra de recarga baja al disparar el canon (minimo {minimo:0.00}; cd={canon.EffectiveCooldown:0.00} frac={canon.CooldownFraction01:0.00} visible={SP.UI.HudDeTanqueSimple.Visible} canon={canon.name} h={(h != null)})");
             t0 = Time.time; while (Time.time - t0 < 30f && h.FraccionDeRecarga < 0.99f) yield return null;
             W8Ok(ref ok, h.FraccionDeRecarga >= 0.99f, sb, $"y vuelve a llenarse ({h.FraccionDeRecarga:0.00})");
             SP.UI.CapasDeHud.ModoTanque(false);
@@ -178,8 +183,18 @@ namespace SP.EditorTools
             foreach (var tw in v.GetComponentsInChildren<SP.Vehicles.TurretWeapon>(true))
                 if (tw != canon) { float vm = SP.Vehicles.TurretWeapon.ProjectileSpeed * tw.MultiplicadorDeVelocidad; mg = vm.ToString("0"); W8Ok(ref ok, vm < vCanon * 0.5f, sb, $"la ametralladora no cambia ({vm:0} m/s)"); break; }
             var real = typeof(SP.Combat.Projectile).GetField("effectiveSpeed", NoPublico);
-            canon.TryFire(); yield return null; yield return null;
-            float leida = 0f; foreach (var p in SP.Combat.Projectile.ActiveInstances) if (p != null && real != null) leida = Mathf.Max(leida, (float)real.GetValue(p));
+            // el proyectil puede morir contra algo pegado al casco en 2 frames del Editor (~17 FPS): se reintenta y se muestrea cada frame
+            float leida = 0f;
+            for (int intento = 0; intento < 3 && leida <= 0f; intento++)
+            {
+                while (canon.CooldownFraction01 < 0.999f) yield return null;
+                if (!canon.TryFire()) continue;
+                for (int f = 0; f < 6 && leida <= 0f; f++)
+                {
+                    yield return null;
+                    foreach (var p in SP.Combat.Projectile.ActiveInstances) if (p != null && real != null) leida = Mathf.Max(leida, (float)real.GetValue(p));
+                }
+            }
             W8Ok(ref ok, real == null || Mathf.Abs(leida - vCanon) < 25f, sb, $"el proyectil creado sale con esa velocidad ({leida:0})");
             Fin((ok ? "OK " : "FALLO ") + sb + " mg=" + mg);
         }
