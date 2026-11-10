@@ -107,7 +107,7 @@ namespace SP.Core
             {
                 if (sello != null) return sello;
                 string ver = Application.version;
-                var ta = Resources.Load<TextAsset>("build_sello");
+                var ta = RecursosCache.Cargar<TextAsset>("build_sello");
                 if (ta != null && !string.IsNullOrWhiteSpace(ta.text)) return sello = ta.text.Trim();
                 try
                 {

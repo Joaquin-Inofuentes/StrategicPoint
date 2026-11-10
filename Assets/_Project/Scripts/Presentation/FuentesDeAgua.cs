@@ -31,7 +31,7 @@ namespace SP.Presentation
 
         public static int Aplicar()
         {
-            var shader = Resources.Load<Shader>("Shaders/AguaDeFuente");
+            var shader = SP.Core.RecursosCache.Cargar<Shader>("Shaders/AguaDeFuente");
             if (shader == null || !shader.isSupported) return 0;
             if (matSuperficie == null) { matSuperficie = new Material(shader) { name = "M_AguaDeFuente", hideFlags = HideFlags.DontSave }; }
             if (matChorro == null)

@@ -582,7 +582,7 @@ namespace SP.Operacion
         IEnumerator CineCorta(float duracion, Func<float, Vector3> posicion, Func<float, Vector3> mira, Action<float> cadaCuadro, VozDeCinematica.Linea? linea, float fov = 55f)
         {
             CineDeMansionEnCurso = true;
-            var cam = Camera.main;
+            var cam = SP.Core.CamaraPrincipal.Actual;
             var driver = PlayerInputDriver.Activo;
             AiBrain.IAPausada = true;
             RomboVisibilidad.Suprimidos = true;

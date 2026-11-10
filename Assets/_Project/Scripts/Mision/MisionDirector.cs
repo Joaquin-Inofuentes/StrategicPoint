@@ -224,13 +224,17 @@ namespace SP.Mision
         // (todo enemigo nace via CrearEnemigo) empujando el punto fuera de la casa mas cercana antes
         // de instanciar, en vez de tener que auditar cada llamador.
         List<Bounds> casasCache;
+        float casasProximoIntento;
         List<Bounds> Casas()
         {
             // No se memoriza un resultado vacio: si "Nivel_Blockout" todavia no estaba listo la
             // primera vez que se llamo (orden de carga de la escena), un cache vacio dejaria la
-            // proteccion apagada para el resto de la partida. Recalcular unas pocas veces (una por
-            // oleada de enemigos, no por enemigo) no cuesta nada.
+            // proteccion apagada para el resto de la partida. Pero re-buscar en cada enemigo creado
+            // (GameObject.Find sobre toda la escena) es un pico por spawn en escenas sin blockout:
+            // con cache vacio se reintenta como mucho cada 2 s reales.
             if (casasCache != null && casasCache.Count > 0) return casasCache;
+            if (casasCache != null && Time.unscaledTime < casasProximoIntento) return casasCache;
+            casasProximoIntento = Time.unscaledTime + 2f;
             casasCache = new List<Bounds>();
             var raiz = GameObject.Find("Nivel_Blockout");
             if (raiz != null)
