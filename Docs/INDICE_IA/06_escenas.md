@@ -2,16 +2,19 @@
 
 | Tipo | Cantidad |
 |---|---|
-| Escenas | 14 |
-| Prefabs | 137 |
-| Materiales | 354 |
-| Assets (`.asset`) | 431 |
-| Shaders | 3 |
+| Escenas | 17 |
+| Prefabs | 916 |
+| Materiales | 493 |
+| Assets (`.asset`) | 401 |
+| Shaders | 4 |
 | Input Actions | 1 |
 
 ## Escenas
 
 - `Assets/Scenes/SampleScene.unity`
+- `Assets/_Project/Scenes/Operacion/SC_Operacion_Ciudad.unity`
+- `Assets/_Project/Scenes/Operacion/SC_Operacion_Cuarteles.unity`
+- `Assets/_Project/Scenes/Operacion/SC_Operacion_Ruta.unity`
 - `Assets/_Project/Scenes/SC_Blockout_01.unity`
 - `Assets/_Project/Scenes/SC_Blockout_02.unity`
 - `Assets/_Project/Scenes/SC_Blockout_03.unity`
@@ -28,6 +31,7 @@
 
 ## Shaders
 
+- `Assets/_Project/Resources/Shaders/AguaDeFuente.shader`
 - `Assets/_Project/Shaders/ArmaEnPrimeraPersona.shader`
 - `Assets/_Project/Shaders/MiraOptica.shader`
 - `Assets/_Project/Shaders/OperacionTexto.shader`
@@ -118,7 +122,7 @@
 - `Assets/_Project/Prefabs/ArteMundo/P_Mod_Piso_Pasto_Var270.prefab`
 - `Assets/_Project/Prefabs/ArteMundo/P_Mod_Piso_Pasto_Var90.prefab`
 - `Assets/_Project/Prefabs/ArteMundo/P_Mod_Piso_Tierra.prefab`
-- …y 57 mas
+- …y 836 mas
 
 ## Como se construyen las escenas
 

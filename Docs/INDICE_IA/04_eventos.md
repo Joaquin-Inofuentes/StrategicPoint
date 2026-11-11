@@ -9,7 +9,7 @@
 |---|---|---|---|---|
 | `AiStateChangedEvent` | 1 | 4 | `AiBrain.cs` | `ChecksBugs065.Wp4.cs`, `EnemyAlertIndicatorView.cs`, `SquadStateIndicatorView.cs`, `RosterRowView.cs` |
 | `DamageTakenEvent` | 3 | 15 | `Health.cs`, `HeadlessTestRunner.Fase23.cs`, `HeadlessTestRunner.Fases8a12.cs` | `AiBrain.cs`, `TeamCombatState.cs`, `DificultadAdaptativa.cs`, `InteligenciaDeEnemigos.cs`, `EstadisticasDeMision.cs`, `PlayerInputDriver.cs` |
-| `EntityDiedEvent` | 1 | 13 | `Health.cs` | `DificultadAdaptativa.cs`, `SesionLog.cs`, `EstadisticasDeMision.cs`, `MunicionPickup.cs`, `PlayerInputDriver.cs`, `SelectionController.cs` |
+| `EntityDiedEvent` | 1 | 14 | `Health.cs` | `DificultadAdaptativa.cs`, `SesionLog.cs`, `EstadisticasDeMision.cs`, `MunicionPickup.cs`, `PlayerInputDriver.cs`, `SelectionController.cs` |
 | `EnvironmentHitEvent` | 1 | 2 | `Projectile.cs` | `AiBrain.ImpactosContraParedes.cs`, `AimUI.cs` |
 | `GrenadeExplodedEvent` | 1 | 1 | `Granada.cs` | `TutorialManager.cs` |
 | `GrenadeThrownEvent` | 1 | 2 | `Granada.cs` | `SoldierGrenadeAnim.cs`, `TutorialManager.cs` |
@@ -27,7 +27,7 @@
 | `SwapTargetClearedEvent` | 1 | 0 | `AimTargeting.cs` | — ⚠ nadie lo escucha |
 | `SwapTargetHighlightedEvent` | 1 | 0 | `AimTargeting.cs` | — ⚠ nadie lo escucha |
 | `TurretControlChangedEvent` | 1 | 1 | `TurretAI.cs` | `PlayerInputDriver.cs` |
-| `VehicleDamagedEvent` | 1 | 2 | `Vehicle.cs` | `VehicleFxReactor.cs`, `MarcaDeImpacto.cs` |
+| `VehicleDamagedEvent` | 1 | 3 | `Vehicle.cs` | `VehicleFxReactor.cs`, `ImpactoEnVehiculoView.cs`, `MarcaDeImpacto.cs` |
 | `VehicleDestroyedEvent` | 1 | 4 | `Vehicle.cs` | `EstadisticasDeMision.cs`, `PlayerInputDriver.cs`, `SonidosDeOperacion.cs`, `VehicleFxReactor.cs` |
 | `WeaponChangedEvent` | 1 | 1 | `WeaponHolder.cs` | `RosterRowView.cs` |
 | `WeaponPickedUpEvent` | 1 | 0 | `WeaponPickup.cs` | — ⚠ nadie lo escucha |

@@ -41,7 +41,7 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 | `Tools/Qa/qa_total.bat` | Corrida completa: suite + build + metricas + capturas en 7 resoluciones + tutorial automatico + todos los logs. |
 | `Tools/Autoplay/autoplay.sh` | Solo el tutorial automatico, desde git-bash. |
 
-## Archivos de logica sin una sola asercion (124)
+## Archivos de logica sin una sola asercion (130)
 
 > Un archivo de `Ai`, `Combat`, `Player`, `Vehicles`, `Core`, `Actors` o `Mision` sin ningun `Check`
 > puede estar cubierto desde otro archivo — pero vale mirarlo.
@@ -70,6 +70,7 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 - `Assets/_Project/Scripts/Combat/Health.cs`
 - `Assets/_Project/Scripts/Combat/HitboxCabeza.cs`
 - `Assets/_Project/Scripts/Combat/IWeapon.cs`
+- `Assets/_Project/Scripts/Combat/NoFrenaBalas.cs`
 - `Assets/_Project/Scripts/Combat/Projectile.cs`
 - `Assets/_Project/Scripts/Combat/ProjectilePool.cs`
 - `Assets/_Project/Scripts/Combat/RoleType.cs`
@@ -83,7 +84,6 @@ Corre en **Edit mode** con un reloj simulado (`SimulateSeconds` / `SimulateUntil
 - `Assets/_Project/Scripts/Core/ActorRegistry.cs`
 - `Assets/_Project/Scripts/Core/ApoyoEnElPiso.cs`
 - `Assets/_Project/Scripts/Core/AyudaDebugger.cs`
+- `Assets/_Project/Scripts/Core/BarreraSoloEnemigos.cs`
 - `Assets/_Project/Scripts/Core/BuscarHijo.cs`
-- `Assets/_Project/Scripts/Core/CamaraPrincipal.cs`
-- `Assets/_Project/Scripts/Core/Coberturas.Puntuada.cs`
-- …y 84 mas
+- …y 90 mas

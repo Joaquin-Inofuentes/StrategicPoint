@@ -5,26 +5,27 @@
 > restablezca es una fuga de estado entre corridas — y la causa de los falsos fallos mas dificiles de
 > encontrar.
 
-**444 estaticos mutables fuera de `Editor/`:
-44 cubiertos por `ReinicioDeEstaticos`,
-185 en archivos con hook propio (hay que mirar si el hook cubre ESE campo),
+**480 estaticos mutables fuera de `Editor/`:
+46 cubiertos por `ReinicioDeEstaticos`,
+219 en archivos con hook propio (hay que mirar si el hook cubre ESE campo),
 y 215 sin nada.**
 
 | Campo | Tipo | Donde | Quien lo restablece |
 |---|---|---|---|
 | `nextId` | `int` | `Soldier.cs:18` | **nada** |
 | `matEnemigoVisible` | `Material` | `SoldierLook.cs:56` | **nada** |
-| `matAliadoTenido` | `Material` | `SoldierLook.cs:114` | **nada** |
-| `matMedico` | `Material` | `SoldierLook.cs:142` | **nada** |
-| `matCivil` | `Material` | `SoldierLook.cs:153` | **nada** |
-| `DescensoDeEscalonActivo` | `bool` | `SoldierMotor.cs:224` | **nada** |
+| `matAliadoTenido` | `Material` | `SoldierLook.cs:162` | **nada** |
+| `matMedico` | `Material` | `SoldierLook.cs:190` | **nada** |
+| `matCivil` | `Material` | `SoldierLook.cs:254` | **nada** |
+| `DescensoDeEscalonActivo` | `bool` | `SoldierMotor.cs:235` | **nada** |
 | `AlejarseDeCargasActivo` | `bool` | `AiBrain.Cargas.cs:19` | **nada** |
 | `Humanizada` | `bool` | `AiBrain.Disparo.cs:46` | **nada** |
 | `proximoAvisoRadio` | `float` | `AiBrain.Granadas.cs:25` | **nada** |
 | `ultimoAnuncioDeHerido` | `float` | `AiBrain.Herido.cs:36` | hook propio *(revisar si cubre este campo)* |
 | `subImpactosContraParedes` | `IDisposable` | `AiBrain.ImpactosContraParedes.cs:18` | hook propio *(revisar si cubre este campo)* |
 | `LineaDeTiroPivoteAPivote` | `bool` | `AiBrain.Sentidos.cs:48` | **nada** |
-| `SeparacionActiva` | `bool` | `AiBrain.Separacion.cs:19` | **nada** |
+| `SeparacionActiva` | `bool` | `AiBrain.Separacion.cs:20` | **nada** |
+| `SeparacionAlSeguirActiva` | `bool` | `AiBrain.Separacion.cs:21` | **nada** |
 | `RadioDeCoberturaAMano` | `float` | `AiBrain.Tactica.cs:43` | **nada** |
 | `DefaultVersionCobertura` | `int` | `AiBrain.Tactica.cs:49` | **nada** |
 | `IAPausada` | `bool` | `AiBrain.Tactica.cs:122` | **nada** |
@@ -47,12 +48,13 @@ y 215 sin nada.**
 | `LimiteDePaneoRts` | `Rect?` | `CameraRig.cs:947` | **nada** |
 | `RegeneracionPermitida` | `bool` | `Health.cs:33` | `ReinicioDeEstaticos` |
 | `nextInstanceId` | `int` | `Projectile.cs:40` | `ReinicioDeEstaticos` |
-| `HeadshotMataAlInstante` | `bool` | `Projectile.cs:942` | `ReinicioDeEstaticos` |
+| `HeadshotMataAlInstante` | `bool` | `Projectile.cs:988` | `ReinicioDeEstaticos` |
 | `damageSub` | `System.IDisposable` | `TeamCombatState.cs:9` | `ReinicioDeEstaticos` |
 | `CargadoresDeReserva` | `int` | `WeaponHolder.cs:218` | `ReinicioDeEstaticos` |
 | `ReservasActivas` | `bool` | `WeaponHolder.cs:219` | `ReinicioDeEstaticos` |
-| `metralletaVehiculo` | `GameObject` | `WeaponModels.cs:127` | **nada** |
-| `metralletaVehiculoCargada` | `bool` | `WeaponModels.cs:128` | **nada** |
+| `MunicionInfinitaConModoDios` | `bool` | `WeaponHolder.cs:226` | `ReinicioDeEstaticos` |
+| `metralletaVehiculo` | `GameObject` | `WeaponModels.cs:129` | **nada** |
+| `metralletaVehiculoCargada` | `bool` | `WeaponModels.cs:130` | **nada** |
 | `All` | `IReadOnlyList<Soldier>` | `ActorRegistry.cs:63` | hook propio *(revisar si cubre este campo)* |
 | `proximoBarrido` | `float` | `ActorRegistry.cs:70` | hook propio *(revisar si cubre este campo)* |
 | `CartelVisible` | `bool` | `AyudaDebugger.cs:17` | hook propio *(revisar si cubre este campo)* |
@@ -69,6 +71,11 @@ y 215 sin nada.**
 | `root` | `Transform` | `Coberturas.cs:43` | hook propio *(revisar si cubre este campo)* |
 | `marcasVisibles` | `bool` | `Coberturas.cs:375` | hook propio *(revisar si cubre este campo)* |
 | `MarcasVisibles` | `bool` | `Coberturas.cs:376` | hook propio *(revisar si cubre este campo)* |
+| `errores` | `int` | `ContextoDeBug.cs:24` | hook propio *(revisar si cubre este campo)* |
+| `OrigenDePartida` | `string` | `ContextoDeBug.cs:25` | hook propio *(revisar si cubre este campo)* |
+| `bugsEnLaSesion` | `int` | `ContextoDeBug.cs:26` | hook propio *(revisar si cubre este campo)* |
+| `sello` | `string` | `ContextoDeBug.cs:103` | hook propio *(revisar si cubre este campo)* |
+| `moverEsEnemigo` | `bool` | `Deslizador.cs:38` | **nada** |
 | `actual` | `NivelDificultad?` | `Dificultad.cs:32` | hook propio *(revisar si cubre este campo)* |
 | `FuegoAmigoExplosivo` | `bool` | `Dificultad.cs:37` | hook propio *(revisar si cubre este campo)* |
 | `PerfilActual` | `Perfil` | `Dificultad.cs:83` | hook propio *(revisar si cubre este campo)* |
@@ -84,16 +91,17 @@ y 215 sin nada.**
 | `Activa` | `bool` | `IluminacionTactica.cs:24` | `ReinicioDeEstaticos` |
 | `CantidadDeLuces` | `int` | `IluminacionTactica.cs:38` | hook propio *(revisar si cubre este campo)* |
 | `subDano` | `IDisposable` | `InteligenciaDeEnemigos.cs:26` | hook propio *(revisar si cubre este campo)* |
-| `NombreDelIdioma` | `string` | `Loc.cs:100` | `ReinicioDeEstaticos` |
+| `NombreDelIdioma` | `string` | `Loc.cs:102` | `ReinicioDeEstaticos` |
 | `rutaCaptura` | `string` | `MetricasDeBuild.cs:35` | hook propio *(revisar si cubre este campo)* |
 | `superCaptura` | `int` | `MetricasDeBuild.cs:37` | hook propio *(revisar si cubre este campo)* |
-| `VelocidadActiva` | `bool` | `ModoDios.cs:44` | `ReinicioDeEstaticos` |
-| `instancia` | `VigilanteDeVelocidadDios` | `ModoDios.cs:66` | `ReinicioDeEstaticos` |
+| `VelocidadActiva` | `bool` | `ModoDios.cs:51` | `ReinicioDeEstaticos` |
+| `instancia` | `VigilanteDeVelocidadDios` | `ModoDios.cs:87` | `ReinicioDeEstaticos` |
 | `reloj` | `float` | `NavMeshViva.cs:28` | hook propio *(revisar si cubre este campo)* |
 | `ultimoRehacer` | `float` | `NavMeshViva.cs:30` | hook propio *(revisar si cubre este campo)* |
 | `rehacerEn` | `float` | `NavMeshViva.cs:31` | hook propio *(revisar si cubre este campo)* |
 | `inicio` | `float` | `NavMeshViva.cs:40` | `ReinicioDeEstaticos` |
-| `Rehaciendo` | `bool` | `NavMeshViva.cs:41` | hook propio *(revisar si cubre este campo)* |
+| `Pausado` | `bool` | `NavMeshViva.cs:44` | hook propio *(revisar si cubre este campo)* |
+| `Rehaciendo` | `bool` | `NavMeshViva.cs:45` | hook propio *(revisar si cubre este campo)* |
 | `dirty` | `bool` | `NavService.cs:52` | hook propio *(revisar si cubre este campo)* |
 | `IsReady` | `bool` | `NavService.cs:55` | hook propio *(revisar si cubre este campo)* |
 | `area` | `Bounds` | `NavService.cs:66` | hook propio *(revisar si cubre este campo)* |
@@ -108,10 +116,16 @@ y 215 sin nada.**
 | `PruebaAbrir` | `bool` | `ReporteDeBug.cs:23` | **nada** |
 | `PruebaMarcarBug` | `bool` | `SesionLog.cs:96` | hook propio *(revisar si cubre este campo)* |
 | `DialogoAbierto` | `bool` | `SesionLog.cs:98` | hook propio *(revisar si cubre este campo)* |
-| `fpsSuave` | `float` | `SesionLog.cs:553` | hook propio *(revisar si cubre este campo)* |
-| `TextoIndicadorDeBug` | `string` | `SesionLog.cs:659` | hook propio *(revisar si cubre este campo)* |
+| `fpsSuave` | `float` | `SesionLog.cs:556` | hook propio *(revisar si cubre este campo)* |
+| `TextoIndicadorDeBug` | `string` | `SesionLog.cs:662` | hook propio *(revisar si cubre este campo)* |
 | `built` | `bool` | `SpatialGrid.cs:45` | **nada** |
 | `CellCount` | `int` | `SpatialGrid.cs:48` | **nada** |
+| `Habilitada` | `bool` | `SubidaDeBug.cs:47` | **nada** |
+| `http` | `HttpClient` | `SubidaDeBug.cs:54` | **nada** |
+| `Http` | `HttpClient` | `SubidaDeBug.cs:57` | **nada** |
+| `SubeAlSheet` | `bool` | `SubidaDeBug.cs:69` | **nada** |
+| `Disponible` | `bool` | `SubidaDeBug.cs:70` | **nada** |
+| `CarpetaPendientes` | `string` | `SubidaDeBug.cs:71` | **nada** |
 | `watch` | `Stopwatch` | `TestLog.cs:9` | **nada** |
 | `Elapsed` | `float` | `TestLog.cs:12` | **nada** |
 | `mapa` | `bool[,]` | `Vegetacion.cs:16` | hook propio *(revisar si cubre este campo)* |
@@ -156,46 +170,52 @@ y 215 sin nada.**
 | `Todos` | `IReadOnlyList<TiradorDeTorre>` | `FrancotiradorEnTorre.cs:24` | hook propio *(revisar si cubre este campo)* |
 | `instancia` | `GuiaDeMando` | `GuiaDeMando.cs:16` | hook propio *(revisar si cubre este campo)* |
 | `Instancia` | `GuiaDeMando` | `GuiaDeMando.cs:17` | hook propio *(revisar si cubre este campo)* |
+| `DibujarRuta` | `bool` | `GuiaDeMando.cs:31` | hook propio *(revisar si cubre este campo)* |
 | `instancia` | `GuiaDeObjetivo` | `GuiaDeObjetivo.cs:19` | hook propio *(revisar si cubre este campo)* |
 | `Instancia` | `GuiaDeObjetivo` | `GuiaDeObjetivo.cs:20` | hook propio *(revisar si cubre este campo)* |
 | `texPunteado` | `Texture2D` | `GuiaDeObjetivo.cs:29` | hook propio *(revisar si cubre este campo)* |
 | `spriteRombo` | `Sprite` | `GuiaDeObjetivo.cs:30` | hook propio *(revisar si cubre este campo)* |
-| `MilicianosAActivar` | `int` | `MandoTactico.cs:28` | hook propio *(revisar si cubre este campo)* |
-| `RadioObligaARts` | `bool` | `MandoTactico.cs:29` | hook propio *(revisar si cubre este campo)* |
-| `SoltarConToque` | `bool` | `MandoTactico.cs:30` | hook propio *(revisar si cubre este campo)* |
-| `ModoDirecto` | `bool` | `MandoTactico.cs:38` | hook propio *(revisar si cubre este campo)* |
-| `EnRadio` | `bool` | `MandoTactico.cs:46` | hook propio *(revisar si cubre este campo)* |
-| `OperadorEsElJugador` | `bool` | `MandoTactico.cs:49` | hook propio *(revisar si cubre este campo)* |
-| `PosicionDeLaRadio` | `Vector3?` | `MandoTactico.cs:64` | hook propio *(revisar si cubre este campo)* |
-| `PrimerIngresoHecho` | `bool` | `MandoTactico.cs:95` | hook propio *(revisar si cubre este campo)* |
-| `instancia` | `MenuDeTrampas` | `MenuDeTrampas.cs:30` | hook propio *(revisar si cubre este campo)* |
+| `clipDeRotor` | `AudioClip` | `HeliDeDescarga.cs:85` | hook propio *(revisar si cubre este campo)* |
+| `MilicianosAActivar` | `int` | `MandoTactico.cs:29` | hook propio *(revisar si cubre este campo)* |
+| `RadioObligaARts` | `bool` | `MandoTactico.cs:30` | hook propio *(revisar si cubre este campo)* |
+| `SoltarConToque` | `bool` | `MandoTactico.cs:31` | hook propio *(revisar si cubre este campo)* |
+| `ModoDirecto` | `bool` | `MandoTactico.cs:39` | hook propio *(revisar si cubre este campo)* |
+| `EnRadio` | `bool` | `MandoTactico.cs:47` | hook propio *(revisar si cubre este campo)* |
+| `OperadorEsElJugador` | `bool` | `MandoTactico.cs:50` | hook propio *(revisar si cubre este campo)* |
+| `PosicionDeLaRadio` | `Vector3?` | `MandoTactico.cs:65` | hook propio *(revisar si cubre este campo)* |
+| `PrimerIngresoHecho` | `bool` | `MandoTactico.cs:96` | hook propio *(revisar si cubre este campo)* |
+| `instancia` | `MenuDeTrampas` | `MenuDeTrampas.cs:31` | hook propio *(revisar si cubre este campo)* |
 | `materialHuella` | `Material` | `OperacionAuto.Efectos.cs:27` | **nada** |
+| `DesplieguesActivos` | `bool` | `OperacionDirector.Despliegue.cs:14` | **nada** |
 | `CoberturaEstacionaria` | `bool` | `OperacionDirector.Extraer.Cobertura.cs:23` | **nada** |
 | `CoberturaEnSaltoDePrueba` | `bool` | `OperacionDirector.Extraer.Cobertura.cs:24` | **nada** |
 | `HalconEnLaCarrera` | `bool` | `OperacionDirector.Final.cs:33` | **nada** |
 | `PruebaDisparar` | `bool` | `OperacionDirector.Final.cs:49` | **nada** |
 | `ResistirSinMando` | `bool` | `OperacionDirector.Mando.cs:36` | **nada** |
-| `PasosSecuenciales` | `bool` | `OperacionDirector.Mando.cs:1033` | **nada** |
+| `PasosSecuenciales` | `bool` | `OperacionDirector.Mando.cs:1068` | **nada** |
+| `ApagarMansion` | `bool` | `OperacionDirector.Mansion.cs:32` | hook propio *(revisar si cubre este campo)* |
 | `Activo` | `bool` | `OperacionDirector.cs:58` | `ReinicioDeEstaticos` |
-| `MilicianosSuben` | `bool` | `OperacionDirector.cs:262` | **nada** |
-| `PruebaMantenerE` | `bool` | `OperacionTerminal.cs:42` | **nada** |
-| `PruebaToqueE` | `bool` | `OperacionTerminal.cs:43` | **nada** |
+| `MilicianosSuben` | `bool` | `OperacionDirector.cs:270` | **nada** |
+| `PruebaMantenerE` | `bool` | `OperacionTerminal.cs:45` | **nada** |
+| `PruebaToqueE` | `bool` | `OperacionTerminal.cs:46` | **nada** |
 | `fuente` | `Font` | `OperacionTextoMundo.cs:12` | **nada** |
 | `bloque` | `MaterialPropertyBlock` | `OperacionTextoMundo.cs:28` | **nada** |
-| `Todas` | `IReadOnlyList<RampaCaminable>` | `RampaCaminable.cs:21` | hook propio *(revisar si cubre este campo)* |
+| `Todas` | `IReadOnlyList<RampaCaminable>` | `RampaCaminable.cs:22` | hook propio *(revisar si cubre este campo)* |
+| `frameDeLaLista` | `int` | `RampaCaminable.cs:52` | hook propio *(revisar si cubre este campo)* |
 | `Todos` | `IReadOnlyList<ReflectorVigia>` | `ReflectorVigia.cs:41` | hook propio *(revisar si cubre este campo)* |
 | `Rotos` | `IReadOnlyList<ReflectorVigia>` | `ReflectorVigia.cs:43` | hook propio *(revisar si cubre este campo)* |
 | `PoseidoIluminado` | `bool` | `ReflectorVigia.cs:45` | hook propio *(revisar si cubre este campo)* |
-| `texAro` | `Texture2D` | `SectorDeDefensa.cs:43` | `ReinicioDeEstaticos` |
-| `quad` | `Mesh` | `SectorDeDefensa.cs:45` | `ReinicioDeEstaticos` |
+| `texAro` | `Texture2D` | `SectorDeDefensa.cs:45` | `ReinicioDeEstaticos` |
+| `quad` | `Mesh` | `SectorDeDefensa.cs:47` | `ReinicioDeEstaticos` |
 | `Todas` | `IReadOnlyList<TorreDestruible>` | `TorreDestruible.cs:35` | hook propio *(revisar si cubre este campo)* |
-| `fuente` | `AudioSource` | `VozDeCinematica.cs:50` | hook propio *(revisar si cubre este campo)* |
-| `Hablando` | `bool` | `VozDeCinematica.cs:84` | hook propio *(revisar si cubre este campo)* |
+| `vista` | `DialogoView` | `VozDeCinematica.cs:55` | hook propio *(revisar si cubre este campo)* |
+| `Hablando` | `bool` | `VozDeCinematica.cs:69` | hook propio *(revisar si cubre este campo)* |
+| `TextoVisible` | `string` | `VozDeCinematica.cs:70` | hook propio *(revisar si cubre este campo)* |
 | `PruebaApretada` | `bool` | `CambioDeAliado.cs:26` | hook propio *(revisar si cubre este campo)* |
-| `Segundos` | `float` | `Demolicion.cs:19` | `ReinicioDeEstaticos` |
-| `proximoAvisoE` | `float` | `Demolicion.cs:72` | `ReinicioDeEstaticos` |
-| `Todos` | `IReadOnlyList<DemoledorAsalto>` | `Demolicion.cs:163` | `ReinicioDeEstaticos` |
-| `AvisosDeNoSePuede` | `int` | `Demolicion.cs:247` | `ReinicioDeEstaticos` |
+| `Segundos` | `float` | `Demolicion.cs:20` | `ReinicioDeEstaticos` |
+| `proximoAvisoE` | `float` | `Demolicion.cs:77` | `ReinicioDeEstaticos` |
+| `Todos` | `IReadOnlyList<DemoledorAsalto>` | `Demolicion.cs:171` | `ReinicioDeEstaticos` |
+| `AvisosDeNoSePuede` | `int` | `Demolicion.cs:263` | `ReinicioDeEstaticos` |
 | `AllActions` | `IEnumerable<string>` | `KeyBindings.cs:183` | **nada** |
 | `Pad` | `Gamepad` | `MandoFps.cs:16` | **nada** |
 | `Conectado` | `bool` | `MandoFps.cs:17` | **nada** |
@@ -209,6 +229,7 @@ y 215 sin nada.**
 | `ArmaSiguiente` | `bool` | `MandoFps.cs:34` | **nada** |
 | `ArmaAnterior` | `bool` | `MandoFps.cs:35` | **nada** |
 | `Pausa` | `bool` | `MandoFps.cs:36` | **nada** |
+| `subMuerte` | `System.IDisposable` | `MunicionPickup.cs:129` | hook propio *(revisar si cubre este campo)* |
 | `head` | `int` | `OrderHistory.cs:35` | **nada** |
 | `count` | `int` | `OrderHistory.cs:36` | **nada** |
 | `Count` | `int` | `OrderHistory.cs:38` | **nada** |
@@ -243,8 +264,10 @@ y 215 sin nada.**
 | `Puntos` | `IReadOnlyList<Vector3>` | `TrazadoDeCamino.cs:36` | **nada** |
 | `Cantidad` | `int` | `TrazadoDeCamino.cs:37` | **nada** |
 | `HayTrazado` | `bool` | `TrazadoDeCamino.cs:38` | **nada** |
-| `instancia` | `AccionesEnCursoView` | `AccionesEnCursoView.cs:35` | hook propio *(revisar si cubre este campo)* |
-| `Instancia` | `AccionesEnCursoView` | `AccionesEnCursoView.cs:37` | hook propio *(revisar si cubre este campo)* |
+| `instancia` | `AccionesEnCursoView` | `AccionesEnCursoView.cs:36` | hook propio *(revisar si cubre este campo)* |
+| `Instancia` | `AccionesEnCursoView` | `AccionesEnCursoView.cs:38` | hook propio *(revisar si cubre este campo)* |
+| `vigilante` | `Vigilante` | `AjustesDeNivelNov08.cs:40` | hook propio *(revisar si cubre este campo)* |
+| `firmaDeFase` | `string` | `AjustesDeNivelNov08.cs:51` | hook propio *(revisar si cubre este campo)* |
 | `NombreActual` | `string` | `AnuncioDeZonas.cs:43` | `ReinicioDeEstaticos` |
 | `Desactivado` | `bool` | `AnuncioDeZonas.cs:52` | `ReinicioDeEstaticos` |
 | `TopeActivo` | `bool` | `AttackLineManager.cs:27` | **nada** |
@@ -258,21 +281,21 @@ y 215 sin nada.**
 | `Visible` | `bool` | `CoverHologram.cs:21` | **nada** |
 | `PuntoActual` | `Vector3` | `CoverHologram.cs:22` | **nada** |
 | `ModeloActual` | `Soldier` | `CoverHologram.cs:23` | **nada** |
-| `tintBlock` | `MaterialPropertyBlock` | `CubeFxReactor.cs:261` | **nada** |
+| `tintBlock` | `MaterialPropertyBlock` | `CubeFxReactor.cs:264` | **nada** |
 | `instancia` | `CuchilladaLenta` | `CuchilladaLenta.cs:19` | hook propio *(revisar si cubre este campo)* |
 | `instancia` | `AvisoCentral` | `CurandoAnimacion.cs:158` | `ReinicioDeEstaticos` |
 | `TextoActual` | `string` | `CurandoAnimacion.cs:163` | `ReinicioDeEstaticos` |
 | `root` | `Transform` | `DebrisPool.cs:20` | **nada** |
 | `ActiveCount` | `int` | `DebrisPool.cs:22` | **nada** |
 | `TotalCount` | `int` | `DebrisPool.cs:23` | **nada** |
-| `root` | `Transform` | `DecalPool.cs:20` | **nada** |
-| `spriteImpacto` | `Sprite` | `DecalPool.cs:92` | **nada** |
-| `ChapasActivas` | `int` | `DestruccionDeVehiculo.cs:42` | hook propio *(revisar si cubre este campo)* |
-| `ChapasLanzadas` | `int` | `DestruccionDeVehiculo.cs:43` | hook propio *(revisar si cubre este campo)* |
-| `raiz` | `Transform` | `DestruccionDeVehiculo.cs:78` | hook propio *(revisar si cubre este campo)* |
-| `material` | `Material` | `DestruccionDeVehiculo.cs:79` | hook propio *(revisar si cubre este campo)* |
-| `raiz` | `Transform` | `DestruccionDeVehiculo.cs:190` | hook propio *(revisar si cubre este campo)* |
-| `Piezas` | `IReadOnlyList<CraterVida>` | `DestruccionDeVehiculo.cs:196` | hook propio *(revisar si cubre este campo)* |
+| `root` | `Transform` | `DecalPool.cs:41` | **nada** |
+| `spriteImpacto` | `Sprite` | `DecalPool.cs:113` | **nada** |
+| `ChapasActivas` | `int` | `DestruccionDeVehiculo.cs:27` | hook propio *(revisar si cubre este campo)* |
+| `ChapasLanzadas` | `int` | `DestruccionDeVehiculo.cs:28` | hook propio *(revisar si cubre este campo)* |
+| `raiz` | `Transform` | `DestruccionDeVehiculo.cs:63` | hook propio *(revisar si cubre este campo)* |
+| `material` | `Material` | `DestruccionDeVehiculo.cs:64` | hook propio *(revisar si cubre este campo)* |
+| `raiz` | `Transform` | `DestruccionDeVehiculo.cs:175` | hook propio *(revisar si cubre este campo)* |
+| `Piezas` | `IReadOnlyList<CraterVida>` | `DestruccionDeVehiculo.cs:181` | hook propio *(revisar si cubre este campo)* |
 | `caraCompartida` | `Mesh` | `DiamondGizmo.cs:30` | **nada** |
 | `shaderUnlit` | `Shader` | `DiamondGizmo.cs:101` | **nada** |
 | `texturaEngranaje` | `Texture2D` | `DiamondGizmo.cs:161` | **nada** |
@@ -315,15 +338,17 @@ y 215 sin nada.**
 | `cuadrado` | `Sprite` | `LoadingScreenController.cs:94` | **nada** |
 | `circulo` | `Sprite` | `LoadingScreenController.cs:147` | **nada** |
 | `actual` | `MenuAmbiente` | `MenuAmbiente.cs:16` | hook propio *(revisar si cubre este campo)* |
-| `mallaConoQuad` | `Mesh` | `MinimapIcon.cs:288` | **nada** |
-| `texturaCono` | `Texture2D` | `MinimapIcon.cs:314` | **nada** |
-| `shaderTransparente` | `Shader` | `MinimapIcon.cs:371` | **nada** |
-| `FraccionDelRadio` | `float` | `MinimapIcon.cs:403` | **nada** |
-| `mallaTriangulo` | `Mesh` | `MinimapIcon.cs:593` | **nada** |
-| `mallaTrianguloChico` | `Mesh` | `MinimapIcon.cs:652` | **nada** |
-| `mallaCirculo` | `Mesh` | `MinimapIcon.cs:717` | **nada** |
-| `mallaRombo` | `Mesh` | `MinimapIcon.cs:760` | **nada** |
-| `mallaCuadrado` | `Mesh` | `MinimapIcon.cs:799` | **nada** |
+| `cuadroDelEmpujon` | `int` | `MinigunFx.cs:11` | hook propio *(revisar si cubre este campo)* |
+| `mallaConoQuad` | `Mesh` | `MinimapIcon.cs:301` | hook propio *(revisar si cubre este campo)* |
+| `texturaCono` | `Texture2D` | `MinimapIcon.cs:327` | hook propio *(revisar si cubre este campo)* |
+| `shaderTransparente` | `Shader` | `MinimapIcon.cs:384` | hook propio *(revisar si cubre este campo)* |
+| `FraccionDelRadio` | `float` | `MinimapIcon.cs:416` | hook propio *(revisar si cubre este campo)* |
+| `mallaTriangulo` | `Mesh` | `MinimapIcon.cs:616` | hook propio *(revisar si cubre este campo)* |
+| `mallaTrianguloChico` | `Mesh` | `MinimapIcon.cs:675` | hook propio *(revisar si cubre este campo)* |
+| `mallaCirculo` | `Mesh` | `MinimapIcon.cs:740` | hook propio *(revisar si cubre este campo)* |
+| `mallaRombo` | `Mesh` | `MinimapIcon.cs:783` | hook propio *(revisar si cubre este campo)* |
+| `mallaCuadrado` | `Mesh` | `MinimapIcon.cs:822` | hook propio *(revisar si cubre este campo)* |
+| `registroCompleto` | `bool` | `MinimapIcon.cs:1008` | hook propio *(revisar si cubre este campo)* |
 | `estrategiaSource` | `AudioSource` | `MusicDirector.cs:57` | hook propio *(revisar si cubre este campo)* |
 | `luchaSource` | `AudioSource` | `MusicDirector.cs:59` | hook propio *(revisar si cubre este campo)* |
 | `fuentesListas` | `bool` | `MusicDirector.cs:60` | hook propio *(revisar si cubre este campo)* |
@@ -352,21 +377,24 @@ y 215 sin nada.**
 | `propertyBlock` | `MaterialPropertyBlock` | `OrderMarkerFx.cs:284` | **nada** |
 | `shaderWarmed` | `bool` | `OrderMarkerFx.cs:445` | **nada** |
 | `bloqueAnillo` | `MaterialPropertyBlock` | `OrderMarkerFx.cs:551` | **nada** |
-| `texturaDegrade` | `Texture2D` | `PantallaDeResultado.cs:154` | **nada** |
+| `texturaDegrade` | `Texture2D` | `PantallaDeResultado.cs:185` | **nada** |
 | `shaderCache` | `Shader` | `ParticleMaterialFactory.cs:24` | **nada** |
 | `ToonActivo` | `bool` | `ParticleMaterialFactory.cs:29` | **nada** |
 | `instancia` | `PrevisualizacionDeCoberturas` | `PrevisualizacionDeCoberturas.cs:19` | hook propio *(revisar si cubre este campo)* |
 | `Resaltadas` | `int` | `PrevisualizacionDeCoberturas.cs:21` | hook propio *(revisar si cubre este campo)* |
+| `dobleFlechaMundo` | `Texture2D` | `RoleIconFactory.cs:88` | **nada** |
 | `template` | `Material` | `SafeMaterial.cs:19` | **nada** |
+| `instancia` | `SalaDespejadaEnRts` | `SalaDespejadaEnRts.cs:14` | hook propio *(revisar si cubre este campo)* |
 | `sharedMaterial` | `Material` | `SelectionRingFx.cs:30` | **nada** |
 | `propertyBlock` | `MaterialPropertyBlock` | `SelectionRingFx.cs:32` | **nada** |
 | `estampidoFrancotirador` | `AudioClip` | `SfxSintetico.Francotirador.cs:9` | hook propio *(revisar si cubre este campo)* |
+| `rafagaHeli` | `AudioClip` | `SfxSintetico.RafagaHeli.cs:11` | **nada** |
 | `matCirculo` | `Material` | `ShapeMarkerFx.cs:8` | **nada** |
 | `matDestino` | `Material` | `ShapeMarkerFx.cs:43` | **nada** |
 | `texturaDestino` | `Texture2D` | `ShapeMarkerFx.cs:44` | **nada** |
-| `Nombres` | `IReadOnlyList<string>` | `SiluetasDeMinimapa.cs:28` | **nada** |
-| `Cantidad` | `int` | `SiluetasDeMinimapa.cs:29` | **nada** |
-| `instancia` | `SombrasDeLuces` | `SombrasDeLuces.cs:15` | hook propio *(revisar si cubre este campo)* |
+| `Nombres` | `IReadOnlyList<string>` | `SiluetasDeMinimapa.cs:68` | hook propio *(revisar si cubre este campo)* |
+| `Cantidad` | `int` | `SiluetasDeMinimapa.cs:69` | hook propio *(revisar si cubre este campo)* |
+| `instancia` | `SombrasDeLuces` | `SombrasDeLuces.cs:24` | hook propio *(revisar si cubre este campo)* |
 | `AmbienteActivo` | `bool` | `SonidosDeOperacion.cs:21` | hook propio *(revisar si cubre este campo)* |
 | `root` | `Transform` | `SparkleBurstFx.cs:20` | **nada** |
 | `root` | `Transform` | `SpriteFx.cs:47` | hook propio *(revisar si cubre este campo)* |
@@ -375,20 +403,24 @@ y 215 sin nada.**
 | `frameDeAltas` | `int` | `UnitLabelView.cs:66` | **nada** |
 | `materialBordeCompartido` | `Material` | `UnitLocatorCylinder.cs:86` | `ReinicioDeEstaticos` |
 | `materialSombraCompartido` | `Material` | `UnitLocatorCylinder.cs:98` | `ReinicioDeEstaticos` |
+| `OcultarRombosAliadosFueraDeRts` | `bool` | `UnitLocatorCylinder.cs:112` | `ReinicioDeEstaticos` |
 | `MinimapIcons` | `IReadOnlyList<MinimapIcon>` | `WorldUiDirector.cs:50` | hook propio *(revisar si cubre este campo)* |
 | `RegisteredCount` | `int` | `WorldUiDirector.cs:66` | hook propio *(revisar si cubre este campo)* |
 | `active` | `WorldUiDirector` | `WorldUiDirector.cs:104` | hook propio *(revisar si cubre este campo)* |
-| `RevelarEnemigos` | `bool` | `WorldUiDirector.cs:314` | hook propio *(revisar si cubre este campo)* |
-| `populated` | `bool` | `WorldUiDirector.cs:329` | hook propio *(revisar si cubre este campo)* |
+| `RevelarEnemigos` | `bool` | `WorldUiDirector.cs:327` | hook propio *(revisar si cubre este campo)* |
+| `populated` | `bool` | `WorldUiDirector.cs:354` | hook propio *(revisar si cubre este campo)* |
 | `ignorarHumano` | `bool` | `EntradaVirtual.cs:19` | **nada** |
+| `instancia` | `MarcaDeObjetivosEnMinimapa` | `MarcaDeObjetivosEnMinimapa.cs:16` | hook propio *(revisar si cubre este campo)* |
+| `Instancia` | `MarcaDeObjetivosEnMinimapa` | `MarcaDeObjetivosEnMinimapa.cs:18` | hook propio *(revisar si cubre este campo)* |
+| `Extras` | `System.Func<IEnumerable<Vector3>>` | `MarcaDeObjetivosEnMinimapa.cs:27` | hook propio *(revisar si cubre este campo)* |
 | `Activas` | `IReadOnlyList<TutorialBeacon>` | `TutorialBeacon.cs:16` | `ReinicioDeEstaticos` |
 | `fuente` | `Font` | `TutorialBeacon.cs:34` | **nada** |
 | `Lineas` | `IReadOnlyList<string>` | `TutorialLog.cs:17` | **nada** |
 | `t0` | `float` | `TutorialLog.cs:18` | **nada** |
 | `RutaArchivo` | `string` | `TutorialLog.cs:19` | **nada** |
 | `PasoGuardado` | `int` | `TutorialManager.cs:1794` | `ReinicioDeEstaticos` |
-| `anilloConPunto` | `Sprite` | `AimUI.cs:84` | **nada** |
-| `anilloCache` | `Sprite` | `AimUI.cs:127` | **nada** |
+| `anilloConPunto` | `Sprite` | `AimUI.cs:86` | **nada** |
+| `anilloCache` | `Sprite` | `AimUI.cs:129` | **nada** |
 | `PantallaCompleta` | `bool` | `AjustesDeJuego.cs:82` | hook propio *(revisar si cubre este campo)* |
 | `count` | `int` | `AlertQueue.cs:60` | hook propio *(revisar si cubre este campo)* |
 | `currentPriority` | `AlertPriority` | `AlertQueue.cs:65` | hook propio *(revisar si cubre este campo)* |
@@ -398,13 +430,14 @@ y 215 sin nada.**
 | `CurrentPriority` | `AlertPriority` | `AlertQueue.cs:71` | hook propio *(revisar si cubre este campo)* |
 | `instancia` | `AliadosSinEstorbo` | `AliadosSinEstorbo.cs:16` | **nada** |
 | `Instancia` | `AliadosSinEstorbo` | `AliadosSinEstorbo.cs:22` | **nada** |
-| `instancia` | `AvisoUnico` | `AvisoUnico.cs:23` | hook propio *(revisar si cubre este campo)* |
-| `ordenFijo` | `int` | `AvisoUnico.cs:28` | hook propio *(revisar si cubre este campo)* |
-| `TextoActual` | `string` | `AvisoUnico.cs:36` | hook propio *(revisar si cubre este campo)* |
-| `Visible` | `bool` | `AvisoUnico.cs:37` | hook propio *(revisar si cubre este campo)* |
-| `Historial` | `IReadOnlyList<string>` | `AvisoUnico.cs:38` | hook propio *(revisar si cubre este campo)* |
-| `HayTemporal` | `bool` | `AvisoUnico.cs:39` | hook propio *(revisar si cubre este campo)* |
-| `Dibujar` | `bool` | `AvisoUnico.cs:67` | hook propio *(revisar si cubre este campo)* |
+| `AlturaActual` | `float` | `AvisoUnico.cs:20` | hook propio *(revisar si cubre este campo)* |
+| `instancia` | `AvisoUnico` | `AvisoUnico.cs:25` | hook propio *(revisar si cubre este campo)* |
+| `ordenFijo` | `int` | `AvisoUnico.cs:30` | hook propio *(revisar si cubre este campo)* |
+| `TextoActual` | `string` | `AvisoUnico.cs:38` | hook propio *(revisar si cubre este campo)* |
+| `Visible` | `bool` | `AvisoUnico.cs:39` | hook propio *(revisar si cubre este campo)* |
+| `Historial` | `IReadOnlyList<string>` | `AvisoUnico.cs:40` | hook propio *(revisar si cubre este campo)* |
+| `HayTemporal` | `bool` | `AvisoUnico.cs:41` | hook propio *(revisar si cubre este campo)* |
+| `Dibujar` | `bool` | `AvisoUnico.cs:69` | hook propio *(revisar si cubre este campo)* |
 | `instancia` | `CartelDeRacha` | `CartelDeRacha.cs:14` | hook propio *(revisar si cubre este campo)* |
 | `Instancia` | `CartelDeRacha` | `CartelDeRacha.cs:15` | hook propio *(revisar si cubre este campo)* |
 | `Visible` | `bool` | `CartelDeRacha.cs:97` | hook propio *(revisar si cubre este campo)* |
@@ -419,12 +452,15 @@ y 215 sin nada.**
 | `instancia` | `HeadshotPopup` | `HeadshotPopup.cs:12` | **nada** |
 | `Visible` | `bool` | `HeadshotPopup.cs:61` | **nada** |
 | `Texto` | `string` | `HeadshotPopup.cs:62` | **nada** |
+| `Visible` | `bool` | `HudDeTanqueSimple.cs:14` | hook propio *(revisar si cubre este campo)* |
+| `destelloHasta` | `float` | `HudDeTanqueSimple.cs:44` | hook propio *(revisar si cubre este campo)* |
 | `instancia` | `HudPulido` | `HudPulido.cs:13` | hook propio *(revisar si cubre este campo)* |
+| `sprite` | `Sprite` | `ImpactoEnVehiculoView.cs:22` | hook propio *(revisar si cubre este campo)* |
 | `SonarLatido` | `bool` | `LowHealthPulseView.cs:31` | **nada** |
 | `cachedTexture` | `Texture2D` | `LowHealthPulseView.cs:52` | **nada** |
 | `cachedSprite` | `Sprite` | `LowHealthPulseView.cs:54` | **nada** |
 | `PistaCategoria` | `int` | `MenuDeOrdenes.cs:170` | `ReinicioDeEstaticos` |
-| `discoCentro` | `Sprite` | `MenuDeOrdenes.cs:766` | `ReinicioDeEstaticos` |
+| `discoCentro` | `Sprite` | `MenuDeOrdenes.cs:850` | `ReinicioDeEstaticos` |
 | `sharedSprite` | `Sprite` | `MilitaryButtonSkin.cs:24` | **nada** |
 | `raiz` | `GameObject` | `MiraDeTorreta.cs:22` | **nada** |
 | `textoBlanco` | `Text` | `MiraDeTorreta.cs:25` | **nada** |
@@ -434,10 +470,10 @@ y 215 sin nada.**
 | `RomboVisible` | `bool` | `MiraDeTorreta.cs:39` | **nada** |
 | `TextoDelBlanco` | `string` | `MiraDeTorreta.cs:40` | **nada** |
 | `ColorDeCruceta` | `Color` | `MiraDeTorreta.cs:43` | **nada** |
-| `sprites` | `Sprite[]` | `MirillaView.cs:27` | **nada** |
-| `mascara` | `Sprite` | `MirillaView.cs:29` | **nada** |
-| `mascaraPeriscopio` | `Sprite` | `MirillaView.cs:204` | **nada** |
-| `cuatro` | `Vector2[]` | `MirillaView.cs:339` | **nada** |
+| `sprites` | `Sprite[]` | `MirillaView.cs:30` | **nada** |
+| `mascara` | `Sprite` | `MirillaView.cs:32` | **nada** |
+| `mascaraPeriscopio` | `Sprite` | `MirillaView.cs:207` | **nada** |
+| `cuatro` | `Vector2[]` | `MirillaView.cs:345` | **nada** |
 | `subirPedido` | `bool` | `ModeToastView.cs:20` | **nada** |
 | `raiz` | `GameObject` | `RespawnPromptView.cs:17` | hook propio *(revisar si cubre este campo)* |
 | `caja` | `RectTransform` | `RespawnPromptView.cs:18` | hook propio *(revisar si cubre este campo)* |
@@ -451,9 +487,9 @@ y 215 sin nada.**
 | `instancia` | `TextoSoloMision` | `TextoSoloMision.cs:35` | hook propio *(revisar si cubre este campo)* |
 | `Vibra` | `bool` | `TurretAimView.cs:125` | **nada** |
 | `SoloAnilloDeZona` | `bool` | `TurretAimView.cs:126` | **nada** |
-| `ultimaTorreta` | `TurretWeapon` | `TurretAimView.cs:199` | **nada** |
-| `ultimoFrame` | `int` | `TurretAimView.cs:200` | **nada** |
-| `ultimoImpacto` | `Impacto` | `TurretAimView.cs:201` | **nada** |
+| `ultimaTorreta` | `TurretWeapon` | `TurretAimView.cs:236` | **nada** |
+| `ultimoFrame` | `int` | `TurretAimView.cs:237` | **nada** |
+| `ultimoImpacto` | `Impacto` | `TurretAimView.cs:238` | **nada** |
 | `Todas` | `IReadOnlyList<TorretaFija>` | `TorretaFija.cs:31` | hook propio *(revisar si cubre este campo)* |
 | `cachedLoopClip` | `AudioClip` | `VehicleAudioFeedback.cs:15` | **nada** |
 

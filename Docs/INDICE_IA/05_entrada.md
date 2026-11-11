@@ -47,8 +47,9 @@
 | Archivo | Teclas que nombra |
 |---|---|
 | `SesionLog.cs` | `StartsWith`, `Substring` |
+| `ChecksBugs065.Hoy.cs` | `Q` |
+| `ChecksBugs065.Nov08b.cs` | `Replace` |
 | `ChecksBugs065.Wp5a.cs` | `W` |
-| `ChecksBugs065.Wp6.cs` | `IsDestroyed` |
 | `ChecksBugs065.Wp9a.cs` | `D`, `Digit2`, `E`, `F`, `LeftShift`, `Q`, `R`, `Tab`, `W` |
 | `ChecksBugs104.Resistir.cs` | `C` |
 | `ChecksBugs104.Rts.cs` | `D` |
@@ -59,10 +60,11 @@
 | `HeadlessTestRunner.cs` | `U` |
 | `OperacionBuilder.Fusion.cs` | `capa`, `cx`, `cz`, `mat`, `sombra` |
 | `OperacionBuilder.Retoque.cs` | `bounds` |
+| `PerfFrames.cs` | `CompareTo`, `Contains` |
 | `ValidacionBugs.cs` | `Space`, `U`, `W` |
 | `ValidadorJugabilidad.cs` | `LeftShift` |
 | `EstadisticasDeMision.cs` | `Replace` |
-| `MenuDeTrampas.cs` | `Digit1`, `Digit2`, `Digit3`, `Digit4`, `Digit5`, `Digit6`, `Digit7` |
+| `MenuDeTrampas.cs` | `Digit1`, `Digit2`, `Digit3`, `Digit4`, `Digit5`, `Digit6`, `Digit7`, `Digit8` |
 | `KeyBindings.cs` | `B`, `Backquote`, `C`, `E`, `F`, `G`, `H`, `I`, `J`, `K`, `L`, `M`, `N`, `None`, `O`, `Q`, `R`, `Space` |
 | `PlayerInputDriver.cs` | `None` |
 | `TutorialAutoPlayer.Entrada.cs` | `A`, `D`, `Digit2`, `F`, `G`, `LeftCtrl`, `LeftShift`, `R`, `S`, `Tab`, `W` |

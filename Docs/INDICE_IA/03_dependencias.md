@@ -101,6 +101,7 @@ flowchart LR
     Tutorial --> Core
     Tutorial --> Player
     Tutorial --> Presentation
+    Tutorial --> UI
     Tutorial --> Vehicles
     UI --> Actors
     UI --> Ai
@@ -134,8 +135,8 @@ flowchart LR
 | Mision | 9 | 5 | Actors, Ai, Combat, Core, Player, Presentation, Tutorial, UI, Vehicles |
 | Player | 9 | 10 | Actors, Ai, Camera, Combat, Core, Interaction, Presentation, UI, Vehicles |
 | Presentation | 9 | 11 | Actors, Ai, Camera, Combat, Core, Mision, Player, UI, Vehicles |
-| Tutorial | 8 | 4 | Actors, Ai, Camera, Combat, Core, Player, Presentation, Vehicles |
-| UI | 10 | 6 | Actors, Ai, Camera, Combat, Core, Mision, Player, Presentation, Tutorial, Vehicles |
+| Tutorial | 9 | 4 | Actors, Ai, Camera, Combat, Core, Player, Presentation, UI, Vehicles |
+| UI | 10 | 7 | Actors, Ai, Camera, Combat, Core, Mision, Player, Presentation, Tutorial, Vehicles |
 | Vehicles | 5 | 11 | Actors, Ai, Combat, Core, Presentation |
 
 ## Como leerlo
