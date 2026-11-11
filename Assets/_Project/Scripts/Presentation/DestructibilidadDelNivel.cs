@@ -20,7 +20,9 @@ namespace SP.Presentation
         static readonly HashSet<int> vistos = new HashSet<int>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { vistos.Clear(); Convertidos = 0; }
+        static void Reiniciar() { vistos.Clear(); Convertidos = 0; ListaDeConvertidos.Clear(); }
+        // Para auditar (Bug710a): que objetos convirtio la regla automatica.
+        public static readonly List<GameObject> ListaDeConvertidos = new List<GameObject>();
 
         static readonly string[] Estructura =
         {
@@ -33,11 +35,23 @@ namespace SP.Presentation
         public static bool EnAlcance(Bounds b) =>
             new Vector2(b.center.x - Plaza.x, b.center.z - Plaza.z).magnitude < Alcance || SP.Operacion.MansionGeometria.Dentro(b.center, 2f);
 
+        // Revision Opus (2026-11-11): el mobiliario de la mansion se llama PB_*/P1_*/P2_*/Azotea_* y esos prefijos son de ESTRUCTURA: ninguna de las 32 piezas
+        // (sofas, mesas, piano, barra, mostrador, equipos de la azotea) era destructible aunque el #402 pedia "todo". Estas son props con nombre propio.
+        static readonly string[] Mobiliario = { "PB_Sofa", "PB_Mostrador", "PB_Mampara", "P1_Mesa", "P1_Cajon", "P1_Aparador", "P1_Banco_Galeria", "P2_Sofa", "P2_Piano", "P2_Barra", "Azotea_Equipo" };
+
+        public static bool EsMobiliario(Transform t)
+        {
+            string n = t.name;
+            foreach (var m in Mobiliario) if (n.StartsWith(m, System.StringComparison.Ordinal)) return true;
+            return false;
+        }
+
         // Estructura por nombre (en el objeto o en cualquier padre) o por tamano (algo muy grande no es un prop).
         public static bool EsEstructural(Collider c)
         {
             var b = c.bounds;
             if (Mathf.Max(b.size.x, b.size.z) > 14f || b.size.y > 6f) return true;
+            if (EsMobiliario(c.transform)) return false;
             for (var t = c.transform; t != null; t = t.parent)
             {
                 string n = t.name;
@@ -75,7 +89,7 @@ namespace SP.Presentation
                 var b = c.bounds.size;
                 var m = c.gameObject.AddComponent<ObstacleMarker>();
                 m.ConfigurarVida(Mathf.Clamp(Mathf.RoundToInt(b.x * b.y * b.z * 40f), 120, 500));
-                Convertidos++;
+                Convertidos++; ListaDeConvertidos.Add(c.gameObject);
             }
         }
     }

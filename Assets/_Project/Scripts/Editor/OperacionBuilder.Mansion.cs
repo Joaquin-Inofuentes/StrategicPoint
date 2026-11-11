@@ -361,6 +361,9 @@ namespace SP.EditorTools
             Caja(interior, "P1_Aparador", 322f, 326f, y1, y1 + 1.0f, 259.4f, 260.2f, MMueble);
             foreach (var (x, z) in new[] { (303f, 252.5f), (316f, 252.5f), (329f, 252.5f), (313.5f, 279f), (327f, 279f), (340.5f, 279f) })
                 Caja(interior, "P1_Mesa", x - 1.4f, x + 1.4f, y1, y1 + 0.95f, z - 0.9f, z + 0.9f, MMueble);
+            // Revision Opus (2026-11-11): la galeria de 14 x 50 m no tenia cobertura; bancos bajos alternados (mismos puntos y nombre que el parche AjustesDeNivelOpus).
+            foreach (var bp in SP.Presentation.AjustesDeNivelOpus.BancosDeGaleria)
+                Caja(interior, SP.Presentation.AjustesDeNivelOpus.NombreBanco, bp.x - 1.5f, bp.x + 1.5f, y1, y1 + 1f, bp.y - 0.45f, bp.y + 0.45f, MMueble);
             for (float x = 305f; x < 345f; x += 13f) Arana(deco, x, y1t - 0.2f, 266f, 1.3f);
 
             // ---- segundo piso: salon de baile con columnas, barra y las celdas ----

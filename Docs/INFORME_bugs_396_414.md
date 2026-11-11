@@ -64,3 +64,29 @@ Atlas: `Docs/ATLAS_bugs_396_414.jpg`.
 
 ## 7. Recorrido completo instrumentado (`Bug700a`, 2026-11-09)
 Salta por los 6 objetivos en modo dios, deja correr 20 s de juego en cada uno y mide: errores/excepciones de consola, soldados bajo el mapa o con NaN, jugador poseído. Resultado: **0 errores en consola, 0 anomalias**; el unico "fallo" inicial era una regla del check (en el objetivo 6 la partida termina en Victoria y no hay soldado poseido). No es una partida jugada a mano: el bot no mueve al jugador ni dispara, asi que no cubre combate real, puntería ni sensación de manejo.
+
+## 8. Revision Opus (2026-11-11)
+Revision independiente (Opus 5.5) de las afirmaciones de este informe y mejora del diseno del nivel. Notas completas: `Docs/NOTAS_OPUS_NIVEL.md`. Checks nuevos en `ChecksBugs065.NivelOpus.cs` (Bug710a-715a); fotos `Assets/Validacion~/v10_*`.
+
+### 8.1 Verificacion de lo afirmado
+- **Bug602c no es una regresion de este commit.** El diff `cdbe52fd..9041e019` no toca el registro de actores, `EnemigoPesado`, `Soldier` ni la activacion de enemigos de la mansion, y `602[a-z]` ya estaba en `reMansion` antes. El check tomaba como molde al primer enemigo del `ActorRegistry` (orden fragil: podia ser un `Mansion_Enemigo` inactivo en la jerarquia). Arreglar el check (molde activo) es correcto. Limite: no se pudo correr el codigo viejo (no hay segundo Editor); la conclusion sale de leer el diff.
+- **#402 (destructibilidad): 169 convertidos, ninguno con logica de juego.** `Bug710a` vuelca cada objeto convertido: 0 referenciados por campos del Director, 0 con nombre de terminal/baliza/heli/cobertura/etc., 0 `NavMeshObstacle`, 0 `Rigidbody`. El "0" de `TieneLogicaPropia` era cierto, pero **`Bug402a` no lo demostraba**: clasifica con las mismas funciones que el conversor, asi que `sinClasificar == 0` esta garantizado por construccion (no puede fallar).
+- **Bug real encontrado en #402:** el filtro de estructura por prefijo (`PB_`, `P1_`, `P2_`, `Azotea`) dejaba **indestructible todo el mobiliario de la mansion** (32 piezas: sofas, mesas, piano, barra, mostrador, mamparas, equipos de azotea; 0/32 con `ObstacleMarker`). Los 169 convertidos eran todos de la ciudad/plaza. Corregido con una lista de mobiliario en `DestructibilidadDelNivel.EsMobiliario` (`Bug712a`: 0/32 -> 32/32).
+- **#405 (1 cm por nombre): sin hallazgos.** `Bug711a`: los 63 objetos con nombre de la tabla estan todos dentro de la huella de la mansion, 0 fuera (el unico nombre ambiguo, `Marco_S` x24, ya filtra por z=246).
+- Otros checks que miden menos de lo que dicen: `Bug401a` comprueba la bandera `SiempreEncima`, no el render; `Bug403a` no reproduce nada (causa no confirmada, como ya decia el informe).
+
+### 8.2 Diseno del nivel: auditoria y mejoras
+Auditoria (mosaico cenital, fotos por piso, censo de props, recorrido de la ruta del tanque con una caja del tamano del tanque):
+- La ruta del tanque (1259 m) estaba despejada salvo **4 neumaticos de ambientacion** (`P_Env_Neumaticos`) sobre la ruta en (206, 231).
+- La **galeria del 1.er piso** (14 x 50 m, donde salen las emboscadas de los seis cuartos) tenia 3 muebles: una pista vacia sin cobertura.
+- La mansion tiene proposito claro por piso (PB vestibulo con pilares, 1.o galeria + 6 cuartos, 2.o salon + celdas, azotea helipuerto con 8 coberturas); un solo ascenso por piso en esquinas opuestas obliga a cruzar cada nivel en diagonal (bien).
+
+Implementado (parche en juego `Presentation/AjustesDeNivelOpus.cs`, builder `OperacionBuilder.Mansion.cs` crea lo mismo con el mismo nombre; no se reconstruyo la escena):
+1. **6 bancos bajos en la galeria** alternados a ambos lados de la alfombra: destructibles, con carving de NavMesh, registrados como cobertura de la IA, carril central libre, >= 3,8 m de los puntos de aparicion, camino entre torres A y B 41,3 m para 40,7 m en recta, y a >= 3,4 m de la salida de la torre A y la entrada de la B. `Bug715a`. **Error propio cazado por la regresion:** la primera posicion del banco norte (304; 270,4) tapaba la salida de la torre A y `Bug409u` (hay camino por la torre A con la reja abierta) dio `PathInvalid`; se movio el banco y `Bug715a` ahora mide esa distancia.
+2. **Ruta del tanque despejada:** se apagan los props `P_Env_*` chicos que caen sobre la ruta. `Bug714a` (rojo antes: 4 neumaticos; verde despues).
+3. **Mobiliario de la mansion destructible** (ver 8.1). `Bug712a`.
+
+### 8.3 Pendiente / no cubierto
+- No se jugo una partida a mano; los checks miden estructura, no sensacion.
+- Ideas no implementadas (riesgo/valor): senalizacion por color de piso en las torres, mas cobertura en el 2.o piso, props de ambientacion en el interior del bucle de la ruta del tanque (zona vacia en el mosaico cenital; el trabajo de Nivel 2 ya toco la ambientacion).
+- El working tree tenia cambios ajenos sin commitear (rendimiento, Nivel 2 #415-422); no se incluyeron en el commit de esta revision.
