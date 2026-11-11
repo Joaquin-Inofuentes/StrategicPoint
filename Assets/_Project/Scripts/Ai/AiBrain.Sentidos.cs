@@ -245,7 +245,7 @@ namespace SP.Ai
         static bool IsCachedSenseUsable(Soldier s)
         {
             return s != null && s.Health != null && s.Health.IsAlive &&
-                   s.gameObject.activeInHierarchy;
+                   s.gameObject.activeInHierarchy && !s.Encarcelado;   // #419
         }
     }
 }

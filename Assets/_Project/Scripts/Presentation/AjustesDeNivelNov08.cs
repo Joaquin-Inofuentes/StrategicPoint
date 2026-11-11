@@ -39,77 +39,137 @@ namespace SP.Presentation
         }
 
         static Vigilante vigilante;
+        // Hipo de ~1 s cada 3 s al caminar (perfil del 2026-11-11): este vigilante recorria los ~48.000 transforms de la escena leyendo t.name (una cadena
+        // nueva por cada uno) y con EndsWith/StartsWith sensibles a cultura. Ahora: (1) los transforms ya procesados estando activos no se vuelven a mirar,
+        // (2) la pasada se reparte en lotes de LoteDeTransforms por frame, (3) solo se lanza cuando cambia la fase de la mision (se encienden grupos
+        // nuevos) o cada SegundosDeRespaldo, y (4) las comparaciones de nombre son ordinales.
+        public const int LoteDeTransforms = 1500;
+        public const float SegundosDeRespaldo = 10f;
+        public static int PasadasPorLotes { get; private set; }
+        public static int TransformsProcesados { get; private set; }
+        static readonly HashSet<int> hechos = new HashSet<int>();
+        static string firmaDeFase = "";
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarPasadas() { hechos.Clear(); firmaDeFase = ""; PasadasPorLotes = TransformsProcesados = 0; vigilante = null; }
+
+        static string FirmaDeFase()
+        {
+            var d = SP.Operacion.OperacionDirector.Instancia;
+            return d == null ? "-" : d.Fase + "/" + d.Subfase + "/" + UnityEngine.SceneManagement.SceneManager.sceneCount;
+        }
+
         sealed class Vigilante : MonoBehaviour
         {
-            float proximo;
+            float proximo, ultimaPasada; bool pasando;
             void Update()
             {
-                if (Time.unscaledTime < proximo) return;
-                proximo = Time.unscaledTime + 3f;
+                if (pasando || Time.unscaledTime < proximo) return;
+                proximo = Time.unscaledTime + 1f;
                 if (!UnityEngine.SceneManagement.SceneManager.GetActiveScene().name.StartsWith("SC_Operacion", System.StringComparison.Ordinal)) return;
-                Aplicar(false);
+                string f = FirmaDeFase();
+                if (f == firmaDeFase && Time.unscaledTime - ultimaPasada < SegundosDeRespaldo) return;
+                firmaDeFase = f; ultimaPasada = Time.unscaledTime;
+                StartCoroutine(PasarPorLotes());
             }
+
+            System.Collections.IEnumerator PasarPorLotes()
+            {
+                pasando = true;
+                var todos = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include);
+                int enLote = 0;
+                for (int i = 0; i < todos.Length; i++)
+                {
+                    var t = todos[i]; if (t == null) continue;
+                    ProcesarSiHaceFalta(t);
+                    if (++enLote >= LoteDeTransforms) { enLote = 0; yield return null; }
+                }
+                PasadasPorLotes++;
+                yield return null;
+                ProcesarLuces();
+                yield return null;
+                DestructibilidadDelNivel.Aplicar();   // #402
+                pasando = false;
+            }
+        }
+
+        // Un transform activo ya procesado no se vuelve a mirar; uno inactivo (grupo de una fase que aun no empezo) se reintenta en la proxima pasada.
+        static void ProcesarSiHaceFalta(Transform t)
+        {
+            int h = t.GetHashCode();
+            if (hechos.Contains(h)) return;
+            bool activo = t.gameObject.activeInHierarchy;
+            ProcesarTransform(t); TransformsProcesados++;
+            if (activo) hechos.Add(h);
         }
 
         public static void Aplicar(bool registrar = true)
         {
             DestructibilidadDelNivel.Aplicar();   // #402
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Include))
+                if (t != null) ProcesarSiHaceFalta(t);
+            ProcesarLuces();
+            if (registrar) SP.Core.GameLog.Line($"AjustesDeNivelNov08: {ColliderAgregados} colliders, {Apagados} apagados, {LucesAtenuadas} luces atenuadas");
+        }
+
+        static void ProcesarTransform(Transform t)
+        {
+            string n = t.name;
+            if (Quitar.Contains(n) && t.gameObject.activeSelf) { t.gameObject.SetActive(false); Apagados++; return; }
+            if (AjustesDeNivelNov11.Quitar(t)) { Apagados++; return; }   // #415 (UPS y torre negra) y #422 (Azotea_Equipo)
+            // #408: el escenario del salon del 2.o piso (plataforma, borde y telon, sin collider). "Escenario" tambien es un grupo de la Huida: se filtra por posicion.
+            if ((n == "Escenario" || n == "Escenario_Borde" || n == "Escenario_Telon") && t.gameObject.activeSelf && EsDelSalonDelSegundoPiso(t))
+            { t.gameObject.SetActive(false); Apagados++; EscenarioQuitado++; return; }
+            if (n == "Azotea_Equipo" && t.GetComponent<MarcaEquipoMovido>() == null) SacarDelHuecoDeLaTorre(t);
+            // #404: la guia del mando dibujaba un punteado amarillo sobre la alfombra. Quedaban ademas copias huerfanas de GuiaDeMando guardadas en la escena
+            // (con la linea encendida): se apagan todas las que no son la instancia viva.
+            if (n == "GuiaDeMando" && t.gameObject.activeSelf)
             {
-                if (t == null) continue;
-                string n = t.name;
-                if (Quitar.Contains(n) && t.gameObject.activeSelf) { t.gameObject.SetActive(false); Apagados++; continue; }
-                // #408: el escenario del salon del 2.o piso (plataforma, borde y telon, sin collider). "Escenario" tambien es un grupo de la Huida: se filtra por posicion.
-                if ((n == "Escenario" || n == "Escenario_Borde" || n == "Escenario_Telon") && t.gameObject.activeSelf && EsDelSalonDelSegundoPiso(t))
-                { t.gameObject.SetActive(false); Apagados++; EscenarioQuitado++; continue; }
-                if (n == "Azotea_Equipo" && t.GetComponent<MarcaEquipoMovido>() == null) SacarDelHuecoDeLaTorre(t);
-                // #404: la guia del mando dibujaba un punteado amarillo sobre la alfombra. Quedaban ademas copias huerfanas de GuiaDeMando guardadas en la escena
-                // (con la linea encendida): se apagan todas las que no son la instancia viva.
-                if (n == "GuiaDeMando" && t.gameObject.activeSelf)
-                {
-                    var g = t.GetComponent<SP.Operacion.GuiaDeMando>();
-                    if (g == null || g != SP.Operacion.GuiaDeMando.Instancia) { t.gameObject.SetActive(false); Apagados++; GuiasHuerfanasApagadas++; }
-                }
-                // #405 (z-fighting): el relleno sobre la puerta de cada torre tenia su cara +Z en el mismo plano (z=273,1) que la losa vecina: parpadeaba.
-                // Se lo hunde 1 cm hacia atras, una sola vez (la marca evita repetirlo cada 3 s).
-                if (n.EndsWith("Puerta_D2_Relleno") && t.GetComponent<MarcaEquipoMovido>() == null)
-                { t.position += Vector3.back * 0.01f; t.gameObject.AddComponent<MarcaEquipoMovido>(); RellenosHundidos++; }
-                // #405: mas caras coplanares medidas con DetectorDeSolapes (>= 1 m2): el muro interior de las torres B y C con el canto de la losa (x=336,6, cara +X)
-                // y la cornisa E_1 con el rellano de servicio (x=348, cara -X). Se hunden 1 cm detras de la cara vecina.
-                if ((n == "Torre_B_Lado_Interior" || n == "Torre_C_Lado_Interior" || n == "Cornisa_E_1") && t.GetComponent<MarcaEquipoMovido>() == null)
-                { t.position += (n == "Cornisa_E_1" ? Vector3.right : Vector3.left) * 0.01f; t.gameObject.AddComponent<MarcaEquipoMovido>(); RellenosHundidos++; }
-                // #405: los estantes pegados a la medianera norte (z=285,4) tenian la cara +Z en el mismo plano que el muro: se adelantan 1 cm.
-                if (n == "Estante" && t.GetComponent<MarcaEquipoMovido>() == null)
-                {
-                    var re = t.GetComponentInChildren<Renderer>();
-                    if (re != null && Mathf.Abs(re.bounds.max.z - 285.4f) < 0.05f) { t.position += Vector3.forward * 0.01f; RellenosHundidos++; }
-                    t.gameObject.AddComponent<MarcaEquipoMovido>();
-                }
-                // #405: los cuadros de lujo de las torres tenian la cara en el mismo plano que su marco: el A mira a +X, el B a -X; se adelantan 1 cm.
-                if ((n.EndsWith("Lujo_Cuadro_A") || n.EndsWith("Lujo_Cuadro_B")) && t.GetComponent<MarcaEquipoMovido>() == null)
-                { t.position += (n.EndsWith("_A") ? Vector3.right : Vector3.left) * 0.01f; t.gameObject.AddComponent<MarcaEquipoMovido>(); RellenosHundidos++; }
-                // #405: tabla de caras coplanares medidas con DetectorDeSolapes (>= 1 m2): nombre -> desplazamiento de 1 cm hacia atras de la cara vecina.
-                if (DesplazamientosZFighting.TryGetValue(n, out var corrimiento) && t.GetComponent<MarcaEquipoMovido>() == null)
-                {
-                    bool aplica = true;
-                    if (n == "Marco_S") { var rm = t.GetComponentInChildren<Renderer>(); aplica = rm != null && Mathf.Abs(rm.bounds.max.z - 246f) < 0.05f; }
-                    if (aplica) { t.position += corrimiento; RellenosHundidos++; }
-                    t.gameObject.AddComponent<MarcaEquipoMovido>();
-                }
-                if ((n == "Fuente_Chorro" || n == "Fuente_Gota") && t.GetComponent<MarcaChorroAlineado>() == null) AlinearChorro(t);
-                if (t.parent != null && t.parent.name == "PuertasDeAcceso" && (n.StartsWith("Hoja_") || n.StartsWith("Jamba_")) && !n.EndsWith("_Franja")
-                    && t.GetComponent<Collider>() == null && t.GetComponent<MeshRenderer>() != null)
-                {
-                    t.gameObject.AddComponent<BoxCollider>(); ColliderAgregados++;
-                }
+                var g = t.GetComponent<SP.Operacion.GuiaDeMando>();
+                if (g == null || g != SP.Operacion.GuiaDeMando.Instancia) { t.gameObject.SetActive(false); Apagados++; GuiasHuerfanasApagadas++; }
             }
+            // #405 (z-fighting): el relleno sobre la puerta de cada torre tenia su cara +Z en el mismo plano (z=273,1) que la losa vecina: parpadeaba.
+            // Se lo hunde 1 cm hacia atras, una sola vez (la marca evita repetirlo cada 3 s).
+            if (n.EndsWith("Puerta_D2_Relleno", System.StringComparison.Ordinal) && t.GetComponent<MarcaEquipoMovido>() == null)
+            { t.position += Vector3.back * 0.01f; t.gameObject.AddComponent<MarcaEquipoMovido>(); RellenosHundidos++; }
+            // #405: mas caras coplanares medidas con DetectorDeSolapes (>= 1 m2): el muro interior de las torres B y C con el canto de la losa (x=336,6, cara +X)
+            // y la cornisa E_1 con el rellano de servicio (x=348, cara -X). Se hunden 1 cm detras de la cara vecina.
+            if ((n == "Torre_B_Lado_Interior" || n == "Torre_C_Lado_Interior" || n == "Cornisa_E_1") && t.GetComponent<MarcaEquipoMovido>() == null)
+            { t.position += (n == "Cornisa_E_1" ? Vector3.right : Vector3.left) * 0.01f; t.gameObject.AddComponent<MarcaEquipoMovido>(); RellenosHundidos++; }
+            // #405: los estantes pegados a la medianera norte (z=285,4) tenian la cara +Z en el mismo plano que el muro: se adelantan 1 cm.
+            if (n == "Estante" && t.GetComponent<MarcaEquipoMovido>() == null)
+            {
+                var re = t.GetComponentInChildren<Renderer>();
+                if (re != null && Mathf.Abs(re.bounds.max.z - 285.4f) < 0.05f) { t.position += Vector3.forward * 0.01f; RellenosHundidos++; }
+                t.gameObject.AddComponent<MarcaEquipoMovido>();
+            }
+            // #405: los cuadros de lujo de las torres tenian la cara en el mismo plano que su marco: el A mira a +X, el B a -X; se adelantan 1 cm.
+            if ((n.EndsWith("Lujo_Cuadro_A", System.StringComparison.Ordinal) || n.EndsWith("Lujo_Cuadro_B", System.StringComparison.Ordinal)) && t.GetComponent<MarcaEquipoMovido>() == null)
+            { t.position += (n.EndsWith("_A", System.StringComparison.Ordinal) ? Vector3.right : Vector3.left) * 0.01f; t.gameObject.AddComponent<MarcaEquipoMovido>(); RellenosHundidos++; }
+            // #405: tabla de caras coplanares medidas con DetectorDeSolapes (>= 1 m2): nombre -> desplazamiento de 1 cm hacia atras de la cara vecina.
+            if (DesplazamientosZFighting.TryGetValue(n, out var corrimiento) && t.GetComponent<MarcaEquipoMovido>() == null)
+            {
+                bool aplica = true;
+                if (n == "Marco_S") { var rm = t.GetComponentInChildren<Renderer>(); aplica = rm != null && Mathf.Abs(rm.bounds.max.z - 246f) < 0.05f; }
+                if (aplica) { t.position += corrimiento; RellenosHundidos++; }
+                t.gameObject.AddComponent<MarcaEquipoMovido>();
+            }
+            if ((n == "Fuente_Chorro" || n == "Fuente_Gota") && t.GetComponent<MarcaChorroAlineado>() == null) AlinearChorro(t);
+            if (t.parent != null && t.parent.name == "PuertasDeAcceso" && (n.StartsWith("Hoja_", System.StringComparison.Ordinal) || n.StartsWith("Jamba_", System.StringComparison.Ordinal)) && !n.EndsWith("_Franja", System.StringComparison.Ordinal)
+                && t.GetComponent<Collider>() == null && t.GetComponent<MeshRenderer>() != null)
+            {
+                t.gameObject.AddComponent<BoxCollider>(); ColliderAgregados++;
+            }
+        }
+
+        static void ProcesarLuces()
+        {
             foreach (var l in Object.FindObjectsByType<Light>(FindObjectsInactive.Include))
             {
                 if (l == null || !LucesBajar.Contains(l.name) || l.GetComponent<MarcaLuzAtenuada>() != null) continue;
                 l.gameObject.AddComponent<MarcaLuzAtenuada>();
                 l.intensity *= FactorDeLuces; LucesAtenuadas++;
             }
-            if (registrar) SP.Core.GameLog.Line($"AjustesDeNivelNov08: {ColliderAgregados} colliders, {Apagados} apagados, {LucesAtenuadas} luces atenuadas");
         }
 
         sealed class MarcaLuzAtenuada : MonoBehaviour { }

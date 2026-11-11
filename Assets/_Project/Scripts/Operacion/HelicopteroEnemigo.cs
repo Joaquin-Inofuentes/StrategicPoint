@@ -287,7 +287,7 @@ namespace SP.Operacion
                 float mejor = float.MaxValue;
                 foreach (var s in ActorRegistry.All)
                 {
-                    if (s == null || s.Team != TeamId.Player || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                    if (s == null || s.Team != TeamId.Player || s.Encarcelado || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
                     float d = (s.transform.position - transform.position).sqrMagnitude;
                     if (d < mejor) { mejor = d; blancoDeAsalto = s.transform; }
                 }

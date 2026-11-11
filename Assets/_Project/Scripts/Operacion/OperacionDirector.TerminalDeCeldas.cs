@@ -14,6 +14,29 @@ namespace SP.Operacion
         public int LucesApagadasDelPiso { get; private set; }
         public Vector3 PosTerminalDeCeldas => G.PuertaDeCeldas + new Vector3(-2.6f, 0f, -2.2f);
 
+        // Bug #420 ("la zona de interaccion y el rombo deberian estar en la pantalla"): desde el #387 la terminal se monta contra la pared mas cercana,
+        // pero la zona de uso y el rombo seguian en el punto de diseno (PosTerminalDeCeldas), unos metros de la pantalla. Ahora siguen a la terminal real:
+        // la zona es el piso frente a la pantalla y el rombo flota sobre ella.
+        public Vector3 PosDeUsoDeLaTerminal
+        {
+            get
+            {
+                if (TerminalDeCeldas == null) return PosTerminalDeCeldas;
+                var p = TerminalDeCeldas.position + TerminalDeCeldas.forward * 1.0f;   // un metro delante de la pantalla
+                p.y = G.Nivel(2);
+                return p;
+            }
+        }
+        public Vector3 PosDelRomboDeLaTerminal
+        {
+            get
+            {
+                if (TerminalDeCeldas == null) { var q = PosTerminalDeCeldas; q.y = G.Nivel(2); return q + Vector3.up * 0.8f; }
+                var pantalla = TerminalDeCeldas.Find("Pantalla");
+                return pantalla != null ? pantalla.position + TerminalDeCeldas.forward * 0.3f : TerminalDeCeldas.position + Vector3.up * 1.45f;
+            }
+        }
+
         static Material MaterialDePantallaDeTerminal()
         {
             Material modelo = null;

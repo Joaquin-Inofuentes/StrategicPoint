@@ -33,6 +33,7 @@ namespace SP.Operacion
             foreach (var r in GetComponentsInChildren<Renderer>(true))
             {
                 if (r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer) continue;
+                if (r.name == "RomboTanque") continue;   // #417: el rombo marca el bando (rojo vivo), no se tine como la carroceria
                 var mats = r.materials;   // instancia propia: no tine a las camionetas comunes
                 foreach (var m in mats)
                 {

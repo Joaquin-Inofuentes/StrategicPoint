@@ -8,7 +8,7 @@ namespace SP.Presentation
     public static class TitulosDeObjetosOcultos
     {
         public static int Ocultos { get; private set; }
-        static readonly string[] Prefijos = { "Rotulo_PUESTO", "Rotulo_ANTIAEREA", "Rotulo_GENERADOR", "Rotulo_SECTOR" };
+        static readonly string[] Prefijos = { "Rotulo_PUESTO", "Rotulo_ANTIAEREA", "Rotulo_GENERADOR", "Rotulo_SECTOR", "Rotulo_AYUNTAMIENTO", "Rotulo_RADIO" };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Suscribir()

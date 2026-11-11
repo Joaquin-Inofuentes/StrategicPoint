@@ -69,7 +69,10 @@ namespace SP.Core
             // Bug #347 (2026-11-06: "en modo dios deberia ser indestructible"): el tanque propio ya no pierde NADA de vida con el modo dios (antes bajaba hasta 1).
             // Bug #359 (2026-11-06: "no me quitan nada de vida, quiero que cada disparo me saque al menos 15-20 %"): el tanque SI pierde vida con el modo dios
             // (se ve la barra) y no se destruye nunca: baja hasta 1 (ver TopeDeDano).
-            return false;
+            // Bug #416 (2026-11-11, "pone modo dios y revisa que la vida, la barra, no baje: que siga al maximo"): vuelve el criterio del #347. Con el modo dios el
+            // tanque propio NO pierde vida (la barra se queda llena); el golpe se sigue sintiendo (Vehicle.TakeDamage publica el aviso sin quitar nada).
+            // Los guiones lo destruyen igual: DestruirPorGuion le cambia el bando un instante.
+            return h.TryGetComponent<SP.Vehicles.Vehicle>(out var vehiculo) && vehiculo.Bando == TeamId.Player;
         }
 
         // Dano que puede recibir de verdad esta vida con el modo dios activo: un vehiculo del jugador baja hasta 1 y ahi se frena.

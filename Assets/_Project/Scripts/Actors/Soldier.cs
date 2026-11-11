@@ -28,6 +28,11 @@ namespace SP.Actors
         // Item 59: tiempo simulado que el WorldSimulationDriver le debe a este soldado por los frames que salteo por LOD.
         [System.NonSerialized] public float DtLodPendiente;
 
+        // Bug #419 ("los enemigos deberian ignorar a los milicianos mientras estan encarcelados"): un prisionero de las celdas de la mansion
+        // no es un blanco. La grilla espacial no lo indexa (asi ni la IA, ni las torretas, ni el resto de las busquedas lo ven) y los barridos
+        // directos (francotirador, helicoptero) lo saltean. Lo prende PonerPrisioneros y lo apaga LiberarMilicianos.
+        [System.NonSerialized] public bool Encarcelado;
+
         bool bootstrapped;
 
         int id;

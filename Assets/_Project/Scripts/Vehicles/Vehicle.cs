@@ -59,7 +59,12 @@ namespace SP.Vehicles
 
         public void TakeDamage(int amount, int attackerId)
         {
-            if (SP.Core.ModoDios.Protege(Health)) return;   // [F4]
+            if (SP.Core.ModoDios.Protege(Health))   // [F4]
+            {
+                // #416: el tanque propio no pierde vida con el modo dios, pero el golpe se siente (viñeta, sonido, destello de la barra).
+                if (Bando == SP.Combat.TeamId.Player && amount > 0 && Health.IsAlive) EventBus.Instance.Publish(new VehicleDamagedEvent(this, amount, Health.Current, Health.MaxHealth));
+                return;
+            }
             if (AjusteDeDano != null && amount > 0) amount = Mathf.Max(1, AjusteDeDano(amount));
             // Bug #359: cada EXPLOSION enemiga (cohete, obus del blindado) le saca al tanque del jugador al menos el 15 % de su vida maxima.
             if (Bando == SP.Combat.TeamId.Player && DanoDeExplosionEnCurso && amount > 0 && attackerId >= 0 && !IsDestroyed)
@@ -215,11 +220,12 @@ namespace SP.Vehicles
                     baseColors[i] = TieneTextura(r) ? Color.Lerp(Color.white, tinte, 0.55f) : tinte;
                     r.sharedMaterial.color = baseColors[i];
                 }
+            PintarElRombo();   // #417
         }
 
         // Solo el bando, sin teñir (bug #047: las camionetas enemigas ya vienen pintadas de rojo, pero quedaban como
         // "Player": sin anillo de vida en la mira del cañon, barra verde y rombo azul en el minimapa).
-        public void MarcarBando(SP.Combat.TeamId bando) => Bando = bando;
+        public void MarcarBando(SP.Combat.TeamId bando) { Bando = bando; PintarElRombo(); }   // #417: el rombo ya sale del color del bando
 
         static bool EsDelRombo(Transform t)
         {
@@ -385,9 +391,19 @@ namespace SP.Vehicles
                     chassisRenderers[i].sharedMaterial.color = seats.Count > 0 ? Color.Lerp(baseColors[i], Color.black, 0.28f) : baseColors[i];
             }
 
+            PintarElRombo();
+            var minimapIcon = SP.Presentation.MinimapIcon.BuscarPorTarget(transform);
+            if (minimapIcon != null) minimapIcon.RepintarPorEquipo(true);
+        }
+
+        // Bug #417 ("se rompio la geometria del coche enemigo"): las camionetas y tanques enemigos de la Huida no llevan tripulacion (seats vacio), asi que su rombo
+        // quedaba en el gris de "vehiculo vacio": un cubo blanco enorme flotando sobre el coche (el rombo mantiene su tamaño en pantalla). Un vehiculo del bando
+        // enemigo se marca de rojo aunque nadie lo ocupe.
+        void PintarElRombo()
+        {
             if (diamondMaterial != null)
             {
-                Color diamondTarget = SP.Presentation.DiamondGizmo.ColorVacio;
+                Color diamondTarget = Bando == SP.Combat.TeamId.Enemy ? SP.Presentation.DiamondGizmo.ColorEnemigo : SP.Presentation.DiamondGizmo.ColorVacio;
                 if (seats.Count > 0)
                 {
                     bool hasAllied = false;
@@ -404,8 +420,6 @@ namespace SP.Vehicles
                 diamondMaterial.color = diamondTarget;
                 if (diamondMaterial.HasProperty("_BaseColor")) diamondMaterial.SetColor("_BaseColor", diamondTarget);
             }
-            var minimapIcon = SP.Presentation.MinimapIcon.BuscarPorTarget(transform);
-            if (minimapIcon != null) minimapIcon.RepintarPorEquipo(true);
         }
 
         // Lo pone/saca PlayerInputDriver al entrar/salir de un asiento

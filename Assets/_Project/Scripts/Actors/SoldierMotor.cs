@@ -381,7 +381,7 @@ namespace SP.Actors
             if (Vaulting || Retenido) return;
             if (worldDirection.sqrMagnitude > 1f) worldDirection.Normalize();
             transform.position += Resolve(worldDirection * MoveSpeed * dt);
-            RevisarBorde(dt);
+            if (!SP.Operacion.RampaCaminable.AjustarAlMoverse(transform, this)) RevisarBorde(dt);   // #418: sobre una rampa la altura la fija la rampa
         }
 
         // Para los checks: corre solo la revision de borde/escalon.

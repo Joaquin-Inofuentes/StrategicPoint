@@ -301,14 +301,14 @@ namespace SP.Operacion
                     {
                         if (hud != null) hud.Objetivo(TituloObjetivo(5, "TOMAR LA MANSION"), faltan > 0 ? $"2.o piso: elimina a la guardia · {faltan} enemigos" : "Llega a la terminal junto a las celdas del norte y libera a los milicianos", 0.65f, new Color(1f, 0.55f, 0.25f));
                         // Bug #333 ("no puedo interactuar, deberia apretarlo y abrir las carceles"): se abren desde 9 m aunque queden guardias.
-                        var posTerminal = PosTerminalDeCeldas; posTerminal.y = G.Nivel(2);
+                        var posTerminal = PosDeUsoDeLaTerminal;   // #420: la terminal real (contra la pared), no el punto de diseno
                         float dTerminal = Plano(yo.transform.position, posTerminal).magnitude;
                         if (nivel == 2 && dTerminal < AlcanceDeLaTerminalDeCeldas)
                         {
                             if (hud != null) hud.Prompt("[E] USAR LA TERMINAL · ABRIR LAS CELDAS");
                             if (OperacionTerminal.EToque()) LiberarMilicianos();
                         }
-                        else if (nivel == 2) BalizaDeLaMansion("TERMINAL", new Color(1f, 0.95f, 0.2f), posTerminal + Vector3.up * 0.8f, 2);   // el rombo marca las celdas desde que se entra al piso (#330)
+                        else if (nivel == 2) BalizaDeLaMansion("TERMINAL", new Color(1f, 0.95f, 0.2f), PosDelRomboDeLaTerminal, 2);   // el rombo marca las celdas desde que se entra al piso (#330)
                     }
                     else
                     {
@@ -468,6 +468,7 @@ namespace SP.Operacion
                 ColocarEnElPiso(s.transform, p);
                 if (s.Brain != null) { s.Brain.IsPossessedByPlayer = false; s.Brain.Quieto = true; s.Brain.Pasivo = true; s.Brain.CancelOrder(); }
                 if (s.Health != null) s.Health.Invulnerable = true;
+                s.Encarcelado = true;   // #419: los enemigos los ignoran mientras estan en la celda
                 prisioneros.Add(s);
             }
             ActorRegistry.Invalidate();
@@ -530,6 +531,7 @@ namespace SP.Operacion
             foreach (var s in prisioneros)
             {
                 if (s == null) continue;
+                s.Encarcelado = false;   // #419: liberados, vuelven a ser blanco
                 if (s.Health != null) s.Health.Invulnerable = false;
                 if (s.Brain != null) { s.Brain.Quieto = false; s.Brain.Pasivo = false; s.Brain.ReactivarNavegacion(); }
                 var w = s.Weapon;

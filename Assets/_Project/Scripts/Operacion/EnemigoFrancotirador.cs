@@ -82,7 +82,7 @@ namespace SP.Operacion
             Soldier mejor = null; float md = AlcanceMaximo;
             foreach (var a in ActorRegistry.All)
             {
-                if (a == null || a.Team != TeamId.Player || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy) continue;
+                if (a == null || a.Team != TeamId.Player || a.Encarcelado || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy) continue;
                 float d = Vector3.Distance(transform.position, a.transform.position);
                 if (d < AlcanceMinimo) continue;   // a menos de 18 m no es trabajo de francotirador
                 if (d < md) { md = d; mejor = a; }

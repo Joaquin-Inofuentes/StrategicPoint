@@ -87,6 +87,7 @@ namespace SP.Core
             foreach (var s in ActorRegistry.All)
             {
                 if (s == null || s.Health == null || !s.Health.IsAlive) continue;
+                if (s.Encarcelado) continue;   // #419: un prisionero de las celdas no es blanco de nadie
                 // BUG REAL (bugs #12-#17 del usuario): las oleadas EN RESERVA de la Operacion (soldados apagados que esperan su
                 // turno) entraban a la grilla. La escuadra "veia" y perseguia enemigos que no existian (Chase/Attack con 0 enemigos
                 // vivos), nunca habia "calma" y el medico no reanimaba a nadie. Se excluye al apagado SALVO al que esta montado en
