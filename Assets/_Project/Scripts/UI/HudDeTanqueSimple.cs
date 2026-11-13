@@ -58,12 +58,12 @@ namespace SP.UI
             h.raiz = new GameObject("Raiz", typeof(RectTransform)); h.raiz.transform.SetParent(go.transform, false);
             var rt = (RectTransform)h.raiz.transform; rt.anchorMin = new Vector2(0.5f, 0f); rt.anchorMax = new Vector2(0.5f, 0f); rt.pivot = new Vector2(0.5f, 0f);
             rt.anchoredPosition = new Vector2(0f, 26f); rt.sizeDelta = new Vector2(AnchoDeBarra, 64f);
-            h.vida = Barra(rt, "Vida", new Vector2(0f, 26f), new Vector2(AnchoDeBarra, 28f), new Color(0.35f, 0.9f, 0.4f));
+            h.vida = Barra(rt, "Vida", new Vector2(0f, 26f), new Vector2(AnchoDeBarra, 28f), new Color(0.35f, 0.9f, 0.4f), new Color(0.88f, 0.88f, 0.88f, 0.92f));   // 2026-11-13: texto negro => fondo claro para que se lea tambien con la barra baja
             h.recarga = Barra(rt, "Recarga", new Vector2(0f, 2f), new Vector2(AnchoDeBarra, 18f), new Color(1f, 0.8f, 0.3f));
             h.textoRecarga = Etiqueta(h.recarga.transform.parent, "TextoRecarga", 13, new Vector2(0f, 0f), new Vector2(0f, 18f));
             h.insigniaDios = Insignia(rt);
             var tgo = new GameObject("Texto", typeof(RectTransform), typeof(Text)); tgo.transform.SetParent(h.vida.transform.parent, false);
-            h.texto = tgo.GetComponent<Text>(); h.texto.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); h.texto.fontSize = 20; h.texto.raycastTarget = false; h.texto.alignment = TextAnchor.MiddleCenter; h.texto.color = Color.white;
+            h.texto = tgo.GetComponent<Text>(); h.texto.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); h.texto.fontSize = 20; h.texto.raycastTarget = false; h.texto.alignment = TextAnchor.MiddleCenter; h.texto.color = Color.black; h.texto.fontStyle = FontStyle.Bold;   // pedido 2026-11-13: texto de la barra de vida en negro
             var trt = (RectTransform)tgo.transform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.pivot = new Vector2(0.5f, 0.5f); trt.offsetMin = trt.offsetMax = Vector2.zero;   // centrado DENTRO de la barra
             h.raiz.SetActive(false);
         }
@@ -110,11 +110,11 @@ namespace SP.UI
             foreach (var g in escondidos) if (g != null) g.alpha = 0f;
         }
 
-        static Image Barra(RectTransform padre, string nombre, Vector2 pos, Vector2 tam, Color color)
+        static Image Barra(RectTransform padre, string nombre, Vector2 pos, Vector2 tam, Color color, Color? fondoColor = null)
         {
             var fondo = new GameObject(nombre + "_Fondo", typeof(RectTransform), typeof(Image)); fondo.transform.SetParent(padre, false);
             var frt = (RectTransform)fondo.transform; frt.anchorMin = frt.anchorMax = new Vector2(0.5f, 0f); frt.pivot = new Vector2(0.5f, 0f); frt.anchoredPosition = pos; frt.sizeDelta = tam;
-            fondo.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.6f);
+            fondo.GetComponent<Image>().color = fondoColor ?? new Color(0f, 0f, 0f, 0.6f);
             var relleno = new GameObject(nombre, typeof(RectTransform), typeof(Image)); relleno.transform.SetParent(fondo.transform, false);
             var rrt = (RectTransform)relleno.transform; rrt.anchorMin = Vector2.zero; rrt.anchorMax = Vector2.one; rrt.offsetMin = new Vector2(1f, 1f); rrt.offsetMax = new Vector2(-1f, -1f); rrt.pivot = new Vector2(0f, 0.5f);
             var img = relleno.GetComponent<Image>(); img.color = color; img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Horizontal; img.fillOrigin = 0; img.fillAmount = 1f;

@@ -15,11 +15,15 @@ namespace SP.Operacion
     public partial class OperacionDirector
     {
         public const float SegundosDeResistenciaEnAzotea = 100f;
-        public static readonly float[] CuandoSuben = { 6f, 26f, 50f, 78f };
-        public static readonly int[] TorreDelRefuerzo = { 3, 4, 2, 3 };
-        public static readonly float[] CuandoCuelgan = { 14f, 40f, 66f };
-        public static readonly int[] SoldadosPorCuerda = { 3, 4, 4 };
-        static readonly float[] AnguloDeEntradaDeCuerda = { 200f, 330f, 100f };
+        // Pedido 2026-11-13 ("en la terraza el doble de enemigos y repartidos mejor a lo largo del tiempo"): antes 4 oleadas por escalera (18 soldados, con
+        // huecos de 24-28 s) y 3 helicopteros de cuerdas (11); ahora 8 oleadas parejas (36) y 6 helicopteros (22) = 58, uno nuevo cada ~8 s sin dejar
+        // intervalos largos y sin amontonarse al final (la ultima oleada entra a los 89 s; el rescate llega a los 100).
+        public static readonly float[] CuandoSuben = { 5f, 17f, 29f, 41f, 53f, 65f, 77f, 89f };
+        public static readonly int[] TorreDelRefuerzo = { 3, 4, 2, 3, 4, 2, 3, 4 };
+        public static readonly int[] SoldadosPorOleada = { 4, 4, 5, 4, 5, 4, 5, 5 };
+        public static readonly float[] CuandoCuelgan = { 10f, 26f, 42f, 58f, 74f, 88f };
+        public static readonly int[] SoldadosPorCuerda = { 3, 4, 4, 3, 4, 4 };
+        static readonly float[] AnguloDeEntradaDeCuerda = { 200f, 330f, 100f, 250f, 20f, 150f };
         // Puntos del techo donde se cuelgan las cuerdas (se elige el que queda a mas de 9 m del jugador).
         static readonly Vector3[] PuntosDeCuerda =
         {
@@ -57,7 +61,7 @@ namespace SP.Operacion
             {
                 int i = TorreDelRefuerzo[ondasDeAzotea++];
                 var p = G.RellanoDeTorre(i);
-                int cuantos = ondasDeAzotea >= 3 ? 5 : 4;
+                int cuantos = SoldadosPorOleada[(ondasDeAzotea - 1) % SoldadosPorOleada.Length];
                 for (int k = 0; k < cuantos; k++) pendientesMansion.Add(new SpawnMansion { pos = p, radio = 0f, dispararEn = relojMansion + k * 1.1f, nivel = 3, desdeEscalera = true });
                 if (hud != null) hud.Aviso($"REFUERZOS POR LA ESCALERA {G.Torres[i].nombre}", 2.6f);
             }

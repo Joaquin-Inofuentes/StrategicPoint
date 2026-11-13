@@ -54,7 +54,7 @@ namespace SP.Operacion
                 if (s == null) { Destroy(go); continue; }
                 if (EnemigosDeExtraccionCreados % 10 == 0) EnemigoPesado.Aplicar(s);   // 2026-11-07: cada 10.o es un PESADO
                 else if (EnemigosDeExtraccionCreados % 7 == 0) EnemigoEscudero.Aplicar(s);   // 2026-11-13: cada 7.o un ESCUDERO
-                else if (EnemigosDeExtraccionCreados % PerroEnemigo.CadaCuantosEnLaExtraccion == 0) PerroEnemigo.Aplicar(s);      // 2026-11-13: cada 6.o un PERRO; ahora cada 3.o
+                else if (EnemigosDeExtraccionCreados % PerroEnemigo.CadaCuantosEnLaExtraccion == 0) { var pr = PerroEnemigo.Aplicar(s); if (pr != null) pr.DondeIr = () => { var yo = Poseido(); return yo != null ? yo.transform.position : pr.transform.position; }; }      // 2026-11-13: cada 6.o un PERRO; ahora cada 3.o
                 enemigosDeExtraccion.Add(s);
                 ApoyoEnElPiso.Apoyar(s.transform);
                 if (s.Brain != null)

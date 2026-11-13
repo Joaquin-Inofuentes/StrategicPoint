@@ -20,13 +20,15 @@ namespace SP.Operacion
         public enum Fase { Merodea, Alerta, Carga, Salto, Muerde, Muerto }
 
         public const int Vida = 90, DanoDeMordida = 14, DanoDeSalto = 26;
-        public const float VelocidadDeCarga = 11f, VelocidadDeMarcha = 1.7f, RangoDeVision = 38f, AlcanceDeSalto = 7.5f, AlcanceMinimoDeSalto = 2.6f;
+        public const float VelocidadDeTrote = 6.5f, VelocidadDeCarga = 11f, VelocidadDeMarcha = 1.7f, RangoDeVision = 38f, AlcanceDeSalto = 7.5f, AlcanceMinimoDeSalto = 2.6f;
         public const float SegundosDeAlerta = 0.45f, SegundosEntreMordidas = 0.8f, EsperaDelSalto = 2.2f, AlcanceDeMordida = 1.7f, DuracionMinimaDelSalto = 0.34f;
         public const float AlturaDelPivote = 0.8f, EscalaDelModelo = 1.18f;
         // Pedido 2026-11-13 "en la ciudad mas perros": cada cuantos enemigos que aparecen, uno es perro (antes 7 / 4 / 6).
         public const int CadaCuantosEnMansion = 3, CadaCuantosEnLaCiudad = 2, CadaCuantosEnLaExtraccion = 3;
 
         public static int Creados { get; private set; }
+        public System.Func<Vector3> DondeIr;   // si no hay blanco a la vista, el perro trota hacia ese punto (lo pone el director)
+        public NavMeshPathCache Camino => camino;
         public Fase Estado { get; private set; } = Fase.Merodea;
         public int Ladridos { get; private set; }
         public int Saltos { get; private set; }
@@ -217,6 +219,12 @@ namespace SP.Operacion
             {
                 case Fase.Merodea:
                     if (Blanco != null) { CambiarFase(Fase.Alerta); PonerVoz(SfxKind.GruniidoDePerro, 0.7f); break; }
+                    // 2026-11-13: un perro que aparece lejos (fuera de los 38 m de vision) ya no se queda merodeando en la entrada: sale al trote hacia donde esta la accion.
+                    if (DondeIr != null)
+                    {
+                        var meta = DondeIr();
+                        if (Plano(meta - transform.position).magnitude > 7f) { Avanzar(meta, VelocidadDeTrote, dt); break; }
+                    }
                     if (Time.time >= proximoMerodeo || Vector3.Distance(Plano(transform.position), Plano(destinoMerodeo)) < 0.5f)
                     {
                         proximoMerodeo = Time.time + Random.Range(1.5f, 3.5f);
@@ -389,15 +397,44 @@ namespace SP.Operacion
     }
 
     // Camino por la malla de navegacion hacia una meta, recalculado cada 0,4 s; devuelve el siguiente punto a seguir.
+    // 2026-11-13 ("los perros de la ciudad no encuentran bien el camino"): antes pedia el camino desde/hasta puntos CRUDOS (un aliado sobre un escalon,
+    // junto a una pared o en un hueco del navmesh daba "sin camino" y el perro se iba en linea recta contra la pared), ignoraba los caminos parciales
+    // y no detectaba atascos. Ahora: ambos extremos se pegan a la malla, un camino parcial se sigue hasta su ultimo punto, y si en 1,2 s casi no avanzo
+    // (esquina, prop, otro soldado) se desvia un tramo corto hacia un lado antes de volver a planear.
     public sealed class NavMeshPathCache
     {
         UnityEngine.AI.NavMeshPath camino = new UnityEngine.AI.NavMeshPath(); float proximo; int idx = 1; Vector3 metaVieja = new Vector3(1e9f, 0f, 0f);
+        Vector3 posRef; float tRef = -1f; Vector3 desvio; float desvioHasta;
+        public int Replanes { get; private set; }
+        public int Parciales { get; private set; }
+        public int SinCamino { get; private set; }
+        public int Atascos { get; private set; }
+
         public Vector3 SiguientePunto(Vector3 desde, Vector3 meta)
         {
-            if (Time.time >= proximo || (meta - metaVieja).sqrMagnitude > 4f)
+            float ahora = Time.time;
+            if (tRef < 0f) { posRef = desde; tRef = ahora; }
+            if (ahora - tRef >= 1.2f)
             {
-                proximo = Time.time + 0.4f; metaVieja = meta; idx = 1;
-                if (!UnityEngine.AI.NavMesh.CalculatePath(desde, meta, UnityEngine.AI.NavMesh.AllAreas, camino) || camino.corners.Length < 2) return meta;
+                var dd = desde - posRef; dd.y = 0f;
+                if (dd.magnitude < 0.35f && (new Vector3(meta.x - desde.x, 0f, meta.z - desde.z)).magnitude > 2.5f)
+                {
+                    Atascos++;
+                    var lado = Vector3.Cross(Vector3.up, (meta - desde).normalized) * (Random.value < 0.5f ? 1f : -1f);
+                    var q = desde + lado * Random.Range(2.5f, 4.5f);
+                    desvio = UnityEngine.AI.NavMesh.SamplePosition(q, out var hq, 3f, UnityEngine.AI.NavMesh.AllAreas) ? hq.position : desde; desvioHasta = ahora + 0.9f; proximo = 0f;
+                }
+                posRef = desde; tRef = ahora;
+            }
+            if (ahora < desvioHasta && desvio != desde) return desvio;
+            if (ahora >= proximo || (meta - metaVieja).sqrMagnitude > 4f)
+            {
+                proximo = ahora + 0.4f; metaVieja = meta; idx = 1; Replanes++;
+                var o = UnityEngine.AI.NavMesh.SamplePosition(desde, out var ho, 4f, UnityEngine.AI.NavMesh.AllAreas) ? ho.position : desde;
+                var m = UnityEngine.AI.NavMesh.SamplePosition(meta, out var hm, 8f, UnityEngine.AI.NavMesh.AllAreas) ? hm.position : meta;
+                bool ok = UnityEngine.AI.NavMesh.CalculatePath(o, m, UnityEngine.AI.NavMesh.AllAreas, camino);
+                if (!ok || camino.status == UnityEngine.AI.NavMeshPathStatus.PathInvalid || camino.corners.Length < 2) { SinCamino++; return m; }
+                if (camino.status == UnityEngine.AI.NavMeshPathStatus.PathPartial) Parciales++;
             }
             var c = camino.corners;
             while (idx < c.Length - 1 && (new Vector3(c[idx].x - desde.x, 0f, c[idx].z - desde.z)).sqrMagnitude < 0.5f * 0.5f) idx++;

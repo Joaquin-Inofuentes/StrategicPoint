@@ -128,7 +128,7 @@ namespace SP.Operacion
             if (s == null) { Destroy(go); return; }
             if (RefuerzosCreados % 6 == 0) EnemigoPesado.Aplicar(s);   // 2026-11-07: cada 6.o refuerzo es un PESADO
             else if (RefuerzosCreados % 5 == 0) EnemigoEscudero.Aplicar(s);   // 2026-11-13: cada 5.o un ESCUDERO
-            else if (RefuerzosCreados % PerroEnemigo.CadaCuantosEnLaCiudad == 0) PerroEnemigo.Aplicar(s);      // 2026-11-13: cada 4.o un PERRO; "en la ciudad mas perros" -> cada 2.o
+            else if (RefuerzosCreados % PerroEnemigo.CadaCuantosEnLaCiudad == 0) { var pr = PerroEnemigo.Aplicar(s); if (pr != null) pr.DondeIr = () => plaza != null ? plaza.position : pr.transform.position; }      // 2026-11-13: cada 4.o un PERRO; "en la ciudad mas perros" -> cada 2.o
             else if (RefuerzosCreados % 5 == 0) EnemigoFrancotirador.Aplicar(s);   // #381: cada 5.o es FRANCOTIRADOR
             refuerzosCiudad.Add(s);
             ApoyoEnElPiso.Apoyar(s.transform);

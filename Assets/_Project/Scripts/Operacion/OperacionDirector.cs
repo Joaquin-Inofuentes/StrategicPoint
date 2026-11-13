@@ -228,6 +228,7 @@ namespace SP.Operacion
             if (torretasDelCentro != null) foreach (var t in torretasDelCentro) if (t != null) SP.Vehicles.TorretaFija.Instalar(t);
             PrepararRefuerzosDeLaCiudad();
             ArmarCoberturasDeLaPlaza();
+            AjustarObstaculo.TallarSetosYPilares();   // 2026-11-13: los setos y pilares del jardin talan la malla (los perros se quedaban empujandolos)
             SP.Presentation.PrecalentadoDeCombate.Ejecutar();
             if (Application.isPlaying) GuiaDeObjetivo.Asegurar();   // #105: flecha 3D + ruta punteada + flecha a los pies
             if (Application.isPlaying) { SP.Tutorial.MarcaDeObjetivosEnMinimapa.Extras = PuntosExtraDeMinimapa; SP.Tutorial.MarcaDeObjetivosEnMinimapa.Asegurar(); }
