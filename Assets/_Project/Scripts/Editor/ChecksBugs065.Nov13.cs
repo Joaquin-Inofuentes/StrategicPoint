@@ -30,9 +30,11 @@ namespace SP.EditorTools
             float yawPrev = canon.DesiredYaw, pitchPrev = canon.DesiredPitch;
             Quaternion camPrev = cam.transform.rotation;
             float maxFuego = 0f, maxBase = 0f, maxCam = 0f; int disparos = 0; int hasta = -1;
-            for (int f = 0; f < 240; f++)
+            // el enfriamiento corre en tiempo de juego: sin ventana los cuadros son mucho mas rapidos que 60 fps, asi que se dispara cada 1,3 s de juego (y se mide 10 s)
+            float t0 = Time.time, ultimo = t0; bool primero = true;
+            for (int f = 0; f < 4000 && Time.time - t0 < 10f; f++)
             {
-                if (f % 50 == 20 && canon.TryFire()) { disparos++; hasta = f + 4; }
+                if ((primero ? Time.time - t0 >= 0.3f : Time.time - ultimo >= 1.3f) && canon.TryFire()) { disparos++; hasta = f + 4; ultimo = Time.time; primero = false; }
                 yield return null;
                 float dy = Mathf.Abs(Mathf.DeltaAngle(yawPrev, canon.DesiredYaw)), dp = Mathf.Abs(Mathf.DeltaAngle(pitchPrev, canon.DesiredPitch));
                 float dc = Quaternion.Angle(camPrev, cam.transform.rotation);

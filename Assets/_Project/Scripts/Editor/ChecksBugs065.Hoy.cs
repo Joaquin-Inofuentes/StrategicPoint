@@ -842,7 +842,17 @@ namespace SP.EditorTools
             foreach (var x in Esperar(1.0f)) yield return x;
             W8Ok(ref ok, rig.Mode == SP.CameraSystem.ControlMode.Rts, sb, "la camara esta en RTS");
             var mouse = UnityEngine.InputSystem.Mouse.current; var kb = UnityEngine.InputSystem.Keyboard.current;
+            // sin ventana (batchmode) no hay dispositivos fisicos: se crean virtuales para poder simular el puntero y la tecla [Q]
+            if (mouse == null) mouse = UnityEngine.InputSystem.InputSystem.AddDevice<UnityEngine.InputSystem.Mouse>();
+            if (kb == null) kb = UnityEngine.InputSystem.InputSystem.AddDevice<UnityEngine.InputSystem.Keyboard>();
+            // sin foco (batchmode) el Input System resetea los dispositivos en cada actualizacion: se le pide ignorar el foco
+            UnityEngine.InputSystem.InputSystem.settings.backgroundBehavior = UnityEngine.InputSystem.InputSettings.BackgroundBehavior.IgnoreFocus;
             if (mouse == null || kb == null) { Fin("FALLO no hay mouse/teclado virtual"); yield break; }
+            var sobrantes = new System.Collections.Generic.List<UnityEngine.InputSystem.InputDevice>();
+            foreach (var dev in UnityEngine.InputSystem.InputSystem.devices) if ((dev is UnityEngine.InputSystem.Mouse && dev != mouse) || (dev is UnityEngine.InputSystem.Keyboard && dev != kb)) sobrantes.Add(dev);
+            foreach (var dev in sobrantes) UnityEngine.InputSystem.InputSystem.DisableDevice(dev);
+            mouse.MakeCurrent(); kb.MakeCurrent();
+            sb.Append($"[mouses={UnityEngine.InputSystem.InputSystem.devices.Count} actual==mio:{UnityEngine.InputSystem.Mouse.current == mouse}] ");
             Vector3 pant = Vector3.zero; float tEnc = Time.realtimeSinceStartup;
             while (Time.realtimeSinceStartup - tEnc < 8f)
             {
@@ -859,7 +869,7 @@ namespace SP.EditorTools
                 var pp = rig.Cam.WorldToScreenPoint(otro.transform.position + Vector3.up * alto);
                 UnityEngine.InputSystem.LowLevel.InputState.Change(mouse.position, (Vector2)pp);
                 yield return null; yield return null; yield return null;
-                barrido += $"[+{alto:0.0}m -> {(drv.AliadoApuntadoRts != null ? drv.AliadoApuntadoRts.DisplayName : "nadie")} {drv.MotivoDelResalte}] ";
+                barrido += $"[+{alto:0.0}m ->{(drv.AliadoApuntadoRts != null ? drv.AliadoApuntadoRts.DisplayName : "nadie")} {drv.MotivoDelResalte}] ";
                 if (drv.AliadoApuntadoRts == otro) { pant = pp; break; }
             }
             sb.Append(barrido);
