@@ -61,10 +61,14 @@ namespace SP.Actors
         // "walk crouching" (ciclo de ~1,5 m/s) patinaban sobre el piso.
         public const float FactorDeVelocidadAgachado = 0.5f;
         public float SpeedMultiplier = 1f;
+        // Escudero (2026-11-13): demora en girar. 1 = normal; menor = gira mas lento (tambien frena cuanto tarda en encarar y disparar).
+        public float FactorDeGiro = 1f;
+        // Constante de la clase del soldado (pesado lento, escudero lento); el AiBrain pisa SpeedMultiplier en cada tick, esto no.
+        public float FactorDeClase = 1f;
         // Bug #079: multiplicador de velocidad de la FURIA (RachaDeBajas). Aparte de SpeedMultiplier porque la IA lo pisa en cada tick.
         public float FactorDeBuff = 1f;
         public bool Atado { get; set; }
-        public float MoveSpeed => Atado ? 0f : moveSpeed * SpeedMultiplier * FactorDeBuff * (Corriendo ? FactorDeCarrera * FactorDeCarreraDios : (IsCrouching ? FactorDeVelocidadAgachado : 1f));
+        public float MoveSpeed => Atado ? 0f : moveSpeed * SpeedMultiplier * FactorDeClase * FactorDeBuff * (Corriendo ? FactorDeCarrera * FactorDeCarreraDios : (IsCrouching ? FactorDeVelocidadAgachado : 1f));
         // Bug #354: con el modo dios el soldado que maneja el jugador corre x2 (y la escena va a x2 aparte).
         Soldier yoSoldado;
         float FactorDeCarreraDios
@@ -398,7 +402,7 @@ namespace SP.Actors
             dir.y = 0f;
             if (dir.sqrMagnitude < 0.0001f) return;
             var targetRot = Quaternion.LookRotation(dir);
-            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, turnSpeedDegPerSec * dt);
+            transform.rotation = Quaternion.RotateTowards(transform.rotation, targetRot, turnSpeedDegPerSec * FactorDeGiro * dt);
         }
 
         // Avanza hacia el punto y gira para mirarlo. Devuelve true al llegar.

@@ -777,10 +777,11 @@ namespace SP.Ai
             self.Motor.SpeedMultiplier = (!correr && State == AiState.Follow && self.Team == SP.Combat.TeamId.Player) ? 1.15f : 1f;
         }
 
+        public bool Anulado;
         public void Tick(float dt)
         {
             if (!bootstrapped) Bootstrap();
-            if (IsPossessedByPlayer || self == null) return;
+            if (IsPossessedByPlayer || self == null || Anulado) return;   // Anulado: lo maneja otro componente (el perro enemigo)
             if (IAPausada) return; // cinematica de apertura en curso: nadie se mueve, sensa ni dispara
             if (MontadoEnVehiculo) return;
             if (!self.gameObject.activeInHierarchy) return;

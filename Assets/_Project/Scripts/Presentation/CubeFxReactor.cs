@@ -24,6 +24,8 @@ namespace SP.Presentation
         Animator animator;
         Color baseColor;
         Vector3 baseScale;
+        // 2026-11-13: un enemigo agrandado (pesado) cambia la escala DESPUES del Awake: hay que avisarle para que no la devuelva a la original.
+        public Vector3 EscalaBase { get => baseScale; set => baseScale = value; }
         bool bootstrapped;
 
         IDisposable damageSub, deathSub, shotSub;

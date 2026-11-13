@@ -16,7 +16,9 @@ namespace SP.Operacion
         // Bugs #385/#389 (2026-11-08): "que tenga 3 veces la vida que tiene ahora" -> de x4 a x12.
         public const int MultiplicadorDeVida = 12;
         public const float SegundosDeEstacionamiento = 2f, SegundosSinVerParaRelajarse = 3f;
-        public static readonly Vector3 Ensanche = new Vector3(1.12f, 1.04f, 1.12f);
+        // 2026-11-13: "mas pesado, otro color muy distinto y un poquito mas grande": mas ancho y alto, camina mas lento y cada paso retumba.
+        public static readonly Vector3 Ensanche = new Vector3(1.28f, 1.16f, 1.28f);
+        public const float FactorDeVelocidad = 0.72f, MetrosPorPaso = 1.5f;
         public enum Fase { Patrulla, Estacionando, Frenesi }
 
         public static int Creados { get; private set; }
@@ -37,7 +39,19 @@ namespace SP.Operacion
             if (s == null || s.Team != TeamId.Enemy) return null;
             var ya = s.GetComponent<EnemigoPesado>(); if (ya != null) return ya;   // idempotente: un clon de un pesado ya lo es
             s.gameObject.name = "Pesado_" + (++Creados);
-            s.transform.localScale = Vector3.Scale(s.transform.localScale, Ensanche);
+            // La raiz solo se ensancha (X/Z): el motor fija el pivote a 0,8 m del piso sin mirar la escala, asi que escalar la raiz en Y hundiria el collider.
+            // El mayor alto se le da al modelo visual, estirandolo desde los pies para que sigan en el piso.
+            s.transform.localScale = Vector3.Scale(s.transform.localScale, new Vector3(Ensanche.x, 1f, Ensanche.z));
+            foreach (var r in s.GetComponents<SP.Presentation.CubeFxReactor>()) r.EscalaBase = s.transform.localScale;   // que el reactor de impactos no la devuelva a 1
+            var smr = s.GetComponentInChildren<SkinnedMeshRenderer>(true);
+            if (smr != null)
+            {
+                var visual = smr.transform.parent != null && smr.transform.parent != s.transform ? smr.transform.parent : smr.transform;
+                float piesAntes = smr.bounds.min.y, vy = visual.position.y;
+                visual.localScale = new Vector3(visual.localScale.x, visual.localScale.y * Ensanche.y, visual.localScale.z);
+                float piesDespues = vy + (piesAntes - vy) * Ensanche.y;
+                visual.position -= Vector3.up * (piesDespues - piesAntes);   // los pies vuelven adonde estaban
+            }
             return s.gameObject.AddComponent<EnemigoPesado>();
         }
 
@@ -48,6 +62,8 @@ namespace SP.Operacion
             if (soldado == null || soldado.Health == null) yield break;
             VidaMaxima = Mathf.Max(1, soldado.Health.MaxHealth) * MultiplicadorDeVida;
             soldado.Health.Initialize(soldado.Id, VidaMaxima);
+            if (soldado.Motor != null) soldado.Motor.FactorDeClase = FactorDeVelocidad;
+            ultimaPos = transform.position;
             var arma = soldado.Weapon;
             if (arma != null && !arma.Loadout.Contains(WeaponKind.Minigun)) { arma.Loadout.Insert(0, WeaponKind.Minigun); arma.EquipFromLoadout(0); }
             // Bug #389: en movimiento dispara rafaga continua (minigun); detenido, obuses explosivos como los tanques (el lanzacohetes: explosion de 5 m).
@@ -84,8 +100,22 @@ namespace SP.Operacion
             if (i >= 0) arma.EquipFromLoadout(i);
         }
 
+        Vector3 ultimaPos; float recorrido;
+        public int PasosPesados { get; private set; }
+        // Cada MetrosPorPaso recorridos retumba el suelo: un golpe grave bajo y corto (el impacto pesado con el tono bajado).
+        void PasosQueRetumban()
+        {
+            var p = transform.position; var d = p - ultimaPos; d.y = 0f; ultimaPos = p;
+            if (soldado == null || soldado.Health == null || !soldado.Health.IsAlive || d.magnitude > 2f) return;
+            recorrido += d.magnitude;
+            if (recorrido < MetrosPorPaso) return;
+            recorrido = 0f; PasosPesados++;
+            SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.PasoPesado, p, 0.5f, 0.6f);
+        }
+
         void Update()
         {
+            PasosQueRetumban();
             ManejarRecarga();
             ElegirArma();
             if (cerebro == null || soldado == null || soldado.Health == null || !soldado.Health.IsAlive) return;

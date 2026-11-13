@@ -33,7 +33,7 @@ namespace SP.Actors
             {
                 if (matAliado == null) matAliado = SP.Core.RecursosCache.Cargar<Material>("Soldados/MAT_Trimsheet_Aliado");
                 if (matEnemigo == null) matEnemigo = SP.Core.RecursosCache.Cargar<Material>("Soldados/MAT_Trimsheet_Enemigo");
-                var mat = def.Enemigo ? MaterialEnemigoVisible() : (def.Nombre == "MEDICO" ? MaterialMedico() : def.Nombre == "ASALTO" ? MaterialAsalto() : def.Nombre == "FRANCOTIRADOR" ? MaterialFrancotirador() : MaterialAliado());
+                var mat = def.Nombre == "PESADO" ? MaterialPesado() : def.Nombre == "ESCUDERO" ? MaterialEscudero() : def.Enemigo ? MaterialEnemigoVisible() : (def.Nombre == "MEDICO" ? MaterialMedico() : def.Nombre == "ASALTO" ? MaterialAsalto() : def.Nombre == "FRANCOTIRADOR" ? MaterialFrancotirador() : MaterialAliado());
                 if (s.Role == RoleType.Civilian) mat = MaterialCivil();
                 smr.sharedMesh = malla;
                 if (mat != null) smr.sharedMaterial = mat;
@@ -47,7 +47,8 @@ namespace SP.Actors
                 w.Loadout.AddRange(def.Loadout);
                 w.EquipFromLoadout(0);
             }
-            if (s.Role == RoleType.Civilian) OcultarArma();
+            if (s.Role == RoleType.Civilian || def.Nombre == "PERRO") OcultarArma();
+            if (def.Nombre == "PERRO" && smr != null) smr.enabled = false;   // el perro lleva su propio modelo (PerroEnemigo)
             Aplicado = true;
         }
 
@@ -243,6 +244,27 @@ namespace SP.Actors
             (19, new Color(0.13f, 0.17f, 0.26f)),   // pantalon: azul pizarra
             (32, AzulBando), (33, AzulBando),       // correaje de bando
         }, new Color(0.22f, 0.22f, 0.26f));
+        // Pesado (2026-11-13): violeta profundo con chaleco/casco de acero casi negro y correaje magenta; ya no se parece a un enemigo comun (rojo) ni a un aliado (azul).
+        static Material matPesado, matEscudero;
+        static Material MaterialPesado() => MaterialPorCeldas(ref matPesado, "MAT_Trimsheet_Pesado", new[]
+        {
+            // Mesh_Pesado usa sus propias celdas (medidas por altura de los vertices): 12 torso y brazos, 34 piernas, 25 chaleco, 24 casco, 38/1 correaje y botas
+            (12, new Color(0.45f, 0.13f, 0.72f)),   // uniforme: violeta
+            (34, new Color(0.19f, 0.08f, 0.30f)),   // pantalon: violeta oscuro
+            (25, new Color(0.13f, 0.11f, 0.18f)),   // chaleco blindado: acero casi negro
+            (24, new Color(0.17f, 0.15f, 0.22f)),   // casco
+            (38, new Color(0.10f, 0.09f, 0.13f)),   // guantes y correaje
+            (1, new Color(0.14f, 0.09f, 0.20f)),    // botas y piezas varias
+            (28, new Color(0.95f, 0.15f, 0.62f)), (29, new Color(0.95f, 0.15f, 0.62f)), (46, new Color(0.95f, 0.15f, 0.62f)), (60, new Color(0.30f, 0.12f, 0.45f)),   // correaje de bando: magenta
+        }, new Color(0.16f, 0.04f, 0.26f));
+        // Escudero (2026-11-13): grafito con casco y chaleco plateados (antidisturbios).
+        static Material MaterialEscudero() => MaterialPorCeldas(ref matEscudero, "MAT_Trimsheet_Escudero", new[]
+        {
+            (8, new Color(0.16f, 0.17f, 0.20f)), (10, new Color(0.16f, 0.17f, 0.20f)), (12, new Color(0.16f, 0.17f, 0.20f)),   // uniforme: grafito
+            (52, new Color(0.80f, 0.84f, 0.88f)),   // casco y chaleco: plata
+            (19, new Color(0.09f, 0.10f, 0.12f)),   // pantalon: negro
+            (32, new Color(0.95f, 0.75f, 0.1f)), (33, new Color(0.95f, 0.75f, 0.1f)),     // correaje: amarillo
+        }, new Color(0.10f, 0.10f, 0.12f));
         static Material MaterialFrancotirador() => MaterialPorCeldas(ref matFrancotirador, "MAT_Trimsheet_Aliado_Francotirador", new[]
         {
             (10, new Color(0.20f, 0.31f, 0.17f)),   // uniforme: musgo

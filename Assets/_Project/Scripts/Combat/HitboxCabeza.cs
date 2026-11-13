@@ -66,6 +66,7 @@ namespace SP.Combat
         public static HitboxCabeza De(Soldier s)
         {
             if (s == null || s.Team != TeamId.Enemy) return null;
+            if (s.name.StartsWith("Perro", System.StringComparison.Ordinal)) return null;   // el perro no tiene cabeza humana a la altura del pecho: solo se lo golpea por el cuerpo
             var h = s.GetComponentInChildren<HitboxCabeza>(true);
             if (h != null) return h;
 

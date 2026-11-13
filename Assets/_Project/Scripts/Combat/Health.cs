@@ -120,6 +120,7 @@ namespace SP.Combat
         // Indestructible: nada le quita vida (balas, explosiones, atropello, caidas, cuchillo, headshot). Lo usa la mision con el
         // civil desde que aparece hasta que el jugador llega a el (MisionDirector.TickRescatar).
         public bool Invulnerable { get; set; }
+        public System.Func<int, int, bool, int> FiltroDeDano;
 
         // WP10 (#101): multiplicador del dano recibido (1 = normal). El operador de la radio de campana recibe x0,5 mientras la usa.
         public float FactorDeDano { get; set; } = 1f;
@@ -160,6 +161,8 @@ namespace SP.Combat
 
             // [F4] modo dios: el bando del jugador no recibe dano.
             if (Invulnerable || ModoDios.Protege(this)) return;
+            // Escudero (2026-11-13): un filtro externo puede reducir o anular el golpe (el escudo frontal). Devuelve el dano que pasa.
+            if (FiltroDeDano != null) { amount = FiltroDeDano(amount, attackerId, headshot); if (amount <= 0) return; }
 
             // Bug #394 (2026-11-08: "creo que los enemigos se disparan entre ellos"): lo que dispara un enemigo (soldado, vehiculo -2/-3) nunca
             // le saca vida a otro enemigo. Los barriles y explosiones sin duenio (id -1) siguen contando.

@@ -22,7 +22,7 @@ namespace SP.Presentation
     // Ronda 7: Explosion (boom con cola), GrenadePin/Throw/Bounce, KnifeSwing/Hit, Jump/Land,
     // RadialOpen/Tick/Confirm/Cancel, HealStart/Done, Revive y BombPlant/Tick (ver SfxSintetico).
     // WP2 (#072): DestruccionVehiculo = chapa que se retuerce y cae al final de un vehiculo (SfxSintetico.DestruccionVehiculo).
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire, TutKey, TutSub, TutStep, TutVictory, Explosion, GrenadePin, GrenadeThrow, GrenadeBounce, KnifeSwing, KnifeHit, Jump, Land, RadialOpen, RadialTick, RadialConfirm, RadialCancel, HealStart, HealDone, Revive, BombPlant, BombTick, AmmoPickup, Logro, ObjetivoCumplido, ImpactoPesado, BalaImpacto, Orugas, MotorCamioneta, AmbienteDesierto, RuedasCamioneta, DestruccionVehiculo, VidrioRoto }
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire, TutKey, TutSub, TutStep, TutVictory, Explosion, GrenadePin, GrenadeThrow, GrenadeBounce, KnifeSwing, KnifeHit, Jump, Land, RadialOpen, RadialTick, RadialConfirm, RadialCancel, HealStart, HealDone, Revive, BombPlant, BombTick, AmmoPickup, Logro, ObjetivoCumplido, ImpactoPesado, BalaImpacto, Orugas, MotorCamioneta, AmbienteDesierto, RuedasCamioneta, DestruccionVehiculo, VidrioRoto, PasoPesado, Ladrido, LadridoCorto, GruniidoDePerro, PasoDePerro, ImpactoEscudo }
 
     // Sonidos genéricos: primero busca grabaciones reales importadas bajo
     // Resources/Audio/Sfx/<Kind>/ (pedido explicito: "quita todos los
@@ -383,6 +383,12 @@ namespace SP.Presentation
                 case SfxKind.AmbienteDesierto: return SfxSintetico.AmbienteDesierto();
                 case SfxKind.DestruccionVehiculo: return SfxSintetico.DestruccionVehiculo();
                 case SfxKind.VidrioRoto: return SfxSintetico.VidrioRoto();
+                case SfxKind.PasoPesado: return SfxSintetico.PasoPesado();
+                case SfxKind.Ladrido: return SfxSintetico.Ladrido(false);
+                case SfxKind.LadridoCorto: return SfxSintetico.Ladrido(true);
+                case SfxKind.GruniidoDePerro: return SfxSintetico.GruniidoDePerro();
+                case SfxKind.PasoDePerro: return SfxSintetico.PasoDePerro();
+                case SfxKind.ImpactoEscudo: return SfxSintetico.ImpactoEscudo();
                 case SfxKind.GrenadePin: return SfxSintetico.GranadaSeguro();
                 case SfxKind.GrenadeThrow: return SfxSintetico.GranadaLanzada();
                 case SfxKind.GrenadeBounce: return SfxSintetico.GranadaRebote();

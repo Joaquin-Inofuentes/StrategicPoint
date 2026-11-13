@@ -31,7 +31,11 @@ namespace SP.Actors
         static readonly Def Francotirador = new Def { Nombre = "FRANCOTIRADOR", Malla = "Francotirador", Loadout = new[] { WeaponKind.Sniper, WeaponKind.Pistol }, Color = new Color(0.7f, 0.8f, 1f) };
 
         // Enemigo PESADO (2026-11-07): mismo modelo y trimsheet del asalto, ensanchado por EnemigoPesado, con minigun.
-        static readonly Def Pesado = new Def { Nombre = "PESADO", Malla = "Pesado", Loadout = new[] { WeaponKind.Minigun, WeaponKind.Pistol }, Color = new Color(1f, 0.2f, 0.15f), Enemigo = true };
+        static readonly Def Pesado = new Def { Nombre = "PESADO", Malla = "Pesado", Loadout = new[] { WeaponKind.Minigun, WeaponKind.Pistol }, Color = new Color(0.62f, 0.2f, 0.95f), Enemigo = true };   // 2026-11-13: violeta, para que no se confunda con los rojos enemigos ni con los azules aliados
+        // Enemigo ESCUDERO (2026-11-13): escudo frontal que frena las balas, pistola, gira lento. Mismo modelo del asalto con paleta grafito y casco plateado.
+        static readonly Def Escudero = new Def { Nombre = "ESCUDERO", Malla = "Asalto", Loadout = new[] { WeaponKind.Pistol }, Color = new Color(0.85f, 0.9f, 1f), Enemigo = true };
+        // Enemigo PERRO (2026-11-13): el cuerpo humano se oculta; PerroEnemigo arma el modelo del perro.
+        static readonly Def Perro = new Def { Nombre = "PERRO", Malla = "Fusilero", Loadout = new WeaponKind[0], Color = new Color(1f, 0.6f, 0.1f), Enemigo = true };
         static readonly Def Civil = new Def { Nombre = "CIVIL", Malla = "Civil", Loadout = new WeaponKind[0], Color = new Color(1f, 0.9f, 0.4f) };
 
         static readonly Def[] Enemigos =
@@ -49,6 +53,8 @@ namespace SP.Actors
             if (s.Team == TeamId.Enemy)
             {
                 if (s.name.StartsWith("Pesado", System.StringComparison.Ordinal)) return Pesado;
+                if (s.name.StartsWith("Escudero", System.StringComparison.Ordinal)) return Escudero;
+                if (s.name.StartsWith("Perro", System.StringComparison.Ordinal)) return Perro;
                 int h = 0;
                 foreach (char c in s.name) h = h * 31 + c;
                 return Enemigos[Mathf.Abs(h) % Enemigos.Length];
