@@ -23,7 +23,7 @@ namespace SP.Operacion
     public class TanqueJefe : MonoBehaviour
     {
         public const string NombreDelJefe = "BLINDADO GOLIAT";
-        public const int VidaMaxima = 1600;
+        public const int VidaMaxima = 3200;   // 2026-11-13: "la vida actual el doble" (1600 -> 3200)
         public const float PisoDeVida01 = 0.05f;
         public const float RadioDelCanon = 5.5f;
         public const int DanoDelCanon = 120;

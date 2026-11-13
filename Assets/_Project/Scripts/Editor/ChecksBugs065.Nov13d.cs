@@ -185,7 +185,7 @@ namespace SP.EditorTools
             int porEscalera = 0; foreach (var n in OperacionDirector.SoldadosPorOleada) porEscalera += n;
             int porCuerda = 0; foreach (var n in OperacionDirector.SoldadosPorCuerda) porCuerda += n;
             int total = porEscalera + porCuerda;
-            W8Ok(ref ok, total >= 58, sb, $"enemigos programados en la azotea: {porEscalera} por escalera + {porCuerda} por cuerda = {total} (antes 18 + 11 = 29)");
+            W8Ok(ref ok, total == 29, sb, $"enemigos programados en la azotea: {porEscalera} por escalera + {porCuerda} por cuerda = {total} (la mitad de los 58 que se habian puesto)");
             var tiempos = new List<float>(OperacionDirector.CuandoSuben); tiempos.AddRange(OperacionDirector.CuandoCuelgan); tiempos.Sort();
             float huecoMax = tiempos[0];
             for (int i = 1; i < tiempos.Count; i++) huecoMax = Mathf.Max(huecoMax, tiempos[i] - tiempos[i - 1]);
@@ -210,8 +210,43 @@ namespace SP.EditorTools
             }
             Time.timeScale = 1f;
             sb.Append($"[aparecieron {vistos} enemigos; por ventana de 10 s: {string.Join(", ", System.Array.ConvertAll(porVentana, v => v.ToString()))}] ");
-            W8Ok(ref ok, vistos >= 40, sb, $"en juego aparecen {vistos} enemigos en la azotea");
+            W8Ok(ref ok, vistos >= 20 && vistos <= 40, sb, $"en juego aparecen {vistos} enemigos en la azotea (programados 29)");
             foreach (var h in inv) if (h != null) h.Invulnerable = false;
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+    }
+}
+
+namespace SP.EditorTools
+{
+    public static partial class ChecksBugs065
+    {
+        // ---------------------------------------------------------------- 964a la barra de vida del tanque baja con el dano, y la metralla del helicoptero pega la mitad
+        static System.Collections.IEnumerator Bug964a()
+        {
+            if (!UnityEngine.Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new System.Text.StringBuilder(); bool ok = true;
+            foreach (var x in PrepararTanque()) yield return x;
+            var d = SP.Operacion.OperacionDirector.Instancia; var hud = SP.UI.HudDeTanqueSimple.Instancia;
+            W8Ok(ref ok, embarqueOk && d != null && d.tanque != null && hud != null && SP.UI.HudDeTanqueSimple.Visible, sb, "el jugador esta en el tanque y se ve su barra");
+            if (!ok) { Fin("FALLO " + sb); yield break; }
+            SP.Core.ModoDios.Poner(false);
+            var tq = d.tanque; tq.PisoDeVida01 = 0f;
+            yield return null; yield return null;
+            float lleno = hud.AnchoRellenoDeVida;
+            tq.PonerVida01(0.4f);
+            yield return null; yield return null;
+            float bajo = hud.AnchoRellenoDeVida;
+            W8Ok(ref ok, lleno > 0.98f, sb, $"con el tanque sano el relleno de la barra mide {lleno:0.00} del ancho");
+            W8Ok(ref ok, bajo > 0.38f && bajo < 0.42f, sb, $"con el 40 % de vida el relleno mide {bajo:0.00} del ancho (la barra baja)");
+            foreach (var x in FotoConHud("v14_hud_tanque_40.jpg")) yield return x;
+            tq.PonerVida01(0.1f); yield return null; yield return null;
+            W8Ok(ref ok, hud.AnchoRellenoDeVida < 0.12f, sb, $"con el 10 % de vida mide {hud.AnchoRellenoDeVida:0.00}");
+            tq.PonerVida01(1f);
+            // helicoptero: dano y cadencia de la metralla reducidos
+            W8Ok(ref ok, SP.Operacion.HelicopteroEnemigo.DanoDeMetralla == 3 && SP.Operacion.HelicopteroEnemigo.DanoDeCohete == 40, sb, $"el helicoptero pega la mitad: metralla {SP.Operacion.HelicopteroEnemigo.DanoDeMetralla} (antes 6), cohete {SP.Operacion.HelicopteroEnemigo.DanoDeCohete} (antes 80)");
+            float dpsAntes = 6f / 0.1f * 1.0f / (1.0f + 1.7f), dpsAhora = SP.Operacion.HelicopteroEnemigo.DanoDeMetralla / SP.Operacion.HelicopteroEnemigo.SegundosEntreBalas * SP.Operacion.HelicopteroEnemigo.RafagaNormal / (SP.Operacion.HelicopteroEnemigo.RafagaNormal + 2.5f);
+            W8Ok(ref ok, dpsAhora <= dpsAntes * 0.3f, sb, $"dano por segundo medio de la metralla: {dpsAntes:0.0} -> {dpsAhora:0.0} ({dpsAhora / dpsAntes * 100f:0} % de antes)");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
     }

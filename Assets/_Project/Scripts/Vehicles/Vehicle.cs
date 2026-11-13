@@ -84,6 +84,7 @@ namespace SP.Vehicles
                 float k = 1f;
                 if (SP.Core.Dificultad.Activa) k *= Mathf.Max(0.01f, SP.Core.Dificultad.MultiplicadorDeDano(attackerId, Health));
                 if (SP.Core.ModoDios.Activo) k *= Mathf.Max(0.01f, SP.Core.ModoDios.MultiplicadorDeDano(attackerId));
+                k *= Mathf.Max(0.01f, SP.Core.AjustesDeDano.Multiplicador(attackerId, Health));
                 if (k != 1f) amount = Mathf.Max(1, Mathf.Min(amount, Mathf.FloorToInt((Health.Current - piso) / k)));
             }
             bool wasAlive = Health.IsAlive;

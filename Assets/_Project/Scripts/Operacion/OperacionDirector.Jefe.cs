@@ -392,6 +392,7 @@ namespace SP.Operacion
             var motor = tanque.GetComponent<VehicleMotor>();
             if (motor != null && velocidadInicial > 0f) motor.Configurar(velocidadInicial, aceleracionInicial);
             tanque.AsignarBando(TeamId.Player, Color.white);
+            AsegurarVidaDelTanque();
             tanque.PonerVida01(ReparacionDeTanque.VidaFinal01);
             tanque.PisoDeVida01 = PisoDeVidaDelTanque;
             AnilloDeAviso.CancelarTodos();

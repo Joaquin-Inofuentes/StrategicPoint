@@ -83,6 +83,7 @@ namespace SP.Operacion
             // Sin piso de vida: el tanque se puede DESTRUIR en la carrera. A cambio el dano es parejo (ver CurvaDeDanoDelTanque) y no
             // "mucho al principio y casi nada despues" como con el piso del 20 %.
             tanque.PisoDeVida01 = 0f;
+            AsegurarVidaDelTanque();
             tanque.AjusteDeDano = CurvaDeDanoDelTanque();
 
             var otros = Escuadra();
@@ -373,7 +374,15 @@ namespace SP.Operacion
         //  - los primeros 6 s de la carrera, todo a la mitad (el jugador todavia se esta acomodando).
         // Con fuego continuo ininterrumpido el tanque dura ~65 s (el trayecto); con presion normal llega al final con 30-50 % de vida.
         // Bug #009 (build, "me deberian hacer el doble de dano"): el factor, el tope por golpe y el presupuesto por segundo se duplican (x2).
-        public const float MultiplicadorDeDanoDelTanque = 32f;   // 2026-11-13 ("los danos enemigos duplicalos por 4"): de 8 a 32. #398 ("los danos enemigos duplicalos por 2"): de 4 a 8. Bug #347: era x2 y se subio a x4; llegando al final de la ruta sin repararlo el tanque queda casi destruido   // bug #347 ("deberian quitarme mucha mas vida"): era x2; llegando al final de la ruta sin repararlo el tanque queda casi destruido
+        public const float MultiplicadorDeDanoDelTanque = 32f;   // 2026-11-13: x4 sobre el x8 de antes; el coeficiente de dano enemigo de Configuraciones (0,5 por defecto) lo deja en x16 efectivo y es regulable con un slider
+        // 2026-11-13 ("la vida actual el doble"): el tanque viene de la escena con 1600; se lleva a TanqueJefe.VidaMaxima (3200) sin bajarle lo que ya tenga.
+        void AsegurarVidaDelTanque()
+        {
+            if (tanque == null || tanque.Health == null || tanque.Health.MaxHealth >= TanqueJefe.VidaMaxima) return;
+            float fr = Mathf.Clamp01(tanque.Health.Current / (float)Mathf.Max(1, tanque.Health.MaxHealth));
+            tanque.Health.Initialize(-1, TanqueJefe.VidaMaxima); tanque.PonerVida01(fr);
+        }
+
         System.Func<int, int> CurvaDeDanoDelTanque()
         {
             float ventanaInicio = -10f, gastado = 0f;

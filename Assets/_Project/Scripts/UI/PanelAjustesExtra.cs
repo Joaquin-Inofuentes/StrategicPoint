@@ -32,6 +32,7 @@ namespace SP.UI
             Refrescar(rt);
             var layout = LayoutDeAjustes.Asegurar(settingsPanel);
             layout.Aplicar();
+            PanelDeDano.Asegurar(settingsPanel);   // 2026-11-13: sliders y numeros de dano propio y enemigo
         }
 
         static void Construir(RectTransform panel)

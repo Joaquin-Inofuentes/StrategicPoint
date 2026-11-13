@@ -15,15 +15,15 @@ namespace SP.Operacion
     public partial class OperacionDirector
     {
         public const float SegundosDeResistenciaEnAzotea = 100f;
-        // Pedido 2026-11-13 ("en la terraza el doble de enemigos y repartidos mejor a lo largo del tiempo"): antes 4 oleadas por escalera (18 soldados, con
+        // Pedido 2026-11-13 ("en la terraza el doble de enemigos y repartidos mejor") y luego "la mitad de enemigos": vuelve a 29 (18 por escalera + 11 por cuerda) pero repartidos parejos en el tiempo (8 oleadas + 3 helicopteros). Historia: antes 4 oleadas por escalera (18 soldados, con
         // huecos de 24-28 s) y 3 helicopteros de cuerdas (11); ahora 8 oleadas parejas (36) y 6 helicopteros (22) = 58, uno nuevo cada ~8 s sin dejar
         // intervalos largos y sin amontonarse al final (la ultima oleada entra a los 89 s; el rescate llega a los 100).
         public static readonly float[] CuandoSuben = { 5f, 17f, 29f, 41f, 53f, 65f, 77f, 89f };
         public static readonly int[] TorreDelRefuerzo = { 3, 4, 2, 3, 4, 2, 3, 4 };
-        public static readonly int[] SoldadosPorOleada = { 4, 4, 5, 4, 5, 4, 5, 5 };
-        public static readonly float[] CuandoCuelgan = { 10f, 26f, 42f, 58f, 74f, 88f };
-        public static readonly int[] SoldadosPorCuerda = { 3, 4, 4, 3, 4, 4 };
-        static readonly float[] AnguloDeEntradaDeCuerda = { 200f, 330f, 100f, 250f, 20f, 150f };
+        public static readonly int[] SoldadosPorOleada = { 2, 2, 3, 2, 3, 2, 2, 2 };
+        public static readonly float[] CuandoCuelgan = { 14f, 45f, 76f };
+        public static readonly int[] SoldadosPorCuerda = { 4, 4, 3 };
+        static readonly float[] AnguloDeEntradaDeCuerda = { 200f, 330f, 100f };
         // Puntos del techo donde se cuelgan las cuerdas (se elige el que queda a mas de 9 m del jugador).
         static readonly Vector3[] PuntosDeCuerda =
         {

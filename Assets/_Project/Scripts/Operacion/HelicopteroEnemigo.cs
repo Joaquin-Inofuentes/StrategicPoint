@@ -20,7 +20,8 @@ namespace SP.Operacion
         public const string Nombre = "HALCON";
         public const float SegundoDeEntrada = 60f, RadioDeOrbita = 45f, AlturaMinima = 18f, AlturaMaxima = 24f, VelocidadDeVuelo = 25f;
         public const float SegundosEntrePasadas = 8f, SegundosDeAvisoDePasada = 1.2f, SeparacionDeCohetes = 7f;
-        public const int CohetesPorPasada = 3, DanoDeCohete = 80, DanoDeMetralla = 6;
+        public const int CohetesPorPasada = 3, DanoDeCohete = 40, DanoDeMetralla = 3;   // 2026-11-13: "los helicopteros hagan la mitad de dano" (metralla 6 -> 3, cohete 80 -> 40)
+        public const float SegundosEntreBalas = 0.16f, RafagaNormal = 0.7f, RafagaSuspendido = 1.5f, DispersionDeMetralla = 0.08f;   // y "reduce todo lo que puedas": menos cadencia (0,10 -> 0,16 s), rafagas mas cortas, pausas mas largas y mas dispersion
         public const float RadioDeCohete = 4.5f, AlcanceDeMetralla = 70f;
 
         public const float FactorDeVueloEnLaAzotea = 0.4f, SuspensionMinima = 4f, SuspensionMaxima = 8f;
@@ -453,16 +454,16 @@ namespace SP.Operacion
             if (Vector3.Distance(origen, objetivo) > AlcanceDeMetralla) return;
             if (Time.time >= pausaHasta && Time.time >= rafagaHasta)
             {
-                if (Suspendido) { rafagaHasta = Time.time + 2.2f; pausaHasta = rafagaHasta + Random.Range(0.3f, 0.7f); }   // suspendido: rafagas largas
-                else { rafagaHasta = Time.time + 1.0f; pausaHasta = rafagaHasta + Random.Range(1.2f, 2.2f); }
+                if (Suspendido) { rafagaHasta = Time.time + RafagaSuspendido; pausaHasta = rafagaHasta + Random.Range(0.8f, 1.4f); }   // suspendido: rafagas mas largas
+                else { rafagaHasta = Time.time + RafagaNormal; pausaHasta = rafagaHasta + Random.Range(1.8f, 3.2f); }
             }
             if (Time.time >= proximoTiroMg && Time.time < rafagaHasta)
             {
-                proximoTiroMg = Time.time + 0.1f;
+                proximoTiroMg = Time.time + SegundosEntreBalas;
                 var pool = ProjectilePool.Activo;
                 if (pool == null) return;
                 var dir = (objetivo - origen).normalized;
-                dir = (dir + Random.insideUnitSphere * 0.05f).normalized;
+                dir = (dir + Random.insideUnitSphere * DispersionDeMetralla).normalized;
                 pool.Spawn(origen, dir, -3, TeamId.Enemy, DanoDeMetralla, new Color(1f, 0.35f, 0.2f));
                 MuzzleLightPool.Flash(origen, new Color(1f, 0.6f, 0.3f), 4f, 7f);
                 BalasDeMetralla++;

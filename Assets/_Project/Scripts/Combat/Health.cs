@@ -173,6 +173,8 @@ namespace SP.Combat
             // Dificultad: potenciadores de dano segun quien pega y a quien (solo partida principal).
             if (Dificultad.Activa) amount = Mathf.Max(1, Mathf.RoundToInt(amount * Dificultad.MultiplicadorDeDano(attackerId, this)));
             if (ModoDios.Activo) amount = Mathf.Max(1, Mathf.RoundToInt(amount * ModoDios.MultiplicadorDeDano(attackerId)));   // #276: el modo dios triplica lo que pega tu bando
+            // Configuraciones (2026-11-13): coeficientes globales de dano propio y enemigo
+            { float kAjuste = AjustesDeDano.Multiplicador(attackerId, this); if (!Mathf.Approximately(kAjuste, 1f)) amount = Mathf.Max(1, Mathf.RoundToInt(amount * kAjuste)); }
 
             // Cualquier golpe de verdad reinicia la cuenta de "sin accion":
             // la regeneracion se corta del todo, no sigue de donde iba.

@@ -57,7 +57,7 @@ namespace SP.Core
         // Bajada GLOBAL de dificultad (pedido explicito): en TODOS los niveles el enemigo hace la mitad de dano y los aliados
         // tienen el doble de vida. Se multiplica sobre el perfil de cada nivel, asi la diferencia entre FACIL/MEDIO/DIFICIL se mantiene.
         public const float FactorDanoEnemigoGlobal = 0.9f;   // bug #181 ("hacen muy poco dano"): antes 0.5
-        public const float FactorVidaAliadosGlobal = 2f;
+        public const float FactorVidaAliadosGlobal = 4f;   // 2026-11-13: "la vida actual el doble" (2 -> 4)
 
         public static Perfil Datos(NivelDificultad n)
         {

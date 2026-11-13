@@ -117,9 +117,13 @@ namespace SP.UI
             fondo.GetComponent<Image>().color = fondoColor ?? new Color(0f, 0f, 0f, 0.6f);
             var relleno = new GameObject(nombre, typeof(RectTransform), typeof(Image)); relleno.transform.SetParent(fondo.transform, false);
             var rrt = (RectTransform)relleno.transform; rrt.anchorMin = Vector2.zero; rrt.anchorMax = Vector2.one; rrt.offsetMin = new Vector2(1f, 1f); rrt.offsetMax = new Vector2(-1f, -1f); rrt.pivot = new Vector2(0f, 0.5f);
-            var img = relleno.GetComponent<Image>(); img.color = color; img.type = Image.Type.Filled; img.fillMethod = Image.FillMethod.Horizontal; img.fillOrigin = 0; img.fillAmount = 1f;
+            var img = relleno.GetComponent<Image>(); img.color = color; img.type = Image.Type.Simple;   // 2026-11-13: Filled sin sprite NO recorta (la barra no bajaba); el relleno se acota con el ancla derecha (ver Rellenar)
             return img;
         }
+
+        // Acota el relleno por el ancla derecha: la fraccion del ancho de la barra (el Image Filled no recorta si no tiene sprite).
+        public static void Rellenar(Image img, float f) { var r = (RectTransform)img.transform; r.anchorMax = new Vector2(Mathf.Clamp01(f), 1f); }
+        public float AnchoRellenoDeVida => vida != null ? ((RectTransform)vida.transform).anchorMax.x : 0f;
 
         void Update()
         {
@@ -129,11 +133,11 @@ namespace SP.UI
             if (insigniaDios != null) insigniaDios.SetActive(SP.Core.ModoDios.Activo);
             var hp = vehiculo.Health;
             FraccionDeVida = hp != null && hp.MaxHealth > 0 ? Mathf.Clamp01(hp.Current / (float)hp.MaxHealth) : 0f;
-            vida.fillAmount = FraccionDeVida;
+            Rellenar(vida, FraccionDeVida);
             vida.color = Time.unscaledTime < destelloHasta ? Color.white : Color.Lerp(new Color(0.9f, 0.2f, 0.15f), new Color(0.35f, 0.9f, 0.4f), FraccionDeVida);
             texto.text = hp != null ? $"TANQUE  {hp.Current} / {hp.MaxHealth}" : "TANQUE";
             FraccionDeRecarga = torreta != null ? torreta.CooldownFraction01 : 1f;
-            recarga.fillAmount = FraccionDeRecarga;
+            Rellenar(recarga, FraccionDeRecarga);
             recarga.color = FraccionDeRecarga >= 0.999f ? new Color(0.6f, 1f, 0.6f) : new Color(1f, 0.8f, 0.3f);
             if (textoRecarga != null) textoRecarga.text = FraccionDeRecarga >= 0.999f ? "CAÑÓN · LISTO" : $"CAÑÓN · RECARGANDO {Mathf.RoundToInt(FraccionDeRecarga * 100f)} %";
         }

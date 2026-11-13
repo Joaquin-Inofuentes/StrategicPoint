@@ -26,7 +26,7 @@ namespace SP.EditorTools
             if (d == null || d.tanque == null) { Fin("FALLO sin tanque " + sb); yield break; }
             ModoDios.Poner(false);
             var tq = d.tanque;
-            W8Ok(ref ok, OperacionDirector.MultiplicadorDeDanoDelTanque >= 32f, sb, $"el dano que recibe el tanque es x4 sobre el x8 de antes ({OperacionDirector.MultiplicadorDeDanoDelTanque})");
+            W8Ok(ref ok, OperacionDirector.MultiplicadorDeDanoDelTanque == 16f, sb, $"el dano que recibe el tanque es x16: el doble de antes del 13/11, la mitad de lo que se habia subido ({OperacionDirector.MultiplicadorDeDanoDelTanque})");
             // se frena al tanque para medir el fuego de los infantes sin que se aleje
             var motor = tq.GetComponent<VehicleMotor>();
             int golpes = 0, golpesDeBala = 0; int vida0 = tq.Health.Current;
