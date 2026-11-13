@@ -739,7 +739,10 @@ namespace SP.EditorTools
             W8Ok(ref ok, p != null && p.AnimacionPropia && animP != null && animP.runtimeAnimatorController != null && animP.runtimeAnimatorController.name == "AC_Pesado", sb, $"usa su animacion de Mixamo (controlador {(animP != null && animP.runtimeAnimatorController != null ? animP.runtimeAnimatorController.name : "-")})");
             var spec = WeaponCatalog.Get(WeaponKind.Minigun);
             W8Ok(ref ok, spec.Cooldown <= 0.06f && spec.MagazineSize >= 150 && spec.ReloadDuration >= 4f, sb, $"minigun: cadencia {1f / spec.Cooldown:0} disp/s, cargador {spec.MagazineSize}, recarga {spec.ReloadDuration:0.0} s (pesada)");
-            W8Ok(ref ok, s.transform.localScale.x > molde.transform.localScale.x * 1.05f, sb, $"cuerpo ensanchado x{s.transform.localScale.x / molde.transform.localScale.x:0.00}");
+            // 2026-11-13: el pesado mide el doble (la raiz solo se ensancha un poco; el resto lo pone el modelo visual)
+            var smrS = s.GetComponentInChildren<SkinnedMeshRenderer>(true); var smrM = molde.GetComponentInChildren<SkinnedMeshRenderer>(true);
+            float dobleX = smrS != null && smrM != null ? smrS.transform.lossyScale.x / smrM.transform.lossyScale.x : 0f;
+            W8Ok(ref ok, dobleX > 1.9f && dobleX < 2.1f, sb, $"cuerpo del doble de tamano x{dobleX:0.00}");
             var clipMin = SP.Presentation.GenericSfx.GetWeaponShot(WeaponKind.Minigun); var clipHeavy = SP.Presentation.GenericSfx.GetWeaponShot(WeaponKind.Heavy); var clipRif = SP.Presentation.GenericSfx.GetWeaponShot(WeaponKind.Rifle);
             W8Ok(ref ok, clipMin != null && clipMin != clipRif && clipMin != clipHeavy && clipMin.length >= 0.3f, sb, $"su disparo es propio (clip de {(clipMin != null ? clipMin.length : 0f):0.00} s, tono de 70 Hz) y CubeFxReactor le suma el golpe grave de la Heavy");
             // comportamiento: lo ve -> se estaciona -> a los 2 s abre fuego

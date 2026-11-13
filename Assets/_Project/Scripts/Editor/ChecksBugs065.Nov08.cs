@@ -386,7 +386,8 @@ namespace SP.EditorTools
                 var o = tt.position + Vector3.up * 1.4f;
                 bool pegada = Physics.Raycast(o, -tt.forward, out var h, 0.6f, ~0, QueryTriggerInteraction.Ignore) && !h.collider.transform.IsChildOf(tt);
                 W8Ok(ref ok, pegada || !d.TerminalEnPared, sb, "su fondo toca la pared (<0,6 m)");
-                var panel = tt.Find("Mueble"); W8Ok(ref ok, panel != null && panel.localScale.y > 1f, sb, "panel de pared (no mueble en el piso)");
+                // 2026-11-13: ya no es un panel de pared sino un puesto con mesa, monitor, teclado, mouse y silla
+                W8Ok(ref ok, tt.Find("Mesa") != null && tt.Find("Monitor_Marco") != null && tt.Find("Pantalla") != null && tt.Find("Teclado") != null && tt.Find("Mouse") != null && tt.Find("Silla_Asiento") != null, sb, "puesto completo: mesa, monitor con pantalla, teclado, mouse y silla");
             }
             Fin((ok ? "OK " : "FALLO ") + sb);
         }

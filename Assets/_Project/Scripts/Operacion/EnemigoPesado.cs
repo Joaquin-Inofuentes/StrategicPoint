@@ -16,9 +16,10 @@ namespace SP.Operacion
         // Bugs #385/#389 (2026-11-08): "que tenga 3 veces la vida que tiene ahora" -> de x4 a x12.
         public const int MultiplicadorDeVida = 12;
         public const float SegundosDeEstacionamiento = 2f, SegundosSinVerParaRelajarse = 3f;
-        // 2026-11-13: "mas pesado, otro color muy distinto y un poquito mas grande": mas ancho y alto, camina mas lento y cada paso retumba.
-        public static readonly Vector3 Ensanche = new Vector3(1.28f, 1.16f, 1.28f);
-        public const float FactorDeVelocidad = 0.72f, MetrosPorPaso = 1.5f;
+        // 2026-11-13: "mas pesado, otro color muy distinto y un poquito mas grande" y despues "el pesado doble de tamano": el modelo mide el DOBLE de un enemigo
+        // comun en las tres dimensiones (Ensanche), camina mas lento y cada paso retumba. AnchoDeCuerpo es lo que se ensancha la raiz (y el collider).
+        public static readonly Vector3 Ensanche = new Vector3(2f, 2f, 2f);
+        public const float FactorDeVelocidad = 0.72f, MetrosPorPaso = 2.2f, AnchoDeCuerpo = 1.5f;
         public enum Fase { Patrulla, Estacionando, Frenesi }
 
         public static int Creados { get; private set; }
@@ -39,18 +40,26 @@ namespace SP.Operacion
             if (s == null || s.Team != TeamId.Enemy) return null;
             var ya = s.GetComponent<EnemigoPesado>(); if (ya != null) return ya;   // idempotente: un clon de un pesado ya lo es
             s.gameObject.name = "Pesado_" + (++Creados);
-            // La raiz solo se ensancha (X/Z): el motor fija el pivote a 0,8 m del piso sin mirar la escala, asi que escalar la raiz en Y hundiria el collider.
-            // El mayor alto se le da al modelo visual, estirandolo desde los pies para que sigan en el piso.
-            s.transform.localScale = Vector3.Scale(s.transform.localScale, new Vector3(Ensanche.x, 1f, Ensanche.z));
+            // La raiz solo se ensancha un poco (AnchoDeCuerpo, para que entre por las puertas): el motor fija el pivote a 0,8 m del piso sin mirar la escala, asi
+            // que escalar la raiz en Y hundiria el collider. El tamano doble se le da al modelo visual, estirandolo desde los pies para que sigan en el piso, y
+            // al collider (alto y centro) para que los disparos le peguen en todo el cuerpo.
+            s.transform.localScale = Vector3.Scale(s.transform.localScale, new Vector3(AnchoDeCuerpo, 1f, AnchoDeCuerpo));
             foreach (var r in s.GetComponents<SP.Presentation.CubeFxReactor>()) r.EscalaBase = s.transform.localScale;   // que el reactor de impactos no la devuelva a 1
             var smr = s.GetComponentInChildren<SkinnedMeshRenderer>(true);
             if (smr != null)
             {
                 var visual = smr.transform.parent != null && smr.transform.parent != s.transform ? smr.transform.parent : smr.transform;
                 float piesAntes = smr.bounds.min.y, vy = visual.position.y;
-                visual.localScale = new Vector3(visual.localScale.x, visual.localScale.y * Ensanche.y, visual.localScale.z);
+                visual.localScale = new Vector3(visual.localScale.x * Ensanche.x / AnchoDeCuerpo, visual.localScale.y * Ensanche.y, visual.localScale.z * Ensanche.z / AnchoDeCuerpo);
                 float piesDespues = vy + (piesAntes - vy) * Ensanche.y;
                 visual.position -= Vector3.up * (piesDespues - piesAntes);   // los pies vuelven adonde estaban
+            }
+            var caja = s.GetComponent<BoxCollider>();
+            if (caja != null)
+            {
+                float pies = caja.center.y - caja.size.y * 0.5f;   // la base de la caja no se mueve: crece hacia arriba
+                var tam = caja.size; tam.y *= Ensanche.y; caja.size = tam;
+                var cen = caja.center; cen.y = pies + tam.y * 0.5f; caja.center = cen;
             }
             return s.gameObject.AddComponent<EnemigoPesado>();
         }

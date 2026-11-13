@@ -108,9 +108,15 @@ namespace SP.EditorTools
 
             sb.Append($"[escalas pesado {pesado.transform.localScale:0.00} normal {normal.transform.localScale:0.00} molde-clon {normal.name}] ");
             { var smrD = pesado.GetComponentInChildren<SkinnedMeshRenderer>(true); var cadena = new StringBuilder(); var tt = smrD != null ? smrD.transform : null; var cap = pesado.GetComponent<CapsuleCollider>(); while (tt != null && tt != pesado.transform.parent) { cadena.Append($"{tt.name}(p {tt.localPosition:0.00} e {tt.localScale:0.00}) < "); tt = tt.parent; } sb.Append($"[jerarquia SMR: {cadena}; capsula {(cap != null ? cap.center.ToString("0.00") + " h" + cap.height.ToString("0.00") + " r" + cap.radius.ToString("0.00") : "-")}] "); }
-            float ratio = pesado.transform.localScale.x / normal.transform.localScale.x, ratioY = pesado.transform.localScale.y / normal.transform.localScale.y;
-            W8Ok(ref ok, ratio >= 1.18f && ratio <= 1.4f, sb, $"mas ancho x{ratio:0.00} y mas alto x{ratioY:0.00} que un enemigo comun (un poquito mas grande)");
             var smr = pesado.GetComponentInChildren<SkinnedMeshRenderer>(true); var smrN = normal.GetComponentInChildren<SkinnedMeshRenderer>(true);
+            // 2026-11-13 "el pesado doble de tamano": el modelo mide el doble de un enemigo comun (escala efectiva = raiz x visual)
+            // (se usa la escala BASE de la raiz: el golpe de CubeFxReactor la agranda un instante x1,15 y falsearia la medicion)
+            Vector3 BaseDe(Soldier q) { var rc = q.GetComponent<CubeFxReactor>(); return rc != null ? rc.EscalaBase : q.transform.localScale; }
+            float EscalaVisual(Soldier q, SkinnedMeshRenderer m, int eje) { if (m == null) return 1f; float vis = m.transform.lossyScale[eje] / Mathf.Max(0.0001f, q.transform.lossyScale[eje]); return vis * BaseDe(q)[eje]; }
+            float escP = EscalaVisual(pesado, smr, 1), escN = EscalaVisual(normal, smrN, 1);
+            float escPx = EscalaVisual(pesado, smr, 0), escNx = EscalaVisual(normal, smrN, 0);
+            float ratio = escPx / escNx, ratioY = escP / escN;
+            W8Ok(ref ok, ratioY >= 1.9f && ratioY <= 2.1f && ratio >= 1.9f && ratio <= 2.1f, sb, $"el modelo mide el doble: alto x{ratioY:0.00} y ancho x{ratio:0.00} contra un enemigo comun");
             W8Ok(ref ok, smr != null && smr.sharedMaterial != null && smr.sharedMaterial.name == "MAT_Trimsheet_Pesado", sb, $"usa su propia paleta ({(smr != null && smr.sharedMaterial != null ? smr.sharedMaterial.name : "-")})");
             // el color: la celda del uniforme (8) es violeta; el enemigo comun es rojo y el aliado azul
             if (smr != null && smr.sharedMaterial != null && smr.sharedMaterial.GetTexture("_BaseMap") is Texture2D tx && tx.isReadable)
@@ -128,7 +134,9 @@ namespace SP.EditorTools
             W8Ok(ref ok, Mathf.Abs(piesP - piesN) < 0.12f, sb, $"el collider del pesado apoya en el piso igual que el de un soldado normal (pesado {piesP:+0.00;-0.00} m, normal {piesN:+0.00;-0.00} m)");
             float altoP = smr != null ? smr.bounds.size.y : 0f, altoN = smrN != null ? smrN.bounds.size.y : 1f;
             sb.Append($"[alto {altoP:0.00} m contra {altoN:0.00} m] ");
-            W8Ok(ref ok, altoP > altoN * 1.05f, sb, "es mas alto que un enemigo comun");
+            W8Ok(ref ok, altoP > altoN * 1.7f, sb, $"se ve el doble de alto que un enemigo comun ({altoP / Mathf.Max(0.01f, altoN):0.0}x)");
+            var cajaP = pesado.GetComponent<BoxCollider>();
+            W8Ok(ref ok, cajaP == null || cajaP.bounds.size.y > 2.6f, sb, $"su collider crece con el cuerpo (alto {(cajaP != null ? cajaP.bounds.size.y : 0f):0.0} m)");
             // mas pesado: camina mas lento y cada paso retumba
             float vN = normal.Motor.MoveSpeed, vP = pesado.Motor.MoveSpeed;
             W8Ok(ref ok, vP < vN * 0.8f, sb, $"camina mas lento ({vP:0.0} m/s contra {vN:0.0} m/s)");
@@ -384,6 +392,125 @@ namespace SP.EditorTools
             float f0 = lagM > 0 ? (float)sr / lagM : 0f;
             W8Ok(ref ok, f0 > 280f && f0 < 900f, sb, $"el tono del ladrido ronda {f0:0} Hz (un perro mediano ladra entre 300 y 900 Hz)");
             yield return null;
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 954a escudero: chispas contra el escudo, giro muy lento y el escudo cae al morir
+        static IEnumerator Bug954a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(5); foreach (var x in Esperar(2f)) yield return x;
+            ModoDios.Poner(true);
+            foreach (var x in ConMolde()) yield return x;
+            var yo = Poseido(); AlejarAliados(yo.transform.position);
+            var baseP = PuntoEnMalla(yo.transform.position + yo.transform.forward * 12f);
+            var esc = ClonDeEnemigo(baseP, yo.transform.position - baseP); if (esc == null) { Fin("FALLO sin molde"); yield break; }
+            var comp = EnemigoEscudero.Aplicar(esc);
+            foreach (var x in Esperar(1.3f)) yield return x;
+            if (esc.Brain != null) esc.Brain.Anulado = true;
+            esc.transform.rotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(yo.transform.position - esc.transform.position, Vector3.up));
+            int r0 = ChispasDeMetal.Rafagas; int v0 = esc.Health.Current;
+            esc.Health.TakeDamage(5, yo.Id, false); yield return null; yield return null;
+            W8Ok(ref ok, ChispasDeMetal.Rafagas == r0 + 1 && esc.Health.Current == v0, sb, $"un disparo de frente contra el escudo suelta chispas (rafagas {ChispasDeMetal.Rafagas - r0}, vida {v0} -> {esc.Health.Current})");
+            W8Ok(ref ok, ChispasDeMetal.VivasAhora >= 20, sb, $"hay particulas vivas ({ChispasDeMetal.VivasAhora}) al cuadro siguiente");
+            esc.transform.rotation = Quaternion.LookRotation(-Vector3.ProjectOnPlane(yo.transform.position - esc.transform.position, Vector3.up));
+            int r1 = ChispasDeMetal.Rafagas; int v1 = esc.Health.Current;
+            esc.Health.TakeDamage(5, yo.Id, false); yield return null;
+            W8Ok(ref ok, ChispasDeMetal.Rafagas == r1 && esc.Health.Current < v1, sb, $"un disparo por la espalda no larga chispas y le pega (vida {v1} -> {esc.Health.Current})");
+            // giro: 0,5 s de giro del motor; un soldado comun gira 110 grados, el escudero ~15 (31 grados/s)
+            var objetivo = esc.transform.position + Vector3.ProjectOnPlane(yo.transform.position - esc.transform.position, Vector3.up).normalized * 8f;
+            float yaw0 = esc.transform.eulerAngles.y; esc.Motor.LookTowards(objetivo, 1f);
+            float giro1s = Mathf.Abs(Mathf.DeltaAngle(yaw0, esc.transform.eulerAngles.y));
+            W8Ok(ref ok, giro1s > 20f && giro1s < 40f, sb, $"gira {giro1s:0} grados por segundo (soldado comun 220): media vuelta en {180f / Mathf.Max(1f, giro1s):0.0} s");
+            // muerte: el escudo se suelta y cae al piso
+            var escudo = comp.Escudo; var pos0 = escudo != null ? escudo.position : Vector3.zero;
+            esc.Health.TakeDamage(100000, -1, false);
+            foreach (var x in Esperar(3.5f)) yield return x;
+            W8Ok(ref ok, comp.Soltado && escudo != null && !escudo.IsChildOf(esc.transform) && comp.EscudoCaido != null, sb, "al morir el escudo deja de ser parte del cuerpo y pasa a ser un cuerpo rigido");
+            // piso real bajo el escudo (rayo hacia abajo desde un poco arriba, ignorando al propio escudo)
+            float pisoEsc = -999f;
+            if (escudo != null) foreach (var h in Physics.RaycastAll(escudo.position + Vector3.up * 1.5f, Vector3.down, 12f, ~0, QueryTriggerInteraction.Ignore)) { if (h.collider.transform.IsChildOf(escudo)) continue; pisoEsc = Mathf.Max(pisoEsc, h.point.y); }
+            float alto = escudo != null ? escudo.position.y - (pisoEsc > -900f ? pisoEsc : Mathf.Min(esc.transform.position.y - 0.8f, pos0.y)) : 9f;
+            sb.Append($"[escudo y {(escudo != null ? escudo.position.y : 0f):0.00}, piso bajo el {pisoEsc:0.00}, soldado y {esc.transform.position.y:0.00}] ");
+            bool volco = escudo != null && Vector3.Dot(escudo.forward, Vector3.up) > 0.6f || escudo != null && Vector3.Dot(escudo.forward, Vector3.up) < -0.6f;
+            W8Ok(ref ok, escudo != null && alto > -0.15f && (volco || alto < 0.5f), sb, $"el escudo cayo, esta sobre el piso y quedo tendido (volco {volco}, centro {alto:0.00} m sobre el piso)");
+            foreach (var x in Esperar(1.5f)) yield return x;
+            W8Ok(ref ok, escudo != null && (comp.EscudoCaido == null || comp.EscudoCaido.linearVelocity.magnitude < 0.6f), sb, "y se quedo quieto");
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 955a escalera: el que muere sobre los escalones queda sobre ellos
+        static IEnumerator Bug955a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(5); foreach (var x in Esperar(2f)) yield return x;
+            ModoDios.Poner(true);
+            foreach (var x in ConMolde()) yield return x;
+            var yo = Poseido(); AlejarAliados(yo.transform.position);
+            RampaCaminable rampa = null; float mejor = 1e9f;
+            foreach (var r in RampaCaminable.Todas) { if (r == null || !r.isActiveAndEnabled) continue; float dh = Mathf.Abs(r.alturaDelFinal - r.alturaInicial); if (dh < 2f || dh > 7f) continue; float dist = Vector3.Distance(r.abajo, yo.transform.position); if (dist < mejor) { mejor = dist; rampa = r; } }
+            if (rampa == null) { Fin("FALLO sin rampa"); yield break; }
+            var eje = rampa.arriba - rampa.abajo; eje.y = 0f; var ejeN = eje.normalized; var n = rampa.NormalDeLaSuperficie();
+            sb.Append($"[rampa {rampa.alturaInicial:0.0}->{rampa.alturaDelFinal:0.0} m, normal {n:0.00}] ");
+            for (int caso = 0; caso < 2; caso++)
+            {
+                var p = rampa.abajo + eje * (caso == 0 ? 0.45f : 0.6f); rampa.Superficie(p, out float ys0); p.y = ys0 + SoldierMotor.PivoteSobrePiso;
+                var s = ClonDeEnemigo(p, ejeN); if (s == null) { Fin("FALLO sin molde"); yield break; }
+                s.transform.position = p; Physics.SyncTransforms();
+                foreach (var x in Esperar(0.6f)) yield return x;
+                if (s.Brain != null) s.Brain.Anulado = true; s.transform.position = p; yield return null;
+                if (caso == 0) s.Health.TakeDamage(100000, yo.Id, false);
+                else { s.Health.TakeDamage(100000, -1, false); RagdollDeExplosion.Lanzar(s, s.transform.position - ejeN * 3f, 9f); }
+                foreach (var x in Esperar(5.5f)) yield return x;
+                bool sobre = rampa.Superficie(s.transform.position, out float ys);
+                var smr = s.GetComponentInChildren<SkinnedMeshRenderer>(true);
+                float minY = smr != null ? smr.bounds.min.y : s.transform.position.y;
+                float inclin = Vector3.Angle(s.transform.up, n);
+                string tag = caso == 0 ? "bala" : "explosion";
+                W8Ok(ref ok, sobre && Mathf.Abs(s.transform.position.y - (ys + SoldierMotor.PivoteSobrePiso * n.y)) < 0.45f, sb, $"{tag}: el cuerpo quedo sobre los escalones (pivote {s.transform.position.y:0.00}, superficie {ys:0.00})");
+                W8Ok(ref ok, minY > ys - 0.6f, sb, $"{tag}: no atraviesa la escalera (lo mas bajo del cuerpo {minY:0.00} contra superficie {ys:0.00}; antes caia a 1,5 m debajo)");
+                W8Ok(ref ok, inclin < 8f, sb, $"{tag}: tendido paralelo a la pendiente ({inclin:0.0} grados de desvio)");
+            }
+            W8Ok(ref ok, SP.Presentation.CaidaDeCuerpos.AcostadosEnRampa >= 2, sb, $"CaidaDeCuerpos acosto {SP.Presentation.CaidaDeCuerpos.AcostadosEnRampa} cuerpos en rampa");
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 956a mas perros en la ciudad
+        static IEnumerator Bug956a()
+        {
+            var sb = new StringBuilder(); bool ok = true;
+            // mismas reglas que los directores (pesado y escudero van primero)
+            int Perros(int total, int pesadoCada, int escudoCada, int perroCada) { int c = 0; for (int i = 1; i <= total; i++) if (i % pesadoCada != 0 && i % escudoCada != 0 && i % perroCada == 0) c++; return c; }
+            int ciudadAntes = Perros(26, 6, 5, 4), ciudadAhora = Perros(26, 6, 5, PerroEnemigo.CadaCuantosEnLaCiudad);
+            int mansionAntes = Perros(28, 8, 5, 7), mansionAhora = Perros(28, 8, 5, PerroEnemigo.CadaCuantosEnMansion);
+            W8Ok(ref ok, ciudadAhora >= ciudadAntes * 2, sb, $"refuerzos de la ciudad (26): {ciudadAntes} perros antes -> {ciudadAhora} ahora");
+            W8Ok(ref ok, mansionAhora >= mansionAntes * 1.5f, sb, $"enemigos de la mansion (28): {mansionAntes} perros antes -> {mansionAhora} ahora");
+            yield return null;
+            Fin((ok ? "OK " : "FALLO ") + sb);
+        }
+
+        // ---------------------------------------------------------------- 957a sala de computadoras en RTS: sin vigas ni luces (y el vigilante sobrevive a la carga de escena)
+        static IEnumerator Bug957a()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            var sb = new StringBuilder(); bool ok = true;
+            OperacionPrueba.Arrancar(3); foreach (var x in Esperar(2.5f)) yield return x;
+            var vig = Object.FindFirstObjectByType<SalaDespejadaEnRts>(FindObjectsInactive.Include);
+            W8Ok(ref ok, vig != null && vig.gameObject.scene.name == "DontDestroyOnLoad", sb, $"el vigilante vive entre escenas (escena '{(vig != null ? vig.gameObject.scene.name : "-")}'; antes moria al cargar desde el menu)");
+            var rig = SP.CameraSystem.CameraRig.Instance; var centro = new Vector3(0f, 0f, -60f);
+            int Visibles(System.Func<string, bool> nombre) { int n = 0; foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude)) { if (r == null || r is ParticleSystemRenderer || !r.enabled) continue; var b = r.bounds; if (Mathf.Abs(b.center.x) > 27f || b.center.z < -81f || b.center.z > -39f || b.min.y < 2.8f) continue; if (r.shadowCastingMode == UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly) continue; if (nombre(r.name)) n++; } return n; }
+            bool Luz(string n) => n.StartsWith("Panel_Luz") || n.StartsWith("LineaLuz") || n.StartsWith("Travesano") || n.StartsWith("Viga") || n.StartsWith("Ducto") || n.StartsWith("Bandeja") || n.StartsWith("Rejilla_Aire");
+            int antes = Visibles(Luz);
+            if (rig != null) rig.SetMode(SP.CameraSystem.ControlMode.Rts, centro);
+            foreach (var x in Esperar(2.5f)) yield return x;
+            int ocultas = SalaDespejadaEnRts.PiezasOcultas, despues = Visibles(Luz);
+            W8Ok(ref ok, antes >= 10, sb, $"en FPS se ven las luces y vigas de la sala ({antes} piezas sobre 2,8 m)");
+            W8Ok(ref ok, ocultas >= 20 && despues == 0, sb, $"en RTS se ocultan {ocultas} piezas y quedan {despues} luces/vigas visibles");
+            if (rig != null) rig.SetMode(SP.CameraSystem.ControlMode.Fps);
+            foreach (var x in Esperar(1.5f)) yield return x;
+            W8Ok(ref ok, Visibles(Luz) == antes && SalaDespejadaEnRts.PiezasOcultas == 0, sb, $"al volver a FPS se dibujan de nuevo ({Visibles(Luz)})");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
     }

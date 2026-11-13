@@ -125,7 +125,7 @@ namespace SP.EditorTools
         // Estos checks piden la radio clasica (Arrancar la deja tomada) y el resto se prueba con el modo de fabrica.
         public static bool RadioClasica;
         static readonly Regex reRadio = new Regex(@"^Bug(10[1-9]|11\d|12[0-4])", RegexOptions.Compiled);
-        static readonly Regex reMansion = new Regex(@"^Bug((406|407|408|409|410)u|(40[2-9]|41[0-9]|42[0-9])[a-h]|7[0-9][0-9][a-h]|8[0-9][0-9][a-h]|601e|601g|602[a-z]|893a|95[0-3]a)$", RegexOptions.Compiled);   // checks de la mansion y la azotea (ChecksBugs065.Azotea.cs)
+        static readonly Regex reMansion = new Regex(@"^Bug((406|407|408|409|410)u|(40[2-9]|41[0-9]|42[0-9])[a-h]|7[0-9][0-9][a-h]|8[0-9][0-9][a-h]|601e|601g|602[a-z]|893a|95[0-9]a)$", RegexOptions.Compiled);   // checks de la mansion y la azotea (ChecksBugs065.Azotea.cs)
         static void PrepararModoDelMando(string nombre)
         {
             RadioClasica = !string.IsNullOrEmpty(nombre) && reRadio.IsMatch(nombre);

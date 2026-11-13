@@ -23,6 +23,8 @@ namespace SP.Operacion
         public const float VelocidadDeCarga = 11f, VelocidadDeMarcha = 1.7f, RangoDeVision = 38f, AlcanceDeSalto = 7.5f, AlcanceMinimoDeSalto = 2.6f;
         public const float SegundosDeAlerta = 0.45f, SegundosEntreMordidas = 0.8f, EsperaDelSalto = 2.2f, AlcanceDeMordida = 1.7f, DuracionMinimaDelSalto = 0.34f;
         public const float AlturaDelPivote = 0.8f, EscalaDelModelo = 1.18f;
+        // Pedido 2026-11-13 "en la ciudad mas perros": cada cuantos enemigos que aparecen, uno es perro (antes 7 / 4 / 6).
+        public const int CadaCuantosEnMansion = 3, CadaCuantosEnLaCiudad = 2, CadaCuantosEnLaExtraccion = 3;
 
         public static int Creados { get; private set; }
         public Fase Estado { get; private set; } = Fase.Merodea;

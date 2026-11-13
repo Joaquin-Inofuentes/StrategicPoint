@@ -14,7 +14,8 @@ namespace SP.Operacion
     // semiangulo frontal se anula; las explosiones y los vehiculos (origen desconocido) pasan.
     public sealed class EnemigoEscudero : MonoBehaviour
     {
-        public const float SemianguloDelEscudo = 62f, FactorDeGiro = 0.4f, FactorDeVelocidad = 0.7f;
+        // 2026-11-13 "que rote muy lento": el soldado comun gira a 220 grados/s; el escudero a 220 x 0,14 = ~31 grados/s (media vuelta en casi 6 s).
+        public const float SemianguloDelEscudo = 62f, FactorDeGiro = 0.14f, FactorDeVelocidad = 0.7f;
         public const int MultiplicadorDeVida = 2;
         public static int Creados { get; private set; }
         public int Bloqueados { get; private set; }
@@ -61,8 +62,11 @@ namespace SP.Operacion
             if (!ProtegeContra(atacante.transform.position)) { Pasaron++; return dano; }
             Bloqueados++; brillo = 1f;
             var punto = Escudo != null ? Escudo.position + (atacante.transform.position - Escudo.position).normalized * 0.12f : transform.position + Vector3.up;
+            var haciaElTirador = (atacante.transform.position - punto).normalized;
             AudioDirector.PlayAt(SfxKind.ImpactoEscudo, punto, 0.9f, 1f);
-            ImpactCubes.Spawn(punto, (atacante.transform.position - punto).normalized, ImpactSurface.Obstacle, 20);
+            ImpactCubes.Spawn(punto, haciaElTirador, ImpactSurface.Obstacle, 20);
+            // 2026-11-13: "particulas si disparo contra el escudo": lluvia de chispas por donde pego, hacia el que dispara (con algo de abanico al azar)
+            ChispasDeMetal.Spawn(punto, (haciaElTirador + Vector3.up * 0.15f + Random.insideUnitSphere * 0.25f).normalized);
             return 0;
         }
 
@@ -108,8 +112,33 @@ namespace SP.Operacion
             Pieza(raiz, "Agarre", new Vector3(0f, 0f, -0.12f), new Vector3(0.1f, 0.5f, 0.08f), marco);   // por detras: donde lo sostiene
         }
 
+        public bool Soltado { get; private set; }
+        public Rigidbody EscudoCaido { get; private set; }
+
+        // Pedido 2026-11-13: "cuando muere que el escudo se caiga". El escudo deja de ser hijo del cuerpo, gana collider y cuerpo rigido, sale con un empujon hacia
+        // adelante y vuelca sobre el piso; queda tirado un rato y se retira solo. Va en la capa de los fragmentos (sin rayos ni malla de navegacion).
+        void SoltarEscudo()
+        {
+            Soltado = true;
+            var e = Escudo; if (e == null) return;
+            var pos = e.position;
+            e.SetParent(null, true);
+            foreach (var t in e.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = Fragmentador.LayerSinRayos;
+            var caja = e.gameObject.AddComponent<BoxCollider>(); caja.size = new Vector3(1.2f, 1.58f, 0.16f);
+            var rb = e.gameObject.AddComponent<Rigidbody>();
+            rb.mass = 14f; rb.linearDamping = 0.05f; rb.angularDamping = 0.35f; rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            foreach (var c in GetComponentsInChildren<Collider>(true)) if (c != null) Physics.IgnoreCollision(caja, c);
+            var adelante = e.forward; adelante.y = 0f;
+            rb.AddForce(adelante.normalized * 1.6f + Vector3.up * 1.1f, ForceMode.VelocityChange);
+            rb.AddTorque(Vector3.Cross(Vector3.up, adelante.normalized) * -2.6f + Random.insideUnitSphere * 0.8f, ForceMode.VelocityChange);   // vuelca hacia adelante
+            EscudoCaido = rb;
+            AudioDirector.PlayAt(SfxKind.ImpactoEscudo, pos, 0.8f, 0.7f);
+            Destroy(e.gameObject, 40f);
+        }
+
         void Update()
         {
+            if (!Soltado && Escudo != null && soldado != null && soldado.Health != null && !soldado.Health.IsAlive) SoltarEscudo();
             if (matVentana == null) return;
             brillo = Mathf.MoveTowards(brillo, 0f, Time.deltaTime * 4f);
             matVentana.SetColor("_EmissionColor", Color.Lerp(new Color(0.9f, 0.55f, 0.1f) * 0.8f, new Color(2.5f, 2.2f, 1.6f), brillo));   // destella al recibir un impacto

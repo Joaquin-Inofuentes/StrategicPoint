@@ -157,7 +157,7 @@ namespace SP.Operacion
             if (s == null) { Destroy(go); return null; }
             if (MansionEnemigosCreados % 8 == 0) EnemigoPesado.Aplicar(s);   // 2026-11-07: cada 8.o enemigo de la mansion es un PESADO
             else if (MansionEnemigosCreados % 5 == 0) EnemigoEscudero.Aplicar(s);   // 2026-11-13: cada 5.o un ESCUDERO
-            else if (MansionEnemigosCreados % 7 == 0) PerroEnemigo.Aplicar(s);      // 2026-11-13: cada 7.o un PERRO
+            else if (MansionEnemigosCreados % PerroEnemigo.CadaCuantosEnMansion == 0) PerroEnemigo.Aplicar(s);      // 2026-11-13: un PERRO cada 7.o; "en la ciudad mas perros" -> cada 3.o
             if (G.Dentro(pos, 1f) || pos.y > 1f) ColocarEnElPiso(s.transform, pos); else ApoyoEnElPiso.Apoyar(s.transform);
             if (s.Brain != null)
             {

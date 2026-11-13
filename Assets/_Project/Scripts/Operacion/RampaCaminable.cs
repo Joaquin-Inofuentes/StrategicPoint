@@ -46,6 +46,34 @@ namespace SP.Operacion
             return true;
         }
 
+        // Normal de la superficie de la cuesta (apunta hacia arriba y hacia atras de la pendiente): para acostar un cuerpo paralelo a los escalones.
+        public Vector3 NormalDeLaSuperficie()
+        {
+            var eje = arriba - abajo; eje.y = 0f; float largo = eje.magnitude;
+            if (largo < 0.01f) return Vector3.up;
+            var ejeN = eje / largo;
+            var tangente = new Vector3(ejeN.x * largo, alturaDelFinal - alturaInicial, ejeN.z * largo).normalized;
+            var lado = Vector3.Cross(Vector3.up, ejeN);
+            var n = Vector3.Cross(tangente, lado).normalized;
+            return n.y < 0f ? -n : n;
+        }
+
+        // 2026-11-13 ("cuando alguien muere en la escalera se rompe y atraviesa"): la rampa es una superficie virtual que solo sostiene a los VIVOS; un muerto
+        // quedaba "en el aire" para CaidaDeCuerpos, que lo hacia caer hasta el piso real, DEBAJO de la escalera. Devuelve la rampa que sostiene a un cuerpo cuyo
+        // pivote esta en p (pivote = superficie + pivoteSobrePiso, con un margen de 1,4 m por encima/debajo para el que cae o quedo inclinado).
+        public static bool SosteniendoA(Vector3 p, float pivoteSobrePiso, out RampaCaminable rampa, out float ySuperficie)
+        {
+            rampa = null; ySuperficie = 0f; float mejor = 1.4f;
+            for (int i = 0; i < todas.Count; i++)
+            {
+                var r = todas[i]; if (r == null || !r.isActiveAndEnabled) continue;
+                if (!r.Superficie(p, out float y)) continue;
+                float d = Mathf.Abs(p.y - pivoteSobrePiso - y);
+                if (d <= mejor) { mejor = d; rampa = r; ySuperficie = y; }
+            }
+            return rampa != null;
+        }
+
         // Perfil del 2026-11-11: hay una RampaCaminable por escalera/rampa (decenas) y cada una recorria TODOS los soldados cada frame consultando
         // activeInHierarchy, Health.IsAlive y Motor (~1,2 ms por frame en total). Ahora la lista de soldados vivos se arma UNA vez por frame y se
         // comparte, y cada rampa descarta primero por caja en planta (barata) antes de tocar el motor.
