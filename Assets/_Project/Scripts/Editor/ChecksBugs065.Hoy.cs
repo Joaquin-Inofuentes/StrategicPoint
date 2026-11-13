@@ -864,6 +864,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, resaltado, sb, $"al apuntar a {otro.DisplayName} se lo resalta (apuntado={(drv.AliadoApuntadoRts != null ? drv.AliadoApuntadoRts.DisplayName : "nadie")}; motivo={drv.MotivoDelResalte}; pantalla={pant}; mouse={mouse.position.ReadValue()})");
             bool hayAro = false; foreach (var f in Object.FindObjectsByType<SP.Presentation.SelectionRingFx>(FindObjectsSortMode.None)) if (f.Target == otro.transform) hayAro = true;
             W8Ok(ref ok, hayAro, sb, "tiene el aro de resalte encima");
+            foreach (var x in FotoPrincipal("v11_q_resalte.jpg")) yield return x;
             // el flanco de pulsacion solo vale durante el update que procesa el evento: se encola SIN forzar InputSystem.Update().
             // La camara y el aliado se mueven, asi que se reintenta: se reapunta (mouse sobre el aliado) y se pulsa Q solo cuando el aliado esta apuntado.
             PonerEntradaSinFoco();
@@ -890,6 +891,7 @@ namespace SP.EditorTools
             foreach (var x in Esperar(0.8f)) yield return x;
             W8Ok(ref ok, Poseido() == otro, sb, $"[Q] apuntando a un aliado lo posee (ahora {(Poseido() != null ? Poseido().DisplayName : "nadie")})");
             W8Ok(ref ok, rig.Mode == SP.CameraSystem.ControlMode.Fps, sb, "pasa a primera persona");
+            foreach (var x in FotoPrincipal("v11_q_poseido.jpg")) yield return x;
 
             // sala de servidores: luces/vigas colgantes se ocultan solo en RTS
             OperacionPrueba.Arrancar(3);
@@ -899,9 +901,13 @@ namespace SP.EditorTools
             foreach (var x in Esperar(1.5f)) yield return x;
             int ocultasRts = SalaDespejadaEnRts_PiezasOcultas();
             W8Ok(ref ok, ocultasRts >= 10, sb, $"en RTS se ocultan {ocultasRts} piezas colgantes de la sala de servidores (paneles de luz, vigas)");
+            foreach (var x in FotoPrincipal("v11_vigas_rts.jpg")) yield return x;
             rig.SetMode(SP.CameraSystem.ControlMode.Fps, new Vector3(0f, 0f, -61f));
             foreach (var x in Esperar(1.0f)) yield return x;
             W8Ok(ref ok, SalaDespejadaEnRts_PiezasOcultas() == 0, sb, "al volver a FPS se dibujan de nuevo");
+            rig.SetMode(SP.CameraSystem.ControlMode.Rts, new Vector3(0f, 0f, -61f));
+            foreach (var x in Esperar(1.0f)) yield return x;
+            foreach (var x in FotoPrincipal("v11_vigas_rts_b.jpg")) yield return x;
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
         // ---------------------------------------------------------------- 602f fotos "despues" de lo nuevo: pesado junto a un soldado normal, helicoptero jefe y aro de posesion en RTS
