@@ -45,3 +45,6 @@ Suite headless OK tras los cambios (13:00). Build Windows64 (13:06) y capturas D
 ## Cuarta pasada
 - U: se quito por completo la seleccion/marcas de geometrias del reporte; vuelve a captura y texto simple.
 - Calle inicial quitada (Calle_Salida, T con veredas/cordones, rayas amarillas z<22): el asfalto arranca en el patio del tanque (z=22) hacia adelante. Suite OK, build limpia 14:07 y RAR regenerado.
+
+## Quinta pasada (revision de pedidos)
+Planilla sin filas nuevas (31 del 17/11). Corregido tras revisar capturas: #15 alfombra roja de la puerta apagada; #28 edificio en ruinas con el marco flotante apagado (8 objetos). #17 verificado (columna 320,266 fuera). Suite OK, build limpia y RAR regenerado.
