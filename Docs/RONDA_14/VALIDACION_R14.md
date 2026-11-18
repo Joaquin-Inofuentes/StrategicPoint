@@ -41,3 +41,7 @@ Atlas ANTES vs DESPUES: `ATLAS_R14_1_8.jpg`, `_9_16`, `_17_24`, `_25_31` (captur
 
 ## Verificacion
 Suite headless OK tras los cambios (13:00). Build Windows64 (13:06) y capturas DESPUES regeneradas. Probado jugando: nada. Nada commiteado.
+
+## Cuarta pasada
+- U: se quito por completo la seleccion/marcas de geometrias del reporte; vuelve a captura y texto simple.
+- Calle inicial quitada (Calle_Salida, T con veredas/cordones, rayas amarillas z<22): el asfalto arranca en el patio del tanque (z=22) hacia adelante. Suite OK, build limpia 14:07 y RAR regenerado.
