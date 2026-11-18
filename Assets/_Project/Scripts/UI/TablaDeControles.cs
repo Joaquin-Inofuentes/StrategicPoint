@@ -22,7 +22,7 @@ namespace SP.UI
         const string ClicDer = "Clic der.";
         const string Marca = "\u0001";
 
-        static Font Fuente => Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        static Font Fuente => SP.Presentation.FuentesBelicas.Para(0);
 
         // Cambia si cambia el idioma o alguna tecla de las que muestra la tabla (remapeo): se usa para decidir si reconstruir.
         public static int Firma()

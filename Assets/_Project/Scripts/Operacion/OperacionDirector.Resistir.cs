@@ -306,6 +306,22 @@ namespace SP.Operacion
         readonly HashSet<int> lanzadasCiudad = new HashSet<int>();
         bool ciudadPausada, entroALaCiudad;
 
+        // R14 (#18): circulo vibrante en la plaza (la base de la resistencia). Al acercarse cambia a "APRETA E" y E lo confirma; lejos pide acercarse.
+        public const float RadioDeInteraccionDeBase = 5f, RadioDeAvisoDeBase = 30f;
+        public bool BaseInteractuable { get; private set; }
+        public int ConfirmacionesDeBase { get; private set; }
+        float tAvisoBase;
+        void TickCirculoDeBase(Soldier yo)
+        {
+            if (plaza == null || yo == null) { BaseInteractuable = false; AnilloDeSubida.Ocultar(); return; }
+            float d = Plano(yo.transform.position, plaza.position).magnitude;
+            if (!AnilloDeSubida.EstaActivo || AnilloDeSubida.Instancia == null) AnilloDeSubida.Mostrar(plaza, 4.2f);
+            BaseInteractuable = d <= RadioDeInteraccionDeBase;
+            if (!SP.Player.KeyBindings.WasPressed(SP.Player.KeyBindings.Interactuar)) { if (BaseInteractuable && Time.time >= tAvisoBase) { tAvisoBase = Time.time + 2.5f; if (hud != null) hud.Aviso("BASE · APRETA [" + SP.Player.KeyBindings.DisplayName(SP.Player.KeyBindings.Interactuar) + "] PARA REAGRUPAR", 2f); } return; }
+            if (BaseInteractuable) { ConfirmacionesDeBase++; if (hud != null) hud.Aviso("BASE ASEGURADA · ESCUADRA REAGRUPADA", 2f); }
+            else if (d <= RadioDeAvisoDeBase && hud != null) hud.Aviso($"ACERCATE A LA BASE · ESTAS A {d:0} m (MAX {RadioDeInteraccionDeBase:0} m) Y APRETA [{SP.Player.KeyBindings.DisplayName(SP.Player.KeyBindings.Interactuar)}]", 1.8f);
+        }
+
         void TickResistir(float dt)
         {
             RescatarAliadosDeOtroPiso(Poseido());   // #384/#386: tambien en la ciudad (se limita a 1 vez por segundo)
@@ -323,6 +339,7 @@ namespace SP.Operacion
             if (!dentro) { Reloj -= dt; ciudadPausada = true; } else { ciudadPausada = false; entroALaCiudad = true; }
             // Si el tanque frena antes del pueblo, todavia no se "salio" de la ciudad: se pide ENTRAR, no VOLVER.
             string pausa = entroALaCiudad ? "VOLVE A LA CIUDAD" : "ENTRA A LA CIUDAD";
+            TickCirculoDeBase(yo);
             Reloj = Mathf.Max(0f, Reloj);
 
             for (int i = 0; i < oleadasDeLaCiudad.Length; i++)

@@ -608,16 +608,69 @@ namespace SP.Combat
             knifeCooldownTimer = KnifeCooldown;
 
             var best = BuscarObjetivoDeCuchillo();
-            if (best != null) best.Health.TakeDamage(KnifeDamage, owner.Id);
-            EventBus.Instance.Publish(new MeleeAttackEvent(owner.Id, best != null));
-            SP.Presentation.CuchilloFx.Tajo(owner, best);
+            bool tapado = false, matado = false, conecto = false;
+            int vidaAntes = best != null ? best.Health.Current : 0;
+            int pesadoGolpes = 0;
+            if (best == null) tapado = UltimoBlancoTapado;
+            else
+            {
+                // Ronda 13 (T1): el cuchillo es letal. Una cuchillada mata (sin coeficientes de dificultad ni ajustes); el pesado cae en dos
+                // dentro de 4 s (la 1.a lo deja a media vida). El escudero bloquea de frente (D2): Ejecutar respeta su filtro.
+                var pesado = best.GetComponent<SP.Operacion.EnemigoPesado>();
+                if (pesado != null)
+                {
+                    if (Time.time - pesado.UltimoGolpeDeCuchillo > SP.Operacion.EnemigoPesado.VentanaEntreCuchilladas) pesado.GolpesDeCuchillo = 0;
+                    if (pesado.GolpesDeCuchillo <= 0)
+                    {
+                        int tope = Mathf.Max(1, Mathf.Max(best.Health.MaxHealth, pesado.VidaMaxima) / 2);
+                        // si ya estaba por debajo de la mitad (la cuchillada anterior quedo fuera de la ventana) igual cuenta como 1.er golpe
+                        conecto = best.Health.RecortarVidaA(tope, owner.Id, true) || best.Health.Current <= tope;
+                        if (conecto) { pesado.GolpesDeCuchillo = 1; pesado.UltimoGolpeDeCuchillo = Time.time; }
+                    }
+                    else
+                    {
+                        conecto = best.Health.Ejecutar(owner.Id, true);
+                        if (conecto) { pesado.GolpesDeCuchillo = 2; pesado.UltimoGolpeDeCuchillo = Time.time; }
+                    }
+                    pesadoGolpes = pesado.GolpesDeCuchillo;
+                }
+                else conecto = best.Health.Ejecutar(owner.Id, true);
+                matado = !best.Health.IsAlive;
+            }
+            GameLog.Line($"cuchillo: blanco={(best != null ? best.name : "-")} vida_antes={vidaAntes} matado={matado} pesado_golpes={pesadoGolpes} tapado={tapado}");
+            EventBus.Instance.Publish(new MeleeAttackEvent(owner.Id, conecto));
+            SP.Presentation.CuchilloFx.Tajo(owner, conecto ? best : null);
             return true;
         }
+
+        // Ronda 13 (T1): linea de vista del cuchillo (mismo criterio que Projectile.LaExplosionAlcanza: solidos que bloquean el movimiento).
+        static readonly RaycastHit[] bufferCuchillo = new RaycastHit[16];
+        bool CuchilloTapado(Soldier s)
+        {
+            var desde = owner.transform.position + Vector3.up * 1.2f;
+            var hasta = s.transform.position + Vector3.up * 1.0f;
+            var delta = hasta - desde; float dist = delta.magnitude;
+            if (dist < 0.05f) return false;
+            int n = Physics.RaycastNonAlloc(desde, delta / dist, bufferCuchillo, dist, ~0, QueryTriggerInteraction.Ignore);
+            for (int i = 0; i < n; i++)
+            {
+                var c = bufferCuchillo[i].collider;
+                if (c == null) continue;
+                if (c.transform.IsChildOf(owner.transform) || c.transform.IsChildOf(s.transform)) continue;
+                if (!SP.Core.NavService.BlocksMovement(c) || SP.Combat.NoFrenaBalas.Tiene(c)) continue;
+                return true;
+            }
+            return false;
+        }
+
+        // True si en el ultimo barrido habia un enemigo al alcance pero tapado por un solido.
+        bool UltimoBlancoTapado;
 
         Soldier BuscarObjetivoDeCuchillo()
         {
             Soldier best = null;
             float bestDist = KnifeRange;
+            UltimoBlancoTapado = false;
             foreach (var s in ActorRegistry.All)
             {
                 // BUG REAL: faltaba el mismo chequeo que ya tienen
@@ -633,7 +686,11 @@ namespace SP.Combat
                 float dist = to.magnitude;
                 if (dist > KnifeRange) continue;
                 if (dist > 0.05f && Vector3.Angle(owner.transform.forward, to) > KnifeArcDeg) continue;
-                if (dist < bestDist) { bestDist = dist; best = s; }
+                if (dist < bestDist)
+                {
+                    if (CuchilloTapado(s)) { UltimoBlancoTapado = true; continue; }
+                    bestDist = dist; best = s;
+                }
             }
             return best;
         }
@@ -736,6 +793,17 @@ namespace SP.Combat
 
             var spawnPos = bocaForzada ?? (Muzzle != null ? Muzzle.position : origin);
             var espec = WeaponCatalog.Get(CurrentWeaponKind);
+            LanzarSegunEspec(espec, spawnPos, spreadDir);
+            cooldownTimer = fireCooldown;
+            if (!MunicionInfinitaPorModoDios) CurrentAmmo--;   // bug #324: con [F4] la municion no baja; sin [F4] es la de siempre
+            if (CurrentAmmo <= 0 && !SinMunicionTotal) StartReload();
+            EventBus.Instance.Publish(new ShotFiredEvent(owner.Id));
+            return true;
+        }
+
+        // Ronda 13 (T2): la salida del proyectil segun la especificacion del arma, UNICA para el disparo real y para el ayudante de pruebas.
+        void LanzarSegunEspec(WeaponCatalog.Spec espec, Vector3 spawnPos, Vector3 spreadDir)
+        {
             if (espec.Pellets > 1)
             {
                 // Escopeta: un cono de perdigones por disparo.
@@ -744,15 +812,24 @@ namespace SP.Combat
             }
             else if (espec.ExplosionRadius > 0f)
             {
-                // Lanzacohetes: proyectil lento con explosion de area.
-                pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor, espec.ExplosionRadius, espec.ProjectileGravity, null, espec.ProjectileSpeed);
+                // Lanzacohetes: proyectil lento con explosion de area. El multiplicador contra vehiculos (2,5) solo lo aplica el bando del jugador:
+                // asi los cohetes del pesado enemigo no pegan de golpe 2,5 veces mas fuerte al tanque propio.
+                float mVeh = owner.Team == TeamId.Player ? espec.MultiplicadorVsVehiculo : 1f;
+                pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor, espec.ExplosionRadius, espec.ProjectileGravity, null, espec.ProjectileSpeed, mVeh);
             }
             else
                 pool.Spawn(spawnPos, spreadDir, owner.Id, owner.Team, damage, projectileColor);
-            cooldownTimer = fireCooldown;
-            if (!MunicionInfinitaPorModoDios) CurrentAmmo--;   // bug #324: con [F4] la municion no baja; sin [F4] es la de siempre
-            if (CurrentAmmo <= 0 && !SinMunicionTotal) StartReload();
-            EventBus.Instance.Publish(new ShotFiredEvent(owner.Id));
+        }
+
+        // Ronda 13 (T2): ayudante de PRUEBAS. Dispara 'espec' por la misma ruta que el arma real (LanzarSegunEspec), sin gastar municion ni
+        // enfriamiento y sin dispersion. El check Bug958a lo usa para medir cuantos cohetes hacen falta contra el helicoptero jefe.
+        public bool DispararEspecPrueba(WeaponCatalog.Spec espec, Vector3 boca, Vector3 dir)
+        {
+            if (owner == null) Bootstrap();
+            if (owner == null) return false;
+            if (pool == null) pool = ProjectilePool.Activo;
+            if (pool == null) return false;
+            LanzarSegunEspec(espec, boca, dir.normalized);
             return true;
         }
 

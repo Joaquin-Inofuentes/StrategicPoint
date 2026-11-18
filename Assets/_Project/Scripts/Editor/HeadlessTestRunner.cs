@@ -204,6 +204,7 @@ namespace SP.EditorTools
             SP.Player.Demolicion.Segundos = SP.Player.Demolicion.SegundosNormales;
             SP.Player.PedidoDeCuracion.AtencionAutomatica = true;
             SP.Core.Dificultad.Activa = false;   // la partida principal la deja activa y cambia el dano de todos
+            SP.Core.AjustesDeDano.ForzarParaPrueba(SP.Core.AjustesDeDano.PropioPorDefecto, SP.Core.AjustesDeDano.EnemigoPorDefecto);   // R13 (T3): la suite no depende de los sliders del usuario
         }
 
         [MenuItem("Strategic Point/Run All Tests Headless")]

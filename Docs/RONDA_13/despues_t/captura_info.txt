@@ -1,0 +1,48 @@
+version=0.1.0 resolucion=1600x900 dificultad=Medio semilla=1313 filtro=cuchillo_soldado_0,cuchillo_pesado,desierto_1,desierto_2,desierto_3,desierto_rodante
+dato global.molde_fijo=True
+dato global.escena=SC_Operacion
+dato global.duplicados_apagados=0
+dato global.colliders_apagados=0
+dato global.titulos_ocultos=0
+== cuchillo_soldado
+estado al empezar: director=True fase=Infiltrar sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=45 escala=1.0 dios=True
+dato cuchillo_soldado_0.vida_antes=180
+dato cuchillo_soldado_0.vida_despues=0
+dato cuchillo_soldado_0.vivo=false
+dato cuchillo_soldado_0.tryMelee=true
+dato cuchillo_soldado_0.particulas=228
+dato cuchillo_soldado_0.particulas_sangre=0
+== cuchillo_soldado_0
+dato cuchillo_soldado_1.decal_sangre=0
+dato cuchillo_soldado_1.sangrefx_objetos=0
+dato cuchillo_soldado_1.decalkind_sangre_existe=true
+estado al terminar: director=True fase=Puestos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=16 escala=1.0 dios=True
+dato cuchillo_soldado.segundos=4.50
+== cuchillo_pesado
+estado al empezar: director=True fase=Puestos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=16 escala=1.0 dios=True
+dato cuchillo_pesado.vida_max=2160
+dato cuchillo_pesado.vida_antes=2160
+dato cuchillo_pesado.vida_tras_1=1080
+dato cuchillo_pesado.vida_tras_2=0
+dato cuchillo_pesado.pct_perdido_1=50.00
+dato cuchillo_pesado.vivo=false
+dato cuchillo_pesado.golpes=2
+dato cuchillo_pesado.particulas_sangre=0
+== cuchillo_pesado
+estado al terminar: director=True fase=Puestos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=15 escala=1.0 dios=True
+dato cuchillo_pesado.segundos=4.94
+== desierto
+estado al empezar: director=True fase=Puestos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=15 escala=1.0 dios=True
+dato desierto_1.arboles_terreno=1450
+dato desierto_1.rodantes=10
+dato desierto_1.polvo=1
+dato desierto_1.remolinos=4
+dato desierto_1.terreno_arboles_go=true
+== desierto_1
+== desierto_2
+== desierto_3
+== desierto_rodante
+estado al terminar: director=True fase=Huir sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=0 escala=1.0 dios=True
+dato desierto.segundos=3.43
+dato global.duplicados_apagados_final=0 colliders_apagados_final=0 titulos_ocultos_final=0
+FIN 23.61 s

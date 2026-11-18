@@ -68,7 +68,7 @@ namespace SP.UI
             trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
             trt.offsetMin = new Vector2(12f, 8f); trt.offsetMax = new Vector2(-12f, -8f);
             var t = tgo.GetComponent<Text>();
-            t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            t.font = SP.Presentation.FuentesBelicas.Para(13);
             t.fontSize = 13;
             t.supportRichText = true;
             t.alignment = TextAnchor.UpperLeft;
@@ -97,7 +97,7 @@ namespace SP.UI
             tabLabelRt.anchorMin = Vector2.zero; tabLabelRt.anchorMax = Vector2.one;
             tabLabelRt.offsetMin = tabLabelRt.offsetMax = Vector2.zero;
             var tabLabel = tabLabelGO.GetComponent<Text>();
-            tabLabel.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            tabLabel.font = SP.Presentation.FuentesBelicas.Para(12);
             tabLabel.fontSize = 12;
             tabLabel.fontStyle = FontStyle.Bold;
             tabLabel.alignment = TextAnchor.MiddleCenter;
@@ -111,7 +111,7 @@ namespace SP.UI
             guiaRt.anchorMin = new Vector2(0f, 0f); guiaRt.anchorMax = new Vector2(1f, 1f);
             guiaRt.offsetMin = new Vector2(68f, 0f); guiaRt.offsetMax = new Vector2(-8f, 0f);
             var tg = guiaGO.GetComponent<Text>();
-            tg.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            tg.font = SP.Presentation.FuentesBelicas.Para(15);
             tg.fontSize = 15;
             tg.fontStyle = FontStyle.Bold;
             tg.alignment = TextAnchor.MiddleLeft;

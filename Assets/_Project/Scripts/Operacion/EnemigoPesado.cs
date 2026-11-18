@@ -28,6 +28,10 @@ namespace SP.Operacion
         public float InicioDeEstacionar { get; private set; } = -1f;
         public float InicioDeFrenesi { get; private set; } = -1f;
         public int VidaMaxima { get; private set; }
+        // Ronda 13 (T1): el cuchillo lo mata en 2 cuchilladas dentro de VentanaEntreCuchilladas (la 1.a lo deja a media vida).
+        public const float VentanaEntreCuchilladas = 4f;
+        public int GolpesDeCuchillo;
+        public float UltimoGolpeDeCuchillo = -999f;
         public bool AnimacionPropia { get; private set; }
         Soldier soldado; AiBrain cerebro; float desde, ultimoVisto;
 

@@ -3,22 +3,25 @@ using UnityEngine;
 
 namespace SP.Presentation
 {
-    public enum DecalKind { Crater, BulletHole }
+    public enum DecalKind { Crater, BulletHole, Sangre }
 
     // La quemadura del crater dura 25 s entera y se desvanece en los 35 s siguientes; despues se apaga y su lugar se reusa.
     public class DecalDesvanecido : MonoBehaviour
     {
         public const float Mantener = 25f, Desvanecer = 35f;
         SpriteRenderer sr; Color baseColor; float nace;
+        float mantener = Mantener, desvanecer = Desvanecer;
 
-        public void Iniciar(SpriteRenderer render, Color color) { sr = render; baseColor = color; nace = Time.time; }
+        public void Iniciar(SpriteRenderer render, Color color) { sr = render; baseColor = color; nace = Time.time; mantener = Mantener; desvanecer = Desvanecer; }
+        // Ronda 13 (T1): la mancha de sangre dura 8 s en total (6 s entera y 2 s de desvanecido).
+        public void Iniciar(SpriteRenderer render, Color color, float mantenerS, float desvanecerS) { Iniciar(render, color); mantener = mantenerS; desvanecer = Mathf.Max(0.01f, desvanecerS); }
 
         void Update()
         {
             if (sr == null) return;
-            float edad = Time.time - nace - Mantener;
+            float edad = Time.time - nace - mantener;
             if (edad <= 0f) return;
-            float k = 1f - Mathf.Clamp01(edad / Desvanecer);
+            float k = 1f - Mathf.Clamp01(edad / desvanecer);
             var c = baseColor; c.a *= k; sr.color = c;
             if (k <= 0f) gameObject.SetActive(false);
         }
@@ -40,7 +43,8 @@ namespace SP.Presentation
         static readonly Dictionary<DecalKind, List<GameObject>> pools = new Dictionary<DecalKind, List<GameObject>>();
         static Transform root;
 
-        public static int Budget(DecalKind kind) => kind == DecalKind.Crater ? CraterBudget : BulletHoleBudget;
+        public const int SangreBudget = 24;   // Ronda 13 (T1): manchas de cuchillada (dos por golpe como mucho), cada una dura 8 s
+        public static int Budget(DecalKind kind) => kind == DecalKind.Crater ? CraterBudget : kind == DecalKind.Sangre ? SangreBudget : BulletHoleBudget;
         public static int CountOf(DecalKind kind) => pools.TryGetValue(kind, out var l) ? l.Count : 0;
 
         public static void ResetIfStale()
@@ -150,6 +154,39 @@ namespace SP.Presentation
             return spriteImpacto;
         }
 
+        static Sprite spriteSangre;
+        // Mancha de sangre generada una sola vez: un charco irregular (nucleo opaco, borde lobulado) con salpicaduras alrededor.
+        static Sprite SpriteDeSangre()
+        {
+            if (spriteSangre != null) return spriteSangre;
+            const int n = 64;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear, hideFlags = HideFlags.HideAndDontSave };
+            var px = new Color32[n * n];
+            float c = (n - 1) * 0.5f;
+            var rng = new System.Random(777);
+            var fase = new float[4]; for (int i = 0; i < 4; i++) fase[i] = (float)(rng.NextDouble() * Mathf.PI * 2f);
+            var gotas = new Vector3[9];
+            for (int i = 0; i < gotas.Length; i++) { float a = (float)(rng.NextDouble() * Mathf.PI * 2f), r = 0.55f + (float)rng.NextDouble() * 0.35f; gotas[i] = new Vector3(Mathf.Cos(a) * r, Mathf.Sin(a) * r, 0.04f + (float)rng.NextDouble() * 0.06f); }
+            for (int y = 0; y < n; y++)
+                for (int x = 0; x < n; x++)
+                {
+                    float dx = (x - c) / c, dy = (y - c) / c, d = Mathf.Sqrt(dx * dx + dy * dy);
+                    float ang = Mathf.Atan2(dy, dx);
+                    float radio = 0.42f + 0.10f * Mathf.Sin(ang * 3f + fase[0]) + 0.06f * Mathf.Sin(ang * 5f + fase[1]) + 0.04f * Mathf.Sin(ang * 8f + fase[2]);
+                    float a = d < radio ? Mathf.Clamp01((radio - d) / 0.08f) : 0f;
+                    for (int i = 0; i < gotas.Length; i++)
+                    {
+                        float gd = Mathf.Sqrt((dx - gotas[i].x) * (dx - gotas[i].x) + (dy - gotas[i].y) * (dy - gotas[i].y));
+                        if (gd < gotas[i].z) a = Mathf.Max(a, Mathf.Clamp01((gotas[i].z - gd) / 0.03f));
+                    }
+                    px[y * n + x] = new Color32(150, 6, 8, (byte)Mathf.RoundToInt(255f * Mathf.Clamp01(a)));
+                }
+            tex.SetPixels32(px); tex.Apply(false, true);
+            spriteSangre = Sprite.Create(tex, new Rect(0, 0, n, n), new Vector2(0.5f, 0.5f), n, 0, SpriteMeshType.FullRect);
+            spriteSangre.hideFlags = HideFlags.HideAndDontSave;
+            return spriteSangre;
+        }
+
         public static GameObject Spawn(DecalKind kind, Vector3 position, Vector3 normal, float size)
         {
             ResetIfStale();
@@ -185,14 +222,19 @@ namespace SP.Presentation
             // Ronda 12: antes era un quad gris liso (placeholder). Ahora es una marca real: sprite de quemadura (Kenney, CC0)
             // teñido oscuro y girado al azar para que no se repitan.
             // Bug #238: el agujero de bala es una marca propia (nucleo oscuro, borde astillado claro y grietas), no una quemadura.
-            var spr = kind == DecalKind.Crater ? SpritesReales.Obtener(Random.value < 0.5f ? "scorch_03" : "scorch_01") : SpriteDeImpacto();
+            var spr = kind == DecalKind.Crater ? SpritesReales.Obtener(Random.value < 0.5f ? "scorch_03" : "scorch_01") : kind == DecalKind.Sangre ? SpriteDeSangre() : SpriteDeImpacto();
             var decalSr = decal.GetComponent<SpriteRenderer>();
             decalSr.sprite = spr;
             // Pedido: la mancha del crater era un charco negro de ~12 m que no se iba nunca. Ahora es una quemadura marron oscura,
             // translucida (se ve el piso debajo), mas chica, y se desvanece sola (DecalDesvanecido).
-            var colorMarca = kind == DecalKind.Crater ? ColorCrater : Color.white;
+            var colorMarca = kind == DecalKind.Crater ? ColorCrater : kind == DecalKind.Sangre ? new Color(1f, 1f, 1f, 0.92f) : Color.white;
             decalSr.color = colorMarca;
-            if (kind == DecalKind.Crater)
+            if (kind == DecalKind.Sangre)
+            {
+                if (!decal.TryGetComponent<DecalDesvanecido>(out var fadeS)) fadeS = decal.AddComponent<DecalDesvanecido>();
+                fadeS.Iniciar(decalSr, colorMarca, 6f, 2f);
+            }
+            else if (kind == DecalKind.Crater)
             {
                 if (!decal.TryGetComponent<DecalDesvanecido>(out var fade)) fade = decal.AddComponent<DecalDesvanecido>();
                 fade.Iniciar(decalSr, colorMarca);

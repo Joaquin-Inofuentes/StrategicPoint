@@ -116,16 +116,11 @@ namespace SP.EditorTools
             OperacionPrueba.Arrancar(1, 1, 0);
             foreach (var x in Esperar(1.5f)) yield return x;
             var d = OperacionDirector.Instancia;
-            W8Ok(ref ok, d != null && d.generador != null && d.Fase == FaseOperacion.Infiltrar, sb, "hay generador y la fase es Infiltrar");
-            if (d == null || d.generador == null) { Fin("FALLO " + sb); yield break; }
+            W8Ok(ref ok, d != null && d.generador == null && d.cargaPorton != null && d.Fase == FaseOperacion.Infiltrar, sb, "R13 T12: no hay generador, hay carga del porton y la fase es Infiltrar");
+            if (d == null || d.cargaPorton == null) { Fin("FALLO " + sb); yield break; }
             var hud = OperacionHud.Instancia;
-            W8Ok(ref ok, (hud.TextoTitulo ?? "").Contains("CORTÁ LA ENERGÍA"), sb, $"HUD '{hud.TextoTitulo}'");
-            W8Ok(ref ok, d.portonCuartel.activeSelf && d.ReflectoresRotos == 0, sb, "antes: porton cerrado y reflectores encendidos");
-            d.generador.marca.Demoler();
-            foreach (var x in Esperar(2.5f)) yield return x;
-            W8Ok(ref ok, d.generador.EstaCaido && d.ReflectoresRotos == OperacionDirector.TotalDeReflectores, sb, $"generador caido={d.generador.EstaCaido}, reflectores rotos={d.ReflectoresRotos}/4");
-            W8Ok(ref ok, d.Fase == FaseOperacion.Infiltrar && d.cargaPorton != null && d.portonCuartel.activeSelf, sb, $"sin energia la fase sigue en {d.Fase} (falta la carga del porton)");
-            W8Ok(ref ok, (hud.TextoTitulo ?? "").Contains("2/2"), sb, $"HUD '{hud.TextoTitulo}'");
+            W8Ok(ref ok, (hud.TextoTitulo ?? "").Contains("VOLÁ EL PORTÓN NORTE"), sb, $"HUD '{hud.TextoTitulo}'");
+            W8Ok(ref ok, d.portonCuartel.activeSelf && d.cargaPorton.Habilitado && d.ReflectoresRotos == 0, sb, "antes: porton cerrado, carga habilitada desde t=0 y reflectores encendidos");
             var vega = Escuadrista(RoleType.Assault);
             Poseer(vega); yield return null;
             Junto(vega, d.cargaPorton.transform.position, 2f);
@@ -142,7 +137,7 @@ namespace SP.EditorTools
         static IEnumerator Bug305a()
         {
             var sb = new StringBuilder(); bool ok = true;
-            foreach (var n in new[] { "Generador_Cuartel", "Grua_Deposito", "Mastil_Barracas", "Parabolica_Comando" })
+            foreach (var n in new[] { "Grua_Deposito", "Mastil_Barracas", "Parabolica_Comando" })
                 W8Ok(ref ok, GameObject.Find(n) != null, sb, $"existe la pieza unica {n}");
             var zona = new Bounds(new Vector3(0f, 2f, -285f), new Vector3(150f, 12f, 130f));
             var props = new System.Collections.Generic.List<MeshRenderer>();

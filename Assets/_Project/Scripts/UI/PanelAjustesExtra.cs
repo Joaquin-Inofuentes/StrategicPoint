@@ -28,6 +28,7 @@ namespace SP.UI
             }
 
             if (SP.Core.BuscarHijo.Ruta(rt, "Pantalla") == null) Construir(rt);
+            else if (SP.Core.BuscarHijo.Ruta(rt, "Sec_Dano") == null) ConstruirDano(rt, SP.Presentation.FuentesBelicas.Para(0));   // paneles armados antes de R13 (T3)
             EstiloDeAjustes.Vestir(rt);
             Refrescar(rt);
             var layout = LayoutDeAjustes.Asegurar(settingsPanel);
@@ -37,7 +38,7 @@ namespace SP.UI
 
         static void Construir(RectTransform panel)
         {
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var font = SP.Presentation.FuentesBelicas.Para(0);
             Seccion(panel, font, "Sonido", "SONIDO");
             Seccion(panel, font, "Interfaz", "INTERFAZ");
             Seccion(panel, font, "Control", "MIRA Y CONTROL");
@@ -48,7 +49,35 @@ namespace SP.UI
             Texto(panel, font, "ResolucionLabel", "RESOLUCION", 14, TextAnchor.MiddleLeft, EstiloDeAjustes.Atenuado);
             CrearDropdown(panel, font, "Resolucion");
             Boton(panel, font, "Idioma", "IDIOMA / LANGUAGE", () => { SP.Core.Loc.Alternar(); Refrescar(panel); });
+            ConstruirDano(panel, font);
             Texto(panel, font, "Nota", "Mando: stick izq. mover, stick der. mirar, RT disparar, A saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.", 12, TextAnchor.MiddleCenter, EstiloDeAjustes.Atenuado);
+        }
+
+        // Ronda 13 (T3): DANO como SECCION de la tarjeta (antes era una tarjeta suelta pegada al costado que se veia al 25 %).
+        // Filas "Daño propio" y "Daño enemigo" con los mismos nombres que espera LayoutDeAjustes (_Label, _Chip, _Value, _Slider); el numero
+        // editable es el chip (InputField sobre el texto _Value) y Restablecer es un boton de la seccion. La logica la pone PanelDeDano.
+        public const string FilaPropio = "Daño propio", FilaEnemigo = "Daño enemigo", BotonRestablecerDano = "RestablecerDano";
+
+        static void ConstruirDano(RectTransform panel, Font font)
+        {
+            Seccion(panel, font, "Dano", SP.Core.Loc.T("DAÑO"));
+            FilaDeSlider(panel, font, FilaPropio);
+            FilaDeSlider(panel, font, FilaEnemigo);
+            Boton(panel, font, BotonRestablecerDano, SP.Core.Loc.T("RESTABLECER DAÑO"), () => { SP.Core.AjustesDeDano.Restablecer(); PanelDeDano.RefrescarEn(panel); });
+        }
+
+        static void FilaDeSlider(RectTransform panel, Font font, string nombre)
+        {
+            Texto(panel, font, nombre + "_Label", SP.Core.Loc.T(nombre), 18, TextAnchor.MiddleLeft, EstiloDeAjustes.Etiqueta);
+            var chip = new GameObject(nombre + "_Chip", typeof(RectTransform), typeof(Image), typeof(InputField));
+            chip.transform.SetParent(panel, false);
+            chip.GetComponent<Image>().color = EstiloDeAjustes.ChipFondo;
+            Texto(panel, font, nombre + "_Value", "1.00", 16, TextAnchor.MiddleCenter, EstiloDeAjustes.Dorado);
+            var go = UnityEngine.UI.DefaultControls.CreateSlider(new UnityEngine.UI.DefaultControls.Resources());
+            go.name = nombre + "_Slider";
+            go.transform.SetParent(panel, false);
+            var s = go.GetComponent<Slider>();
+            s.minValue = SP.Core.AjustesDeDano.Minimo; s.maxValue = SP.Core.AjustesDeDano.Maximo; s.wholeNumbers = false;
         }
 
         // Titulo de seccion + linea dorada debajo ("Sec_<n>" y "SecSep_<n>"; el boton "Pantalla" se llama igual que la seccion, por eso el prefijo).

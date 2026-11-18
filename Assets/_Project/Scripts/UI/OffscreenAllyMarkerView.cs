@@ -65,7 +65,7 @@ namespace SP.UI
             var rt = (RectTransform)go.transform;
             rt.sizeDelta = new Vector2(90f, 20f);
             var t = go.GetComponent<Text>();
-            t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            t.font = SP.Presentation.FuentesBelicas.Para(13);
             t.fontSize = 13; t.fontStyle = FontStyle.Bold; t.alignment = TextAnchor.MiddleCenter;
             t.raycastTarget = false; t.horizontalOverflow = HorizontalWrapMode.Overflow;
             go.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.9f);

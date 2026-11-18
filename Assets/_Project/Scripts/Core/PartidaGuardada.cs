@@ -292,7 +292,7 @@ namespace SP.Core
                 var tgo = new GameObject("Texto", typeof(RectTransform), typeof(Text));
                 tgo.transform.SetParent(panel.transform, false);
                 var tx = tgo.GetComponent<Text>();
-                tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); tx.fontSize = 20; tx.fontStyle = FontStyle.Bold; tx.alignment = TextAnchor.MiddleCenter; tx.raycastTarget = false;
+                tx.font = SP.Presentation.FuentesBelicas.Para(20); tx.fontSize = 20; tx.fontStyle = FontStyle.Bold; tx.alignment = TextAnchor.MiddleCenter; tx.raycastTarget = false;
                 var trt = tx.rectTransform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = trt.offsetMax = Vector2.zero;
                 var c = go.AddComponent<IndicadorDeGuardado>();
                 c.texto = tx; c.grupo = go.GetComponent<CanvasGroup>(); c.grupo.alpha = 0f; c.grupo.blocksRaycasts = false; c.grupo.interactable = false;

@@ -160,7 +160,7 @@ namespace SP.Mision
             var subGO = new GameObject("Subtitulo", typeof(RectTransform), typeof(Text), typeof(Shadow));
             subGO.transform.SetParent(lienzo.transform, false);
             subtitulo = subGO.GetComponent<Text>();
-            subtitulo.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            subtitulo.font = SP.Presentation.FuentesBelicas.Para(34);
             subtitulo.fontSize = 34; subtitulo.fontStyle = FontStyle.Bold; subtitulo.alignment = TextAnchor.MiddleCenter;
             subtitulo.color = new Color(1f, 1f, 1f, 0f); subtitulo.raycastTarget = false;
             var subRt = subtitulo.rectTransform; subRt.anchorMin = new Vector2(0.5f, 0f); subRt.anchorMax = new Vector2(0.5f, 0f);
@@ -174,7 +174,7 @@ namespace SP.Mision
             var finGO = new GameObject("CartelFinal", typeof(RectTransform), typeof(Text), typeof(Shadow));
             finGO.transform.SetParent(lienzo.transform, false);
             cartelFinal = finGO.GetComponent<Text>();
-            cartelFinal.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            cartelFinal.font = SP.Presentation.FuentesBelicas.Para(46);
             cartelFinal.fontSize = 46; cartelFinal.fontStyle = FontStyle.Bold; cartelFinal.alignment = TextAnchor.MiddleCenter;
             cartelFinal.color = new Color(1f, 1f, 1f, 0f); cartelFinal.raycastTarget = false;
             var finRt = cartelFinal.rectTransform; finRt.anchorMin = finRt.anchorMax = new Vector2(0.5f, 0.5f);
@@ -184,7 +184,7 @@ namespace SP.Mision
             var sigGO = new GameObject("CartelSiguiente", typeof(RectTransform), typeof(Text), typeof(Shadow));
             sigGO.transform.SetParent(lienzo.transform, false);
             cartelSiguiente = sigGO.GetComponent<Text>();
-            cartelSiguiente.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            cartelSiguiente.font = SP.Presentation.FuentesBelicas.Para(28);
             cartelSiguiente.fontSize = 28; cartelSiguiente.fontStyle = FontStyle.Bold; cartelSiguiente.alignment = TextAnchor.LowerRight;
             cartelSiguiente.color = new Color(1f, 1f, 1f, 0f); cartelSiguiente.raycastTarget = false;
             var sigRt = cartelSiguiente.rectTransform; sigRt.anchorMin = sigRt.anchorMax = new Vector2(1f, 0f);

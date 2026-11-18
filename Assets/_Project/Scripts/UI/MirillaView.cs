@@ -133,6 +133,9 @@ namespace SP.UI
                     if (dios != null) dios.transform.SetAsLastSibling();
                     var arma = WeaponStatusView.Activo;
                     if (arma != null) arma.transform.SetAsLastSibling();
+                    // R14 (#8): "quiero poder ver bien el minimapa": el tubo negro del periscopio lo tapaba (quedaba solo el marco). Se sube encima.
+                    var mm = MinimapFollow.Activo;
+                    if (mm != null && mm.Marco != null) mm.Marco.transform.SetAsLastSibling();
                 }
             }
             else if (!zoom || alfa < 0.05f) elevada = false;

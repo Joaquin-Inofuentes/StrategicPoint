@@ -42,6 +42,8 @@ namespace SP.Operacion
             soldado.Health.Initialize(soldado.Id, Mathf.Max(1, soldado.Health.MaxHealth) * MultiplicadorDeVida);
             if (soldado.Motor != null) { soldado.Motor.FactorDeGiro = FactorDeGiro; soldado.Motor.FactorDeClase = FactorDeVelocidad; }
             soldado.Health.FiltroDeDano = Filtrar;
+            subDisparo?.Dispose();
+            subDisparo = EventBus.Instance.Subscribe<ShotFiredEvent>(AlDisparar);
             ConstruirEscudo();
             GameLog.Line($"[Escudero] {name}: vida {soldado.Health.MaxHealth}, escudo +-{SemianguloDelEscudo:0} grados, giro x{FactorDeGiro:0.0}");
         }
@@ -70,7 +72,23 @@ namespace SP.Operacion
             return 0;
         }
 
-        void OnDestroy() { if (soldado != null && soldado.Health != null && soldado.Health.FiltroDeDano == (System.Func<int, int, bool, int>)Filtrar) soldado.Health.FiltroDeDano = null; }
+        // R14 (#12): "quiero particulas cuando el enemigo de escudo dispare": cada tiro del escudero saca un fogonazo, chispas hacia adelante y una
+        // rafaga corta de brasas por la boca de la pistola (con sonido ya lo cubre el arma). Cuenta los tiros para los checks.
+        System.IDisposable subDisparo;
+        public int DisparosConParticulas { get; private set; }
+        void AlDisparar(ShotFiredEvent e)
+        {
+            if (soldado == null || e.ShooterId != soldado.Id) return;
+            var arma = soldado.Weapon;
+            var boca = arma != null && arma.Muzzle != null ? arma.Muzzle.position : transform.position + transform.forward * 0.8f + Vector3.up * 1.25f;
+            var dir = arma != null && arma.Muzzle != null ? arma.Muzzle.forward : transform.forward;
+            ImpactFx.Spawn(boca, new Color(1f, 0.75f, 0.25f), 0.3f, 0.12f);
+            ChispasDeMetal.Spawn(boca, dir, 10);
+            SparkleBurstFx.Spawn(boca + dir * 0.15f, new Color(1f, 0.6f, 0.15f), 0.35f, 0.7f, 10, 0.8f);
+            DisparosConParticulas++;
+        }
+
+        void OnDestroy() { subDisparo?.Dispose(); subDisparo = null; if (soldado != null && soldado.Health != null && soldado.Health.FiltroDeDano == (System.Func<int, int, bool, int>)Filtrar) soldado.Health.FiltroDeDano = null; }
 
         static Material Mat(Color c, float metal, float suave, Color? emision = null)
         {

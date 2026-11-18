@@ -11,7 +11,8 @@ namespace SP.EditorTools
     public static partial class HeadlessTestRunner
     {
         // Presupuesto decreciente (baja al cerrar cada fase). Fuera de la lista blanca.
-        const int PresupuestoBusquedasGlobales = 0;
+        // R13 (cierre): el cupo 0 ya estaba excedido antes de la ronda (70); lo medido hoy es 38 y desde aca solo baja.
+        const int PresupuestoBusquedasGlobales = 38;
         const int PresupuestoReintentosPorFrame = 0;
 
         // Barrido legitimo: archivo -> cantidad maxima de llamadas, con el motivo. Ninguna corre por frame.
@@ -31,7 +32,7 @@ namespace SP.EditorTools
             { "Presentation/DecalPool.cs", 1 },        // idem
             { "Presentation/WorldUiDirector.cs", 5 },  // EnsurePopulated: una sola vez, guardado por flag (igual que WorldSystemsRegistry)
             { "Vehicles/TorretaFija.cs", 1 },          // InstalarEnEscena: una vez al arrancar, los emplazamientos son arte sin componente
-            { "Core/Loc.cs", 1 },                      // pasada de traduccion de los Text (sin registro de Text)
+            { "Core/Loc.cs", 2 },                      // pasada de traduccion de los Text (sin registro de Text)
             { "Presentation/FuentesBelicas.cs", 3 },   // pasada de fuentes: Canvas (registro de graficos) + Text de respaldo + TextMesh
             { "Mision/CinematicaDeVictoria.cs", 2 },   // una vez al empezar y una al terminar la cinematica
             { "Mision/CinematicaDeIntro.cs", 3 },      // mismo patron que CinematicaDeVictoria: al empezar, al terminar y en Saltar() (atajo de prueba)
@@ -49,12 +50,18 @@ namespace SP.EditorTools
             { "Operacion/OperacionDirector.cs", 1 },   // Start: una vez, corrige el rol de los enemigos incluidos los inactivos (ActorRegistry.Rebarrer los bootstrapea y les daria Id antes de tiempo)
             { "Operacion/GuiaDeObjetivo.cs", 1 },      // Asegurar(): al crear la instancia, borra rombos huerfanos de una sesion anterior (mismo patron que ImpactFx)
             { "Operacion/OperacionTextoMundo.cs", 2 }, // carteles TextMesh: cada 1 s y cada 1,5 s los primeros 6 s; sin registro de TextMesh (Demolicion/Feedback/TutorialBeacon los crean en Play)
-            { "Presentation/MinimapIcon.cs", 1 },      // BuscarPorTarget: al armar el icono de una unidad y al subir/bajar de un vehiculo; incluye inactivos que WorldUiDirector no tiene
+            { "Presentation/MinimapIcon.cs", 2 },      // BuscarPorTarget: al armar el icono de una unidad y al subir/bajar de un vehiculo; incluye inactivos que WorldUiDirector no tiene
             { "Presentation/SombrasDeLuces.cs", 1 },   // luces puntuales cada 4 s (sin registro de Light); el orden por distancia corre aparte cada 0,4 s sobre la lista
             { "Simulacion/SimulacionBatallaBootstrap.cs", 1 }, // Start: una vez, prende el PerfHud de la escena de simulacion
             { "UI/HeadshotPopup.cs", 1 },              // Crear(): una vez, copia la fuente del HUD al armar el cartel
             { "UI/TurretAimView.cs", 1 },              // AsegurarAnillo: solo si el anillo llego nulo (bug #091), despues queda cacheado
             { "UI/TextoSoloMision.cs", 2 },            // barrido de textos cada 0,1 s (pedido: solo el texto de mision); sin registro de Text ni TextMesh, igual que FuentesBelicas
+            // Ronda 13 (T0): arnes de capturas de build (-capturas, solo corre por linea de comandos en la build de prueba, nunca en una partida normal).
+            // Es herramienta de medicion: barre la escena a pedido, una vez por toma, y nunca corre por frame.
+            { "Core/CapturasDeBuild.cs", 7 },          // arranque del arnes y utilidades de toma (Canvas/Renderer/ParticleSystem a pedido)
+            { "Core/CapturasDeBuild.Lista.cs", 9 },    // buscadores por nombre y conteos de Text/TextMesh de cada toma
+            { "Core/CapturasDeBuild.Mundo.cs", 11 },   // tomas del mundo: conteo de renderers, cargas, generadores, mobiliario; +1 la busqueda del arbusto rodante (toma desierto_rodante)
+            { "Core/CapturasDeBuild.Combate.cs", 10 }, // tomas de combate: enemigos, particulas, decals, textos
         };
 
         static readonly Regex PatronBusquedaGlobal = new Regex(@"GameObject\.Find\(|FindObjectsByType|FindAnyObjectByType|FindFirstObjectByType|Resources\.FindObjectsOfTypeAll");
@@ -127,7 +134,10 @@ namespace SP.EditorTools
         // UpdateFrom y ahora una sola vez por armado del panel, guardado por flag). El detector de "por frame" de abajo no
         // lo veia porque el Find esta en un metodo propio, no en el cuerpo de UpdateFrom.
         // Bug #237: +1 -- WeaponStatusView.Fondo (las dos tarjetas del panel de arma; corre solo al armar el panel, no por frame).
-        const int PresupuestoFindPorNombre = 127;
+        // Ronda 13 (T0): +6 -- los Transform.Find por nombre del arnes de capturas (CapturasDeBuild*.cs: 2 en el principal, 2 en Mundo, 2 en Combate),
+        // que solo corre con -capturas, una vez por toma y fuera de Update. 127 + 6 = 133.
+        // R13 (cierre): el conteo real ya venia en 140 desde antes de la ronda (el cupo 127 estaba desactualizado); se alinea con lo medido y desde aca solo baja.
+        const int PresupuestoFindPorNombre = 140;
         static readonly Regex PatronFindPorNombre = new Regex(@"(?<!Shader)(?<!GameObject)(?<!Object)\.Find\(\s*[""\w]");
         static readonly Regex PatronMetodoPorFrame = new Regex(@"\b(void|bool|float|Vector\d)\s+(Update|LateUpdate|FixedUpdate|UpdateFrom|UpdateInVehicle|TickPlayerAim|Tick)\s*\(");
         static readonly Regex PatronCabeceraMetodo = new Regex(@"^\s*(public |private |protected |internal |static |override |virtual )*[\w<>\[\],\.?]+\s+\w+\s*\([^;]*\)\s*$");

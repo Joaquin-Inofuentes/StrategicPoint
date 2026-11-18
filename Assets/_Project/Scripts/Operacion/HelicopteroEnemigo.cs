@@ -80,6 +80,8 @@ namespace SP.Operacion
         // #272: helicoptero de asalto contra el centro de datos. Entra desde lejos, orbita la computadora (el ancla) y ametralla a los soldados
         // propios; el Vehicle tiene vida reducida y se lo derriba a tiros desde lejos (torretas aliadas, fusiles, el tanque).
         public const int MultiplicadorDeJefe = 5; public const float FactorDeResistencia = 0.6f; bool jefeAplicado;
+        // Ronda 13 (T2): una EXPLOSION (cohete) le pega x1,6 (en vez de x0,6): el helicoptero jefe muere con 4-5 cohetes. Las balas siguen al 60 %.
+        public const float FactorVsExplosivo = 1.6f;
         public const int VidaDeAsalto = 320 * MultiplicadorDeJefe;
         public static HelicopteroEnemigo IniciarSobre(Transform plantilla, Transform punto, float anguloGrados, float distanciaDeEntrada = 150f)
         {
@@ -305,7 +307,7 @@ namespace SP.Operacion
             Vehiculo.MarcarBando(TeamId.Enemy);
             // Pedido 2026-11-07: el helicoptero enemigo es una especie de BOSS: 5 veces mas vida y mas resistente (cada golpe se reduce al 60 %: FactorDeResistencia).
             if (Vehiculo.Health != null && !jefeAplicado) { jefeAplicado = true; Vehiculo.Health.Initialize(-1, Vehiculo.Health.MaxHealth * MultiplicadorDeJefe); }
-            Vehiculo.AjusteDeDano = golpe => Mathf.Max(1, Mathf.RoundToInt(golpe * FactorDeResistencia));
+            Vehiculo.AjusteDeDano = golpe => Vehicle.DanoDeExplosionEnCurso ? Mathf.Max(1, Mathf.RoundToInt(golpe * FactorVsExplosivo)) : Mathf.Max(1, Mathf.RoundToInt(golpe * FactorDeResistencia));
             rotorPrincipal = transform.Find("RotorPrincipal");
             rotorCola = transform.Find("RotorCola");
             var d = transform.position - (ancla != null ? ancla.position : tanque.transform.position);

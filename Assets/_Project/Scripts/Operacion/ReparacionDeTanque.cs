@@ -136,8 +136,10 @@ namespace SP.Operacion
                 else if (!trabajando)
                 {
                     trabajando = true;
+                    anclaje = Reparador.transform.position;
                     if (Reparador.Brain != null) { Reparador.Brain.CancelOrder(); Reparador.Brain.Quieto = true; quietado = Reparador; }
                 }
+                else BloquearAlReparador();   // R14 (#5): "quiero que el aliado se bloquee reparando el tanque"
                 quiere = cerca;
                 if (cerca)
                 {
@@ -164,6 +166,23 @@ namespace SP.Operacion
             Tanque.PonerVida01(Mathf.Lerp(VidaInicial01, VidaFinal01, Progreso01));
             AccionesEnCurso.Reportar(Reparador, Verbo, Tanque.transform.position, Progreso01, (1f - Progreso01) * SegundosDeReparacion, Tanque.transform);
             if (Progreso01 >= 1f) Terminar();
+        }
+
+        // R14 (#5): mientras repara, el aliado queda BLOQUEADO en su puesto: el cerebro sigue en "quieto" cada cuadro (una orden del jugador o un reflejo de la IA
+        // no lo saca del trabajo) y, si algo lo empuja mas de 0,3 m (otro soldado, una explosion), vuelve a su lugar. El jugador lo ve en el aviso de la barra.
+        Vector3 anclaje;
+        public bool Bloqueado => trabajando && !ElJugadorRepara && Reparador != null;
+        public int Reposiciones { get; private set; }
+        void BloquearAlReparador()
+        {
+            if (Reparador == null) return;
+            if (Reparador.Brain != null && !Reparador.Brain.Quieto) { Reparador.Brain.CancelOrder(); Reparador.Brain.Quieto = true; quietado = Reparador; }
+            if (Plano(Reparador.transform.position, anclaje).sqrMagnitude > 0.09f)
+            {
+                var ag = Reparador.GetComponent<UnityEngine.AI.NavMeshAgent>();
+                if (ag != null && ag.enabled && ag.isOnNavMesh) ag.Warp(anclaje); else Reparador.transform.position = anclaje;
+                Reposiciones++;
+            }
         }
 
         void Pausar(string motivo)

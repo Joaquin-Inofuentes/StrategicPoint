@@ -42,7 +42,7 @@ namespace SP.UI
             var textoGo = new GameObject("Texto", typeof(Text));
             textoGo.transform.SetParent(panelGo.transform, false);
             var texto = textoGo.GetComponent<Text>();
-            texto.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            texto.font = SP.Presentation.FuentesBelicas.Para(30);
             texto.text = "APRETÁ BARRA ESPACIADORA PARA CAMBIAR AL MÁS CERCANO";
             texto.alignment = TextAnchor.MiddleCenter;
             texto.color = new Color(1f, 0.85f, 0.25f);

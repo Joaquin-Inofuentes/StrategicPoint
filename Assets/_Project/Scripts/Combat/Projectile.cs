@@ -487,7 +487,10 @@ namespace SP.Combat
 
             if (explosionRadius > 0f)
             {
-                Explode(impacto.point);
+                // Ronda 13 (T2): si lo tocado es un vehiculo, el impacto directo cuenta como cercania maxima (no se mide contra su pivote).
+                var vehTocado = impacto.collider != null ? impacto.collider.GetComponentInParent<SP.Vehicles.Vehicle>() : null;
+                impactoDirecto = vehTocado != null && vehTocado != ignoreVehicle ? vehTocado : null;
+                try { Explode(impacto.point); } finally { impactoDirecto = null; }
                 Expire();
                 return true;
             }
@@ -500,7 +503,7 @@ namespace SP.Combat
             var vehiculo = impacto.collider.GetComponentInParent<SP.Vehicles.Vehicle>();
             if (vehiculo != null)
             {
-                vehiculo.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * multiplicadorVsVehiculo)), ownerId);
+                vehiculo.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * multiplicadorVsVehiculo)), ownerId, velocity.sqrMagnitude > 1e-4f ? impacto.point - velocity.normalized * 5f : origenDeVuelo);   // Ronda 13 (T4): origen del golpe para el anillo del HUD
                 EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, impacto.point));
                 PlayImpactSfx(EnvironmentHitKind.Vehicle, impacto.point, 0.55f);
                 ImpactFx.SpawnArmorSparks(impacto.point, impacto.normal);
@@ -523,7 +526,7 @@ namespace SP.Combat
             }
 
             var clase = marca != null ? EnvironmentHitKind.Obstacle : EnvironmentHitKind.Ground;
-            if (marca != null) marca.TakeDamage(damage, impacto.point);
+            if (marca != null) marca.TakeDamage(DanoAPropio(marca, damage, ownerId), impacto.point);
 
             EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, clase, impacto.point));
             PlayImpactSfx(clase, impacto.point, 0.5f);
@@ -709,6 +712,38 @@ namespace SP.Combat
             return LaExplosionAlcanza(centro, destino, v.transform);
         }
 
+        // Ronda 13 (T3, D5): el coeficiente de dano propio vale tambien contra las torres destruibles (no contra luminarias, barriles ni coberturas),
+        // solo cuando pega tu bando.
+        static int DanoAPropio(SP.Presentation.ObstacleMarker marca, int amount, int duenoId)
+        {
+            if (marca == null || duenoId < 0 || marca.GetComponentInParent<SP.Operacion.TorreDestruible>() == null) return amount;
+            var atacante = ActorRegistry.FindById(duenoId);
+            if (atacante == null || atacante.Team != TeamId.Player) return amount;
+            float k = SP.Core.AjustesDeDano.Propio;
+            return Mathf.Approximately(k, 1f) ? amount : Mathf.Max(1, Mathf.RoundToInt(amount * k));
+        }
+
+        // Ronda 13 (T2): distancia de un punto al casco del vehiculo = la del collider solido mas cercano (ClosestPoint). Sin colliders,
+        // cae al pivote. Los MeshCollider no convexos no soportan ClosestPoint: se usa su caja.
+        static readonly System.Collections.Generic.List<Collider> bufferCascos = new System.Collections.Generic.List<Collider>(8);
+        static float DistanciaAlCasco(SP.Vehicles.Vehicle v, Vector3 punto)
+        {
+            float pivote = Vector3.Distance(v.transform.position, punto);
+            if (pivote > 40f) return pivote;
+            v.GetComponentsInChildren(false, bufferCascos);
+            float mejor = float.MaxValue;
+            for (int i = 0; i < bufferCascos.Count; i++)
+            {
+                var c = bufferCascos[i];
+                if (c == null || !c.enabled || c.isTrigger) continue;
+                Vector3 p = c is MeshCollider mc && !mc.convex ? c.bounds.ClosestPoint(punto) : c.ClosestPoint(punto);
+                float d = Vector3.Distance(p, punto);
+                if (d < mejor) mejor = d;
+            }
+            bufferCascos.Clear();
+            return mejor == float.MaxValue ? pivote : Mathf.Min(mejor, pivote);
+        }
+
         // Salpicadura de sangre al impactar un soldado: cubitos chicos que
         // se dispersan y caen con gravedad, igual que el resto de los
         // escombros del juego (chispas de blindaje, restos de explosion).
@@ -750,7 +785,8 @@ namespace SP.Combat
             }
         }
 
-        void Explode(Vector3 point) => ExplodeAt(point, explosionRadius, damage, ownerId, ownerTeam, ignoreVehicle, multiplicadorVsVehiculo);
+        SP.Vehicles.Vehicle impactoDirecto;   // Ronda 13 (T2): vehiculo que el proyectil acaba de tocar (solo durante Explode)
+        void Explode(Vector3 point) => ExplodeAt(point, explosionRadius, damage, ownerId, ownerTeam, ignoreVehicle, multiplicadorVsVehiculo, impactoDirecto);
 
         // G1: el barril explosivo (ObstacleMarker.Estallar) necesita la
         // MISMA explosión con caída de daño, línea de vista y feedback
@@ -773,7 +809,7 @@ namespace SP.Combat
         // WP8 (#078): una explosion a menos de esta distancia rompe una luminaria (reflector del cuartel, farola con lampara).
         public const float AlcanceDeExplosionSobreLuminarias = 3.5f;
 
-        static void DanarObstaculos(Vector3 point, float radius, int damage)
+        static void DanarObstaculos(Vector3 point, float radius, int damage, int ownerId = -1)
         {
             int n = Physics.OverlapSphereNonAlloc(point, radius, bufferExplosion, ~0, QueryTriggerInteraction.Ignore);
             marcasGolpeadas.Clear();
@@ -794,16 +830,16 @@ namespace SP.Combat
                     if (marca == null || marca.IsCollapsed || !marcasGolpeadas.Add(marca)) continue;
                     float d = Vector3.Distance(c.ClosestPoint(point), point);
                     float k = 1f - Mathf.Clamp01(d / Mathf.Max(0.1f, radius));
-                    marca.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * FactorDanoDeExplosionAObstaculos * Mathf.Lerp(0.35f, 1f, k))), point);
+                    marca.TakeDamage(DanoAPropio(marca, Mathf.Max(1, Mathf.RoundToInt(damage * FactorDanoDeExplosionAObstaculos * Mathf.Lerp(0.35f, 1f, k))), ownerId), point);
                 }
             }
             finally { DanoDeExplosionEnCurso = false; }
         }
 
-        public static void ExplodeAt(Vector3 point, float radius, int damage, int ownerId, TeamId? spareTeam, SP.Vehicles.Vehicle ignoreVehicle = null, float multiplicadorVsVehiculo = 1f)
+        public static void ExplodeAt(Vector3 point, float radius, int damage, int ownerId, TeamId? spareTeam, SP.Vehicles.Vehicle ignoreVehicle = null, float multiplicadorVsVehiculo = 1f, SP.Vehicles.Vehicle impactoDirecto = null)
         {
             UnityEngine.Profiling.Profiler.BeginSample("Exp.Obstaculos");
-            DanarObstaculos(point, radius, damage);
+            DanarObstaculos(point, radius, damage, ownerId);
             UnityEngine.Profiling.Profiler.EndSample();
             UnityEngine.Profiling.Profiler.BeginSample("Exp.Actores");
             foreach (var s in ActorRegistry.All)
@@ -867,9 +903,10 @@ namespace SP.Combat
                 var vehicle = explosionVehicles[i];
                 if (vehicle == null || vehicle == ignoreVehicle) continue;
                 if (spareTeam.HasValue && vehicle.Bando == spareTeam.Value && !(spareTeam.Value == TeamId.Player && Dificultad.FuegoAmigoExplosivo)) continue;   // mismo criterio que con los soldados
-                float distV = Vector3.Distance(vehicle.transform.position, point);
+                // Ronda 13 (T2): la distancia va al punto MAS CERCANO del casco (no al pivote: en el helicoptero la cola quedaba a >5 m y la nariz a ~0,4).
+                float distV = vehicle == impactoDirecto ? 0f : DistanciaAlCasco(vehicle, point);
                 if (distV > radius) continue;
-                if (!LaExplosionAlcanzaVehiculo(point, vehicle)) continue;
+                if (vehicle != impactoDirecto && !LaExplosionAlcanzaVehiculo(point, vehicle)) continue;
                 float cercaniaV = 1f - Mathf.Clamp01(distV / radius);
                 int danoV = Mathf.Max(1, Mathf.RoundToInt(damage * multiplicadorVsVehiculo * Mathf.Lerp(DanoMinimoEnElBorde, 1f, cercaniaV)));
                 // Bug #055: "el vehiculo tras recibir un proyectil de estos sea destruido". Un arma antivehiculo (lanzacohetes,
@@ -877,7 +914,7 @@ namespace SP.Combat
                 if (multiplicadorVsVehiculo >= 2f && vehicle.Health != null && vehicle.Health.MaxHealth <= VidaMaximaDeVehiculoLiviano)
                     danoV = Mathf.Max(danoV, vehicle.Health.Current);
                 SP.Vehicles.Vehicle.DanoDeExplosionEnCurso = true;   // WP9b: el jefe solo siente explosiones (una bala directa hace 1)
-                try { vehicle.TakeDamage(danoV, ownerId); }
+                try { vehicle.TakeDamage(danoV, ownerId, point); }   // Ronda 13 (T4): origen = punto de la explosion
                 finally { SP.Vehicles.Vehicle.DanoDeExplosionEnCurso = false; }
             }
 

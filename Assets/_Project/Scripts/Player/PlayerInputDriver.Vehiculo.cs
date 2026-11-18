@@ -85,6 +85,7 @@ namespace SP.Player
         void EnterPossessedVehicleSeat(VehicleSeatRole role)
         {
             currentSeat = role;
+            PedirMiraFija(role);
             Vehicle.PlayerAboard = true;
             var vb = Vehicle.GetComponent<VehicleBrain>();
             if (role == VehicleSeatRole.Driver) { vb.Stop(); autoConduccion = false; vb.IsPlayerDriving = true; }
@@ -132,7 +133,7 @@ namespace SP.Player
                 var vb = Vehicle.GetComponent<VehicleBrain>();
                 if (vb != null && currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
             }
-            currentSeat = null;
+            currentSeat = null; miraDelCanonFijada = false;
         }
 
         public void ExitVehicle()
@@ -143,7 +144,7 @@ namespace SP.Player
             var vb = Vehicle.GetComponent<VehicleBrain>();
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = false;
             Vehicle.PlayerAboard = false;
-            currentSeat = null;
+            currentSeat = null; miraDelCanonFijada = false;
             SP.UI.CapasDeHud.ModoTanque(false);   // sin esto el HUD de a pie quedaba en alfa 0 (modo tanque) al bajar con [E]
             // Bug #060: al bajar (fin del viaje) la mira del cañon y la mirilla quedaban pegadas en pantalla a pie.
             MirillaView.Instancia?.Ocultar();
@@ -157,7 +158,25 @@ namespace SP.Player
             else Rig.FollowOverShoulder(Brain.Current.transform, heightOffset: Brain.Current.Motor.EyeHeightDropSuave);
         }
 
+        // Ronda 13 (T4): mira del canon FIJA por defecto en el asiento de artillero de la Operacion (D6); el clic derecho la alterna.
+        // Fuera de la Operacion (tutorial, nivel 1) sigue siendo "mantener". Publico para los checks.
+        bool miraDelCanonFijada;
+        public bool MiraDelCanonFijada => miraDelCanonFijada;
+        bool zoomDeseadoEnVehiculo;
+        static bool MiraFijaPorDefecto => SP.Operacion.OperacionDirector.Activo;
+        void PedirMiraFija(VehicleSeatRole? rol) { miraDelCanonFijada = rol == VehicleSeatRole.Gunner && MiraFijaPorDefecto; }
+
+        // El zoom se decide durante el cuadro (zoomDeseadoEnVehiculo) y se le pide al rig UNA sola vez al final. Antes se llamaba
+        // SetZoomed(false) al principio y SetZoomed(true) mas abajo: cada llamada cambiaba el valor y REINICIABA la transicion del FOV,
+        // que quedaba clavada en el primer cuadro (zoom lentisimo).
         void UpdateInVehicle(Keyboard kb, Mouse mouse)
+        {
+            zoomDeseadoEnVehiculo = false;
+            UpdateInVehicleCuerpo(kb, mouse);
+            Rig.SetZoomed(zoomDeseadoEnVehiculo);
+        }
+
+        void UpdateInVehicleCuerpo(Keyboard kb, Mouse mouse)
         {
             // El balanceo es solo de caminar en primera persona: sin
             // apagarlo aca seguiria oscilando la camara en RTS y dentro
@@ -166,7 +185,6 @@ namespace SP.Player
             // El zoom arranca apagado cada frame; solo la rama de
             // artillero lo vuelve a prender (ver mas abajo). Conducir o ir
             // de pasajero no tiene mira que acercar.
-            Rig.SetZoomed(false);
             bool modoTanque = Vehicle != null && !Vehicle.IsDestroyed && Brain.Current != null && Vehicle.RoleOf(Brain.Current) != null;
             SP.UI.CapasDeHud.ModoTanque(modoTanque);
             if (modoTanque && !SP.UI.HudDeTanqueSimple.Visible) SP.UI.HudDeTanqueSimple.Mostrar(Vehicle);   // bug #374: vida + recarga fina, abajo al centro
@@ -180,7 +198,7 @@ namespace SP.Player
             HideFpsOnlyIndicators();
             InteractHintView.Mostrar(null);   // el cartel de "MANTEN [E] PARA DEMOLER" quedaba pegado de cuando se iba a pie
             if (bodyHiddenFor != null) { bodyHiddenFor.SetBodyVisible(true); bodyHiddenFor.Motor.SetCrouching(false); bodyHiddenFor = null; }
-            if (Vehicle == null || Brain.Current == null) { currentSeat = null; return; }
+            if (Vehicle == null || Brain.Current == null) { currentSeat = null; miraDelCanonFijada = false; return; }
             if (Vehicle.RoleOf(Brain.Current) == null)
             {
                 // Una orden lo bajo del tanque (RTS): el estado de asiento quedo colgado.
@@ -368,8 +386,14 @@ namespace SP.Player
                     // que apuntar a distancia era adivinar. El zoom de
                     // mirilla existia a pie pero se desactivaba adrede en
                     // vehiculo; con el arco balistico hace mas falta aca.
-                    Rig.SetZoomFactor(3.5f);
-                    Rig.SetZoomed(mouse.rightButton.isPressed);
+                    // R14 (#7): "menos zoom, alejado el doble": la mira del canon pasa de x3,5 a x1,75 (antes FOV ~18, ahora ~34).
+                    Rig.SetZoomFactor(1.75f);
+                    if (MiraFijaPorDefecto)
+                    {
+                        if (!radialAbierto && mouse.rightButton.wasPressedThisFrame) miraDelCanonFijada = !miraDelCanonFijada;
+                        zoomDeseadoEnVehiculo = miraDelCanonFijada;
+                    }
+                    else zoomDeseadoEnVehiculo = mouse.rightButton.isPressed;
 
                     // [R] alterna municion: explosiva de area o
                     // perforante de daño concentrado.
@@ -400,7 +424,7 @@ namespace SP.Player
                     if (mouse.leftButton.isPressed) mgTurret.TryFire();
                     // Ronda 12: la metralleta del tanque se apunta con la mirilla NORMAL (la misma que la torreta fija):
                     // sin zoom ni optica, el clic derecho no hace nada aca.
-                    Rig.SetZoomed(false);
+                    zoomDeseadoEnVehiculo = false;
                 }
                 if (TurretAim != null) TurretAim.UpdateFrom(mgTurret);
 
@@ -454,6 +478,7 @@ namespace SP.Player
             // carrera, otro llamador que no valido antes), currentSeat
             // sigue reflejando la verdad en vez de mentir.
             currentSeat = Vehicle.RoleOf(soldier) ?? newRole;
+            PedirMiraFija(currentSeat);
             if (currentSeat == VehicleSeatRole.Driver) vb.IsPlayerDriving = true;
             // BUG REAL que esto corrige: decia "se monto en la metralleta"
             // para el asiento del CAÑON (el que dispara obuses explosivos/

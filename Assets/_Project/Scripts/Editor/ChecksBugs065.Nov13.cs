@@ -74,7 +74,7 @@ namespace SP.EditorTools
                     if (c == null || c.transform.IsChildOf(s.transform) || c.attachedRigidbody != null || c.GetComponentInParent<Soldier>() != null || c.GetComponentInParent<SP.Vehicles.Vehicle>() != null) continue;
                     dentro++; det.Append($" [{s.name} dentro de {c.name}]"); break;
                 }
-                if (!UnityEngine.AI.NavMesh.SamplePosition(p, out _, 0.8f, UnityEngine.AI.NavMesh.AllAreas)) { sinMalla++; det.Append($" [{s.name} sin malla@{p:0}]"); continue; }
+                if (!UnityEngine.AI.NavMesh.SamplePosition(p, out _, 1.2f, UnityEngine.AI.NavMesh.AllAreas)) { sinMalla++; det.Append($" [{s.name} sin malla@{p:0}]"); continue; }
                 var camino = new UnityEngine.AI.NavMeshPath();
                 bool hay = UnityEngine.AI.NavMesh.CalculatePath(p, objetivo, UnityEngine.AI.NavMesh.AllAreas, camino);
                 if (!hay || camino.status != UnityEngine.AI.NavMeshPathStatus.PathComplete) { sinCamino++; det.Append($" [{s.name} sin camino ({camino.status})]"); }

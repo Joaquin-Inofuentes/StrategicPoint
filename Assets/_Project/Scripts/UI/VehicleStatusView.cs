@@ -210,7 +210,7 @@ namespace SP.UI
             rt.anchorMin = new Vector2(0f, 1f); rt.anchorMax = new Vector2(1f, 1f); rt.pivot = new Vector2(0.5f, 0f);
             rt.anchoredPosition = new Vector2(0f, 2f); rt.sizeDelta = new Vector2(0f, 22f);
             textoDeVida = go.GetComponent<Text>();
-            textoDeVida.font = gunnerLabel != null ? gunnerLabel.font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            textoDeVida.font = gunnerLabel != null ? gunnerLabel.font : SP.Presentation.FuentesBelicas.Para(14);
             textoDeVida.fontSize = gunnerLabel != null ? Mathf.Max(12, gunnerLabel.fontSize - 2) : 14;
             textoDeVida.alignment = TextAnchor.LowerCenter; textoDeVida.color = Color.white; textoDeVida.raycastTarget = false;
             // Bug #009 (build, "corrige la UI de vida del tanque"): con Overflow el rotulo era mas ancho que el marco y se salia por la izquierda.

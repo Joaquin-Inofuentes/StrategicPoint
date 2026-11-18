@@ -57,7 +57,7 @@ namespace SP.Combat
         // Restaura la vida exacta (cargar partida / volver a un bug): 0 = muerto, >0 = vivo con esa vida (revive si estaba muerto).
         public void RestaurarVida(int actual)
         {
-            if (actual <= 0) { if (Current > 0) TakeDamage(Current + 1000, -1); return; }
+            if (actual <= 0) { if (Current > 0) Ejecutar(-1, false); return; }
             if (Current <= 0) Initialize(ActorId, maxHealth);
             Current = Mathf.Clamp(actual, 1, maxHealth);
         }
@@ -190,12 +190,54 @@ namespace SP.Combat
 
             amount = ModoDios.TopeDeDano(this, amount);   // [F4]: el tanque propio baja pero no pasa de 1
             if (amount <= 0) return;
+            AplicarRestaFinal(amount, attackerId);
+        }
+
+        // Cola comun de TakeDamage / Ejecutar / AplicarDanoDeGuion: resta, atribucion y eventos.
+        void AplicarRestaFinal(int amount, int attackerId)
+        {
+            segundosSinDano = 0f;
+            regenAcumulada = 0f;
+            IsRegenerating = false;
             Current = Mathf.Clamp(Current - amount, 0, maxHealth);
             LastAttackerId = attackerId;
             EventBus.Instance.Publish(new DamageTakenEvent(ActorId, attackerId, amount, Current));
 
             if (Current <= 0)
                 EventBus.Instance.Publish(new EntityDiedEvent(ActorId));
+        }
+
+        // Ronda 13 (T1): lleva la vida a 0 SIN coeficientes (dificultad, modo dios, ajustes). Respeta invulnerabilidad, modo dios,
+        // fuego amigo enemigo y, si respetarEscudo, el filtro frontal del escudero. Devuelve true si el golpe se aplico.
+        public bool Ejecutar(int attackerId, bool respetarEscudo)
+        {
+            if (!IsAlive) return false;
+            if (Invulnerable || ModoDios.Protege(this)) return false;
+            if (respetarEscudo && FiltroDeDano != null && FiltroDeDano(Current, attackerId, false) <= 0) return false;
+            if (EsFuegoAmigoEnemigo(attackerId)) return false;
+            AplicarRestaFinal(Current, attackerId);
+            return true;
+        }
+
+        // Ronda 13 (T1/T3): resta una cantidad fija por la cola comun, sin coeficientes (heridas de guion, ids de sistema).
+        // Respeta Invulnerable y modo dios. Devuelve true si resto.
+        public bool AplicarDanoDeGuion(int amount, int attackerId = -1)
+        {
+            if (!IsAlive || amount <= 0) return false;
+            if (Invulnerable || ModoDios.Protege(this)) return false;
+            AplicarRestaFinal(Mathf.Min(amount, Current), attackerId);
+            return true;
+        }
+
+        // Ronda 13 (T1): deja la vida en como mucho 'tope' (golpe parcial del cuchillo al pesado), por la cola comun y sin coeficientes.
+        public bool RecortarVidaA(int tope, int attackerId, bool respetarEscudo)
+        {
+            if (!IsAlive || tope < 1 || Current <= tope) return false;
+            if (Invulnerable || ModoDios.Protege(this)) return false;
+            if (respetarEscudo && FiltroDeDano != null && FiltroDeDano(Current - tope, attackerId, false) <= 0) return false;
+            if (EsFuegoAmigoEnemigo(attackerId)) return false;
+            AplicarRestaFinal(Current - tope, attackerId);
+            return true;
         }
 
         public void Heal(int amount)

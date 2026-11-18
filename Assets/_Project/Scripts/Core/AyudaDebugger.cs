@@ -78,7 +78,7 @@ namespace SP.Core
 
             var t = new GameObject("Texto", typeof(RectTransform), typeof(Text)).GetComponent<Text>();
             t.transform.SetParent(fondo.transform, false);
-            t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            t.font = SP.Presentation.FuentesBelicas.Para(15);
             t.fontSize = 15;
             t.alignment = TextAnchor.MiddleCenter;
             t.color = Color.white;

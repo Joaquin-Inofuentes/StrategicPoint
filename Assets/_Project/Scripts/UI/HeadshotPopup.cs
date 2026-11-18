@@ -39,8 +39,7 @@ namespace SP.UI
             t.transform.SetParent(go.transform, false);
             t.raycastTarget = false;
             // La misma tipografia que el resto del HUD si hay algun texto en escena; si no, la de Unity.
-            var modelo = Object.FindAnyObjectByType<Text>();
-            t.font = modelo != null && modelo.font != null ? modelo.font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            t.font = SP.Presentation.FuentesBelicas.Para(30);
             t.fontStyle = FontStyle.Bold;
             t.fontSize = 30;
             t.alignment = TextAnchor.MiddleCenter;

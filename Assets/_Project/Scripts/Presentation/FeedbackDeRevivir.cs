@@ -13,7 +13,7 @@ namespace SP.Presentation
     public static class FeedbackDeRevivir
     {
         public static readonly Color VerdeClaro = new Color(0.55f, 1f, 0.65f);
-        public const int Anillos = 3;
+        public const int Anillos = 1;   // ronda 13 (T5, D7): un solo anillo y el sonido
         public const float EscalonSegundos = 0.15f;
         public const float RadioFinal = 3f;
         public const float DuracionDeCadaAnillo = 1.0f;

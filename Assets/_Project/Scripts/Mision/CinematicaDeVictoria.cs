@@ -60,7 +60,7 @@ namespace SP.Mision
             var go = new GameObject("Titulo", typeof(RectTransform), typeof(Text), typeof(Shadow));
             go.transform.SetParent(lienzo.transform, false);
             titulo = go.GetComponent<Text>();
-            titulo.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            titulo.font = SP.Presentation.FuentesBelicas.Para(84);
             titulo.fontSize = 84; titulo.fontStyle = FontStyle.Bold; titulo.alignment = TextAnchor.MiddleCenter;
             titulo.color = new Color(1f, 0.9f, 0.4f, 0f); titulo.raycastTarget = false;
             var rt = titulo.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f); rt.sizeDelta = new Vector2(1500f, 200f);

@@ -97,7 +97,7 @@ namespace SP.Presentation
         {
             if (instancia != null && instancia != this) { Destroy(gameObject); return; }
             instancia = this;
-            fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            fuente = SP.Presentation.FuentesBelicas.Para(0);
             ConstruirHud();
         }
 
@@ -207,7 +207,7 @@ namespace SP.Presentation
             var g = new GameObject(nombre, typeof(Text), typeof(Shadow));
             g.transform.SetParent(padre, false);
             var t = g.GetComponent<Text>();
-            t.font = fuente; t.fontSize = tam; t.fontStyle = FontStyle.Bold;
+            t.font = SP.Presentation.FuentesBelicas.Para(tam); t.fontSize = tam; t.fontStyle = FontStyle.Bold;
             t.alignment = ancla; t.color = Color.white; t.raycastTarget = false;
             t.horizontalOverflow = HorizontalWrapMode.Overflow; t.verticalOverflow = VerticalWrapMode.Overflow;
             var r = t.rectTransform;
@@ -230,6 +230,7 @@ namespace SP.Presentation
             {
                 var a = acciones[i];
                 if (a.Actor == null || !a.Actor.gameObject.activeInHierarchy) continue;
+                if (EsRevivirDelLider(a)) continue;   // ronda 13 (T5): el revivir del jugador lo muestra SOLO el engranaje radial de la mira
                 var desde = a.Actor.transform.position + Vector3.up * 1.15f;
                 var hasta = a.Punto;
                 var v = hasta - desde;
@@ -257,6 +258,13 @@ namespace SP.Presentation
             RefrescarHud();
         }
 
+        // Ronda 13 (T5): "revivir del lider" = verbo REVIVIENDO y actor el soldado que manejas. Se filtra en las vistas (no en
+        // AccionesEnCurso.Reportar: lo usan la postura, RosterRowView y AiBrain.Vehiculos).
+        public static bool EsRevivirDelLider(in AccionesEnCurso.Accion a)
+        {
+            return a.VerboEs == "REVIVIENDO" && a.Actor != null && a.Actor == AjustesDeEscuadra.Lider;
+        }
+
         // Icono de cada verbo (los mismos del anillo de ordenes): demoler = estallido, curar/revivir = cruz, afinar punteria = mira.
         static Sprite IconoDeAccion(string verboEs)
         {
@@ -276,7 +284,7 @@ namespace SP.Presentation
             int n = 0;
 
             // 1) la accion del soldado que manejas
-            if (propio != null && AccionesEnCurso.De(propio, out var mia))
+            if (propio != null && AccionesEnCurso.De(propio, out var mia) && !EsRevivirDelLider(mia))
             {
                 Poner(n++, Linea(mia, true));
                 SP.UI.AvisoUnico.Fijo("accion", Linea(mia, true), new Color(1f, 0.86f, 0.35f));   // texto unico de abajo al centro

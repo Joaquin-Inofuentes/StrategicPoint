@@ -44,7 +44,7 @@ namespace SP.EditorTools
             foreach (var k in new[] { SfxKind.Shoot, SfxKind.Hit, SfxKind.Death, SfxKind.VehicleHit, SfxKind.CannonBody, SfxKind.CannonCrack, SfxKind.Wounded,
                 SfxKind.ImpactMetal, SfxKind.ImpactDirt, SfxKind.ImpactStone, SfxKind.BulletWhizz, SfxKind.FootstepGrass, SfxKind.FootstepConcrete, SfxKind.Explosion,
                 SfxKind.GrenadePin, SfxKind.GrenadeThrow, SfxKind.GrenadeBounce, SfxKind.KnifeSwing, SfxKind.KnifeHit, SfxKind.Jump, SfxKind.Land, SfxKind.BombPlant,
-                SfxKind.BombTick, SfxKind.ImpactoPesado, SfxKind.BalaImpacto, SfxKind.DestruccionVehiculo, SfxKind.AmmoPickup, SfxKind.SeatChange })
+                SfxKind.BombTick, SfxKind.ImpactoPesado, SfxKind.BalaImpacto, SfxKind.DestruccionVehiculo, SfxKind.AmmoPickup, SfxKind.SeatChange, SfxKind.KnifeBlood, SfxKind.RejaAbriendo })
                 h.Add(k.ToString());
             h.Add("CannonBody+Sub"); h.Add("Explosion+Sub");
             foreach (WeaponKind w in Enum.GetValues(typeof(WeaponKind))) { h.Add("Shot_" + w); h.Add("Shot_" + w + "_dist"); }

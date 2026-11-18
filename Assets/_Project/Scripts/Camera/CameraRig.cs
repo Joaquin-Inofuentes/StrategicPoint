@@ -180,6 +180,14 @@ namespace SP.CameraSystem
             zoomTransicionElapsed = 0f;
         }
 
+        // R14 (#9): las cinematicas toman la camara con el FOV que tenga en ese momento y lo restauran al terminar. Si el jugador estaba mirando
+        // por el periscopio del tanque (FOV ~16) la cinematica salia rota. Antes de bloquear se suelta el zoom y se vuelve al FOV normal.
+        public void ReiniciarZoom()
+        {
+            zoomed = false; adsBlend = 0f; reboteDeZoomT = DuracionDelReboteDeZoom;
+            if (cam != null) cam.fieldOfView = normalFov;
+        }
+
         // Rebote de zoom del francotirador: al disparar con la mira puesta el zoom se acerca de golpe, rebota hacia atras y adelante (resorte
         // amortiguado) y asienta en el zoom normal en medio segundo. Se mide en tiempo real: la camara lenta del cuchillo no lo estira.
         public const float DuracionDelReboteDeZoom = 0.5f, AmplitudDelReboteDeZoom = 0.22f, CiclosDelReboteDeZoom = 1.75f;

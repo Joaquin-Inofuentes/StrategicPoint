@@ -385,32 +385,31 @@ namespace SP.EditorTools
                 var radios = new List<float>(); var alfas = new List<float>(); var alturas = new List<float>();
                 int lineas = 0;
                 float tM = Time.realtimeSinceStartup;
-                // Tiempo de juego transcurrido ~ realtime*0.25: se espera hasta ~0.55 s de juego (2.2 s reales).
-                while (Time.realtimeSinceStartup - tM < 2.2f) yield return null;
-                var raiz = GameObject.Find("ReviveRingPool");
-                if (raiz != null)
-                    foreach (var lr in raiz.GetComponentsInChildren<LineRenderer>(false))
-                    {
-                        if (!lr.enabled) continue;
-                        lineas++;
-                        var c0 = lr.GetPosition(0); var c1 = lr.GetPosition(lr.positionCount / 2);
-                        var centro = (c0 + c1) * 0.5f;
-                        radios.Add(Vector3.Distance(c0, c1) * 0.5f); alturas.Add(centro.y); alfas.Add(lr.startColor.a);
-                    }
+                // El anillo dura 1 s de juego y hay un solo anillo (R13 D7): se lo mide a los 0,5 s reales, vivo con o sin la camara lenta.
+                while (Time.realtimeSinceStartup - tM < 0.5f) yield return null;
+                int activosAMitad = ImpactFx.ReviveRingsActive;
+                foreach (var lr in Resources.FindObjectsOfTypeAll<LineRenderer>())   // los anillos son hijos de un root con hideFlags: FindObjectsByType no los lista
+                {
+                    if (lr.gameObject.name != "ReviveRing" || !lr.gameObject.scene.IsValid() || !lr.gameObject.activeInHierarchy || !lr.enabled) continue;
+                    lineas++;
+                    var c0 = lr.GetPosition(0); var c1 = lr.GetPosition(lr.positionCount / 2);
+                    var centro = (c0 + c1) * 0.5f;
+                    radios.Add(Vector3.Distance(c0, c1) * 0.5f); alturas.Add(centro.y); alfas.Add(lr.startColor.a);
+                }
                 foreach (var x in CapturarPantalla("v2_089_anillos.png")) yield return x;
                 float suelo = FloorY(doc);
-                bool geom = lineas >= 2;
+                bool geom = lineas >= FeedbackDeRevivir.Anillos;   // ronda 13 (T5, D7): un solo anillo
                 foreach (var h in alturas) if (Mathf.Abs(h - (suelo + FeedbackDeRevivir.AlturaSobreElPiso)) > 0.03f) geom = false;
                 foreach (var rr in radios) if (rr < 0.4f || rr > 3.05f) geom = false;
                 foreach (var al in alfas) if (al <= 0f || al >= 0.9f) geom = false;
                 Time.timeScale = escalaPrev;
                 // 4) A los pocos segundos reales no queda ninguno activo.
-                foreach (var x in Esperar(1.0f)) yield return x;
+                foreach (var x in Esperar(1.3f)) yield return x;
                 int anillosFin = ImpactFx.ReviveRingsActive;
                 bool anillosOk = anillosYa == FeedbackDeRevivir.Anillos && anillosFin == 0;
                 bool sonidoOk = revivio && revives == 1 && tresD && FeedbackDeRevivir.Cantidad == cant0 + 1;
                 if (!sonidoOk || !anillosOk || !geom) ok = false;
-                sb.Append($"revivir: Revive sono {revives} vez/veces (pide 1), voz 3D={tresD} (spatialBlend {blend:0.00}){(sonidoOk ? "" : " (MAL)")}; anillos al revivir={anillosYa} (pide {FeedbackDeRevivir.Anillos}), a mitad {lineas} visibles con radios [{string.Join(", ", radios.ConvertAll(q => q.ToString("0.00")))}] alturas sobre el piso [{string.Join(", ", alturas.ConvertAll(q => (q - suelo).ToString("0.00")))}] alfas [{string.Join(", ", alfas.ConvertAll(q => q.ToString("0.00")))}]{(geom ? "" : " (MAL)")}, activos 1 s despues (1.3 s de vida) ={anillosFin}{(anillosOk ? "" : " (MAL)")}; ");
+                sb.Append($"revivir: Revive sono {revives} vez/veces (pide 1), voz 3D={tresD} (spatialBlend {blend:0.00}){(sonidoOk ? "" : " (MAL)")}; anillos al revivir={anillosYa} (pide {FeedbackDeRevivir.Anillos}), a mitad {lineas} visibles (activos del pool {activosAMitad}) con radios [{string.Join(", ", radios.ConvertAll(q => q.ToString("0.00")))}] alturas sobre el piso [{string.Join(", ", alturas.ConvertAll(q => (q - suelo).ToString("0.00")))}] alfas [{string.Join(", ", alfas.ConvertAll(q => q.ToString("0.00")))}]{(geom ? "" : " (MAL)")}, activos 1 s despues (1.3 s de vida) ={anillosFin}{(anillosOk ? "" : " (MAL)")}; ");
 
                 // 5) Nadie mas toca SfxKind.Revive: el sonido sale SOLO de FeedbackDeRevivir (un unico camino, sin duplicados).
                 var otros = new List<string>();

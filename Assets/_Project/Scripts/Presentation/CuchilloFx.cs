@@ -11,8 +11,9 @@ namespace SP.Presentation
     {
         public static int Tajos { get; private set; }
         public static int Aciertos { get; private set; }
+        public static int SonidosDeSangre { get; private set; }   // Ronda 13 (T1): veces que se reprodujo KnifeBlood
 
-        public static void ResetearContadores() { Tajos = 0; Aciertos = 0; }
+        public static void ResetearContadores() { Tajos = 0; Aciertos = 0; SonidosDeSangre = 0; }
 
         public static void Tajo(Soldier dueno, Soldier objetivo)
         {
@@ -34,7 +35,12 @@ namespace SP.Presentation
 
             if (objetivo == null) return;
             var golpe = objetivo.transform.position + Vector3.up * 0.3f;
-            ImpactFx.Spawn(golpe, new Color(1f, 0.2f, 0.15f), 0.55f, 0.2f);
+            // R13: a 0,55 el destello (hexagonos que el bloom viraba a naranja) tapaba a la victima y a la sangre; ahora es un chispazo chico y rojo.
+            ImpactFx.Spawn(golpe, new Color(0.8f, 0.02f, 0.02f), 0.15f, 0.15f);
+            // Ronda 13 (T1): sangre MUY visible + sonido humedo, solo si conecta.
+            SangreFx.Spawn(golpe, (objetivo.transform.position - pos).normalized);
+            AudioDirector.PlayAt(SfxKind.KnifeBlood, golpe, jugador ? 0.95f : 0.8f, Random.Range(0.92f, 1.08f));
+            SonidosDeSangre++;
             if (jugador)
             {
                 Feedback.Accion(SfxKind.KnifeHit, "¡CUCHILLADA!", golpe, Feedback.Bad, aviso: false, pulso: true, volumen: 0.95f);

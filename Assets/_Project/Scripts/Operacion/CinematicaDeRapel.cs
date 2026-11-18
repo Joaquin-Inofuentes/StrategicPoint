@@ -142,6 +142,7 @@ namespace SP.Operacion
             driver = PlayerInputDriver.Activo;
             if (driver != null)
             {
+                if (driver.Rig != null) driver.Rig.ReiniciarZoom();   // R14 (#9)
                 driver.enabled = false;
                 if (driver.Rig != null) driver.Rig.enabled = false;
             }
@@ -288,8 +289,7 @@ namespace SP.Operacion
             var g = new GameObject("SaltarTexto", typeof(RectTransform), typeof(Text));
             g.transform.SetParent(raiz, false);
             saltarTexto = g.GetComponent<Text>();
-            if (fuente == null) fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            saltarTexto.font = fuente; saltarTexto.fontSize = 26; saltarTexto.fontStyle = FontStyle.Bold; saltarTexto.alignment = TextAnchor.MiddleRight;
+            saltarTexto.font = SP.Presentation.FuentesBelicas.Para(26); saltarTexto.fontSize = 26; saltarTexto.fontStyle = FontStyle.Bold; saltarTexto.alignment = TextAnchor.MiddleRight;
             saltarTexto.color = new Color(1f, 1f, 1f, 0.85f); saltarTexto.raycastTarget = false; saltarTexto.horizontalOverflow = HorizontalWrapMode.Overflow;
             var o = g.AddComponent<Outline>(); o.effectColor = new Color(0f, 0f, 0f, 0.9f); o.effectDistance = new Vector2(2f, -2f);
             Anclar(saltarTexto.rectTransform, new Vector2(1, 0), new Vector2(1, 0), new Vector2(1, 0), new Vector2(-162f, 128f), new Vector2(520f, 50f));

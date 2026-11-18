@@ -209,7 +209,7 @@ namespace SP.EditorTools
             var g = new GameObject("F21_Ajustes");
             var nuevo = g.AddComponent<AjustesDeEscuadra>();
             Check("La distancia para empezar a seguir bajo de 25 a 12,5 m", Mathf.Approximately(nuevo.distanciaParaSeguir, 12.5f));
-            Check("La distancia para detenerse bajo de 8 a 4 m", Mathf.Approximately(nuevo.distanciaParaDetenerse, 4f));
+            Check("La distancia para detenerse bajo de 8 a 6 m (bug #332: la formacion lateral ya no queda pegada)", Mathf.Approximately(nuevo.distanciaParaDetenerse, 6f));
             Object.DestroyImmediate(g);
             Check("El umbral de llegada de SIGANME es la mitad", Mathf.Approximately(AiBrain.FactorDeCercaniaAlSeguir, 0.5f));
 
@@ -338,7 +338,7 @@ namespace SP.EditorTools
             Check($"El tanque tiene barra de vida y arranca llena ({barra.Relleno01:0.00})", barra.Relleno01 > 0.99f);
             int max = vehicle.Health.MaxHealth;
             ModoDios.Poner(false);
-            vehicle.TakeDamage(max / 2, -1);
+            vehicle.TakeDamage(Mathf.RoundToInt(max / 2f / SP.Core.AjustesDeDano.EnemigoPorDefecto), -1);   // la mitad de la vida ya con el coeficiente de dano enemigo
             ModoDios.Poner(true);
             barra.Refrescar();
             Check($"La barra baja con el dano ({barra.Relleno01:0.00})", barra.Relleno01 > 0.35f && barra.Relleno01 < 0.65f);

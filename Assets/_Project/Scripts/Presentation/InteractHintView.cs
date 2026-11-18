@@ -41,7 +41,7 @@ namespace SP.Presentation
         {
             if (instancia != null && instancia != this) { Destroy(gameObject); return; }
             instancia = this;
-            fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            fuente = SP.Presentation.FuentesBelicas.Para(0);
             Construir();
         }
 

@@ -71,6 +71,9 @@ namespace SP.EditorTools
             foreach (var x in Esperar(2f)) yield return x;
             // 30 destrucciones y unos disparos contra el entorno de la plaza, despues 25 s de calma
             var yo = Poseido();
+            // "sin fuego": los enemigos disparando a su entorno rompian objetos durante la espera y creaban fragmentos nuevos (el check fallaba una de cada dos corridas).
+            foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy) a.gameObject.SetActive(false);
+            bool iaAntes403 = SP.Ai.AiBrain.IAPausada; SP.Ai.AiBrain.IAPausada = true;   // torretas y aliados tampoco disparan durante la espera
             for (int i = 0; i < 30; i++)
             {
                 var go = GameObject.CreatePrimitive(PrimitiveType.Cube); go.name = "Prueba403_" + i;
@@ -82,6 +85,9 @@ namespace SP.EditorTools
             // Se espera tiempo DE JUEGO (los fragmentos envejecen con Time.deltaTime y el editor corre lento): 10 s > la vida maxima (8 s + hundido)
             float t0 = Time.time, r0 = Time.realtimeSinceStartup;
             while (Time.time - t0 < 10f && Time.realtimeSinceStartup - r0 < 90f) yield return null;
+            // Margen: en el editor con carga los cuadros lentos hacen que haya fragmentos con pocos segundos de edad a los 10 s; se les da hasta 14 s mas para terminar (el chequeo es que NO queden para siempre).
+            bool quedan = true;
+            while (quedan && Time.time - t0 < 24f && Time.realtimeSinceStartup - r0 < 120f) { quedan = false; foreach (var f0 in Fragmentador.Piezas) if (f0 != null && f0.EnUso) { quedan = true; break; } if (quedan) yield return null; }
             var viejos = new StringBuilder(); int nFrag = 0;
             foreach (var f in Fragmentador.Piezas) if (f != null && f.EnUso) { nFrag++; if (viejos.Length < 400) viejos.Append(f.name).Append(" edad=").Append(f.Edad.ToString("0.0")).Append(" vida=").Append(f.Vida.ToString("0.0")).Append(" asentado=").Append(f.Asentado).Append(" | "); }
             W8Ok(ref ok, nFrag == 0, sb, $"pasados 10 s de juego sin fuego no queda ningun fragmento en uso ({nFrag}: {viejos})");
@@ -94,6 +100,7 @@ namespace SP.EditorTools
                 if (ps.particleCount > 0 && (ps.isPaused || ps.time > m.duration + m.startLifetime.constantMax + 4f)) { trabadas++; if (det.Length < 500) det.Append(RutaCompleta(ps.transform)).Append(" n=").Append(ps.particleCount).Append(" t=").Append(ps.time.ToString("0.0")).Append(" dur=").Append(m.duration).Append(" pausado=").Append(ps.isPaused).Append(" | "); }
             }
             W8Ok(ref ok, trabadas == 0, sb, $"ninguna particula (no ambiental) queda trabada ({trabadas}: {det})");
+            SP.Ai.AiBrain.IAPausada = iaAntes403;
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 
@@ -322,7 +329,8 @@ namespace SP.EditorTools
                 if (c.enabled && NavService.BlocksMovement(c)) frenaMov++;
             }
             W8Ok(ref ok, total >= 8 && sin == total, sb, $"todas las compuertas ({total}) llevan NoFrenaBalas ({sin})");
-            W8Ok(ref ok, frenaMov > 0, sb, $"las cerradas siguen frenando el movimiento ({frenaMov})");
+            // R13 T10: las compuertas ya no bloquean el paso (se vuelve a la guerra por el cartel "Debes volver a la guerra"); antes se exigia > 0.
+            W8Ok(ref ok, frenaMov == 0, sb, $"las compuertas ya no frenan el movimiento, el retroceso lo avisa el cartel ({frenaMov})");
             // una bala real contra la compuerta cerrada: el rayo de la bala no se frena en ella
             Collider cerrada = null;
             foreach (var t in Object.FindObjectsByType<Transform>(FindObjectsInactive.Exclude)) { if (t != null && t.name.StartsWith("Mansion_Compuerta_") && t.GetComponent<Collider>() != null && t.GetComponent<Collider>().enabled) { cerrada = t.GetComponent<Collider>(); break; } }

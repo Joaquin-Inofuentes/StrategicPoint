@@ -80,7 +80,9 @@ namespace SP.Presentation
         }
 
         // orientar = false para el soldado que maneja el jugador: la camara sale de su rotacion y girarlo solo pelea con el mouse.
-        public static void Tick(Soldier medico, Soldier herido, float dt, bool orientar = true)
+        // sinFx = true (ronda 13, T5): conserva la postura agachada pero no crea el anillo ni las cruces verdes (el feedback del jugador
+        // es solo el engranaje radial de la mira).
+        public static void Tick(Soldier medico, Soldier herido, float dt, bool orientar = true, bool sinFx = false)
         {
             if (medico == null || herido == null) return;
             if (!activos.TryGetValue(medico, out var e) || e.botiquin == null || e.herido != herido)
@@ -109,6 +111,13 @@ namespace SP.Presentation
             float bombeo = Mathf.Sin(e.t * 9f);
             e.botiquin.transform.localPosition = new Vector3(0f, 0.62f + 0.07f * bombeo, 0.55f);
             e.botiquin.transform.localRotation = Quaternion.Euler(10f * bombeo, 0f, 6f * Mathf.Sin(e.t * 4.5f));
+
+            if (sinFx)
+            {
+                if (e.anillo != null && e.anillo.activeSelf) e.anillo.SetActive(false);
+                return;
+            }
+            if (e.anillo != null && !e.anillo.activeSelf) e.anillo.SetActive(true);
 
             // Anillo que late bajo el herido.
             float lat = 0.5f + 0.5f * Mathf.Sin(e.t * 6f);
@@ -181,7 +190,7 @@ namespace SP.Presentation
             t.transform.SetParent(f.transform, false);
             var trt = t.GetComponent<RectTransform>(); trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = new Vector2(20f, 6f); trt.offsetMax = new Vector2(-20f, -6f);
             instancia.texto = t.GetComponent<UnityEngine.UI.Text>();
-            instancia.texto.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            instancia.texto.font = SP.Presentation.FuentesBelicas.Para(34);
             instancia.texto.fontSize = 34; instancia.texto.fontStyle = FontStyle.Bold;
             instancia.texto.alignment = TextAnchor.MiddleCenter; instancia.texto.color = Color.white; instancia.texto.raycastTarget = false;
             // El aviso largo ("...APRIETE [ESPACIO] PARA DETENERLO") se cortaba en una sola linea: ahora parte en dos y achica la letra si hace falta.

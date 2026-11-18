@@ -135,7 +135,7 @@ namespace SP.Presentation
             if (raiz == null) { MostrarDificultad(); return; }
             if (panelNiveles != null) { panelNiveles.SetActive(true); return; }
 
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var font = SP.Presentation.FuentesBelicas.Para(0);
             panelNiveles = new GameObject("PanelNiveles", typeof(RectTransform), typeof(Image));
             panelNiveles.transform.SetParent(raiz, false);
             panelNiveles.GetComponent<Image>().color = new Color(0.04f, 0.05f, 0.07f, 1f);
@@ -205,7 +205,7 @@ namespace SP.Presentation
         {
             var raiz = transform.parent;
             if (raiz == null) return;
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var font = SP.Presentation.FuentesBelicas.Para(0);
             if (popupEnDesarrollo == null)
             {
                 popupEnDesarrollo = new GameObject("PopupEnDesarrollo", typeof(RectTransform), typeof(Image));
@@ -223,7 +223,7 @@ namespace SP.Presentation
                 var tituloGO = new GameObject("Titulo", typeof(RectTransform), typeof(Text));
                 tituloGO.transform.SetParent(caja.transform, false);
                 var t = tituloGO.GetComponent<Text>();
-                t.font = font; t.fontSize = F(40); t.fontStyle = FontStyle.Bold; t.color = new Color(1f, 0.82f, 0.3f); t.alignment = TextAnchor.MiddleCenter; t.raycastTarget = false;
+                t.font = SP.Presentation.FuentesBelicas.Para(F(40)); t.fontSize = F(40); t.fontStyle = FontStyle.Bold; t.color = new Color(1f, 0.82f, 0.3f); t.alignment = TextAnchor.MiddleCenter; t.raycastTarget = false;
                 var trt = t.rectTransform; trt.anchorMin = trt.anchorMax = new Vector2(0.5f, 0.72f); trt.anchoredPosition = Vector2.zero; trt.sizeDelta = new Vector2(700f * E, 70f * E);
                 tituloGO.name = "TextoTitulo";
                 Texto(caja.transform, font, "Este nivel todavia esta en desarrollo.\nProximamente.", F(24), new Vector2(0.5f, 0.45f), new Vector2(680f * E, 110f * E), Color.white);
@@ -257,7 +257,7 @@ namespace SP.Presentation
             if (raiz == null) { IniciarPartida(NivelDificultad.Facil); return; }
             if (panelDificultad != null) { panelDificultad.SetActive(true); return; }
 
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var font = SP.Presentation.FuentesBelicas.Para(0);
             panelDificultad = new GameObject("PanelDificultad", typeof(RectTransform), typeof(Image));
             panelDificultad.transform.SetParent(raiz, false);
             var fondo = panelDificultad.GetComponent<Image>();
@@ -319,7 +319,7 @@ namespace SP.Presentation
             var go = new GameObject("Texto", typeof(RectTransform), typeof(Text));
             go.transform.SetParent(padre, false);
             var t = go.GetComponent<Text>();
-            t.font = font; t.text = texto; t.fontSize = tam; t.fontStyle = FontStyle.Bold; t.color = color;
+            t.font = SP.Presentation.FuentesBelicas.Para(tam); t.text = texto; t.fontSize = tam; t.fontStyle = FontStyle.Bold; t.color = color;
             t.alignment = alinear; t.raycastTarget = false;
             t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Overflow;
             var rt = t.rectTransform;

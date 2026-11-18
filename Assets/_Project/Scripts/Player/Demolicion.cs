@@ -396,7 +396,7 @@ namespace SP.Player
                 go.transform.SetParent(transform, false);
                 go.transform.localPosition = new Vector3(0f, 1.7f, 0f);
                 etiqueta = go.AddComponent<TextMesh>();
-                var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                var font = SP.Presentation.FuentesBelicas.Para(0);
                 etiqueta.font = font;
                 go.GetComponent<MeshRenderer>().sharedMaterial = font.material;
                 etiqueta.characterSize = 0.09f; etiqueta.fontSize = 60;

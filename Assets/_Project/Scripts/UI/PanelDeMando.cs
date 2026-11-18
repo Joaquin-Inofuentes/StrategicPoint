@@ -235,7 +235,7 @@ namespace SP.UI
             var go = new GameObject(nombre, typeof(RectTransform), typeof(Text));
             go.transform.SetParent(padre, false);
             var t = go.GetComponent<Text>();
-            t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            t.font = SP.Presentation.FuentesBelicas.Para(size);
             t.fontSize = size; t.fontStyle = estilo; t.color = color; t.alignment = ancla; t.text = s; t.raycastTarget = false;
             return t;
         }

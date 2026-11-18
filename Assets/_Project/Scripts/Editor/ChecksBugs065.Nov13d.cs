@@ -95,7 +95,10 @@ namespace SP.EditorTools
                 }
                 yield return null;
                 float lum = texto != null ? texto.color.r * 0.3f + texto.color.g * 0.59f + texto.color.b * 0.11f : 1f;
-                if (!HudModoAntiguo) W8Ok(ref ok, lum < 0.05f, sb, $"el texto de la barra de vida del tanque es negro ({(texto != null ? texto.color.ToString() : "sin texto")})");
+                // R13 T4: el fondo de la barra pasa a oscuro; lo que se exige es el contraste (texto claro sobre fondo oscuro o al reves), ya no un negro fijo.
+                float lumFondo = 0.5f;
+                if (vida != null && vida.transform.parent != null) { var bg2 = vida.transform.parent.GetComponent<UnityEngine.UI.Image>(); if (bg2 != null) lumFondo = bg2.color.r * 0.3f + bg2.color.g * 0.59f + bg2.color.b * 0.11f; }
+                if (!HudModoAntiguo) W8Ok(ref ok, Mathf.Abs(lum - lumFondo) > 0.45f, sb, $"el texto de la barra de vida del tanque contrasta con su fondo (texto {lum:0.00}, fondo {lumFondo:0.00}; {(texto != null ? texto.color.ToString() : "sin texto")})");
                 else sb.Append("[modo antiguo: texto blanco] ");
                 foreach (var x in FotoConHud(pre + "hud.jpg")) yield return x;
             }

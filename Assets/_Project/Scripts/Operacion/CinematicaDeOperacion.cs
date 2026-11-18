@@ -26,6 +26,8 @@ namespace SP.Operacion
         // P9 (#123): cualquiera de las dos cinematicas de apertura (sobrevuelo o rapel) esta en pantalla.
         public static bool IntroActiva => Activa || CinematicaDeRapel.Activa;
         public static bool YaVista;
+        // R14 (#26): el recorrido inicial por los pasos de la operacion se quito del arranque normal.
+        public const bool RecorridoInicialActivo = false;
         public static CinematicaDeOperacion Instancia { get; private set; }
 
         // Costuras de pruebas (el editor sin foco pierde los eventos de teclado).
@@ -46,7 +48,7 @@ namespace SP.Operacion
         };
         public static readonly string[] Textos =
         {
-            "Primero detoná las 2 torretas de artillería, después eliminá a todos.",
+            "Volá el portón norte con la carga del ASALTO y después eliminá a todos.",
             "Solo el ASALTO coloca las cargas. Aguantá 20 s mientras arde la mecha.",
             "Un soldado descarga 30 s; el resto defiende las tres entradas.",
             "Derribá al tanque jefe con cohetes, cubrí a Kes mientras lo repara y escapá en él.",
@@ -118,6 +120,7 @@ namespace SP.Operacion
             driver = PlayerInputDriver.Activo;
             if (driver != null)
             {
+                if (driver.Rig != null) driver.Rig.ReiniciarZoom();   // R14 (#9)
                 driver.enabled = false;
                 if (driver.Rig != null) driver.Rig.enabled = false;
             }
@@ -194,8 +197,7 @@ namespace SP.Operacion
             var g = new GameObject(nombre, typeof(RectTransform), typeof(Text), typeof(Outline));
             g.transform.SetParent(padre, false);
             var t = g.GetComponent<Text>();
-            if (fuente == null) fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            t.font = fuente; t.fontSize = tam; t.fontStyle = FontStyle.Bold; t.alignment = ancla; t.color = color;
+            t.font = SP.Presentation.FuentesBelicas.Para(tam); t.fontSize = tam; t.fontStyle = FontStyle.Bold; t.alignment = ancla; t.color = color;
             t.raycastTarget = false;
             t.horizontalOverflow = HorizontalWrapMode.Overflow; t.verticalOverflow = VerticalWrapMode.Overflow;
             var o = g.GetComponent<Outline>(); o.effectColor = new Color(0f, 0f, 0f, 0.9f); o.effectDistance = new Vector2(2f, -2f);
@@ -305,7 +307,7 @@ namespace SP.Operacion
             // 1) El cuartel y las dos torretas de artilleria (lo primero que hay que detonar).
             C(alto(inicio, 34f) + new Vector3(0f, 0f, -26f), new Vector3(0f, 4f, -330f), 17f, "OPERACIÓN CUARTEL", null, VozDeCinematica.Inicio);
             C(new Vector3(-14f, 26f, -346f), tA + Vector3.up * 5f, 20f);
-            C(tA + new Vector3(-26f, 15f, -22f), tA + Vector3.up * 5f, 13f, "PRIMERO: DETONÁ LAS 2 TORRETAS DE ARTILLERÍA", new Color(1f, 0.55f, 0.3f), VozDeCinematica.Torretas);
+            C(tA + new Vector3(-26f, 15f, -22f), tA + Vector3.up * 5f, 13f, "PRIMERO: VOLÁ EL PORTÓN NORTE CON LA CARGA", new Color(1f, 0.55f, 0.3f), null);   // R13 T12: solo subtitulo (la voz grabada hablaba de las torretas)
             C(tA + new Vector3(-23f, 17f, 16f), tA + Vector3.up * 5f, 14f);
             C(new Vector3(0f, 24f, -250f), Vector3.Lerp(tA, tB, 0.7f) + Vector3.up * 5f, 16f);
             C(tB + new Vector3(24f, 15f, -16f), tB + Vector3.up * 5f, 14f);

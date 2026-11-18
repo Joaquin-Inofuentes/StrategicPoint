@@ -70,7 +70,7 @@ namespace SP.Player
             var t = new GameObject("Pista", typeof(RectTransform), typeof(Text));
             t.transform.SetParent(raiz, false);
             pista = t.GetComponent<Text>();
-            pista.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            pista.font = SP.Presentation.FuentesBelicas.Para(34);
             pista.fontSize = 34; pista.fontStyle = FontStyle.Bold; pista.alignment = TextAnchor.MiddleCenter;
             pista.color = new Color(1f, 0.86f, 0.22f, 1f); pista.raycastTarget = false;
             pista.horizontalOverflow = HorizontalWrapMode.Overflow;
@@ -243,7 +243,7 @@ namespace SP.Player
             var t = new GameObject("Nombre", typeof(RectTransform), typeof(Text));
             t.transform.SetParent(raiz, false);
             var tx = t.GetComponent<Text>();
-            tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            tx.font = SP.Presentation.FuentesBelicas.Para(0);
             tx.fontStyle = FontStyle.Bold; tx.alignment = TextAnchor.MiddleCenter; tx.raycastTarget = false;
             tx.horizontalOverflow = HorizontalWrapMode.Overflow;
             t.AddComponent<Shadow>().effectColor = new Color(0f, 0f, 0f, 0.9f);

@@ -63,7 +63,7 @@ namespace SP.Mision
             frt.pivot = new Vector2(0f, 0.5f);
             frt.anchoredPosition = Vector2.zero; frt.sizeDelta = new Vector2(4f, 0f);
 
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var font = SP.Presentation.FuentesBelicas.Para(0);
             h.titulo = Texto(go.transform, font, 14, new Vector2(0f, 40f), new Vector2(304f, 20f), new Color(1f, 0.82f, 0.3f));
             h.detalle = Texto(go.transform, font, 16, new Vector2(0f, 10f), new Vector2(304f, 42f), Color.white);
             h.dificultad = Texto(go.transform, font, 11, new Vector2(0f, -43f), new Vector2(304f, 16f), new Color(0.72f, 0.8f, 0.9f));

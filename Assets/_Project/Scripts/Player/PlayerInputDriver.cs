@@ -86,7 +86,8 @@ namespace SP.Player
         // Pedido explicito: "si mantengo shift WASD se desplaza mas rapido".
         const float RtsPanShiftMultiplier = 2.2f;
         // Ronda 11: 80 (era 40, y antes 20) y sin suavizado (ver CameraRig.AnimarZoom). Const y no [SerializeField]: un valor serializado en la escena pisaria el nuevo.
-        public const float rtsZoomSpeed = 80f;
+        // R14 (#30): "que el scroll de zoom sea el doble": 160 (era 80).
+        public const float rtsZoomSpeed = 160f;
         // [E]: menos de esto = interactuar (toque); esto o mas = accion especial de la clase.
         public const float SostenerParaEspecial = 0.5f;
         // [E] mantenido (>= SostenerParaEspecial) este frame: la habilidad de clase y la carga de demolicion del asalto.
@@ -1642,6 +1643,7 @@ namespace SP.Player
                 return;
             }
             DetenerAnimacionDeRevivir();
+            EngranajeDeRevivir.Ocultar();
             if (circuloRevivir != null && !DemolicionEnCurso) circuloRevivir.SetVisible(false);
 
             // Interacción por cercanía (no por puntería): subir al vehículo
@@ -1735,6 +1737,7 @@ namespace SP.Player
         void DetenerAnimacionDeRevivir()
         {
             mantenidoHasta = 0f;
+            EngranajeDeRevivir.Ocultar();
             if (animRevivirPor == null) return;
             CurandoAnimacion.Terminar(animRevivirPor);
             animRevivirPor = null;
@@ -1743,13 +1746,15 @@ namespace SP.Player
 
         void UpdateRevivalHold(Soldier caido)
         {
-            SetInstructionText($"Mantener [E] para revivir a {caido.DisplayName}");
+            // Ronda 13 (T5): antes de empezar, el texto y la pista son la unica guia; mientras se mantiene [E] queda SOLO el engranaje de la mira.
             if (!KeyBindings.IsPressed(KeyBindings.Interactuar))
             {
+                SetInstructionText($"Mantener [E] para revivir a {caido.DisplayName}");
                 DetenerAnimacionDeRevivir();
-                if (circuloRevivir != null) circuloRevivir.SetVisible(false);
+                EngranajeDeRevivir.Ocultar();
                 return;
             }
+            SetInstructionText("");
 
             var yo = Brain.Current;
             if (animRevivirPor != null && animRevivirPor != yo) DetenerAnimacionDeRevivir();
@@ -1758,18 +1763,27 @@ namespace SP.Player
             {
                 reviviendoHasta = Time.time + 0.15f;
                 animRevivirPor = yo;
-                CurandoAnimacion.Tick(yo, caido, Time.deltaTime, orientar: false);
+                CurandoAnimacion.Tick(yo, caido, Time.deltaTime, orientar: false, sinFx: true);
             }
 
-            float progreso = KeyBindings.HeldSeconds(KeyBindings.Interactuar) / TiempoDeRevivir;
-            MostrarCirculoRevivir(Mathf.Clamp01(progreso));
-            AccionesEnCurso.Reportar(Brain.Current, "REVIVIENDO", caido.transform.position, progreso, TiempoDeRevivir * (1f - Mathf.Clamp01(progreso)), caido.transform);   // ronda 13 (puntos 2 y 3)
+            // El medico reanima en TiempoDeReanimarMedico (ActualizarHabilidadMedico lo completa); el resto, en TiempoDeRevivir.
+            float total = yo != null && yo.Role == RoleType.Medic ? TiempoDeReanimarMedico : TiempoDeRevivir;
+            float progreso = KeyBindings.HeldSeconds(KeyBindings.Interactuar) / total;
+            MostrarEngranajeDeRevivir(Mathf.Clamp01(progreso));
+            AccionesEnCurso.Reportar(Brain.Current, "REVIVIENDO", caido.transform.position, progreso, total * (1f - Mathf.Clamp01(progreso)), caido.transform);   // ronda 13 (puntos 2 y 3)
 
             if (TryRevivir(caido, KeyBindings.IsHeld(KeyBindings.Interactuar, TiempoDeRevivir)))
             {
                 DetenerAnimacionDeRevivir();
-                if (circuloRevivir != null) circuloRevivir.SetVisible(false);
+                EngranajeDeRevivir.Ocultar();
             }
+        }
+
+        // Ronda 13 (T5): el unico feedback visual del revivir (jugador y medico): un engranaje radial centrado en la mira.
+        void MostrarEngranajeDeRevivir(float progreso01)
+        {
+            var canvasRoot = AimUiRef != null ? AimUiRef.transform.parent : null;
+            EngranajeDeRevivir.Mostrar(canvasRoot, progreso01);
         }
 
         static readonly Color RevivirFondo = new Color(0f, 0f, 0f, 0.4f);
@@ -1855,14 +1869,15 @@ namespace SP.Player
                     if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
                     return;
                 }
-                medicoAccionSegundos += Time.deltaTime;
-                MostrarCirculoEnfoque(Mathf.Clamp01(medicoAccionSegundos / TiempoDeReanimarMedico));
+                // Ronda 13 (T5): cuenta desde que se apreta [E] (como el engranaje de UpdateRevivalHold), no 0,5 s despues.
+                medicoAccionSegundos = Mathf.Max(medicoAccionSegundos + Time.deltaTime, KeyBindings.HeldSeconds(KeyBindings.Interactuar));
+                MostrarEngranajeDeRevivir(Mathf.Clamp01(medicoAccionSegundos / TiempoDeReanimarMedico));
                 AccionesEnCurso.Reportar(Brain.Current, "REVIVIENDO", caido.transform.position, medicoAccionSegundos / TiempoDeReanimarMedico, TiempoDeReanimarMedico - medicoAccionSegundos, caido.transform);   // ronda 13 (puntos 2 y 3)
-                SetInstructionText($"[E mantenido] Reanimando a {caido.DisplayName}...");
+                SetInstructionText("");
                 if (medicoAccionSegundos >= TiempoDeReanimarMedico && TryRevivir(caido, true))
                 {
                     medicoAccionSegundos = 0f;
-                    if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
+                    EngranajeDeRevivir.Ocultar();
                     Feedback.Visual($"{caido.DisplayName} REANIMADO", caido.transform.position, Feedback.Ok, aviso: true, pulso: true);   // el sonido y los anillos los pone FeedbackDeRevivir (bug #089)
                 }
                 return;
@@ -3143,6 +3158,9 @@ namespace SP.Player
                     break;
                 case AimTargetType.Caido:
                     if (aim.Soldier == null) break;
+                    // Ronda 13 (T5): mientras se mantiene [E] queda SOLO el engranaje radial de la mira (sin rombo ni pista). Antes de
+                    // empezar, el rombo y la pista son la unica guia.
+                    if (MovimientoTrabadoPorRevivir) break;
                     mostrar = true;
                     ancla = aim.Soldier.transform.position + Vector3.up * AlturaGearSoldado;
                     destacado = true;   // mantener [E] revive con cualquier clase (UpdateRevivalHold), no solo con medico vivo

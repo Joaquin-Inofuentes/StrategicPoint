@@ -53,7 +53,77 @@ namespace SP.Operacion
         static readonly Dictionary<string, Material> mats = new Dictionary<string, Material>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { Creados = 0; mats.Clear(); }
+        static void Reiniciar() { Creados = 0; mats.Clear(); Vivos.Clear(); SeparacionActiva = true; }
+
+        // ---- Ronda 13 T7: manada sin solaparse. Los perros se atravesaban (cerebro anulado y NavService.BlocksMovement ignora a los Soldier) y todos iban al
+        // mismo punto exacto del blanco. Ahora: separacion propia entre perros + un PUESTO distinto por perro alrededor del blanco.
+        public static readonly List<PerroEnemigo> Vivos = new List<PerroEnemigo>();   // altas en OnEnable, bajas en OnDisable (los muertos se saltean al usarlos)
+        public static bool SeparacionActiva = true;
+        public const float RadioDeSeparacion = 1.25f, VelocidadDeSeparacion = 3.0f, DistanciaDura = 1.25f, RadioDePuesto = AlcanceDeMordida * 0.85f;   // 1,45 m
+        static readonly float[] AngulosDePuesto = { 0f, 50f, -50f, 100f, -100f, 150f, -150f };
+        float retrasoHasta;
+        public void Retrasar(float segundos) { retrasoHasta = Time.time + segundos; }   // las tandas de la extraccion salen de a un perro por vez
+        void OnEnable() { if (!Vivos.Contains(this)) Vivos.Add(this); }
+        void OnDisable() { Vivos.Remove(this); }
+        int IdPropio => soldado != null ? soldado.Id : GetHashCode();
+        bool EstaViva => Estado != Fase.Muerto && soldado != null && soldado.Health != null && soldado.Health.IsAlive;
+
+        // El puesto de este perro alrededor del blanco: los que atacan al mismo blanco se ordenan por Id; el 0 va de frente (lado por donde viene el lider)
+        // y el resto a +-50/100/150 grados a AlcanceDeMordida*0,85. A partir del 8.o, un segundo anillo (corrido 25 grados) un poco mas afuera.
+        public Vector3 Puesto(Soldier blanco)
+        {
+            if (blanco == null) return transform.position;
+            // Modo antiguo (SeparacionActiva = false, solo para medir): todos al mismo punto del blanco, a 0,9 m por el lado de donde vienen.
+            if (!SeparacionActiva) { var v = Plano(blanco.transform.position - transform.position); var f = v.sqrMagnitude > 0.0001f ? v.normalized : transform.forward; var q = blanco.transform.position - f * 0.9f; q.y = blanco.transform.position.y; return q; }
+            PerroEnemigo lider = null; int rango = 0, mio = IdPropio;
+            foreach (var o in Vivos)
+            {
+                if (o == null || o == this || !o.EstaViva || o.Blanco != blanco || o.Estado == Fase.Merodea) continue;
+                int oid = o.IdPropio;
+                if (lider == null || oid < lider.IdPropio) lider = o;
+                if (oid < mio) rango++;
+            }
+            bool yoLider = lider == null || mio < lider.IdPropio;
+            var centro = blanco.transform.position;
+            var refDir = Plano((yoLider ? transform.position : lider.transform.position) - centro);
+            if (refDir.sqrMagnitude < 0.01f) refDir = Quaternion.Euler(0f, mio * 137.5f, 0f) * Vector3.forward;
+            refDir.Normalize();
+            int anillo = rango / AngulosDePuesto.Length, k = rango % AngulosDePuesto.Length;
+            float ang = AngulosDePuesto[k] + (anillo % 2 == 1 ? 25f : 0f);
+            var p = centro + Quaternion.Euler(0f, ang, 0f) * refDir * (RadioDePuesto + anillo * 1.1f);
+            p.y = centro.y;
+            return UnityEngine.AI.NavMesh.SamplePosition(p, out var h, 1.5f, UnityEngine.AI.NavMesh.AllAreas) ? new Vector3(h.position.x, centro.y, h.position.z) : centro;
+        }
+
+        // Empuje entre perros vecinos: (r-d)/r * 1,8 m/s por vecino a menos de 1 m; si estan exactamente encima, la direccion sale fija del Id.
+        void TickSeparacion(float dt)
+        {
+            if (!SeparacionActiva || soldado == null || soldado.Motor == null) return;
+            Vector3 empuje = Vector3.zero;
+            foreach (var o in Vivos)
+            {
+                if (o == null || o == this || !o.EstaViva || o.Estado == Fase.Salto) continue;
+                var d = Plano(transform.position - o.transform.position); float m = d.magnitude;
+                if (m >= RadioDeSeparacion) continue;
+                var dir = m > 0.001f ? d / m : Quaternion.Euler(0f, (IdPropio - o.IdPropio) * 137.5f + 90f, 0f) * Vector3.forward;
+                empuje += dir * ((RadioDeSeparacion - m) / RadioDeSeparacion * VelocidadDeSeparacion);
+                // Zona dura: por debajo de 0,8 m se corrige el solape en el mismo cuadro (la mitad cada perro) en vez de un empuje suave que a 11 m/s no alcanza.
+                if (m < DistanciaDura && dt > 0.0001f) empuje += dir * Mathf.Min((DistanciaDura - m) * 0.5f / dt, 10f);
+            }
+            if (empuje.sqrMagnitude < 0.0001f) return;
+            var mo = soldado.Motor;
+            if (mo.MoveSpeed < 0.1f) mo.SpeedMultiplier = Mathf.Max(mo.SpeedMultiplier, 1f);
+            float ms = Mathf.Max(0.1f, mo.MoveSpeed);
+            mo.Move(empuje / ms, dt);   // Move multiplica por MoveSpeed: se pide la fraccion que da 'empuje' m/s
+        }
+
+        // Desvio fijo por perro (3 a 5 m) para que no sigan las mismas esquinas hacia el mismo punto.
+        Vector3 Desvio()
+        {
+            var rng = new System.Random(IdPropio * 7919 + 13);
+            float ang = (float)rng.NextDouble() * 360f, r = 3f + (float)rng.NextDouble() * 2f;
+            return Quaternion.Euler(0f, ang, 0f) * Vector3.forward * r;
+        }
 
         public static PerroEnemigo Aplicar(Soldier s)
         {
@@ -215,6 +285,7 @@ namespace SP.Operacion
             if (!soldado.Health.IsAlive) { if (Estado != Fase.Muerto) { CambiarFase(Fase.Muerto); muerteT = 0f; } AnimarMuerte(dt); return; }
 
             Blanco = BuscarBlanco();
+            if (Time.time < retrasoHasta) { Animar(dt); return; }   // R13 T7: salida escalonada de la tanda
             switch (Estado)
             {
                 case Fase.Merodea:
@@ -223,7 +294,7 @@ namespace SP.Operacion
                     if (DondeIr != null)
                     {
                         var meta = DondeIr();
-                        if (Plano(meta - transform.position).magnitude > 7f) { Avanzar(meta, VelocidadDeTrote, dt); break; }
+                        if (Plano(meta - transform.position).magnitude > 7f) { Avanzar(meta + Desvio() * Mathf.Clamp01((Plano(meta - transform.position).magnitude - 7f) / 8f), VelocidadDeTrote, dt); break; }
                     }
                     if (Time.time >= proximoMerodeo || Vector3.Distance(Plano(transform.position), Plano(destinoMerodeo)) < 0.5f)
                     {
@@ -245,7 +316,7 @@ namespace SP.Operacion
                     var aBlanco = Blanco.transform.position - transform.position; float d = Plano(aBlanco).magnitude;
                     if (d <= AlcanceDeMordida) { CambiarFase(Fase.Muerde); proximaMordida = Time.time + 0.15f; PonerVoz(SfxKind.GruniidoDePerro, 0.6f); break; }
                     if (d <= AlcanceDeSalto && d >= AlcanceMinimoDeSalto && Time.time >= proximoSalto && LineaLibre(Blanco)) { IniciarSalto(Blanco); break; }
-                    Avanzar(Blanco.transform.position, VelocidadDeCarga, dt);
+                    Avanzar(Puesto(Blanco), VelocidadDeCarga, dt);
                     if (Time.time >= proximoLadrido) { Ladrar(true); proximoLadrido = Time.time + Random.Range(1.3f, 2.1f); }
                     break;
                 }
@@ -258,11 +329,14 @@ namespace SP.Operacion
                     var aBlanco = Blanco.transform.position - transform.position; float d = Plano(aBlanco).magnitude;
                     Mirar(aBlanco, dt);
                     if (d > AlcanceDeMordida + 0.9f) { CambiarFase(Fase.Carga); proximoSalto = Time.time + 0.4f; break; }
-                    if (d > 1.0f && soldado.Motor != null) { soldado.Motor.SpeedMultiplier = 2f; soldado.Motor.Move(transform.forward, dt); }
+                    // R13 T7: se queda en su puesto (no avanza al centro del blanco, que era donde se apilaban todos)
+                    var aPuesto = Plano(Puesto(Blanco) - transform.position);
+                    if (aPuesto.magnitude > 0.35f && soldado.Motor != null) { soldado.Motor.SpeedMultiplier = 2f; soldado.Motor.Move(aPuesto.normalized, dt); }
                     if (Time.time >= proximaMordida) { Morder(Blanco, DanoDeMordida); proximaMordida = Time.time + SegundosEntreMordidas; }
                     break;
                 }
             }
+            if (Estado != Fase.Salto) TickSeparacion(dt);
             Animar(dt);
         }
 
@@ -277,8 +351,7 @@ namespace SP.Operacion
         {
             Saltos++; CambiarFase(Fase.Salto);
             saltoDesde = transform.position;
-            var dir = Plano(blanco.transform.position - transform.position).normalized;
-            saltoHasta = blanco.transform.position - dir * 0.9f; saltoHasta.y = blanco.transform.position.y;
+            saltoHasta = Puesto(blanco); saltoHasta.y = blanco.transform.position.y;   // R13 T7: cae en su puesto de la manada
             saltoDur = Mathf.Max(DuracionMinimaDelSalto, Plano(saltoHasta - saltoDesde).magnitude / 17f);   // ~17 m/s en el aire
             saltoT = 0f; Ladrar(true);
             proximoSalto = Time.time + EsperaDelSalto;
@@ -289,7 +362,7 @@ namespace SP.Operacion
             saltoT += dt;
             float k = Mathf.Clamp01(saltoT / saltoDur);
             // el destino sigue al blanco hasta la mitad del vuelo (si el aliado se mueve, el perro corrige) y despues se compromete
-            if (Blanco != null && k < 0.55f) { var dir = Plano(Blanco.transform.position - saltoDesde).normalized; saltoHasta = Blanco.transform.position - dir * 0.9f; saltoHasta.y = Blanco.transform.position.y; }
+            if (Blanco != null && k < 0.55f) { saltoHasta = Puesto(Blanco); saltoHasta.y = Blanco.transform.position.y; }
             var p = Vector3.Lerp(saltoDesde, saltoHasta, k);
             float altura = 4f * 1.05f * k * (1f - k);   // arco parabolico de ~1,05 m de flecha
             var nueva = new Vector3(p.x, p.y + altura, p.z);

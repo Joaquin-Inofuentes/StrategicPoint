@@ -80,6 +80,7 @@ namespace SP.Operacion
             driver = PlayerInputDriver.Activo;
             if (driver != null)
             {
+                if (driver.Rig != null) driver.Rig.ReiniciarZoom();   // R14 (#9): sin zoom de tanque antes de capturar el FOV
                 driver.enabled = false;
                 if (driver.Rig != null) driver.Rig.enabled = false;
             }
@@ -137,8 +138,7 @@ namespace SP.Operacion
             var g = new GameObject(nombre, typeof(RectTransform), typeof(Text));
             g.transform.SetParent(padre, false);
             var t = g.GetComponent<Text>();
-            if (fuente == null) fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            t.font = fuente; t.fontSize = tam; t.fontStyle = FontStyle.Bold; t.alignment = ancla; t.color = color;
+            t.font = SP.Presentation.FuentesBelicas.Para(tam); t.fontSize = tam; t.fontStyle = FontStyle.Bold; t.alignment = ancla; t.color = color;
             t.raycastTarget = false; t.supportRichText = true;
             t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Overflow;
             var o = g.AddComponent<Outline>();

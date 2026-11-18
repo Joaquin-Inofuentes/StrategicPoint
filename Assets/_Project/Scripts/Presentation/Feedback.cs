@@ -123,7 +123,7 @@ namespace SP.Presentation
                 var go = new GameObject("WorldTag");
                 go.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
                 tag = go.AddComponent<WorldTag>();
-                if (font == null) font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                if (font == null) font = SP.Presentation.FuentesBelicas.Para(0);
                 tag.mesh = go.AddComponent<TextMesh>();
                 tag.mesh.font = font;
                 tag.mesh.fontSize = 64;

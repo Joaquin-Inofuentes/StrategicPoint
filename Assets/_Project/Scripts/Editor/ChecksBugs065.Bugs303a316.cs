@@ -138,53 +138,33 @@ namespace SP.EditorTools
             yield break;
         }
 
-        // ---------------------------------------------------------------- 306u el generador se demuele rapido y de una vez
+        // ---------------------------------------------------------------- 306u (R13 T12) el generador ya no existe: la 1.a puerta se abre solo con la carga del porton
         static IEnumerator Bug306u()
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
             string r0 = OperacionPrueba.Arrancar(1, 1);
             foreach (var x in Esperar(1.5f)) yield return x;
-            Time.timeScale = 1f;
             var d = OperacionDirector.Instancia; var sb = new StringBuilder(); bool ok = true;
-            bool diosAntes = ModoDios.Activo; ModoDios.Poner(true);
-            var vega = Escuadrista(RoleType.Assault);
-            if (d == null || d.generador == null || d.generador.marca == null || vega == null) { ModoDios.Poner(diosAntes); Fin("FALLO faltan piezas"); yield break; }
-            var g = d.generador;
-            try
-            {
-                W8Ok(ref ok, Mathf.Approximately(Demolicion.SegundosPara(g.marca), Demolicion.SegundosDelGenerador), sb, $"el generador tarda {Demolicion.SegundosPara(g.marca):0.0} s (pide {Demolicion.SegundosDelGenerador:0.0})");
-                Poseer(vega); yield return null;
-                Junto(vega, g.marca.transform.position, 3f, vega.transform.position);
-                var dem = vega.GetComponent<DemoledorAsalto>() ?? vega.gameObject.AddComponent<DemoledorAsalto>();
-                bool inicio = dem.IniciarAutomatico(g.marca);
-                float t0 = Time.realtimeSinceStartup;
-                while (!g.EstaCaido && Time.realtimeSinceStartup - t0 < 4f) yield return null;
-                float tardo = Time.realtimeSinceStartup - t0;
-                W8Ok(ref ok, inicio && g.EstaCaido && tardo < 3f, sb, $"Q arranca la carga sola y el generador cae en {tardo:0.0} s (inicio={inicio}, pide < 3 s)");
-                int partes = 0, caidas = 0;
-                if (g.partes != null) foreach (var p in g.partes) if (p != null) { partes++; if (p.IsCollapsed) caidas++; }
-                W8Ok(ref ok, caidas == partes, sb, $"todas las partes del generador caen juntas ({caidas}/{partes})");
-                if (g.derribaTorresAlCaer) W8Ok(ref ok, d.TorresCaidas(TorreDestruible.Tipo.Torreta) + d.TorresCaidas(TorreDestruible.Tipo.Francotirador) == OperacionDirector.TorresDeTorreta + OperacionDirector.TorresDeFrancotirador, sb, "cayeron torres y torretas");
-            }
-            finally { Poseer(vega); ModoDios.Poner(diosAntes); }
+            if (d == null) { Fin("FALLO sin director"); yield break; }
+            W8Ok(ref ok, d.generador == null, sb, "el director no tiene generador");
+            var genViejo = Buscar("Generador_Cuartel"); var genRestos = Buscar("Generador_Restos");
+            W8Ok(ref ok, (genViejo == null || !genViejo.activeInHierarchy) && (genRestos == null || !genRestos.activeInHierarchy), sb, "ningun Generador_Cuartel ni Generador_Restos activo en las escenas (el viejo queda apagado)");
+            W8Ok(ref ok, d.cargaPorton != null && d.cargaPorton.Habilitado, sb, "la carga del porton esta habilitada desde t=0");
             Fin((ok ? "OK " : "FALLO ") + sb + $"(arranque: {r0})");
+            yield break;
         }
 
-        // ---------------------------------------------------------------- 307u el rombo salta a la carga del porton y el generador deja restos
+        // ---------------------------------------------------------------- 307u (R13 T12) el rombo apunta a la carga del porton desde t=0 (ya no hay generador)
         static IEnumerator Bug307u()
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
             string r0 = OperacionPrueba.Arrancar(1, 1);
             foreach (var x in Esperar(1.5f)) yield return x;
             var d = OperacionDirector.Instancia; var sb = new StringBuilder(); bool ok = true;
-            if (d == null || d.generador == null || d.cargaPorton == null) { Fin("FALLO faltan piezas"); yield break; }
-            d.generador.marca.Demoler();
-            foreach (var x in Esperar(1.2f)) yield return x;
+            if (d == null || d.cargaPorton == null) { Fin("FALLO faltan piezas"); yield break; }
             var baliza = CampoPrivado(d, "baliza") as Component;
             float dist = baliza != null ? Vector2.Distance(new Vector2(baliza.transform.position.x, baliza.transform.position.z), new Vector2(d.cargaPorton.transform.position.x, d.cargaPorton.transform.position.z)) : 999f;
             W8Ok(ref ok, baliza != null && dist < 1.5f, sb, $"el rombo apunta a la carga del porton (distancia {dist:0.0} m, pide < 1,5)");
-            var restos = Buscar("Generador_Restos");
-            W8Ok(ref ok, restos != null && restos.activeInHierarchy && Vector3.Distance(restos.transform.position, d.generador.transform.position) < 2f, sb, "el generador deja restos en su lugar");
             foreach (var x in CapturarPantalla("v2_307_despues.png")) yield return x;
             Fin((ok ? "OK " : "FALLO ") + sb + $"(arranque: {r0})");
         }
@@ -199,10 +179,9 @@ namespace SP.EditorTools
             var d = OperacionDirector.Instancia; var sb = new StringBuilder(); bool ok = true;
             bool diosAntes = ModoDios.Activo; ModoDios.Poner(true);
             var vega = Escuadrista(RoleType.Assault); var drv = PlayerInputDriver.Activo;
-            if (d == null || d.generador == null || d.cargaPorton == null || vega == null || drv == null) { ModoDios.Poner(diosAntes); Fin("FALLO faltan piezas"); yield break; }
+            if (d == null || d.cargaPorton == null || vega == null || drv == null) { ModoDios.Poner(diosAntes); Fin("FALLO faltan piezas"); yield break; }
             try
             {
-                d.generador.Caer();
                 Poseer(vega); yield return null;
                 Junto(vega, d.cargaPorton.transform.position, 9f, vega.transform.position);
                 // Los aliados NO pueden operar la carga (solo el Asalto, y el Asalto sos vos): se los saca de la escena de la prueba.

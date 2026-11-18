@@ -22,7 +22,7 @@ namespace SP.Presentation
     // Ronda 7: Explosion (boom con cola), GrenadePin/Throw/Bounce, KnifeSwing/Hit, Jump/Land,
     // RadialOpen/Tick/Confirm/Cancel, HealStart/Done, Revive y BombPlant/Tick (ver SfxSintetico).
     // WP2 (#072): DestruccionVehiculo = chapa que se retuerce y cae al final de un vehiculo (SfxSintetico.DestruccionVehiculo).
-    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire, TutKey, TutSub, TutStep, TutVictory, Explosion, GrenadePin, GrenadeThrow, GrenadeBounce, KnifeSwing, KnifeHit, Jump, Land, RadialOpen, RadialTick, RadialConfirm, RadialCancel, HealStart, HealDone, Revive, BombPlant, BombTick, AmmoPickup, Logro, ObjetivoCumplido, ImpactoPesado, BalaImpacto, Orugas, MotorCamioneta, AmbienteDesierto, RuedasCamioneta, DestruccionVehiculo, VidrioRoto, PasoPesado, Ladrido, LadridoCorto, GruniidoDePerro, PasoDePerro, ImpactoEscudo }
+    public enum SfxKind { Shoot, Hit, Death, Order, Swap, EmptyClick, VehicleHit, CannonBody, CannonCrack, TurretReloaded, Wounded, Heartbeat, ImpactMetal, ImpactDirt, ImpactStone, BulletWhizz, FootstepGrass, FootstepConcrete, UiHover, UiClick, OrderBark, CameraSwoosh, CoverTake, CoverLost, HoloOn, SeatChange, BoardAll, ExitAll, FollowCall, Crouch, WeaponSwitch, Reload, Select, EnemySpotted, TankFire, TutKey, TutSub, TutStep, TutVictory, Explosion, GrenadePin, GrenadeThrow, GrenadeBounce, KnifeSwing, KnifeHit, Jump, Land, RadialOpen, RadialTick, RadialConfirm, RadialCancel, HealStart, HealDone, Revive, BombPlant, BombTick, AmmoPickup, Logro, ObjetivoCumplido, ImpactoPesado, BalaImpacto, Orugas, MotorCamioneta, AmbienteDesierto, RuedasCamioneta, DestruccionVehiculo, VidrioRoto, PasoPesado, Ladrido, LadridoCorto, GruniidoDePerro, PasoDePerro, ImpactoEscudo, KnifeBlood, RejaAbriendo }
 
     // Sonidos genéricos: primero busca grabaciones reales importadas bajo
     // Resources/Audio/Sfx/<Kind>/ (pedido explicito: "quita todos los
@@ -394,6 +394,8 @@ namespace SP.Presentation
                 case SfxKind.GrenadeBounce: return SfxSintetico.GranadaRebote();
                 case SfxKind.KnifeSwing: return SfxSintetico.CuchilloTajo();
                 case SfxKind.KnifeHit: return SfxSintetico.CuchilloImpacto();
+                case SfxKind.KnifeBlood: return SfxSintetico.CuchilloSangre();
+                case SfxKind.RejaAbriendo: return SfxSintetico.RejaAbriendo();
                 case SfxKind.Jump: return SfxSintetico.Salto();
                 case SfxKind.Land: return SfxSintetico.Aterrizaje();
                 case SfxKind.RadialOpen: return SfxSintetico.RadialAbrir();

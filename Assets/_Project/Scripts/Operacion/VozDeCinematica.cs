@@ -84,7 +84,7 @@ namespace SP.Operacion
                 var sc = go.AddComponent<UnityEngine.UI.CanvasScaler>();
                 sc.uiScaleMode = UnityEngine.UI.CanvasScaler.ScaleMode.ScaleWithScreenSize; sc.referenceResolution = new Vector2(960f, 540f); sc.matchWidthOrHeight = 0.5f;
                 var v = go.AddComponent<DialogoView>();
-                var fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                var fuente = SP.Presentation.FuentesBelicas.Para(0);
 
                 var caja = new GameObject("Caja", typeof(RectTransform), typeof(UnityEngine.UI.Image), typeof(CanvasGroup));
                 caja.transform.SetParent(go.transform, false);

@@ -42,6 +42,7 @@ namespace SP.Operacion
             if (aparicion.Count == 0) return;
             var destino = heli != null ? heli.position : plaza.position;
             var grupo = new List<Soldier>();
+            int perrosDeLaTanda = 0;   // R13 T7: cada perro de la misma tanda sale 0,4 s despues del anterior
             for (int k = 0; k < EnemigosPorTandaDeExtraccion && EnemigosDeExtraccionVivos + grupo.Count < TopeDeVivosEnExtraccion; k++)
             {
                 indiceEntradaExtraccion = (indiceEntradaExtraccion + 1 + UnityEngine.Random.Range(0, 2)) % aparicion.Count;
@@ -54,7 +55,7 @@ namespace SP.Operacion
                 if (s == null) { Destroy(go); continue; }
                 if (EnemigosDeExtraccionCreados % 10 == 0) EnemigoPesado.Aplicar(s);   // 2026-11-07: cada 10.o es un PESADO
                 else if (EnemigosDeExtraccionCreados % 7 == 0) EnemigoEscudero.Aplicar(s);   // 2026-11-13: cada 7.o un ESCUDERO
-                else if (EnemigosDeExtraccionCreados % PerroEnemigo.CadaCuantosEnLaExtraccion == 0) { var pr = PerroEnemigo.Aplicar(s); if (pr != null) pr.DondeIr = () => { var yo = Poseido(); return yo != null ? yo.transform.position : pr.transform.position; }; }      // 2026-11-13: cada 6.o un PERRO; ahora cada 3.o
+                else if (EnemigosDeExtraccionCreados % PerroEnemigo.CadaCuantosEnLaExtraccion == 0) { var pr = PerroEnemigo.Aplicar(s); if (pr != null) { pr.DondeIr = () => { var yo = Poseido(); return yo != null ? yo.transform.position : pr.transform.position; }; pr.Retrasar(0.4f * perrosDeLaTanda++); } }      // 2026-11-13: cada 6.o un PERRO; ahora cada 3.o
                 enemigosDeExtraccion.Add(s);
                 ApoyoEnElPiso.Apoyar(s.transform);
                 if (s.Brain != null)

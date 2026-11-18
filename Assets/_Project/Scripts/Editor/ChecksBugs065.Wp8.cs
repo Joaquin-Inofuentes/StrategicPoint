@@ -494,9 +494,16 @@ namespace SP.EditorTools
                 int vivosAntes = 0; foreach (var s in d.enemigosCuartel) if (s != null && s.Health != null && s.Health.IsAlive) vivosAntes++;
                 foreach (var t in TorreDestruible.Todas) if (t != null && t.tipo == TorreDestruible.Tipo.Torreta) { t.CaerYa(); muertos++; }
                 var porton = d.portonCuartel;
+                foreach (var x in Esperar(2.5f)) yield return x;
+                W8Ok(ref ok, d.Fase == FaseOperacion.Infiltrar && vivosAntes > 0, sb, $"R13 T12: torretas caidas {muertos} con {vivosAntes} soldados vivos -> la fase sigue en {d.Fase} (solo la carga del porton abre)");
+                var asalto = Escuadrista(RoleType.Assault);
+                if (asalto == null || d.cargaPorton == null) { Fin("FALLO faltan piezas (asalto o carga del porton) " + sb); yield break; }
+                Poseer(asalto); yield return null;
+                Junto(asalto, d.cargaPorton.transform.position, 2f);
+                d.cargaPorton.PlantarPorPrueba(asalto); d.cargaPorton.AcortarMecha(2.5f);
                 float t0 = Time.realtimeSinceStartup;
-                while (Time.realtimeSinceStartup - t0 < 4f && d.Fase == FaseOperacion.Infiltrar) yield return null;
-                W8Ok(ref ok, d.Fase == FaseOperacion.Puestos && vivosAntes > 0, sb, $"torretas caidas {muertos} con {vivosAntes} soldados vivos -> fase {d.Fase}");
+                while (Time.realtimeSinceStartup - t0 < 10f && d.Fase == FaseOperacion.Infiltrar) yield return null;
+                W8Ok(ref ok, d.Fase == FaseOperacion.Puestos, sb, $"cargado y volado el porton -> fase {d.Fase}");
                 foreach (var x in Esperar(2.5f)) yield return x;
                 W8Ok(ref ok, porton != null && !porton.activeSelf, sb, $"porton hundido={(porton != null && !porton.activeSelf)}");
                 W8Ok(ref ok, hud == null || hud.TextoSubobjetivo == "" || !hud.TextoSubobjetivo.Contains("Torres"), sb, "la linea de subobjetivos del cuartel se limpia al cambiar de fase");

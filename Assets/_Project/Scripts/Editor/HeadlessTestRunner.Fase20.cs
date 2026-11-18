@@ -68,7 +68,7 @@ namespace SP.EditorTools
             // --- Q y E ---
             Check("Q: mantener empieza a los 0,15 s", PlayerInputDriver.SostenerParaMenu == 0.15f);
             Check("E: mantener 0,5 s = habilidad especial, tap = interactuar", PlayerInputDriver.SostenerParaEspecial == 0.5f);
-            Check("Zoom RTS sin lerp a 80 u/s", PlayerInputDriver.rtsZoomSpeed == 80f);
+            Check("Zoom RTS sin lerp a 160 u/s (R14: el doble)", PlayerInputDriver.rtsZoomSpeed == 160f);
 
             // --- Demolicion: alcance de 4,5 m ---
             Check("El alcance maximo de la carga de demolicion es 4,5 m", Demolicion.AlcanceMaximo == 4.5f);

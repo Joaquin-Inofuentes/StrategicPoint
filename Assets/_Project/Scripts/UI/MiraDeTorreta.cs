@@ -97,17 +97,17 @@ namespace SP.UI
             if (enemigo) cruceta.color = Enemigo;
             else if (destructible) cruceta.color = TurretAimView.ColorDestructible;
             EstadoDeCruceta = enemigo ? TurretAimView.TipoDeImpacto.Enemigo : destructible ? TurretAimView.TipoDeImpacto.Destructible : TurretAimView.TipoDeImpacto.Neutro;
-            ((RectTransform)cruceta.transform).sizeDelta = Vector2.one * (enemigo ? 84f : 72f);
-            anilloVida.SetVisible(enemigo);
-            if (enemigo) anilloVida.SetProgreso(vida);
-            textoBlanco.gameObject.SetActive(enemigo);
-            if (enemigo) textoBlanco.text = $"{nombre.ToUpperInvariant()} · {Mathf.RoundToInt(vida * 100f)} %";
-
-            // Recarga del cañon: el anillo se llena y desaparece al quedar listo.
+            // R14 (#6, #22): "1 solo circulo que cambie de tamaño" / "hay como 2 anillos, 2 circulos para la mira": antes se apilaban el anillo de la cruceta
+            // (72 px), el de recarga (92) y el de vida (124). Ahora queda UN circulo (el de la cruceta) y es el que cambia de tamaño:
+            // 84 px sobre un enemigo, 78 sobre algo destructible, 60 mientras el canon recarga y 72 en reposo. La vida del blanco sigue en el texto
+            // y la recarga en la barra del HUD del tanque.
             Recarga01 = arma.CooldownFraction01;
             bool recargando = Recarga01 < 0.999f;
-            anilloRecarga.SetVisible(recargando);
-            if (recargando) anilloRecarga.SetProgreso(Recarga01);
+            ((RectTransform)cruceta.transform).sizeDelta = Vector2.one * (enemigo ? 84f : destructible ? 78f : recargando ? 60f : 72f);
+            anilloVida.SetVisible(false);
+            textoBlanco.gameObject.SetActive(enemigo);
+            if (enemigo) textoBlanco.text = $"{nombre.ToUpperInvariant()} · {Mathf.RoundToInt(vida * 100f)} %";
+            anilloRecarga.SetVisible(false);
 
             // Rombo del punto de impacto balistico.
             bool verRombo = false;
@@ -195,7 +195,7 @@ namespace SP.UI
             var tx = new GameObject("TextoBlanco", typeof(RectTransform), typeof(Text));
             tx.transform.SetParent(raiz.transform, false);
             textoBlanco = tx.GetComponent<Text>();
-            textoBlanco.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            textoBlanco.font = SP.Presentation.FuentesBelicas.Para(16);
             textoBlanco.fontSize = 16;
             textoBlanco.fontStyle = FontStyle.Bold;
             textoBlanco.alignment = TextAnchor.MiddleCenter;

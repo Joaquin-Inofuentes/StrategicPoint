@@ -11,23 +11,30 @@ namespace SP.Core
     // Se guardan en PlayerPrefs. Health.TakeDamage los aplica a cada golpe, asi que valen en todos los niveles y para cualquier arma.
     public static class AjustesDeDano
     {
-        public const float Minimo = 0.1f, Maximo = 3f, PropioPorDefecto = 1f, EnemigoPorDefecto = 0.5f;
+        // R14 (#16): "que el daño enemigo y propio maximo sea 30 para jugar con extremos" (el tope era 3).
+        public const float Minimo = 0.1f, Maximo = 30f, PropioPorDefecto = 1f, EnemigoPorDefecto = 0.5f;
         const string ClavePropio = "ajuste_dano_propio", ClaveEnemigo = "ajuste_dano_enemigo";
         static float propio = -1f, enemigo = -1f;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { propio = -1f; enemigo = -1f; }
+        static void Reiniciar() { propio = -1f; enemigo = -1f; forzado = false; }
+
+        // Ronda 13 (T3): valores de PRUEBA, no persistentes (no tocan PlayerPrefs). Los checks y la suite headless los usan para no depender de los sliders del usuario.
+        static bool forzado;
+        public static bool EstaForzado => forzado;
+        public static void ForzarParaPrueba(float valorPropio, float valorEnemigo) { forzado = true; propio = Limpiar(valorPropio); enemigo = Limpiar(valorEnemigo); }
+        public static void Liberar() { forzado = false; propio = -1f; enemigo = -1f; }
 
         public static float Propio
         {
             get { if (propio < 0f) propio = Limpiar(Leer(ClavePropio, PropioPorDefecto)); return propio; }
-            set { propio = Limpiar(value); Guardar(ClavePropio, propio); }
+            set { propio = Limpiar(value); if (!forzado) Guardar(ClavePropio, propio); }
         }
 
         public static float Enemigo
         {
             get { if (enemigo < 0f) enemigo = Limpiar(Leer(ClaveEnemigo, EnemigoPorDefecto)); return enemigo; }
-            set { enemigo = Limpiar(value); Guardar(ClaveEnemigo, enemigo); }
+            set { enemigo = Limpiar(value); if (!forzado) Guardar(ClaveEnemigo, enemigo); }
         }
 
         public static float Limpiar(float v) => Mathf.Round(Mathf.Clamp(float.IsNaN(v) ? 1f : v, Minimo, Maximo) * 100f) / 100f;
@@ -37,10 +44,13 @@ namespace SP.Core
 
         public static void Restablecer() { Propio = PropioPorDefecto; Enemigo = EnemigoPorDefecto; }
 
+        // Id de atacante de GUION (heridas del tutorial, destruccion de la cinematica): nunca se escala.
+        public const int IdGuion = -9;
+
         // Coeficiente de un golpe segun quien lo da y a quien le llega. 1 = sin cambio (props, civiles, fuego amigo).
         public static float Multiplicador(int atacanteId, Health victima)
         {
-            if (victima == null) return 1f;
+            if (victima == null || atacanteId == IdGuion) return 1f;
             TeamId equipo;
             var s = victima.GetComponent<Soldier>();
             if (s != null) { if (s.Role == RoleType.Civilian) return 1f; equipo = s.Team; }

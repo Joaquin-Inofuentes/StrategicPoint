@@ -648,7 +648,7 @@ namespace SP.Core
                 go.transform.SetParent(transform, false);
                 var c = go.GetComponent<Canvas>(); c.renderMode = RenderMode.ScreenSpaceOverlay; c.sortingOrder = 5900;
                 var sc = go.GetComponent<CanvasScaler>(); sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; sc.referenceResolution = new Vector2(1280f, 720f);
-                indicador = NuevoTexto(go.transform, "Texto", Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"), 12, FontStyle.Bold, new Color(1f, 0.82f, 0.25f, 0.75f), Vector2.zero, new Vector2(260f, 18f));
+                indicador = NuevoTexto(go.transform, "Texto", SP.Presentation.FuentesBelicas.Para(12), 12, FontStyle.Bold, new Color(1f, 0.82f, 0.25f, 0.75f), Vector2.zero, new Vector2(260f, 18f));
                 indicador.alignment = TextAnchor.LowerLeft;
                 indicador.raycastTarget = false;
                 var rt = indicador.rectTransform; rt.anchorMin = rt.anchorMax = new Vector2(0f, 0f); rt.pivot = new Vector2(0f, 0f); rt.anchoredPosition = new Vector2(8f, 4f);
@@ -786,8 +786,8 @@ namespace SP.Core
                 var panel = new GameObject("Panel"); panel.transform.SetParent(cartel.transform, false);
                 var img = panel.AddComponent<Image>(); img.color = new Color(0.05f, 0.05f, 0.08f, 0.88f);
                 var rt = img.rectTransform; rt.anchorMin = new Vector2(0.5f, 0.82f); rt.anchorMax = new Vector2(0.5f, 0.82f); rt.sizeDelta = new Vector2(860f, 120f);
-                var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-                cartelTitulo = NuevoTexto(panel.transform, "Titulo", font, 28, FontStyle.Bold, new Color(1f, 0.82f, 0.25f), new Vector2(0f, 38f), new Vector2(840f, 40f));
+                var font = SP.Presentation.FuentesBelicas.Para(15);
+                cartelTitulo = NuevoTexto(panel.transform, "Titulo", SP.Presentation.FuentesBelicas.Para(28), 28, FontStyle.Bold, new Color(1f, 0.82f, 0.25f), new Vector2(0f, 38f), new Vector2(840f, 40f));
                 cartelDetalle = NuevoTexto(panel.transform, "Detalle", font, 15, FontStyle.Normal, Color.white, new Vector2(0f, -18f), new Vector2(840f, 70f));
             }
             cartelTitulo.text = titulo; cartelDetalle.text = detalle;

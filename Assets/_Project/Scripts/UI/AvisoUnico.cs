@@ -158,8 +158,7 @@ namespace SP.UI
             var tGo = new GameObject("Texto", typeof(RectTransform), typeof(Text), typeof(Outline));
             tGo.transform.SetParent(cajaGo.transform, false);
             texto = tGo.GetComponent<Text>();
-            var fuente = SP.Presentation.FuentesBelicas.Texto;
-            texto.font = fuente != null ? fuente : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            texto.font = SP.Presentation.FuentesBelicas.Para(30);
             texto.fontSize = 30; texto.fontStyle = FontStyle.Bold;
             texto.alignment = TextAnchor.MiddleCenter; texto.raycastTarget = false;
             texto.horizontalOverflow = HorizontalWrapMode.Wrap; texto.verticalOverflow = VerticalWrapMode.Truncate;

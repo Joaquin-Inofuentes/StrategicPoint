@@ -220,7 +220,7 @@ namespace SP.Operacion
             if (delta.magnitude > 4.6f) return;
             proximaEmbestida = Time.time + 1.4f;
             Embestidas++;
-            if (vehiculoObjetivo != null && !vehiculoObjetivo.IsDestroyed) vehiculoObjetivo.TakeDamage(danoDeEmbestida, -2);
+            if (vehiculoObjetivo != null && !vehiculoObjetivo.IsDestroyed) vehiculoObjetivo.TakeDamage(danoDeEmbestida, -2, transform.position);   // Ronda 13 (T4): origen = el auto que embiste
             Vehiculo.TakeDamage(Mathf.Max(8, Vehiculo.Health != null ? Vehiculo.Health.MaxHealth / 4 : 20), -1);
             SP.Presentation.ImpactFx.SpawnArmorSparks(Vector3.Lerp(transform.position, objetivo.position, 0.5f) + Vector3.up * 1.2f, -delta.normalized);
             SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.Explosion, transform.position, 0.45f, 1.5f);

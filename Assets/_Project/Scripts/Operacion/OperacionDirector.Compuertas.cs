@@ -26,6 +26,7 @@ namespace SP.Operacion
         int pisoDeLasCompuertas = -99; float inicioDelPiso;
         public int CompuertasCerradas { get { int n = 0; foreach (var c in compuertasDeTorre) if (c.cerrada) n++; return n; } }
         public int CompuertasTotales => compuertasDeTorre.Count;
+        public int CompuertasDeBajadaCruzadas { get; private set; }
         public bool CompuertaDeSubidaCerrada(int piso) { foreach (var c in compuertasDeTorre) if (c.subida && c.nivelBase == piso && c.cerrada) return true; return false; }
         public bool CompuertaDeBajadaCerrada(int piso) { foreach (var c in compuertasDeTorre) if (!c.subida && c.nivelBase + 1 == piso && c.cerrada) return true; return false; }
 
@@ -71,10 +72,10 @@ namespace SP.Operacion
             go.transform.position = centro;
             go.transform.rotation = Quaternion.LookRotation(new Vector3(t.v.x, 0f, t.v.y), Vector3.up);
             var size = new Vector3(AnchoDeCompuerta, AltoDeCompuerta, 0.8f);
-            var col = go.AddComponent<BoxCollider>(); col.size = size;
+            var col = go.AddComponent<BoxCollider>(); col.size = size; col.enabled = false;   // R13 T10 (D8): ya no bloquea; queda la logica de pisos
             go.AddComponent<SP.Combat.NoFrenaBalas>();   // #409/#410: frena el movimiento, no las balas
             var obs = go.AddComponent<UnityEngine.AI.NavMeshObstacle>();
-            obs.shape = UnityEngine.AI.NavMeshObstacleShape.Box; obs.size = size; obs.carving = true; obs.carveOnlyStationary = false;
+            obs.shape = UnityEngine.AI.NavMeshObstacleShape.Box; obs.size = size; obs.carving = true; obs.carveOnlyStationary = false; obs.enabled = false;
             // Bug #366 (2026-11-06: "los bloques de colliders para mi solo son colliders sin render, no se deberian ver"): la compuerta ya no dibuja
             // la placa roja; es solo un collider invisible. Al chocar con ella sale el aviso (ver ActualizarCompuertas).
             return new CompuertaDeTorre { go = go, col = col, obs = obs, torre = torre, nivelBase = t.nivelBase, subida = subida };
@@ -82,11 +83,20 @@ namespace SP.Operacion
 
         static void Poner(CompuertaDeTorre c, bool cerrada)
         {
-            if (c.cerrada == cerrada && c.go != null && c.col != null && c.col.enabled == cerrada) return;
+            // Ronda 13 T10 (D8): las compuertas de la mansion ya NO bloquean el paso (ni fisico ni NavMesh): 'cerrada' solo alimenta la logica de pisos
+            // (contadores, TraerAliadosAlPisoNuevo, RescatarAliadosDeOtroPiso) y el aviso. El collider y el obstaculo quedan siempre apagados.
             c.cerrada = cerrada;
-            if (c.col != null) c.col.enabled = cerrada;
-            if (c.obs != null) c.obs.enabled = cerrada;
+            if (c.col != null && c.col.enabled) c.col.enabled = false;
+            if (c.obs != null && c.obs.enabled) c.obs.enabled = false;
             if (c.go != null) foreach (Transform h in c.go.transform) h.gameObject.SetActive(cerrada);
+        }
+
+        // true si el punto esta dentro de la caja de la compuerta (con 'margen' extra); el collider esta apagado, asi que se calcula en su espacio local.
+        static bool DentroDeLaCompuerta(CompuertaDeTorre c, Vector3 p, float margen)
+        {
+            if (c == null || c.go == null) return false;
+            var l = c.go.transform.InverseTransformPoint(p);
+            return Mathf.Abs(l.x) <= AnchoDeCompuerta * 0.5f + margen && Mathf.Abs(l.y) <= AltoDeCompuerta * 0.5f + 0.5f && Mathf.Abs(l.z) <= 0.4f + margen;
         }
 
         // Cada tick de la mansion. 'faltan' = enemigos vivos + los que todavia van a salir.
@@ -133,6 +143,8 @@ namespace SP.Operacion
                 foreach (var c in compuertasDeTorre)
                 {
                     if (!c.cerrada || c.nivelBase != G.NivelDe(yo.transform.position) && c.nivelBase + 1 != G.NivelDe(yo.transform.position)) continue;
+                    // R13 T10: la de BAJADA ya no avisa con un texto suelto: al cruzarla sale el cartel unico «DEBES VOLVER A LA GUERRA» (3 s).
+                    if (!c.subida) { if (c.trabada && DentroDeLaCompuerta(c, yo.transform.position, 1.2f)) { SP.UI.CartelVolverView.Forzar(3f); CompuertasDeBajadaCruzadas++; } continue; }
                     if (Plano(yo.transform.position, c.go.transform.position).magnitude < 3.2f)
                     {
                         hud.Prompt(!c.subida ? "NO SE PUEDE VOLVER ATRAS" : (faltan > 0 ? $"PRIMERO DEBES LIQUIDAR A TODOS · QUEDAN {faltan} ENEMIGOS" : "PRIMERO LIBERA A LOS MILICIANOS"));

@@ -158,13 +158,13 @@ namespace SP.Operacion
             if (yo == null || yo.Health == null || !yo.Health.IsAlive || EnTanque || Subfase >= (int)SubfaseHuida.CinematicaFinal) return;
             float z = yo.transform.position.z;
             if (z > zMaximoDeHuida) zMaximoDeHuida = z;
-            if (z >= LineaDeNoRetrocesoZ) return;
-            var p = yo.transform.position; p.z = LineaDeNoRetrocesoZ + 0.2f;
-            ColocarEnElPiso(yo.transform, p);
-            RetrocesosImpedidos++;
-            if (hud != null) hud.Prompt("DEBES AVANZAR · NO RETROCEDER");
-            AlertQueue.Push("DEBES AVANZAR · NO RETROCEDER", AlertPriority.Media, 1.5f);
+            if (z >= LineaDeNoRetrocesoZ) { retrocediendoEnHuida = false; return; }
+            // Ronda 13 T10: ya no se teletransporta (era un bloqueo de progresion). Solo se muestra el cartel unico «DEBES VOLVER A LA GUERRA».
+            if (retrocediendoEnHuida == false) RetrocesosImpedidos++;
+            retrocediendoEnHuida = true;
+            SP.UI.CartelVolverView.Forzar(1.5f);
         }
+        bool retrocediendoEnHuida;
 
         void TickHuir(float dt)
         {

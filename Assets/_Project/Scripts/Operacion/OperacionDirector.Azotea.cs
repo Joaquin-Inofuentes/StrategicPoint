@@ -161,6 +161,7 @@ namespace SP.Operacion
             SaltarA(FaseOperacion.Resistir, true);
             if (!MansionActiva) return;
             StopAllCoroutines();
+            TerminarCineCorta();   // R13 T6: si habia una cinematica a medias, devuelve control e IA antes de seguir
             foreach (var s in enemigosMansion) if (s != null) Destroy(s.gameObject);
             enemigosMansion.Clear(); pendientesMansion.Clear();
             plazaRestantes = 0; porton = true; segundoIniciado = true; CineDeMansionEnCurso = false;

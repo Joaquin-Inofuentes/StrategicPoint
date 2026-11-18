@@ -85,7 +85,7 @@ namespace SP.Operacion
             var tg = new GameObject("Distancia", typeof(RectTransform), typeof(Text), typeof(Outline));
             tg.transform.SetParent(r.transform, false);
             romboTexto = tg.GetComponent<Text>();
-            romboTexto.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            romboTexto.font = SP.Presentation.FuentesBelicas.Para(22);
             romboTexto.fontSize = 22; romboTexto.fontStyle = FontStyle.Bold; romboTexto.alignment = TextAnchor.UpperCenter;
             romboTexto.color = Color.white; romboTexto.raycastTarget = false;
             romboTexto.horizontalOverflow = HorizontalWrapMode.Overflow; romboTexto.verticalOverflow = VerticalWrapMode.Overflow;

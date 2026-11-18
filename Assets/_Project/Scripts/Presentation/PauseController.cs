@@ -407,7 +407,7 @@ namespace SP.Presentation
                 var ngo = new GameObject("NotaDeGuardado", typeof(RectTransform), typeof(Text));
                 ngo.transform.SetParent(pausePanel.transform, false);
                 notaDeGuardado = ngo.GetComponent<Text>();
-                notaDeGuardado.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); notaDeGuardado.fontSize = 13; notaDeGuardado.fontStyle = FontStyle.Bold;
+                notaDeGuardado.font = SP.Presentation.FuentesBelicas.Para(13); notaDeGuardado.fontSize = 13; notaDeGuardado.fontStyle = FontStyle.Bold;
                 notaDeGuardado.alignment = TextAnchor.MiddleCenter; notaDeGuardado.raycastTarget = false;
                 var nrt = notaDeGuardado.rectTransform; nrt.anchorMin = nrt.anchorMax = new Vector2(0.5f, 0.5f); nrt.anchoredPosition = new Vector2(0f, -240f); nrt.sizeDelta = new Vector2(760f, 30f);
             }
@@ -443,6 +443,11 @@ namespace SP.Presentation
             bool hay = PartidaGuardada.HayPartida();
             botonCargar.interactable = hay;
             botonCargar.gameObject.SetActive(hay);
+            // R14 (#11): "se rompio el boton entre guardar y configuracion": sin partida guardada CARGAR se esconde y dejaba un hueco de 62 px entre
+            // GUARDAR y CONFIGURACIONES. Los botones de abajo suben a ocupar el lugar (y vuelven a bajar cuando hay partida).
+            float sube = hay ? 0f : 62f;
+            Mover(pausePanel, "SettingsButton", -66f + sube); Mover(pausePanel, "ControlsButton", -128f + sube); Mover(pausePanel, "MenuButton", -190f + sube);
+            if (notaDeGuardado != null) notaDeGuardado.rectTransform.anchoredPosition = new Vector2(0f, -240f + sube);
             if (bloqueo != null) { notaDeGuardado.text = bloqueo; notaDeGuardado.color = new Color(1f, 0.55f, 0.4f); }
             else { notaDeGuardado.text = PartidaGuardada.TextoDeCheckpoint; notaDeGuardado.color = new Color(0.7f, 0.78f, 0.9f); }
         }
@@ -462,8 +467,9 @@ namespace SP.Presentation
             if (!PartidaGuardada.HayPartida()) return;
             cargaPedida = true;
             GameLog.Line("Pausa: cargar ultimo guardado");
+            // R14 (#11): si el archivo no se puede leer, el boton no puede quedar muerto para siempre (antes cargaPedida seguia en true y la pausa ya se habia cerrado).
+            if (!PartidaGuardada.Continuar()) { cargaPedida = false; RefrescarBotonesDeGuardado(); return; }
             IsPaused = false;
-            PartidaGuardada.Continuar();
         }
 
         public void OnContinueClicked()

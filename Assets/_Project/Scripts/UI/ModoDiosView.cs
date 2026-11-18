@@ -66,7 +66,7 @@ namespace SP.UI
             var tGO = new GameObject("Texto", typeof(RectTransform), typeof(Text));
             tGO.transform.SetParent(go.transform, false);
             var tx = tGO.GetComponent<Text>();
-            tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            tx.font = SP.Presentation.FuentesBelicas.Para(13);
             tx.fontSize = 13; tx.fontStyle = FontStyle.Bold;
             tx.alignment = TextAnchor.MiddleCenter;
             tx.color = new Color(1f, 0.85f, 0.25f);

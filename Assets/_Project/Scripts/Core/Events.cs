@@ -152,13 +152,21 @@ namespace SP.Core
         public readonly int Amount;
         public readonly int RemainingHealth;
         public readonly int MaxHealth;
+        // Ronda 13 (T4): de donde vino el golpe (para el anillo de impactos del HUD del tanque). TieneOrigen=false si no se sabe.
+        public readonly Vector3 Origen;
+        public readonly bool TieneOrigen;
 
         public VehicleDamagedEvent(SP.Vehicles.Vehicle vehicle, int amount, int remainingHealth, int maxHealth)
+            : this(vehicle, amount, remainingHealth, maxHealth, Vector3.zero, false) { }
+
+        public VehicleDamagedEvent(SP.Vehicles.Vehicle vehicle, int amount, int remainingHealth, int maxHealth, Vector3 origen, bool tieneOrigen = true)
         {
             Vehicle = vehicle;
             Amount = amount;
             RemainingHealth = remainingHealth;
             MaxHealth = maxHealth;
+            Origen = origen;
+            TieneOrigen = tieneOrigen;
         }
     }
 

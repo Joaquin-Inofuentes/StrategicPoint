@@ -1404,6 +1404,7 @@ namespace SP.EditorTools
             vega.Brain.CancelOrder();
             vega.Brain.IsPossessedByPlayer = true; // congela la IA, no la regeneracion
             vega.Motor.SetCrouching(false);
+            SP.Core.AjustesDeDano.ForzarParaPrueba(SP.Core.AjustesDeDano.PropioPorDefecto, 1f);   // esta prueba mide la regeneracion, no el coeficiente de dano enemigo (0,5 por defecto)
             vega.Health.Initialize(vega.Id, 100);
             vega.Health.TakeDamage(40, -1);
             Check($"Recien golpeado (100 -> {vega.Health.Current}), todavia no regenera ({vega.Health.IsRegenerating})",
@@ -1429,6 +1430,7 @@ namespace SP.EditorTools
             Check($"Dejandolo en paz, termina curandose del todo ({llegoAFull}, {vega.Health.Current}/{vega.Health.MaxHealth})",
                 llegoAFull);
             Check("Y al llegar al maximo, la regeneracion se apaga sola", !vega.Health.IsRegenerating);
+            SP.Core.AjustesDeDano.ForzarParaPrueba(SP.Core.AjustesDeDano.PropioPorDefecto, SP.Core.AjustesDeDano.EnemigoPorDefecto);
 
             vega.Health.Initialize(vega.Id, vega.Health.MaxHealth);
             vega.Brain.IsPossessedByPlayer = false;

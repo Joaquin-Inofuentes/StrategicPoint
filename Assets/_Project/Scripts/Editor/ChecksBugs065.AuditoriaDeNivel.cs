@@ -308,6 +308,14 @@ namespace SP.EditorTools
         // 501g (item #003 de la hoja: "corregir colisiones de objetos, chequear el resto del nivel"):
         //  (1) colliders de obstaculos desalineados del arte que los viste; (2) colliders invisibles sueltos (sin ninguna malla a la vista);
         //  (3) geometria solida visible (alta y ancha) que se atraviesa porque no tiene collider.
+        // R13 T17: falsos positivos conocidos de 501g, documentados y contados aparte (el numero que cuenta es el de fuera de la lista).
+        // n2: hojas/jambas de PuertasDeAcceso (colliders de las puertas del bloque de servidores; el arte lo viste AjustesDeNivelNov08).
+        static bool R13_501g_Blanca2(string ruta) => ruta.Contains("PuertasDeAcceso");
+        // n3: decorado fino pegado a un muro o pasable por diseno: boiserie/ventanas/follaje/puertas pintadas de la mansion y los edificios, X de los portones, tubos AA,
+        // arbustos (SM_Env_Arbusto*), sacos, hojas de las puertas de acceso.
+        static readonly string[] R13_501g_Palabras = { "Boiserie", "Ventana", "Follaje", "/Puerta", "Cruz_", "AA_Tubo", "SM_Env_Arbusto", "Saco", "Hoja_", "Jamba_", "Reflector_Baranda", "Remache", "ParedesDeVideo" };
+        static bool R13_501g_Blanca3(string ruta) { foreach (var w in R13_501g_Palabras) if (ruta.Contains(w)) return true; return false; }
+
         static IEnumerator Bug501g()
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
@@ -333,7 +341,7 @@ namespace SP.EditorTools
             }
             W8Ok(ref ok, n1 == 0, sb, $"{n1} obstaculos con el collider desalineado del arte");
             // (2) colliders invisibles sueltos
-            var l2 = new List<string>(); int n2 = 0;
+            var l2 = new List<string>(); int n2 = 0, n2Blanca = 0, n3Blanca = 0;
             foreach (var c in Object.FindObjectsByType<Collider>(FindObjectsInactive.Exclude))
             {
                 if (c == null || c.isTrigger || !c.enabled || c is TerrainCollider || c.GetComponentInParent<Soldier>() != null || c.attachedRigidbody != null) continue;
@@ -342,9 +350,10 @@ namespace SP.EditorTools
                 bool conMalla = false;
                 var zona = b; zona.Expand(0.6f);
                 foreach (var m in mallas) if (zona.Intersects(m.bounds) && m.bounds.size.y > 0.25f) { conMalla = true; break; }
+                if (!conMalla && R13_501g_Blanca2(RutaDe(c.transform))) { n2Blanca++; continue; }
                 if (!conMalla) { n2++; if (l2.Count < 25) l2.Add($"{RutaDe(c.transform)} @ {b.center.x:0},{b.center.y:0.0},{b.center.z:0} tam {b.size.x:0.0}x{b.size.y:0.0}x{b.size.z:0.0}"); }
             }
-            W8Ok(ref ok, n2 == 0, sb, $"{n2} colliders invisibles sin ninguna malla");
+            W8Ok(ref ok, n2 == 0, sb, $"{n2} colliders invisibles sin ninguna malla ({n2Blanca} en la lista blanca: hojas y jambas de PuertasDeAcceso, cuyo arte se arma aparte)");
             // (3) solido sin collider
             var l3 = new List<string>(); int n3 = 0;
             foreach (var m in mallas)
@@ -358,9 +367,10 @@ namespace SP.EditorTools
                 var zona = b; zona.Expand(new Vector3(0.2f, -0.1f, 0.2f));
                 var cs = Physics.OverlapBox(zona.center, zona.extents, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore);
                 bool hay = false; foreach (var c in cs) if (c != null && !(c is TerrainCollider) && c.GetComponentInParent<Soldier>() == null && c.attachedRigidbody == null) { hay = true; break; }
+                if (!hay && R13_501g_Blanca3(n)) { n3Blanca++; continue; }
                 if (!hay) { n3++; if (l3.Count < 40) l3.Add($"{n} @ {b.center.x:0},{b.center.z:0} tam {b.size.x:0.0}x{b.size.y:0.0}x{b.size.z:0.0}"); }
             }
-            W8Ok(ref ok, n3 == 0, sb, $"{n3} piezas solidas visibles sin collider (se atraviesan)");
+            W8Ok(ref ok, n3 == 0, sb, $"{n3} piezas solidas visibles sin collider (se atraviesan; {n3Blanca} en la lista blanca de decorado fino o pasable)");
             sb.Append("\n(1) " + string.Join("\n  ", l1) + "\n(2) " + string.Join("\n  ", l2) + "\n(3) " + string.Join("\n  ", l3));
             System.IO.File.WriteAllText("Temp/colisiones_501g.txt", sb.ToString());
             Fin((ok ? "OK " : "FALLO ") + sb);

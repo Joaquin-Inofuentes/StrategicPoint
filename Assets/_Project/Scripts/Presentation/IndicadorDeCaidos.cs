@@ -52,7 +52,7 @@ namespace SP.Presentation
             var sc = go.GetComponent<CanvasScaler>(); sc.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize; sc.referenceResolution = new Vector2(1920f, 1080f); sc.matchWidthOrHeight = 0.5f;
             Instancia = go.AddComponent<IndicadorDeCaidos>();
             Instancia.lienzo = go.GetComponent<RectTransform>();
-            Instancia.fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            Instancia.fuente = SP.Presentation.FuentesBelicas.Para(0);
             return Instancia;
         }
 
@@ -148,6 +148,10 @@ namespace SP.Presentation
                 }
                 if (!marcas.TryGetValue(s, out var m) || m.raiz == null) { m = Crear(s); marcas[s] = m; }
                 if (cam == null || s == yo) { m.raiz.gameObject.SetActive(false); continue; }   // al propio caido lo maneja la camara de muerte
+
+                // Ronda 13 (T5): mientras el jugador mantiene [E] sobre ESTE caido, su marca se oculta: queda solo el engranaje radial de la mira.
+                if (yo != null && SP.Player.AccionesEnCurso.De(yo, out var accionMia) && AccionesEnCursoView.EsRevivirDelLider(accionMia) && accionMia.Objetivo == s.transform)
+                { m.raiz.gameObject.SetActive(false); continue; }
 
                 var punto = s.transform.position + Vector3.up * 1.2f;
                 var sp = cam.WorldToScreenPoint(punto);

@@ -50,7 +50,7 @@ namespace SP.Tutorial
 
         void Comenzar()
         {
-            fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            fuente = SP.Presentation.FuentesBelicas.Para(0);
             TutorialLog.Escribir("[VICTORIA]", "EFECTO DE VICTORIA: fanfarria + fuegos artificiales + confeti + panel final");
             AudioDirector.PlayUi2D(SfxKind.TutVictory, 0.9f, 0.3f);
             manager.Ui.DestelloDePaso("¡TUTORIAL COMPLETADO!", new Color(1f, 0.86f, 0.30f));
@@ -141,7 +141,7 @@ namespace SP.Tutorial
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
             rt.anchoredPosition = pos; rt.sizeDelta = size;
             var t = go.GetComponent<Text>();
-            t.font = fuente; t.text = txt; t.fontSize = tam; t.fontStyle = est; t.color = col;
+            t.font = SP.Presentation.FuentesBelicas.Para(tam); t.text = txt; t.fontSize = tam; t.fontStyle = est; t.color = col;
             t.alignment = TextAnchor.MiddleCenter; t.raycastTarget = false;
             return t;
         }

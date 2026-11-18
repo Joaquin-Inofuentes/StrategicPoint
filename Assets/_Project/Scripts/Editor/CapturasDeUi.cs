@@ -19,17 +19,16 @@ namespace SP.EditorTools
                 var cgo = new GameObject("Canvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster)); cgo.transform.SetParent(raiz.transform, false);
                 var canvas = cgo.GetComponent<Canvas>(); canvas.renderMode = RenderMode.ScreenSpaceCamera; canvas.worldCamera = cam; canvas.planeDistance = 1f;
                 var crt = (RectTransform)cgo.transform;
-                // tarjeta de configuraciones de mentira (solo para dar contexto de posicion) + la tarjeta real de DANO a su derecha
-                var panel = new GameObject("PanelFalso", typeof(RectTransform), typeof(Image)); panel.transform.SetParent(cgo.transform, false);
-                var prt = (RectTransform)panel.transform; prt.anchorMin = prt.anchorMax = new Vector2(0.5f, 0.5f); prt.pivot = new Vector2(1f, 1f); prt.anchoredPosition = new Vector2(-30f, 190f); prt.sizeDelta = new Vector2(540f, 380f);
-                panel.GetComponent<Image>().color = new Color(0.05f, 0.06f, 0.08f, 0.96f);
-                var t = new GameObject("T", typeof(RectTransform), typeof(Text)); t.transform.SetParent(prt, false);
-                var tx = t.GetComponent<Text>(); tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); tx.text = "CONFIGURACIONES\n(sonido, interfaz, mira y control, pantalla...)"; tx.alignment = TextAnchor.MiddleCenter; tx.fontSize = 24; tx.color = new Color(0.7f, 0.72f, 0.8f);
-                var trt = (RectTransform)t.transform; trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one; trt.offsetMin = trt.offsetMax = Vector2.zero;
-                var vista = PanelDeDano.Asegurar(panel);
-                // el panel falso es pivot (1,1) y la tarjeta se ancla a su esquina (1,1): queda a la derecha
+                // Ronda 13 (T3): el panel REAL de Configuraciones (PanelAjustesExtra.Preparar arma las secciones, incluida DAÑO, y LayoutDeAjustes las acomoda).
+                int w = 1280, h = 720;
+                crt.sizeDelta = new Vector2(w, h);
+                var panel = new GameObject("SettingsPanel", typeof(RectTransform), typeof(Image)); panel.transform.SetParent(cgo.transform, false);
+                var prt = (RectTransform)panel.transform; prt.anchorMin = prt.anchorMax = prt.pivot = new Vector2(0.5f, 0.5f);
+                var tgo = new GameObject("Title", typeof(RectTransform), typeof(Text)); tgo.transform.SetParent(prt, false);
+                var tt = tgo.GetComponent<Text>(); tt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); tt.text = "CONFIGURACIONES";
+                PanelAjustesExtra.Preparar(panel);
+                var vista = panel.GetComponent<PanelDeDano>();
                 Canvas.ForceUpdateCanvases();
-                int w = 1280, h = 560;
                 var rt = new RenderTexture(w, h, 24, RenderTextureFormat.ARGB32);
                 cam.targetTexture = rt; cam.orthographicSize = h / 2f;
                 crt.sizeDelta = new Vector2(w, h);

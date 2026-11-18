@@ -25,6 +25,7 @@ namespace SP.UI
         static readonly string[] Interfaz = { "Tamaño de HUD", "Tamaño de mirilla" };
         static readonly string[] Control = { "Sensibilidad de mouse", "Sensibilidad de torreta" };
         static readonly string[] Interruptores = { "InvertirEjeY", "EfectosDeCamara" };
+        static readonly string[] Dano = { "Daño propio", "Daño enemigo" };   // R13 (T3): seccion DAÑO en la columna derecha
 
         public struct Resultado
         {
@@ -82,7 +83,7 @@ namespace SP.UI
             // Los numeros de los sliders (*_Value) cambian en cada tic y no mueven ninguna fila: fuera de la firma, si no el panel se
             // reacomodaba (y se corria) mientras se arrastraba un slider.
             foreach (var t in panel.GetComponentsInChildren<Text>(true))
-                if (t != null && t.text != null && !t.name.EndsWith("_Value")) h = h * 31 + t.text.GetHashCode();
+                if (t != null && t.text != null && !t.name.EndsWith("_Value") && !t.name.StartsWith("Info_")) h = h * 31 + t.text.GetHashCode();
             return h;
         }
 
@@ -136,7 +137,8 @@ namespace SP.UI
             const float yInicio = 76f;
             float altoIzq = AltoSeccion + Sonido.Length * AltoSlider + HuecoSecciones + AltoSeccion + Interfaz.Length * AltoSlider + 8f + AltoBoton;
             float altoDer = AltoSeccion + Control.Length * AltoSlider + Interruptores.Length * AltoInterruptor + HuecoSecciones
-                            + AltoSeccion + AltoBoton + 8f + 22f + AltoBoton;
+                            + AltoSeccion + AltoBoton + 8f + 22f + AltoBoton
+                            + HuecoSecciones + AltoSeccion + Dano.Length * AltoSlider + 4f + AltoBoton;
             float alto = yInicio + Mathf.Max(altoIzq, altoDer) + 14f + altoNota + 10f + 50f + 22f;
 
             // 2) titulo
@@ -166,6 +168,10 @@ namespace SP.UI
             float anchoLista = Columna - anchoAplicar - huecoFila;
             Poner("Resolucion", xDer - Columna * 0.5f + anchoLista * 0.5f, y, anchoLista, AltoBoton);
             Poner("Aplicar", xDer + Columna * 0.5f - anchoAplicar * 0.5f, y, anchoAplicar, AltoBoton);
+            y += AltoBoton + HuecoSecciones;
+            y = Seccion("Dano", xDer, y, Dano, null);
+            y += 4f;
+            Poner("RestablecerDano", xDer, y, Columna, AltoBoton);
 
             // 5) pie: nota y VOLVER
             float yPie = alto - 22f - 50f - 10f - altoNota;
@@ -250,7 +256,38 @@ namespace SP.UI
             if (r.Alto * r.Escala > area.y + 0.5f) problemas.Add($"la tarjeta ({r.Alto * r.Escala:0}) es mas alta que el area ({area.y:0})");
 
             RevisarPanel((RectTransform)settingsPanel.transform, problemas);
+            var medida = MedirFuera(settingsPanel, area);
+            if (medida.fuera > 0) problemas.Add($"fuera={medida.fuera} peor={medida.peor:0}%");
             return problemas;
+        }
+
+        // Ronda 13 (T3): mide TODOS los graficos activos del panel (no solo los hijos directos) contra el area util del canvas: un rectangulo del
+        // tamano 'area' centrado en el padre del panel (donde LayoutDeAjustes lo ancla). fuera = cuantos se salen mas de 1 unidad;
+        // peor = el mayor porcentaje de area fuera (0-100).
+        public static (int fuera, float peor) MedirFuera(GameObject settingsPanel, Vector2 area)
+        {
+            if (settingsPanel == null) return (0, 0f);
+            var padre = settingsPanel.transform.parent as RectTransform;
+            if (padre == null) return (0, 0f);
+            var centro = padre.rect.center;
+            var limite = Rect.MinMaxRect(centro.x - area.x * 0.5f, centro.y - area.y * 0.5f, centro.x + area.x * 0.5f, centro.y + area.y * 0.5f);
+            const float tol = 1f;
+            int fuera = 0; float peor = 0f;
+            var c = new Vector3[4];
+            foreach (var g in settingsPanel.GetComponentsInChildren<Graphic>(false))
+            {
+                if (g == null || !g.gameObject.activeInHierarchy || g.color.a < 0.01f) continue;
+                var txt = g as Text; if (txt != null && string.IsNullOrWhiteSpace(txt.text)) continue;
+                g.rectTransform.GetWorldCorners(c);
+                var a0 = (Vector2)padre.InverseTransformPoint(c[0]); var a1 = (Vector2)padre.InverseTransformPoint(c[2]);
+                float x0 = Mathf.Min(a0.x, a1.x), x1 = Mathf.Max(a0.x, a1.x), y0 = Mathf.Min(a0.y, a1.y), y1 = Mathf.Max(a0.y, a1.y);
+                float ar = (x1 - x0) * (y1 - y0); if (ar < 1e-4f) continue;
+                if (x0 >= limite.xMin - tol && x1 <= limite.xMax + tol && y0 >= limite.yMin - tol && y1 <= limite.yMax + tol) continue;
+                float w = Mathf.Max(0f, Mathf.Min(x1, limite.xMax) - Mathf.Max(x0, limite.xMin)), h = Mathf.Max(0f, Mathf.Min(y1, limite.yMax) - Mathf.Max(y0, limite.yMin));
+                float pct = 100f * (1f - w * h / ar);
+                fuera++; if (pct > peor) peor = pct;
+            }
+            return (fuera, peor);
         }
 
         static bool TieneContenido(RectTransform rt)

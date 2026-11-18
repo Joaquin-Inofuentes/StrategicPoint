@@ -227,7 +227,7 @@ namespace SP.Presentation
                     var marca = NuevoPunto(pos, 15f, c, "Hito");
                     var etq = new GameObject("Etiqueta", typeof(RectTransform), typeof(Text)).GetComponent<Text>();
                     etq.transform.SetParent(marca, false);
-                    etq.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    etq.font = SP.Presentation.FuentesBelicas.Para(12);
                     etq.text = d.etiquetasDeHitos != null && k < d.etiquetasDeHitos.Length ? d.etiquetasDeHitos[k] : "";
                     etq.fontSize = 12; etq.fontStyle = FontStyle.Bold; etq.color = Color.white; etq.raycastTarget = false;
                     etq.horizontalOverflow = HorizontalWrapMode.Overflow; etq.verticalOverflow = VerticalWrapMode.Overflow;

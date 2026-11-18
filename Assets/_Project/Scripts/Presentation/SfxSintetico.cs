@@ -202,9 +202,32 @@ namespace SP.Presentation
             return Cerrar(b, "KnifeHit", 0.9f);
         }
 
+        // Ronda 13 (T1): la sangre de la cuchillada. Ruido rosa filtrado de 120 ms (el chorro), golpe sordo de 90 Hz y un chasquido humedo.
+        public static AudioClip CuchilloSangre()
+        {
+            var b = Buffer(0.3f);
+            Ruido(b, 0f, 0.12f, 0.82f, 0.55f, 0.985f, 14f, 0.8f, 451, 0.004f, true);   // ruido rosa filtrado: chorro
+            Tono(b, 0f, 0.09f, 110f, 90f, 30f, 0.9f, 0.1f, 0.002f);                   // golpe sordo ~90 Hz
+            Ruido(b, 0.02f, 0.05f, 0.5f, 0.35f, 0.9f, 60f, 0.55f, 452, 0.0005f);       // chasquido humedo
+            Ruido(b, 0.06f, 0.1f, 0.88f, 0.7f, 0.99f, 22f, 0.25f, 453, 0.002f);        // goteo final
+            return Cerrar(b, "KnifeBlood", 0.9f);
+        }
+
         // ------------------------------------------------------------------
         // Movimiento
         // ------------------------------------------------------------------
+        // Ronda 13 (T6): la reja de las celdas se abre. Motor grave que sube y baja (1,3 s) + traqueteo de barrotes + golpe seco de cierre de traba.
+        public static AudioClip RejaAbriendo()
+        {
+            var b = Buffer(1.5f);
+            Tono(b, 0f, 1.3f, 70f, 95f, 1.6f, 0.55f, 0.35f, 0.04f);                 // motor
+            Ruido(b, 0.05f, 1.2f, 0.3f, 0.12f, 0.9f, 2.2f, 0.28f, 461, 0.05f);     // roce de cadenas
+            Traqueteo(b, 0.1f, 1.1f, 14, 0.35f, 462);                              // barrotes
+            Tunc(b, 0.02f, 0.7f, 463, 0.8f);                                       // arranque de la traba
+            Tunc(b, 1.28f, 0.55f, 464, 1.2f);                                      // tope final
+            return Cerrar(b, "RejaAbriendo", 0.9f);
+        }
+
         public static AudioClip Salto()
         {
             var b = Buffer(0.22f);

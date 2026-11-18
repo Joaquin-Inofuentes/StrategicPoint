@@ -59,7 +59,7 @@ namespace SP.Tutorial
             var go = new GameObject(nombre, typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
             go.transform.SetParent(padre, false);
             var t = go.GetComponent<Text>();
-            t.font = fuente; t.fontSize = tam; t.fontStyle = estilo; t.color = color; t.alignment = ancla;
+            t.font = SP.Presentation.FuentesBelicas.Para(tam); t.fontSize = tam; t.fontStyle = estilo; t.color = color; t.alignment = ancla;
             t.supportRichText = true; t.raycastTarget = false;
             t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Overflow;
             return t;
@@ -75,7 +75,7 @@ namespace SP.Tutorial
 
         void Construir(RectTransform raiz)
         {
-            fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            fuente = SP.Presentation.FuentesBelicas.Para(0);
 
             // ---- Panel ----
             var pgo = new GameObject("Panel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));

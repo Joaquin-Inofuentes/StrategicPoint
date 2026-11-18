@@ -57,7 +57,7 @@ namespace SP.Operacion
             frt.pivot = new Vector2(0f, 0.5f);
             frt.anchoredPosition = Vector2.zero; frt.sizeDelta = new Vector2(4f, 0f);
 
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var font = SP.Presentation.FuentesBelicas.Para(0);
             h.fuenteHud = font;
             h.titulo = Texto(go.transform, font, 13, new Vector2(0f, 13f), new Vector2(318f, 18f), new Color(1f, 0.82f, 0.3f));
             h.detalle = Texto(go.transform, font, 14, new Vector2(0f, -9f), new Vector2(318f, 30f), Color.white);   // #279: texto descriptivo, hasta 2 renglones
@@ -133,6 +133,8 @@ namespace SP.Operacion
             h.aviso.resizeTextForBestFit = true; h.aviso.resizeTextMinSize = 18; h.aviso.resizeTextMaxSize = 40;
             var bordeA = h.aviso.gameObject.AddComponent<Outline>();
             bordeA.effectColor = new Color(0f, 0f, 0f, 0.9f); bordeA.effectDistance = new Vector2(2f, -2f);
+            // R13 T10: el cartel unico «DEBES VOLVER A LA GUERRA» (lee el estado del director).
+            if (OperacionDirector.Instancia != null) SP.UI.CartelVolverView.Crear(OperacionDirector.Instancia, raiz);
             return h;
         }
 
@@ -207,7 +209,7 @@ namespace SP.Operacion
             var tx = new GameObject("Texto", typeof(RectTransform), typeof(Text), typeof(Shadow));
             tx.transform.SetParent(g.transform, false);
             texto = tx.GetComponent<Text>();
-            texto.font = fuenteHud != null ? fuenteHud : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            texto.font = SP.Presentation.FuentesBelicas.Para(tam);
             texto.fontSize = tam; texto.fontStyle = FontStyle.Bold; texto.color = Color.white;
             texto.alignment = ancla; texto.raycastTarget = false; texto.supportRichText = true;
             texto.horizontalOverflow = HorizontalWrapMode.Wrap; texto.verticalOverflow = VerticalWrapMode.Overflow;
@@ -314,7 +316,7 @@ namespace SP.Operacion
                 rt.pivot = new Vector2(0.5f, 1f);
                 rt.anchoredPosition = new Vector2(0f, -14f);
                 rt.sizeDelta = new Vector2(AnchoBarraJefe + 8f, 50f);
-                var font = fuenteHud != null ? fuenteHud : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                var font = SP.Presentation.FuentesBelicas.Para(20);
                 jefeNombre = Texto(jefeRaiz.transform, font, 20, Vector2.zero, new Vector2(AnchoBarraJefe + 8f, 26f), new Color(1f, 0.82f, 0.78f));
                 jefeNombre.rectTransform.anchorMin = jefeNombre.rectTransform.anchorMax = new Vector2(0.5f, 1f);
                 jefeNombre.rectTransform.anchoredPosition = new Vector2(0f, -13f);
@@ -389,7 +391,7 @@ namespace SP.Operacion
             img.raycastTarget = false;
             var vrt = vineta.GetComponent<RectTransform>();
             vrt.anchorMin = Vector2.zero; vrt.anchorMax = Vector2.one; vrt.offsetMin = vrt.offsetMax = Vector2.zero;
-            var font = fuenteHud != null ? fuenteHud : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var font = SP.Presentation.FuentesBelicas.Para(30);
             ilumTexto = Texto(ilumRaiz.transform, font, 30, Vector2.zero, new Vector2(900f, 90f), new Color(1f, 0.97f, 0.8f));
             ilumTexto.rectTransform.anchorMin = ilumTexto.rectTransform.anchorMax = new Vector2(0.5f, 1f);
             ilumTexto.rectTransform.anchoredPosition = new Vector2(0f, -95f);

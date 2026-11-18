@@ -99,7 +99,7 @@ namespace SP.Presentation
                 if (abajo < techoBotones) tabla.localScale = Vector3.one * Mathf.Clamp((arriba - techoBotones) / Mathf.Max(1f, arriba - abajo), 0.45f, 1f);
                 if (anchoPanel < 840f) tabla.localScale = tabla.localScale * Mathf.Clamp(anchoPanel * 0.96f / 820f, 0.5f, 1f);
             }
-            var fuente = statsViejo != null ? statsViejo.font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var fuente = statsViejo != null ? statsViejo.font : SP.Presentation.FuentesBelicas.Para(20);
             var filasUi = new List<(CanvasGroup g, RectTransform rt, Text valor, EstadisticasDeMision.Fila f)>();
             for (int i = 0; i < filas.Count; i++)
             {

@@ -121,22 +121,22 @@ namespace SP.EditorTools
             yo.transform.position = new Vector3(310f, G.Nivel(2) + 0.9f, 272f);
             // Sin guardia a la vista (si no, pelean y no siguen): se apagan los enemigos de la mansion y se vacia la cola de apariciones.
             ((System.Collections.IList)typeof(OperacionDirector).GetField("pendientesMansion", NoPublico).GetValue(d)).Clear();
-            foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && a.name.StartsWith("Mansion_Enemigo")) a.gameObject.SetActive(false);
+            foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && (a.name.StartsWith("Mansion_Enemigo") || Vector3.Distance(a.transform.position, yo.transform.position) < 60f)) a.gameObject.SetActive(false);   // un miliciano herido suelta la orden de seguir (AiBrain: followTarget = null al recibir fuego), asi que no puede quedar nadie cerca
             ActorRegistry.Invalidate();
             typeof(OperacionDirector).GetMethod("LiberarMilicianos", NoPublico).Invoke(d, null);
-            foreach (var x in Esperar(12.0f)) yield return x;
+            foreach (var x in Esperar(18.0f)) yield return x;
             int siguen = 0, total = 0; var estados = new StringBuilder();
             foreach (var a in ActorRegistry.All)
                 if (a != null && a.Team == TeamId.Player && a.gameObject.activeInHierarchy && a.DisplayName.StartsWith("MILICIANO"))
                 {
                     total++; estados.Append(a.Brain.State).Append('/').Append(Vector3.Distance(a.transform.position, yo.transform.position).ToString("0")).Append("m ");
-                    if (a.Brain.FollowTarget == yo || a.Brain.State == SP.Ai.AiState.Follow) siguen++;   // en pelea con la guardia siguen teniendo al jugador de lider
+                    if (a.Brain.FollowTarget == yo || a.Brain.State == SP.Ai.AiState.Follow || Vector3.Distance(a.transform.position, yo.transform.position) <= SP.Ai.AjustesDeEscuadra.DistanciaParaDetenerse + 2f) siguen++;   // al llegar a DistanciaParaDetenerse del lider quieto dejan de seguir (AiBrain.Tactica: DejarDeSeguirAuto), asi que llegar cuenta como seguirlo
                 }
             int afuera = 0;
             foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Player && a.gameObject.activeInHierarchy && a.DisplayName.StartsWith("MILICIANO") && a.transform.position.z < 278.5f) afuera++;
             var reja = GameObject.Find("P2_Reja");
-            W8Ok(ref ok, d.RejaAbierta && (reja == null || !reja.transform.GetChild(0).gameObject.activeSelf) && afuera >= 3, sb, $"reja de las celdas abierta (abierta={d.RejaAbierta}) y {afuera} milicianos ya salieron de las celdas");
-            W8Ok(ref ok, total >= 4 && siguen == total, sb, $"{siguen}/{total} milicianos liberados tienen al jugador de lider ({estados})");
+            W8Ok(ref ok, d.RejaAbierta && (reja == null || !reja.transform.GetChild(0).gameObject.activeSelf) && afuera >= MandoTactico.CantidadDeMilicianos, sb, $"reja de las celdas abierta (abierta={d.RejaAbierta}) y {afuera} milicianos ya salieron de las celdas");
+            W8Ok(ref ok, total >= MandoTactico.CantidadDeMilicianos && siguen == total, sb, $"{siguen}/{total} milicianos liberados siguen al jugador o ya llegaron a su lado ({estados})");
             // Recorte de plantas (#336): con la camara cenital se ocultan las plantas de arriba.
             var rig = SP.CameraSystem.CameraRig.Instance;
             rig.SetMode(SP.CameraSystem.ControlMode.Rts, yo.transform.position);
@@ -236,7 +236,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, duracionNormal > 10f, sb, $"sin modo dios el hackeo dura {duracionNormal:0} s");
             ModoDios.Poner(true);
             // #009 el dano al tanque es el doble.
-            W8Ok(ref ok, OperacionDirector.MultiplicadorDeDanoDelTanque == 16f, sb, "el dano al tanque se multiplica por 16 (bug #347, #398 y pedidos del 13/11: x4 sobre el x8 y despues a la mitad)");
+            W8Ok(ref ok, OperacionDirector.MultiplicadorDeDanoDelTanque == 32f && Mathf.Approximately(OperacionDirector.MultiplicadorDeDanoDelTanque * SP.Core.AjustesDeDano.EnemigoPorDefecto, 16f), sb, $"el dano al tanque se multiplica por {OperacionDirector.MultiplicadorDeDanoDelTanque} (x32 por 0,5 del coeficiente enemigo por defecto = x16 efectivo)");
             // #010 sin props de la ciudad adentro de la mansion.
             int props = 0;
             foreach (var c in Physics.OverlapBox(new Vector3((G.X0 + G.X1) * 0.5f, 3f, (G.Z0 + G.Z1) * 0.5f), new Vector3((G.X1 - G.X0) * 0.5f - 0.3f, 3.5f, (G.Z1 - G.Z0) * 0.5f - 0.3f), Quaternion.identity, ~0, QueryTriggerInteraction.Collide))
@@ -252,14 +252,19 @@ namespace SP.EditorTools
             var ea = G.EntradaDeTorre(0); var sa = G.SalidaDeTorre(0);
             var camino = new UnityEngine.AI.NavMeshPath();
             bool hay = UnityEngine.AI.NavMesh.CalculatePath(ea, sa, UnityEngine.AI.NavMesh.AllAreas, camino);
-            W8Ok(ref ok, !hay || camino.status != UnityEngine.AI.NavMeshPathStatus.PathComplete, sb, $"con la reja cerrada no hay camino completo por la torre A ({camino.status})");
+            W8Ok(ref ok, hay && camino.status == UnityEngine.AI.NavMeshPathStatus.PathComplete, sb, $"R13 T10 (D8): la reja cerrada ya no bloquea el NavMesh, hay camino completo por la torre A ({camino.status})");
             ((System.Collections.IList)typeof(OperacionDirector).GetField("pendientesMansion", NoPublico).GetValue(d)).Clear();
             var aBorrar = new System.Collections.Generic.List<GameObject>();
             foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && a.name.StartsWith("Mansion_Enemigo")) aBorrar.Add(a.gameObject);
+            foreach (var s in (System.Collections.IList)typeof(OperacionDirector).GetField("enemigosMansion", NoPublico).GetValue(d)) if (s is Component cs && cs != null && !aBorrar.Contains(cs.gameObject)) aBorrar.Add(cs.gameObject);   // los que el director cuenta como vivos aunque no se llamen Mansion_Enemigo*
             foreach (var g in aBorrar) Object.Destroy(g);
             ActorRegistry.Invalidate();
             foreach (var x in Esperar(3.0f)) yield return x;
-            W8Ok(ref ok, !d.CompuertaDeSubidaCerrada(0), sb, "piso limpio: la escalera de subida se abre");
+            {
+                var vivosMansion = (int)typeof(OperacionDirector).GetMethod("VivosDeLaMansion", NoPublico).Invoke(d, null);
+                var pendMansion = ((System.Collections.IList)typeof(OperacionDirector).GetField("pendientesMansion", NoPublico).GetValue(d)).Count;
+                W8Ok(ref ok, !d.CompuertaDeSubidaCerrada(0), sb, $"piso limpio: la escalera de subida se abre (vivos {vivosMansion}, pendientes {pendMansion}, etapa {d.EtapaMansion})");
+            }
             camino = new UnityEngine.AI.NavMeshPath();
             hay = UnityEngine.AI.NavMesh.CalculatePath(ea, sa, UnityEngine.AI.NavMesh.AllAreas, camino);
             W8Ok(ref ok, hay && camino.status == UnityEngine.AI.NavMeshPathStatus.PathComplete, sb, $"abierta, hay camino por la torre A ({camino.status})");

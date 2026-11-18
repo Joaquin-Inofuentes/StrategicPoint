@@ -237,7 +237,8 @@ namespace SP.Operacion
             // P9 (#123): primero el rapel desde el helicoptero (5 s); al terminar encadena la cinematica de los pasos.
             if (continuando) return;
             // Orden nuevo: una sola camara recorre el nivel y despues cae el rapel.
-            if (Application.isPlaying && !CinematicaDeOperacion.YaVista) CinematicaDeOperacion.Iniciar(this);
+            // R14 (#26 "quita cinematica"): el recorrido de pasos ya no arranca solo (sigue disponible por codigo/pruebas); va directo al rapel.
+            if (Application.isPlaying && CinematicaDeOperacion.RecorridoInicialActivo && !CinematicaDeOperacion.YaVista) CinematicaDeOperacion.Iniciar(this);
             else if (Application.isPlaying && !CinematicaDeRapel.YaVista) CinematicaDeRapel.Iniciar(this);
         }
 
@@ -311,7 +312,7 @@ namespace SP.Operacion
             {
                 case FaseOperacion.Infiltrar:
                     BalizaDeInfiltrar();
-                    Aviso("PRIMERO: DETONÁ LAS 2 TORRETAS DE ARTILLERÍA");
+                    Aviso(cargaPorton != null ? "PRIMERO: VOLÁ EL PORTÓN NORTE CON LA CARGA\nSOLO EL ASALTO LA COLOCA" : "PRIMERO: DETONÁ LAS 2 TORRETAS DE ARTILLERÍA");
                     if (Application.isPlaying && !cuartelAtrincherado) { cuartelAtrincherado = true; AtrincherarGuardias(GuardiasDeSuelo(enemigosCuartel)); }
                     break;
                 case FaseOperacion.Puestos:
@@ -416,6 +417,7 @@ namespace SP.Operacion
             SP.Presentation.LimpiezaDeDuplicados.Limpiar(out _);
             SP.Presentation.LimpiezaDeDuplicados.SepararClaraboya();
             SP.Presentation.FuentesDeAgua.Aplicar();
+            ArbustoRodante.Armar(rutaDelTanque); PolvoDelDesierto.Armar(rutaDelTanque);   // R13 T14: arbustos rodantes + polvo y remolinos del desierto
             int n = AmbientacionDeRuta.Armar(rutaDelTanque);
             if (n > 0) GameLog.Line($"[Operacion] Ruta ambientada: {AmbientacionDeRuta.Faroles} faroles, {AmbientacionDeRuta.Flechas} flechas, {AmbientacionDeRuta.Conos} conos");
         }
@@ -457,9 +459,9 @@ namespace SP.Operacion
             TickAlejamiento();
         }
 
-        // Bug #161: "si me alejo un cartel vibrante abajo diga que debo volver, el mismo y unico cartel de textos" (AvisoUnico, abajo al centro).
-        // Igual que el CartelVolver del modo Mision: hay que ALEJARSE de verdad (4 s seguidos) y estar mas lejos del umbral de la fase.
-        float distanciaAlObjetivo, segundosAlejandose;
+        // Bug #161 / Ronda 13 T10: el cartel unico «DEBES VOLVER A LA GUERRA» es CartelVolverView (canvas, sin collider); aca solo se calcula el estado
+        // (IObjetivoParaVolver, ver OperacionDirector.Volver.cs). Hay que ALEJARSE de verdad (4 s seguidos, lo mide el cartel) y pasar el umbral de la fase.
+        float distanciaAlObjetivo;
         void TickAlejamiento()
         {
             var yo = Poseido();
@@ -475,15 +477,11 @@ namespace SP.Operacion
                     umbral = Fase == FaseOperacion.Extraer ? 80f : 70f;
                 }
             }
-            if (sinAviso) { segundosAlejandose = 0f; SP.UI.AvisoUnico.QuitarFijo("volver"); return; }
-            float dist = Plano(yo.transform.position, objetivo).magnitude;
-            float dt = Time.deltaTime;
-            if (dist > distanciaAlObjetivo + 0.5f * dt) segundosAlejandose += dt;
-            else if (dist < distanciaAlObjetivo - 0.5f * dt) segundosAlejandose = 0f;
-            distanciaAlObjetivo = dist;
-            if (segundosAlejandose >= 4f && dist > umbral)
-                SP.UI.AvisoUnico.FijoVibrante("volver", $"VOLVE AL OBJETIVO · {Mathf.RoundToInt(dist)} m", new Color(1f, 0.35f, 0.25f));
-            else SP.UI.AvisoUnico.QuitarFijo("volver");
+            volverActiva = !sinAviso;
+            if (sinAviso) return;
+            volverPunto = objetivo; volverUmbral = umbral;
+            distanciaAlObjetivo = volverDistancia = Plano(yo.transform.position, objetivo).magnitude;
+            if (SP.UI.CartelVolverView.Actual == null && hud != null) SP.UI.CartelVolverView.Crear(this, hud.transform.parent);
         }
 
         // #105: la guia de objetivo (GuiaDeObjetivo) solo corre en las fases 1 a 4 y sigue a la baliza activa.
@@ -510,7 +508,7 @@ namespace SP.Operacion
                 if (drv != null && drv.Vehicle == tanque && drv.CurrentSeat.HasValue) debe = false;
             }
             if (debe) { if (!AnilloDeSubida.EstaActivo) AnilloDeSubida.Mostrar(tanque.transform); }
-            else if (AnilloDeSubida.EstaActivo) AnilloDeSubida.Ocultar();
+            else if (AnilloDeSubida.EstaActivo && !(Fase == FaseOperacion.Resistir && !MansionActiva && !MandoActivo)) AnilloDeSubida.Ocultar();   // R14 (#18): en la ciudad lo lleva TickCirculoDeBase
         }
 
         // #105: al empezar cada objetivo de las fases 1-4, la escuadra sin orden recibe Follow al jugador (con un solo cartel agrupado).
@@ -709,6 +707,7 @@ namespace SP.Operacion
         public void SaltarA(FaseOperacion destino, bool teletransportar = true, int subfase = 0)
         {
             StopAllCoroutines();
+            TerminarCineCorta();   // R13 T6
             LiberarAutoguardadoCortado();   // P10
             FinalAbortar();
             if (Indice(destino) > Indice(FaseOperacion.Infiltrar))

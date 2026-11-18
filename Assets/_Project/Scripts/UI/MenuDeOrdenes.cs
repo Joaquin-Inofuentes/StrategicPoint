@@ -873,7 +873,7 @@ namespace SP.UI
             var tGO = new GameObject(nombre, typeof(RectTransform), typeof(Text), typeof(Shadow));
             tGO.transform.SetParent(padre, false);
             var t = tGO.GetComponent<Text>();
-            t.font = font; t.fontSize = tam; t.fontStyle = FontStyle.Bold;
+            t.font = SP.Presentation.FuentesBelicas.Para(tam); t.fontSize = tam; t.fontStyle = FontStyle.Bold;
             t.alignment = TextAnchor.MiddleCenter;
             t.horizontalOverflow = HorizontalWrapMode.Overflow; t.verticalOverflow = VerticalWrapMode.Overflow;
             t.raycastTarget = false;
@@ -931,7 +931,7 @@ namespace SP.UI
 
             var menu = go.GetComponent<MenuDeOrdenes>();
             menu.RegistrarActivo();   // en Edit mode (suite, builders) no corre OnEnable
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var font = SP.Presentation.FuentesBelicas.Para(0);
             menu.rebanadas = new Image[CantidadDePorciones];
             menu.iconosCategoria = new Image[CantidadDePorciones];
             menu.etiquetas = new Text[CantidadDePorciones];

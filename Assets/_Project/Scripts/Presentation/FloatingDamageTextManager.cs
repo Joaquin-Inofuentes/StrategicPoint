@@ -86,7 +86,7 @@ namespace SP.Presentation
             var textGO = new GameObject("Text", typeof(Text));
             textGO.transform.SetParent(canvasGO.transform, false);
             var text = textGO.GetComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font = SP.Presentation.FuentesBelicas.Para(44);
             text.alignment = TextAnchor.MiddleCenter;
             text.fontSize = 44;
             text.fontStyle = FontStyle.Bold;

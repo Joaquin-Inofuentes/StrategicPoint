@@ -94,7 +94,7 @@ namespace SP.Tutorial
             colorAnillo.a *= 0.25f;
             rendAnillo.sharedMaterial.color = colorAnillo;
 
-            if (fuente == null) fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (fuente == null) fuente = SP.Presentation.FuentesBelicas.Para(0);
             etiqueta = new GameObject("Etiqueta");
             etiqueta.transform.SetParent(transform, false);
             etiqueta.transform.localPosition = new Vector3(0f, alturaEtiqueta, 0f);

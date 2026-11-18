@@ -27,6 +27,13 @@ namespace SP.Core
         CursorLockMode cursorPrevio; bool cursorVisiblePrevio;
         bool audioPausadoPrevio;
 
+        // R14 (#28): con [U] se oculta el dialogo (el juego sigue en pausa) y con clic izquierdo se marcan geometrias; viajan en la nota del reporte.
+        readonly System.Collections.Generic.List<string> geometrias = new System.Collections.Generic.List<string>();
+        readonly System.Collections.Generic.List<Vector3> geometriasPos = new System.Collections.Generic.List<Vector3>();
+        bool seleccionando;
+        public static bool Seleccionando => Instancia != null && Instancia.seleccionando;
+        public static int GeometriasMarcadas => Instancia != null ? Instancia.geometrias.Count : 0;
+
         GameObject raiz;
         RawImage miniatura;
         InputField campo;
@@ -83,6 +90,7 @@ namespace SP.Core
             }
             campo.text = "";
             textoPrevio = ""; caretPrevio = 0;
+            geometrias.Clear(); geometriasPos.Clear(); seleccionando = false;
             raiz.SetActive(true);
             yield return null;
             AsegurarEventSystem();
@@ -94,10 +102,18 @@ namespace SP.Core
         void Update()
         {
             if (PruebaAbrir) { PruebaAbrir = false; Abrir(); }
-            if (!Abierto || raiz == null || !raiz.activeSelf) return;
+            if (!Abierto || raiz == null || (!raiz.activeSelf && !seleccionando)) return;
             var kb = Keyboard.current;
             if (kb == null) return;
-            if (kb.escapeKey.wasPressedThisFrame) { Cancelar(); return; }
+            if (kb.escapeKey.wasPressedThisFrame) { if (seleccionando) AlternarSeleccion(); else Cancelar(); return; }
+            if (kb.uKey.wasPressedThisFrame) AlternarSeleccion();
+            if (seleccionando)
+            {
+                var ms = Mouse.current;
+                if (ms != null && ms.leftButton.wasPressedThisFrame) MarcarGeometriaBajoElCursor(ms.position.ReadValue());
+                if (ms != null && ms.rightButton.wasPressedThisFrame) QuitarUltimaGeometria();
+                return;
+            }
             bool ctrl = kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed;
             if (ctrl && (kb.enterKey.wasPressedThisFrame || kb.numpadEnterKey.wasPressedThisFrame)) Confirmar(campo.text);
         }
@@ -112,6 +128,9 @@ namespace SP.Core
         {
             if (!Abierto || campo == null || raiz == null || !raiz.activeSelf) return;
             var kb = Keyboard.current;
+            // [U] abre/cierra la seleccion de geometrias: la letra que el campo alcanzo a escribir se deshace.
+            if (kb != null && kb.uKey.wasPressedThisFrame && !kb.leftCtrlKey.isPressed && campo.text != textoPrevio)
+            { campo.text = textoPrevio; campo.caretPosition = campo.selectionAnchorPosition = campo.selectionFocusPosition = Mathf.Clamp(caretPrevio, 0, textoPrevio.Length); }
             bool ctrl = kb != null && (kb.leftCtrlKey.isPressed || kb.rightCtrlKey.isPressed);
             if (ctrl && kb.backspaceKey.wasPressedThisFrame && campo.isFocused)
             {
@@ -134,11 +153,61 @@ namespace SP.Core
             return i;
         }
 
+        void AlternarSeleccion()
+        {
+            seleccionando = !seleccionando;
+            if (raiz != null) raiz.SetActive(!seleccionando);
+            if (!seleccionando && campo != null) { campo.Select(); campo.ActivateInputField(); }
+            SesionLog.Evento(seleccionando ? "Reporte: seleccion de geometrias ACTIVA (clic marca, clic derecho quita, U vuelve)" : $"Reporte: seleccion terminada ({geometrias.Count} marcadas)");
+        }
+
+        static string RutaDe(Transform t) { var sb = new System.Text.StringBuilder(t.name); for (var p = t.parent; p != null; p = p.parent) sb.Insert(0, p.name + "/"); return sb.ToString(); }
+
+        void MarcarGeometriaBajoElCursor(Vector2 px)
+        {
+            var cam = CamaraPrincipal.Actual; if (cam == null) return;
+            var rayo = cam.ScreenPointToRay(px);
+            Transform pegado = null; Vector3 punto = Vector3.zero;
+            if (Physics.Raycast(rayo, out var hit, 2000f, ~0, QueryTriggerInteraction.Ignore)) { pegado = hit.collider.transform; punto = hit.point; }
+            else
+            {
+                float mejor = float.MaxValue;
+                foreach (var r in FindObjectsByType<Renderer>(FindObjectsInactive.Exclude, FindObjectsSortMode.None))
+                    if (r != null && !(r is ParticleSystemRenderer) && r.bounds.IntersectRay(rayo, out float d) && d < mejor) { mejor = d; pegado = r.transform; punto = rayo.GetPoint(d); }
+            }
+            if (pegado == null) return;
+            string ruta = RutaDe(pegado);
+            geometrias.Add($"{ruta}@({punto.x:0.#},{punto.y:0.#},{punto.z:0.#})"); geometriasPos.Add(punto);
+            SesionLog.Evento($"Reporte: geometria marcada #{geometrias.Count}: {ruta}");
+        }
+
+        void QuitarUltimaGeometria() { if (geometrias.Count == 0) return; geometrias.RemoveAt(geometrias.Count - 1); geometriasPos.RemoveAt(geometriasPos.Count - 1); }
+
+        // Marcas y ayuda mientras se selecciona (el dialogo esta oculto).
+        void OnGUI()
+        {
+            if (!Abierto) return;
+            var cam = CamaraPrincipal.Actual;
+            if (seleccionando)
+            {
+                GUI.color = new Color(0f, 0f, 0f, 0.7f); GUI.DrawTexture(new Rect(0, 0, Screen.width, 34), Texture2D.whiteTexture); GUI.color = Color.white;
+                GUI.Label(new Rect(10, 6, Screen.width - 20, 26), $"SELECCION DE GEOMETRIAS · clic: marcar · clic derecho: quitar la ultima · U: volver al reporte · marcadas: {geometrias.Count}");
+            }
+            if (cam == null) return;
+            for (int i = 0; i < geometriasPos.Count; i++)
+            {
+                var sp = cam.WorldToScreenPoint(geometriasPos[i]); if (sp.z <= 0f) continue;
+                GUI.color = new Color(1f, 0.85f, 0.1f); GUI.Box(new Rect(sp.x - 9, Screen.height - sp.y - 9, 18, 18), (i + 1).ToString()); GUI.color = Color.white;
+            }
+        }
+
         // Tambien la usa el CLI para validar sin teclado.
         public static int Confirmar(string nota)
         {
             var r = Instancia;
             if (r == null || !Abierto) return -1;
+            if (r.geometrias.Count > 0) nota = (nota ?? "") + "\n[GEOMETRIAS MARCADAS: " + string.Join(" | ", r.geometrias) + "]";
+            r.geometrias.Clear(); r.geometriasPos.Clear(); r.seleccionando = false;
             int n = SesionLog.MarcarBugConCaptura(nota ?? "", CapturaPendiente, r.estadoPendiente);
             r.Cerrar(false);
             return n;
@@ -154,16 +223,29 @@ namespace SP.Core
 
         void Cerrar(bool descartarCaptura)
         {
+            seleccionando = false; geometrias.Clear(); geometriasPos.Clear();
             if (raiz != null) raiz.SetActive(false);
             if (miniatura != null) miniatura.texture = null;
             if (CapturaPendiente != null) Destroy(CapturaPendiente);
             CapturaPendiente = null;
             estadoPendiente = null;
-            Time.timeScale = escalaPrevia;
+            Time.timeScale = EscalaAlCerrar(escalaPrevia);
             AudioListener.pause = audioPausadoPrevio;
             Cursor.lockState = cursorPrevio; Cursor.visible = cursorVisiblePrevio;
             if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
             Abierto = false;
+        }
+
+        // R14 (#10, "anda lento, la cinematica se rompio"): si el reporte se abre en plena camara lenta de la cinematica final (x0,25) y esa cinematica termina
+        // MIENTRAS el dialogo esta abierto, al cerrar se devolvia la escala vieja (0,25) y el juego quedaba lento para siempre. Una escala < 1 solo se
+        // devuelve si su dueño (camara lenta de la cinematica, de la baja o de la cuchillada) sigue vigente; si no, vuelve a 1.
+        static float EscalaAlCerrar(float previa)
+        {
+            if (previa <= 0.0001f) return 1f;
+            if (previa >= 1f) return previa;
+            bool vigente = SP.Operacion.CineDeHuida.Activa || SP.Presentation.CuchilladaLenta.Activa
+                || (SP.Presentation.KillFeedbackDirector.Instance != null && SP.Presentation.KillFeedbackDirector.Instance.SlowMotionActive);
+            return vigente ? previa : 1f;
         }
 
         static void AsegurarEventSystem()
@@ -177,7 +259,7 @@ namespace SP.Core
         void Construir()
         {
             if (raiz != null) return;
-            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var font = SP.Presentation.FuentesBelicas.Para(0);
             raiz = new GameObject("ReporteDeBug_Dialogo", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             raiz.transform.SetParent(transform, false);
             var canvas = raiz.GetComponent<Canvas>();
@@ -256,7 +338,7 @@ namespace SP.Core
             var go = new GameObject(nombre, typeof(RectTransform), typeof(Text));
             go.transform.SetParent(padre, false);
             var t = go.GetComponent<Text>();
-            t.font = font; t.fontSize = size; t.fontStyle = style; t.color = color; t.alignment = anchor;
+            t.font = SP.Presentation.FuentesBelicas.Para(size); t.fontSize = size; t.fontStyle = style; t.color = color; t.alignment = anchor;
             t.horizontalOverflow = HorizontalWrapMode.Wrap; t.verticalOverflow = VerticalWrapMode.Truncate;
             t.raycastTarget = false;
             var rt = t.rectTransform; rt.anchoredPosition = pos; rt.sizeDelta = dim;

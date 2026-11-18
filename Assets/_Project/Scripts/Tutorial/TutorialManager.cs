@@ -520,7 +520,7 @@ namespace SP.Tutorial
                     var yo = driver.Brain.Current; if (yo == null) return;
                     yo.Weapon.ConsumirGranada(); yo.Weapon.ConsumirGranada();
                     Health.RegeneracionPermitida = false;
-                    yo.Health.TakeDamage(Mathf.RoundToInt(yo.Health.MaxHealth * 0.4f), -1);
+                    yo.Health.AplicarDanoDeGuion(Mathf.RoundToInt(yo.Health.MaxHealth * 0.4f));   // R13 (T3): herida de guion exacta, sin coeficientes
                     suministrosBase = CajaDeSuministros.Recogidas;
                     cajaTutorial = CajaDeSuministros.Crear(PuntoConVista(yo.transform.position, FrenteDelJugador(), 7f));
                     if (cajaTutorial != null) balizaCaja = TutorialBeacon.Crear("SUMINISTROS", new Color(0.55f, 0.85f, 0.4f), cajaTutorial.transform.position, cajaTutorial.transform, 1.2f, 20f);
@@ -758,7 +758,7 @@ namespace SP.Tutorial
                     herido = null;
                     foreach (var a in aliados) if (a != null && a.Role != RoleType.Medic) { herido = a; break; }
                     if (herido == null && aliados.Count > 0) herido = aliados[0];
-                    if (herido != null) herido.Health.TakeDamage(Mathf.RoundToInt(herido.Health.MaxHealth * 0.78f), -1);
+                    if (herido != null) herido.Health.AplicarDanoDeGuion(Mathf.RoundToInt(herido.Health.MaxHealth * 0.78f));
                     if (herido != null) balizasAliados.Add(TutorialBeacon.Crear(herido.DisplayName.ToUpperInvariant() + " · HERIDO", new Color(1f, 0.4f, 0.4f), herido.transform.position, herido.transform, 1f, 10f));
                 },
                 Evaluar = () =>
@@ -791,7 +791,7 @@ namespace SP.Tutorial
                     if (herido != null)
                     {
                         if (herido.Brain != null) herido.Brain.CancelOrder();
-                        herido.Health.TakeDamage(herido.Health.MaxHealth * 3, -1);
+                        herido.Health.AplicarDanoDeGuion(herido.Health.MaxHealth * 3);
                         balizasAliados.Add(TutorialBeacon.Crear(herido.DisplayName.ToUpperInvariant() + " · CAIDO", new Color(1f, 0.4f, 0.4f), herido.transform.position, herido.transform, 1f, 10f));
                     }
                 },
@@ -821,7 +821,7 @@ namespace SP.Tutorial
                     PedidoDeCuracion.AtencionAutomatica = false;
                     PedidoDeCuracion.Cancelar();
                     var yo = driver.Brain.Current;
-                    if (yo != null) yo.Health.TakeDamage(Mathf.RoundToInt(yo.Health.MaxHealth * 0.62f), -1);
+                    if (yo != null) yo.Health.AplicarDanoDeGuion(Mathf.RoundToInt(yo.Health.MaxHealth * 0.62f));
                 },
                 Evaluar = () =>
                 {
@@ -1018,7 +1018,7 @@ namespace SP.Tutorial
                 Id = "mira_tanque", Titulo = "MIRA DEL CAÑÓN Y LA METRALLETA", Teclas = "RMB", Acento = naranja,
                 Subs = new[]
                 {
-                    S("Clic derecho: miras por la mira del cañón", "Con el CLIC DERECHO mantenido miras por el PERISCOPIO del cañón: ventana rectangular con escala de distancia y escalera de elevación (no es la mira de a pie). El cañón gira lento hacia donde apuntas.", "Mantén el botón derecho estando en el asiento del cañón [2].", () => f.miraDelCanon, v => f.miraDelCanon = v),
+                    S("Clic derecho: miras por la mira del cañón", "Con el CLIC DERECHO miras por el PERISCOPIO del cañón (en la Operación la mira ya viene puesta y [CLIC DERECHO] ALTERNA la mira; acá se mantiene): ventana rectangular con escala de distancia y escalera de elevación (no es la mira de a pie). El cañón gira lento hacia donde apuntas.", "Mantén el botón derecho estando en el asiento del cañón [2].", () => f.miraDelCanon, v => f.miraDelCanon = v),
                     S("[3] la metralleta: mirilla normal", "Suelta, aprieta [3]: la METRALLETA va en el puesto alto del tanque y usa la MIRILLA NORMAL, igual que las torretas fijas (sin zoom ni periscopio). Apunta con el mouse y mantén el CLIC IZQUIERDO para ráfagas.", "El [3] cambia de asiento; la metralleta no lleva mira óptica.", () => f.miraDeMetralleta, v => f.miraDeMetralleta = v),
                     S("Suelta y vuelve al cañón [2]", "Suelta el clic derecho y aprieta [2]: la cámara vuelve a la tercera persona.", "Suelta el botón derecho y aprieta 2.", () => f.sueltaMiraTanque, v => f.sueltaMiraTanque = v),
                 },

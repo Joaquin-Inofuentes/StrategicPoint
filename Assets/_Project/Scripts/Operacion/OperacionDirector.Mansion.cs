@@ -308,7 +308,7 @@ namespace SP.Operacion
                         if (nivel == 2 && dTerminal < AlcanceDeLaTerminalDeCeldas)
                         {
                             if (hud != null) hud.Prompt("[E] USAR LA TERMINAL · ABRIR LAS CELDAS");
-                            if (OperacionTerminal.EToque()) LiberarMilicianos();
+                            if (OperacionTerminal.EToque() && !liberandoMilicianos) StartCoroutine(CinematicaDeLiberacion());   // R13 T6: cinematica de 2 s
                         }
                         else if (nivel == 2) BalizaDeLaMansion("TERMINAL", new Color(1f, 0.95f, 0.2f), PosDelRomboDeLaTerminal, 2);   // el rombo marca las celdas desde que se entra al piso (#330)
                     }
@@ -525,6 +525,36 @@ namespace SP.Operacion
             for (int i = 0; i < rejaOrigen.Length; i++) rejaDeCeldas.GetChild(i).gameObject.SetActive(false);
         }
 
+        // ---- Ronda 13 T6: liberar milicianos con una cinematica de 2 s (reja que baja + camara corta) y despues el aviso.
+        bool liberandoMilicianos;
+        public const float DuracionDeLaLiberacion = 2f;
+        public bool LiberandoMilicianos => liberandoMilicianos;
+
+        static void AnilloVerdeDeLiberado(Soldier s)
+        {
+            if (s == null) return;
+            var c = s.transform.position; c.y += 0.15f;
+            ImpactFx.SpawnShockwaveRing(c, new Color(0.35f, 1f, 0.5f), 1.6f, 3f);   // anillo verde pasajero a los pies
+        }
+
+        // Encuadre: el mismo de CinematicaDeLasCeldas. Si la mesa o el monitor se interponen entre la camara de salida y las celdas, la camara queda fija en c1.
+        IEnumerator CinematicaDeLiberacion()
+        {
+            liberandoMilicianos = true;
+            AbrirLaReja();   // t = 0: la reja empieza a hundirse (1,3 s)
+            GenericSfx.PlayOneShot2D(GenericSfx.Get(SfxKind.RejaAbriendo), 0.85f * AudioDirector.GainFor(SfxChannel.Sfx), 1f, "RejaAbriendo");
+            float n2 = G.Nivel(2);
+            var c0 = new Vector3(312f, n2 + 2.6f, 273.5f); var c1 = new Vector3(309f, n2 + 2.2f, 275.5f);
+            var m0 = new Vector3(306f, n2 + 1.3f, 281f); var m1 = new Vector3(302f, n2 + 1.1f, 282f);
+            bool tapada = Physics.Linecast(c0, m0, out var golpe, ~0, QueryTriggerInteraction.Ignore) && (golpe.collider.name.Contains("Mesa") || golpe.collider.name.Contains("Monitor") || golpe.collider.name.Contains("Terminal"));
+            yield return CineCorta(DuracionDeLaLiberacion,
+                u => tapada ? c1 : Vector3.Lerp(c0, c1, Mathf.SmoothStep(0f, 1f, u)),
+                u => Vector3.Lerp(m0, m1, u), null, null, 55f);
+            // Despues del CineCorta (al empezar vacia la cola de avisos): estado, ordenes de seguir, avisos y sonidos.
+            liberandoMilicianos = false;
+            if (!MilicianosLiberados) LiberarMilicianos();
+        }
+
         void LiberarMilicianos()
         {
             MilicianosLiberados = true;
@@ -541,7 +571,8 @@ namespace SP.Operacion
                 if (s.Brain != null) s.Brain.FactorDeRafaga = AiBrain.FactorDeRafagaMiliciano;
                 MandoTactico.Milicianos.Add(s);
                 milicianosActivos.Add(s);
-                WorldUiDirector.Revelar(s, 5f);
+                WorldUiDirector.Revelar(s, 8f);   // R13 T6: marcador 8 s
+                AnilloVerdeDeLiberado(s);
             }
             ActorRegistry.Invalidate();
             if (RosterView.Activo != null) RosterView.Activo.Rebuild();
@@ -585,13 +616,14 @@ namespace SP.Operacion
         // ------------------------------------------------------------------ cinematicas
         IEnumerator CineCorta(float duracion, Func<float, Vector3> posicion, Func<float, Vector3> mira, Action<float> cadaCuadro, VozDeCinematica.Linea? linea, float fov = 55f)
         {
+            bool anidada = CineDeMansionEnCurso;   // otra cinematica ya tiene el control: no se pisa lo que ella guardo para devolver
             CineDeMansionEnCurso = true;
-            var cam = Camera.main;
+            var cam = CamaraPrincipal.Actual;
             var driver = PlayerInputDriver.Activo;
             AiBrain.IAPausada = true;
             RomboVisibilidad.Suprimidos = true;
-            if (driver != null) { driver.enabled = false; if (driver.Rig != null) driver.Rig.enabled = false; }
-            var apagados = new List<Canvas>();
+            if (driver != null) { if (driver.Rig != null) driver.Rig.ReiniciarZoom(); driver.enabled = false; if (driver.Rig != null) driver.Rig.enabled = false; cineDriver = driver; }   // R14 (#9): sin zoom de tanque en la cinematica   // Activo pasa a null al apagarlo: se guarda para devolverlo
+            var apagados = cineApagados; if (!anidada) apagados.Clear();
             foreach (var c in FindObjectsByType<Canvas>())
             {
                 if (c == null || !c.enabled || c.renderMode == RenderMode.WorldSpace) continue;
@@ -599,7 +631,7 @@ namespace SP.Operacion
                 c.enabled = false; apagados.Add(c);
             }
             AlertQueue.Clear();
-            float fov0 = cam != null ? cam.fieldOfView : 60f;
+            float fov0 = cam != null ? cam.fieldOfView : 60f; if (!anidada) cineFov0 = fov0;
             if (cam != null) cam.fieldOfView = fov;
             if (linea.HasValue) VozDeCinematica.Decir(linea.Value);
             float t = 0f;
@@ -615,13 +647,25 @@ namespace SP.Operacion
                 }
                 yield return null;
             }
+            TerminarCineCorta();
+        }
+
+        // Ronda 13 T6: el cierre de CineCorta, extraido para que SaltarALaAzotea (StopAllCoroutines) tambien devuelva el control, la IA y los canvas.
+        readonly List<Canvas> cineApagados = new List<Canvas>(); float cineFov0 = 60f; PlayerInputDriver cineDriver;
+        void TerminarCineCorta()
+        {
+            if (!CineDeMansionEnCurso) return;
+            var cam = CamaraPrincipal.Actual;
+            var driver = cineDriver; cineDriver = null;
             VozDeCinematica.Callar();
-            if (cam != null) cam.fieldOfView = fov0;
+            if (cam != null) cam.fieldOfView = cineFov0;
             AiBrain.IAPausada = false;
             RomboVisibilidad.Suprimidos = false;
             if (driver != null) { driver.enabled = true; if (driver.Rig != null) driver.Rig.enabled = true; }
-            foreach (var c in apagados) if (c != null) c.enabled = true;
+            foreach (var c in cineApagados) if (c != null) c.enabled = true;
+            cineApagados.Clear();
             CineDeMansionEnCurso = false;
+            liberandoMilicianos = false;
         }
 
         static readonly VozDeCinematica.Linea LineaCeldas = new VozDeCinematica.Linea("cmd_mansion_celdas", 6.5f,

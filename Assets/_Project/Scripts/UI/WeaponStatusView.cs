@@ -337,7 +337,7 @@ namespace SP.UI
             rt.sizeDelta = new Vector2(16f, 30f);
             rt.anchoredPosition = pos;
             var tx = go.GetComponent<Text>();
-            tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            tx.font = SP.Presentation.FuentesBelicas.Para(15);
             tx.fontSize = 15; tx.fontStyle = FontStyle.Bold;
             tx.alignment = TextAnchor.MiddleCenter;
             tx.color = new Color(0.75f, 0.78f, 0.82f);
@@ -413,7 +413,7 @@ namespace SP.UI
                     rt.sizeDelta = new Vector2(28f, 30f);
                     rt.anchoredPosition = new Vector2(110f, 18f);
                     var tx = go.GetComponent<Text>();
-                    tx.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    tx.font = SP.Presentation.FuentesBelicas.Para(18);
                     tx.fontSize = 18; tx.fontStyle = FontStyle.Bold;
                     tx.alignment = TextAnchor.MiddleLeft;
                     tx.raycastTarget = false;

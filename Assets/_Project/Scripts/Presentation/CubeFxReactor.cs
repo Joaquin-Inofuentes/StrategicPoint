@@ -220,9 +220,9 @@ namespace SP.Presentation
                 // Pedido (pulido): sin columna de color al morir un enemigo; queda solo el estallido de chispas.
                 // Pedido explicito (ronda nueva): "revisa q al... matar
                 // enemigos... tengan sistemas de particulas interesantes".
-                // Estallido naranja/rojo a la altura del pecho -- lectura de
+                // R13: estallido ROJO sangre y mas chico (el naranja grande tapaba la sangre del cuchillo); antes naranja/rojo a la altura del pecho -- lectura de
                 // impacto/energia liberada, sin sangre (tono del proyecto).
-                SparkleBurstFx.Spawn(transform.position + Vector3.up * 0.9f, new Color(0.95f, 0.4f, 0.15f), 0.7f, 3f, 30, 3.5f);
+                SparkleBurstFx.Spawn(transform.position + Vector3.up * 0.9f, new Color(0.75f, 0.03f, 0.03f), 0.3f, 3f, 30, 3.5f);
             }
             
             if (soldier != null)

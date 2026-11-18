@@ -1046,17 +1046,19 @@ namespace SP.EditorTools
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
             OperacionPrueba.Arrancar(1);
             foreach (var x in Esperar(3f)) yield return x;
-            var sb = new StringBuilder(); bool ok = true; int visiblesRuta = 0; var malos = "";
+            var sb = new StringBuilder(); bool ok = true; int visiblesRuta = 0, sobrantes = 0; var malos = "";
             foreach (var tm in Object.FindObjectsByType<TextMesh>(FindObjectsSortMode.None))
             {
                 var r = tm.GetComponent<MeshRenderer>(); if (r == null || !r.enabled || !tm.gameObject.activeInHierarchy) continue;
                 string ruta = RutaDeObjeto601(tm.transform);
                 if (ruta.Contains("Rotulo_PUESTO") || ruta.Contains("Rotulo_ANTIAEREA") || ruta.Contains("Rotulo_GENERADOR") || ruta.Contains("Rotulo_SECTOR")) malos += ruta + "; ";
-                if (ruta.Contains("Rotulo_CIUDAD") || ruta.Contains("Rotulo_PLAZA") || ruta.Contains("Rotulo_BIENVENIDOS")) visiblesRuta++;
+                if (ruta.Contains("Rotulo_CIUDAD") || ruta.Contains("Rotulo_PLAZA")) sobrantes++;
+                if (ruta.Contains("Rotulo_BIENVENIDOS")) visiblesRuta++;
             }
             W8Ok(ref ok, malos == "", sb, "no queda ningun titulo de puesto/antiaerea/generador/sector dibujado " + malos);
-            W8Ok(ref ok, SP.Presentation.TitulosDeObjetosOcultos.Ocultos >= 4, sb, $"se ocultaron {SP.Presentation.TitulosDeObjetosOcultos.Ocultos} titulos");
-            W8Ok(ref ok, visiblesRuta >= 2, sb, $"los carteles de ruta siguen ({visiblesRuta})");
+            W8Ok(ref ok, SP.Presentation.TitulosDeObjetosOcultos.Ocultos == 0, sb, $"R13 T11: los titulos de puesto/antiaerea/generador/sector ya no estan en las escenas, no hay nada que ocultar ({SP.Presentation.TitulosDeObjetosOcultos.Ocultos})");
+            W8Ok(ref ok, sobrantes == 0, sb, $"los carteles Rotulo_CIUDAD y Rotulo_PLAZA se quitaron a proposito ({sobrantes})");
+            W8Ok(ref ok, visiblesRuta >= 1, sb, $"el cartel de bienvenida sigue ({visiblesRuta})");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
         // ---------------------------------------------------------------- 603e rombos de aliado: ocultos fuera de RTS, visibles en RTS; los de enemigo no cambian

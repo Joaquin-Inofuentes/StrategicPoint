@@ -50,7 +50,7 @@ namespace SP.UI
             var t = new GameObject(nombre, typeof(RectTransform), typeof(Text)).GetComponent<Text>();
             t.transform.SetParent(padre, false);
             t.raycastTarget = false;
-            t.font = tam >= FuentesBelicas.UmbralTitulo ? (FuentesBelicas.Titulo != null ? FuentesBelicas.Titulo : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf")) : FuentesBelicas.Texto;
+            t.font = SP.Presentation.FuentesBelicas.Para(tam);
             t.fontSize = tam;
             t.alignment = TextAnchor.MiddleCenter;
             t.horizontalOverflow = HorizontalWrapMode.Overflow;

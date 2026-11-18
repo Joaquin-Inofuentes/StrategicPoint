@@ -342,7 +342,7 @@ namespace SP.Operacion
         // La cinematica inicial termino (o se salto): el cartel de arranque que la cinematica tapaba.
         public void AlTerminarIntro()
         {
-            if (Fase == FaseOperacion.Infiltrar) Aviso("OPERACION CUARTEL\nINFILTRATE Y ELIMINA A TODOS");
+            if (Fase == FaseOperacion.Infiltrar) Aviso("OPERACION CUARTEL\nINFILTRATE Y VOLÁ EL PORTÓN NORTE CON LA CARGA");
             ProgramarAutoguardado("fin cinemática de apertura", 0.6f);   // P10 (#120)
         }
     }

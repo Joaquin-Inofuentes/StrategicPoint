@@ -152,6 +152,8 @@ namespace SP.EditorTools
             var p0 = yo.transform.position;
             yo.transform.position = p0 + new Vector3(0f, 0f, 30f); Physics.SyncTransforms();
             foreach (var x in Esperar(1.5f)) yield return x;
+            { float tc = Time.realtimeSinceStartup; while (CineDeHuida.Activa && Time.realtimeSinceStartup - tc < 15f) yield return null; }   // R13: la toma del jefe apaga el control (Poseido() null): se espera a que termine
+            foreach (var x in Esperar(0.5f)) yield return x;
             float linea = d.LineaDeNoRetrocesoZ;
             string quienAntes = yo.name;
             yo = Poseido() ?? yo;   // el control puede haber pasado a otro soldado de la escuadra: el limite vale para el que manejas ahora
@@ -159,7 +161,9 @@ namespace SP.EditorTools
             yo.transform.position = new Vector3(p0.x, p0.y, linea - 12f); Physics.SyncTransforms();
             foreach (var x in Esperar(1.5f)) yield return x;
             sb.Append($"[diag: fase={d.Fase} sub={d.Subfase} tanque={d.EnTanque} p0z={p0.z:0.0} viva={(yo.Health != null && yo.Health.IsAlive)} dialogo={SesionLog.DialogoAbierto} escala={Time.timeScale} activo={d.isActiveAndEnabled} posesion={(Poseido() == yo)} z={yo.transform.position.z:0.0} reloj={d.Reloj:0.0}] ");
-            W8Ok(ref ok, yo.transform.position.z >= linea - 0.5f, sb, $"al retroceder mas de {OperacionDirector.RetrocesoMaximoDeHuida} m se lo devuelve (z={yo.transform.position.z:0.0}, linea={linea:0.0})");
+            // R13 T10: ya no se lo devuelve (era un bloqueo de progresion): queda donde esta y sale el cartel unico «DEBES VOLVER A LA GUERRA».
+            W8Ok(ref ok, yo.transform.position.z < linea - 11f, sb, $"al retroceder mas de {OperacionDirector.RetrocesoMaximoDeHuida} m NO se lo teletransporta (z={yo.transform.position.z:0.0}, linea={linea:0.0})");
+            W8Ok(ref ok, SP.UI.CartelVolverView.Actual != null && SP.UI.CartelVolverView.Actual.Visible, sb, "sale el cartel de volver");
             W8Ok(ref ok, d.RetrocesosImpedidos > 0, sb, $"se contaron los retrocesos impedidos ({d.RetrocesosImpedidos})");
             Fin((ok ? "OK " : "FALLO ") + sb);
         }

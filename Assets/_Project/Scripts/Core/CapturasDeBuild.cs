@@ -19,7 +19,7 @@ namespace SP.Core
     // arma cada situacion (sala de servidores en RTS, pesado junto a un enemigo comun, escudero recibiendo disparos y muriendo, cuerpo que cae en una
     // escalera, terminal de las celdas, perros de la ciudad), la fotografia con una camara propia y escribe captura_info.txt con lo medido.
     // Es la misma secuencia para la build "antes" y la "despues": solo cambia el juego. Un jugador nunca la dispara (necesita el argumento).
-    public sealed class CapturasDeBuild : MonoBehaviour
+    public sealed partial class CapturasDeBuild : MonoBehaviour
     {
         const BindingFlags Priv = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public;
         string dir; readonly StringBuilder info = new StringBuilder();
@@ -41,41 +41,6 @@ namespace SP.Core
 
         IEnumerator Espera(float s) { float t0 = Time.realtimeSinceStartup; while (Time.realtimeSinceStartup - t0 < s) yield return null; }
 
-        // Ejecuta una toma sin que un error corte las demas: lo anota y sigue.
-        IEnumerator Seguro(string nombre, IEnumerator it)
-        {
-            Dato("== " + nombre);
-            while (true)
-            {
-                bool hay;
-                try { hay = it.MoveNext(); }
-                catch (Exception e) { Dato("ERROR en " + nombre + ": " + e.GetType().Name + " " + e.Message + "\n" + e.StackTrace); Time.timeScale = 1f; yield break; }
-                if (!hay) yield break;
-                yield return it.Current;
-            }
-        }
-
-        IEnumerator Todo()
-        {
-            float inicio = Time.realtimeSinceStartup;
-            try { Directory.CreateDirectory(dir); } catch (Exception) { }
-            yield return Espera(2f);
-            SceneLoader.Cargar("SC_Operacion");
-            while (OperacionDirector.Instancia == null && Time.realtimeSinceStartup - inicio < 90f) yield return null;
-            yield return Espera(4f);
-            PartidaGuardada.ModoPrueba = true; ModoDios.Poner(true);
-            CinematicaDeOperacion.Saltar(); CinematicaDeRapel.Saltar();
-            Dato("version=" + Application.version + " escena=" + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name);
-            yield return Seguro("sala", Sala());
-            yield return Seguro("terminal", Terminal());
-            yield return Seguro("criaturas", Criaturas());
-            yield return Seguro("escalera", Escalera());
-            yield return Seguro("ciudad", Ciudad());
-            Dato("FIN " + F(Time.realtimeSinceStartup - inicio) + " s");
-            try { File.WriteAllText(Path.Combine(dir, "captura_info.txt"), info.ToString()); } catch (Exception) { }
-            Application.Quit();
-        }
-
         static void Saltar(int objetivo)
         {
             var d = OperacionDirector.Instancia; if (d == null) return;
@@ -86,10 +51,22 @@ namespace SP.Core
         static Soldier Yo() { var d = PlayerInputDriver.Activo; return d != null && d.Brain != null ? d.Brain.Current : null; }
         static Vector3 EnMalla(Vector3 p) => UnityEngine.AI.NavMesh.SamplePosition(p, out var h, 6f, UnityEngine.AI.NavMesh.AllAreas) ? h.position : p;
 
+        static Soldier moldeFijo;   // copia inactiva de un enemigo comun, guardada al empezar: las fases posteriores pueden quedarse sin enemigos vivos
+
+        static void PrepararMolde()
+        {
+            if (moldeFijo != null) return;
+            Soldier src = null;
+            foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && a.Health != null && a.Health.IsAlive && a.gameObject.activeInHierarchy && a.GetComponent<EnemigoPesado>() == null && a.GetComponent<EnemigoEscudero>() == null && a.GetComponent<PerroEnemigo>() == null) { src = a; break; }
+            if (src == null) return;
+            var go = Instantiate(src.gameObject, src.transform.parent); go.name = "R13_Molde"; go.SetActive(false);
+            moldeFijo = go.GetComponent<Soldier>();
+        }
+
         static Soldier Clon(Vector3 pos, Vector3 haciaDir)
         {
-            Soldier molde = null;
-            foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && a.Health != null && a.Health.IsAlive && a.gameObject.activeInHierarchy && a.GetComponent<EnemigoPesado>() == null && a.GetComponent<EnemigoEscudero>() == null && a.GetComponent<PerroEnemigo>() == null && a.name.StartsWith("Mansion_Enemigo_")) { molde = a; break; }
+            Soldier molde = moldeFijo;
+            if (molde == null) foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && a.Health != null && a.Health.IsAlive && a.gameObject.activeInHierarchy && a.GetComponent<EnemigoPesado>() == null && a.GetComponent<EnemigoEscudero>() == null && a.GetComponent<PerroEnemigo>() == null && a.name.StartsWith("Mansion_Enemigo_")) { molde = a; break; }
             if (molde == null) foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && a.Health != null && a.Health.IsAlive && a.gameObject.activeInHierarchy && a.GetComponent<EnemigoPesado>() == null && a.GetComponent<EnemigoEscudero>() == null && a.GetComponent<PerroEnemigo>() == null) { molde = a; break; }
             if (molde == null) return null;
             haciaDir.y = 0f; if (haciaDir.sqrMagnitude < 0.01f) haciaDir = Vector3.forward;
@@ -149,11 +126,14 @@ namespace SP.Core
         // Camara propia a un RenderTexture (no depende del rig del juego). congelar: el tiempo se detiene durante la toma.
         IEnumerator Foto(string id, Vector3 pos, Vector3 mira, float fov = 50f, bool congelar = true, Vector3? arriba = null, int w = 1600, int h = 900)
         {
+            if (!Quiero(id)) yield break;
+            Dato("== " + id);
             float previo = Time.timeScale; if (congelar) Time.timeScale = 0f;
             OcultarMarcadores();
             var go = new GameObject("CamCaptura"); var cam = go.AddComponent<Camera>();
             cam.transform.position = pos; cam.transform.rotation = Quaternion.LookRotation(mira - pos, arriba ?? Vector3.up);
             cam.fieldOfView = fov; cam.nearClipPlane = 0.1f; cam.farClipPlane = 900f;
+            foreach (var capa in new[] { "Minimap", "Waypoints" }) { int l = LayerMask.NameToLayer(capa); if (l >= 0) cam.cullingMask &= ~(1 << l); }   // siluetas y conos del minimapa no son parte de la escena que se compara
             var rt = new RenderTexture(w, h, 24, RenderTextureFormat.ARGB32); cam.targetTexture = rt;
             yield return null; yield return null;
             cam.Render();
@@ -169,10 +149,13 @@ namespace SP.Core
         // Lo que ve el jugador de verdad: la camara del juego tal cual (con HUD).
         IEnumerator FotoJuego(string id)
         {
+            if (!Quiero(id)) yield break;
+            Dato("== " + id);
             yield return new WaitForEndOfFrame();
             var tex = ScreenCapture.CaptureScreenshotAsTexture();
             try { File.WriteAllBytes(Path.Combine(dir, id + ".png"), tex.EncodeToPNG()); } catch (Exception) { }
             Destroy(tex);
+            Dato("dato " + id + ".fuentes_no_belicas=" + FuentesNoBelicas());
         }
 
         // ---------------------------------------------------------------- 1. sala de computadoras / servidores en RTS
@@ -361,32 +344,6 @@ namespace SP.Core
                     yield return Foto($"escalera_{tag}_{i}", cam, c, 52f);
                 }
             }
-        }
-
-        // ---------------------------------------------------------------- 5. perros de la ciudad
-        IEnumerator Ciudad()
-        {
-            Saltar(5); yield return Espera(2f);
-            var d = OperacionDirector.Instancia;
-            // el reloj de la resistencia (y con el los refuerzos) solo corre con el jugador dentro de la ciudad: se lo lleva a la plaza
-            if (d.plaza != null)
-            {
-                var yoC = Yo(); if (yoC != null) { yoC.transform.position = EnMalla(d.plaza.position + new Vector3(0f, 0.5f, -6f)); Physics.SyncTransforms(); }
-                int kk = 0; foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Player && a != yoC && a.gameObject.activeInHierarchy) { a.transform.position = EnMalla(d.plaza.position + new Vector3(-3f + 2f * (kk++ % 4), 0.5f, -9f)); ApoyoEnElPiso.Apoyar(a.transform); }
-            }
-            Time.timeScale = 4f; yield return Espera(30f); Time.timeScale = 1f;
-            int perros = 0, vivos = 0, escuderos = 0, pesados = 0, refuerzos = 0;
-            foreach (var a in ActorRegistry.All) if (a != null && a.Team == TeamId.Enemy && a.name.StartsWith("Refuerzo_Ciudad_")) refuerzos++;
-            foreach (var p in FindObjectsByType<PerroEnemigo>(FindObjectsInactive.Include)) { perros++; if (p.GetComponent<Soldier>() != null && p.GetComponent<Soldier>().Health.IsAlive) vivos++; }
-            foreach (var e in FindObjectsByType<EnemigoEscudero>(FindObjectsInactive.Include)) escuderos++;
-            foreach (var e in FindObjectsByType<EnemigoPesado>(FindObjectsInactive.Include)) pesados++;
-            Dato($"ciudad tras 30 s a x4 (120 s de juego): refuerzos creados={d.RefuerzosCreados} (en escena {refuerzos}) perros={perros} (vivos {vivos}) escuderos={escuderos} pesados={pesados} reloj={F(d.Reloj)}");
-            var yo = Yo(); var c = yo != null ? yo.transform.position : Vector3.zero;
-            // el perro vivo mas cercano, de cerca
-            PerroEnemigo cerca = null; float md = 1e9f;
-            foreach (var p in FindObjectsByType<PerroEnemigo>(FindObjectsInactive.Exclude)) { var s = p.GetComponent<Soldier>(); if (s == null || !s.Health.IsAlive) continue; float dd = Vector3.Distance(p.transform.position, c); if (dd < md) { md = dd; cerca = p; } }
-            yield return Foto("ciudad_vista", c + new Vector3(0f, 60f, -18f), c, 62f, false);
-            if (cerca != null) yield return Foto("ciudad_perro", cerca.transform.position + Vector3.up * 1.4f + cerca.transform.right * 2.6f, cerca.transform.position + Vector3.up * 0.4f, 50f);
         }
     }
 }

@@ -198,6 +198,7 @@ namespace SP.Presentation
             {
                 var a = acciones[i];
                 if (a.Actor == null || !a.Actor.gameObject.activeInHierarchy) continue;
+                if (AccionesEnCursoView.EsRevivirDelLider(a)) continue;   // ronda 13 (T5): el revivir del jugador es solo el engranaje radial de la mira
                 if (ahora - a.Estampa > SilencioParaTerminar) continue;   // ya dejo de reportarse: sus engranajes se van desvaneciendo
 
                 var ga = Tomar(a.Actor.Id, false);

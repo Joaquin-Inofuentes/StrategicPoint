@@ -87,7 +87,7 @@ namespace SP.Operacion
         void Aplicar()
         {
             if (material == null) return;
-            if (fuente == null) fuente = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (fuente == null) fuente = SP.Presentation.FuentesBelicas.Para(0);
             if (fuente != null && fuente.material != null) material.mainTexture = fuente.material.mainTexture;
         }
     }

@@ -155,7 +155,7 @@ namespace SP.EditorTools
             Check("Modo dios: el tanque propio no recibe dano", vehicle.Health.Current == vidaTanque);
             SP.Core.ModoDios.Poner(false);
             kes.Health.TakeDamage(60, -1);
-            Check("Sin modo dios el dano vuelve", kes.Health.Current == antes - 60);
+            Check("Sin modo dios el dano vuelve (con el coeficiente enemigo por defecto)", kes.Health.Current == antes - Mathf.RoundToInt(60 * SP.Core.AjustesDeDano.EnemigoPorDefecto));
             FullHeal(vega, kes, doc);
 
             // --- Correr ---
@@ -407,7 +407,7 @@ namespace SP.EditorTools
             UnityEngine.Object.DestroyImmediate(goMarcador);
 
             // --- Sonidos: cada accion nueva tiene un clip valido y audible ---
-            var nuevos = new[] { SfxKind.Explosion, SfxKind.GrenadePin, SfxKind.GrenadeThrow, SfxKind.GrenadeBounce, SfxKind.KnifeSwing, SfxKind.KnifeHit,
+            var nuevos = new[] { SfxKind.Explosion, SfxKind.GrenadePin, SfxKind.GrenadeThrow, SfxKind.GrenadeBounce, SfxKind.KnifeSwing, SfxKind.KnifeHit, SfxKind.KnifeBlood,
                                  SfxKind.Jump, SfxKind.Land, SfxKind.RadialOpen, SfxKind.RadialTick, SfxKind.RadialConfirm, SfxKind.RadialCancel,
                                  SfxKind.HealStart, SfxKind.HealDone, SfxKind.Revive, SfxKind.BombPlant, SfxKind.BombTick };
             int mudos = 0; string quien = "";
@@ -467,7 +467,7 @@ namespace SP.EditorTools
             SP.Presentation.CuchilloFx.ResetearContadores();
             kes.Weapon.Tick(1f);
             bool golpeo = kes.Weapon.TryMelee();
-            Check("El cuchillo pega a un enemigo a 1,4 m", golpeo && victima.Health.Current == 100 - 55);
+            Check("El cuchillo mata de un golpe a un enemigo a 1,4 m (R13: pesado 2)", golpeo && !victima.Health.IsAlive);
             Check("El cuchillo registra tajo y acierto para el feedback", SP.Presentation.CuchilloFx.Tajos == 1 && SP.Presentation.CuchilloFx.Aciertos == 1);
             Check("El cuchillo tiene enfriamiento (no dos tajos seguidos)", !kes.Weapon.TryMelee());
 
@@ -499,7 +499,7 @@ namespace SP.EditorTools
             regen.Health.TakeDamage(50, -1);
             SP.Combat.Health.RegeneracionPermitida = false;
             for (int i = 0; i < 400; i++) regen.Health.Tick(0.05f);
-            Check("Con la regeneracion apagada nadie se cura solo", regen.Health.Current == 50);
+            Check("Con la regeneracion apagada nadie se cura solo", regen.Health.Current == 100 - Mathf.RoundToInt(50 * SP.Core.AjustesDeDano.EnemigoPorDefecto));
             SP.Combat.Health.RegeneracionPermitida = true;
             for (int i = 0; i < 400; i++) regen.Health.Tick(0.05f);
             Check("Con la regeneracion prendida vuelve a curarse", regen.Health.Current > 50);

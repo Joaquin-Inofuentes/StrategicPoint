@@ -265,7 +265,7 @@ namespace SP.Core
             { "1 conductor · 2 cañón · 3 metralleta · 4 pasajero.", "1 driver · 2 cannon · 3 machine gun · 4 passenger." },
             { "MIRA DEL CAÑÓN Y LA METRALLETA", "CANNON AND MACHINE GUN SIGHT" },
             { "Clic derecho: miras por la mira del cañón", "Right click: you look through the cannon sight" },
-            { "Con el CLIC DERECHO mantenido miras por el PERISCOPIO del cañón: ventana rectangular con escala de distancia y escalera de elevación (no es la mira de a pie). El cañón gira lento hacia donde apuntas.", "With the RIGHT CLICK held you look through the cannon PERISCOPE: a rectangular window with a range scale and an elevation ladder (not the on-foot sight). The cannon turns slowly toward where you aim." },
+            { "Con el CLIC DERECHO miras por el PERISCOPIO del cañón (en la Operación la mira ya viene puesta y [CLIC DERECHO] ALTERNA la mira; acá se mantiene): ventana rectangular con escala de distancia y escalera de elevación (no es la mira de a pie). El cañón gira lento hacia donde apuntas.", "With the RIGHT CLICK you look through the cannon PERISCOPE (in the Operation the sight starts on and [RIGHT CLICK] TOGGLES it; here it is held): a rectangular window with a range scale and an elevation ladder (not the on-foot sight). The cannon turns slowly toward where you aim." },
             { "Mantén el botón derecho estando en el asiento del cañón [2].", "Hold the right button while in the cannon seat [2]." },
             { "[3] la metralleta: mirilla normal", "[3] the machine gun: normal crosshair" },
             { "Suelta, aprieta [3]: la METRALLETA va en el puesto alto del tanque y usa la MIRILLA NORMAL, igual que las torretas fijas (sin zoom ni periscopio). Apunta con el mouse y mantén el CLIC IZQUIERDO para ráfagas.", "Release, press [3]: the MACHINE GUN sits in the tank's high seat and uses the NORMAL CROSSHAIR, just like fixed turrets (no zoom or periscope). Aim with the mouse and hold the LEFT CLICK for bursts." },
@@ -336,8 +336,7 @@ namespace SP.Core
             { "1 · helipuerto", "1 · helipad" },
             { "2 · despegue", "2 · takeoff" },
             { "3 · la horda", "3 · the horde" },
-            { "MUERTO", "DEAD" },
-            { "VUELVE AL OBJETIVO", "RETURN TO OBJECTIVE" }
+            { "MUERTO", "DEAD" }
         };
     }
 }

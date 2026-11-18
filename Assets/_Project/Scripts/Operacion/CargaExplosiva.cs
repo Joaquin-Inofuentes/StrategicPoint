@@ -265,8 +265,17 @@ namespace SP.Operacion
             var hit = drv.UltimaMira.HitTransform;
             if (hit == null || !(hit == transform || hit.IsChildOf(transform) || transform.IsChildOf(hit))) return;
             float d = Distancia(yo);
-            if (d <= radio) return;
             var hud = OperacionHud.Instancia;
+            // R14 (#23): cerca y con [E], pero no es el Asalto: la carga solo la coloca el Asalto.
+            if (d <= radio)
+            {
+                if (yo.Role != RoleType.Assault && Situacion == Estado.Intacta)
+                {
+                    string m2 = "DEBE SER EL ASALTO: SOLO EL ASALTO COLOCA LA CARGA";
+                    if (hud != null) hud.Aviso(m2, 1.8f); else AlertQueue.Push(m2, AlertPriority.Media, 1.8f);
+                }
+                return;
+            }
             string msg = $"ACERCATE A LA {Titulo} · ESTAS A {d:0} m (MAX {radio:0.#} m)";
             if (hud != null) hud.Aviso(msg, 1.6f); else AlertQueue.Push(msg, AlertPriority.Media, 1.6f);
         }

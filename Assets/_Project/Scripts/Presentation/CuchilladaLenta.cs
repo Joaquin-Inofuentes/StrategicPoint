@@ -14,20 +14,25 @@ namespace SP.Presentation
         public const float SegundosReales = 1.0f;
 
         public static bool Activa { get; private set; }
+        // Ronda 13 (D3): la camara lenta de cada baja con cuchillo tiene enfriamiento de 20 s (tiempo real).
+        public const float EnfriamientoSegundos = 20f;
+        static float proximaPermitida = -999f;
         public static int Disparadas { get; private set; }
         public static string UltimoLogro { get; private set; } = "";
         static CuchilladaLenta instancia;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { Activa = false; Disparadas = 0; UltimoLogro = ""; instancia = null; }
+        static void Reiniciar() { Activa = false; Disparadas = 0; UltimoLogro = ""; instancia = null; proximaPermitida = -999f; }
 
-        public static void ResetearContadores() { Disparadas = 0; UltimoLogro = ""; }
+        public static void ResetearContadores() { Disparadas = 0; UltimoLogro = ""; proximaPermitida = -999f; }
 
         // Llamado por CuchilloFx cuando el jugador mata de una cuchillada.
         public static void Disparar(Vector3 donde)
         {
             if (!Application.isPlaying || Activa) return;
             if (Time.timeScale < 0.5f) return;   // pausa, camara lenta final o pantalla de resultado: no se pisa
+            if (Time.unscaledTime < proximaPermitida) return;
+            proximaPermitida = Time.unscaledTime + EnfriamientoSegundos;
             if (instancia == null)
             {
                 var go = new GameObject("CuchilladaLenta") { hideFlags = HideFlags.HideAndDontSave };

@@ -21,6 +21,14 @@ namespace SP.Presentation
         public static Font Titulo => SP.Core.RecursosCache.Cargar<Font>(RutaTitulo);
         public static Font Texto => SP.Core.RecursosCache.Cargar<Font>(RutaTexto);
 
+        // Ronda 13 (T22): unico punto del gameplay que pide fuente. Titulo si tamano >= UmbralTitulo, Texto en el resto;
+        // si las fuentes belicas no cargaron (p. ej. Edit mode sin Resources) cae en la integrada de Unity.
+        public static Font Para(int tamano = 0)
+        {
+            var f = tamano >= UmbralTitulo ? Titulo : Texto;
+            return f != null ? f : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void Reiniciar() { instancia = null; Cambiados = 0; }
 
@@ -77,14 +85,16 @@ namespace SP.Presentation
 
         public static bool Aplicar(Text t, Font titulo, Font texto)
         {
-            if (t == null || EsBelica(t.font)) return false;
+            if (t == null) return false;
             bool grande = t.fontSize >= UmbralTitulo;
-            t.font = grande ? titulo : texto;
+            bool cambio = false;
+            // Ronda 13 (T22): los textos creados con FuentesBelicas.Para ya traen fuente belica; aca solo se centraliza el estilo.
+            if (!EsBelica(t.font)) { t.font = grande ? titulo : texto; cambio = true; }
             // Stardos ya es Bold: pedirle negrita de nuevo la sintetiza y la empasta.
-            if (t.fontStyle == FontStyle.Bold) t.fontStyle = FontStyle.Normal;
-            else if (t.fontStyle == FontStyle.BoldAndItalic) t.fontStyle = FontStyle.Italic;
-            if (grande && t.fontStyle != FontStyle.Normal) t.fontStyle = FontStyle.Normal;
-            return true;
+            if (t.fontStyle == FontStyle.Bold) { t.fontStyle = FontStyle.Normal; cambio = true; }
+            else if (t.fontStyle == FontStyle.BoldAndItalic) { t.fontStyle = FontStyle.Italic; cambio = true; }
+            if (grande && t.fontStyle != FontStyle.Normal) { t.fontStyle = FontStyle.Normal; cambio = true; }
+            return cambio;
         }
 
         public static bool Aplicar(TextMesh m, Font texto)

@@ -182,7 +182,7 @@ namespace SP.Presentation
             var textGO = new GameObject("Label", typeof(Text));
             textGO.transform.SetParent(canvasGO.transform, false);
             var text = textGO.GetComponent<Text>();
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.font = SP.Presentation.FuentesBelicas.Para(11);
             text.alignment = TextAnchor.MiddleCenter;
             text.fontSize = 11;
             text.color = SP.UI.FondoOpaco.ColorDeTexto;

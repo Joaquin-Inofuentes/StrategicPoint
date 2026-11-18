@@ -13,6 +13,9 @@ namespace SP.Presentation
     {
         public static int Apagados { get; private set; }
         public static int CollidersApagados { get; private set; }
+        /// <summary>Diagnostico (hasta 200): "ruta de la copia  =  ruta del original" de cada pieza apagada. Lo lee Bug980a para decir QUE sigue duplicado en origen.</summary>
+        public static readonly List<string> Detalle = new List<string>();
+        static string RutaDe(Transform t) { var s = t.name; int g = 0; while (t.parent != null && g++ < 8) { t = t.parent; s = t.name + "/" + s; } return t.gameObject.scene.name + ":" + s; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Suscribir()
@@ -73,16 +76,19 @@ namespace SP.Presentation
                 if (mf == null || mf.sharedMesh == null || mr.sharedMaterial == null) continue;
                 if (mr.GetComponentInParent<SP.Actors.Soldier>() != null || mr.GetComponentInParent<SP.Vehicles.Vehicle>() != null) continue;
                 if (mr.GetComponentInParent<Rigidbody>() != null || mr.GetComponentInParent<Animator>() != null) continue;
+                if (mr.isPartOfStaticBatch) continue;   // el batching estatico reemplaza sharedMesh por la malla combinada del lote: las baldosas Suelo_i_j parecian "la misma malla" y se apagaban
+                if (mr.name == "MinimapIcon") continue;   // iconos de minimapa creados en juego, todos en el origen hasta que alguien los coloca: no son geometria del nivel
                 var t = mr.transform;
                 // Mallas combinadas / grandes en el origen (suelo, calles fusionadas): no son piezas sueltas.
                 if (t.position.sqrMagnitude < 0.0001f && mf.sharedMesh.vertexCount > 200) continue;
                 var k = new Clave
                 {
-                    malla = mf.sharedMesh.GetEntityId().GetHashCode(), material = mr.sharedMaterial.GetEntityId().GetHashCode(),
+                    malla = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(mf.sharedMesh), material = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(mr.sharedMaterial),   // identidad del objeto gestionado: EntityId.GetHashCode() colisiona entre mallas distintas
                     pos = Q(t.position, 0.01f), esc = Q(t.lossyScale, 0.01f), rot = Q(t.eulerAngles, 0.5f)
                 };
                 if (!vistos.TryGetValue(k, out var primero)) { vistos[k] = mr; continue; }
                 mr.enabled = false; apagados++;
+                if (Detalle.Count < 200) Detalle.Add(RutaDe(mr.transform) + "  =  " + RutaDe(primero.transform));
                 // El collider solo se apaga si el original tiene uno igual (misma pose): si no, es el unico que hay.
                 var cb = mr.GetComponent<Collider>(); var cp = primero.GetComponent<Collider>();
                 if (cb != null && cp != null && cb.enabled && cp.enabled && cb.GetType() == cp.GetType() && (cb.bounds.center - cp.bounds.center).sqrMagnitude < 0.0004f && (cb.bounds.size - cp.bounds.size).sqrMagnitude < 0.0004f)

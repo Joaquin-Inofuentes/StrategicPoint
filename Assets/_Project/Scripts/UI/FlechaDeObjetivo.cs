@@ -47,7 +47,7 @@ namespace SP.UI
 
             f.etiqueta = new GameObject("Distancia", typeof(RectTransform), typeof(Text)).GetComponent<Text>();
             f.etiqueta.transform.SetParent(go.transform, false);
-            f.etiqueta.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            f.etiqueta.font = SP.Presentation.FuentesBelicas.Para(14);
             f.etiqueta.fontSize = 14; f.etiqueta.fontStyle = FontStyle.Bold;
             f.etiqueta.alignment = TextAnchor.MiddleCenter;
             f.etiqueta.horizontalOverflow = HorizontalWrapMode.Overflow;

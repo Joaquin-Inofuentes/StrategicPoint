@@ -57,12 +57,32 @@ namespace SP.Vehicles
         public static bool DanoDeExplosionEnCurso { get; set; }
         public const float DanoMinimoDeExplosion01 = 0.15f;
 
+        // Ronda 13 (T4): de donde vino el golpe, para el anillo de impactos del HUD del tanque. Se fija solo durante la llamada a TakeDamage.
+        Vector3 origenDelGolpe; bool tieneOrigenDelGolpe;
+        public void TakeDamage(int amount, int attackerId, Vector3 origen)
+        {
+            origenDelGolpe = origen; tieneOrigenDelGolpe = true;
+            try { TakeDamage(amount, attackerId); }
+            finally { tieneOrigenDelGolpe = false; }
+        }
+
+        VehicleDamagedEvent EventoDeDano(int amount, int attackerId)
+        {
+            if (tieneOrigenDelGolpe) return new VehicleDamagedEvent(this, amount, Health.Current, Health.MaxHealth, origenDelGolpe, true);
+            if (attackerId >= 0)
+            {
+                var atacante = SP.Core.ActorRegistry.FindById(attackerId);
+                if (atacante != null) return new VehicleDamagedEvent(this, amount, Health.Current, Health.MaxHealth, atacante.transform.position, true);
+            }
+            return new VehicleDamagedEvent(this, amount, Health.Current, Health.MaxHealth);
+        }
+
         public void TakeDamage(int amount, int attackerId)
         {
             if (SP.Core.ModoDios.Protege(Health))   // [F4]
             {
                 // #416: el tanque propio no pierde vida con el modo dios, pero el golpe se siente (viñeta, sonido, destello de la barra).
-                if (Bando == SP.Combat.TeamId.Player && amount > 0 && Health.IsAlive) EventBus.Instance.Publish(new VehicleDamagedEvent(this, amount, Health.Current, Health.MaxHealth));
+                if (Bando == SP.Combat.TeamId.Player && amount > 0 && Health.IsAlive) EventBus.Instance.Publish(EventoDeDano(amount, attackerId));
                 return;
             }
             if (AjusteDeDano != null && amount > 0) amount = Mathf.Max(1, AjusteDeDano(amount));
@@ -105,7 +125,7 @@ namespace SP.Vehicles
             // ningun flash en el chasis, ningun sonido distinto al de un
             // soldado. Evento propio para que la reaccion visual/sonora
             // del vehiculo sea la suya, no la de carne y hueso.
-            if (wasAlive) EventBus.Instance.Publish(new VehicleDamagedEvent(this, amount, Health.Current, Health.MaxHealth));
+            if (wasAlive) EventBus.Instance.Publish(EventoDeDano(amount, attackerId));
             if (wasAlive && !Health.IsAlive) OnDestroyed();
         }
 
@@ -121,8 +141,18 @@ namespace SP.Vehicles
             var bandoPrevio = Bando;
             Bando = SP.Combat.TeamId.Enemy;   // ModoDios.Protege solo cubre a los vehiculos del jugador
             Health.Invulnerable = false;
-            TakeDamage(Health.MaxHealth + Health.Current + 1000, -1);
+            // Ronda 13 (T3): la destruccion de guion es EXACTA: Health.Ejecutar lleva la vida a 0 sin coeficientes (antes TakeDamage la
+            // escalaba por la dificultad y por AjustesDeDano.Propio, y con Propio < 0,38 el helicoptero sobrevivia al guion).
+            bool estabaVivo = Health.IsAlive;
+            int vidaPrevia = Health.Current;
+            CacheColorIfNeeded();
+            Health.Ejecutar(-1, false);
             Bando = bandoPrevio;
+            if (estabaVivo)
+            {
+                EventBus.Instance.Publish(new VehicleDamagedEvent(this, vidaPrevia, Health.Current, Health.MaxHealth));
+                if (!Health.IsAlive) OnDestroyed();
+            }
         }
 
         // Antes esto apagaba todo y oscurecia el chasis en un SOLO frame:

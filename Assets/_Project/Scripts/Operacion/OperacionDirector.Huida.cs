@@ -403,6 +403,32 @@ namespace SP.Operacion
             };
         }
 
+        // R14 (#2): si el tanque sigue fuera de la calle de la ruta mas de 10 s seguidos, se pierde y el reintento vuelve al punto de arranque.
+        public const float SegundosFueraDeRutaMax = 10f, MetrosFueraDeRuta = 16f;
+        public float SegundosFueraDeRuta { get; private set; }
+        public float DistanciaARuta()
+        {
+            if (tanque == null || rutaDelTanque == null || rutaDelTanque.Length < 2) return 0f;
+            var p = tanque.transform.position; float mejor = float.MaxValue;
+            for (int i = 0; i < rutaDelTanque.Length - 1; i++)
+            {
+                var a = rutaDelTanque[i].position; var b = rutaDelTanque[i + 1].position;
+                var ab = new Vector2(b.x - a.x, b.z - a.z); var ap = new Vector2(p.x - a.x, p.z - a.z);
+                float t = ab.sqrMagnitude < 0.01f ? 0f : Mathf.Clamp01(Vector2.Dot(ap, ab) / ab.sqrMagnitude);
+                mejor = Mathf.Min(mejor, (ap - ab * t).magnitude);
+            }
+            return mejor;
+        }
+        bool ControlarFueraDeRuta(float dt)
+        {
+            if (Subfase != (int)SubfaseHuida.Carrera || tanque == null) { SegundosFueraDeRuta = 0f; return false; }
+            if (DistanciaARuta() <= MetrosFueraDeRuta) { SegundosFueraDeRuta = 0f; return false; }
+            SegundosFueraDeRuta += dt;
+            if (hud != null) hud.Aviso($"VOLVÉ A LA RUTA · {Mathf.CeilToInt(SegundosFueraDeRutaMax - SegundosFueraDeRuta)} s", 0.3f);
+            if (SegundosFueraDeRuta < SegundosFueraDeRutaMax) return false;
+            SegundosFueraDeRuta = 0f; Perder("TE SALISTE DE LA RUTA MAS DE 10 SEGUNDOS"); return true;
+        }
+
         void TickTrayecto(float dt)
         {
             var vb = tanque.GetComponent<VehicleBrain>();
@@ -426,6 +452,7 @@ namespace SP.Operacion
                 IniciarCinematicaFinal(); return;
             }
             DestrabarTanque(dt);
+            if (ControlarFueraDeRuta(dt)) return;
 
             // El tanque aguanta hasta el final del trayecto (el guion lo destruye). Bug #073: solo tiene un PISO del 20 % de la vida
             // (Vehicle.PisoDeVida01, WP9b: antes era una cura "a mano" cada frame): si el dano lo pasa, se lo deja justo ahi.
