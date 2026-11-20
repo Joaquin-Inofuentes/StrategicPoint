@@ -1,0 +1,167 @@
+version=0.1.0 resolucion=1600x900 dificultad=Medio semilla=1313 filtro=r15,cuchillo_soldado,cuchillo_pesado,celdas,terminal,tanque,revivir_medico,salida,ciudad
+dato global.molde_fijo=True
+dato global.escena=SC_Operacion
+dato global.duplicados_apagados=0
+dato global.colliders_apagados=0
+dato global.titulos_ocultos=0
+== revivir_medico
+estado al empezar: director=True fase=Infiltrar sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=45 escala=1.0 dios=True
+dato revivir_medico.poseido_doc=true
+dato revivir_medico.caido_cercano=true
+dato revivir_medico.caido_en_escuadra=true
+dato revivir_medico.tecla_E_llego=true
+dato revivir_medico.keyboard_actual_es_virtual=true
+dato revivir_medico.feedback_total=4
+dato revivir_medico.feedback_lista=EngranajeDeRevivirx1,MarcaEngranajex1,pista_Ex1,MarcaDeCaidox1
+dato revivir_medico.engranaje_fill=0.80
+dato revivir_medico.reviviendo_activo=true
+== revivir_medico
+dato revivir_medico.fuentes_no_belicas=0
+estado al terminar: director=True fase=Puestos sub=0 driver=True yo=Soldado_3_Doc(vivo) aliados_vivos=3 enemigos_vivos=16 escala=1.0 dios=True
+dato revivir_medico.segundos=7.69
+== cuchillo_soldado
+estado al empezar: director=True fase=Puestos sub=0 driver=True yo=Soldado_3_Doc(vivo) aliados_vivos=3 enemigos_vivos=16 escala=1.0 dios=True
+dato cuchillo_soldado_0.vida_antes=180
+dato cuchillo_soldado_0.vida_despues=0
+dato cuchillo_soldado_0.vivo=false
+dato cuchillo_soldado_0.tryMelee=true
+dato cuchillo_soldado_0.particulas=228
+dato cuchillo_soldado_0.particulas_sangre=0
+== cuchillo_soldado_0
+dato cuchillo_soldado_1.decal_sangre=0
+dato cuchillo_soldado_1.sangrefx_objetos=0
+dato cuchillo_soldado_1.decalkind_sangre_existe=true
+== cuchillo_soldado_1
+estado al terminar: director=True fase=Puestos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=15 escala=1.0 dios=True
+dato cuchillo_soldado.segundos=4.54
+== cuchillo_pesado
+estado al empezar: director=True fase=Puestos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=15 escala=1.0 dios=True
+dato cuchillo_pesado.vida_max=2160
+dato cuchillo_pesado.vida_antes=2160
+dato cuchillo_pesado.vida_tras_1=1080
+dato cuchillo_pesado.vida_tras_2=0
+dato cuchillo_pesado.pct_perdido_1=50.00
+dato cuchillo_pesado.vivo=false
+dato cuchillo_pesado.golpes=2
+dato cuchillo_pesado.particulas_sangre=0
+== cuchillo_pesado
+estado al terminar: director=True fase=Puestos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=14 escala=1.0 dios=True
+dato cuchillo_pesado.segundos=4.96
+== celdas
+estado al empezar: director=True fase=Puestos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=14 escala=1.0 dios=True
+dato celdas_0.liberados_antes=false
+dato celdas_0.cine_en_curso=true
+== celdas_0
+dato celdas_0.fuentes_no_belicas=0
+== celdas_1
+dato celdas_1.fuentes_no_belicas=0
+== celdas_2
+dato celdas_2.fuentes_no_belicas=0
+dato celdas_3.liberados=true
+dato celdas_3.reja_abierta=true
+dato celdas_3.control_despues=true
+dato celdas_3.alerta=Milicianos liberados: sube a la azotea por la escalera del noreste | MILICIANOS LIBERADOS / SUBE A LA AZOTEA POR LA ESCALERA NORESTE | 2 MILICIANOS LIBERADOS
+dato celdas_3.milicianos=2
+== celdas_3
+dato celdas_3.fuentes_no_belicas=0
+dato celdas_0.cine_s=1.05
+dato celdas_0.control_durante=SIN_QUITAR
+dato celdas_0.cine_inicio_s=0.01
+estado al terminar: director=True fase=Resistir sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=5 enemigos_vivos=0 escala=1.0 dios=True
+dato celdas.segundos=11.28
+== terminal
+estado al empezar: director=True fase=Resistir sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=5 enemigos_vivos=0 escala=1.0 dios=True
+terminal en (296.6,13.0,274.4) mira (1.0,0.0,0.0) piezas: Mesa Mesa_Colision Mesa_PataIzq Mesa_PataDer Mesa_Panel Monitor_Pie Monitor_Cuello Monitor_Marco Pantalla Monitor_Led Teclado Teclado_Teclas Mouse Silla_Asiento Silla_Respaldo Silla_Pie Silla_Base1 Silla_Base2 
+== terminal_frente
+== terminal_amplia
+estado al terminar: director=True fase=Resistir sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=5 enemigos_vivos=8 escala=1.0 dios=True
+dato terminal.segundos=5.70
+== salida
+estado al empezar: director=True fase=Resistir sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=5 enemigos_vivos=8 escala=1.0 dios=True
+dato salida_norte_cenital.calle_t=true
+dato salida_norte_cenital.cordones=0
+== salida_norte_cenital
+== salida_norte_ojo
+dato patio_tanque.cubos_grises_grandes=1
+dato patio_tanque.lista=R13_Losa_Patio(30.00x30.00)
+dato patio_tanque.plaza_cemento=false
+== patio_tanque
+estado al terminar: director=True fase=Huir sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=5 enemigos_vivos=8 escala=1.0 dios=True
+dato salida.segundos=3.33
+== r15
+estado al empezar: director=True fase=Huir sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=5 enemigos_vivos=8 escala=1.0 dios=True
+apagados encontrados para el ANTES: 8
+== r15_calle_despues
+== r15_calle_tanque_despues
+== r15_solapado_1_despues
+== r15_solapado_2_despues
+== r15_calle_antes
+== r15_calle_tanque_antes
+== r15_solapado_1_antes
+== r15_solapado_2_antes
+== r15_arbustos
+== r15_spawn_cuartel_este
+== r15_spawn_cuartel_oeste
+== r15_spawn_trinchera
+== r15_minimapa
+dato r15_minimapa.fuentes_no_belicas=0
+== r15_ui_normal
+dato r15_ui_normal.fuentes_no_belicas=0
+== r15_ui_interaccion
+dato r15_ui_interaccion.fuentes_no_belicas=0
+== r15_terminal_progreso
+estado al terminar: director=True fase=Huir sub=0 driver=False yo=null aliados_vivos=5 enemigos_vivos=8 escala=1.0 dios=True
+dato r15.segundos=7.88
+== tanque
+estado al empezar: director=True fase=Huir sub=0 driver=False yo=null aliados_vivos=5 enemigos_vivos=8 escala=1.0 dios=True
+dato tanque_mira_inicial.artillero=true
+dato tanque_mira_inicial.ads=0.00
+dato tanque_mira_inicial.zoom=true
+dato tanque_mira_inicial.fov_1s=60.00
+dato tanque_mira_inicial.fov_zoom=36.52
+== tanque_mira_inicial
+dato tanque_mira_inicial.fuentes_no_belicas=0
+dato tanque_mira_inicial.fov_2s=36.52
+dato tanque_mira_inicial.ads_2s=1.00
+dato tanque_hud_barra.img_grises_grandes=0
+dato tanque_hud_barra.lista=-
+dato tanque_hud_barra.hud_encontrado=true
+== tanque_hud_barra
+dato tanque_hud_barra.fuentes_no_belicas=0
+dato tanque_impacto_izq.origen_m=25
+dato tanque_impacto_izq.marcas=(vacia)
+dato tanque_impacto_izq.marcas_visibles=0
+dato tanque_impacto_izq.anillo=true
+dato tanque_impacto_izq.vida_tanque_delta=0
+dato tanque_impacto_izq.proyectil_conecto=false
+== tanque_impacto_izq
+dato tanque_impacto_izq.fuentes_no_belicas=0
+dato tanque_impacto_atras.origen_m=25
+dato tanque_impacto_atras.marcas=-112
+dato tanque_impacto_atras.marcas_visibles=1
+dato tanque_impacto_atras.anillo=true
+dato tanque_impacto_atras.vida_tanque_delta=0
+dato tanque_impacto_atras.proyectil_conecto=false
+== tanque_impacto_atras
+dato tanque_impacto_atras.fuentes_no_belicas=0
+estado al terminar: director=True fase=Huir sub=4 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=5 enemigos_vivos=12 escala=1.0 dios=True
+dato tanque.segundos=10.87
+-- escena recargada antes de ciudad
+== ciudad
+estado al empezar: director=True fase=Infiltrar sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=45 escala=2.0 dios=True
+ciudad tras 30 s a x4 (120 s de juego): refuerzos creados=0 (en escena 0) perros=4 (vivos 4) escuderos=3 pesados=2 reloj=123.82
+dato perros_manada.min_p01=1.16
+dato perros_manada.min_global=0.83
+dato perros_manada.pares_lt_0_4=0
+dato perros_manada.pct_ge_0_7=100.00
+dato perros_manada.cuadros_con_2_o_mas=2945
+dato perros_manada.perros_vivos=4
+dato perros_manada.perros_creados=4
+dato perros_manada.separacion_activa=true
+== perros_manada
+== ciudad_vista
+== ciudad_perro
+estado al terminar: director=True fase=Resistir sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=16 escala=1.0 dios=True
+dato ciudad.segundos=32.44
+dato global.duplicados_apagados_final=0 colliders_apagados_final=0 titulos_ocultos_final=0
+FIN 106.72 s
