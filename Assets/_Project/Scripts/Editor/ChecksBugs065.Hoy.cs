@@ -1190,9 +1190,8 @@ namespace SP.EditorTools
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
             var sb = new StringBuilder(); bool ok = true;
-            // R15: ya no se distingue Editor de build (los reportes marcados jugando en el Editor tambien tienen que llegar al Sheet).
-            W8Ok(ref ok, SP.Core.SubidaDeBug.SubeAlSheet, sb, "los reportes tambien suben al Sheet desde el Editor (SubeAlSheet=true)");
-            W8Ok(ref ok, !SP.Core.SubidaDeBug.Habilitada || SP.Core.SubidaDeBug.Disponible == !Application.isBatchMode, sb, "la subida solo se apaga en batchmode o a mano (Habilitada=false)");
+            W8Ok(ref ok, !SP.Core.SubidaDeBug.SubeAlSheet, sb, "en el Editor los reportes NO suben al Sheet (SubeAlSheet=false)");
+            W8Ok(ref ok, !SP.Core.SubidaDeBug.Disponible, sb, "en el Editor la subida no esta disponible (solo guarda local)");
             OperacionPrueba.Arrancar(5);
             foreach (var x in Esperar(1.5f)) yield return x;
             foreach (var x in FotoDePose("v4_346_despues.jpg", -47.03f, 5.2f, 255.2f, 28.4f, 126f, 0f, 60f)) yield return x;
