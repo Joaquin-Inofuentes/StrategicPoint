@@ -66,7 +66,12 @@ namespace SP.Core
 
         // 2026-11-06 (pedido del dueno): un bug marcado desde el EDITOR queda solo en local (Registros/); al Sheet suben unicamente los
         // marcados desde el .exe (build). Los registros locales se guardan igual en los dos casos.
-        public static bool SubeAlSheet => !Application.isEditor;
+        // 2026-11-20: el usuario juega y marca bugs en el Editor y las filas no llegaban al Sheet (79 reportes, #353 a #431, quedaron solo en
+        // local). Ahora suben tambien desde el Editor; las pruebas automaticas siguen protegidas con Habilitada=false y el batchmode.
+        public static bool SubeAlSheet => true;
+
+        // Para subir reportes viejos guardados en disco (editor/SubirBacklogBugs): no exige Play ni filtra por Editor.
+        public static System.Threading.Tasks.Task SubirDeDisco(ReporteSubida r) => Ejecutar(r, false);
         public static bool Disponible => Habilitada && SubeAlSheet && Application.isPlaying && !Application.isBatchMode;
 
         static string CarpetaPendientes => Path.Combine(SesionLog.Carpeta, "pendientes");
