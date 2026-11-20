@@ -227,6 +227,7 @@ namespace SP.Operacion
                     UltimoMensaje = $"MANTEN [E] PARA DESACTIVAR {titulo} · {Mathf.RoundToInt(Progreso01 * 100f)} %";
                     if (hud != null) hud.Prompt(UltimoMensaje, Progreso01);
                     // El que mantiene [E] tambien se ve trabajando (igual que el aliado mandado con [Q]).
+                    if (sosteniendo) UiDeInteraccion.Marcar();
                     if (sosteniendo) AccionesEnCurso.Reportar(yo, "DESACTIVANDO", transform.position, Progreso01, (1f - Progreso01) * DuracionEfectiva, transform);
                 }
             }
@@ -292,6 +293,7 @@ namespace SP.Operacion
         {
             if (Completo || duracion <= 0f) return;
             Progreso01 = Mathf.Clamp01(Progreso01 + dt / DuracionEfectiva);
+            if (Progreso01 < 1f) PulsoDeProgreso();
             if (Progreso01 >= 1f) Terminar();
         }
 
@@ -302,6 +304,8 @@ namespace SP.Operacion
             SoltarAsignado();
             Pintar(Verde);
             ActualizarVisual();
+            // R15 (feedback de las computadoras): al terminar, un estallido de chispas verdes sobre el panel.
+            if (Application.isPlaying) SP.Presentation.SparkleBurstFx.Spawn(transform.position + Vector3.up * 1.2f, Verde, 1f, 3f, 40);
             Completado?.Invoke(this);
         }
 
@@ -315,6 +319,18 @@ namespace SP.Operacion
                 indicador.localScale = new Vector3(Mathf.Max(0.001f, indicadorEscalaBase.x * Progreso01), indicadorEscalaBase.y, indicadorEscalaBase.z);
             }
             if (!Completo) Pintar(Progreso01 > 0.001f ? Ambar : Rojo);
+        }
+
+        // R15: mientras se hackea, la luz del panel late (mas rapido cuanto mas avanzado): se ve que "esta trabajando" aunque no mires el HUD.
+        public float FrecuenciaDePulso => 3f + 9f * Progreso01;
+        void PulsoDeProgreso()
+        {
+            if (luz == null || Completo || Progreso01 <= 0.001f) return;
+            if (mpb == null) mpb = new MaterialPropertyBlock();
+            float k = 0.35f + 0.65f * Mathf.Abs(Mathf.Sin(Time.time * FrecuenciaDePulso));
+            luz.GetPropertyBlock(mpb);
+            mpb.SetColor("_EmissionColor", Ambar * (1.6f * k));
+            luz.SetPropertyBlock(mpb);
         }
 
         MaterialPropertyBlock mpb;

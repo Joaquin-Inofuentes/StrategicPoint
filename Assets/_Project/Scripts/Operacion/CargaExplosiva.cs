@@ -211,6 +211,7 @@ namespace SP.Operacion
                 else
                 {
                     sosteniendo = OperacionTerminal.EMantenida();
+                    if (sosteniendo) UiDeInteraccion.Marcar();
                     UltimoMensaje = $"MANTEN [E] PARA COLOCAR LA {Titulo} · {Mathf.RoundToInt(Progreso01 * 100f)} %";
                     if (hud != null) hud.Prompt(UltimoMensaje, Progreso01);
                     if (sosteniendo) AccionesEnCurso.Reportar(yo, "DETONANDO", transform.position, Progreso01, (1f - Progreso01) * duracion, transform);

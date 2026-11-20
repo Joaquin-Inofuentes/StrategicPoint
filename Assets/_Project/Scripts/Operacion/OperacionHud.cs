@@ -429,8 +429,12 @@ namespace SP.Operacion
             SP.UI.AvisoUnico.Mostrar(texto, segundos, new Color(1f, 0.9f, 0.4f), SP.UI.AvisoUnico.PrioridadAlta);
         }
 
+        CanvasGroup grupoPanel;
         void Update()
         {
+            // R15: el panel de objetivo se apaga mientras se sostiene una interaccion (revivir / cargas / computadoras).
+            if (grupoPanel == null) { grupoPanel = GetComponent<CanvasGroup>(); if (grupoPanel == null) grupoPanel = gameObject.AddComponent<CanvasGroup>(); grupoPanel.interactable = false; grupoPanel.blocksRaycasts = false; }
+            grupoPanel.alpha = Mathf.MoveTowards(grupoPanel.alpha, UiDeInteraccion.Activa ? UiDeInteraccion.AlfaDelPanel : 1f, Time.unscaledDeltaTime * 6f);
             if (!CinematicaDeOperacion.IntroActiva && SP.Player.KeyBindings.WasPressed(SP.Player.KeyBindings.PlegarPasos)) AlternarPasos();
             if (promptRaiz != null && promptRaiz.activeSelf) promptRaiz.SetActive(false);   // el prompt va en AvisoUnico
             if (avisoGrupo != null) avisoGrupo.alpha = 0f;   // el aviso se muestra en AvisoUnico (abajo al centro)

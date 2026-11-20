@@ -1755,6 +1755,7 @@ namespace SP.Player
                 return;
             }
             SetInstructionText("");
+            SP.Operacion.UiDeInteraccion.Marcar();   // R15: el panel de objetivo se apaga mientras se revive
 
             var yo = Brain.Current;
             if (animRevivirPor != null && animRevivirPor != yo) DetenerAnimacionDeRevivir();

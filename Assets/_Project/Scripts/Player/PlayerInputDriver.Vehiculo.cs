@@ -605,7 +605,7 @@ namespace SP.Player
                 // la altura se mide en vertical de mundo y el adelanto en horizontal.
                 Vector3 planoFwd = Vector3.ProjectOnPlane(aimSource.forward, Vector3.up);
                 planoFwd = planoFwd.sqrMagnitude > 1e-4f ? planoFwd.normalized : Vehicle.transform.forward;
-                Vector3 miraPos = aimSource.position + Vector3.up * (esCanon ? 0.85f : 0.28f) + (esCanon ? planoFwd * 0.15f : -aimSource.forward * 0.4f);
+                Vector3 miraPos = aimSource.position + Vector3.up * (esCanon ? 1.15f : 0.28f) + (esCanon ? planoFwd * 0.15f : -aimSource.forward * 0.4f);
                 // La camara (y la mira del periscopio) usan la inclinacion del jugador, no la del tubo: el tubo agrega el arco
                 // balistico encima, y si la mira siguiera al tubo se realimentaria (cada frame apuntaria un poco mas arriba).
                 var miraRot = Quaternion.Euler(inclinacionArtillero, Quaternion.LookRotation(planoFwd, Vector3.up).eulerAngles.y, 0f);
@@ -631,7 +631,7 @@ namespace SP.Player
         // Bug #047: inclinacion de la camara del artillero (grados, + = hacia abajo). Abajo llega a ver el suelo a pocos
         // metros del tanque; arriba, un poco sobre el horizonte.
         public const float InclinacionMinArtillero = -15f, InclinacionMaxArtillero = 38f;
-        public const float InclinacionInicialArtillero = 10f;
+        public const float InclinacionInicialArtillero = 3f;   // R15 ("mira del tanque desde abajo"): antes 10 grados hacia abajo; la mira arrancaba mirando el piso. Ahora arranca casi al horizonte
         float inclinacionArtillero = InclinacionInicialArtillero;
         public float InclinacionArtillero => inclinacionArtillero;
         readonly RaycastHit[] golpesDeMira = new RaycastHit[24];

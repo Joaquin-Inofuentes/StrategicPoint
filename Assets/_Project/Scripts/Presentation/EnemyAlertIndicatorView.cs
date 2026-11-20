@@ -101,6 +101,16 @@ namespace SP.Presentation
             markerRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         }
 
+        // R15 (feedback visual): EnemyAlertIndicatorView lanzaba NullReferenceException cada vez que un enemigo cambiaba de estado o parpadeaba con poca vida
+        // (12 veces en una corrida de capturas) porque el material del marcador puede estar ya destruido. Un solo lugar que escribe el color y lo tolera.
+        void PintarMarcador(Color c)
+        {
+            if (markerRenderer == null) return;
+            var m = markerRenderer.sharedMaterial;
+            if (m == null) { if (ownedMaterial != null) { markerRenderer.sharedMaterial = ownedMaterial; m = ownedMaterial; } else return; }
+            m.color = c;
+        }
+
         bool alerted;
         bool dead;
 
@@ -125,7 +135,7 @@ namespace SP.Presentation
             markerRenderer.enabled = true;
 
             alerted = evt.NewState == "Chase" || evt.NewState == "Attack" || evt.NewState == "MovingToAttackOrder";
-            markerRenderer.sharedMaterial.color = alerted ? AlertColor : UnawareColor;
+            PintarMarcador(alerted ? AlertColor : UnawareColor);
         }
 
         // Por debajo de este umbral la marca parpadea: es la respuesta a la
@@ -163,7 +173,7 @@ namespace SP.Presentation
                     IsBlinkingLowHealth = dying;
                     // Al salir del parpadeo hay que devolver el color del
                     // estado, o queda pegado en el ultimo tono del parpadeo.
-                    if (!dying) markerRenderer.sharedMaterial.color = alerted ? AlertColor : UnawareColor;
+                    if (!dying) PintarMarcador(alerted ? AlertColor : UnawareColor);
                 }
             }
 
@@ -173,7 +183,7 @@ namespace SP.Presentation
             if (!IsBlinkingLowHealth || !markerRenderer.enabled) return;
 
             float k = (Mathf.Sin(Time.time * 12f) + 1f) * 0.5f;
-            markerRenderer.sharedMaterial.color = Color.Lerp(alerted ? AlertColor : UnawareColor, DyingColor, k);
+            PintarMarcador(Color.Lerp(alerted ? AlertColor : UnawareColor, DyingColor, k));
         }
     }
 }

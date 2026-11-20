@@ -328,22 +328,30 @@ namespace SP.Presentation
         static Texture2D TexturaCono()
         {
             if (texturaCono != null) return texturaCono;
-            const int size = 64;
+            // R15 ("reemplazar conos pixelados de minimapa"): antes 64 px con borde duro (escalera visible al ampliar el cono a 70 m).
+            // Ahora 256 px con el borde suavizado analiticamente (alfa por distancia al borde del abanico) y filtro bilineal.
+            const int size = 256;
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.wrapMode = TextureWrapMode.Clamp; tex.filterMode = FilterMode.Bilinear;
             float medioAnguloRad = ConoMedioAnguloGrados * Mathf.Deg2Rad;
+            float c = (size - 1) * 0.5f; float pxU = 1f / c;   // tamano de un pixel en unidades u/v
+            var pix = new Color32[size * size];
             for (int y = 0; y < size; y++)
             {
                 for (int x = 0; x < size; x++)
                 {
-                    float u = (x - 31.5f) / 31.5f;
-                    float v = (y - 31.5f) / 31.5f;
+                    float u = (x - c) / c, v = (y - c) / c;
                     float d = Mathf.Sqrt(u * u + v * v);
-                    float a = 0f;
-                    if (v > 0f && d <= 1f && Mathf.Atan2(Mathf.Abs(u), v) <= medioAnguloRad) a = 1f;
-                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+                    // distancia con signo (en pixeles) a cada borde: arco exterior, y las dos rectas del abanico
+                    float dArco = (1f - d) / pxU;
+                    float ang = Mathf.Atan2(Mathf.Abs(u), Mathf.Max(v, 1e-5f));
+                    float dRecta = v > 0f ? (medioAnguloRad - ang) * d / pxU : -1f;
+                    float a = Mathf.Clamp01(Mathf.Min(dArco, dRecta) + 0.5f);
+                    // el apice se desvanece un poco para que no haya un punto duro
+                    pix[y * size + x] = new Color32(255, 255, 255, (byte)(a * 255f));
                 }
             }
+            tex.SetPixels32(pix);
             tex.Apply();
             tex.hideFlags = HideFlags.HideAndDontSave;
             texturaCono = tex;

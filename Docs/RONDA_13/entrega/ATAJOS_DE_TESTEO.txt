@@ -1,0 +1,59 @@
+STRATEGIC POINT - Producción de Recursos Digitales - Parcial 2
+ATAJOS DE TESTEO
+
+IMPORTANTE: la partida se juega COMPLETA sin ninguno de estos atajos (menú -> Operación -> victoria).
+Existen solo para probar y para mostrar partes avanzadas del juego durante el testeo. Funcionan en la build.
+Usar un atajo de salto pasa la partida a "modo prueba": no pisa la partida guardada real.
+
+TECLA          EFECTO                                                        DÓNDE FUNCIONA
+-----------------------------------------------------------------------------------------------------------
+F4             MODO DIOS (alternar). El bando del jugador no recibe daño,    Toda partida (Operación, Nivel 1,
+               pega x3, la escena corre a x2 y el soldado que manejas       tutorial). En la cámara RTS el
+               corre más rápido. El tanque propio no pierde vida.            tiempo vuelve a normal.
+F10            MENÚ DE TRAMPAS (abre/cierra; congela el juego mientras       Solo en la Operación (nivel 2).
+               está abierto). Dentro del menú:
+                 1  Objetivo 1: infiltrar el cuartel (torretas)
+                 2  Objetivo 2: muralla, puesto OESTE
+                 3  Objetivo 2: muralla, puesto ESTE
+                 4  Objetivo 3: centro de datos
+                 5  Objetivo 4: huir en el tanque
+                 6  Objetivo 5: resistir en la ciudad (mansión)
+                 7  Objetivo 5: resistir en la azotea (rescate)
+                 8  Objetivo 6: subir al helicóptero
+                 G  modo dios (igual que F4)
+                 C  saltar la cinemática
+                 Esc o F10  cerrar
+               (También se puede elegir con el mouse sobre cada botón.)
+F9             Mata al soldado que manejas (para probar si viene el médico). Toda partida (Nivel 1 y Operación).
+F10            Fuera de la Operación (Nivel 1): revive a la escuadra caída.   Nivel 1 / escenas sin Operación.
+F10            En la Operación, además del menú de trampas, alterna el        Operación.
+               HUD mínimo (HudPulido). Es un efecto colateral conocido.
+Ctrl + F10     Muestra/oculta esferas de depuración de entidades.            Toda partida.
+F1 / F2 / F3   Poseer al soldado 1 / 2 / 3 de la escuadra (en RTS: seleccionar; Shift suma a la selección).
+               Es una función de juego normal, no una trampa.                Toda partida.
+F7 / F8        Tutorial: F8 salta el paso actual; F7 retoma el tutorial.     Solo en el tutorial.
+F12            Alterna el idioma (español/inglés) en cualquier momento.      Toda partida y menú.
+U  (o  8)      Abre el reporte de bug (marca el instante en el registro de   Toda partida. Ctrl+Enter confirma,
+               sesión). Con el radial de órdenes abierto, 8 elige categoría. Esc cancela.
+
+Argumentos de línea de comandos (solo para pruebas, no se usan en el juego normal):
+  -capturas <carpeta> [-tomas <lista>]   saca capturas de pantalla automáticas y sale.
+  -pruebaop [-pruebaop-seg N] [-pruebaop-escena X]   corre la Operación sola (prueba en build).
+  -autodemo                              demo automática.
+  -spmetrics / -spshot <png> / -spsuper N   mide rendimiento y carga la escena del Nivel 1.
+
+Referencias en el código (archivo:línea aprox.):
+  F4   Player/PlayerInputDriver.cs:772 -> Core/ModoDios.cs (Alternar, MultiplicadorDeDanoPropio=3, EscalaDeTiempo=2)
+  F10  Operacion/MenuDeTrampas.cs:50 (teclas 1-8, G, C, Esc en líneas 52-57)
+  F9 / F10 revivir  Player/PlayerInputDriver.cs:774-775 -> Core/ComandosDeDepuracion.cs
+  F10 HUD mínimo  UI/HudPulido.cs:64 ; Ctrl+F10  Presentation/EntityStateDebugView.cs:129
+  F1-F3  Player/PlayerInputDriver.cs:2400 y PlayerInputDriver.Escuadra.cs:81
+  F7/F8  Tutorial/TutorialManager.cs:1805 ; F12  Core/Loc.cs:153
+  U / 8  Player/KeyBindings.cs:120 (MarcarBug) y Core/SesionLog.cs:302
+
+Controles normales del juego (no son atajos de testeo; panel de ayuda con [H]):
+  R recargar, E interactuar, F cuchillo, G granada (mantener), Q/Z ciclar posesión, C cambiar aliado,
+  T ver coberturas (mantener), I ruta al objetivo (mantener), Tab alternar vista FPS/RTS, M/L minimapa,
+  X cancelar orden, Y reagrupar, B retirada, K formación, J seleccionar heridos, N seleccionar mismo tipo,
+  V plegar pasos, O subir/bajar vehículo, Espacio (mantener) radial de órdenes / freno de vehículo.
+  Las teclas se pueden remapear desde Configuraciones (KeyBindings.cs).
