@@ -24,6 +24,10 @@ namespace SP.Presentation
         static AudioDucking instance;
         static Coroutine active;
 
+        // Sin domain reload, instance/active de la sesion anterior quedan colgando (host destruido y coroutine ajena).
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void Reiniciar() { instance = null; active = null; }
+
         public static float UserVolumeCeiling => PlayerPrefs.GetFloat(PrefVolume, 1f);
 
         // Cuanto se atenua como maximo (0.25 = queda el 25% del techo).

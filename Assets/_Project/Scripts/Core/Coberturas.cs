@@ -228,7 +228,12 @@ namespace SP.Core
         // Sin recarga de dominio, los puntos de cobertura de la sesion de Play anterior seguian vivos (4070 puntos con colliders ya
         // destruidos) y contaminaban la siguiente corrida (apuntado, subir al vehiculo): se reinician al entrar a Play como el resto.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ReiniciarAlEntrarAPlay() { puntos.Clear(); duenos.Clear(); version++; }
+        static void ReiniciarAlEntrarAPlay()
+        {
+            puntos.Clear(); duenos.Clear(); version++;
+            // Tambien las marcas: `marcasVisibles` en true de una corrida anterior redibujaba ~1200 cilindros en el primer Registrar.
+            marcasVisibles = false; root = null; cacheObstaculo = null; cacheIndices.Clear();
+        }
 
         public static void Limpiar()
         {

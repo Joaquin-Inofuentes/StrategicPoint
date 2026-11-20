@@ -131,6 +131,13 @@ namespace SP.Presentation
             marca.position = centro + normal * 0.05f;
         }
 
+        // SafeMaterial.Create es HideAndDontSave: destruir el GameObject no libera los materiales propios.
+        void OnDestroy()
+        {
+            foreach (var r in GetComponentsInChildren<Renderer>(true))
+                if (r != null && r.sharedMaterial != null) Destroy(r.sharedMaterial);
+        }
+
         public void Ocultar()
         {
             Visible = false;

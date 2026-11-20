@@ -109,7 +109,7 @@ namespace SP.Presentation
             if (cached) return;
             cached = true;
             rend = GetComponent<MeshRenderer>();
-            if (rend != null) baseColor = rend.sharedMaterial.color;
+            if (rend != null && rend.sharedMaterial != null) baseColor = rend.sharedMaterial.color;
             foreach (Transform hijo in transform)     // recorrido directo: la suite cuenta las busquedas de hijos por nombre
                 if (hijo.name == "ArteOp") { arte = hijo.GetComponentsInChildren<Renderer>(true); break; }
             baseScale = transform.localScale;

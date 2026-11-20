@@ -89,7 +89,8 @@ namespace SP.Presentation
                 Destroy(go.GetComponent<Collider>());
                 go.transform.SetParent(mano, false);
                 go.transform.localScale = new Vector3(0.03f, 0.03f, LargoCuchillo);
-                go.GetComponent<Renderer>().sharedMaterial = SafeMaterial.Create(new Color(0.85f, 0.88f, 0.92f));
+                matCuchillo = SafeMaterial.Create(new Color(0.85f, 0.88f, 0.92f));
+                go.GetComponent<Renderer>().sharedMaterial = matCuchillo;
             }
             go.name = "CuchilloEnMano";
             cuchillo = go.transform;
@@ -102,7 +103,8 @@ namespace SP.Presentation
             estela.time = 0.22f;
             estela.startWidth = 0.11f; estela.endWidth = 0f;
             estela.minVertexDistance = 0.02f;
-            estela.sharedMaterial = SafeMaterial.Create(new Color(0.85f, 0.95f, 1f));
+            matEstela = SafeMaterial.Create(new Color(0.85f, 0.95f, 1f));
+            estela.sharedMaterial = matEstela;
             estela.startColor = new Color(0.85f, 0.95f, 1f, 0.9f);
             estela.endColor = new Color(0.7f, 0.85f, 1f, 0f);
             estela.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -181,6 +183,14 @@ namespace SP.Presentation
         void OnDisable()
         {
             if (t >= 0f) Terminar();
+        }
+
+        // SafeMaterial.Create es HideAndDontSave: sin esto quedan huerfanos al destruirse el soldado.
+        Material matCuchillo, matEstela;
+        void OnDestroy()
+        {
+            if (matCuchillo != null) Destroy(matCuchillo);
+            if (matEstela != null) Destroy(matEstela);
         }
     }
 }

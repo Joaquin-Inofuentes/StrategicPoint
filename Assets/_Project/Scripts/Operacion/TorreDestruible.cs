@@ -214,7 +214,7 @@ namespace SP.Operacion
                 }
                 if (ocupante != null)
                 {
-                    ocupante.transform.SetParent(padreOcupante, true);
+                    ocupante.transform.SetParent(padreOcupante != null ? padreOcupante : null, true);   // ronda 16: el padre puede haberse destruido con la torre
                     // #265: el cadaver del tirador no queda flotando ni inclinado donde termino el vuelco: se endereza y se apoya en el piso.
                     var ang = ocupante.transform.eulerAngles;
                     ocupante.transform.rotation = Quaternion.Euler(0f, ang.y, 0f);

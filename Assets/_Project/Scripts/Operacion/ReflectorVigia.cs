@@ -69,7 +69,15 @@ namespace SP.Operacion
             Resolver();
         }
 
-        void OnDestroy() { todos.Remove(this); }
+        // ronda 16: la malla (HideAndDontSave) y el material del haz se creaban por reflector y nadie los liberaba.
+        Mesh mallaHaz; Material matHaz;
+        void OnDestroy()
+        {
+            todos.Remove(this);
+            rotos.Remove(this);
+            if (mallaHaz != null) Destroy(mallaHaz);
+            if (matHaz != null) Destroy(matHaz);
+        }
 
         void Resolver()
         {
@@ -113,9 +121,11 @@ namespace SP.Operacion
             haz = new GameObject("HazVisible");
             haz.transform.SetParent(cabeza, false);
             haz.transform.localScale = new Vector3(1f / Mathf.Max(0.01f, cabeza.localScale.x), 1f / Mathf.Max(0.01f, cabeza.localScale.y), 1f / Mathf.Max(0.01f, cabeza.localScale.z));
+            mallaHaz = mesh;
             haz.AddComponent<MeshFilter>().sharedMesh = mesh;
             var mr = haz.AddComponent<MeshRenderer>();
-            mr.sharedMaterial = new Material(Shader.Find("Sprites/Default")) { color = Color.white };
+            matHaz = new Material(Shader.Find("Sprites/Default")) { color = Color.white };
+            mr.sharedMaterial = matHaz;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             mr.receiveShadows = false;
         }

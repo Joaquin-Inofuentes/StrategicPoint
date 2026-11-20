@@ -12,6 +12,12 @@ namespace SP.Operacion
     // y casco plateado, una pistola, un escudo plano delante del cuerpo y el giro mas lento (SoldierMotor.FactorDeGiro): como el AiBrain no dispara hasta
     // estar encarado, tarda en responder si se lo flanquea. El escudo es un filtro del dano (Health.FiltroDeDano): un impacto cuyo origen cae dentro del
     // semiangulo frontal se anula; las explosiones y los vehiculos (origen desconocido) pasan.
+    public sealed class LiberarMaterialesAlDestruirse : MonoBehaviour
+    {
+        public Material[] materiales;
+        void OnDestroy() { if (materiales != null) foreach (var m in materiales) if (m != null) Destroy(m); }
+    }
+
     public sealed class EnemigoEscudero : MonoBehaviour
     {
         // 2026-11-13 "que rote muy lento": el soldado comun gira a 220 grados/s; el escudero a 220 x 0,14 = ~31 grados/s (media vuelta en casi 6 s).
@@ -110,6 +116,7 @@ namespace SP.Operacion
         void ConstruirEscudo()
         {
             var raiz = new GameObject("Escudo").transform;
+            var liberador = raiz.gameObject.AddComponent<LiberarMaterialesAlDestruirse>();   // ronda 16: los 4 materiales de la pieza se fugaban
             raiz.SetParent(transform, false); raiz.localPosition = new Vector3(0f, 0.12f, 0.62f); raiz.localRotation = Quaternion.identity;
             Escudo = raiz;
             var acero = Mat(new Color(0.66f, 0.72f, 0.80f), 0.15f, 0.5f, new Color(0.05f, 0.06f, 0.08f));   // acero claro: se lee de noche
@@ -117,6 +124,7 @@ namespace SP.Operacion
             var franja = Mat(new Color(0.95f, 0.72f, 0.08f), 0f, 0.3f, new Color(0.25f, 0.17f, 0f));
             matVentana = Mat(new Color(0.12f, 0.10f, 0.05f), 0f, 0.8f, new Color(0.9f, 0.55f, 0.1f) * 0.8f);
             const float W = 1.1f, H = 1.5f, G = 0.09f;
+            liberador.materiales = new[] { acero, marco, franja, matVentana };
             Pieza(raiz, "Placa", Vector3.zero, new Vector3(W, H, G), acero);
             Pieza(raiz, "MarcoArriba", new Vector3(0f, H * 0.5f, 0f), new Vector3(W + 0.1f, 0.08f, G + 0.05f), marco);
             Pieza(raiz, "MarcoAbajo", new Vector3(0f, -H * 0.5f, 0f), new Vector3(W + 0.1f, 0.08f, G + 0.05f), marco);

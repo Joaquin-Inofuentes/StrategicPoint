@@ -90,7 +90,7 @@ namespace SP.Player
                     focusPos = Selection.SelectedVehicle.transform.position;
                     doFocus = true;
                 }
-                else if (Selection.Selected.Count > 0)
+                else if (Selection.Selected.Count > 0 && Selection.Selected[0] != null)   // el primero pudo destruirse sin pasar por la muerte
                 {
                     focusPos = Selection.Selected[0].transform.position;
                     doFocus = true;

@@ -57,7 +57,7 @@ namespace SP.Actors
                 if (s.name.StartsWith("Perro", System.StringComparison.Ordinal)) return Perro;
                 int h = 0;
                 foreach (char c in s.name) h = h * 31 + c;
-                return Enemigos[Mathf.Abs(h) % Enemigos.Length];
+                return Enemigos[(h == int.MinValue ? 0 : Mathf.Abs(h)) % Enemigos.Length];   // Abs(int.MinValue) sigue siendo negativo -> indice fuera de rango
             }
             switch (s.Role)
             {

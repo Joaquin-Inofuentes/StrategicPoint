@@ -187,6 +187,8 @@ namespace SP.Operacion
             if (bloqueado) { Restaurar(); Activa = false; }
             if (Instancia == this) Instancia = null;
             if (lienzo != null) Destroy(lienzo);
+            // ronda 16: la textura (HideAndDontSave) y el sprite del anillo de salto se creaban en cada cinematica y no se liberaban.
+            if (spriteAnillo != null) { var tx = spriteAnillo.texture; Destroy(spriteAnillo); if (tx != null) Destroy(tx); spriteAnillo = null; }
         }
 
         // ---------------------------------------------------------------

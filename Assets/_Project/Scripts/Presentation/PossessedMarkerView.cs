@@ -40,6 +40,8 @@ namespace SP.Presentation
             WorldUiDirector.Register(this);
         }
 
+        void OnDestroy() => SafeMaterial.LiberarDe(this);   // el material del rombo es propio y HideAndDontSave
+
         void OnDisable()
         {
             sub?.Dispose();

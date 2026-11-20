@@ -79,7 +79,7 @@ namespace SP.Player
             foreach (var s in Selection.Selected)
                 if (s != null && s.Role == RoleType.Assault && s.Health != null && s.Health.IsAlive && s.gameObject.activeInHierarchy) { asalto = s; break; }
             if (asalto == null) return false;   // sin asalto seleccionado: sigue el comportamiento de siempre (cubrirse)
-            var dem = asalto.GetComponent<DemoledorAsalto>() ?? asalto.gameObject.AddComponent<DemoledorAsalto>();
+            if (!asalto.TryGetComponent<DemoledorAsalto>(out var dem)) dem = asalto.gameObject.AddComponent<DemoledorAsalto>();   // (?? no sirve: GetComponent devuelve un falso null en el Editor)
             if (!dem.IniciarComoAliado(marcador, out motivo)) { RejectOrder(motivo); return true; }
             Avisar(asalto.DisplayName.ToUpperInvariant() + " VA A DEMOLER");
             return true;
@@ -186,7 +186,7 @@ namespace SP.Player
                             // Bug #306: sobre el generador, Q arranca la carga sola si estas a tiro; si no, cartel vibrante con la distancia.
                             if (Demolicion.SegundosPara(m) < Demolicion.Segundos)
                             {
-                                var dem = yo.GetComponent<DemoledorAsalto>() ?? yo.gameObject.AddComponent<DemoledorAsalto>();
+                                if (!yo.TryGetComponent<DemoledorAsalto>(out var dem)) dem = yo.gameObject.AddComponent<DemoledorAsalto>();
                                 if (dem.IniciarAutomatico(m)) return "DEMOLER_YO_AUTO";
                                 AvisoUnico.MostrarVibrante($"ACERCATE AL GENERADOR · {Demolicion.DistanciaA(yo, m):0.0} m (MAX {Demolicion.AlcanceMaximo:0.#} m)");
                                 return "ACERCATE";

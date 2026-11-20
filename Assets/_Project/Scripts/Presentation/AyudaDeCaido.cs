@@ -34,6 +34,8 @@ namespace SP.Presentation
 
         void OnDisable() { Ocultar(); }
 
+        void OnDestroy() { if (matBrazo != null) Destroy(matBrazo); }
+
         void Construir()
         {
             // Brazo: un cubo largo que cuelga de un pivote (el "hombro") a la altura del suelo del torso.
@@ -50,7 +52,8 @@ namespace SP.Presentation
             var r = cubo.GetComponent<Renderer>();
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             var sh = Shader.Find("Universal Render Pipeline/Unlit");
-            matBrazo = new Material(sh != null ? sh : Shader.Find("Sprites/Default")) { color = new Color(0.88f, 0.70f, 0.55f) };
+            if (matBrazo != null) Destroy(matBrazo);   // Construir se repite si se destruyo el brazo: no dejar el material anterior huerfano
+            matBrazo = sh != null ? new Material(sh) { color = new Color(0.88f, 0.70f, 0.55f) } : SafeMaterial.Create(new Color(0.88f, 0.70f, 0.55f));
             r.sharedMaterial = matBrazo;
 
             var c = new GameObject("AyudaDeCaido_Cartel") { hideFlags = HideFlags.DontSave };

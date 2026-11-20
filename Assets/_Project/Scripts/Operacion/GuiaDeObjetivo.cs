@@ -41,7 +41,7 @@ namespace SP.Operacion
         public Vector3 ObjetivoActual { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { instancia = null; texPunteado = null; spriteRombo = null; }
+        static void Reiniciar() { instancia = null; texPunteado = null; spriteRombo = null; mallaFlecha = null; }
 
         public static GuiaDeObjetivo Asegurar()
         {
@@ -131,9 +131,11 @@ namespace SP.Operacion
         }
 
         // Flecha 3D apuntando hacia abajo: cabeza de piramide de 4 caras y mastil cuadrado. Colores de vertice (arriba claro, abajo oscuro).
+        static Mesh mallaFlecha;   // ronda 16: se cachea (cada GuiaDeMando.Awake creaba una malla nueva que nunca se liberaba)
         static Mesh MallaDeFlecha()
         {
-            var m = new Mesh { name = "FlechaGrande" };
+            if (mallaFlecha != null) return mallaFlecha;
+            var m = new Mesh { name = "FlechaGrande", hideFlags = HideFlags.HideAndDontSave };
             var v = new System.Collections.Generic.List<Vector3>();
             var c = new System.Collections.Generic.List<Color>();
             var tr = new System.Collections.Generic.List<int>();
@@ -158,7 +160,7 @@ namespace SP.Operacion
             Cara(t0, t3, t2, t1, claro);
             m.SetVertices(v); m.SetColors(c); m.SetTriangles(tr, 0);
             m.RecalculateBounds();
-            return m;
+            return mallaFlecha = m;
         }
 
         void Update()

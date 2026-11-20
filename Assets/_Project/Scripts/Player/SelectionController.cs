@@ -57,6 +57,7 @@ namespace SP.Player
 
         public void SelectSingle(Soldier s)
         {
+            if (s == null) return;   // Publish() leia s.Id de un null
             SelectedVehicle = null;
             selected.Clear();
             selected.Add(s);
@@ -65,6 +66,7 @@ namespace SP.Player
 
         public void AddToSelection(Soldier s)
         {
+            if (s == null) return;
             SelectedVehicle = null;
             if (!selected.Contains(s)) selected.Add(s);
             Publish();
@@ -232,6 +234,7 @@ namespace SP.Player
         void Publish()
         {
             var ids = new List<int>();
+            for (int i = selected.Count - 1; i >= 0; i--) if (selected[i] == null) selected.RemoveAt(i);   // un soldado destruido (sin morir) no se puede leer: se saca de la seleccion
             foreach (var s in selected) ids.Add(s.Id);
             EventBus.Instance.Publish(new SelectionChangedEvent(ids));
         }

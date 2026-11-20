@@ -206,6 +206,9 @@ namespace SP.Actors
         // soldado podia aparecer cayendo o flotando en vez de parado.
         public void ResetMotionState()
         {
+            // Agachado al morir: SetCrouching(false) devuelve tambien el EyeAnchor a su altura de pie (solo bajar IsCrouching lo dejaba abajo).
+            SetCrouching(false);
+            saltoPedidoHasta = 0f;
             IsJumping = false;
             Vaulting = false;
             cayendo = false;

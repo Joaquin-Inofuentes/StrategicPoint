@@ -173,7 +173,8 @@ namespace SP.Operacion
             punto.transform.localScale = Vector3.one * 0.16f;
             Destroy(punto.GetComponent<Collider>());
             var rd = punto.GetComponent<MeshRenderer>();
-            var mat = new Material(Shader.Find("Sprites/Default")) { color = new Color(1f, 0.15f, 0.08f, 1f) };
+            matPunto = new Material(Shader.Find("Sprites/Default")) { color = new Color(1f, 0.15f, 0.08f, 1f) };
+            var mat = matPunto;
             rd.sharedMaterial = mat; rd.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off; rd.receiveShadows = false;
         }
 
@@ -186,7 +187,8 @@ namespace SP.Operacion
             laser.useWorldSpace = true;
             laser.startWidth = laser.endWidth = 0.06f;
             var sh = Shader.Find("Sprites/Default");
-            laser.sharedMaterial = new Material(sh) { color = new Color(1f, 0.08f, 0.05f, 0.95f) };
+            matLaser = new Material(sh) { color = new Color(1f, 0.08f, 0.05f, 0.95f) };
+            laser.sharedMaterial = matLaser;
             laser.startColor = laser.endColor = new Color(1f, 0.1f, 0.05f, 0.95f);
             laser.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             laser.receiveShadows = false;
@@ -201,6 +203,15 @@ namespace SP.Operacion
         }
 
         void OnDisable() { if (laser != null) laser.enabled = false; }
+
+        // ronda 16: los dos materiales de la mira se creaban con new Material y nadie los liberaba.
+        Material matLaser, matPunto;
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            if (matLaser != null) Destroy(matLaser);
+            if (matPunto != null) Destroy(matPunto);
+        }
 
         void Update()
         {

@@ -29,6 +29,10 @@ namespace SP.Combat
 
         static readonly RaycastHit[] Golpes = new RaycastHit[8];
 
+        // Sin recarga de dominio la lista y los contadores arrastraban granadas (destruidas) de la corrida anterior.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarEstaticos() { Activas.Clear(); Lanzadas = 0; Explotadas = 0; }
+
         Vector3 velocidad;
         float edad;
         float proximoTic;

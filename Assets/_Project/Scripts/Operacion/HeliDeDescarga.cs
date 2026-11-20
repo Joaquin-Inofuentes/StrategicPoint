@@ -64,11 +64,12 @@ namespace SP.Operacion
             }
             h.rotorP = go.transform.Find("RotorPrincipal"); h.rotorC = go.transform.Find("RotorCola");
             h.sogas = new LineRenderer[2];
+            h.matSoga = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = new Color(0.12f, 0.1f, 0.08f) };   // ronda 16: un material por heli (antes uno por soga) y se libera en OnDestroy
             for (int i = 0; i < 2; i++)
             {
                 var so = new GameObject("Soga").AddComponent<LineRenderer>(); so.transform.SetParent(go.transform, false);
                 so.positionCount = 2; so.startWidth = so.endWidth = 0.06f; so.useWorldSpace = true; so.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                so.sharedMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit")) { color = new Color(0.12f, 0.1f, 0.08f) };
+                so.sharedMaterial = h.matSoga;
                 so.enabled = false; h.sogas[i] = so;
             }
             var fuente = go.AddComponent<AudioSource>();
@@ -79,7 +80,8 @@ namespace SP.Operacion
             return h;
         }
 
-        void OnDestroy() { Activos = Mathf.Max(0, Activos - 1); }
+        Material matSoga;
+        void OnDestroy() { Activos = Mathf.Max(0, Activos - 1); if (matSoga != null) Destroy(matSoga); }
 
         // Rotor propio: ruido filtrado modulado a 14 golpes por segundo (el de extraccion es un loop grabado, mas grave y lento).
         static AudioClip clipDeRotor;

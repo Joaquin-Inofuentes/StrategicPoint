@@ -31,6 +31,7 @@ namespace SP.Ai
             EnsureAgent();
             if (!AgentActivo) { agentTieneDestino = false; return; }
             SincronizarAgente();
+            if (!AgentActivo) { agentTieneDestino = false; return; }   // el Warp de SincronizarAgente pudo dejarlo fuera del NavMesh
             if (agentTieneDestino && agent.pathPending && (agentDestino - destination).sqrMagnitude < 9f) return;
             agentTieneDestino = agent.SetDestination(destination);
             if (agentTieneDestino) agentDestino = destination;
@@ -201,6 +202,7 @@ namespace SP.Ai
             if (!AgentActivo) return AvanzarSinNavMesh(destination, threshold, dt);
 
             SincronizarAgente();
+            if (!AgentActivo) return AvanzarSinNavMesh(destination, threshold, dt);   // idem: un Warp fallido deja al agent sin NavMesh
 
             float corrimiento = agentTieneDestino ? (agentDestino - destination).sqrMagnitude : float.MaxValue;
             if (!agentTieneDestino || corrimiento > CorrimientoParaRepedir * CorrimientoParaRepedir)

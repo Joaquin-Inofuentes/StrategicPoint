@@ -124,7 +124,7 @@ namespace SP.Operacion
 
         static void BuscarMallaYMaterial()
         {
-            malla = CrearMallaBola();
+            if (malla == null) malla = CrearMallaBola();   // ronda 16: no crear una malla nueva (y fugar la anterior) en cada Armar
             if (material == null)
             {
                 var sh = Shader.Find("Universal Render Pipeline/Lit"); if (sh == null) sh = Shader.Find("Standard");

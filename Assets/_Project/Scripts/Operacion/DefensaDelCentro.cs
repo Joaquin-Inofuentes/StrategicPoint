@@ -111,6 +111,8 @@ namespace SP.Operacion
         public int Disparos { get; private set; }
         public Transform Objetivo { get; private set; }
         Transform pivote, boca;
+        Material[] materiales;   // ronda 16: SafeMaterial es HideAndDontSave: hay que liberarlos a mano
+        void OnDestroy() { if (materiales != null) foreach (var m in materiales) if (m != null) Destroy(m); }
         float proximoRetarget, proximaBala, proximaRafaga;
         int quedan;
 
@@ -140,6 +142,7 @@ namespace SP.Operacion
             bc.SetParent(pv, false);
             bc.localPosition = new Vector3(0f, 0.02f, 1.35f);
             t.pivote = pv; t.boca = bc;
+            t.materiales = new[] { sacos, metal, luz };
             return t;
         }
 
@@ -195,7 +198,7 @@ namespace SP.Operacion
             mejor = Alcance * Alcance;
             foreach (var s in ActorRegistry.All)
             {
-                if (s == null || s.Team != TeamId.Enemy || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                if (s == null || s.Team != TeamId.Enemy || s.Health == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
                 float d = (s.transform.position - transform.position).sqrMagnitude;
                 if (d < mejor) { mejor = d; elegido = s.transform; }
             }

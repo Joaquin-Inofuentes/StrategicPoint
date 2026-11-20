@@ -78,6 +78,11 @@ namespace SP.Core
                 ta.Bootstrap();
         }
 
+        // Sin esto, con "Enter Play Mode sin recarga de dominio" las listas (con objetos ya destruidos) y `populated`
+        // sobrevivian entre corridas.
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarAlEntrarAPlay() => Clear();
+
         public static void Clear()
         {
             vehicleBrains.Clear();

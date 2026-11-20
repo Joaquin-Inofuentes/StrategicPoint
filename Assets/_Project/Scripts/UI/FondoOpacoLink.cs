@@ -33,5 +33,11 @@ namespace SP.UI
         {
             if (Fondo != null) Fondo.SetActive(false);
         }
+
+        // Ronda 16: el fondo es hermano del texto; si el texto se destruye solo, el fondo quedaba huerfano (apagado) para siempre.
+        void OnDestroy()
+        {
+            if (Fondo != null) Destroy(Fondo);
+        }
     }
 }

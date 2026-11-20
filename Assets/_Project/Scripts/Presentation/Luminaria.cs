@@ -17,7 +17,13 @@ namespace SP.Presentation
 
         // La luz cuenta para la vision de los enemigos (IluminacionTactica): romper la lampara la apaga y te esconde.
         void OnEnable() { var l = GetComponent<Light>(); if (l != null && !isBroken) IluminacionTactica.Registrar(l); }
-        void OnDisable() { var l = GetComponent<Light>(); if (l != null) IluminacionTactica.Quitar(l); }
+        // Si el faro se desactiva a mitad del parpadeo la corrutina muere y esta luz hija quedaba encendida para siempre.
+        GameObject luzParpadeo;
+        void OnDisable()
+        {
+            var l = GetComponent<Light>(); if (l != null) IluminacionTactica.Quitar(l);
+            if (luzParpadeo != null) Destroy(luzParpadeo);
+        }
 
         public void TakeDamage(int amount, Vector3 hitPoint)
         {
@@ -54,12 +60,15 @@ namespace SP.Presentation
             var lente = Lente();
             if (lente != null)
             {
-                var m = lente.material;
+                var m = lente.sharedMaterial != null ? lente.material : null;   // .material sin material asignado devuelve null (NRE)
                 var oscuro = new Color(0.14f, 0.13f, 0.14f, 1f);
-                if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", oscuro);
-                if (m.HasProperty("_Color")) m.SetColor("_Color", oscuro);
-                m.EnableKeyword("_EMISSION");
-                m.SetColor("_EmissionColor", AscuaDeLente);
+                if (m != null)
+                {
+                    if (m.HasProperty("_BaseColor")) m.SetColor("_BaseColor", oscuro);
+                    if (m.HasProperty("_Color")) m.SetColor("_Color", oscuro);
+                    m.EnableKeyword("_EMISSION");
+                    m.SetColor("_EmissionColor", AscuaDeLente);
+                }
             }
             // Carcasa torcida por el impacto.
             transform.rotation = transform.rotation * Quaternion.Euler(20f, 7f, 12f);
@@ -98,6 +107,7 @@ namespace SP.Presentation
         IEnumerator Parpadeo(Vector3 punto, Light original)
         {
             var go = new GameObject("ParpadeoDeFaro");
+            luzParpadeo = go;
             go.transform.SetParent(transform, true);
             go.transform.position = punto;
             var l = go.AddComponent<Light>();

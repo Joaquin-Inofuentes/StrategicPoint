@@ -30,8 +30,8 @@ namespace SP.Presentation
         Font fuente;
         static Sprite spriteCruz, spriteFlecha;
 
-        public int MarcasVisibles { get { int n = 0; foreach (var m in marcas.Values) if (m.raiz.gameObject.activeSelf) n++; return n; } }
-        public bool TieneMarca(Soldier s) => s != null && marcas.TryGetValue(s, out var m) && m.raiz.gameObject.activeSelf;
+        public int MarcasVisibles { get { int n = 0; foreach (var m in marcas.Values) if (m.raiz != null && m.raiz.gameObject.activeSelf) n++; return n; } }
+        public bool TieneMarca(Soldier s) => s != null && marcas.TryGetValue(s, out var m) && m.raiz != null && m.raiz.gameObject.activeSelf;
         public string TextoDe(Soldier s) => s != null && marcas.TryGetValue(s, out var m) ? m.texto.text : null;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -199,6 +199,7 @@ namespace SP.Presentation
                 if (!sigue) borrar.Add(s);
             }
             foreach (var s in borrar) { if (marcas[s].raiz != null) Destroy(marcas[s].raiz.gameObject); marcas.Remove(s); }
+            avisados.RemoveWhere(a => a == null);   // soldados destruidos: sin esto el HashSet acumula referencias muertas
         }
     }
 }

@@ -168,8 +168,9 @@ namespace SP.Operacion
             Pieza("Monitor_Pie", new Vector3(0f, 0.775f, 0.3f), new Vector3(0.34f, 0.03f, 0.22f), metal, false);
             Pieza("Monitor_Cuello", new Vector3(0f, 0.92f, 0.3f), new Vector3(0.07f, 0.26f, 0.05f), metal, false);
             Pieza("Monitor_Marco", new Vector3(0f, 1.3f, 0.28f), new Vector3(1.14f, 0.7f, 0.07f), oscuro, false);
-            Pieza("Pantalla", new Vector3(0f, 1.3f, 0.32f), new Vector3(1.02f, 0.58f, 0.02f), MaterialDePantallaDeTerminal(), false);
-            Pieza("Monitor_Led", new Vector3(0.5f, 0.97f, 0.325f), new Vector3(0.025f, 0.015f, 0.01f), MaterialDePantallaDeTerminal(), false);
+            var matPantalla = MaterialDePantallaDeTerminal();   // ronda 16: antes se creaba un material nuevo por cada pieza (2 fugados)
+            Pieza("Pantalla", new Vector3(0f, 1.3f, 0.32f), new Vector3(1.02f, 0.58f, 0.02f), matPantalla, false);
+            Pieza("Monitor_Led", new Vector3(0.5f, 0.97f, 0.325f), new Vector3(0.025f, 0.015f, 0.01f), matPantalla, false);
             // Teclado y mouse sobre la mesa
             Pieza("Teclado", new Vector3(0f, 0.79f, 0.7f), new Vector3(0.52f, 0.025f, 0.18f), teclas, false);
             Pieza("Teclado_Teclas", new Vector3(0f, 0.805f, 0.7f), new Vector3(0.47f, 0.008f, 0.135f), metal, false);

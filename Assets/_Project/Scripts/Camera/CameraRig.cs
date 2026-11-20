@@ -17,7 +17,13 @@ namespace SP.CameraSystem
         public static CameraRig Instance { get; private set; }
 
         void OnEnable() { Instance = this; AplicarRutasEnCamara(); }
-        void OnDisable() { if (Instance == this) Instance = null; }
+        void OnDisable()
+        {
+            if (Instance == this) Instance = null;
+            // Unity corta las corrutinas al desactivar el objeto: sin esto IsTransitioning quedaba en true para siempre y todos los Follow* se frenaban.
+            transitionRoutine = null;
+            IsTransitioning = false;
+        }
 
         // Solo para HeadlessTestRunner: ese harness corre en Edit Mode, y
         // Unity no manda OnEnable a un MonoBehaviour comun (sin

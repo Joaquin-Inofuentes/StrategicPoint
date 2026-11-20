@@ -48,7 +48,8 @@ namespace SP.Core
         const float MaxHalfExtent = 400f;
 
         static readonly WaypointGraph graph = new WaypointGraph();
-        static readonly Collider[] overlapBuffer = new Collider[16];
+        // Idem: con 16 un nodo cargado de colliders (arboles, soldados) podia dejar afuera al que bloquea y quedar marcado como transitable.
+        static readonly Collider[] overlapBuffer = new Collider[64];
         static bool dirty = true;
 
         public static WaypointGraph Graph { get { EnsureBuilt(); return graph; } }
@@ -157,7 +158,9 @@ namespace SP.Core
         //
         // ignorarA/ignorarB son las dos puntas del rayo: el propio cuerpo
         // y el del objetivo no tapan nada.
-        static readonly RaycastHit[] BufferDeTiro = new RaycastHit[8];
+        // RaycastNonAlloc NO ordena: con un buffer chico y mas de 8 colliders sobre el rayo (arboles, soldados, fragmentos) la pared podia quedar
+        // fuera de los 8 devueltos y "habia linea de tiro" a traves de ella.
+        static readonly RaycastHit[] BufferDeTiro = new RaycastHit[32];
 
         public static bool HayLineaDeTiro(Vector3 desde, Vector3 hasta, Transform ignorarA, Transform ignorarB)
         {

@@ -32,7 +32,7 @@ namespace SP.Tutorial
         float t;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { instancia = null; }
+        static void Reiniciar() { instancia = null; Extras = null; }   // Ronda 16: el delegado estatico retenia cierres de la partida anterior
 
         public static MarcaDeObjetivosEnMinimapa Asegurar()
         {
@@ -86,7 +86,7 @@ namespace SP.Tutorial
             puntos.Clear();
             var balizas = TutorialBeacon.Activas;
             for (int i = 0; i < balizas.Count; i++) if (balizas[i] != null) puntos.Add(balizas[i].Posicion);
-            if (Extras != null) puntos.AddRange(Extras());
+            if (Extras != null) { var extra = Extras(); if (extra != null) puntos.AddRange(extra); }   // Ronda 16: un Func que devuelve null reventaba AddRange
             int usadas = 0, borde = 0;
             if (cam != null)
             {

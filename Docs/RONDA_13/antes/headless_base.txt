@@ -1,0 +1,12 @@
+FALLO
+  - Recien golpeado (100 -> 80), todavia no regenera (False)
+  - A los 8 s de gracia AUN no subio (80 == 60, regenerando=False)
+  - Y no vuelve a subir antes de esperar los 9 s de nuevo (84 <= 81)
+  - Sin modo dios el dano vuelve
+  - Con la regeneracion apagada nadie se cura solo
+  - Ningun codigo de runtime usa Camera.main ni Resources.Load directo (todo pasa por los caches) :: Assets/_Project/Scripts\Core\CapturasDeBuild.Combate.cs: var rig = drv.Rig; var cam = rig != null ? rig.Cam : Camera.main; / Assets/_Project/Scripts\Core\ContextoDeBug.cs: var ta = Resources.Load<TextAsset>("build_sello"); / Assets/_Project/Scripts\Operacion\OperacionDirector.Mansion.cs: var cam = Camera.main; / Assets/_Project/Scripts\Presentation\FuentesDeAgua.cs: var shader = Resources.Load<Shader>("Shaders/AguaDeFuente"); / 
+  - Los Transform.Find por nombre no crecen (140 de 127)
+  - Las busquedas globales de escena no crecen (70 de 0)
+  - Ningun archivo de la lista blanca supera su cupo de busquedas: Core/Loc.cs (2 de 1) Presentation/MinimapIcon.cs (2 de 1) 
+  - La distancia para detenerse bajo de 8 a 4 m
+  - La barra baja con el dano (0,75)

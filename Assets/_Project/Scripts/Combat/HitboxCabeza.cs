@@ -47,7 +47,9 @@ namespace SP.Combat
             {
                 var vs = malla.vertices; var pesos = malla.boneWeights;
                 bool primero = true; var b = new Bounds();
-                for (int i = 0; i < vs.Length; i++)
+                // Malla con bindposes pero sin pesos (boneWeights vacio): indexar pesos[i] reventaba con IndexOutOfRange.
+                int nVert = Mathf.Min(vs.Length, pesos.Length);
+                for (int i = 0; i < nVert; i++)
                 {
                     var w = pesos[i];
                     float peso = (w.boneIndex0 == idx ? w.weight0 : 0f) + (w.boneIndex1 == idx ? w.weight1 : 0f)

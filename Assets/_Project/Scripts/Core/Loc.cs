@@ -80,6 +80,10 @@ namespace SP.Core
             return sb.ToString();
         }
 
+        // Sin recarga de dominio los suscriptores (UI ya destruida) de la corrida anterior seguian recibiendo Cambio.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarEventos() { Cambio = null; }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         static void Iniciar()
         {

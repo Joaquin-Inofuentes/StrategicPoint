@@ -260,7 +260,7 @@ namespace SP.Vehicles
             return pos + velocity * leadTime;
         }
 
-        static readonly RaycastHit[] BufferVision = new RaycastHit[8];
+        static readonly RaycastHit[] BufferVision = new RaycastHit[32];   // RaycastNonAlloc no ordena: con 8 la pared podia no entrar
 
         // Rayo desde la boca del cañon (o desde la torreta si no hay boca)
         // hasta el punto al que se apunta, con la MISMA definicion de pared

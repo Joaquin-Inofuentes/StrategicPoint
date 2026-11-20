@@ -218,14 +218,14 @@ namespace SP.Operacion
         {
             if (Completa) return;
             Progreso01 = Mathf.Clamp01(p);
-            Tanque.PonerVida01(Mathf.Lerp(VidaInicial01, VidaFinal01, Progreso01));
+            if (Tanque != null) Tanque.PonerVida01(Mathf.Lerp(VidaInicial01, VidaFinal01, Progreso01));
         }
 
         void Terminar()
         {
             if (Completa) return;
             Completa = true;
-            Tanque.PonerVida01(VidaFinal01);
+            if (Tanque != null) Tanque.PonerVida01(VidaFinal01);
             SoltarReparador();
             AlCompletar?.Invoke();
         }

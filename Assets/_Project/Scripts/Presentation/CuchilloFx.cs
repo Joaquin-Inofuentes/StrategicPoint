@@ -96,7 +96,8 @@ namespace SP.Presentation
                     Destroy(cuchillo.GetComponent<Collider>());
                     cuchillo.transform.SetParent(transform, false);
                     cuchillo.transform.localScale = new Vector3(0.04f, 0.04f, 0.4f);
-                    cuchillo.GetComponent<Renderer>().sharedMaterial = SafeMaterial.Create(new Color(0.85f, 0.88f, 0.92f));
+                    matCuchillo = SafeMaterial.Create(new Color(0.85f, 0.88f, 0.92f));
+                    cuchillo.GetComponent<Renderer>().sharedMaterial = matCuchillo;
                 }
                 cuchillo.transform.localPosition = new Vector3(0f, 0f, 0.85f);
                 cuchillo.transform.localRotation = Quaternion.identity;
@@ -109,11 +110,20 @@ namespace SP.Presentation
                 tr.time = 0.34f;
                 tr.startWidth = 0.36f; tr.endWidth = 0f;
                 tr.minVertexDistance = 0.03f;
-                tr.sharedMaterial = SafeMaterial.Create(new Color(0.75f, 0.95f, 1f));
+                matEstela = SafeMaterial.Create(new Color(0.75f, 0.95f, 1f));
+                tr.sharedMaterial = matEstela;
                 tr.startColor = new Color(0.75f, 0.95f, 1f, 1f);
                 tr.endColor = new Color(0.6f, 0.85f, 1f, 0f);
                 tr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 Aplicar(0f);
+            }
+
+            // SafeMaterial.Create es HideAndDontSave: cada tajo dejaba 2 materiales huerfanos para siempre.
+            Material matCuchillo, matEstela;
+            void OnDestroy()
+            {
+                if (matCuchillo != null) Destroy(matCuchillo);
+                if (matEstela != null) Destroy(matEstela);
             }
 
             void Aplicar(float k)

@@ -139,7 +139,9 @@ namespace SP.Presentation
         void OnStateChanged(AiStateChangedEvent evt)
         {
             if (soldier == null || evt.ActorId != soldier.Id || markerRenderer == null) return;
-            markerRenderer.sharedMaterial.color = evt.NewState switch
+            var matMarca = markerRenderer.sharedMaterial;
+            if (matMarca == null) { if (ownedMaterial == null) return; markerRenderer.sharedMaterial = matMarca = ownedMaterial; }   // material perdido: NRE al pintar (mismo caso que EnemyAlertIndicatorView)
+            matMarca.color = evt.NewState switch
             {
                 "Chase" or "Attack" or "MovingToAttackOrder" => CombatColor,
                 "MovingToOrder" => OrderColor,

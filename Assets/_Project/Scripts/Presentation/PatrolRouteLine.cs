@@ -99,9 +99,18 @@ namespace SP.Presentation
         // material en particular haya sobrevivido el viaje a disco.
         void Awake() => ReaplicarMaterial();
 
+        Material matRuta;
+        void OnDestroy()
+        {
+            if (matRuta == null) return;
+            if (Application.isPlaying) Destroy(matRuta); else DestroyImmediate(matRuta);
+        }
+
         void ReaplicarMaterial()
         {
-            var mat = SafeMaterial.Create(Color.yellow);
+            // Spawn y Awake lo llaman los dos: reusar el material evita dejar uno huerfano (HideAndDontSave) por cada llamada.
+            if (matRuta == null) matRuta = SafeMaterial.Create(Color.yellow);
+            var mat = matRuta;
             var renderers = GetComponentsInChildren<Renderer>(true);
             foreach (var r in renderers) r.sharedMaterial = mat;
         }

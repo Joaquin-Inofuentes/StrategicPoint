@@ -211,6 +211,10 @@ namespace SP.Player
         // los dos gestos sin agregar latencia al camino de "mantener".
         static readonly Dictionary<string, float> pressStart = new Dictionary<string, float>();
 
+        // Sin recarga de dominio una pulsacion registrada en la corrida anterior hacia que IsHeld/HeldSeconds dieran "mantenida" de entrada.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarPulsaciones() => pressStart.Clear();
+
         public static bool WasTapped(string actionId, float holdSeconds = 0.3f)
         {
             var kb = Keyboard.current;

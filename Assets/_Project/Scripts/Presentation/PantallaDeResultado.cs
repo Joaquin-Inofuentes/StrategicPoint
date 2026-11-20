@@ -183,6 +183,7 @@ namespace SP.Presentation
 
         const float DegradeAlfa = 0.62f;
         static Texture2D texturaDegrade;
+        static Sprite spriteDegrade;   // un solo Sprite: antes cada pantalla de resultado creaba uno nuevo que nadie destruia
 
         // Manchon oscuro elíptico y suave detras de la tabla (primer hijo: queda debajo de todo el texto y los botones).
         static Image CrearDegrade(Transform panel)
@@ -213,7 +214,8 @@ namespace SP.Presentation
             rt.sizeDelta = new Vector2(1500f, 900f);
             rt.anchoredPosition = new Vector2(0f, 10f);
             var img = go.GetComponent<Image>();
-            img.sprite = Sprite.Create(texturaDegrade, new Rect(0, 0, texturaDegrade.width, texturaDegrade.height), new Vector2(0.5f, 0.5f), 100f);
+            if (spriteDegrade == null) { spriteDegrade = Sprite.Create(texturaDegrade, new Rect(0, 0, texturaDegrade.width, texturaDegrade.height), new Vector2(0.5f, 0.5f), 100f); spriteDegrade.hideFlags = HideFlags.HideAndDontSave; }
+            img.sprite = spriteDegrade;
             img.color = new Color(0f, 0f, 0f, 0f);
             img.raycastTarget = false;
             return img;

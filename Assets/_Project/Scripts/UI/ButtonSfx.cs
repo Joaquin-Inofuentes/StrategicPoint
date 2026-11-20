@@ -63,6 +63,7 @@ namespace SP.UI
 
         void AnimarA(Vector3 destino)
         {
+            if (!isActiveAndEnabled) return;   // Ronda 16: StartCoroutine sobre un objeto inactivo tira error
             if (animacionEnCurso != null) StopCoroutine(animacionEnCurso);
             animacionEnCurso = StartCoroutine(LerpEscala(destino));
         }

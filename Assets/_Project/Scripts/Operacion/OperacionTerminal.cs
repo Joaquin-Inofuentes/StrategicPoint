@@ -209,7 +209,7 @@ namespace SP.Operacion
 
         void UpdateSostener(Soldier yo, OperacionHud hud, float dt)
         {
-            bool cerca = yo != null && yo.Health.IsAlive && Distancia(yo) <= radio;
+            bool cerca = yo != null && yo.Health != null && yo.Health.IsAlive && Distancia(yo) <= radio;
             bool sosteniendo = false;
             if (cerca)
             {
@@ -246,7 +246,7 @@ namespace SP.Operacion
 
             if (Operador == null)
             {
-                bool alLado = yo != null && yo.Health.IsAlive && Distancia(yo) <= radio;
+                bool alLado = yo != null && yo.Health != null && yo.Health.IsAlive && Distancia(yo) <= radio;
                 if (alLado && !PuedeOperar(yo))
                 {
                     if (EToque()) RolRequerido.Avisar(yo, rol, "OPERAR " + titulo);

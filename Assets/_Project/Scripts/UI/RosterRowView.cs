@@ -279,6 +279,7 @@ namespace SP.UI
         void OnDamage(DamageTakenEvent evt)
         {
             if (evt.TargetId != SoldierId || !alive) return;
+            if (Soldier == null || Soldier.Health == null) return;   // Ronda 16: soldado destruido o sin Health
             RefreshHealthBar(evt.RemainingHealth, Soldier.Health.MaxHealth);
             RefreshLabel();
         }
@@ -286,6 +287,7 @@ namespace SP.UI
         void OnHealed(HealedEvent evt)
         {
             if (evt.TargetId != SoldierId || !alive) return;
+            if (Soldier == null || Soldier.Health == null) return;   // Ronda 16: idem OnDamage
             RefreshHealthBar(evt.RemainingHealth, Soldier.Health.MaxHealth);
             RefreshLabel();
         }

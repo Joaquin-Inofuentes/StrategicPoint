@@ -16,6 +16,7 @@ namespace SP.Core
 
         // Bug #052: cada linea hacia Debug.Log CON pila (en el editor, ~1 ms por linea: ExtractStackTrace) y reescribia el
         // archivo entero. Ahora sin pila y el archivo se escribe como mucho una vez por segundo.
+        const int MaximoDelBuffer = 400000;
         static float ultimaEscritura = -10f;
         static bool pendiente;
 
@@ -23,6 +24,8 @@ namespace SP.Core
         {
             Debug.LogFormat(LogType.Log, LogOption.NoStacktrace, null, "[FLUJO] {0}", message);
             buffer.AppendLine(message);
+            // Sin tope el buffer crecia toda la sesion y cada volcado reescribia el archivo entero (memoria y E/S cada vez mayores).
+            if (buffer.Length > MaximoDelBuffer) buffer.Remove(0, buffer.Length - MaximoDelBuffer / 2);
             pendiente = true;
             if (Time.realtimeSinceStartup - ultimaEscritura >= 1f) TryFlush();
         }
@@ -34,7 +37,8 @@ namespace SP.Core
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void EngancharSalida() => Application.quitting += () => { if (pendiente) TryFlush(); };
+        static void EngancharSalida() { Application.quitting -= AlSalir; Application.quitting += AlSalir; }   // la lambda anterior se acumulaba en cada Play sin recarga de dominio
+        static void AlSalir() { if (pendiente) TryFlush(); }
 
         static string FilePath => Path.Combine(Application.dataPath, "..", "GameFlowLog.txt");
 

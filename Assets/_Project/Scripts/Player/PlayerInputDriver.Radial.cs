@@ -731,7 +731,7 @@ namespace SP.Player
             if (sub == 1) // YO DEMUELO
             {
                 if (yo == null || yo.Role != RoleType.Assault) { RejectOrder("SOLO EL ASALTO DEMUELE"); return false; }
-                var d = yo.GetComponent<DemoledorAsalto>() ?? yo.gameObject.AddComponent<DemoledorAsalto>();
+                if (!yo.TryGetComponent<DemoledorAsalto>(out var d)) d = yo.gameObject.AddComponent<DemoledorAsalto>();
                 if (!d.IniciarComoJugador(marcador, out motivo)) { RejectOrder(motivo); return false; }
                 Avisar("QUEDATE QUIETO Y AGACHADO");
                 return true;
@@ -742,7 +742,7 @@ namespace SP.Player
             foreach (var s in DestinatariosDeOrden())
                 if (s.Role == RoleType.Assault) { asalto = s; break; }
             if (asalto == null) { RejectOrder(yo != null && yo.Role == RoleType.Assault ? "VOS SOS EL ASALTO: USA YO DEMUELO" : "NO HAY UN ASALTO LIBRE"); return false; }
-            var dem = asalto.GetComponent<DemoledorAsalto>() ?? asalto.gameObject.AddComponent<DemoledorAsalto>();
+            if (!asalto.TryGetComponent<DemoledorAsalto>(out var dem)) dem = asalto.gameObject.AddComponent<DemoledorAsalto>();
             if (!dem.IniciarComoAliado(marcador, out motivo)) { RejectOrder(motivo); return false; }
             Avisar(asalto.DisplayName.ToUpperInvariant() + " VA A DEMOLER");
             return true;

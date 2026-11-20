@@ -76,6 +76,9 @@ namespace SP.Player
                 && ActorRegistry.FindNearestEnemyInRange(s.transform.position, s.Team, RadioDeSeguridad) == null);
         }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarEstaticos() => Cancelar();
+
         public static void Cancelar()
         {
             Caido = null;

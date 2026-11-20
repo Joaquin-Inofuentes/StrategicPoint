@@ -21,6 +21,7 @@ namespace SP.Presentation
         const int MAX_RINGS = 4;
         RingState[] rings;
         System.IDisposable damageSubscription;
+        Material lineMaterial;
 
         void Awake()
         {
@@ -30,7 +31,7 @@ namespace SP.Presentation
             if (minimapLayer == -1) minimapLayer = 0;
 
             // Usa un material simple para que se vea el color
-            Material lineMat = new Material(Shader.Find("Sprites/Default"));
+            var lineShader = Shader.Find("Sprites/Default"); Material lineMat = lineShader != null ? new Material(lineShader) : SafeMaterial.Create(Color.red); lineMaterial = lineMat;
             Color ringColor = Color.red;
 
             for (int i = 0; i < MAX_RINGS; i++)
@@ -68,6 +69,7 @@ namespace SP.Presentation
         void OnDestroy()
         {
             if (Activo == this) Activo = null;
+            if (lineMaterial != null) Destroy(lineMaterial);
         }
 
         void OnDamageTaken(DamageTakenEvent evt)

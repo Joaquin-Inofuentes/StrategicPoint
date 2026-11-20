@@ -45,7 +45,12 @@ namespace SP.UI
         public void Rebuild()
         {
             for (int i = transform.childCount - 1; i >= 0; i--)
-                Destroy(transform.GetChild(i).gameObject);
+            {
+                // Ronda 16: Destroy es diferido; las filas viejas seguian vivas y suscriptas (y en el layout) junto a las nuevas hasta fin de frame.
+                var viejo = transform.GetChild(i).gameObject;
+                viejo.SetActive(false);
+                Destroy(viejo);
+            }
 
             if (rowPrefab == null) return;
             var driver = PlayerInputDriver.Activo;

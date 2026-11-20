@@ -104,8 +104,17 @@ namespace SP.UI
 
         void OnDestroy() => sub?.Dispose();
 
+        // Ronda 16: al desactivarse la corrutina muere sin llegar a ocultar la flecha, y routine queda apuntando a una corrutina muerta.
+        void OnDisable()
+        {
+            routine = null;
+            if (arrow != null) arrow.gameObject.SetActive(false);
+        }
+
         void OnDamage(DamageTakenEvent evt)
         {
+            // Ronda 16: la suscripcion vive hasta OnDestroy; con la vista desactivada StartCoroutine tiraria error.
+            if (!isActiveAndEnabled) return;
             if (!Application.isPlaying || arrow == null || brain == null || brain.Current == null) return;
             if (evt.TargetId != brain.Current.Id) return;
 

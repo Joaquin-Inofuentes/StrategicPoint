@@ -149,6 +149,7 @@ namespace SP.Operacion
             if (avisoGrupo != null) Destroy(avisoGrupo.gameObject);
             if (jefeRaiz != null) Destroy(jefeRaiz);
             if (ilumRaiz != null) Destroy(ilumRaiz);
+            if (vinetaTex != null) Destroy(vinetaTex);
         }
 
         static RectTransform Relleno(Transform padre, Color color)
@@ -353,6 +354,7 @@ namespace SP.Operacion
 
         // ---- WP8 (#078): "TE ESTAN ILUMINANDO". Vineta blanca en el borde de la pantalla + cartel mientras un reflector del cuartel te sigue. ----
         GameObject ilumRaiz;
+        Texture2D vinetaTex;
         CanvasGroup ilumGrupo;
         Text ilumTexto;
         bool ilumPedido;
@@ -375,6 +377,7 @@ namespace SP.Operacion
             // Vineta: un degradado radial transparente al centro y blanco hacia los bordes.
             const int n = 128;
             var tex = new Texture2D(n, n, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Clamp, name = "VinetaDeReflector" };
+            vinetaTex = tex;   // ronda 16: se libera en OnDestroy (antes se fugaban textura y sprite en cada Hud)
             for (int y = 0; y < n; y++)
                 for (int x = 0; x < n; x++)
                 {

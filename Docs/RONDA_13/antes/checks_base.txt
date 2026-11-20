@@ -1,0 +1,234 @@
+﻿# LINEA BASE ANTES (E2) - 2026-11-16, HEAD 95b80a95, sin tocar el juego
+# ChecksBugs065 en el Editor, aislar=True. Lote subconjunto (36 checks): 23 OK, 13 FALLO.
+# El lote completo (1052 entradas, ~30 s cada una = ~9 h) NO se completo: se corto tras 17 entradas (ver checks_lote_completo_parcial.txt; 1 FALLO: #073 ya incluido).
+# Subconjunto = checks que el plan nombra o que tocan lo que T-n cambia: 501a-g, 602a-f, 407u, 409u, 950a-957a, 960a-963a, 065a, 088, 069a-c, 072a, 072v, 073, 073b.
+
+## YA FALLAN ANTES (no deben contarse como regresion): #501a #501b #501d #501e #501f #501g #602b #407u #409u #954a #960a #073 #073b
+
+## Detalle (lineas completas)
+# corrida 2026-11-16 12:30:43 aislar=True checks=36
+12:31:06 #501a FALLO [enemigo Enemigo_Artillero_TV2 @ -45,5,2,9,-232,0: fuera del NavMesh] [enemigo Enemigo_Artillero_TV1 @ 45,5,2,9,-272,0: fuera del NavMesh] 109 puntos de aparicion auditados OK; 2 puntos de aparicion con problemas MAL; 10 islas de NavMesh sin conexion con la escuadra (con los portones como estan) MAL; 
+  isla 1 (41 puntos, NO conecta con la escuadra): reserva Reserva_Ciudad2_3@322,284, reserva Reserva_Reparacion_O3@-44,20, reserva Reserva_Ciudad2_5@328,284, reserva Reserva_Ciudad1_4@376,231, reserva Reserva_Reparacion_E4@47,27, reserva PlantillaDeRefuerzo_Ciudad@372,222
+  isla 2 (12 puntos, NO conecta con la escuadra): enemigo Enemigo_PuestoOeste_1@-45,-180, enemigo Enemigo_PuestoEste_4@50,-179, enemigo Enemigo_Trinchera_E@12,-198, enemigo Enemigo_PuestoEste_5@54,-187, enemigo Enemigo_PuestoOeste_2@-40,-179, enemigo Enemigo_PuestoOeste_5@-52,-187
+  isla 3 (6 puntos, NO conecta con la escuadra): reserva Reserva_PuestoOeste_1@-45,-172, reserva Reserva_PuestoOeste_3@-45,-175, reserva Reserva_PuestoOeste_2@-45,-173, reserva Reserva_PuestoOeste_4@-47,-172, reserva Reserva_PuestoOeste_5@-47,-173, reserva Reserva_PuestoOeste_6@-47,-175
+  isla 4 (1 puntos, NO conecta con la escuadra): enemigo Enemigo_Artillero_TV2@-46,-232
+  isla 5 (6 puntos, NO conecta con la escuadra): reserva Reserva_PuestoEste_3@45,-175, reserva Reserva_PuestoEste_2@45,-173, reserva Reserva_PuestoEste_6@47,-175, reserva Reserva_PuestoEste_4@47,-172, reserva Reserva_PuestoEste_5@47,-173, reserva Reserva_PuestoEste_1@45,-172
+  isla 6 (19 puntos, NO conecta con la escuadra): enemigo Enemigo_Corredor_1@-26,-154, reserva Reserva_CD3_5@52,-68, reserva Reserva_CD2_2@-46,-55, reserva Reserva_CD2_1@-52,-50, reserva Reserva_CD3_2@46,-55, reserva Reserva_CD1_3@0,-104
+  isla 7 (1 puntos, NO conecta con la escuadra): enemigo Enemigo_Nido_Este@38,-172
+  isla 8 (1 puntos, NO conecta con la escuadra): enemigo Enemigo_Artillero_TV1@46,-272
+  isla 9 (1 puntos, NO conecta con la escuadra): reserva Reserva_Ciudad1_2@376,225
+  isla 10 (1 puntos, NO conecta con la escuadra): enemigo Enemigo_Nido_Oeste@-38,-172
+12:31:59 #501b FALLO antes de explotar: 5721 ya sin apoyo; detonados: 2 cargas, 4 torres, 305 obstaculos; 88 piezas flotando tras las explosiones MAL; 
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Copa y=3,1 tam=3,5x3,1x3,5 @ 377,219
+  Ciudad/11_Prestigio/P_Op_Pres_Calles/Estatua_Cuerpo y=1,3 tam=0,7x1,3x0,7 @ 301,233
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Cable y=4,2 tam=2,7x0,0x0,0 @ 344,206
+  DefensaDelCentro/TorretaAliada_1/Pivote/Cuerpo y=0,9 tam=0,7x0,4x0,8 @ -9,-38
+  8_Mansion/P_Op_8_Mansion/Detalle/Cornisa_E_1 y=6,2 tam=0,3x0,4x40,6 @ 348,266
+  Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,1 tam=0,1x0,1x0,1 @ -9,-167
+  P_Mod_Muro_Recto/GRP_Mod_Muros/GRP_Mod_Muro_Recto/SM_Mod_Muro_Recto y=2,5 tam=7,6x2,5x0,6 @ -50,-171
+  Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,1 tam=0,1x0,1x0,1 @ 9,-166
+  Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,0 tam=0,1x0,1x0,1 @ 9,-168
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 tam=0,6x0,5x4,0 @ 374,205
+  10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Arbol_Plaza/Copa y=2,8 tam=3,2x2,8x3,2 @ 316,213
+  DefensaDelCentro/TorretaAliada_3/Pivote/LuzAliada y=1,3 tam=0,2x0,1x0,2 @ 0,-33
+  Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,1 tam=0,1x0,1x0,1 @ 9,-164
+  Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,0 tam=0,1x0,1x0,1 @ -10,-164
+  Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,0 tam=0,1x0,1x0,1 @ 9,-167
+  13_Caminos2/P_Op_Cam2_Patios/Patio_Arbol/Copa y=3,1 tam=3,5x3,1x3,5 @ 279,213
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 tam=0,6x0,5x4,0 @ 342,205
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 tam=4,0x0,5x0,6 @ 287,220
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 tam=0,6x0,5x4,0 @ 353,273
+  Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,0 tam=0,1x0,1x0,1 @ -10,-164
+  Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,0 tam=0,1x0,1x0,1 @ -10,-165
+  Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,0 tam=0,1x0,1x0,1 @ -9,-167
+  13_Caminos2/P_Op_Cam2_Patios/Patio_Arbol/Copa y=3,1 tam=3,5x3,1x3,5 @ 367,213
+  Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,0 tam=0,1x0,1x0,1 @ 9,-163
+  Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,1 tam=0,1x0,1x0,1 @ 8,-168
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 tam=4,0x0,5x0,6 @ 358,220
+  Ciudad/10_CiudadIntegral/P_Op_Ciudad_Edificio_17/Placa_Dorada y=1,4 tam=0,6x0,4x0,1 @ 343,207
+  Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,1 tam=0,1x0,1x0,1 @ 9,-166
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Copa y=3,0 tam=3,5x3,0x3,5 @ 270,210
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Cable y=4,2 tam=2,7x0,0x0,0 @ 274,256
+  DefensaDelCentro/TorretaAliada_3/Pivote/Cañon y=1,0 tam=0,1x0,1x1,1 @ 0,-32
+  Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,1 tam=0,1x0,1x0,1 @ -10,-163
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Cable y=4,2 tam=2,7x0,0x0,0 @ 344,189
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Copa y=3,0 tam=3,5x3,0x3,5 @ 377,240
+  Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,0 tam=0,1x0,1x0,1 @ 9,-166
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 tam=0,6x0,5x4,0 @ 291,273
+  8_Mansion/P_Op_8_Mansion/Detalle/Leon_Cuerpo y=1,3 tam=0,9x0,8x1,2 @ 309,241
+  Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,1 tam=0,1x0,1x0,1 @ -10,-164
+  Ciudad/11_Prestigio/P_Op_Pres_Calles/Banco_Asiento y=0,5 tam=0,7x0,1x2,2 @ 308,214
+  Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,1 tam=0,1x0,1x0,1 @ -9,-167
+12:32:31 #501c OK 29 puntos de la mansion auditados (origen (266, 0, 226)) OK; 0 puntos de la mansion con problemas OK; 
+12:41:50 #501d FALLO 52 de 310 obstaculos dejan 64 piezas flotando MAL; 
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Tronco @ 377,1,7,210 -> 1: 10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Copa y=3,0 dueno=-
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Tronco @ 270,1,7,210 -> 1: 10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Copa y=3,0 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 353,2,5,275 -> 2: Ciudad/12_Caminos/P_Op_Cam_Callejones/Cable y=4,2 dueno=- ; Ciudad/10_CiudadIntegral/P_Op_Ciudad_Edificio_6/Placa_Dorada y=1,4 dueno=-
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Auto_3/Carroceria @ 294,0,7,272 -> 1: 10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Auto_3/Cabina y=1,1 dueno=Cabina (en pie, etapa 0)
+  Ciudad/10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Refugio_Fondo @ 296,1,2,242 -> 1: Ciudad/10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Refugio_Techo y=2,4 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 272,2,5,206 -> 1: Ciudad/12_Caminos/P_Op_Cam_Callejones/Cable y=4,2 dueno=-
+  10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Arbol_Plaza/Tronco @ 337,1,6,234 -> 1: 10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Arbol_Plaza/Copa y=2,8 dueno=-
+  Ciudad/11_Prestigio/P_Op_Pres_Calles/Pedestal @ 301,0,7,233 -> 1: Ciudad/11_Prestigio/P_Op_Pres_Calles/Sombrilla_Mastil y=0,8 dueno=-
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Tronco @ 377,1,7,240 -> 1: 10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Copa y=3,0 dueno=-
+  Ciudad/10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Jardinera @ 310,0,4,241 -> 2: P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Plaza_3 (en pie, etapa 0) ; P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Plaza_3 (en pie, etapa 0)
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Tronco @ 377,1,7,201 -> 1: 10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Copa y=3,0 dueno=-
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Auto_9/Carroceria @ 305,0,7,206 -> 1: 10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Auto_9/Cabina y=1,1 dueno=Cabina (en pie, etapa 0)
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Auto_8/Carroceria @ 305,0,7,192 -> 1: 10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Auto_8/Cabina y=1,1 dueno=Cabina (en pie, etapa 0)
+  10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Arbol_Plaza/Tronco @ 316,1,6,213 -> 1: 10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Arbol_Plaza/Copa y=2,8 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Mansion/Servicio_Rellano @ 349,6,4,264 -> 1: 8_Mansion/P_Op_8_Mansion/Detalle/Cornisa_E_1 y=6,2 dueno=-
+  Ciudad/8_Mansion/P_Op_8_Mansion/P1_Banco_Galeria @ 342,7,0,270 -> 1: 8_Mansion/P_Op_8_Mansion/Detalle/Follaje_1 y=7,3 dueno=-
+  2_MurallaDeContencion/ZonaDeAproximacion/Auto_Quemado_2/Auto_Quemado_2_Carroceria @ 13,0,6,-184 -> 1: P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Campo_1_E (en pie, etapa 0)
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 374,2,5,206 -> 1: Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 272,2,5,203 -> 1: Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=-
+  Cuarteles/2_MurallaDeContencion/ZonaDeAproximacion/Caja_Campo_2_O @ -33,0,6,-185 -> 2: P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Puesto_Oeste_4 (en pie, etapa 0) ; P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Puesto_Oeste_4 (en pie, etapa 0)
+  Operacion/1_Cuartel/Estructuras/Torre_TF1 @ -57,0,0,-296 -> 1: P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Puesto_Oeste_3 (en pie, etapa 0)
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Tronco @ 270,1,8,201 -> 1: 10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Copa y=3,1 dueno=-
+  13_Caminos2/P_Op_Cam2_Patios/Patio_Arbol/Tronco @ 364,1,8,264 -> 1: 13_Caminos2/P_Op_Cam2_Patios/Patio_Arbol/Copa y=3,1 dueno=-
+  13_Caminos2/P_Op_Cam2_Patios/Patio_Arbol/Tronco @ 279,1,8,213 -> 1: 13_Caminos2/P_Op_Cam2_Patios/Patio_Arbol/Copa y=3,1 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Mansion/Servicio_Rellano @ 295,6,4,264 -> 1: 8_Mansion/P_Op_8_Mansion/Detalle/Cornisa_O_1 y=6,2 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 272,2,5,256 -> 2: Ciudad/12_Caminos/P_Op_Cam_Callejones/Cable y=4,2 dueno=- ; Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=-
+  Ciudad/6_Ciudad/Saco_Plaza_2 @ 334,0,6,242 -> 1: 8_Mansion/P_Op_8_Mansion/Detalle/Leon_Cuerpo y=1,3 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 291,2,5,272 -> 1: Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=-
+  Cuarteles/2_MurallaDeContencion/ZonaDeAproximacion/Saco_Puesto_Este_2 @ 34,0,6,-182 -> 1: P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Puesto_Este_1 (en pie, etapa 0)
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 356,2,5,220 -> 1: Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=-
+  Ciudad/10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Jardinera @ 335,0,4,216 -> 3: Ciudad/11_Prestigio/P_Op_Pres_Calles/Banco_Asiento y=0,5 dueno=- ; P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Plaza_4 (en pie, etapa 0) ; P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Plaza_4 (en pie, etapa 0)
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 342,2,5,189 -> 3: Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=- ; Ciudad/10_CiudadIntegral/P_Op_Ciudad_Edificio_15/Placa_Dorada y=1,4 dueno=- ; Ciudad/12_Caminos/P_Op_Cam_Callejones/Cable y=4,2 dueno=-
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Tronco @ 377,1,8,219 -> 1: 10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Copa y=3,1 dueno=-
+  10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Arbol_Plaza/Tronco @ 337,1,6,222 -> 1: 10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Arbol_Plaza/Copa y=2,8 dueno=-
+  Operacion/1_Cuartel/Estructuras/Torre_TF2 @ 55,0,0,-228 -> 1: P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Puesto_Este_4 (en pie, etapa 0)
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 302,2,5,186 -> 1: Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 285,2,5,220 -> 1: Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=-
+  13_Caminos2/P_Op_Cam2_Patios/Patio_Arbol/Tronco @ 367,1,8,213 -> 1: 13_Caminos2/P_Op_Cam2_Patios/Patio_Arbol/Copa y=3,1 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 353,2,5,256 -> 2: Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=- ; Ciudad/12_Caminos/P_Op_Cam_Callejones/Cable y=4,2 dueno=-
+  Ciudad/6_Ciudad/Saco_Plaza_3 @ 310,0,6,242 -> 1: 8_Mansion/P_Op_8_Mansion/Detalle/Leon_Cuerpo y=1,3 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 353,2,5,272 -> 1: Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=-
+  Ciudad/6_Ciudad/Farola_Poste @ 333,3,0,168 -> 1: Ciudad/Fusionados/Luces/Lampara_x320_z160 y=6,0 dueno=-
+  Cuarteles/2_MurallaDeContencion/ZonaDeAproximacion/Saco_Puesto_Oeste_3 @ -34,0,6,-182 -> 2: P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Puesto_Oeste_4 (en pie, etapa 0) ; P_Env_Barricada_Sacos/GRP_Env_Cobertura/GRP_Env_Barricada_Sacos/SM_Env_Barricada_Sacos y=0,6 dueno=Saco_Puesto_Oeste_4 (en pie, etapa 0)
+  10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Tronco @ 377,1,8,249 -> 1: 10_CiudadIntegral/P_Op_Ciudad_Mobiliario/Arbol_Vereda/Copa y=3,1 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Calles/Barrera_Jersey @ 292,0,5,233 -> 1: Ciudad/11_Prestigio/P_Op_Pres_Calles/Silla_Asiento y=0,6 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 302,2,5,206 -> 1: Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 291,2,5,253 -> 1: Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=-
+  Ciudad/10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Jardinera @ 310,0,4,216 -> 1: Ciudad/11_Prestigio/P_Op_Pres_Calles/Banco_Asiento y=0,5 dueno=-
+  10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Arbol_Plaza/Tronco @ 328,1,6,213 -> 1: 10_CiudadIntegral/P_Op_Ciudad_PlazaCivica/Arbol_Plaza/Copa y=2,8 dueno=-
+  13_Caminos2/P_Op_Cam2_Patios/Patio_Arbol/Tronco @ 282,1,8,264 -> 1: 13_Caminos2/P_Op_Cam2_Patios/Patio_Arbol/Copa y=3,1 dueno=-
+  Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Pilar @ 342,2,5,206 -> 3: Ciudad/12_Caminos/P_Op_Cam_Callejones/Cable y=4,2 dueno=- ; Ciudad/10_CiudadIntegral/P_Op_Ciudad_Edificio_17/Placa_Dorada y=1,4 dueno=- ; Ciudad/12_Caminos/P_Op_Cam_Callejones/Arco_Dintel y=4,8 dueno=-
+  Ciudad/6_Ciudad/Farola_Poste @ 378,3,0,221 -> 1: Ciudad/Fusionados/Luces/Lampara_x360_z200 y=6,0 dueno=-
+12:42:49 #501e FALLO [PORTON NORTE: 1 flotando] [PORTON: 30 flotando] [generador: 0 flotando] 31 piezas flotando tras las explosiones reales MAL; 
+  carga PORTON NORTE: 1_Cuartel/Estructuras/Reflector_R4/Reflector_Baranda_A y=6,4 @ 16,-234
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,1 @ 9,-166
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,1 @ -9,-165
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,1 @ -10,-163
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,1 @ 9,-164
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,0 @ 9,-163
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,0 @ -10,-164
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,0 @ 9,-167
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,0 @ -10,-164
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,1 @ -9,-167
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,0 @ -10,-166
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,1 @ 8,-167
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,1 @ -10,-164
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,0 @ 9,-166
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,1 @ 8,-168
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,0 @ -9,-167
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,1 @ 9,-166
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,1 @ 9,-165
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,1 @ -9,-168
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,0 @ 9,-165
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,1 @ -9,-166
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,0 @ -10,-165
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,0 @ 9,-164
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,1 @ -9,-167
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,0 @ -9,-167
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,0 @ 9,-167
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,1 @ 9,-163
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Cerradura_Placa y=1,4 @ 9,-162
+  carga PORTON: 2_MurallaDeContencion/Muralla/Porton_Blindado_Arte/Dintel y=4,6 @ 0,-170
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Izq/Remache y=4,0 @ -9,-168
+  carga PORTON: Muralla/Porton_Blindado_Arte/Hoja_Der/Remache y=4,0 @ 9,-168
+12:43:20 #501f FALLO [reserva Enemigo_Nido_Este @ 38,0,4,8,-172,3: fuera del NavMesh] [reserva Enemigo_Nido_Oeste @ -38,0,4,8,-172,3: fuera del NavMesh] 2 de 107 puntos con problemas (objetivo 5) MAL; 4 islas sin conexion con la escuadra (objetivo 5) MAL; 
+  isla 1 (63 puntos, NO conecta con la escuadra): reserva Enemigo_Corredor_3@9,-112, reserva Reserva_PuestoOeste_4@-47,-172, reserva Enemigo_Cuartel_12@34,-304, reserva Reserva_PuestoEste_3@45,-175, reserva Reserva_CD1_3@0,-104, reserva Enemigo_Cuartel_20@6,-237
+  isla 2 (1 puntos, NO conecta con la escuadra): reserva Enemigo_Nido_Este@38,-172
+  isla 3 (1 puntos, NO conecta con la escuadra): reserva Enemigo_Nido_Oeste@-38,-172
+  isla 4 (1 puntos, NO conecta con la escuadra): reserva Reserva_Ciudad1_2@376,225
+12:43:52 #501g FALLO 1 obstaculos con el collider desalineado del arte MAL; 10 colliders invisibles sin ninguna malla MAL; 65 piezas solidas visibles sin collider (se atraviesan) MAL; 
+(1) Cuarteles/1_Cuartel/Caja_P1 @ -7,-298: desfase 0,0 m, collider/arte 0,96..1,61
+(2) Cuarteles/9_Servidores/PuertasDeAcceso/Hoja_O @ -8,9,1,-93 tam 2,6x14,4x0,0
+  Cuarteles/9_Servidores/PuertasDeAcceso/Jamba_N @ 70,12,9,-81 tam 2,9x21,2x0,2
+  Cuarteles/9_Servidores/PuertasDeAcceso/Hoja_S @ 30,9,1,-158 tam 0,0x14,4x2,6
+  Cuarteles/9_Servidores/PuertasDeAcceso/Jamba_S @ 70,12,9,-90 tam 2,9x21,2x0,2
+  Cuarteles/9_Servidores/PuertasDeAcceso/Jamba_N @ -70,12,9,-81 tam 2,9x21,2x0,2
+  Cuarteles/9_Servidores/PuertasDeAcceso/Hoja_S @ -30,9,1,-158 tam 0,0x14,4x2,6
+  Cuarteles/9_Servidores/PuertasDeAcceso/Jamba_S @ -70,12,9,-90 tam 2,9x21,2x0,2
+  Cuarteles/9_Servidores/PuertasDeAcceso/Hoja_N @ -30,9,1,-148 tam 0,0x14,4x2,6
+  Cuarteles/9_Servidores/PuertasDeAcceso/Hoja_N @ 30,9,1,-148 tam 0,0x14,4x2,6
+  Cuarteles/9_Servidores/PuertasDeAcceso/Hoja_E @ 8,9,1,-93 tam 2,6x14,4x0,0
+(3) 8_Mansion/P_Op_8_Mansion/Detalle/Follaje_1 @ 326,282 tam 1,5x1,5x1,5
+  8_Mansion/P_Op_8_Mansion/Detalle/Ventana_S @ 343,246 tam 1,8x3,0x0,1
+  Ruta/Edificios/Edificio_2/Puerta @ -110,183 tam 1,5x2,4x0,1
+  P_Env_Arbusto_Grande/GRP_Env_Vegetacion/GRP_Env_Arbusto_Grande/SM_Env_Arbusto_Grande @ -235,57 tam 3,5x2,3x3,5
+  P_Env_Arbusto_Medio/GRP_Env_Vegetacion/GRP_Env_Arbusto_Medio/SM_Env_Arbusto_Medio @ 367,78 tam 2,0x1,4x2,0
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 340,247 tam 2,6x2,6x0,1
+  Muro_Salida_Norte/Adjuntos/Porton_Salida_Arte/Cruz_A @ 3,-41 tam 5,1x5,4x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 343,247 tam 2,6x2,6x0,1
+  Pivote/Ametralladora/Canones_AA/AA_Tubo @ -43,-232 tam 1,9x2,7x0,1
+  P_Env_Arbusto_Medio/GRP_Env_Vegetacion/GRP_Env_Arbusto_Medio/SM_Env_Arbusto_Medio @ 73,289 tam 2,6x1,7x2,5
+  Cuarteles/9_Servidores/PuertasDeAcceso/Hoja_O @ -3,-80 tam 1,6x3,8x0,2
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 336,285 tam 2,6x2,6x0,1
+  P_Env_Arbusto_Medio/GRP_Env_Vegetacion/GRP_Env_Arbusto_Medio/SM_Env_Arbusto_Medio @ 145,-333 tam 2,1x1,4x2,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 326,285 tam 2,6x2,6x0,1
+  Pivote/Ametralladora/Canones_AA/AA_Tubo @ 43,-272 tam 1,9x2,7x0,1
+  Pivote/Ametralladora/Canones_AA/AA_Tubo @ -43,-232 tam 1,9x2,7x0,1
+  Ruta/Edificios/Edificio_1/Puerta @ -50,158 tam 1,5x2,4x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 303,247 tam 2,6x2,6x0,1
+  Cuarteles/9_Servidores/PuertasDeAcceso/Hoja_N @ -26,-57 tam 0,2x3,8x1,6
+  8_Mansion/P_Op_8_Mansion/Detalle/Follaje_1 @ 344,250 tam 1,5x1,5x1,5
+  Cuarteles/9_Servidores/PuertasDeAcceso/Hoja_S @ -26,-61 tam 0,2x3,8x1,6
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 330,247 tam 2,6x2,6x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 330,285 tam 2,6x2,6x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 310,285 tam 2,6x2,6x0,1
+  P_Env_Arbusto_Medio/GRP_Env_Vegetacion/GRP_Env_Arbusto_Medio/SM_Env_Arbusto_Medio @ -145,-96 tam 2,5x1,6x2,3
+  Cuarteles/9_Servidores/PuertasDeAcceso/Hoja_E @ 3,-80 tam 1,6x3,8x0,2
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 334,247 tam 2,6x2,6x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 337,247 tam 2,6x2,6x0,1
+  P_Env_Arbusto_Medio/GRP_Env_Vegetacion/GRP_Env_Arbusto_Medio/SM_Env_Arbusto_Medio @ -192,-316 tam 1,9x1,4x2,0
+  Muro_Salida_Norte/Adjuntos/Porton_Salida_Arte/Cruz_B @ -3,-39 tam 5,1x5,4x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 299,247 tam 2,6x2,6x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Ventana_S @ 332,246 tam 1,8x3,0x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 314,285 tam 2,6x2,6x0,1
+  P_Env_Arbusto_Medio/GRP_Env_Vegetacion/GRP_Env_Arbusto_Medio/SM_Env_Arbusto_Medio @ -340,365 tam 1,9x1,5x2,0
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 320,285 tam 2,6x2,6x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Follaje_1 @ 332,250 tam 1,5x1,5x1,5
+  8_Mansion/P_Op_8_Mansion/Detalle/Ventana_S @ 311,246 tam 1,8x3,0x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Ventana_S @ 300,246 tam 1,8x3,0x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Boiserie @ 323,285 tam 2,6x2,6x0,1
+  8_Mansion/P_Op_8_Mansion/Detalle/Ventana_S @ 305,246 tam 1,8x3,0x0,1
+12:44:33 #602a OK fotos v6_*_despues
+12:45:45 #602b FALLO en 40 s: 13983 muestras, flotando >30 cm=35 (3 soldados) MAL; [Perro_2 max hueco 1,03 m en (296.7, 1.8, 266.8) piso=0,00 agente saltando=False] [Perro_3 max hueco 1,10 m en (304.1, 1.9, 270.1) piso=0,00 agente saltando=False] [Perro_4 max hueco 1,05 m en (302.7, 1.8, 272.3) piso=0,00 agente saltando=False] 
+12:46:16 #602c OK se creo el pesado (molde Mansion_Enemigo_1 bajo Ciudad, clon activo en la jerarquia: True) OK; vida x4 (180 -> 2160) OK; lleva la minigun (Minigun) OK; usa su animacion de Mixamo (controlador AC_Pesado) OK; minigun: cadencia 18 disp/s, cargador 160, recarga 4,2 s (pesada) OK; cuerpo del doble de tamano x2,00 OK; su disparo es propio (clip de 0,32 s, tono de 70 Hz) y CubeFxReactor le suma el golpe grave de la Heavy OK; al ver al enemigo se estaciona OK; se queda quieto 2 s de juego antes del frenesi (2,02 s) OK; durante el frenesi no se mueve OK; 
+12:47:14 #602d OK el jugador quedo de artillero OK; se creo un helicoptero enemigo OK; vida x5 (320 -> 1600) OK; es resistente: un golpe de 100 le saca 60 (factor 0,6) OK; el canon del tanque del jugador dispara x2,0 OK; cooldown efectivo 0,55 s contra 1,10 s sin el x2 (mas rapido, base 1,10) OK; la huida pide ritmo variable OK; el ritmo de marcha varia entre x1,00 y x1,60 OK; la terminal de las celdas existe OK; la pantalla de la terminal es emisiva OK; las demas luces del piso estan atenuadas (33) OK; antes de usar la terminal las celdas siguen cerradas OK; a 1,5 m de la terminal se esta dentro del alcance (1,5 m < 3,6) OK; 
+12:47:54 #602e OK la camara esta en RTS OK; [mouses=2 actual==mio:True] el aliado entra en el encuadre RTS (pantalla (1652.60, 336.48, 31.13), vista 1920x1080) OK; [+0,3m ->nadie aim=Ground pos=(1640.87, 326.64)] [+0,9m ->nadie aim=Ally pos=(1144.24, 505.15)] [+1,5m ->nadie aim=Ally pos=(1056.62, 544.83)] [+2,2m ->Soldado_1_Vega aim=Ally pos=(1006.46, 573.65)] al apuntar a Soldado_1_Vega se lo resalta (apuntado=Soldado_1_Vega; motivo=aim=Ally pos=(1006.46, 573.65); pantalla=(1006.46, 573.65, 36.34); mouse=(0.00, 0.00)) OK; tiene el aro de resalte encima OK; [i0 Q enviada modo=Fps] [Q] apuntando a un aliado lo posee (ahora Soldado_1_Vega) OK; pasa a primera persona OK; en RTS se ocultan 172 piezas colgantes de la sala de servidores (paneles de luz, vigas) OK; al volver a FPS se dibujan de nuevo OK; 
+12:48:28 #602f OK helicoptero jefe fotografiado OK; fotos v6_pesado_despues / v6_helicoptero_jefe_despues
+12:49:21 #407u FALLO 0 puntos de aparicion dentro de una torre de escalera OK; formacion al seguir: lateral 4,5, atras 3,0, se detienen a 6,0 m OK; 2 franjas del porton, 0 sueltas OK; 0 ventanas dentro del hueco de una puerta OK; el marmol del 1.er piso deja libre la boca de la escalera A OK; planta baja: el rombo marca la escalera ((299.3, 0.2, 270.8)) OK; 1.er piso: el rombo esta a la altura del piso (6,7 m) OK; 2.o piso: el rombo marca las celdas a su altura (13,2 m) OK; reja de las celdas abierta (abierta=True) y 1 milicianos ya salieron de las celdas MAL; 0/2 milicianos liberados tienen al jugador de lider (Patrol/12m Attack/12m ) MAL; vista tactica: se muestra la planta 2 y se ocultan 165 piezas de arriba OK; 
+12:50:18 #409u FALLO minimapa: 519 siluetas de muros y edificios (antes 4) OK; modo dios: el hackeo dura 3,0 s OK; sin modo dios el hackeo dura 30 s OK; el dano al tanque se multiplica por 16 (bug #347, #398 y pedidos del 13/11: x4 sobre el x8 y despues a la mitad) MAL; 0 props de la ciudad quitados del interior, 0 colliders de props quedan adentro OK; 10 compuertas de torre OK; planta baja con enemigos: la escalera de subida esta cerrada OK; con la reja cerrada no hay camino completo por la torre A (PathPartial) OK; piso limpio: la escalera de subida se abre MAL; abierta, hay camino por la torre A (PathPartial) MAL; con la escuadra todavia abajo la bajada sigue abierta (bug #366) OK; al subir TODOS al 1.er piso se cierra la bajada por la torre A OK; 8 enemigos del 2.o piso salieron del rellano de una escalera OK; mayoria en la planta baja (yo en el 2.o): se recorta la planta 0 y se ocultan 1576 piezas OK; terminada la mansion (Extraer) el recorte sigue en la planta 0 OK; con las cuerdas colgando el helicoptero ya no es invulnerable OK; el helicoptero cayo (derribado=True) y 0 soldados quedaron colgando en el aire OK; 
+12:50:56 #950a OK [tras Aplicar: (1.50, 1.00, 1.50) p!=null True nombre Pesado_1] [1 cuadro: (1.50, 1.00, 1.50)] [escalas pesado (1.50, 1.00, 1.50) normal (1.00, 1.00, 1.00) molde-clon Mansion_Enemigo_1(Clone)] [jerarquia SMR: pCube1(p (0.00, 0.00, 0.00) e (1.00, 1.00, 1.00)) < Visual(p (0.00, -0.80, 0.00) e (1.33, 2.00, 1.33)) < Pesado_1(p (258.44, 0.80, 227.36) e (1.50, 1.00, 1.50)) < ; capsula -] el modelo mide el doble: alto x2,00 y ancho x2,00 contra un enemigo comun OK; usa su propia paleta (MAT_Trimsheet_Pesado) OK; el uniforme es violeta (matiz 273 grados; rojo=0, azul=220) OK; el collider del pesado apoya en el piso igual que el de un soldado normal (pesado +0,00 m, normal +0,00 m) OK; [alto 3,24 m contra 1,65 m] se ve el doble de alto que un enemigo comun (2,0x) OK; su collider crece con el cuerpo (alto 3,2 m) OK; camina mas lento (3,6 m/s contra 5,0 m/s) OK; cada paso retumba (7 pasos en 16,2 m) OK; el paso suena (clip de 0,40 s) OK; vida 2160 (x12) OK; 
+12:51:39 #951a OK se creo el escudero con su escudo OK; dispara con una pistola (Pistol) OK; vida 180 -> 360 OK; paleta propia grafito y plata (MAT_Trimsheet_Escudero) OK; un tiro de frente lo frena el escudo (vida 360 -> 360, bloqueados 1) OK; un tiro de costado le pega (vida 360 -> 243) OK; un tiro por la espalda le pega (vida 126) OK; a 39 grados de la frente tambien lo cubre el escudo OK; una explosion o un vehiculo (origen desconocido) si pasa OK; demora en girar: 15 grados contra 110 del soldado comun en el mismo tiempo (factor de giro 0,14) OK; dispara su pistola al ver al blanco (primer tiro a los 1,6 s) OK; flanqueado por la espalda tarda 5,4 s en responder (tiempo de girar; estado Attack, angulo al blanco 15) OK; 
+12:52:26 #952a OK se creo el perro con su modelo OK; el modelo tiene 45 piezas (cuerpo, cabeza con mandibula y dientes, orejas, cola, 4 patas articuladas, collar con puas) OK; vida 90 OK; el cuerpo humano esta oculto OK; su collider es de perro: 0,75 m de alto OK; sin cabeza humana invisible (no hay headshot fantasma sobre su lomo) OK; sin blancos a la vista merodea (Merodea) OK; camina a paso lento (promedio 1,1 m/s; velocidad del motor 1,7, recorrio 9,8 m en 9 s, pedidos al motor 11,7 m) OK; suena cada pisada de pata (11 pasos) OK; [salida a 30 m] [foto ladra: vivo True, rotZ 0, estado Alerta, y 0,7] [fin: Muerde, blanco Soldado_3_Doc a 0,9 m] al ver al blanco se pone en alerta OK; ladra (3 ladridos en la persecucion) OK; carga a gran velocidad (pico 11,0 m/s; un soldado corre a 8,5 m/s) OK; salta sobre el blanco (1 saltos, en el segundo 1,5) OK; el salto es un arco de 1,11 m de altura OK; muerde (1 mordidas) OK; con el modo dios el jugador no pierde vida OK; sin modo dios la mordida le saca vida al aliado Soldado_3_Doc (972 -> 964) OK; al morir cae de costado OK; 
+12:52:54 #953a OK [Ladrido: 0,95 s, pico 0,90, rms 0,161] Ladrido tiene senal util OK; [LadridoCorto: 0,42 s, pico 0,90, rms 0,173] LadridoCorto tiene senal util OK; [GruniidoDePerro: 1,00 s, pico 0,70, rms 0,118] GruniidoDePerro tiene senal util OK; [PasoDePerro: 0,09 s, pico 0,55, rms 0,081] PasoDePerro tiene senal util OK; [PasoPesado: 0,40 s, pico 0,85, rms 0,163] PasoPesado tiene senal util OK; [ImpactoEscudo: 0,50 s, pico 0,80, rms 0,093] ImpactoEscudo tiene senal util OK; el tono del ladrido ronda 459 Hz (un perro mediano ladra entre 300 y 900 Hz) OK; 
+12:53:30 #954a FALLO un disparo de frente contra el escudo suelta chispas (rafagas 1, vida 360 -> 360) OK; hay particulas vivas (60) al cuadro siguiente OK; un disparo por la espalda no larga chispas y le pega (vida 360 -> 342) OK; gira 31 grados por segundo (soldado comun 220): media vuelta en 5,8 s OK; al morir el escudo deja de ser parte del cuerpo y pasa a ser un cuerpo rigido OK; [escudo y 0,73, piso bajo el 0,00, soldado y 3,85] el escudo cayo, esta sobre el piso y quedo tendido (volco False, centro 0,73 m sobre el piso) MAL; y se quedo quieto OK; 
+12:54:14 #955a OK [rampa 0,1->4,4 m, normal (-0.38, 0.92, 0.00)] bala: el cuerpo quedo sobre los escalones (pivote 2,75, superficie 1,88) OK; bala: no atraviesa la escalera (lo mas bajo del cuerpo 1,83 contra superficie 1,88; antes caia a 1,5 m debajo) OK; bala: tendido paralelo a la pendiente (0,0 grados de desvio) OK; explosion: el cuerpo quedo sobre los escalones (pivote 3,40, superficie 2,53) OK; explosion: no atraviesa la escalera (lo mas bajo del cuerpo 2,50 contra superficie 2,53; antes caia a 1,5 m debajo) OK; explosion: tendido paralelo a la pendiente (0,0 grados de desvio) OK; CaidaDeCuerpos acosto 2 cuerpos en rampa OK; 
+12:54:42 #956a OK refuerzos de la ciudad (26): 3 perros antes -> 7 ahora OK; enemigos de la mansion (28): 4 perros antes -> 7 ahora OK; 
+12:55:18 #957a OK el vigilante vive entre escenas (escena 'DontDestroyOnLoad'; antes moria al cargar desde el menu) OK; en FPS se ven las luces y vigas de la sala (42 piezas sobre 2,8 m) OK; en RTS se ocultan 169 piezas y quedan 0 luces/vigas visibles OK; al volver a FPS se dibujan de nuevo (42) OK; 
+12:56:08 #960a FALLO el jugador quedo de artillero OK; el dano que recibe el tanque es x16: el doble de antes del 13/11, la mitad de lo que se habia subido (32) MAL; enemigos colocados frente al tanque (4) OK; [tanque 3200 -> 286; golpes 48; [Enemigo_Cuartel_3 vivo=True estado=Patrol amenaza=False disparosAVeh=7 dist=246] [Enemigo_PuestoEste_2 vivo=True estado=Patrol amenaza=False disparosAVeh=11 dist=174] [Enemigo_Cuartel_2 vivo=True estado=Patrol amenaza=False disparosAVeh=4 dist=233] [Enemigo_Artillero_TV1 vivo=True estado=Patrol amenaza=False disparosAVeh=0 dist=191]] los enemigos le disparan al tanque (22 disparos) OK; y le pegan: 48 golpes, vida 3200 -> 286 OK; 
+12:56:40 #961a OK el jugador esta en el tanque y la ruta existe OK; la barra de vida del tanque se ve OK; el texto de la barra de vida del tanque es negro (RGBA(0.000, 0.000, 0.000, 1.000)) OK; no queda ninguna barricada a menos de 20 m de la ruta (0) OK; [fuente en (322.0, 0.5, 228.0)] la fuente esta en el centro de la plaza OK; 
+12:57:51 #962a OK [32 puntos de aparicion; sin camino completo a la plaza 2; fuera de la malla 0] [32/32 llegaron en 40 s; peor distancia a la plaza 65 m; atascos 75, caminos parciales 119, sin camino 0] todos los perros con camino libre llegan a la plaza o al jugador (30/30; el resto aparece tras el porton cerrado o un seto) OK; 
+12:58:43 #963a OK enemigos programados en la azotea: 18 por escalera + 11 por cuerda = 29 (la mitad de los 58 que se habian puesto) OK; el hueco mas largo sin llegadas es de 12 s (antes 28 s) OK; [llegadas a los 5, 14, 17, 29, 41, 45, 53, 65, 76, 77, 89 s] [aparecieron 21 enemigos; por ventana de 10 s: 2, 3, 2, 1, 1, 5, 1, 1, 4, 1] en juego aparecen 21 enemigos en la azotea (programados 29) OK; 
+12:59:19 #065a OK clips Death/Wounded=12 sin forceToMono=0; baja del jugador: voces de muerte 3D=1 (vol max 0,46, mal=0), Logro 3D=1 (vol 0,32), Logro 2D=1 (vol 0,14, >0.2: 0), reproducciones +4; baja ajena: voces de muerte 3D=1 (vol max 0,46, mal=0), Logro 3D=1 (vol 0,32), Logro 2D=0 (vol 0,00, >0.2: 0), reproducciones +5; (no pude ESCUCHAR: verificado por propiedades de las AudioSource del pool)
+12:59:58 #088 OK control W solo: avanzo 3,11 m; 3.5 s con [E]+W: desvio max 0,000 m, agachado siempre=True, animacion de atender=True, bloqueo activo=True, Doc sigue caido a los 3.5 s=True (165 cuadros); soltar [E]: cancela y se levanta=True (bloqueo=False anim=False agachado=False); revivir completo: revivio=True a los 5,0 s, desvio 0,000 m, control devuelto=True; 
+13:00:39 #069a OK a) el tanque va sin metralleta=True; armas de metralleta activas=0; nadie en el asiento de metralleta=True; tras 6 s el tanque sigue sin disparar solo (proyectiles propios sin dueno=0); 
+13:01:28 #069b OK b) Soldado_1_Vega (Assault) a 22 m de Camioneta_Asalto_1: saco el lanzacohetes=True a los 0,2 s (por su cuenta), disparos a vehiculos=8, vida de la camioneta 260->164; 
+13:02:10 #069c OK c) hover sobre Camioneta_Asalto_1: AimTargetType=Vehicle cursor=Atacar; sobre el suelo (Ground): Normal; (captura v2_071_cursor.png)
+13:02:49 #072a OK Explosion: clip 'Explosion+Sub', banda 30-150 Hz / pico 0,0195 vs crudos 0,0136 (x1,4); CannonBody: clip 'CannonBody+Sub', banda 30-150 Hz / pico 0,0356 vs crudos 0,0129 (x2,8); DestruccionVehiculo: 1,2 s; perfiles OK=True; cañon dispara=True, sono 'CannonBody+Sub'=True, volumen del oyente tras el tiro min 0,85 de 0,91 (leve=True); camioneta destruida: sono DestruccionVehiculo=True; Vehicle.FinalExplosion ejecutada: reproduce Explosion+Sub y DestruccionVehiculo=True; (no pude ESCUCHAR: verificado por energia grave del clip horneado, historial del director y volumen del oyente; graficos en Assets/Validacion/v2_072_*.png)
+13:03:31 #072v OK obus: disparo=True, crateres activos=1 (lanzados +1), y maxima=0,103; camioneta destruida: chapas lanzadas +6 (activas max 6), fragmentos max 127; (captura v2_072_explosion.png)
+13:04:20 #073 FALLO autos simultaneos max=2 (objetivo 2), vida maxima de camioneta=780, camionetas distintas vistas=2, por delante=0, primera aparicion a los 1,6 s, vida minima del tanque=100% (piso 20%)(MAL); 
+13:06:23 #073b FALLO camionetas a la vez: maximo 2 (efectivo 2) OK; vida de camioneta 780 (260) MAL; enemigos en la carrera (68 s): 2 camionetas + 6 tiradores + 0 helicoptero = 8 (>=12) MAL; 
+# FIN

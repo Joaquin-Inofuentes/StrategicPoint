@@ -154,7 +154,7 @@ namespace SP.Combat
         // Para la barra de recarga/enfriamiento en la UI: 0 = recién
         // disparada (o recargando), 1 = lista para disparar de nuevo.
         public float ReadinessFraction01 => IsReloading
-            ? 1f - Mathf.Clamp01(reloadTimer / reloadDuration)
+            ? (reloadDuration > 0f ? 1f - Mathf.Clamp01(reloadTimer / reloadDuration) : 1f)
             : (fireCooldown > 0f ? 1f - Mathf.Clamp01(cooldownTimer / fireCooldown) : 1f);
 
         public int CurrentAmmo { get; private set; } = 8;

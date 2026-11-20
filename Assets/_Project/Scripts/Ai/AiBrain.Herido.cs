@@ -208,7 +208,8 @@ namespace SP.Ai
             if (AgentActivo)
             {
                 SincronizarAgente();
-                if (!agentTieneDestino || (agentDestino - destino).sqrMagnitude > 0.25f)
+                if (!AgentActivo) agentTieneDestino = false;   // un Warp fallido deja al agent fuera del NavMesh: SetDestination fallaria
+                else if (!agentTieneDestino || (agentDestino - destino).sqrMagnitude > 0.25f)
                 {
                     if (agent.SetDestination(destino)) { agentDestino = destino; agentTieneDestino = true; }
                     else agentTieneDestino = false;

@@ -47,7 +47,16 @@ namespace SP.Presentation
             sub = EventBus.Instance.Subscribe<DamageTakenEvent>(OnDamage);
         }
 
-        void OnDisable() => sub?.Dispose();
+        void OnDisable()
+        {
+            sub?.Dispose();
+            // Al desactivarse mueren las corrutinas RiseAndFade: sin esto los numeros en vuelo quedaban visibles para siempre
+            // y activeByTarget conservaba entradas cuyo texto ya nadie desvanece.
+            foreach (var t in pool)
+                if (t != null && t.transform.parent != null) t.transform.parent.gameObject.SetActive(false);
+            activeByTarget.Clear();
+            activeOrder.Clear();
+        }
 
         // Cada elemento del pool es un Canvas WorldSpace chico con un
         // texto adentro, exactamente el mismo patron que ya usa

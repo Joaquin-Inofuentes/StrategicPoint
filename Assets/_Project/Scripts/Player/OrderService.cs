@@ -630,7 +630,7 @@ namespace SP.Player
         {
             if (selection == null || leader == null) return;
             var list = new List<Soldier>(selection);
-            list.RemoveAll(s => s == leader);
+            list.RemoveAll(s => s == null || s == leader);   // un null reventaba en IssueFollowOrder (soldier.GetComponent)
             if (list.Count == 0) return;
 
             var ranuras = new Vector3[list.Count];

@@ -64,9 +64,10 @@ namespace SP.Player
             return true;
         }
 
-        public void Move(Vector3 worldDirection, float dt) => Current?.Motor.Move(worldDirection, dt);
+        // 'Current?.' no sirve con objetos Unity: salta el chequeo de "destruido" y revienta con MissingReferenceException.
+        public void Move(Vector3 worldDirection, float dt) { if (Current != null && Current.Motor != null) Current.Motor.Move(worldDirection, dt); }
 
-        public void RotateYaw(float yawDeltaDegrees) => Current?.Motor.RotateYaw(yawDeltaDegrees);
+        public void RotateYaw(float yawDeltaDegrees) { if (Current != null && Current.Motor != null) Current.Motor.RotateYaw(yawDeltaDegrees); }
 
         // aimPoint: el punto de mundo que el cursor/mira esta apuntando
         // DE VERDAD (el resultado del mismo rayo de camara que ya usa

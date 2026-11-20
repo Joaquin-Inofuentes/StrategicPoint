@@ -21,6 +21,7 @@ namespace SP.Tutorial
         public float Radio = 1.4f;
 
         GameObject anillo, etiqueta;
+        Material matAnillo;
         TextMesh mesh, sombraMesh;
         public float AlfaEtiqueta { get; private set; } = 1f;
 
@@ -90,6 +91,7 @@ namespace SP.Tutorial
             // cuarto de su alpha original alcanza para que siga leyendose
             // la zona sin encandilar.
             var rendAnillo = anillo.GetComponent<MeshRenderer>();
+            matAnillo = rendAnillo.sharedMaterial;   // Ronda 16: CrearMarcador clona un material por baliza; se destruye en OnDestroy
             var colorAnillo = rendAnillo.sharedMaterial.color;
             colorAnillo.a *= 0.25f;
             rendAnillo.sharedMaterial.color = colorAnillo;
@@ -148,7 +150,9 @@ namespace SP.Tutorial
             if (cam != null && etiqueta != null)
             {
                 float d = Vector3.Distance(cam.transform.position, etiqueta.transform.position);
-                etiqueta.transform.rotation = Quaternion.LookRotation(etiqueta.transform.position - cam.transform.position, cam.transform.up);
+                var haciaEtiqueta = etiqueta.transform.position - cam.transform.position;
+                if (haciaEtiqueta.sqrMagnitude > 1e-6f)   // Ronda 16: LookRotation con vector cero tira warning
+                    etiqueta.transform.rotation = Quaternion.LookRotation(haciaEtiqueta, cam.transform.up);
                 etiqueta.transform.localScale = Vector3.one * Mathf.Clamp(d * 0.07f, 0.8f, 6f);
                 var sp = cam.WorldToScreenPoint(etiqueta.transform.position);
                 float alfa = 1f;
@@ -166,6 +170,10 @@ namespace SP.Tutorial
             }
         }
 
-        void OnDestroy() => activas.Remove(this);
+        void OnDestroy()
+        {
+            activas.Remove(this);
+            if (matAnillo != null) Destroy(matAnillo);   // Ronda 16: el clon del material del anillo se filtraba por cada baliza
+        }
     }
 }

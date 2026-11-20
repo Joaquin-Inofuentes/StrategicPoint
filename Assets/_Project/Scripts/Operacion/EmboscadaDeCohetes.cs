@@ -48,7 +48,13 @@ namespace SP.Operacion
             return c;
         }
 
-        void OnDestroy() { Vivos.Remove(this); }
+        void OnDestroy()
+        {
+            Vivos.Remove(this);
+            // ronda 16: el material (HideAndDontSave) es propio de cada cohete: sin esto se fugaba uno por disparo.
+            var mr = GetComponent<MeshRenderer>();
+            if (mr != null && mr.sharedMaterial != null) Destroy(mr.sharedMaterial);
+        }
 
         void Update()
         {

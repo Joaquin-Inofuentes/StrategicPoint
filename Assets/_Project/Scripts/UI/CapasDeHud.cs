@@ -115,7 +115,16 @@ namespace SP.UI
 
         void OnDestroy()
         {
-            if (Instancia == this) Instancia = null;
+            if (Instancia == this)
+            {
+                Instancia = null;
+                // Ronda 16: estado estatico que sobrevivia a la recarga de escena (p. ej. morir dentro del tanque): la escena nueva
+                // arrancaba con EnModoTanque en true y ModoTanque(true) salia sin apagar el HUD.
+                EnModoTanque = false;
+                EnRts = false;
+                apagadas.Clear();
+                canvasApagados.Clear();
+            }
         }
 
         public static void ActivarModo(ControlMode modo)

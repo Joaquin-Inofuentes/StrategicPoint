@@ -66,10 +66,10 @@ namespace SP.Mision
         public PivoteMetralleta UltimoPivoteQueDisparo { get; private set; }
         public static event System.Action<Helicoptero, PivoteMetralleta, Vector3, Vector3> AlDisparar;
         float proximoRayo;
-        static readonly RaycastHit[] bufferRayo = new RaycastHit[12];
+        static readonly RaycastHit[] bufferRayo = new RaycastHit[32];   // RaycastNonAlloc no ordena: con 12 la pared podia no entrar
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() => Instancia = null;
+        static void Reiniciar() { Instancia = null; AlDisparar = null; }   // el evento estatico conservaba suscriptores de la corrida anterior (ya destruidos)
 
         void Awake()
         {

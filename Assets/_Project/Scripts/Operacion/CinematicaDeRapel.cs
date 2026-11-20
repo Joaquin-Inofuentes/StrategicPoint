@@ -229,6 +229,8 @@ namespace SP.Operacion
             if (bloqueado) { LimpiarEscena(); Restaurar(); Activa = false; }
             if (Instancia == this) Instancia = null;
             if (lienzo != null) Destroy(lienzo);
+            // ronda 16: textura (HideAndDontSave) y sprite del anillo de salto sin liberar.
+            if (spriteAnillo != null) { var tx = spriteAnillo.texture; Destroy(spriteAnillo); if (tx != null) Destroy(tx); spriteAnillo = null; }
         }
 
         // ---------------------------------------------------------------
@@ -363,7 +365,7 @@ namespace SP.Operacion
                 }
                 var lg = new GameObject("RapelCuerda_" + s.name);
                 r.cuerda = lg.AddComponent<LineRenderer>();
-                r.cuerda.material = matCuerda; r.cuerda.useWorldSpace = true; r.cuerda.positionCount = 2;
+                r.cuerda.sharedMaterial = matCuerda;   // ronda 16: .material clonaba una copia por cuerda que LimpiarEscena no libera r.cuerda.useWorldSpace = true; r.cuerda.positionCount = 2;
                 r.cuerda.startWidth = r.cuerda.endWidth = 0.05f; r.cuerda.numCapVertices = 2;
                 r.cuerda.enabled = false;
                 bajando.Add(r);

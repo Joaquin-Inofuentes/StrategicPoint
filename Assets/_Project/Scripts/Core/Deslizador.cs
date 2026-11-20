@@ -28,8 +28,10 @@ namespace SP.Core
         // caso raro de quedar encajado entre tres caras.
         const int MaxDeslizamientos = 3;
 
-        static readonly RaycastHit[] BufferImpactos = new RaycastHit[16];
-        static readonly Collider[] BufferSolapes = new Collider[16];
+        // Los NonAlloc no ordenan: en una zona con muchos cuerpos (soldados, fragmentos, arboles) 16 se llenaba de colliders que no
+        // bloquean y la pared real podia quedar afuera (el cuerpo la atravesaba).
+        static readonly RaycastHit[] BufferImpactos = new RaycastHit[48];
+        static readonly Collider[] BufferSolapes = new Collider[48];
 
         // Toma el desplazamiento pedido y devuelve el que de verdad se
         // puede hacer. La componente vertical pasa intacta: este es un

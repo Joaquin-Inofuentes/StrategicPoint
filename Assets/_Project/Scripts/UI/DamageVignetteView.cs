@@ -68,6 +68,9 @@ namespace SP.UI
         void OnDisable()
         {
             sub?.Dispose();
+            // Ronda 16: la corrutina muere con el desactivado; sin esto routine y currentRedAlpha quedaban pegados y el proximo golpe sumaba sobre un alfa fantasma.
+            routine = null;
+            currentRedAlpha = 0f;
             if (redImage != null) redImage.color = new Color(0.85f, 0.05f, 0.05f, 0f);
         }
 
@@ -82,6 +85,7 @@ namespace SP.UI
 
             if (routine != null) StopCoroutine(routine);
 
+            if (brain.Current.Health == null) return;   // Ronda 16: soldado sin Health
             float maxHealth = brain.Current.Health.MaxHealth;
             // Intensity proportional to damage amount
             float damageFrac = maxHealth > 0 ? (float)evt.Amount / maxHealth : 0.5f;

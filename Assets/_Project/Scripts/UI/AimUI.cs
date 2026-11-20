@@ -252,7 +252,8 @@ namespace SP.UI
 
             bool show = result.Type == AimTargetType.Enemy && result.Soldier != null && result.Soldier.Health != null;
             circuloVidaEnemigo.SetVisible(show);
-            if (show) circuloVidaEnemigo.SetProgreso((float)result.Soldier.Health.Current / result.Soldier.Health.MaxHealth);
+            // Ronda 16: MaxHealth 0 daba NaN/Infinito en el anillo.
+            if (show) circuloVidaEnemigo.SetProgreso(result.Soldier.Health.MaxHealth > 0 ? (float)result.Soldier.Health.Current / result.Soldier.Health.MaxHealth : 0f);
         }
 
         public void UpdateAmmoWarning(SP.Combat.WeaponHolder weapon)
@@ -407,6 +408,10 @@ namespace SP.UI
             }
         }
 
+        // Ronda 16: si se desactiva a mitad de un flash la corrutina muere antes de bajar `flashing`, y Update() no volvia a escribir
+        // nunca el tamano ni el color de la mira.
+        void OnDisable() { flashing = false; }
+
         void OnDestroy()
         {
             damageSub?.Dispose();
@@ -465,6 +470,7 @@ namespace SP.UI
         void OnDamage(DamageTakenEvent evt)
         {
             if (!Application.isPlaying || crosshair == null || evt.AttackerId != watchedShooterId) return;
+            if (!isActiveAndEnabled) return;   // Ronda 16: la suscripcion sigue viva con la vista desactivada y StartCoroutine tiraria error
             StopAllCoroutines();
 
             // Herir y matar producian exactamente la misma señal -- el
@@ -510,6 +516,7 @@ namespace SP.UI
         void OnEnvironmentHit(EnvironmentHitEvent evt)
         {
             if (!Application.isPlaying || crosshair == null || evt.ShooterId != watchedShooterId) return;
+            if (!isActiveAndEnabled) return;   // Ronda 16: idem OnDamage
             Color color = evt.Kind switch
             {
                 EnvironmentHitKind.Vehicle => VehicleHitColor,
@@ -605,7 +612,7 @@ namespace SP.UI
                     // silencio, pero el cartel no avisaba nada, como si
                     // sí fuera a funcionar.
                     CurrentPrompt = "";
-                    currentAimTint = result.Vehicle.IsDestroyed ? ObstacleTint : (result.Vehicle.Bando == SP.Combat.TeamId.Enemy ? EnemyTint : VehicleTint);   // bug #071: vehiculo enemigo = mira roja
+                    currentAimTint = result.Vehicle == null ? VehicleTint : result.Vehicle.IsDestroyed ? ObstacleTint : (result.Vehicle.Bando == SP.Combat.TeamId.Enemy ? EnemyTint : VehicleTint);   // bug #071: vehiculo enemigo = mira roja
                     break;
                 case AimTargetType.Obstacle:
                     // Destructible = tiene ObstacleMarker (F1-F3, G1 ya lo

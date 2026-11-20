@@ -67,6 +67,15 @@ namespace SP.Presentation
 
         public void Ocultar() { if (flecha != null) flecha.SetActive(false); }
 
+        // Material (HideAndDontSave) y malla de la flecha son propios: destruir el GameObject no los libera.
+        void OnDestroy()
+        {
+            if (flecha == null) return;
+            var mf = flecha.GetComponent<MeshFilter>();
+            if (mf != null && mf.sharedMesh != null) Destroy(mf.sharedMesh);
+            SafeMaterial.LiberarDe(this);
+        }
+
         // Pentagono plano en el XZ (mirado desde arriba, normal +Y): "punta de flecha" apuntando
         // hacia +Z local -- Actualizar() rota el objeto entero con LookRotation para apuntarla.
         static Mesh BuildFlatArrowMesh()

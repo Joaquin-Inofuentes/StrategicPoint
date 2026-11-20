@@ -66,6 +66,7 @@ namespace SP.Operacion
         void OnDisable() { if (bloqueado) { Restaurar(); Activa = false; } }
         void OnDestroy()
         {
+            TiempoNormal();   // ronda 16: con Abrir(bloquear:false) + Lento() la escala de tiempo quedaba pegada al destruirse sin Cerrar()
             if (bloqueado) { Restaurar(); Activa = false; }
             if (lienzo != null) Destroy(lienzo);
             if (Instancia == this) Instancia = null;

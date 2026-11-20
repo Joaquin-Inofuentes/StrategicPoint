@@ -31,6 +31,9 @@ namespace SP.Operacion
         public static bool EsCazador(Soldier s) => s != null && cazadores.Contains(s);
         public static int RumbosDados { get; private set; }
 
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarAlArrancar() { Reiniciar(); }
+
         public static void Reiniciar() { cazadores.Clear(); reloj = 0f; RumbosDados = 0; }
 
         public static void Marcar(IEnumerable<Soldier> soldados)

@@ -164,6 +164,20 @@ namespace SP.Player
         public static int EnCola => cola.Count;
         public static void LimpiarCola() => cola.Clear();
 
+        // Con "Enter Play Mode sin recarga de dominio" estos estaticos sobrevivian a la corrida anterior (cola con soldados viejos,
+        // "no me cures" vigente, botiquin a medias, ordenes manuales respetadas).
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarEstaticos()
+        {
+            cola.Clear();
+            ordenManualHasta.Clear();
+            Herido = null; Enfermero = null; Reanimando = false; atendiendo = false; reanimacionAutomatica = false;
+            retenido = null; medicoRetenido = null; medicoPasivo = null; rechazado = null; rechazadoHasta = 0f;
+            restante = 0f; acumulado = 0f; proximoEscaneo = 0f; proximoNumero = 0f; proximoReSeguir = 0f;
+            botiquinRestante = 0f; botiquinAcum = 0f; BotiquinDe = null; BotiquinListoEn = 0f;
+            emitiendoOrden = false;
+        }
+
         static void AtenderSiguienteDeLaCola()
         {
             while (cola.Count > 0)
@@ -447,6 +461,9 @@ namespace SP.Player
             TickBotiquin(dt);
             if (!Activo)
             {
+                // Si el herido o el enfermero se destruyeron a mitad de pedido, Activo pasa a false sin que nadie llame Cancelar():
+                // el otro quedaba Retenido (clavado para siempre), Pasivo o con Reanimando/atendiendo colgados.
+                if (Herido != null || Enfermero != null || Reanimando || atendiendo || retenido != null || medicoRetenido != null || medicoPasivo != null) Cancelar();
                 if (cola.Count > 0) AtenderSiguienteDeLaCola();
                 if (!Activo) AtenderSolo(dt);
                 return;

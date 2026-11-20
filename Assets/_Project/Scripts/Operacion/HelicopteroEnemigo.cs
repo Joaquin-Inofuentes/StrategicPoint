@@ -237,13 +237,14 @@ namespace SP.Operacion
         void CrearSogas()
         {
             sogas = new LineRenderer[2];
+            if (matSoga == null) matSoga = SafeMaterial.Create(new Color(0.12f, 0.1f, 0.07f));   // ronda 16: un material compartido y liberado (antes 2 por despliegue, y lr.material los clonaba)
             for (int k = 0; k < 2; k++)
             {
                 var go = new GameObject("Soga_" + k);
                 go.transform.SetParent(transform, false);
                 var lr = go.AddComponent<LineRenderer>();
                 lr.useWorldSpace = true; lr.positionCount = 2; lr.startWidth = lr.endWidth = 0.07f;
-                lr.material = SafeMaterial.Create(new Color(0.12f, 0.1f, 0.07f));
+                lr.sharedMaterial = matSoga;
                 lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 sogas[k] = lr;
             }
@@ -266,7 +267,9 @@ namespace SP.Operacion
         {
             if (sogas != null) foreach (var l in sogas) if (l != null) Destroy(l.gameObject);
             sogas = null; SogasColgadas = false;
+            if (matSoga != null) { Destroy(matSoga); matSoga = null; }
         }
+        Material matSoga;
 
         void TerminarDespliegue()
         {
@@ -290,7 +293,7 @@ namespace SP.Operacion
                 float mejor = float.MaxValue;
                 foreach (var s in ActorRegistry.All)
                 {
-                    if (s == null || s.Team != TeamId.Player || s.Encarcelado || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                    if (s == null || s.Team != TeamId.Player || s.Encarcelado || s.Health == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
                     float d = (s.transform.position - transform.position).sqrMagnitude;
                     if (d < mejor) { mejor = d; blancoDeAsalto = s.transform; }
                 }

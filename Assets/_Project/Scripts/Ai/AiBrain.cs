@@ -313,7 +313,7 @@ namespace SP.Ai
                 transform.position = cuerpo;
                 if (ok) { agentTieneDestino = false; return; }
             }
-            agent.nextPosition = pies;
+            if (AgentActivo) agent.nextPosition = pies;   // un Warp fallido puede dejar al agent fuera del NavMesh
         }
 
         // Lo llama Vehicle.Dismount: el agent se apago al subir (Mount) y

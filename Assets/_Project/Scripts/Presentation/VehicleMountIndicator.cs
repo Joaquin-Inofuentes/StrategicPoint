@@ -148,6 +148,17 @@ namespace SP.Presentation
             AplicarColorSegunDisponibilidad(puedeMontar);
         }
 
+        // Materiales (HideAndDontSave) y malla del cono son propios: destruir el GameObject no los libera.
+        void OnDestroy()
+        {
+            if (headRenderer != null)
+            {
+                var mf = headRenderer.GetComponent<MeshFilter>();
+                if (mf != null && mf.sharedMesh != null) Destroy(mf.sharedMesh);
+            }
+            SafeMaterial.LiberarDe(this);
+        }
+
         public void Hide()
         {
             if (arrowRoot != null) arrowRoot.SetActive(false);

@@ -98,8 +98,14 @@ namespace SP.Presentation
             var mc = circulo.GetComponent<MeshRenderer>();
             mc.sharedMaterial = MatCirculo(c);
             mc.shadowCastingMode = ShadowCastingMode.Off;
+            root.AddComponent<LiberarMaterialClonado>();   // MatCirculo devuelve un clon por marcador: sin esto queda huerfano al destruir el marcador
 
             return root;
+        }
+
+        sealed class LiberarMaterialClonado : MonoBehaviour
+        {
+            void OnDestroy() => SafeMaterial.LiberarDe(this);
         }
     }
 }

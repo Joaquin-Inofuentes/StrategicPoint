@@ -44,6 +44,10 @@ namespace SP.Core
         static readonly Dictionary<long, List<Soldier>> cells = new Dictionary<long, List<Soldier>>();
         static bool built;
 
+        // Sin recarga de dominio la grilla (con soldados de la corrida anterior) y `built` sobrevivian entre corridas.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarAlEntrarAPlay() { cells.Clear(); built = false; }
+
         static readonly List<long> emptyKeysBuffer = new List<long>();
         public static int CellCount => cells.Count;
 

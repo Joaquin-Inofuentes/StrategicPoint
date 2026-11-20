@@ -15,6 +15,7 @@ namespace SP.UI
         public const string Nombre = "AjusteDeDano";   // la tarjeta suelta de versiones anteriores: si existe, se descarta
         Slider sPropio, sEnemigo; InputField iPropio, iEnemigo; Text vPropio, vEnemigo;
         bool enlazado;
+        UnityEngine.Events.UnityAction<float> alSliderPropio, alSliderEnemigo;
 
         public static PanelDeDano Asegurar(GameObject settingsPanel)
         {
@@ -57,8 +58,9 @@ namespace SP.UI
 
         void Cablear(Slider s, InputField campo, Text valor, bool propio)
         {
-            s.onValueChanged.RemoveAllListeners();
-            s.onValueChanged.AddListener(v => Aplicar(propio, v));
+            // Ronda 16: RemoveAllListeners tambien sacaba el AlCambiar de SliderDeAjuste (tic sonoro y destello del chip). Se quita solo el propio.
+            if (propio) { if (alSliderPropio != null) s.onValueChanged.RemoveListener(alSliderPropio); alSliderPropio = v => Aplicar(true, v); s.onValueChanged.AddListener(alSliderPropio); }
+            else { if (alSliderEnemigo != null) s.onValueChanged.RemoveListener(alSliderEnemigo); alSliderEnemigo = v => Aplicar(false, v); s.onValueChanged.AddListener(alSliderEnemigo); }
             if (campo != null)
             {
                 campo.textComponent = valor; campo.contentType = InputField.ContentType.DecimalNumber; campo.characterLimit = 5;

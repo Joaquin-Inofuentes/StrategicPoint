@@ -81,7 +81,13 @@ namespace SP.Operacion
             ruta.enabled = false;
         }
 
-        void OnDestroy() { if (instancia == this) instancia = null; }
+        void OnDestroy()
+        {
+            if (instancia == this) instancia = null;
+            // ronda 16: los materiales HideAndDontSave de la flecha y la ruta no los libera nadie.
+            if (flechaRend != null && flechaRend.sharedMaterial != null) Destroy(flechaRend.sharedMaterial);
+            if (ruta != null && ruta.sharedMaterial != null) Destroy(ruta.sharedMaterial);
+        }
 
         void Update()
         {

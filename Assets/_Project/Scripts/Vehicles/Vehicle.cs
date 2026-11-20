@@ -441,6 +441,7 @@ namespace SP.Vehicles
                     bool hasEnemy = false;
                     foreach (var s in seats.Values)
                     {
+                        if (s == null) continue;   // ocupante destruido: no cuenta (y no debe romper el rombo)
                         if (s.Team == SP.Combat.TeamId.Player) hasAllied = true;
                         if (s.Team == SP.Combat.TeamId.Enemy) hasEnemy = true;
                     }
@@ -594,7 +595,7 @@ namespace SP.Vehicles
             // etc.) tenia que acordarse de filtrar por su cuenta, y no
             // todos lo hacian. La guarda va aca, en la fuente unica, para
             // que ningun camino futuro pueda repetir el olvido.
-            if (soldier == null || IsDestroyed || !soldier.Health.IsAlive) return false;
+            if (soldier == null || IsDestroyed || soldier.Health == null || !soldier.Health.IsAlive) return false;
             if (!PuedeAbordar(soldier)) return false;   // ronda 13: un tanque enemigo no se aborda
             foreach (var kv in seats) if (kv.Value == soldier) return false; // ya está adentro
 
@@ -831,6 +832,9 @@ namespace SP.Vehicles
             if (foundRole == null) return false;
 
             seats.Remove(foundRole.Value);
+            // Ocupante destruido mientras estaba a bordo: se libera el asiento y no se lo reposiciona (SetActive sobre un
+            // objeto destruido lanzaba excepcion y OnDestroyed del vehiculo quedaba a medias).
+            if (soldier == null) { RefreshOccupancyColor(); return false; }
 
             soldier.gameObject.SetActive(true);
             // El artillero de la metralleta quedo colgado del chasis
@@ -892,11 +896,25 @@ namespace SP.Vehicles
             return true;
         }
 
+        // Un soldado destruido (Destroy) estando a bordo dejaba su asiento ocupado para siempre.
+        List<VehicleSeatRole> asientosAPurgar;
+        void PurgarOcupantesDestruidos()
+        {
+            if (seats.Count == 0) return;
+            foreach (var kv in seats)
+                if (kv.Value == null) (asientosAPurgar ??= new List<VehicleSeatRole>()).Add(kv.Key);
+            if (asientosAPurgar == null || asientosAPurgar.Count == 0) return;
+            foreach (var r in asientosAPurgar) seats.Remove(r);
+            asientosAPurgar.Clear();
+            RefreshOccupancyColor();
+        }
+
         void LateUpdate()
         {
             // Los montados estan inactivos y se quedaban en el punto donde subieron: los enemigos que cazan al escuadron caminaban hacia
             // ese punto viejo en vez de hacia el tanque. Se los lleva pegados al vehiculo.
             foreach (var o in seats.Values) if (o != null && !o.gameObject.activeSelf) o.transform.position = transform.position;
+            PurgarOcupantesDestruidos();
             if (carritoDeParado != null)
             {
                 ResolverTorretas();

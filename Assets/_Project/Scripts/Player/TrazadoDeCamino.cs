@@ -33,6 +33,10 @@ namespace SP.Player
         // automatica de OrderMarkerFx.
         static readonly List<OrderMarkerFx> marcadoresDePlan = new List<OrderMarkerFx>();
 
+        // Sin recarga de dominio quedaban puntos y marcadores (destruidos) de la corrida anterior: el primer Ejecutar mandaba un recorrido fantasma.
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarEstaticos() { puntos.Clear(); marcadoresDePlan.Clear(); }
+
         public static IReadOnlyList<Vector3> Puntos => puntos;
         public static int Cantidad => puntos.Count;
         public static bool HayTrazado => puntos.Count > 0;

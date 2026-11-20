@@ -531,7 +531,15 @@ namespace SP.Ai
                 {
                     atascadoSeg = 0f;
                     var cerca = lider.transform.position - lider.transform.forward * 4f;
-                    if (dist > 30f && UnityEngine.AI.NavMesh.SamplePosition(cerca, out var nv, 6f, UnityEngine.AI.NavMesh.AllAreas)) agent.Warp(nv.position);
+                    if (dist > 30f && UnityEngine.AI.NavMesh.SamplePosition(cerca, out var nv, 6f, UnityEngine.AI.NavMesh.AllAreas))
+                    {
+                        // Warp tambien escribe el transform (a los PIES): sin devolverle el pivote queda hundido baseOffset (ver SincronizarAgente).
+                        if (agent.Warp(nv.position))
+                        {
+                            transform.position = nv.position + Vector3.up * agent.baseOffset;
+                            agentTieneDestino = false;
+                        }
+                    }
                 }
             }
             else atascadoSeg = 0f;

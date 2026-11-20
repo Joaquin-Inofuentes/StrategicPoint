@@ -138,5 +138,19 @@ namespace SP.Presentation
         // muchas instancias (SelectionRingFx, OrderMarkerFx: pool con
         // color fijo, se tiñe despues por MaterialPropertyBlock).
         public static Material CreateShared() => Create(Color.white);
+
+        // Create/CreateLinea devuelven HideAndDontSave: destruir el GameObject NO libera el material. Los dueños de materiales
+        // propios (no los pooleados/compartidos) lo llaman en OnDestroy sobre su propio arbol.
+        public static void LiberarDe(Component raiz)
+        {
+            if (raiz == null) return;
+            foreach (var r in raiz.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null) continue;
+                var m = r.sharedMaterial;
+                if (m == null) continue;
+                if (Application.isPlaying) Object.Destroy(m); else Object.DestroyImmediate(m);
+            }
+        }
     }
 }

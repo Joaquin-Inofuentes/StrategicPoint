@@ -39,7 +39,7 @@ namespace SP.Operacion
             var go = new GameObject("Laser_Francotirador"); go.transform.SetParent(transform, false);
             Laser = go.AddComponent<LineRenderer>();
             Laser.positionCount = 2; Laser.startWidth = 0.035f; Laser.endWidth = 0.02f; Laser.useWorldSpace = true; Laser.enabled = false;
-            var m = new Material(Shader.Find("Sprites/Default")); m.color = ColorDelLaser; Laser.material = m;
+            matLaser = new Material(Shader.Find("Sprites/Default")); matLaser.color = ColorDelLaser; Laser.sharedMaterial = matLaser;   // ronda 16: sharedMaterial (Laser.material clonaba y fugaba otra copia) y se libera en OnDestroy
             Laser.startColor = Laser.endColor = ColorDelLaser; Laser.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             proximoTiro = Time.time + Random.Range(1.5f, 3f);
             // Tono verde oliva: se distingue del asalto comun.
@@ -102,6 +102,9 @@ namespace SP.Operacion
             proximoTiro = Time.time + SegundosEntreTiros * Random.Range(0.9f, 1.2f);
             Apagar();
         }
+
+        Material matLaser;
+        void OnDestroy() { if (matLaser != null) Destroy(matLaser); }
 
         void Apagar() { Marcando = false; marcaDesde = -1f; if (Laser != null) Laser.enabled = false; }
     }

@@ -842,8 +842,12 @@ namespace SP.Combat
             DanarObstaculos(point, radius, damage, ownerId);
             UnityEngine.Profiling.Profiler.EndSample();
             UnityEngine.Profiling.Profiler.BeginSample("Exp.Actores");
-            foreach (var s in ActorRegistry.All)
+            // for por indice y no foreach: TakeDamage publica EntityDiedEvent y cualquier suscriptor que cree o de de baja un soldado modifica
+            // la lista mientras se la recorre (InvalidOperationException). El contador se relee cada vuelta.
+            var actoresExplosion = ActorRegistry.All;
+            for (int ia = 0; ia < actoresExplosion.Count; ia++)
             {
+                var s = actoresExplosion[ia];
                 if (s == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
                 bool amigo = spareTeam.HasValue && s.Team == spareTeam.Value;
                 if (amigo && !(spareTeam.Value == TeamId.Player && Dificultad.FuegoAmigoExplosivo)) continue;
