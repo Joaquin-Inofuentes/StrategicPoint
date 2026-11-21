@@ -207,7 +207,9 @@ namespace SP.EditorTools
             float t0 = Time.realtimeSinceStartup; bool toma = false;
             while (Time.realtimeSinceStartup - t0 < 6f && !toma) { toma = d.TomaDelJefeActiva || d.Subfase != (int)SubfaseHuida.Acercamiento; yield return null; }
             float seg = Time.realtimeSinceStartup - t0;
-            W8Ok(ref ok, toma && seg >= OperacionDirector.SegundosAntesDeLaToma - 0.4f && seg <= OperacionDirector.SegundosAntesDeLaToma + 2.5f, sb, $"la presentacion del jefe arranca {seg:0.0} s despues de abrirse la salida (esperaba ~{OperacionDirector.SegundosAntesDeLaToma:0.0} s) sin pasar z={OperacionDirector.ZParaLaToma}");
+            // R17 (pedido 14): contrato nuevo: la toma ya NO arranca sola a los 2,5 s; espera que el jugador cruce el umbral, le pegue al blindado
+            // o pasen SegundosDeSalvaguardaDeLaToma (45 s).
+            W8Ok(ref ok, !toma, sb, $"R17: con el muro caido y el jugador quieto en la sala, la toma del jefe NO arranca sola en {seg:0.0} s (umbral z={OperacionDirector.ZParaLaToma}, salvaguarda {OperacionDirector.SegundosDeSalvaguardaDeLaToma:0} s)");
             ModoDios.Poner(false);
             Fin((ok ? "OK " : "FALLO ") + sb);
         }

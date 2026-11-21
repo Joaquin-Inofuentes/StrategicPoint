@@ -120,8 +120,66 @@ namespace SP.Operacion
             GameLog.Line($"[Operacion] Hackeo: tanda de {salen}/{o.soldados.Length} (vida media de la escuadra {vida:0.00})");
         }
 
+        // ---------------------------------------------------------------- R17 (pedido 6): la PC del centro de datos se bloquea hasta limpiar la sala
+        // El centro no tenia ningun guardia antes del hackeo (las 3 oleadas son reservas inactivas): se arma una GUARNICION de 4/5/6 (facil/medio/dificil)
+        // entre las filas de gabinetes. La PC cuenta esa guarnicion POR IDENTIDAD (si sale a perseguir a la escuadra sigue contando) y a cualquier otro
+        // enemigo vivo y activo dentro de la sala. Se suelta una vez y no se vuelve a bloquear. Los atajos de prueba / restauracion la dejan libre.
+        public static bool ProbarBloqueoDelCentro;
+        public const int GuarnicionFacil = 4, GuarnicionMedia = 5, GuarnicionDificil = 6;
+        static readonly Bounds SalaDeServidores = new Bounds(new Vector3(0f, 4f, -60f), new Vector3(54f, 10f, 42f));
+        static readonly Vector3[] PuntosDeGuarnicion =
+        {
+            new Vector3(-17f, 0.8f, -58f), new Vector3(15f, 0.8f, -52f), new Vector3(-6f, 0.8f, -70f),
+            new Vector3(18f, 0.8f, -68f), new Vector3(-19f, 0.8f, -72f), new Vector3(2f, 0.8f, -47f),
+        };
+        readonly List<Soldier> guarnicionDelCentro = new List<Soldier>();
+        bool guarnicionArmada;
+        public IReadOnlyList<Soldier> GuarnicionDelCentro => guarnicionDelCentro;
+
+        int ContarGuarnicionYSala()
+        {
+            int n = 0;
+            foreach (var s in guarnicionDelCentro) if (s != null && s.Health != null && s.Health.IsAlive) n++;
+            foreach (var a in ActorRegistry.All)
+            {
+                if (a == null || a.Team != TeamId.Enemy || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy) continue;
+                if (guarnicionDelCentro.Contains(a)) continue;
+                if (a.Brain != null && (a.Brain.Pasivo || a.Brain.MontadoEnVehiculo)) continue;
+                if (a.GetComponent<SP.Vehicles.Vehicle>() != null) continue;
+                if (SalaDeServidores.Contains(a.transform.position)) n++;
+            }
+            return n;
+        }
+
+        void ArmarGuarnicionDelCentro()
+        {
+            if (guarnicionArmada || computadora == null) return;
+            guarnicionArmada = true;
+            if ((PartidaGuardada.ModoPrueba || PartidaGuardada.Restaurando) && !ProbarBloqueoDelCentro) { computadora.ForzarDesbloqueo(); return; }
+            Soldier plantilla = null;
+            if (oleadasDelCentro != null)
+                foreach (var w in oleadasDelCentro) { if (plantilla != null) break; if (w?.soldados == null) continue; foreach (var s in w.soldados) if (s != null && s.Health != null) { plantilla = s; break; } }
+            if (plantilla == null) { computadora.ForzarDesbloqueo(); return; }
+            int cuantos = Dificultad.Activa ? (Dificultad.Actual == NivelDificultad.Facil ? GuarnicionFacil : Dificultad.Actual == NivelDificultad.Dificil ? GuarnicionDificil : GuarnicionMedia) : GuarnicionMedia;
+            cuantos = Mathf.Min(cuantos, PuntosDeGuarnicion.Length);
+            for (int k = 0; k < cuantos; k++)
+            {
+                var p = PuntosDeGuarnicion[k];
+                if (NavMesh.SamplePosition(p, out var hit, 6f, NavMesh.AllAreas)) p = hit.position + Vector3.up * 0.2f;
+                var clon = Instantiate(plantilla, p, Quaternion.Euler(0f, (k * 67f) % 360f, 0f), plantilla.transform.parent);
+                clon.gameObject.SetActive(false);
+                clon.name = "CD_Guarnicion_" + (k + 1);
+                if (k == 1) EnemigoEscudero.Aplicar(clon);   // en MEDIO y mas: uno con escudo (lo flanquean los aliados)
+                clon.gameObject.SetActive(true);
+                guarnicionDelCentro.Add(clon);
+            }
+            computadora.EnemigosQueBloquean = ContarGuarnicionYSala;
+            GameLog.Line($"[R17] Centro de datos: guarnicion de {guarnicionDelCentro.Count}; la computadora queda bloqueada hasta limpiar la sala");
+        }
+
         void TickCentro()
         {
+            ArmarGuarnicionDelCentro();
             ReforzarOleadasDelCentro();
             if (defensaDelCentro == null) defensaDelCentro = DefensaDelCentro.Preparar(computadora.transform, halcon);   // #272: torretas aliadas y helicopteros de asalto
             if (computadora.Operador != null && hackInicio < 0f) hackInicio = Time.time;

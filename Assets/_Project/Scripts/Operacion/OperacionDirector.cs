@@ -193,7 +193,7 @@ namespace SP.Operacion
 
         void OnDestroy()
         {
-            if (Instancia == this) { Instancia = null; SP.Tutorial.MarcaDeObjetivosEnMinimapa.Extras = null; }
+            if (Instancia == this) { Instancia = null; SP.Tutorial.MarcaDeObjetivosEnMinimapa.Extras = null; ReaccionAlDano.Desactivar(); }
             SP.Core.SesionLog.QuitarGuardable(this);
             WeaponHolder.CargadoresDeReserva = WeaponHolder.CargadoresPorDefecto;
             SonidosDeOperacion.DetenerAmbiente();
@@ -225,6 +225,7 @@ namespace SP.Operacion
             // Pedido: "quita el sonido de fondo de las olas que molesta" (era el viento sintetico del desierto, sonaba a mar): ya no
             // se enciende. SonidosDeOperacion.IniciarAmbiente queda disponible por si se quiere otro ambiente.
             CazaDeEnemigos.Reiniciar();
+            ReaccionAlDano.Activar();   // R17 (pedidos 2/15): los heridos y los testigos de una baja salen a atacar
             if (torretasDelCentro != null) foreach (var t in torretasDelCentro) if (t != null) SP.Vehicles.TorretaFija.Instalar(t);
             PrepararRefuerzosDeLaCiudad();
             ArmarCoberturasDeLaPlaza();
@@ -443,7 +444,7 @@ namespace SP.Operacion
             float dt = Time.deltaTime;
             NavMeshViva.Pausado = Fase == FaseOperacion.Huir && EnTanque;   // sin rehorneos del NavMesh mientras se maneja el tanque (ver NavMeshViva.Pausado)
             Reloj += dt;
-            if (Fase != FaseOperacion.Victoria && Fase != FaseOperacion.Derrota && !SubiendoAlHeli) CazaDeEnemigos.Tick(dt);
+            if (Fase != FaseOperacion.Victoria && Fase != FaseOperacion.Derrota && !SubiendoAlHeli) { CazaDeEnemigos.Tick(dt); ReaccionAlDano.Tick(dt); }
             switch (Fase)
             {
                 case FaseOperacion.Infiltrar: TickInfiltrar(); break;

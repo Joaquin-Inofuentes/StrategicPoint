@@ -32,7 +32,7 @@ namespace SP.Presentation
         public static int Aplicar()
         {
             var shader = RecursosCache.Cargar<Shader>("Shaders/AguaDeFuente");
-            if (shader == null || !shader.isSupported) return 0;
+            if (shader == null || !shader.isSupported) { ArmarParticulas(); return 0; }
             if (matSuperficie == null) { matSuperficie = new Material(shader) { name = "M_AguaDeFuente", hideFlags = HideFlags.DontSave }; }
             if (matChorro == null)
             {
@@ -53,7 +53,101 @@ namespace SP.Presentation
             }
             Aplicadas += n;
             n += CorregirSolapes();
+            ArmarParticulas();
             return n;
+        }
+
+        // ---------------------------------------------------------------- R17 (plan 2.8): particulas del chorro y salpicadura en el cuenco
+        // Un unico hijo "R17_Particulas" por cada "Fuente_Chorro" (idempotente), con 2 sistemas: el chorro (40/s) y la salpicadura en anillo (25/s);
+        // suman 100 particulas maximas por fuente (tope 120). Material transparente COMPARTIDO por todas las fuentes, sin colision, sin luces y sin sonido.
+        public const string NombreParticulas = "R17_Particulas";
+        public static int ParticulasArmadas { get; private set; }
+        static Material matParticulas;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarParticulas() { ParticulasArmadas = 0; matParticulas = null; }
+
+        public static int ArmarParticulas()
+        {
+            if (!Application.isPlaying) return 0;
+            int armadas = 0;
+            var todos = Object.FindObjectsByType<Renderer>(FindObjectsInactive.Include);
+            foreach (var r in todos)
+            {
+                if (r == null || r is ParticleSystemRenderer || r.name != "Fuente_Chorro") continue;
+                if (r.transform.Find(NombreParticulas) != null) continue;
+                if (matParticulas == null) matParticulas = ParticleMaterialFactory.CreateTransparent(new Color(0.75f, 0.88f, 1f, 0.55f));
+
+                var b = r.bounds;
+                var boca = new Vector3(b.center.x, b.max.y, b.center.z);
+                // superficie del cuenco: el "Fuente_Agua" mas cercano (el mismo criterio que CorregirSolapes), o la base del chorro
+                float ySuperficie = b.min.y;
+                float mejor = 1.5f;
+                foreach (var o in todos)
+                {
+                    if (o == null || o.name != "Fuente_Agua") continue;
+                    var d = o.bounds.center - b.center; d.y = 0f;
+                    if (d.magnitude < mejor) { mejor = d.magnitude; ySuperficie = o.bounds.max.y; }
+                }
+
+                var raiz = new GameObject(NombreParticulas);
+                raiz.transform.SetParent(r.transform, false);
+                raiz.transform.position = boca; raiz.transform.rotation = Quaternion.identity;
+
+                var chorro = NuevoSistema(raiz.transform, "Chorro", boca, 60);
+                var m = chorro.main;
+                m.startSpeed = 3.5f; m.gravityModifier = 1f; m.startLifetime = 0.9f; m.startSize = new ParticleSystem.MinMaxCurve(0.06f, 0.12f);
+                m.startColor = new Color(0.75f, 0.88f, 1f, 0.55f);
+                var em = chorro.emission; em.rateOverTime = 40f;
+                var sh = chorro.shape; sh.shapeType = ParticleSystemShapeType.Cone; sh.angle = 6f; sh.radius = 0.03f;
+                chorro.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);   // el cono emite hacia +Z local: se levanta para que apunte arriba
+                chorro.Play();
+
+                var salpica = NuevoSistema(raiz.transform, "Salpicadura", new Vector3(b.center.x, ySuperficie + 0.03f, b.center.z), 40);
+                var ms = salpica.main;
+                ms.startSpeed = 0.4f; ms.gravityModifier = 0.3f; ms.startLifetime = 0.5f; ms.startSize = new ParticleSystem.MinMaxCurve(0.05f, 0.1f);
+                ms.startColor = new Color(0.85f, 0.94f, 1f, 0.5f);
+                var ee = salpica.emission; ee.rateOverTime = 25f;
+                var ss = salpica.shape; ss.shapeType = ParticleSystemShapeType.Circle; ss.radius = 0.4f; ss.radiusThickness = 0f; ss.arc = 360f;
+                var vel = salpica.velocityOverLifetime; vel.enabled = true; vel.space = ParticleSystemSimulationSpace.World;
+                vel.x = new ParticleSystem.MinMaxCurve(0f); vel.y = new ParticleSystem.MinMaxCurve(0.6f); vel.z = new ParticleSystem.MinMaxCurve(0f);
+                salpica.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);   // el circulo queda horizontal
+                salpica.Play();
+
+                // el chorro fijo ("Fuente_Gota") del mismo surtidor se apaga: con particulas se veria doble
+                foreach (var o in todos)
+                {
+                    if (o == null || o.name != "Fuente_Gota" || !o.enabled) continue;
+                    var d = o.bounds.center - b.center; d.y = 0f;
+                    if (d.magnitude < 1.5f) o.enabled = false;
+                }
+                armadas++;
+            }
+            ParticulasArmadas += armadas;
+            return armadas;
+        }
+
+        static ParticleSystem NuevoSistema(Transform padre, string nombre, Vector3 pos, int maxParticulas)
+        {
+            var go = new GameObject(nombre);
+            go.transform.SetParent(padre, false);
+            go.transform.position = pos;
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            var main = ps.main;
+            main.loop = true; main.playOnAwake = false; main.duration = 1f;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.scalingMode = ParticleSystemScalingMode.Local;
+            main.maxParticles = maxParticulas;
+            main.cullingMode = ParticleSystemCullingMode.Automatic;
+            var col = ps.collision; col.enabled = false;
+            var luces = ps.lights; luces.enabled = false;
+            var pr = go.GetComponent<ParticleSystemRenderer>();
+            pr.sharedMaterial = matParticulas;
+            pr.renderMode = ParticleSystemRenderMode.Billboard;
+            pr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            pr.receiveShadows = false;
+            return ps;
         }
 
         // Bug #362 (2026-11-06: "el agua se ve mal y solapado"): la fuente de la Plaza Civica y la de Prestigio estan en el MISMO punto y se pisaban:

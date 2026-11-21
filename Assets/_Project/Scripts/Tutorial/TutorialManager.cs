@@ -162,6 +162,8 @@ namespace SP.Tutorial
             if (driver != null) driver.OrdenRadialEjecutada += AlOrdenRadial;
 
             DefinirPasos();
+            // R17 2.13: en modo simple quedan solo los pasos de IdsSimples (el orden original se conserva).
+            if (ModoSimple) pasos.RemoveAll(paso0 => !IdsSimples.Contains(paso0.Id));
             TutorialLog.Escribir("[INICIO]", $"Tutorial listo: {pasos.Count} pasos. Escena {SceneManager.GetActiveScene().name}");
             int guardado = PasoGuardado;
             if (guardado >= 2 && guardado < pasos.Count - 1)
@@ -1018,7 +1020,7 @@ namespace SP.Tutorial
                 Id = "mira_tanque", Titulo = "MIRA DEL CAÑÓN Y LA METRALLETA", Teclas = "RMB", Acento = naranja,
                 Subs = new[]
                 {
-                    S("Clic derecho: miras por la mira del cañón", "Con el CLIC DERECHO miras por el PERISCOPIO del cañón (en la Operación la mira ya viene puesta y [CLIC DERECHO] ALTERNA la mira; acá se mantiene): ventana rectangular con escala de distancia y escalera de elevación (no es la mira de a pie). El cañón gira lento hacia donde apuntas.", "Mantén el botón derecho estando en el asiento del cañón [2].", () => f.miraDelCanon, v => f.miraDelCanon = v),
+                    S("Clic derecho: miras por la mira del cañón", (ModoSimple ? "Primero aprieta [2] para sentarte en el CAÑÓN. " : "") + "Con el CLIC DERECHO miras por el PERISCOPIO del cañón (en la Operación la mira ya viene puesta y [CLIC DERECHO] ALTERNA la mira; acá se mantiene): ventana rectangular con escala de distancia y escalera de elevación (no es la mira de a pie). El cañón gira lento hacia donde apuntas.", (ModoSimple ? "Aprieta [2] (asiento del cañón) y mantén el botón derecho." : "Mantén el botón derecho estando en el asiento del cañón [2]."), () => f.miraDelCanon, v => f.miraDelCanon = v),
                     S("[3] la metralleta: mirilla normal", "Suelta, aprieta [3]: la METRALLETA va en el puesto alto del tanque y usa la MIRILLA NORMAL, igual que las torretas fijas (sin zoom ni periscopio). Apunta con el mouse y mantén el CLIC IZQUIERDO para ráfagas.", "El [3] cambia de asiento; la metralleta no lleva mira óptica.", () => f.miraDeMetralleta, v => f.miraDeMetralleta = v),
                     S("Suelta y vuelve al cañón [2]", "Suelta el clic derecho y aprieta [2]: la cámara vuelve a la tercera persona.", "Suelta el botón derecho y aprieta 2.", () => f.sueltaMiraTanque, v => f.sueltaMiraTanque = v),
                 },
@@ -1789,7 +1791,17 @@ namespace SP.Tutorial
         // ---------------------------------------------------------------
         // Ayudas: saltar un paso (94), retomar donde se dejo (98), flecha si te trabas (97), aliados cerca (99)
         // ---------------------------------------------------------------
-        public const string ClaveProgreso = "sp_tutorial_paso";
+        // R17 2.13: tutorial simple (11 pasos) por defecto; el completo (37) se pide desde el menu. Es settable para que los checks fuercen uno u otro.
+        public static bool ModoSimple = true;
+        public const string ClaveProgresoCompleto = "sp_tutorial_paso";
+        public const string ClaveProgresoSimple = "sp_tutorial_paso_simple";
+        public static readonly HashSet<string> IdsSimples = new HashSet<string>
+        {
+            "camara", "wasd", "disparar", "mira", "cambiar", "seguir", "rts", "fps", "entrar_tanque", "mira_tanque", "victoria"
+        };
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarModo() { ModoSimple = true; }
+        public static string ClaveProgreso => ModoSimple ? ClaveProgresoSimple : ClaveProgresoCompleto;
         public const float SegundosParaAyuda = 16f;
         public static int PasoGuardado => PlayerPrefs.GetInt(ClaveProgreso, 0);
         public static void BorrarProgreso() { PlayerPrefs.DeleteKey(ClaveProgreso); PlayerPrefs.Save(); }

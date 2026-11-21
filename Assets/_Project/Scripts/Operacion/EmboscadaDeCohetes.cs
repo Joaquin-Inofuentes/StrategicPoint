@@ -140,7 +140,7 @@ namespace SP.Operacion
         {
             var agent = s.GetComponent<UnityEngine.AI.NavMeshAgent>();
             if (agent != null) agent.enabled = false;
-            if (s.Brain != null) { s.Brain.CancelOrder(); s.Brain.Quieto = true; }
+            if (s.Brain != null) { s.Brain.CancelOrder(); s.Brain.Quieto = true; s.Brain.PuestoFijoPorRol = true; }
         }
 
         void Update()

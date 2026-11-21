@@ -114,6 +114,31 @@ namespace SP.Ai
         // Civil: no reacciona al combate (ni ve enemigos ni devuelve fuego), solo sigue ordenes.
         public bool Pasivo { get; set; }
 
+        // R17 (pedidos 2/15): enemigos cuyo puesto lo define su rol (francotirador, emboscada de cohetes, pesado). ReaccionAlDano les cambia el blanco
+        // pero NO los saca de Quieto: su propia maquina decide si avanzan.
+        public bool PuestoFijoPorRol;
+        // R17: segundos sin linea de tiro antes de soltar al blanco (los cazadores persiguen mas).
+        public float SegundosSinVerParaSoltar { get => tiempoMaximoSinVisibilidad; set => tiempoMaximoSinVisibilidad = value; }
+
+        // R17: "me pegaron": fija al atacante como blanco aun en Chase/Attack si el blanco actual no tiene linea de tiro y el atacante si.
+        // Es el mismo bloque que OnAnyDamage (evt.TargetId == self.Id) pero se puede llamar desde afuera y no solo cuando estaba ocioso.
+        public void ReaccionarAGolpe(Soldier atacante)
+        {
+            if (self == null || Pasivo || self.Health == null || !self.Health.IsAlive) return;
+            if (atacante == null || atacante.Health == null || !atacante.Health.IsAlive || atacante == self) return;
+            ultimoAtacanteId = atacante.Id;
+            tiempoUltimoAtaque = Time.time;
+            if (SiguiendoForzado) return;
+            bool sinBlanco = target == null || target.Health == null || !target.Health.IsAlive;
+            if (sinBlanco || (target != atacante && !TieneLineaDeTiro(target) && TieneLineaDeTiro(atacante))) target = atacante;
+            if (State == AiState.Idle || State == AiState.Patrol || State == AiState.MovingToOrder || State == AiState.Follow)
+            {
+                if (State != AiState.MovingToOrder) hasOrder = false;
+                followTarget = null;
+                SetState(AiState.Chase);
+            }
+        }
+
         // Freeze global de IA (ambos equipos): pedido explicito "mientras este reproduciendose la
         // cinematica inicial no se muevan ni enemigos ni aliados ni dispare". A diferencia de
         // Pasivo (por-instancia, solo bloquea reaccion a combate), esto corta el Tick() entero

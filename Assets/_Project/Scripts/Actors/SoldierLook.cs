@@ -49,7 +49,68 @@ namespace SP.Actors
             }
             if (s.Role == RoleType.Civilian || def.Nombre == "PERRO") OcultarArma();
             if (def.Nombre == "PERRO" && smr != null) smr.enabled = false;   // el perro lleva su propio modelo (PerroEnemigo)
+            if (def.Enemigo && def.Nombre != "PERRO" && s.Role != RoleType.Civilian) PonerInsignias();
             Aplicado = true;
+        }
+
+        // R17 2.4: insignia del bando. Dos cubos emisivos rojos (brazal en LeftUpperArm, franja sobre el casco en Head), independientes del UV del
+        // trimsheet. Material unico estatico compartido, sin collider, layer 2, sin sombra. Idempotente (si ya estan, no duplica).
+        public const string NombreInsigniaBrazal = "R17_Insignia_Brazal";
+        public const string NombreInsigniaCasco = "R17_Insignia_Casco";
+        static Material matInsignia;
+        public static Material MaterialInsignia => matInsignia;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetEstaticos()
+        {
+            matInsignia = null; matEnemigoVisible = null; matEscudero = null; matAliado = null; matEnemigo = null; matAliadoTenido = null;
+            matMedico = null; matAsalto = null; matFrancotirador = null; matPesado = null; matCivil = null;
+        }
+
+        static Material ObtenerMaterialInsignia()
+        {
+            if (matInsignia != null) return matInsignia;
+            var sh = Shader.Find("Universal Render Pipeline/Unlit");
+            if (sh == null) sh = Shader.Find("Universal Render Pipeline/Lit");
+            if (sh == null) sh = Shader.Find("Sprites/Default");
+            if (sh == null) return null;
+            matInsignia = new Material(sh) { name = "MAT_R17_Insignia" };
+            var rojo = new Color(1.0f, 0.12f, 0.06f);
+            if (matInsignia.HasProperty("_BaseColor")) matInsignia.SetColor("_BaseColor", rojo * 1.4f);
+            if (matInsignia.HasProperty("_Color")) matInsignia.SetColor("_Color", rojo * 1.4f);
+            if (matInsignia.HasProperty("_EmissionColor")) { matInsignia.EnableKeyword("_EMISSION"); matInsignia.SetColor("_EmissionColor", rojo * 1.4f); }
+            return matInsignia;
+        }
+
+        void PonerInsignias()
+        {
+            var anim = GetComponentInChildren<Animator>(true);
+            if (anim == null || !anim.isHuman) return;
+            PonerInsignia(anim.GetBoneTransform(HumanBodyBones.LeftUpperArm), NombreInsigniaBrazal, new Vector3(0.08f, 0.10f, 0.10f), Vector3.zero);
+            PonerInsignia(anim.GetBoneTransform(HumanBodyBones.Head), NombreInsigniaCasco, new Vector3(0.22f, 0.03f, 0.18f), new Vector3(0f, 0.12f, 0f));
+        }
+
+        static void PonerInsignia(Transform hueso, string nombre, Vector3 tamano, Vector3 posLocal)
+        {
+            if (hueso == null || hueso.Find(nombre) != null) return;
+            var mat = ObtenerMaterialInsignia();
+            if (mat == null) return;
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = nombre;
+            var col = go.GetComponent<Collider>();
+            if (col != null) Destroy(col);
+            go.layer = 2;
+            var t = go.transform;
+            t.SetParent(hueso, false);
+            t.localPosition = posLocal;
+            t.localRotation = Quaternion.identity;
+            // El hueso puede llevar escala (el pesado se ensancha): se compensa para que la insignia mida lo pedido en el mundo.
+            var ls = hueso.lossyScale;
+            t.localScale = new Vector3(tamano.x / Mathf.Max(0.0001f, ls.x), tamano.y / Mathf.Max(0.0001f, ls.y), tamano.z / Mathf.Max(0.0001f, ls.z));
+            var r = go.GetComponent<MeshRenderer>();
+            r.sharedMaterial = mat;
+            r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            r.receiveShadows = false;
         }
 
         // Bugs #168/#175 ("sigo sin ver al enemigo"): de noche el trimsheet rojo oscuro se pierde contra el fondo. En vez de iluminar al que
@@ -66,7 +127,7 @@ namespace SP.Actors
             if (matEnemigoVisible.HasProperty("_BaseMap") && matEnemigoVisible.GetTexture("_BaseMap") is Texture2D txE)
             {
                 var oxido = AzulYVerdeAOxido(txE);
-                if (oxido != null) { matEnemigoVisible.SetTexture("_BaseMap", oxido); Teñir(matEnemigoVisible, new Color(1f, 0.78f, 0.7f)); }
+                if (oxido != null) { matEnemigoVisible.SetTexture("_BaseMap", oxido); Teñir(matEnemigoVisible, new Color(1f, 0.72f, 0.62f)); }   // R17 2.4: tinte mas saturado (antes 1,0.78,0.7)
             }
             if (matEnemigoVisible.HasProperty("_EmissionColor"))
             {
@@ -76,7 +137,7 @@ namespace SP.Actors
                 if (matEnemigoVisible.HasProperty("_BaseMap") && matEnemigoVisible.GetTexture("_BaseMap") != null && matEnemigoVisible.HasProperty("_EmissionMap"))
                     matEnemigoVisible.SetTexture("_EmissionMap", matEnemigoVisible.GetTexture("_BaseMap"));
                 // Acento rojo tenue (antes gris): la familia calida se lee tambien de noche.
-                matEnemigoVisible.SetColor("_EmissionColor", new Color(0.30f, 0.06f, 0.04f));
+                matEnemigoVisible.SetColor("_EmissionColor", new Color(0.42f, 0.08f, 0.05f));   // R17 2.4: antes (0.30,0.06,0.04); tope 0,5 por canal
                 matEnemigoVisible.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
             }
             return matEnemigoVisible;
@@ -257,14 +318,14 @@ namespace SP.Actors
             (1, new Color(0.14f, 0.09f, 0.20f)),    // botas y piezas varias
             (28, new Color(0.95f, 0.15f, 0.62f)), (29, new Color(0.95f, 0.15f, 0.62f)), (46, new Color(0.95f, 0.15f, 0.62f)), (60, new Color(0.30f, 0.12f, 0.45f)),   // correaje de bando: magenta
         }, new Color(0.16f, 0.04f, 0.26f));
-        // Escudero (2026-11-13): grafito con casco y chaleco plateados (antidisturbios).
+        // Escudero (2026-11-13; R17 2.5: uniforme gris acero claro): casco y chaleco plateados (antidisturbios).
         static Material MaterialEscudero() => MaterialPorCeldas(ref matEscudero, "MAT_Trimsheet_Escudero", new[]
         {
-            (8, new Color(0.16f, 0.17f, 0.20f)), (10, new Color(0.16f, 0.17f, 0.20f)), (12, new Color(0.16f, 0.17f, 0.20f)),   // uniforme: grafito
+            (8, new Color(0.38f, 0.40f, 0.45f)), (10, new Color(0.38f, 0.40f, 0.45f)), (12, new Color(0.38f, 0.40f, 0.45f)),   // uniforme: gris acero claro (R17 2.5; antes grafito)
             (52, new Color(0.80f, 0.84f, 0.88f)),   // casco y chaleco: plata
             (19, new Color(0.09f, 0.10f, 0.12f)),   // pantalon: negro
             (32, new Color(0.95f, 0.75f, 0.1f)), (33, new Color(0.95f, 0.75f, 0.1f)),     // correaje: amarillo
-        }, new Color(0.10f, 0.10f, 0.12f));
+        }, new Color(0.16f, 0.07f, 0.07f));
         static Material MaterialFrancotirador() => MaterialPorCeldas(ref matFrancotirador, "MAT_Trimsheet_Aliado_Francotirador", new[]
         {
             (10, new Color(0.20f, 0.31f, 0.17f)),   // uniforme: musgo

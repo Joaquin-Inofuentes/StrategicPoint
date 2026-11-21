@@ -1,0 +1,56 @@
+version=0.1.0 resolucion=1600x900 dificultad=Medio semilla=1313 filtro=r17_combate,r17_centro,r17_mundo
+dato global.molde_fijo=True
+dato global.escena=SC_Operacion
+dato global.duplicados_apagados=0
+dato global.colliders_apagados=0
+dato global.titulos_ocultos=0
+== r17_combate
+estado al empezar: director=True fase=Infiltrar sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=45 escala=1.0 dios=True
+dato r17_pesado_mascara.mascara_puesta=(sin la propiedad: build anterior)
+dato r17_pesado_mascara.capas_de_cabeza=(n/a)
+== r17_pesado_mascara
+dato r17_pesado_expuesto.vivo_tras_1er_headshot=false
+dato r17_pesado_expuesto.dano_1er_headshot=2160
+dato r17_pesado_expuesto.capas_restantes=(n/a)
+dato r17_pesado_expuesto.piezas_sueltas=(n/a)
+== r17_pesado_expuesto
+== r17_comun_calle
+== r17_escudero_calle
+dato r17_muerte_espalda.variante=(n/a)
+== r17_muerte_espalda
+== r17_muerte_cabeza
+estado al terminar: director=True fase=Puestos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=16 escala=1.0 dios=True
+dato r17_combate.segundos=12.25
+== r17_centro
+estado al empezar: director=True fase=Puestos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=16 escala=1.0 dios=True
+dato r17_pc_bloqueada.guarnicion=(n/a: build anterior, sala vacia)
+dato r17_pc_bloqueada.bloqueada=(n/a)
+dato r17_pc_bloqueada.restantes=(n/a)
+== r17_pc_bloqueada
+== r17_servidores_a
+== r17_servidores_b
+== r17_hackeo
+dato r17_pc_libre.bloqueada_despues=(n/a)
+== r17_pc_libre
+== r17_fachada_sur
+== r17_fachada_oeste
+estado al terminar: director=True fase=CentroDeDatos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=9 escala=1.0 dios=True
+dato r17_centro.segundos=12.58
+== r17_mundo
+estado al empezar: director=True fase=CentroDeDatos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=9 escala=1.0 dios=True
+dato r17_fuente_cerca.sistemas_de_particulas=0
+== r17_fuente_cerca
+== r17_fuente_lejos
+== r17_anillo_lejos
+dato r17_anillo_cerca.dentro_del_radio=(n/a)
+== r17_anillo_cerca
+dato r17_reaccion.victima_estado=Chase
+dato r17_reaccion.victima_quieto=false
+dato r17_reaccion.grupo_16m=4
+dato r17_reaccion.persiguen_antes=0
+dato r17_reaccion.persiguen_despues=0
+== r17_reaccion
+estado al terminar: director=True fase=Puestos sub=0 driver=True yo=Soldado_2_Kes(vivo) aliados_vivos=3 enemigos_vivos=15 escala=1.0 dios=True
+dato r17_mundo.segundos=17.96
+dato global.duplicados_apagados_final=0 colliders_apagados_final=0 titulos_ocultos_final=0
+FIN 53.38 s

@@ -355,19 +355,23 @@ namespace SP.Combat
                 else
                 {
                     bool headshot = ultimoImpactoFueCabeza;
+                    // R17: un headshot de frente contra el escudero lo absorbe el escudo: ni cartel ni sangre de headshot mortal.
+                    if (headshot && hit.Health.BloqueaGolpeDe != null && hit.Health.BloqueaGolpeDe(ownerId)) headshot = false;
                     UltimoImpactoEnSoldado = puntoDeImpacto; UltimoImpactoFueCabeza = headshot;   // para los checks (#094)
                     // #107/#108: el headshot del bando jugador sobre un enemigo humano MATA al toque (Health.TakeDamage(..., true) se lleva
                     // toda la vida). Solo llega aca como headshot si el tirador es del bando jugador y la victima enemiga (ver LeDioAlCuerpo);
                     // los vehiculos y torretas no pasan por este camino. Un enemigo pegandole a la cabeza del jugador sigue siendo dano normal.
                     bool instakill = headshot && HeadshotMataAlInstante && ownerTeam == TeamId.Player && hit.Team == TeamId.Enemy && !hit.Health.Invulnerable;
                     int finalDamage = headshot ? damage * 2 : damage;
+                    // R17 (pedido 5): con mascara puesta el headshot no mata (Health gasta la capa): ni "mortal" ni efecto de muerte.
+                    bool mascara = instakill && hit.Health.CapasDeCabeza > 0;
                     if (headshot)
                     {
                         EventBus.Instance.Publish(new HeadshotEvent(ownerId, hit.Id, puntoDeImpacto));
                         // Bug #044: el tiro a la cabeza del soldado que maneja el jugador se anuncia.
                         var poseido = SP.Player.PlayerInputDriver.Activo != null && SP.Player.PlayerInputDriver.Activo.Brain != null ? SP.Player.PlayerInputDriver.Activo.Brain.Current : null;
-                        if (poseido != null && poseido.Id == ownerId) AnunciarHeadshot(puntoDeImpacto, instakill || hit.Health.Current <= finalDamage);
-                        if (instakill) EfectoDeHeadshotMortal(puntoDeImpacto);
+                        if (poseido != null && poseido.Id == ownerId) AnunciarHeadshot(puntoDeImpacto, !mascara && (instakill || hit.Health.Current <= finalDamage));
+                        if (instakill && !mascara) EfectoDeHeadshotMortal(puntoDeImpacto);
                     }
                     hit.Health.TakeDamage(finalDamage, ownerId, instakill);
                     ImpactCubes.Spawn(puntoDeImpacto, -transform.forward, ImpactSurface.Soldier, finalDamage);

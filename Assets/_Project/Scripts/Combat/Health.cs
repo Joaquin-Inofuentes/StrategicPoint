@@ -74,6 +74,7 @@ namespace SP.Combat
             // LastAttackerId apuntando al verdugo de su muerte ANTERIOR hasta
             // que alguien le pegue de nuevo en esta vida.
             LastAttackerId = -1;
+            MurioPorLaCabeza = false;
             segundosSinDano = SegundosSinDanoParaRegenerar;
             regenAcumulada = 0f;
             IsRegenerating = false;
@@ -124,6 +125,16 @@ namespace SP.Combat
 
         // WP10 (#101): multiplicador del dano recibido (1 = normal). El operador de la radio de campana recibe x0,5 mientras la usa.
         public float FactorDeDano { get; set; } = 1f;
+
+        // R17: capas de cabeza (0 = normal). Mientras haya, un headshot NO mata: gasta una capa y hace dano normal x2 (mascara del pesado).
+        // No lo reinicia Initialize: lo pone el dueno (EnemigoPesado) despues de Initialize.
+        public int CapasDeCabeza { get; set; }
+        public event System.Action CabezaExpuesta;
+        // R17: la baja fue un headshot mortal (elige el clip de muerte "headshot" y lo lee la presentacion).
+        public bool MurioPorLaCabeza { get; private set; }
+        // R17: predicado PURO (sin efectos): true si un golpe de este atacante lo anula el escudo. Lo llena el escudero. Projectile lo consulta antes de
+        // anunciar un HEADSHOT, para no mostrar el cartel de un golpe que el escudo absorbe.
+        public System.Func<int, bool> BloqueaGolpeDe;
 
         public void TakeDamage(int amount, int attackerId) => TakeDamage(amount, attackerId, false);
 
@@ -182,9 +193,20 @@ namespace SP.Combat
             regenAcumulada = 0f;
             IsRegenerating = false;
 
+            if (headshot && CapasDeCabeza > 0)
+            {
+                // R17 (pedido 5): el 1.er headshot al pesado rompe la mascara: dano normal doble, no mata. Va DESPUES del filtro del escudo
+                // (un golpe anulado no gasta la capa) y de los coeficientes de dano (arriba).
+                CapasDeCabeza--;
+                headshot = false;
+                // (Projectile ya duplico el dano del headshot: aca queda tal cual.)
+                GameLog.Line("MASCARA ROTA");
+                CabezaExpuesta?.Invoke();
+            }
             if (headshot)
             {
                 amount = Current;   // instakill: se lleva toda la vida que quede
+                MurioPorLaCabeza = true;
                 GameLog.Line("HEADSHOT");
             }
 

@@ -324,7 +324,7 @@ namespace SP.EditorTools
 
             // --- Tutorial: paso nuevo de suministros ---
             var tm = UnityEngine.Object.FindAnyObjectByType<SP.Tutorial.TutorialManager>();
-            Check("El tutorial tiene el paso de suministros (36 pasos)", tm == null || tm.Total >= 36);
+            Check("El tutorial tiene el paso de suministros (36 pasos)", tm == null || tm.Total >= (SP.Tutorial.TutorialManager.ModoSimple ? 11 : 36));
         }
 
         static void RunPhase16(PlayerInputDriver inputDriver, Vehicle vehicle, Soldier vega, Soldier kes, Soldier doc,

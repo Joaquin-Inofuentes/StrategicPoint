@@ -62,6 +62,7 @@ namespace SP.Operacion
             if (ve && d < AlcanceMinimo) { var otro = BuscarObjetivo(); if (otro != null) { objetivo = otro; d = Vector3.Distance(transform.position, objetivo.transform.position); } }
             if (!ve || d > AlcanceMaximo || d < AlcanceMinimo) { Razon = ve ? (d > AlcanceMaximo ? "lejos" : "cerca") : "sin objetivo"; Apagar(); cerebro.Quieto = false; return; }
             cerebro.Quieto = true;   // se planta a tirar desde lejos
+            cerebro.PuestoFijoPorRol = true;   // R17: ReaccionAlDano le cambia el blanco pero no lo saca de su puesto
             var origen = transform.position + Vector3.up * 1.55f;
             var blanco = objetivo.transform.position + Vector3.up * 1.1f;
             var dir = (blanco - origen).normalized;

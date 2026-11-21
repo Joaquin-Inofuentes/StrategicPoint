@@ -27,6 +27,7 @@ namespace SP.Presentation
             if (playBtn != null) { playBtn.onClick.AddListener(OnPlayClicked); SP.UI.ButtonSfx.Attach(playBtn); }
             if (exitBtn != null) { exitBtn.onClick.AddListener(OnExitClicked); SP.UI.ButtonSfx.Attach(exitBtn); }
             PrepararContinuar(canvasRoot, playBtn, tutorialBtn, exitBtn);
+            PrepararTutorialCompleto(canvasRoot, tutorialBtn);
 
             confirmExitPanel = canvasRoot.Find("ConfirmExitPanel")?.gameObject;
             if (confirmExitPanel != null)
@@ -77,6 +78,30 @@ namespace SP.Presentation
             Colocar(botonContinuar, 62f); Colocar(jugar, -8f); Colocar(tutorial, -78f); Colocar(salir, -148f);
             var panel = raiz.Find("PanelBotones") as RectTransform;
             if (panel != null) { panel.sizeDelta = new Vector2(panel.sizeDelta.x, panel.sizeDelta.y + 70f); panel.anchoredPosition = new Vector2(panel.anchoredPosition.x, panel.anchoredPosition.y - 35f); }
+        }
+
+        // R17 2.13: TUTORIAL abre el simple (11 pasos); este boton chico, pegado a la derecha de TUTORIAL, abre el completo.
+        Button botonTutorialCompleto;
+        public Button BotonTutorialCompleto => botonTutorialCompleto;
+
+        void PrepararTutorialCompleto(Transform raiz, Button tutorial)
+        {
+            if (tutorial == null) return;
+            var go = Instantiate(tutorial.gameObject, raiz);
+            go.name = "TutorialCompletoButton";
+            var rt = (RectTransform)go.transform;
+            var rtT = (RectTransform)tutorial.transform;
+            float ancho = 96f, alto = Mathf.Max(24f, rtT.sizeDelta.y * 0.5f);
+            rt.sizeDelta = new Vector2(ancho, alto);
+            rt.anchoredPosition = rtT.anchoredPosition + new Vector2(rtT.sizeDelta.x * 0.5f + ancho * 0.5f + 8f, 0f);
+            var t = go.GetComponentInChildren<Text>(true);
+            if (t != null) { t.text = "TUTORIAL COMPLETO"; t.resizeTextForBestFit = true; t.resizeTextMinSize = 8; t.resizeTextMaxSize = 13; }
+            var img = go.GetComponent<Image>();
+            if (img != null) img.color = new Color(0.16f, 0.32f, 0.5f);
+            botonTutorialCompleto = go.GetComponent<Button>();
+            botonTutorialCompleto.onClick.RemoveAllListeners();
+            botonTutorialCompleto.onClick.AddListener(OnTutorialCompletoClicked);
+            SP.UI.ButtonSfx.Attach(botonTutorialCompleto);
         }
 
         static void Colocar(Button b, float y)
@@ -341,7 +366,17 @@ namespace SP.Presentation
         {
             if (actionTaken) return;
             actionTaken = true;
-            GameLog.Line("Se selecciono el tutorial");
+            GameLog.Line("Se selecciono el tutorial (simple)");
+            SP.Tutorial.TutorialManager.ModoSimple = true;
+            SceneLoader.Cargar("SC_Tutorial");
+        }
+
+        public void OnTutorialCompletoClicked()
+        {
+            if (actionTaken) return;
+            actionTaken = true;
+            GameLog.Line("Se selecciono el tutorial completo");
+            SP.Tutorial.TutorialManager.ModoSimple = false;
             SceneLoader.Cargar("SC_Tutorial");
         }
 

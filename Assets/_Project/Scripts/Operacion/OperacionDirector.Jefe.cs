@@ -30,7 +30,9 @@ namespace SP.Operacion
         public OleadaDeReserva[] oleadasDeReparacion; // 0 = 5 del este (t = 9 s), 1 = 6 del oeste (t = 18 s)
         public float segundosDeRecargaDeCajas = 25f;
 
-        public const float ZParaLaToma = -30f, SegundosDeLaToma = 3.5f;
+        public const float ZParaLaToma = -30f, SegundosDeLaToma = 3.5f, SegundosDeSalvaguardaDeLaToma = 45f;
+        bool avisoDeUmbral;
+        float vidaDelBlindadoAlAbrir = -1f;   // vida del vehiculo del jefe al caer el muro (detecta que el jugador le pego antes de la toma)
         public const float SegundoOleadaEste = 9f, SegundoOleadaOeste = 18f;
         public static readonly Color ColorDelJefe = new Color(1f, 0.38f, 0.28f);
 
@@ -209,8 +211,16 @@ namespace SP.Operacion
                 hud.Objetivo(TituloObjetivo(4, "HUIR EN EL TANQUE"), muro ? "La salida norte se esta abriendo... · despues avanza al patio" : "Sali por la salida norte y avanza al patio · hay un BLINDADO enemigo custodiando la fuga", 0f, ColorDelJefe);
             if (TomaDelJefeActiva || yo == null || !yo.Health.IsAlive) return;
             // Bug #243/#291: la presentacion del jefe arranca cuando cae el muro, dejando ver 2,5 s la explosion (antes arrancaba en el mismo cuadro).
+            // R17 (pedido 14, "trigger para empezar a atacar al tanque"): la pelea YA NO arranca sola 2,5 s despues de caer el muro con el jugador todavia
+            // adentro de la sala. Arranca con lo primero que pase de esto: (1) el jugador cruza el umbral z = ZParaLaToma, (2) le pega al blindado,
+            // (3) salvaguarda: pasaron SegundosDeSalvaguardaDeLaToma desde que cayo el muro (para no trabar la partida).
             bool muroCaido = muroDeSalida != null && !muro && Time.time - salidaAbiertaT >= SegundosAntesDeLaToma;
-            if (muroCaido || yo.transform.position.z > ZParaLaToma) StartCoroutine(TomaDelJefe());
+            bool salvaguarda = muroCaido && Time.time - salidaAbiertaT >= SegundosDeSalvaguardaDeLaToma;
+            // (el TanqueJefe recien existe al entrar en la subfase Jefe: en el Acercamiento se mide la vida del vehiculo contra la que tenia al caer el muro)
+            if (muroCaido && vidaDelBlindadoAlAbrir < 0f && tanque != null && tanque.Health != null) vidaDelBlindadoAlAbrir = tanque.Health.Current;
+            bool legolpeo = vidaDelBlindadoAlAbrir >= 0f && tanque != null && tanque.Health != null && tanque.Health.Current < vidaDelBlindadoAlAbrir - 0.5f;
+            if (muroCaido && !avisoDeUmbral) { avisoDeUmbral = true; if (hud != null) hud.Aviso("SALIDA ABIERTA · CRUZA EL UMBRAL PARA ENFRENTAR AL BLINDADO", 3f); }
+            if (yo.transform.position.z > ZParaLaToma || salvaguarda || legolpeo) StartCoroutine(TomaDelJefe());
         }
 
         void TickJefe()

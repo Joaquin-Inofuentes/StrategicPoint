@@ -199,6 +199,9 @@ namespace SP.Tutorial
 
         IEnumerator GestoMiraTanqueReal()
         {
+            // R17 2.13: en el tutorial simple no esta el paso "torreta": si el jugador aun no esta en el canon, se sienta aca con [2].
+            var dr = PlayerInputDriver.Activo;
+            if (dr != null && dr.CurrentSeat != SP.Vehicles.VehicleSeatRole.Gunner) { yield return Tocar(Key.Digit2); yield return new WaitForSeconds(0.6f); }
             Entrada.BotonDerecho(true); yield return new WaitForSeconds(1.6f); Entrada.BotonDerecho(false);
             yield return new WaitForSeconds(0.4f);
             yield return Tocar(Key.Digit3);

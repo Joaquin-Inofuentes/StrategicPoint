@@ -28,9 +28,10 @@ namespace SP.Operacion
         public int Pasaron { get; private set; }
         public Transform Escudo { get; private set; }
         Soldier soldado; Material matVentana; float brillo;
+        static Material aceroCompartido, marcoCompartido, franjaCompartida;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { Creados = 0; }
+        static void Reiniciar() { Creados = 0; aceroCompartido = marcoCompartido = franjaCompartida = null; }
 
         public static EnemigoEscudero Aplicar(Soldier s)
         {
@@ -48,6 +49,8 @@ namespace SP.Operacion
             soldado.Health.Initialize(soldado.Id, Mathf.Max(1, soldado.Health.MaxHealth) * MultiplicadorDeVida);
             if (soldado.Motor != null) { soldado.Motor.FactorDeGiro = FactorDeGiro; soldado.Motor.FactorDeClase = FactorDeVelocidad; }
             soldado.Health.FiltroDeDano = Filtrar;
+            // R17: predicado puro para que Projectile no anuncie HEADSHOT (ni sangre mortal) de un golpe que el escudo absorbe
+            soldado.Health.BloqueaGolpeDe = id => { if (id < 0) return false; var a = ActorRegistry.FindById(id); return a != null && ProtegeContra(a.transform.position); };
             subDisparo?.Dispose();
             subDisparo = EventBus.Instance.Subscribe<ShotFiredEvent>(AlDisparar);
             ConstruirEscudo();
@@ -119,12 +122,19 @@ namespace SP.Operacion
             var liberador = raiz.gameObject.AddComponent<LiberarMaterialesAlDestruirse>();   // ronda 16: los 4 materiales de la pieza se fugaban
             raiz.SetParent(transform, false); raiz.localPosition = new Vector3(0f, 0.12f, 0.62f); raiz.localRotation = Quaternion.identity;
             Escudo = raiz;
-            var acero = Mat(new Color(0.66f, 0.72f, 0.80f), 0.15f, 0.5f, new Color(0.05f, 0.06f, 0.08f));   // acero claro: se lee de noche
-            var marco = Mat(new Color(0.10f, 0.11f, 0.13f), 0.4f, 0.4f);
-            var franja = Mat(new Color(0.95f, 0.72f, 0.08f), 0f, 0.3f, new Color(0.25f, 0.17f, 0f));
-            matVentana = Mat(new Color(0.12f, 0.10f, 0.05f), 0f, 0.8f, new Color(0.9f, 0.55f, 0.1f) * 0.8f);
+            // R17 (pedido 11): marco ROJO emisivo (codigo de bando enemigo, se lee contra el asfalto). Acero, marco y franja son materiales ESTATICOS
+            // compartidos (antes 4 por escudero); solo la ventana es por instancia porque destella al recibir un impacto.
+            if (aceroCompartido == null)
+            {
+                aceroCompartido = Mat(new Color(0.66f, 0.72f, 0.80f), 0.15f, 0.5f, new Color(0.05f, 0.06f, 0.08f));   // acero claro: se lee de noche
+                marcoCompartido = Mat(new Color(0.55f, 0.06f, 0.04f), 0.2f, 0.4f, new Color(0.9f, 0.1f, 0.05f));
+                franjaCompartida = Mat(new Color(0.95f, 0.72f, 0.08f), 0f, 0.3f, new Color(0.25f, 0.17f, 0f));
+                aceroCompartido.hideFlags = marcoCompartido.hideFlags = franjaCompartida.hideFlags = HideFlags.DontSave;
+            }
+            var acero = aceroCompartido; var marco = marcoCompartido; var franja = franjaCompartida;
+            matVentana = Mat(new Color(0.12f, 0.05f, 0.03f), 0f, 0.8f, new Color(1f, 0.35f, 0.1f) * 0.8f);
             const float W = 1.1f, H = 1.5f, G = 0.09f;
-            liberador.materiales = new[] { acero, marco, franja, matVentana };
+            liberador.materiales = new[] { matVentana };
             Pieza(raiz, "Placa", Vector3.zero, new Vector3(W, H, G), acero);
             Pieza(raiz, "MarcoArriba", new Vector3(0f, H * 0.5f, 0f), new Vector3(W + 0.1f, 0.08f, G + 0.05f), marco);
             Pieza(raiz, "MarcoAbajo", new Vector3(0f, -H * 0.5f, 0f), new Vector3(W + 0.1f, 0.08f, G + 0.05f), marco);
@@ -167,7 +177,7 @@ namespace SP.Operacion
             if (!Soltado && Escudo != null && soldado != null && soldado.Health != null && !soldado.Health.IsAlive) SoltarEscudo();
             if (matVentana == null) return;
             brillo = Mathf.MoveTowards(brillo, 0f, Time.deltaTime * 4f);
-            matVentana.SetColor("_EmissionColor", Color.Lerp(new Color(0.9f, 0.55f, 0.1f) * 0.8f, new Color(2.5f, 2.2f, 1.6f), brillo));   // destella al recibir un impacto
+            matVentana.SetColor("_EmissionColor", Color.Lerp(new Color(1f, 0.35f, 0.1f) * 0.8f, new Color(2.5f, 2.2f, 1.6f), brillo));   // destella al recibir un impacto
         }
     }
 }

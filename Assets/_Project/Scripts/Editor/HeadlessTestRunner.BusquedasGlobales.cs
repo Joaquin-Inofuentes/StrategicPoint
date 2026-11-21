@@ -62,6 +62,10 @@ namespace SP.EditorTools
             { "Core/CapturasDeBuild.Lista.cs", 9 },    // buscadores por nombre y conteos de Text/TextMesh de cada toma
             { "Core/CapturasDeBuild.Mundo.cs", 11 },   // tomas del mundo: conteo de renderers, cargas, generadores, mobiliario; +1 la busqueda del arbusto rodante (toma desierto_rodante)
             { "Core/CapturasDeBuild.Combate.cs", 10 }, // tomas de combate: enemigos, particulas, decals, textos
+            // Ronda 17: parche de nivel (una vez al cargar la Operacion, idempotente), anillo del tanque (una vez al crear el cartel) y tomas de la ronda (solo con -capturas).
+            { "Presentation/AjustesDeNivelR17.cs", 3 }, // GameObject.Find de 9_Servidores y 3_CentroDeDatos + 1 busqueda del material de textos (cacheada); una vez, nunca por frame
+            { "Operacion/AnilloDeSubida.cs", 1 },       // crear el cartel [E] SUBIR: una vez al armar el anillo
+            { "Core/CapturasDeBuild.Ronda17.cs", 3 },   // arnes de capturas de la R17: a pedido, una vez por toma
         };
 
         static readonly Regex PatronBusquedaGlobal = new Regex(@"GameObject\.Find\(|FindObjectsByType|FindAnyObjectByType|FindFirstObjectByType|Resources\.FindObjectsOfTypeAll");
@@ -136,8 +140,9 @@ namespace SP.EditorTools
         // Bug #237: +1 -- WeaponStatusView.Fondo (las dos tarjetas del panel de arma; corre solo al armar el panel, no por frame).
         // Ronda 13 (T0): +6 -- los Transform.Find por nombre del arnes de capturas (CapturasDeBuild*.cs: 2 en el principal, 2 en Mundo, 2 en Combate),
         // que solo corre con -capturas, una vez por toma y fuera de Update. 127 + 6 = 133.
+        // Ronda 17: +4 (hueso.Find de las insignias en SoldierLook, 2 guardas idempotentes de AjustesDeNivelR17 y 1 de FuentesDeAgua.ArmarParticulas); todos de arranque, ninguno por frame. 140 + 4 = 144.
         // R13 (cierre): el conteo real ya venia en 140 desde antes de la ronda (el cupo 127 estaba desactualizado); se alinea con lo medido y desde aca solo baja.
-        const int PresupuestoFindPorNombre = 140;
+        const int PresupuestoFindPorNombre = 144;
         static readonly Regex PatronFindPorNombre = new Regex(@"(?<!Shader)(?<!GameObject)(?<!Object)\.Find\(\s*[""\w]");
         static readonly Regex PatronMetodoPorFrame = new Regex(@"\b(void|bool|float|Vector\d)\s+(Update|LateUpdate|FixedUpdate|UpdateFrom|UpdateInVehicle|TickPlayerAim|Tick)\s*\(");
         static readonly Regex PatronCabeceraMetodo = new Regex(@"^\s*(public |private |protected |internal |static |override |virtual )*[\w<>\[\],\.?]+\s+\w+\s*\([^;]*\)\s*$");

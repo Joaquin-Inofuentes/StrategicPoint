@@ -251,13 +251,41 @@ namespace SP.Presentation
         // Decisión D12: Bodies stay visible.
         IEnumerator MorirAnimado()
         {
-            animator.SetInteger(SP.Presentation.SoldierAnimatorDriver.ParamMuerteVariante,
-                UnityEngine.Random.Range(0, SP.Presentation.SoldierAnimatorDriver.CantidadDeMuertes));
+            animator.SetInteger(SP.Presentation.SoldierAnimatorDriver.ParamMuerteVariante, ElegirMuerte(soldier));
             animator.SetBool(SP.Presentation.SoldierAnimatorDriver.ParamMuerto, true);
 
             yield break;
         }
 
+
+        // R17 2.9a: clip de muerte por direccion del golpe y causa. Sin atacante conocido, al azar como antes.
+        public static int ElegirMuerte(Soldier victima)
+        {
+            int azar = UnityEngine.Random.Range(0, SP.Presentation.SoldierAnimatorDriver.CantidadDeMuertes);
+            if (victima == null || victima.Health == null) return azar;
+            int id = victima.Health.LastAttackerId;
+            if (id < 0) return azar;
+            var atacante = ActorRegistry.FindById(id);
+            if (atacante == null || atacante == victima) return azar;
+            var haciaAtacante = atacante.transform.position - victima.transform.position;
+            haciaAtacante.y = 0f;
+            if (haciaAtacante.sqrMagnitude < 0.0001f) return azar;
+            var fwd = victima.transform.forward; fwd.y = 0f;
+            if (fwd.sqrMagnitude < 0.0001f) return azar;
+            float angulo = Vector3.SignedAngle(fwd, haciaAtacante, Vector3.up);   // + = atacante a la derecha de la victima
+            bool agachado = victima.Motor != null && victima.Motor.IsCrouching;
+            return ElegirMuertePorAngulo(angulo, victima.Health.MurioPorLaCabeza, agachado);
+        }
+
+        // Tabla pura (testeable, H24.12a). anguloGrados: firmado, 0 = el atacante esta de frente, + = a la derecha.
+        // Frente (|a| < 60) => 0, headshot 3, headshot agachado 5. Espalda (|a| > 120) => 1, headshot 4. Derecha => 2. Izquierda => 0 (no hay clip propio).
+        public static int ElegirMuertePorAngulo(float anguloGrados, bool headshot, bool agachado)
+        {
+            float a = Mathf.Abs(Mathf.DeltaAngle(0f, anguloGrados));
+            if (a < 60f) return headshot ? (agachado ? 5 : 3) : 0;
+            if (a > 120f) return headshot ? 4 : 1;
+            return anguloGrados > 0f ? 2 : 0;
+        }
 
         // --- Tinte por instancia sin material por instancia (item 230) ---
         // Con un material COMPARTIDO por equipo, escribir sharedMaterial.color

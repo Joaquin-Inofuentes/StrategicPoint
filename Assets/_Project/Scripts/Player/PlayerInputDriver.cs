@@ -100,6 +100,8 @@ namespace SP.Player
         public bool AtajosDeTecladoHeredados = false;
         [SerializeField] float dragThresholdPixels = 6f;
         [SerializeField] float interactRadius = 3.5f;
+        // R17 (plan 2.11): el aro de uso del tanque / plaza marca exactamente este radio (el serializado de la instancia, no una constante).
+        public float RadioDeInteraccion => interactRadius;
         [SerializeField] float autoMountRadius = 6f;
 
         // Pedido explicito: 2 segundos de lerp al cambiar a otro soldado

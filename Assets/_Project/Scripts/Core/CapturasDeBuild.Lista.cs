@@ -61,6 +61,9 @@ namespace SP.Core
                 new Grupo { nombre = "huida",    ids = new[] { "retroceso_huida" }, limite = 60f, corre = RetrocesoHuida },
                 new Grupo { nombre = "r15", ids = IdsR15, limite = 150f, corre = R15 },
                 new Grupo { nombre = "subida_real", ids = IdsSubida, limite = 200f, corre = SubidaReal },
+                new Grupo { nombre = "r17_combate", ids = IdsR17Combate, limite = 150f, corre = R17Combate },
+                new Grupo { nombre = "r17_centro", ids = IdsR17Centro, limite = 150f, corre = R17Centro },
+                new Grupo { nombre = "r17_mundo", ids = IdsR17Mundo, limite = 180f, corre = R17Mundo },
                 new Grupo { nombre = "reportes17", ids = IdsReportes17(), limite = 120f, corre = Reportes17 },
                 new Grupo { nombre = "tanque",   ids = new[] { "tanque_mira_inicial", "tanque_hud_barra", "tanque_impacto_izq", "tanque_impacto_atras" }, limite = 60f, corre = Tanque },
                 // la ciudad a x4 deja el juego en cualquier estado: escena recargada antes y de ultima

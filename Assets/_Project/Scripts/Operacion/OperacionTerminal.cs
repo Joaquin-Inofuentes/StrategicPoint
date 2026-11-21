@@ -56,6 +56,52 @@ namespace SP.Operacion
         bool indicadorInit;
         public string UltimoMensaje { get; private set; } = "";
 
+        // ---------------------------------------------------------------- R17 (pedido 6): "bloquear la PC hasta matar a todos los enemigos"
+        // Modo "limpiar para empezar": mientras haya enemigos en la sala no se puede EMPEZAR a hackear. Se suelta UNA sola vez (latch) y no se vuelve
+        // a bloquear, asi las oleadas que salen con el hackeo no pueden trabar el juego. No usa Habilitado (dejaria el cartel invisible).
+        public const float SegundosEntreConteos = 0.5f, SegundosDeSalvaguarda = 60f;
+        public System.Func<int> EnemigosQueBloquean;
+        bool desbloqueada;
+        float relojDeConteo, sinBajarDesde; int restantesAntes = -1;
+        public int Restantes { get; private set; }
+        public bool Bloqueada => EnemigosQueBloquean != null && !desbloqueada && !Completo && Progreso01 <= 0f && Operador == null;
+        public bool SaltoLaSalvaguarda { get; private set; }
+        public event System.Action Desbloqueada;
+
+        // Se llama con dt desde Update (y desde la suite headless). Cuenta cada 0,5 s; un unico destello al soltarse.
+        public void TickDeBloqueo(float dt)
+        {
+            if (EnemigosQueBloquean == null || desbloqueada) return;
+            if (Progreso01 > 0f || Operador != null) { Soltar(false); return; }   // ya se empezo (restauracion, atajos de prueba): no se bloquea
+            relojDeConteo -= dt;
+            if (relojDeConteo > 0f) return;
+            relojDeConteo = SegundosEntreConteos;
+            int n = Mathf.Max(0, EnemigosQueBloquean());
+            if (n != restantesAntes) { restantesAntes = n; sinBajarDesde = 0f; } else sinBajarDesde += SegundosEntreConteos;
+            Restantes = n;
+            if (n == 0) { Soltar(false); return; }
+            // ultimo recurso: quedan <= 2 y no bajaron en 60 s (atascados): se suelta igual
+            if (n <= 2 && sinBajarDesde >= SegundosDeSalvaguarda) { Soltar(true); }
+        }
+
+        void Soltar(bool porSalvaguarda)
+        {
+            if (desbloqueada) return;
+            desbloqueada = true; SaltoLaSalvaguarda = porSalvaguarda; Restantes = 0;
+            SP.Core.GameLog.Line(porSalvaguarda ? "[R17] desbloqueo de la PC por salvaguarda (enemigos atascados)" : "[R17] sala asegurada: la PC queda libre");
+            SP.Presentation.AudioDirector.PlayUi2D(SP.Presentation.SfxKind.HoloOn, 0.8f);
+            Pintar(Verde);
+            var hud = OperacionHud.Instancia;
+            string msg = porSalvaguarda ? "SALA ASEGURADA · EL RESTO HUYO · YA PODES HACKEAR" : "SALA ASEGURADA · YA PODES HACKEAR LA COMPUTADORA";
+            if (hud != null) hud.Aviso(msg, 3f); else AlertQueue.Push(msg, AlertPriority.Alta, 3f);
+            Desbloqueada?.Invoke();
+        }
+
+        // Atajos (SaltarA, F10, modo prueba): dejan la PC libre sin esperar.
+        public void ForzarDesbloqueo() { if (!desbloqueada) { desbloqueada = true; Restantes = 0; } }
+
+        string TextoDeBloqueo => $"COMPUTADORA BLOQUEADA · QUEDAN {Restantes} ENEMIGO{(Restantes == 1 ? "" : "S")} EN LA SALA";
+
         void Start() { Pintar(Rojo); }
 
         static Soldier Poseido()
@@ -118,6 +164,7 @@ namespace SP.Operacion
         {
             motivo = null;
             if (Completo || !Habilitado) { motivo = "YA ESTA HECHO"; return false; }
+            if (Bloqueada) { motivo = $"BLOQUEADA: QUEDAN {Restantes}"; return false; }
             if (s == null || s.Health == null || !s.Health.IsAlive) { motivo = "NO DISPONIBLE"; return false; }
             if (!PuedeOperar(s)) { motivo = $"SOLO EL {nombreDelRol} PUEDE"; return false; }
             if (OrderService.LoManejaElJugador(s)) { motivo = "VOS SOS EL INDICADO: ACERCATE Y MANTEN [E]"; return false; }
@@ -199,6 +246,7 @@ namespace SP.Operacion
             if (Completo || !Habilitado) return;
             var hud = OperacionHud.Instancia;
             var yo = Poseido();
+            TickDeBloqueo(Time.deltaTime);
 
             UpdateAsignado(Time.deltaTime);
             AvisarSiEstaLejos(yo);
@@ -253,6 +301,13 @@ namespace SP.Operacion
                     return;
                 }
                 bool cerca = alLado && PuedeOperar(yo);
+                if (cerca && Bloqueada)
+                {
+                    UltimoMensaje = TextoDeBloqueo;
+                    if (hud != null) hud.Prompt(UltimoMensaje);
+                    if (EToque()) { SP.Presentation.AudioDirector.PlayUi2D(SP.Presentation.SfxKind.EmptyClick, 0.8f); if (hud != null) hud.Aviso(UltimoMensaje, 2f); }
+                    return;
+                }
                 if (cerca)
                 {
                     UltimoMensaje = Progreso01 > 0f ? $"[E] RETOMAR LA COMPUTADORA · {Mathf.RoundToInt(Progreso01 * 100f)} %" : "[E] INTERACTUAR CON LA COMPUTADORA (el soldado se queda 30 s)";
