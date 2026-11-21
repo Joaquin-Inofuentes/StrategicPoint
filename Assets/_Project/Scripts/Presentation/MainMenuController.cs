@@ -131,7 +131,7 @@ namespace SP.Presentation
         public void OnPlayClicked()
         {
             if (actionTaken) return;
-            // JUGAR no arranca directo: primero se elige el NIVEL (y despues, en el nivel 1, la dificultad).
+            // JUGAR no arranca directo: primero se elige el NIVEL (1 = tutorial, 2 = Operacion Cuartel).
             MostrarNiveles();
         }
 
@@ -145,10 +145,12 @@ namespace SP.Presentation
         public string UltimoNivelPedido { get; private set; }
 
         static readonly string[] NombresDeNivel = { "NIVEL 1", "NIVEL 2", "NIVEL 3", "NIVEL 4" };
-        static readonly string[] TitulosDeNivel = { "STRATEGIC POINT", "OPERACION CUARTEL", "PROXIMAMENTE", "PROXIMAMENTE" };
+        // R17c: el Nivel 1 viejo (Strategic Point, SC_Gameplay con eleccion de dificultad) quedo OCULTO: el Nivel 1 del selector es ahora el TUTORIAL
+        // y el Nivel 2 sigue siendo la Operacion Cuartel (ciudad y ruta). El codigo del nivel viejo (MostrarDificultad) se conserva sin entrada en el menu.
+        static readonly string[] TitulosDeNivel = { "TUTORIAL", "OPERACION CUARTEL", "PROXIMAMENTE", "PROXIMAMENTE" };
         static readonly string[] DescripcionesDeNivel =
         {
-            "Defende el punto estrategico: ordenes a tu escuadra, vehiculos y vista tactica RTS.",
+            "Aprende a jugar: moverte, disparar, ordenes a tu escuadra, el tanque y la vista tactica.",
             "Infiltrate en un cuartel, abri 3 puestos de control, hackea el centro de datos, huí en el tanque y resisti hasta el helicoptero.",
             "", ""
         };
@@ -219,7 +221,7 @@ namespace SP.Presentation
             if (actionTaken) return;
             UltimoNivelPedido = "Nivel " + n;
             if (n < 1 || n > NivelDisponible.Length || !NivelDisponible[n - 1]) { MostrarEnDesarrollo(n); return; }
-            if (n == 1) { MostrarDificultad(); return; }
+            if (n == 1) { OnTutorialClicked(); return; }   // Nivel 1 = tutorial (el nivel viejo esta oculto)
             actionTaken = true;
             GameLog.Line("Se selecciono el nivel 2: Operacion Cuartel");
             SceneLoader.Cargar("SC_Operacion");

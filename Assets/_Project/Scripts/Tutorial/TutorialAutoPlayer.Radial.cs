@@ -255,8 +255,16 @@ namespace SP.Tutorial
                 yield return new WaitForSeconds(1f);
             }
             limite = Time.time + 95f;
+            float proximaOrden = Time.time + 6f;
             while (Time.time < limite && tm.PasoActual != null && tm.PasoActual.Id == "avanzar_disparar")
             {
+                // R17b: la orden de mover el tanque se puede perder (el antiatasco la cancela si lo frenan los enemigos que atropella) y una persona la repetiria.
+                if (!tm.Flags.ordenDeAvanzar && Time.time >= proximaOrden)
+                {
+                    proximaOrden = Time.time + 5f;
+                    var adelante2 = Vector3.ProjectOnPlane(v.transform.forward, Vector3.up).normalized;
+                    if (!d.EjecutarOrdenRadial(5, 2)) d.TryIssueVehicleMoveOrder(AlSuelo(v.transform.position + adelante2 * 22f), v);
+                }
                 Soldier objetivo = null; float mejor = float.MaxValue;
                 foreach (var s in ActorRegistry.All)
                 {
@@ -284,7 +292,7 @@ namespace SP.Tutorial
             {
                 yield return ApuntarCanon(d, AlSuelo(meta.transform.position));
                 yield return new WaitForSeconds(0.8f);
-                d.EjecutarOrdenRadial(5, 2);
+                if (!d.EjecutarOrdenRadial(5, 2)) d.TryIssueVehicleMoveOrder(AlSuelo(meta.transform.position), v);   // R17b: si la orden por radial se rechaza, se manda el punto directo
                 yield return new WaitForSeconds(5f);
             }
         }

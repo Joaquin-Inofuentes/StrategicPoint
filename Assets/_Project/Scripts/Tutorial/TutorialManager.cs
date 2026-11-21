@@ -1635,8 +1635,28 @@ namespace SP.Tutorial
         }
 
         // Ayuda: nadie pierde por aprender. El tanque y los soldados se curan.
+        // R17b: medido en el paso 33 (log de dano): los 4 enemigos de la ola A le pegan al tanque ~350 de dano por segundo (fusil 25/0,4 s, ametra 13/0,075 s,
+        // subfusil 4/0,06 s, 35/0,7 s): el tanque (260) cae en 0,75 s y un soldado (180) en 0,9 s, y el tutorial completo se perdia en el paso 33.
+        // Mientras dura una ola, lo que recibe el tanque y la escuadra se reduce; en el resto de los pasos vuelve a x1.
+        public const float FactorDeDanoEnLasOlas = 0.1f;
+        bool danoReducido;
+
+        void ReducirDanoEnLasOlas(bool en)
+        {
+            float k = en ? FactorDeDanoEnLasOlas : 1f;
+            var vh = driver.Vehicle;
+            if (vh != null && vh.Health != null && !Mathf.Approximately(vh.Health.FactorDeDano, k)) vh.Health.FactorDeDano = k;
+            if (driver.Squad != null)
+                foreach (var s in driver.Squad)
+                    if (s != null && s.Health != null && !Mathf.Approximately(s.Health.FactorDeDano, k)) s.Health.FactorDeDano = k;
+            danoReducido = en;
+        }
+
         void Protecciones()
         {
+            var pa = PasoActual;
+            bool enOla = pa != null && (pa.Id == "avanzar_disparar" || pa.Id == "final");
+            if (enOla || danoReducido) ReducirDanoEnLasOlas(enOla);
             var v = driver.Vehicle;
             if (v != null && v.Health != null && v.Health.IsAlive && v.Health.Current < v.Health.MaxHealth * 0.6f)
                 v.Health.Heal(v.Health.MaxHealth / 4);
