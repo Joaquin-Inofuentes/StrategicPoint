@@ -156,6 +156,7 @@ namespace SP.EditorTools
                 {
                     var e = a as Soldier;
                     if (e == null || e.Team != TeamId.Enemy || e.Health == null || !e.Health.IsAlive || !e.gameObject.activeInHierarchy) continue;
+                    if (e.transform.position.y > 6f) continue;   // los francotiradores de las torres no tienen caja de cabeza ni linea limpia (el tiro pega en el parapeto)
                     if (e.Brain != null && e.Brain.Atrincherado) continue;   // WP4 (#085): los guardias se quedan DETRAS de su barricada (tapan el tiro)
                     bool ag = e.Motor != null && e.Motor.IsCrouching;
                     if ((ag ? agachado : dePie) != null) continue;
@@ -273,6 +274,7 @@ namespace SP.EditorTools
             bool diosAntes = ModoDios.Activo; ModoDios.Poner(true);
             try
             {
+                bool infAntes = WeaponHolder.MunicionInfinitaConModoDios; WeaponHolder.MunicionInfinitaConModoDios = false;   // medir con municion real (#324)
                 // 1) La Operacion usa reservas con 4 cargadores por arma.
                 bool reservas = WeaponHolder.ReservasActivas && w.UsaReservas && WeaponHolder.CargadoresDeReserva == SP.Operacion.OperacionDirector.CargadoresPorDificultad();   // #110: 8/6/4 segun la dificultad
                 bool reservaInicial = w.ReservaActual == w.MagazineSize * SP.Operacion.OperacionDirector.CargadoresPorDificultad();
@@ -325,7 +327,7 @@ namespace SP.EditorTools
                 yield return null; yield return null;
                 foreach (var x in CapturarPantalla("v2_095_hud.png")) yield return x;
             }
-            finally { ModoDios.Poner(diosAntes); }
+            finally { ModoDios.Poner(diosAntes); WeaponHolder.MunicionInfinitaConModoDios = true; }
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 

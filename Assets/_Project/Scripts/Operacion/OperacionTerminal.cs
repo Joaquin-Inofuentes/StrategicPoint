@@ -23,7 +23,7 @@ namespace SP.Operacion
         public float duracion = 4f;
         // Bug #008 (build): en el modo dios el hackeo (y cualquier terminal) dura 3 s, no los 30 s normales.
         public const float SegundosEnModoDios = 3f;
-        public float DuracionEfectiva => SP.Core.ModoDios.Activo ? Mathf.Min(duracion, SegundosEnModoDios) : duracion;
+        public float DuracionEfectiva => SP.Core.ModoDios.Activo && duracion <= 60f ? Mathf.Min(duracion, SegundosEnModoDios) : duracion;
         public bool soloUnRol;
         public RoleType rol = RoleType.Flanker;
         public string nombreDelRol = "FRANCOTIRADOR";

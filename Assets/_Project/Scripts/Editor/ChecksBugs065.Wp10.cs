@@ -192,11 +192,11 @@ namespace SP.EditorTools
             var a = d.UnidadA; var c = d.UnidadC; var ms = new List<Soldier>(d.Milicianos);
             float t0 = Time.realtimeSinceStartup;
             W10Elegir(a); foreach (var x in Esperar(0.25f)) yield return x;
-            W10Ordenar(d.sectoresDeDefensa[0].Centro, a); foreach (var x in Esperar(0.25f)) yield return x;
+            W10Ordenar(d.sectoresDeDefensa[0].PuntoCaminable, a); foreach (var x in Esperar(0.25f)) yield return x;
             W10Elegir(ms.ToArray()); foreach (var x in Esperar(0.25f)) yield return x;
-            W10Ordenar(d.sectoresDeDefensa[0].Centro + new Vector3(0f, 0f, 4f), ms.ToArray()); foreach (var x in Esperar(0.25f)) yield return x;   // bug #295: un solo puesto (la plaza)
+            W10Ordenar(d.sectoresDeDefensa[0].PuntoCaminable + new Vector3(0f, 0f, 4f), ms.ToArray()); foreach (var x in Esperar(0.25f)) yield return x;   // bug #295: un solo puesto (la plaza)
             W10Elegir(c); foreach (var x in Esperar(0.25f)) yield return x;
-            W10Ordenar(d.sectoresDeDefensa[0].Centro + new Vector3(0f, 0f, -4f), c); foreach (var x in Esperar(0.25f)) yield return x;
+            W10Ordenar(d.sectoresDeDefensa[0].PuntoCaminable + new Vector3(0f, 0f, -4f), c); foreach (var x in Esperar(0.25f)) yield return x;
             int nSec = d.sectoresDeDefensa.Length;
             for (int i = 0; i < 3; i++) { llegada[i] = -1f; w10Cubierta[i] = -1f; }
             while (Time.realtimeSinceStartup - t0 < 45f)
@@ -234,12 +234,12 @@ namespace SP.EditorTools
             var a = d.UnidadA; var c = d.UnidadC; var ms = new List<Soldier>(d.Milicianos);
             W10Elegir(a); foreach (var x in Esperar(0.4f)) yield return x;
             W8Ok(ref ok, d.PasoHecho[0] && panel.Actual == 1, sb, $"paso 1 (seleccionar) hecho, panel.Actual={panel.Actual}");
-            W10Ordenar(d.sectoresDeDefensa[0].Centro, a); foreach (var x in Esperar(0.4f)) yield return x;
+            W10Ordenar(d.sectoresDeDefensa[0].PuntoCaminable, a); foreach (var x in Esperar(0.4f)) yield return x;
             W8Ok(ref ok, d.PasoHecho[1] && panel.Actual == 2, sb, $"paso 2 (orden al sector A) hecho, panel.Actual={panel.Actual}");
             W10Elegir(ms.ToArray()); foreach (var x in Esperar(0.4f)) yield return x;
             W8Ok(ref ok, d.PasoHecho[2] && panel.Actual == 3, sb, $"paso 3 (los dos milicianos) hecho, panel.Actual={panel.Actual}");
             float rAntes = d.RelojEfectivo;
-            W10Ordenar(d.sectoresDeDefensa[0].Centro + new Vector3(0f, 0f, 4f), ms.ToArray()); foreach (var x in Esperar(0.4f)) yield return x;
+            W10Ordenar(d.sectoresDeDefensa[0].PuntoCaminable + new Vector3(0f, 0f, 4f), ms.ToArray()); foreach (var x in Esperar(0.4f)) yield return x;
             W8Ok(ref ok, d.PasoHecho[3] && d.RelojDelMandoCorre, sb, $"paso 4 (milicianos a la plaza) hecho, panel.Actual={panel.Actual} (el paso 5 se cumple solo cuando llegan), el reloj corre={d.RelojDelMandoCorre}");
             // 3) llegan a sus sectores; sale la primera flecha de aviso.
             var llegada = new float[] { -1f };
@@ -298,7 +298,7 @@ namespace SP.EditorTools
             // Recuperar: Kes y el segundo (C) vuelven a A, 2 aliados adentro 4 s.
             var otro = d.UnidadC;
             W10Elegir(kes, otro); foreach (var x in Esperar(0.25f)) yield return x;
-            W10Ordenar(A.Centro, kes, otro);
+            W10Ordenar(A.PuntoCaminable, kes, otro);
             foreach (var x in W9bHasta(() => A.AliadosDentro >= MandoTactico.AliadosParaRecuperar, 40f)) yield return x;
             float tDentro = Time.realtimeSinceStartup;
             foreach (var x in W9bHasta(() => !A.Caido, 15f)) yield return x;
@@ -351,7 +351,7 @@ namespace SP.EditorTools
             while (d.Fase == FaseOperacion.Resistir && Time.realtimeSinceStartup - t0 < 300f)
             {
                 float dt = Time.unscaledDeltaTime; acum += dt; frames++; peor = Mathf.Max(peor, dt);
-                if (volverA > 0f && Time.realtimeSinceStartup > volverA) { W10Ordenar(d.sectoresDeDefensa[0].Centro, soldadoQueVuelve); volverA = -1f; }
+                if (volverA > 0f && Time.realtimeSinceStartup > volverA) { W10Ordenar(d.sectoresDeDefensa[0].PuntoCaminable, soldadoQueVuelve); volverA = -1f; }
                 int vivos = 0; foreach (var o in d.OleadasDelMando) vivos += o.Vivos;
                 maxVivos = Mathf.Max(maxVivos, vivos);
                 for (int i = 0; i < d.OleadasDelMando.Count; i++) if (d.OleadasDelMando[i].lanzada) vistas.Add(i);
@@ -429,9 +429,11 @@ namespace SP.EditorTools
             W8Ok(ref ok, !d.CampanarioOcupado && !WorldUiDirector.RevelarEnemigos, sb, $"sin el campanario: ocupado={d.CampanarioOcupado}, revelar={WorldUiDirector.RevelarEnemigos} (la niebla de guerra del minimapa NO esta activa en esta escena: iconos con niebla={lej0}/{vis0}, todos los enemigos se ven siempre)");
             // Kes sube por la rampa (orden de mover al centro de la plataforma).
             float h0 = Time.realtimeSinceStartup;
-            OrderService.IssueMoveOrder(kes, campanario.position);
-            foreach (var x in W9bHasta(() => d.CampanarioOcupado, 45f)) yield return x;
+            bool pasivoKes = kes.Brain.Pasivo; kes.Brain.Pasivo = true;   // sube sin contestar el fuego de la oleada (si no, baja de la rampa a pelear)
+            bool ordenCampanario = OrderService.IssueMoveOrder(kes, campanario.position); bool navCamp = UnityEngine.AI.NavMesh.SamplePosition(campanario.position, out var hc, 40f, UnityEngine.AI.NavMesh.AllAreas); var pth = new UnityEngine.AI.NavMeshPath(); UnityEngine.AI.NavMesh.CalculatePath(kes.transform.position, hc.position, UnityEngine.AI.NavMesh.AllAreas, pth); sb.Append($"[camino={pth.status} esquinas={pth.corners.Length} fin={(pth.corners.Length > 0 ? pth.corners[pth.corners.Length - 1].ToString() : "-")} kes={kes.transform.position} orden aceptada={ordenCampanario}, nav a {(navCamp ? Vector3.Distance(hc.position, campanario.position).ToString("0.0") : "-")} m del centro (y campanario={campanario.position.y:0.0} nav y={(navCamp ? hc.position.y : 0f):0.0})] ");
+            { float tTr = Time.realtimeSinceStartup; int pasosTr = 0; var trz = new StringBuilder(); while (!d.CampanarioOcupado && Time.realtimeSinceStartup - tTr < 45f) { if (Time.realtimeSinceStartup - tTr > pasosTr * 1.5f) { pasosTr++; var agk = kes.GetComponent<UnityEngine.AI.NavMeshAgent>(); trz.Append($"{kes.transform.position.x:0},{kes.transform.position.y:0.0},{kes.transform.position.z:0} {kes.Brain.State} rem={(agk != null && agk.enabled && agk.isOnNavMesh ? agk.remainingDistance.ToString("0") : "-")} link={(agk != null && agk.enabled && agk.isOnOffMeshLink)} v{(kes.GetComponent<UnityEngine.AI.NavMeshAgent>() != null ? kes.GetComponent<UnityEngine.AI.NavMeshAgent>().velocity.magnitude : -1f):0.0}; "); } yield return null; } sb.Append("[traza kes " + trz + "] "); }
             float subio = Time.realtimeSinceStartup - h0;
+            kes.Brain.Pasivo = pasivoKes;
             W8Ok(ref ok, d.CampanarioOcupado && kes.transform.position.y > 5.5f, sb, $"{kes.DisplayName} llego arriba en {subio:0.0} s (y={kes.transform.position.y:0.0}, ocupado={d.CampanarioOcupado})");
             foreach (var x in Esperar(1.0f)) yield return x;
             int lej1, vis1 = W10EnemigosLejanosVisibles(out lej1);
@@ -439,7 +441,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, Mathf.Abs(kes.Brain.BonusDeAlcance - OperacionDirector.AlcanceExtraDelCampanario) < 0.01f, sb, $"bonus de alcance x{kes.Brain.BonusDeAlcance:0.00}");
             foreach (var x in CapturarPantalla(W10Prefijo + "campanario.png")) yield return x;
             // Baja: vuelve a A.
-            OrderService.IssueMoveOrder(kes, d.sectoresDeDefensa[0].Centro);
+            OrderService.IssueMoveOrder(kes, d.sectoresDeDefensa[0].PuntoCaminable);
             foreach (var x in W9bHasta(() => !d.CampanarioOcupado, 45f)) yield return x;
             foreach (var x in Esperar(0.6f)) yield return x;
             W8Ok(ref ok, !d.CampanarioOcupado && !WorldUiDirector.RevelarEnemigos && Mathf.Abs(kes.Brain.BonusDeAlcance - 1f) < 0.01f, sb, $"al bajar se apaga: ocupado={d.CampanarioOcupado}, revelar={WorldUiDirector.RevelarEnemigos}, bonus x{kes.Brain.BonusDeAlcance:0.00}");

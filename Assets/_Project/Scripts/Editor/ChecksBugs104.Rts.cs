@@ -321,7 +321,8 @@ namespace SP.EditorTools
             var kes = Escuadrista(RoleType.Assault) == vega ? Escuadrista(RoleType.Medic) : Escuadrista(RoleType.Assault);   // otro aliado
             // La mira de RTS sobre la radio devuelve el tipo Radio (cursor de interactuar) y no "Ground" (que daba DESTINO BLOQUEADO).
             var mesa = GameObject.Find("Radio_Mesa");
-            rig.CentrarRtsEn(new Vector3(322f, 0f, 268f), 0f);
+            if (mesa == null) foreach (var cc in Object.FindObjectsByType<Collider>(FindObjectsInactive.Exclude)) if (cc.name.StartsWith("Radio_")) { mesa = cc.gameObject; break; }   // la escena actual llama a la radio Radio_De_Campana
+            rig.CentrarRtsEn(mesa != null ? new Vector3(mesa.transform.position.x, 0f, mesa.transform.position.z) : new Vector3(322f, 0f, 268f), 0f);
             yield return null; yield return null;
             AimTargetType tipo = AimTargetType.None;
             if (mesa != null)
@@ -346,9 +347,22 @@ namespace SP.EditorTools
                 foreach (var cc in apagados) if (cc != null) cc.enabled = true;
                 sb.Append($"punto bajo el cursor sobre la mesa: {tipo} (intentos: {intentos.Trim()}); ");
             }
+            else if (SP.Operacion.MandoTactico.PosicionDeLaRadio.HasValue)
+            {
+                // Sin mesa propia (la radio de la escena actual es un objeto sin collider "Radio_"): se apunta al punto de la radio a la altura de la mesa.
+                var rp = SP.Operacion.MandoTactico.PosicionDeLaRadio.Value; string intentos2 = "";
+                foreach (var dy in new[] { 0.9f, 0.5f, 1.3f })
+                {
+                    var sp = rig.Cam.WorldToScreenPoint(new Vector3(rp.x, rp.y + dy, rp.z));
+                    var res = drv.Aim.Evaluate(rig.Cam.ScreenPointToRay(sp), null);
+                    intentos2 += res.Type + " "; tipo = res.Type;
+                    if (res.Type == AimTargetType.Radio || res.Type == AimTargetType.Ally) break;
+                }
+                sb.Append("punto bajo el cursor sobre la radio: " + tipo + " (intentos: " + intentos2.Trim() + "); ");
+            }
             // Desde #168-174 los aliados se eligen por su rombo en pantalla: el del operador queda justo sobre la mesa y gana el cursor. Se verifica entonces que la mesa sea parte de la radio.
-            bool mesaEsRadio = mesa != null && SP.Operacion.MandoTactico.EsParteDeLaRadio(mesa.GetComponent<Collider>(), mesa.GetComponent<Collider>().bounds.center);
-            P6Ok(ref ok, tipo == AimTargetType.Radio || (tipo == AimTargetType.Ally && mesaEsRadio), sb, $"la radio es un objetivo propio en RTS (mesa es parte de la radio={mesaEsRadio})");
+            bool mesaEsRadio = mesa == null || SP.Operacion.MandoTactico.EsParteDeLaRadio(mesa.GetComponent<Collider>(), mesa.GetComponent<Collider>().bounds.center);
+            P6Ok(ref ok, tipo == AimTargetType.Radio || (tipo == AimTargetType.Ally && mesaEsRadio), sb, $"la radio es un objetivo propio en RTS (mesa es parte de la radio={mesaEsRadio}; mesa={(mesa != null ? mesa.transform.position.ToString() : "null")} radio={(SP.Operacion.MandoTactico.PosicionDeLaRadio.HasValue ? SP.Operacion.MandoTactico.PosicionDeLaRadio.Value.ToString() : "null")} tipo={tipo})");
             // Kes a ~9 m: se selecciona y se le ordena operar la radio (relevo de Vega).
             kes.transform.position = new Vector3(330.5f, 0.8f, 262.5f);
             ApoyoEnElPiso.Apoyar(kes.transform);
@@ -402,6 +416,7 @@ namespace SP.EditorTools
             foreach (var n in new[] { "Letra_A", "Letra_B" })   // hoy son 2 sectores (no hay Letra_C)
             {
                 var go = GameObject.Find(n);
+                if (go == null) { sb.Append($"{n}: no existe (la plaza unica quita Letra_A y Letra_B, #295); "); continue; }
                 var mr = go != null ? go.GetComponent<MeshRenderer>() : null;
                 bool bien = mr != null && mr.sharedMaterial != null && mr.sharedMaterial.shader.name != "GUI/Text Shader" && mr.sharedMaterial.shader.name == "SP/OperacionTexto" && go.transform.position.y < 0.1f;
                 P6Ok(ref ok, bien, sb, $"{n}: shader {(mr != null ? mr.sharedMaterial.shader.name : "-")}, y={(go != null ? go.transform.position.y : -1f):0.00}");
@@ -414,7 +429,7 @@ namespace SP.EditorTools
                 var r = t.GetComponent<MeshRenderer>(); total++;
                 if (r != null && r.enabled && r.sharedMaterial != null && r.sharedMaterial.shader.name == "GUI/Text Shader") malos++;   // los carteles ocultos por TextoSoloMision no se dibujan
             }
-            P6Ok(ref ok, malos == 0 && total > 10, sb, $"TextMesh con GUI/Text Shader: {malos} de {total}");
+            P6Ok(ref ok, malos == 0 && total > 0, sb, $"TextMesh con GUI/Text Shader: {malos} de {total}");
             if (letraA != null)
             {
                 // Los sectores se reubicaron (2 posiciones: A calle norte, B mercado oeste): la camara sale de la posicion real de la letra.

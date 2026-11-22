@@ -47,7 +47,7 @@ namespace SP.EditorTools
             var pos = term.transform.position + new Vector3(2f, 0f, 0f); pos.y = op.transform.position.y;
             var ag = op.GetComponent<UnityEngine.AI.NavMeshAgent>(); if (ag != null) ag.Warp(pos);
             op.transform.position = pos;
-            bool pasivoAntes = op.Brain.Pasivo;
+            bool pasivoAntes = op.Brain.Pasivo; float duracionPrevia = term.duracion; term.duracion = 120f; var capDios = 0f;   // en modo dios el hackeo dura 3 s y se completaria dentro de la ventana de 4 s
             term.Enganchar(op);
             // un enemigo aparece a 14 m, de frente, y le tira
             Soldier en = null;
@@ -80,6 +80,7 @@ namespace SP.EditorTools
             W8Ok(ref ok, !reacciono, sb, $"no pasa a Attack/Chase aunque haya un enemigo a 14 m (estado={op.Brain.State})");
             W8Ok(ref ok, Vector3.Distance(p0, op.transform.position) < 0.6f, sb, $"se queda junto a la computadora (se movio {Vector3.Distance(p0, op.transform.position):0.00} m)");
             sb.Append("[traza " + string.Join(" ", traza) + "] ");
+            term.duracion = duracionPrevia;
             term.Avanzar(1000f, op);
             foreach (var x in Esperar(0.3f)) yield return x;
             W8Ok(ref ok, term.Completo && op.Brain.Pasivo == pasivoAntes && !op.Brain.Quieto, sb, $"al terminar vuelve a su postura (Pasivo={op.Brain.Pasivo}, Quieto={op.Brain.Quieto})");

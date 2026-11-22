@@ -31,6 +31,8 @@ namespace SP.Operacion
         public int Indice { get; set; }
 
         public Vector3 Centro { get { var p = transform.position; return new Vector3(p.x, 0f, p.z); } }
+        // El centro puede caer sobre un monumento o fuera del NavMesh (la plaza: a 3,8 m): para dar ordenes y teletransportar se usa el punto caminable mas cercano dentro del anillo.
+        public Vector3 PuntoCaminable { get { var p = transform.position; return UnityEngine.AI.NavMesh.SamplePosition(p, out var h, radio, UnityEngine.AI.NavMesh.AllAreas) ? h.position : Centro; } }
 
         public Estado Situacion => Caido ? Estado.Caido : Amenazado && AliadosDentro == 0 ? Estado.Amenazado : AliadosDentro > 0 ? Estado.Cubierto : Estado.Libre;
 

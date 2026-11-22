@@ -268,12 +268,22 @@ namespace SP.EditorTools
                 AnimacionDeAccion.Terminar(camina); AccionesEnCurso.Terminar(camina);
                 if (camina.Brain != null) { camina.Brain.CancelOrder(); camina.Brain.Quieto = false; }
                 for (int i = 0; i < 6; i++) yield return null;
-                var inicio = camina.transform.position;
+                var inicio = camina.transform.position; Vector3 fwMejor = Vector3.forward;
                 var fw = camina.transform.forward; fw.y = 0f; fw.Normalize();
+                // El frente puede dar a una pared (el soldado frena a ~2 m y el IK vuelve a entrar con razon): se elige el rumbo con mas camino libre en el NavMesh.
+                float mejorLibre = -1f;
+                for (int k = 0; k < 12; k++)
+                {
+                    var dir = Quaternion.Euler(0f, k * 30f, 0f) * fw;
+                    float libre = 14f;
+                    if (UnityEngine.AI.NavMesh.SamplePosition(inicio, out var hit0, 2f, UnityEngine.AI.NavMesh.AllAreas) && UnityEngine.AI.NavMesh.Raycast(hit0.position, hit0.position + dir * 14f, out var borde, UnityEngine.AI.NavMesh.AllAreas)) libre = borde.distance;
+                    if (libre > mejorLibre) { mejorLibre = libre; fwMejor = dir; }
+                }
+                fw = fwMejor;
                 OrderService.IssueMoveOrder(camina, inicio + fw * 14f);
                 AnimacionDeAccion.Tick(camina, camina.transform.position + fw, TipoAccion.Operar, Time.deltaTime);
                 float tw = Time.realtimeSinceStartup; float vMax = 0f; Vector3 pPrev = camina.transform.position;
-                bool reinicio = false;
+                bool reinicio = false; var muestras = new StringBuilder();
                 while (Time.realtimeSinceStartup - tw < 1.6f)
                 {
                     // Los primeros 0.4 s son la transicion (arrancar y soltar el IK en ~70 ms): se mide despues.
@@ -281,6 +291,7 @@ namespace SP.EditorTools
                     AnimacionDeAccion.Tick(camina, camina.transform.position + fw, TipoAccion.Operar, Time.deltaTime);
                     vMax = Mathf.Max(vMax, (camina.transform.position - pPrev).magnitude / Mathf.Max(Time.deltaTime, 0.001f));
                     pPrev = camina.transform.position;
+                    if (reinicio && muestras.Length < 600) muestras.Append(AnimacionDeAccion.Diagnostico(camina) + " d=" + AnimacionDeAccion.DesplazamientoMaximoDeManos(camina).ToString("0.00") + " | ");
                     yield return null;
                 }
                 float recorrido = Vector3.Distance(camina.transform.position, inicio);
@@ -320,7 +331,7 @@ namespace SP.EditorTools
                 sb.Append($"ENGANCHES: MunicionPickup -> {tRec} ({(recoge ? "OK" : "MAL")}); WeaponHolder.Reload -> {tRel} reload={recargaIniciada} ({(recarga ? "OK" : "MAL")}); ");
                 bool caminaOk = despCamina < 0.10f && recorrido > 2f;
                 if (!caminaOk) ok = false;
-                sb.Append("TABLA: " + tabla + "| caminando (recorrio " + recorrido.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " m, v max " + vMax.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " m/s): manos+" + despCamina.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " m (el IK se apaga)" + (caminaOk ? "" : "(MAL)") + "; ");
+                sb.Append("TABLA: " + tabla + "| caminando (recorrio " + recorrido.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " m, v max " + vMax.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " m/s): manos+" + despCamina.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture) + " m (el IK se apaga)" + (caminaOk ? "" : "(MAL)") + (caminaOk ? "" : " muestras: " + muestras) + "; ");
             }
             finally
             {

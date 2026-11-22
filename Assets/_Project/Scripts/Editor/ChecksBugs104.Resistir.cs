@@ -362,7 +362,7 @@ namespace SP.EditorTools
                     for (int k = 0; k < 2 && i * 2 + k < libres.Count; k++)
                     {
                         var s = libres[i * 2 + k];
-                        var c = d.sectoresDeDefensa[i].Centro + new Vector3(k == 0 ? -1.5f : 1.5f, 0f, 0f);
+                        var c = d.sectoresDeDefensa[i].PuntoCaminable + new Vector3(k == 0 ? -1.5f : 1.5f, 0f, 0f);
                         if (UnityEngine.AI.NavMesh.SamplePosition(c, out var h, 4f, UnityEngine.AI.NavMesh.AllAreas)) c = h.position;
                         s.transform.position = new Vector3(c.x, s.transform.position.y, c.z);
                         ApoyoEnElPiso.Apoyar(s.transform);
@@ -444,7 +444,7 @@ namespace SP.EditorTools
                 P6Ok(ref ok, panel.TextoActual.Contains("PLAZA") && panel.TextoActual.Contains("CLIC DERECHO"), sb, $"texto: '{panel.TextoActual}'");
                 foreach (var x in CapturarPantalla(P7Prefijo + "114_paso2_punteado.png")) yield return x;
                 // el resto de los pasos de a uno
-                W10Ordenar(A, d.UnidadA);
+                W10Ordenar(d.sectoresDeDefensa[0].PuntoCaminable, d.UnidadA);
                 foreach (var x in Esperar(0.8f)) yield return x;
                 bool inv2 = InvarianteOk(out var det2);
                 P6Ok(ref ok, d.PasoHecho[1] && d.PasoActualDelMando == 2 && inv2, sb, $"orden a A: paso 3 activo ({det2})");

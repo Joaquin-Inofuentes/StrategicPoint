@@ -85,7 +85,8 @@ namespace SP.EditorTools
                 // El miliciano 4 queda congelado lejos (como si estuviera atascado) para que la cobertura dure los 40 s de la medicion; el resto de los aliados
                 // no dispara (Pasivo), asi las bajas son del helicoptero.
                 var mils = new List<Soldier>(d.Milicianos);
-                congelado = mils.Count > 3 ? mils[3] : null;
+                congelado = mils.Count > 3 ? mils[3] : (mils.Count > 0 ? mils[mils.Count - 1] : null);   // la plaza unica (#295) deja menos de 4 milicianos
+                if (congelado == null) { var yoC = (PlayerInputDriver.Activo != null && PlayerInputDriver.Activo.Brain != null ? PlayerInputDriver.Activo.Brain.Current : null); foreach (var a0 in P8Aliados()) if (a0 != yoC) congelado = a0; }
                 if (congelado != null && congelado.Brain != null) congelado.Brain.IsPossessedByPlayer = true;
                 // #295: con la plaza unica los milicianos ya no estan lejos de la zona: el "atascado" se manda a 55 m para que la cobertura dure.
                 if (congelado != null) Teletransportar(congelado, P8Lejos(zona));

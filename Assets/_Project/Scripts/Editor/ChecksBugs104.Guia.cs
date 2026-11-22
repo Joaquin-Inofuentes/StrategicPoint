@@ -101,6 +101,7 @@ namespace SP.EditorTools
             if (agrupados != 0) ok = false;
             sb.Append($"carteles de seguimiento tras la orden = {agrupados} (se pide 0: el feedback es solo sonido) '{textoAgrupado}'{(agrupados == 0 ? "" : " MAL")}; ");
 
+            // La carga del Este esta desactivada en la escena actual (un solo puesto, #295): el ANTES usa otra carga activa (el porton del cuartel).
             // ANTES (bug reproducido): sin apilar, los carteles individuales que nacen juntos se superponen.
             int solapesAntes = 0;
             WorldTag.ApilarActivo = false;
@@ -189,17 +190,22 @@ namespace SP.EditorTools
             float radio = CargaExplosiva.RadioDeExplosion;
             int n = aliados.Count;
 
+            // La carga del Este esta desactivada en la escena actual (un solo puesto, #295): el ANTES usa otra carga activa (el porton del cuartel).
+            CargaExplosiva cargaAntes = d.puestos[1].carga;
+            if (!cargaAntes.gameObject.activeInHierarchy) foreach (var cx in Object.FindObjectsByType<CargaExplosiva>(FindObjectsInactive.Exclude)) if (cx != d.puestos[0].carga) { cargaAntes = cx; break; }
             // ANTES (bug reproducido): con la reaccion apagada se quedan dentro del radio (carga del puesto Este).
             var ini0 = new float[n]; var fin0 = new float[n]; var reg0 = new bool[1];
             AiBrain.AlejarseDeCargasActivo = false;
-            try { foreach (var x in Escenario106(d.puestos[1].carga, yo, aliados, ini0, fin0, reg0)) yield return x; }
+            try { foreach (var x in Escenario106(cargaAntes, yo, aliados, ini0, fin0, reg0)) yield return x; }
             finally { AiBrain.AlejarseDeCargasActivo = true; }
             int dentroAntes = 0; for (int i = 0; i < n; i++) if (fin0[i] <= radio) dentroAntes++;
             sb.Append($"ANTES (sin reaccion): {dentroAntes}/{n} aliados siguen dentro del radio a los 3 s; ");
             if (dentroAntes == 0) ok = false;
             // Se espera a que esa carga estalle y a que el NavMesh se rehaga (el bunker se derrumba) antes del segundo escenario.
             float rEspera = Time.realtimeSinceStartup;
-            while (d.puestos[1].carga.Situacion != CargaExplosiva.Estado.Volada && Time.realtimeSinceStartup - rEspera < 20f) yield return null;
+            while (cargaAntes.Situacion != CargaExplosiva.Estado.Volada && Time.realtimeSinceStartup - rEspera < 8f) yield return null;
+            if (cargaAntes.Situacion != CargaExplosiva.Estado.Volada) cargaAntes.VolarYa();   // la del porton no corre su mecha en esta escena: se la hace estallar para seguir
+            sb.Append($"carga del ANTES tras esperar: {cargaAntes.Situacion} mecha={cargaAntes.MechaRestante:0.0} en {Time.realtimeSinceStartup - rEspera:0.0} s; ");
             foreach (var x in Esperar(3f)) yield return x;
 
             // DESPUES: con la reaccion, todos fuera del radio a los 3 s (carga del puesto Oeste).
@@ -209,8 +215,8 @@ namespace SP.EditorTools
             bool todosFuera = true;
             for (int i = 0; i < n; i++) if (fin[i] <= radio) todosFuera = false;
             if (!reg[0] || !todosFuera) ok = false;
-            sb.Append($"carga registrada={reg[0]}; radio={radio:0}; ");
-            for (int i = 0; i < n; i++) sb.Append($"{aliados[i].DisplayName}: {ini[i]:0.0} m -> {fin[i]:0.0} m a los 3 s (alejandose={aliados[i].Brain.AlejandoseDeUnaCarga}); ");
+            sb.Append($"carga registrada={reg[0]}; radio={radio:0}; cargaTest={carga.Posicion}; ");
+            for (int i = 0; i < n; i++) sb.Append($"{aliados[i].DisplayName}: {ini[i]:0.0} m -> {fin[i]:0.0} m a los 3 s (alejandose={aliados[i].Brain.AlejandoseDeUnaCarga} estado={aliados[i].Brain.State} agente={(aliados[i].GetComponent<NavMeshAgent>() is NavMeshAgent na ? $"on={na.isOnNavMesh} en={na.enabled} vel={na.velocity.magnitude:0.0} ruta={na.hasPath} detenido={(na.enabled && na.isOnNavMesh ? na.isStopped : false)}" : "sin")} ts={Time.timeScale:0.0}); ");
             sb.Append(todosFuera ? "todos fuera del radio" : "ALGUNO SIGUE DENTRO DEL RADIO (MAL)");
             // Despues de estallar, vuelven a su flujo normal (no quedan alejandose).
             foreach (var x in Esperar(5f)) yield return x;

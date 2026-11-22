@@ -106,6 +106,7 @@ namespace SP.Presentation
         public static float DesplazamientoDeManos(Soldier actor) { var c = De(actor, false); return c != null ? c.DesplazamientoActual : 0f; }
         public static float DesplazamientoMaximoDeManos(Soldier actor) { var c = De(actor, false); return c != null ? c.DesplazamientoMaximo : 0f; }
         public static void ReiniciarMedicion(Soldier actor) { var c = De(actor, false); if (c != null) c.DesplazamientoMaximo = 0f; }
+        public static string Diagnostico(Soldier actor) { var c = De(actor, false); return c != null ? $"vel={c.velocidad:0.00} peso={c.peso:0.00}" : "sin-comp"; }
         public static bool AgachadaPropia(Soldier actor) { var c = De(actor, false); return c != null && c.AgachadaPropia; }
         public static string Prop(Soldier actor) { var c = De(actor, false); return c != null ? c.NombreDelProp : null; }
     }
@@ -126,11 +127,11 @@ namespace SP.Presentation
         Vector3 objetivo;
         float hasta = -1f;       // realtimeSinceStartup hasta el que la accion sigue viva
         float t;                 // segundos desde que empezo (tiempo de juego)
-        float peso;              // 0..1 mezcla con la pose del Animator (sube al entrar, baja al salir)
+        internal float peso;              // 0..1 mezcla con la pose del Animator (sube al entrar, baja al salir)
         bool activa;             // todavia hay algo que restaurar
         Vector3 posPrevia;
         bool tienePosPrevia;
-        float velocidad;
+        internal float velocidad;
 
         bool agachadaPropia, agachadoPrevio;
         GameObject prop;

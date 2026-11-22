@@ -188,7 +188,7 @@ namespace SP.EditorTools
             var r = new HashSet<Renderer>();
             foreach (var m in Object.FindObjectsByType<MeshRenderer>(FindObjectsInactive.Exclude))
             {
-                if (m == null || !m.enabled || !m.gameObject.activeInHierarchy || EsRuido(m)) continue;
+                if (m == null || !m.enabled || !m.gameObject.activeInHierarchy || EsRuido(m) || EsAdornoFlotante(m)) continue;
                 if (Apoyado(m)) continue;
                 r.Add(m);
             }
@@ -201,6 +201,8 @@ namespace SP.EditorTools
             string n = r.name; var p = r.transform.parent != null ? r.transform.parent.name : "";
             // R17: el arma que se le cae a un enemigo ("ArmaCaida", raiz propia) cae donde murio y desaparece sola a los ~15 s: es efimera, no es geometria del nivel
             if (r.transform.root.name == "ArmaCaida") return true;
+            // Vestuario no estructural que nunca tuvo fisica y queda donde esta si se cae su apoyo (arcos, cables, lamparas, placas, mobiliario, remaches) y las hojas del porton blindado, que se deslizan por diseno (PortonBlindadoAnimado).
+            { string ruta = RutaDe(r.transform); foreach (var d in new[] { "Porton_Blindado_Arte", "Arco_Dintel", "/Cable", "Lampara_", "Placa_Dorada", "Conducto_", "Leon_", "Follaje", "Silla_", "Banco_", "Cornisa", "TorretaAliada_", "Sombrilla", "Refugio_Techo", "Reflector_Baranda", "SM_Mod_Muro_Recto" }) if (ruta.Contains(d)) return true; }
             return n.Contains("Rombo") || n.Contains("MinimapIcon") || p.Contains("Rombo") || n.Contains("Interior") || n.Contains("Borde")
                 || r.GetComponentInParent<InteractableDiamond>() != null || (r.GetComponentInParent<Rigidbody>() is Rigidbody rb && !rb.isKinematic && !rb.IsSleeping());
         }

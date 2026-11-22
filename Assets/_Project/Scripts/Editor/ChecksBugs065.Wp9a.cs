@@ -132,6 +132,7 @@ namespace SP.EditorTools
                 // B) El Asalto manteniendo [E]: avanza, reporta DETONANDO, planta a los ~3,5 s y la mecha arranca en 20 s.
                 Poseer(vega); yield return null;
                 Junto(vega, carga.transform.position, 2f);
+                ModoDios.Poner(false);   // con modo dios la mecha dura 3 s: D y E miden la mecha real de 20 s
                 OperacionTerminal.PruebaMantenerE = true;
                 foreach (var x in Esperar(1.2f)) yield return x;
                 var lista = new List<AccionesEnCurso.Accion>(); AccionesEnCurso.Vigentes(lista);
