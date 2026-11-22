@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using SP.Core;
 
@@ -70,6 +71,8 @@ namespace SP.Presentation
             {
                 proximaBusqueda = Time.unscaledTime + 4f;
                 puntuales.Clear();
+                // los soles de una escena descargada quedan como claves nulas: se podan para que el diccionario no crezca
+                sol.Keys.Where(k => k == null).ToList().ForEach(k => sol.Remove(k));
                 foreach (var l in FindObjectsByType<Light>(FindObjectsInactive.Exclude))
                 {
                     if (l == null) continue;
