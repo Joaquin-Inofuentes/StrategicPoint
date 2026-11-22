@@ -457,6 +457,7 @@ namespace SP.Player
             }
 
             // [N] seleccionar a todos los del mismo tipo en pantalla (214)
+            if (KeyBindings.WasPressed(KeyBindings.SeleccionarMismoTipo) && Selection.Selected.Count == 0) RejectOrder("NADIE SELECCIONADO");
             if (KeyBindings.WasPressed(KeyBindings.SeleccionarMismoTipo) && Selection.Selected.Count > 0)
             {
                 Selection.SelectSameTypeOnScreen(Selection.Selected[0], Rig.Cam);
@@ -465,8 +466,10 @@ namespace SP.Player
             // Descartar un recorrido todavia sin arrancar es lo mismo que
             // cancelar una orden, y no necesita seleccion: los puntos son
             // del jugador, no de nadie en particular.
+            bool trazadoDescartado = false;
             if (KeyBindings.WasPressed(KeyBindings.CancelarOrden) && TrazadoDeCamino.HayTrazado)
             {
+                trazadoDescartado = true;
                 TrazadoDeCamino.Limpiar();
                 if (ModeToast != null) ModeToast.Show("RECORRIDO DESCARTADO");
             }
@@ -485,6 +488,7 @@ namespace SP.Player
                 GameLog.Line("Se cancelo la orden de la seleccion");
                 Feedback.Accion(SfxKind.EmptyClick, "ORDEN CANCELADA", null, Feedback.Warn, aviso: true, pulso: false, volumen: 0.5f);
             }
+            else if (KeyBindings.WasPressed(KeyBindings.CancelarOrden) && !trazadoDescartado) RejectOrder("NO HAY NADA QUE CANCELAR");
 
             UpdateControlGroups(kb);
             UpdateFormationPreview(mouse, screenRay);

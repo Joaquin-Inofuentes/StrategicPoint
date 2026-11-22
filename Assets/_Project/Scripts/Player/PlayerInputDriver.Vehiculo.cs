@@ -319,7 +319,7 @@ namespace SP.Player
             VehicleSeatRole? asientoPedido = null;
             if (kb.digit1Key.wasPressedThisFrame) asientoPedido = VehicleSeatRole.Driver;
             else if (kb.digit2Key.wasPressedThisFrame) asientoPedido = VehicleSeatRole.Gunner;
-            else if (kb.digit3Key.wasPressedThisFrame && mgTurret != null) asientoPedido = VehicleSeatRole.Passenger1;
+            else if (kb.digit3Key.wasPressedThisFrame) { if (mgTurret != null) asientoPedido = VehicleSeatRole.Passenger1; else RejectOrder("ESTE VEHICULO NO TIENE METRALLETA"); }
             else if (kb.digit4Key.wasPressedThisFrame) asientoPedido = VehicleSeatRole.Passenger2;
             if (asientoPedido.HasValue && asientoPedido != currentSeat)
             {

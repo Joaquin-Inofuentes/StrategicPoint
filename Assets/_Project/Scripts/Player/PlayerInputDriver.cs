@@ -753,8 +753,9 @@ namespace SP.Player
             // separado en el plan, conviven sobre el mismo RectTransform.
             if (MinimapRef != null)
             {
-                if (KeyBindings.WasPressed(KeyBindings.MinimapAgrandar)) MinimapRef.AlternarTamano();
-                if (KeyBindings.WasPressed(KeyBindings.MinimapCiclarTamano)) MinimapRef.CiclarTamanoFijo();
+                // Gap de feedback: cambiar el tamano del minimapa solo se veia; ahora suena un clic (mas agudo al agrandar).
+                if (KeyBindings.WasPressed(KeyBindings.MinimapAgrandar)) { bool grande = MinimapRef.AlternarTamano(); SP.Presentation.AudioDirector.PlayUi2D(SP.Presentation.SfxKind.UiClick, 0.5f, grande ? 1.1f : 0.9f); }
+                if (KeyBindings.WasPressed(KeyBindings.MinimapCiclarTamano)) { int t = MinimapRef.CiclarTamanoFijo(); SP.Presentation.AudioDirector.PlayUi2D(SP.Presentation.SfxKind.UiClick, 0.5f, 0.9f + 0.1f * t); }
             }
 
             // 216: un solo consumidor de la cola de alertas. Antes cada
@@ -786,8 +787,11 @@ namespace SP.Player
             // return de UpdateInVehicle lo comía entero) -- ahora alterna
             // entre manejar en primera persona y ver el auto desde arriba
             // en RTS, sin bajarse ni perder el asiento.
-            if (KeyBindings.WasPressed(KeyBindings.AlternarVista) && !handlingDeath && !SP.Operacion.MandoTactico.BloqueaElCambioDeVista())
-                AlternarVista();
+            if (KeyBindings.WasPressed(KeyBindings.AlternarVista) && !handlingDeath)
+            {
+                if (SP.Operacion.MandoTactico.BloqueaElCambioDeVista()) RejectOrder("EN LA RADIO NO SE CAMBIA DE VISTA");
+                else AlternarVista();
+            }
 
             // P7 (#120c): [C] cambia de aliado (toque = mas cercano; mantener = rombos resaltados y al soltar el mas centrado). Solo en FPS a pie.
             var cambioAliado = CambioDeAliado.Asegurar(this);
@@ -1866,6 +1870,7 @@ namespace SP.Player
         }
 
         // --- Medico: curar / reanimar con [Ctrl] ---------------------
+        float ultimoAvisoSinHeridos = -10f;
         void ActualizarHabilidadMedico(AimResult result, bool ctrlSostenido)
         {
             // Prioridad al caido, igual que el [E] generico de arriba: un
@@ -1920,6 +1925,9 @@ namespace SP.Player
                 return;
             }
 
+            // Gap de feedback: [E] al apretarse sin nadie herido ni caido cerca no respondia nada.
+            // (ctrlSostenido ya es [E] mantenido, asi que se avisa una vez por mantenida, con 1,5 s de pausa).
+            if (herido == null && ctrlSostenido && Time.time - ultimoAvisoSinHeridos > 1.5f) { ultimoAvisoSinHeridos = Time.time; RejectOrder("NADIE HERIDO CERCA"); }
             medicoAccionSegundos = 0f;
             curacionAcumulada = 0f;
             if (circuloEnfoque != null) circuloEnfoque.SetVisible(false);
@@ -2645,7 +2653,7 @@ namespace SP.Player
                 return false;
             }
             if (Brain.Current == target) return false;
-            if (SP.Operacion.MandoTactico.BloqueaLaPosesion()) return false;   // WP10 (#101): en la radio no se cambia de soldado
+            if (SP.Operacion.MandoTactico.BloqueaLaPosesion()) { RejectOrder("EN LA RADIO NO SE CAMBIA DE SOLDADO"); return false; }   // WP10 (#101) + feedback
             if (torretaActual != null) SalirDeTorreta();
 
             // Pedido explicito: antes esto se rechazaba de plano ("esta

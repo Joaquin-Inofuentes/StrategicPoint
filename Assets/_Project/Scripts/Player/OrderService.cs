@@ -141,15 +141,16 @@ namespace SP.Player
             return true;
         }
 
-        public static void IssueMoveOrder(Soldier soldier, Vector3 point, bool queued = false)
+        // Devuelve true si la orden se dio (false: lo maneja el jugador o el punto es inaccesible); el lote lo usa para no sonar a exito.
+        public static bool IssueMoveOrder(Soldier soldier, Vector3 point, bool queued = false)
         {
             // Cierre por si alguna ruta suelta (la lista del roster, un
             // atajo) apunta al soldado que el jugador tiene en las manos.
-            if (LoManejaElJugador(soldier)) return;
+            if (LoManejaElJugador(soldier)) return false;
             if (!PuntoAlcanzable(soldier.transform.position, point, out var alcanzable))
             {
                 SP.UI.AlertQueue.Push("PUNTO INACCESIBLE", SP.UI.AlertPriority.Media, 1.5f);
-                return;
+                return false;
             }
             point = alcanzable;
             BajarSiVaMontado(soldier);
@@ -163,6 +164,7 @@ namespace SP.Player
             EventBus.Instance.Publish(new MoveOrderIssuedEvent(soldier.Id, point));
             int index = queued && brain != null ? brain.QueuedOrderCount : 0;
             OrderMarkerFx.Spawn(point, OrderMarkerFx.MoveColor, index);
+            return true;
         }
 
         // El jugador manda a un aliado a TOMAR COBERTURA en un punto de
@@ -477,7 +479,10 @@ namespace SP.Player
             // 1.8 es la separacion minima real por debajo de la cual los
             // cubos de este juego se solapan visiblemente.
             var spots = FormationPoints(center, forward, list.Count, kind, FormationSpacing);
-            for (int i = 0; i < list.Count; i++) IssueMoveOrder(list[i], spots[i], queued);
+            int aceptadas = 0;
+            for (int i = 0; i < list.Count; i++) if (IssueMoveOrder(list[i], spots[i], queued)) aceptadas++;
+            // Gap de feedback: si NINGUN punto era alcanzable, no suena el tono de exito (ya salio el aviso PUNTO INACCESIBLE): suena el de rechazo.
+            if (aceptadas == 0) { PlayRejectSound(); return; }
 
             AnnounceBatch(list, (list.Count == 1 ? "Se dio la orden de ir a una posicion a 1 soldado" : $"Se dio la orden de ir a una posicion a {list.Count} soldados")
                 + $" (centro {center.x:0.0},{center.z:0.0} · {kind}{(queued ? " · encolada" : "")})");
