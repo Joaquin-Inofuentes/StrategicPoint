@@ -1433,6 +1433,13 @@ namespace SP.Player
                 Brain.Current.Weapon.Reload();
                 if (!yaRecargaba && Brain.Current.Weapon.IsReloading)
                     Feedback.Visual("RECARGANDO", Brain.Current.transform.position, Feedback.Warn, aviso: false, pulso: false);   // el sonido lo pone WeaponHolder.StartReload
+                else if (!yaRecargaba)
+                {
+                    // Recarga rechazada: antes no pasaba nada y parecia que la tecla no respondia.
+                    var wh = Brain.Current.Weapon;
+                    OrderService.PlayRejectSound();
+                    Feedback.Visual(wh.CurrentAmmo >= wh.MagazineSize ? "CARGADOR LLENO" : "SIN MUNICION DE RESERVA", Brain.Current.transform.position, Feedback.Warn, aviso: false, pulso: false);
+                }
             }
             // La vida del poseido vive SOLO en el roster (abajo a la izquierda):
             // el panel "VIDA" de la esquina derecha repetia el mismo dato.
@@ -2791,8 +2798,12 @@ namespace SP.Player
         void CycleWeapon(int direction)
         {
             if (Brain.Current == null || Brain.Current.Weapon == null) return;
+            var antes = Brain.Current.Weapon.CurrentWeaponKind;
             if (direction >= 0) Brain.Current.Weapon.CycleNext();
             else Brain.Current.Weapon.CyclePrevious();
+            var ahora = Brain.Current.Weapon.CurrentWeaponKind;
+            // La rueda tambien avisa que arma quedo en la mano (igual que las teclas 1-3).
+            if (ahora != antes) Feedback.Visual($"[{Brain.Current.Weapon.Loadout.IndexOf(ahora) + 1}] {WeaponCatalog.Get(ahora).DisplayName.ToUpperInvariant()}", null, Feedback.Info, aviso: true, pulso: false);
         }
 
         // Público para que la demo/tutorial automáticos puedan probar los

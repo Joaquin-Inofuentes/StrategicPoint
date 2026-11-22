@@ -37,7 +37,7 @@ namespace SP.Core
             { "Volumen", "Volume" }, { "Tamano de HUD", "HUD size" }, { "Tamano de mirilla", "Crosshair size" },
             { "Efectos de camara", "Camera effects" },
             { "PANTALLA Y ACCESIBILIDAD", "DISPLAY AND ACCESSIBILITY" }, { "PANTALLA", "SCREEN" }, { "COMPLETA", "FULLSCREEN" }, { "VENTANA", "WINDOWED" },
-            { "RESOLUCION", "RESOLUTION" }, { "CALIDAD", "QUALITY" }, { "DALTONISMO", "COLORBLIND MODE" }, { "HUD MINIMO", "MINIMAL HUD" },
+            { "RESOLUCION", "RESOLUTION" }, { "CALIDAD", "QUALITY" }, { "GRAFICOS", "GRAPHICS" }, { "ILUMINACION", "LIGHTING" }, { "BRILLO", "BRIGHTNESS" }, { "BAJA", "LOW" }, { "MEDIA", "MEDIUM" }, { "ALTA", "HIGH" }, { "DALTONISMO", "COLORBLIND MODE" }, { "HUD MINIMO", "MINIMAL HUD" },
             { "TAMANO DE INTERFAZ", "INTERFACE SIZE" }, { "SUBTITULOS DE SONIDO", "SOUND SUBTITLES" }, { "SI", "YES" },
             // avisos comunes
             { "ALTO", "HOLD" }, { "SIGANME", "FOLLOW ME" }, { "RETIRADA", "RETREAT" }, { "A CUBIERTO", "TAKE COVER" },

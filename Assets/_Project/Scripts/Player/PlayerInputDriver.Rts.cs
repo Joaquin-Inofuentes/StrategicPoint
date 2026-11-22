@@ -433,6 +433,7 @@ namespace SP.Player
                 OrderService.RegroupSelection(Selection.Selected, currentFormation);
                 if (ModeToast != null) ModeToast.Show("REAGRUPANDO");
             }
+            else if (KeyBindings.WasPressed(KeyBindings.Reagrupar)) RejectOrder("NADIE SELECCIONADO");
 
             // [B] retirada: alejarse del enemigo mas cercano (217)
             if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.Retirada) && Selection.Selected.Count > 0)
@@ -440,6 +441,7 @@ namespace SP.Player
                 OrderService.IssueRetreatOrderForSelection(Selection.Selected);
                 if (ModeToast != null) ModeToast.Show("RETIRADA");
             }
+            else if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.Retirada)) RejectOrder("NADIE SELECCIONADO");
 
             // [K] cicla la formacion con la que se emiten las ordenes (210)
             if (AtajosDeTecladoHeredados && KeyBindings.WasPressed(KeyBindings.CiclarFormacion))

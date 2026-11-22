@@ -60,11 +60,16 @@ namespace SP.Tutorial
         {
             var zona = TutorialManager.Instance?.ZonaB;
             var destino = zona != null ? zona.transform.position : d.Brain.Current.transform.position + d.Brain.Current.transform.forward * 8f;
-            yield return MirarHacia(d, AlSuelo(destino));
-            Entrada.BotonDerecho(true);
-            yield return new WaitForSeconds(0.15f);
-            Entrada.BotonDerecho(false);
-            yield return new WaitForSeconds(0.5f);
+            // Como una persona: si la orden no se registro (clic perdido, camara aun girando), se mira de nuevo y se repite.
+            var tm = TutorialManager.Instance;
+            for (int intento = 0; intento < 4 && (tm == null || !tm.Flags.ordenDeMoverEnFps); intento++)
+            {
+                yield return MirarHacia(d, AlSuelo(destino));
+                Entrada.BotonDerecho(true);
+                yield return new WaitForSeconds(0.15f);
+                Entrada.BotonDerecho(false);
+                yield return new WaitForSeconds(0.8f);
+            }
         }
 
         IEnumerator GestoIrYAtacarReal(PlayerInputDriver d)

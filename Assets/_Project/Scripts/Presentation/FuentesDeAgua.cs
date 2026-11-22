@@ -59,7 +59,7 @@ namespace SP.Presentation
 
         // ---------------------------------------------------------------- R17 (plan 2.8): particulas del chorro y salpicadura en el cuenco
         // Un unico hijo "R17_Particulas" por cada "Fuente_Chorro" (idempotente), con 2 sistemas: el chorro (40/s) y la salpicadura en anillo (25/s);
-        // suman 100 particulas maximas por fuente (tope 120). Material transparente COMPARTIDO por todas las fuentes, sin colision, sin luces y sin sonido.
+        // una niebla fina y suman 116 particulas maximas por fuente (tope 120). Material transparente COMPARTIDO por todas las fuentes, sin colision, sin luces; con un AudioSource 3D de murmullo.
         public const string NombreParticulas = "R17_Particulas";
         public static int ParticulasArmadas { get; private set; }
         static Material matParticulas;
@@ -113,6 +113,24 @@ namespace SP.Presentation
                 vel.x = new ParticleSystem.MinMaxCurve(0f); vel.y = new ParticleSystem.MinMaxCurve(0.6f); vel.z = new ParticleSystem.MinMaxCurve(0f);
                 salpica.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);   // el circulo queda horizontal
                 salpica.Play();
+
+                // niebla fina sobre el cuenco: 16 particulas grandes y casi transparentes que suben despacio (con las otras dos suman 116 <= 120)
+                var niebla = NuevoSistema(raiz.transform, "Niebla", new Vector3(b.center.x, ySuperficie + 0.15f, b.center.z), 16);
+                var mn = niebla.main;
+                mn.startSpeed = 0.05f; mn.gravityModifier = 0f; mn.startLifetime = 2.5f; mn.startSize = new ParticleSystem.MinMaxCurve(0.5f, 0.9f);
+                mn.startColor = new Color(0.9f, 0.95f, 1f, 0.10f);
+                var en = niebla.emission; en.rateOverTime = 6f;
+                var sn = niebla.shape; sn.shapeType = ParticleSystemShapeType.Circle; sn.radius = 0.5f; sn.radiusThickness = 1f; sn.arc = 360f;
+                var vn = niebla.velocityOverLifetime; vn.enabled = true; vn.space = ParticleSystemSimulationSpace.World;
+                vn.x = new ParticleSystem.MinMaxCurve(0f); vn.y = new ParticleSystem.MinMaxCurve(0.15f); vn.z = new ParticleSystem.MinMaxCurve(0f);
+                niebla.transform.rotation = Quaternion.Euler(-90f, 0f, 0f);
+                niebla.Play();
+
+                // murmullo del agua: 3D, en lazo, se oye a unos 16 m (el clip es uno solo, compartido por todas las fuentes)
+                var au = raiz.AddComponent<AudioSource>();
+                au.clip = SfxSintetico.AguaDeFuente(); au.loop = true; au.playOnAwake = false;
+                au.spatialBlend = 1f; au.rolloffMode = AudioRolloffMode.Linear; au.minDistance = 2f; au.maxDistance = 16f; au.volume = 0.3f;
+                au.Play();
 
                 // el chorro fijo ("Fuente_Gota") del mismo surtidor se apaga: con particulas se veria doble
                 foreach (var o in todos)

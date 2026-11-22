@@ -45,7 +45,9 @@ namespace SP.EditorTools
         {
             total++;
             var fallas = new List<string>();
-            if (!NavMesh.SamplePosition(p, out _, 2.5f, NavMesh.AllAreas)) fallas.Add("fuera del NavMesh");
+            // Los artilleros y nidos son emplazamientos FIJOS en lo alto de las torres (no caminan): estar fuera del NavMesh es por diseno.
+            bool emplazamientoFijo = nombre.Contains("Enemigo_Artillero_") || nombre.Contains("Enemigo_Nido_");
+            if (!emplazamientoFijo && !NavMesh.SamplePosition(p, out _, 2.5f, NavMesh.AllAreas)) fallas.Add("fuera del NavMesh");
             if (PuntoEmpotrado(p, out var con)) fallas.Add("empotrado en " + con);
             if (fallas.Count > 0) { malos++; if (malos <= 40) sb.Append($"[{nombre} @ {p.x:0.0},{p.y:0.0},{p.z:0.0}: {string.Join(" + ", fallas)}] "); }
         }
@@ -98,7 +100,7 @@ namespace SP.EditorTools
                 if (s.transform.position.y > 5f) continue;   // los del interior de la mansion se auditan en 501c (la mansion nace en el objetivo 5)
                 string nom = (s.gameObject.activeInHierarchy ? "enemigo " : "reserva ") + s.name;
                 AuditarPunto(nom, s.transform.position, sb, ref malos, ref total);
-                pts.Add((nom, s.transform.position));
+                if (!nom.Contains("Enemigo_Artillero_") && !nom.Contains("Enemigo_Nido_")) pts.Add((nom, s.transform.position));   // emplazamientos fijos en torres: no caminan, no forman isla
             }
             W8Ok(ref ok, total > 0, sb, $"{total} puntos de aparicion auditados");
             W8Ok(ref ok, malos == 0, sb, $"{malos} puntos de aparicion con problemas");
@@ -125,7 +127,7 @@ namespace SP.EditorTools
                 if (s == null || s.Team != TeamId.Enemy || s.transform.position.y > 5f || s.name.Contains("Artillero")) continue;
                 string nom = (s.gameObject.activeInHierarchy ? "enemigo " : "reserva ") + s.name;
                 AuditarPunto(nom, s.transform.position, sb, ref malos, ref total);
-                pts.Add((nom, s.transform.position));
+                if (!nom.Contains("Enemigo_Artillero_") && !nom.Contains("Enemigo_Nido_")) pts.Add((nom, s.transform.position));   // emplazamientos fijos en torres: no caminan, no forman isla
             }
             W8Ok(ref ok, malos == 0, sb, $"{malos} de {total} puntos con problemas (objetivo 5)");
             var islas = Componentes(o.position, pts);
@@ -197,6 +199,8 @@ namespace SP.EditorTools
         static bool EsAdornoFlotante(Renderer r)
         {
             string n = r.name; var p = r.transform.parent != null ? r.transform.parent.name : "";
+            // R17: el arma que se le cae a un enemigo ("ArmaCaida", raiz propia) cae donde murio y desaparece sola a los ~15 s: es efimera, no es geometria del nivel
+            if (r.transform.root.name == "ArmaCaida") return true;
             return n.Contains("Rombo") || n.Contains("MinimapIcon") || p.Contains("Rombo") || n.Contains("Interior") || n.Contains("Borde")
                 || r.GetComponentInParent<InteractableDiamond>() != null || (r.GetComponentInParent<Rigidbody>() is Rigidbody rb && !rb.isKinematic && !rb.IsSleeping());
         }

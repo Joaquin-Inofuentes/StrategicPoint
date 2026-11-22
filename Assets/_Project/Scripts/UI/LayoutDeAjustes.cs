@@ -135,7 +135,8 @@ namespace SP.UI
 
             // 1) medir las dos columnas para conocer el alto total
             const float yInicio = 76f;
-            float altoIzq = AltoSeccion + Sonido.Length * AltoSlider + HuecoSecciones + AltoSeccion + Interfaz.Length * AltoSlider + 8f + AltoBoton;
+            float altoIzq = AltoSeccion + Sonido.Length * AltoSlider + HuecoSecciones + AltoSeccion + Interfaz.Length * AltoSlider + 8f + AltoBoton
+                            + HuecoSecciones + AltoSeccion + 3 * AltoBoton + 2 * 8f;   // seccion GRAFICOS: calidad, iluminacion, brillo
             float altoDer = AltoSeccion + Control.Length * AltoSlider + Interruptores.Length * AltoInterruptor + HuecoSecciones
                             + AltoSeccion + AltoBoton + 8f + 22f + AltoBoton
                             + HuecoSecciones + AltoSeccion + Dano.Length * AltoSlider + 4f + AltoBoton;
@@ -152,6 +153,13 @@ namespace SP.UI
             y = Seccion("Interfaz", xIzq, y, Interfaz, null);
             y += 8f;
             Poner("Idioma", xIzq, y, Columna, AltoBoton);
+            y += AltoBoton + HuecoSecciones;
+            Poner("Sec_Graficos", xIzq, y, Columna, 24f, TextAnchor.MiddleLeft);
+            Poner("SecSep_Graficos", xIzq, y + 26f, Columna, 2f);
+            y += AltoSeccion;
+            Poner("Calidad", xIzq, y, Columna, AltoBoton); y += AltoBoton + 8f;
+            Poner("Iluminacion", xIzq, y, Columna, AltoBoton); y += AltoBoton + 8f;
+            Poner("Brillo", xIzq, y, Columna, AltoBoton);
 
             // 4) columna derecha
             y = yInicio;

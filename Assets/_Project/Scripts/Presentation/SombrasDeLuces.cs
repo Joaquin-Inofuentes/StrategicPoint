@@ -34,10 +34,38 @@ namespace SP.Presentation
             instancia = go.AddComponent<SombrasDeLuces>();
         }
 
+        // Opciones de ILUMINACION y BRILLO (menu de Configuraciones, AjustesDeJuego.Graficos): se aplican a las luces DIRECCIONALES (el sol) y al
+        // ambiente, partiendo siempre de los valores que traia la escena. Iluminacion BAJA apaga todas las sombras; ALTA suaviza la del sol.
+        readonly Dictionary<Light, (float intensidad, LightShadows sombra)> sol = new Dictionary<Light, (float, LightShadows)>();
+        float ambienteBase = -1f; int versionAplicada = -1;
+        public static int SolesGestionados => instancia != null ? instancia.sol.Count : 0;
+
+        void AplicarGraficos()
+        {
+            versionAplicada = SP.UI.AjustesDeJuego.VersionGrafica;
+            float b = SP.UI.AjustesDeJuego.Brillo; var nivel = SP.UI.AjustesDeJuego.Iluminacion;
+            foreach (var kv in sol)
+            {
+                var l = kv.Key; if (l == null) continue;
+                l.intensity = kv.Value.intensidad * b;
+                var s = kv.Value.sombra;
+                l.shadows = nivel == SP.UI.AjustesDeJuego.NivelDeIluminacion.Baja ? LightShadows.None
+                          : nivel == SP.UI.AjustesDeJuego.NivelDeIluminacion.Alta && s != LightShadows.None ? LightShadows.Soft : s;
+            }
+            if (ambienteBase < 0f) ambienteBase = RenderSettings.ambientIntensity;
+            RenderSettings.ambientIntensity = ambienteBase * b;
+        }
+
+        // Cada escena trae su propio ambiente: se vuelve a tomar como base.
+        void OnEnable() { UnityEngine.SceneManagement.SceneManager.sceneLoaded += AlCargar; }
+        void OnDisable() { UnityEngine.SceneManagement.SceneManager.sceneLoaded -= AlCargar; }
+        void AlCargar(UnityEngine.SceneManagement.Scene e, UnityEngine.SceneManagement.LoadSceneMode m) { ambienteBase = -1f; versionAplicada = -1; }
+
         void Update()
         {
             if (Time.unscaledTime < proximo) return;
             proximo = Time.unscaledTime + 0.4f;
+            if (versionAplicada != SP.UI.AjustesDeJuego.VersionGrafica) AplicarGraficos();
             if (Time.unscaledTime >= proximaBusqueda)
             {
                 proximaBusqueda = Time.unscaledTime + 4f;
@@ -46,6 +74,7 @@ namespace SP.Presentation
                 {
                     if (l == null) continue;
                     if (l.type == LightType.Point) puntuales.Add(l);
+                    if (l.type == LightType.Directional && !sol.ContainsKey(l) && l.gameObject.scene.IsValid()) { sol[l] = (l.intensity, l.shadows); versionAplicada = -1; }
                     if ((l.type == LightType.Point || l.type == LightType.Spot) && atenuadas.Add(l) && l.gameObject.scene.IsValid() && l.GetComponentInParent<SP.Actors.Soldier>() == null)
                     { l.intensity *= l.type == LightType.Point ? FactorDeIntensidadPuntual : FactorDeIntensidadReflector; { float tope = l.type == LightType.Point ? TopeParejo : TopeParejoReflector; if (l.intensity > tope) l.intensity = tope + (l.intensity - tope) * 0.3f; } LucesAtenuadas++; }
                 }
@@ -58,7 +87,8 @@ namespace SP.Presentation
             for (int i = 0; i < puntuales.Count; i++)
             {
                 var l = puntuales[i];
-                bool si = i < MaximoDePuntuales && (l.transform.position - p).sqrMagnitude < (l.range + 40f) * (l.range + 40f);
+                int tope = SP.UI.AjustesDeJuego.Iluminacion == SP.UI.AjustesDeJuego.NivelDeIluminacion.Baja ? 0 : MaximoDePuntuales;
+                bool si = i < tope && (l.transform.position - p).sqrMagnitude < (l.range + 40f) * (l.range + 40f);
                 var quiero = si ? LightShadows.Hard : LightShadows.None;
                 if (l.shadows != quiero) l.shadows = quiero;
             }

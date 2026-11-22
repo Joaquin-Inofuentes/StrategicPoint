@@ -190,10 +190,15 @@ namespace SP.Tutorial
         {
             var caja = CajaDeSuministros.Todas.Count > 0 ? CajaDeSuministros.Todas[0] : null;
             if (caja == null) yield break;
-            yield return MirarHacia(d, caja.transform.position);
-            yield return CaminarHasta(d, caja.transform.position, 0.6f, 9f);
+            // Si algo lo desvia o lo frena (un cuerpo, un borde), una persona vuelve a mirar la caja y sigue: hasta 4 intentos.
+            var tm = TutorialManager.Instance;
+            for (int intento = 0; intento < 4 && caja != null && (tm == null || !tm.Flags.suministrosRecogidos); intento++)
+            {
+                yield return MirarHacia(d, caja.transform.position);
+                yield return CaminarHasta(d, caja.transform.position, 0.6f, 9f);
+            }
         }
 
-        IEnumerator GestoVistaTacticaReal() { yield return Mantener(0.9f, Key.Tab); }
+        IEnumerator GestoVistaTacticaReal() { yield return Mantener(0.9f, Key.T); }
     }
 }

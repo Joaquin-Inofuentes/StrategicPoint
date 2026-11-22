@@ -142,7 +142,9 @@ namespace SP.EditorTools
                 while (!carga.EstaPlantada && Time.realtimeSinceStartup - t0 < 5f) yield return null;
                 OperacionTerminal.PruebaMantenerE = false;
                 float tPlanto = 1.2f + (Time.realtimeSinceStartup - t0);
-                bool planto = carga.Situacion == CargaExplosiva.Estado.Ardiendo && carga.MechaRestante > 17f && carga.MechaRestante <= 20f && tPlanto > 2.3f && tPlanto < 4.6f;
+                // En modo dios la mecha es corta a proposito (SegundosDeMechaEnModoDios): el esperado sigue a CargaExplosiva (3 s en modo dios, 20 s normal).
+                float mechaEsperada = ModoDios.Activo ? Mathf.Min(CargaExplosiva.SegundosDeMecha, ModoDios.SegundosDeMechaEnModoDios * Mathf.Max(1f, Time.timeScale)) : CargaExplosiva.SegundosDeMecha;
+                bool planto = carga.Situacion == CargaExplosiva.Estado.Ardiendo && carga.MechaRestante > mechaEsperada - 3f && carga.MechaRestante <= mechaEsperada && tPlanto > 2.3f && tPlanto < 4.6f;
                 W8Ok(ref ok, reporta && progMedio > 0.15f && progMedio < 0.6f, sb, $"B) Vega manteniendo [E]: reporta DETONANDO={reporta}, progreso a los 1,2 s={progMedio:0.00}");
                 W8Ok(ref ok, planto, sb, $"B) planto a los ~{tPlanto:0.0} s (pide 3,5), mecha={carga.MechaRestante:0.0} s, estado {carga.Situacion}");
 

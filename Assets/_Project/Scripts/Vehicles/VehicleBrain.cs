@@ -157,12 +157,29 @@ namespace SP.Vehicles
 
             if (distanciaAlDestino <= CercaDelDestino || replanificado)
             {
+                // R17: se deja escrito QUE lo trabo (el tanque del tutorial se frenaba a los ~4 m y no se sabia por que).
+                if (distanciaAlDestino > CercaDelDestino) GameLog.Line($"[VEHICULO] {name}: orden cancelada por atasco a {distanciaAlDestino:0.0} m del destino; delante: {QueTrabaDelante()}");
                 Stop();
                 return true;
             }
             replanificado = true;
             BuildRoute(destination.Value);
             return false;
+        }
+
+        string QueTrabaDelante()
+        {
+            var cols = Physics.OverlapSphere(transform.position + transform.forward * 3f + Vector3.up * 0.8f, 2.5f, ~0, QueryTriggerInteraction.Ignore);
+            var sb = new System.Text.StringBuilder();
+            int n = 0;
+            foreach (var c in cols)
+            {
+                if (c == null || c.transform.IsChildOf(transform)) continue;
+                if (n++ > 0) sb.Append(", ");
+                sb.Append(c.name);
+                if (n >= 6) break;
+            }
+            return n == 0 ? "nada (libre)" : sb.ToString();
         }
 
         void BuildRoute(Vector3 goal)

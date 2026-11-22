@@ -539,11 +539,11 @@ namespace SP.Tutorial
             // 6c ------------------------------------------------------
             pasos.Add(new Paso
             {
-                Id = "vista_tactica", Titulo = "VER COBERTURAS Y RUTAS", Teclas = "C", Acento = cian,
+                Id = "vista_tactica", Titulo = "VER COBERTURAS Y RUTAS", Teclas = "T", Acento = cian,
                 Subs = new[]
                 {
-                    S("Mantén C: aparecen las coberturas", "Mantén apretada la tecla [C]: los puntos de cobertura del piso (discos celestes) se hacen visibles. Soltando la tecla se esconden.", "La tecla C está entre la X y la V.", () => f.verCoberturas, v => f.verCoberturas = v),
-                    S("Suelta C: se esconden", "Suelta la tecla [C]: el mapa vuelve a quedar limpio. (Con el radial sobre CUBRIRSE también se ven.)", "Deja de apretar C.", () => f.ocultaCoberturas, v => f.ocultaCoberturas = v),
+                    S("Mantén T: aparecen las coberturas", "Mantén apretada la tecla [T]: los puntos de cobertura del piso (discos celestes) se hacen visibles. Soltando la tecla se esconden.", "La tecla T está arriba de la F y la G.", () => f.verCoberturas, v => f.verCoberturas = v),
+                    S("Suelta T: se esconden", "Suelta la tecla [T]: el mapa vuelve a quedar limpio. (Con el radial sobre CUBRIRSE también se ven.)", "Deja de apretar T.", () => f.ocultaCoberturas, v => f.ocultaCoberturas = v),
                 },
                 Evaluar = () =>
                 {

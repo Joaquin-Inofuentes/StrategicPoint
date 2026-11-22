@@ -29,6 +29,7 @@ namespace SP.UI
 
             if (SP.Core.BuscarHijo.Ruta(rt, "Pantalla") == null) Construir(rt);
             else if (SP.Core.BuscarHijo.Ruta(rt, "Sec_Dano") == null) ConstruirDano(rt, SP.Presentation.FuentesBelicas.Para(0));   // paneles armados antes de R13 (T3)
+            if (SP.Core.BuscarHijo.Ruta(rt, "Sec_Graficos") == null) ConstruirGraficos(rt, SP.Presentation.FuentesBelicas.Para(0));   // paneles armados antes de la seccion GRAFICOS
             EstiloDeAjustes.Vestir(rt);
             Refrescar(rt);
             var layout = LayoutDeAjustes.Asegurar(settingsPanel);
@@ -49,8 +50,26 @@ namespace SP.UI
             Texto(panel, font, "ResolucionLabel", "RESOLUCION", 14, TextAnchor.MiddleLeft, EstiloDeAjustes.Atenuado);
             CrearDropdown(panel, font, "Resolucion");
             Boton(panel, font, "Idioma", "IDIOMA / LANGUAGE", () => { SP.Core.Loc.Alternar(); Refrescar(panel); });
+            ConstruirGraficos(panel, font);
             ConstruirDano(panel, font);
             Texto(panel, font, "Nota", "Mando: stick izq. mover, stick der. mirar, RT disparar, A saltar, B agacharse, X recargar, RB/LB cambiar arma, Start pausa.", 12, TextAnchor.MiddleCenter, EstiloDeAjustes.Atenuado);
+        }
+
+        // Requisito de entrega: calidad grafica e iluminacion modificables en partida (ademas de resolucion y sensibilidad). Cada boton cicla su valor,
+        // suena el clic de la interfaz y el texto del boton muestra el valor nuevo (feedback inmediato).
+        public const string BotonCalidad = "Calidad", BotonIluminacion = "Iluminacion", BotonBrillo = "Brillo";
+        static void ConstruirGraficos(RectTransform panel, Font font)
+        {
+            Seccion(panel, font, "Graficos", SP.Core.Loc.T("GRAFICOS"));
+            Boton(panel, font, BotonCalidad, SP.Core.Loc.T("CALIDAD"), () => { AjustesDeJuego.SiguienteCalidad(); ClicGrafico(panel); });
+            Boton(panel, font, BotonIluminacion, SP.Core.Loc.T("ILUMINACION"), () => { AjustesDeJuego.SiguienteIluminacion(); ClicGrafico(panel); });
+            Boton(panel, font, BotonBrillo, SP.Core.Loc.T("BRILLO"), () => { AjustesDeJuego.SiguienteBrillo(); ClicGrafico(panel); });
+        }
+
+        static void ClicGrafico(RectTransform panel)
+        {
+            SP.Presentation.AudioDirector.PlayUi2D(SP.Presentation.SfxKind.UiClick, 0.55f, 1f);
+            Refrescar(panel);
         }
 
         // Ronda 13 (T3): DANO como SECCION de la tarjeta (antes era una tarjeta suelta pegada al costado que se veia al 25 %).
@@ -191,6 +210,9 @@ namespace SP.UI
             if (panel == null) return;
             Poner(panel, "Pantalla", SP.Core.Loc.T(AjustesDeJuego.PantallaCompleta ? "COMPLETA" : "VENTANA"));
             Poner(panel, "Idioma", SP.Core.Loc.T(SP.Core.Loc.Actual == SP.Core.Idioma.Es ? "ESPANOL" : "ENGLISH"));
+            Poner(panel, BotonCalidad, SP.Core.Loc.T(AjustesDeJuego.TextoCalidad()));
+            Poner(panel, BotonIluminacion, SP.Core.Loc.T(AjustesDeJuego.TextoIluminacion()));
+            Poner(panel, BotonBrillo, AjustesDeJuego.TextoBrillo());
             var dd = SP.Core.BuscarHijo.Ruta(panel, "Resolucion");
             var drop = dd != null ? dd.GetComponent<Dropdown>() : null;
             if (drop != null && drop.value != AjustesDeJuego.IndiceResolucion()) drop.SetValueWithoutNotify(AjustesDeJuego.IndiceResolucion());

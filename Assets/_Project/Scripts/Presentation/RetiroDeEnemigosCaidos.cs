@@ -23,7 +23,7 @@ namespace SP.Presentation
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Arrancar()
         {
-            Retirados = 0;
+            Retirados = 0; PolvosAlCaer = 0; ArmasSoltadas = 0;
             SceneManager.sceneLoaded -= AlCargar;
             SceneManager.sceneLoaded += AlCargar;
             Asegurar(SceneManager.GetActiveScene());
@@ -46,6 +46,56 @@ namespace SP.Presentation
             var s = ActorRegistry.FindById(e.ActorId);
             if (s == null || s.Team != TeamId.Enemy) return;
             StartCoroutine(Retirar(s));
+            StartCoroutine(PolvoAlCaer(s));
+            SoltarElArma(s);
+        }
+
+        // R17 (pendiente 2.9): al caer el cuerpo levanta un poco de polvo cuando toca el piso (~0,6 s despues del impacto).
+        public static int PolvosAlCaer { get; private set; }
+        static IEnumerator PolvoAlCaer(Soldier s)
+        {
+            yield return new WaitForSeconds(0.6f);
+            if (s == null || s.Health == null || s.Health.IsAlive) yield break;
+            SpriteFx.Lanzar("smoke_02", s.transform.position + Vector3.up * 0.05f, new Color(0.62f, 0.58f, 0.52f, 0.30f), 0.35f, 0.9f, 0.7f, Random.Range(-30f, 30f), Vector3.up * 0.2f, 1.0f, 1);
+            PolvosAlCaer++;
+        }
+
+        // R17 (pendiente 2.9): el arma se le cae de la mano. Se clona el modelo del arma (sin scripts ni colliders, asi no empuja a nadie),
+        // se apaga el de la mano y el clon cae con gravedad y un poco de giro hasta quedar tirado al lado del cuerpo; desaparece junto con el.
+        public const float GravedadDelArma = 9.8f;
+        public static int ArmasSoltadas { get; private set; }
+        void SoltarElArma(Soldier s)
+        {
+            var wh = s.GetComponent<WeaponHolder>();
+            var rend = wh != null ? wh.WeaponVisualRenderer : null;
+            if (rend == null) return;   // (otro suscriptor de la muerte ya puede haber apagado el renderer: el clon se enciende igual)
+            var go = Object.Instantiate(rend.gameObject, rend.transform.position, rend.transform.rotation);
+            go.name = "ArmaCaida";
+            go.transform.SetParent(null, true);
+            go.transform.localScale = rend.transform.lossyScale;
+            foreach (var m in go.GetComponentsInChildren<MonoBehaviour>(true)) Object.Destroy(m);
+            foreach (var c in go.GetComponentsInChildren<Collider>(true)) Object.Destroy(c);
+            foreach (var r in rend.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
+            foreach (var r in go.GetComponentsInChildren<Renderer>(true)) r.enabled = true;
+            go.SetActive(true);
+            ArmasSoltadas++;
+            Object.Destroy(go, SegundosAntesDeRetirar + SegundosDeAchique);
+            StartCoroutine(CaerElArma(go.transform, s.transform.position.y + 0.06f));
+        }
+
+        static IEnumerator CaerElArma(Transform arma, float sueloY)
+        {
+            float vy = 0f, giro = Random.Range(120f, 260f) * (Random.value < 0.5f ? -1f : 1f);
+            float yaw = arma.eulerAngles.y, roll = Random.Range(70f, 90f);
+            while (arma != null && arma.position.y > sueloY)
+            {
+                float dt = Time.deltaTime;
+                vy -= GravedadDelArma * dt;
+                var p = arma.position; p.y = Mathf.Max(sueloY, p.y + vy * dt); arma.position = p;
+                arma.Rotate(giro * dt, 0f, 0f, Space.Self);
+                yield return null;
+            }
+            if (arma != null) arma.rotation = Quaternion.Euler(0f, yaw, roll);   // queda de costado sobre el piso
         }
 
         static IEnumerator Retirar(Soldier s)

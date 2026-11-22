@@ -49,14 +49,34 @@ Decisiones tomadas por defecto (el dueno no las confirmo):
 - **Tutorial completo (36 pasos): no terminaba, igual que antes de la R17** (la escuadra caia en el paso 33). **Corregido despues**: ver "Cierre de los dos pendientes" mas arriba; ahora llega a la victoria.
 - **Barrido de los 6 objetivos** (`OperacionPrueba.Recorrer`): los 6 cargan con 3 aliados. Los errores de consola son todos "Source mesh ... does not allow read access" del NavMesh en tiempo de ejecucion, ya existentes.
 
+## Cierre de los pendientes (2026-11-21, tercera pasada)
+- **Tutorial completo, sin pasos fallidos:** corrida de 264 s hasta la victoria, 35 pasos OK, 1 con reintento (cuchillo). Causa real del paso 13 (`vista_tactica`): el tutorial pedia mantener [C] pero las coberturas estan en [T] desde la P7 (C es cambiar de aliado); el autoplayer ademas apretaba Tab. Corregidos los textos (y sus claves en `LocTextos`) y el gesto. Pasos 12, 18, 21 y 26: el autoplayer ahora reintenta como una persona (hasta 4 veces) si el clic se pierde.
+- **Contraste de los otros tipos (`#990q`):** escudero (dE mediana 32,2), pesado (40,1) y francotirador (39,3): 0 tomas bajas. Se miden convirtiendo fusileros con las mismas `Aplicar()` del director (2 tomas por tipo).
+- **Efectos (`#990n`):** polvo al tocar el piso (a los 0,6 s), el arma se le cae de la mano (clon sin scripts ni colliders, cae con gravedad y desaparece con el cuerpo) y las 8 fuentes tienen murmullo 3D en lazo y niebla fina (116 particulas por fuente, tope 120). Sin video: se ve en la captura `r17_arma_caida.png`.
+- **Salvaguarda de 60 s de la PC (`#990o`):** probada en tiempo simulado: no salta antes de tiempo y libera a los 61 s.
+- **Checks viejos corregidos por expectativa obsoleta:** `#082b` B (la mecha en modo dios es de 3 s a proposito) y `#501a`/`#501f` (artilleros y nidos son emplazamientos fijos en torres, no caminan: no cuentan como "fuera del NavMesh" ni como isla). `#501b/d/e` ya no cuentan el arma caida como pieza flotante.
+- **Tanque que se frena a los ~4 m:** causa NO confirmada. En esta corrida no ocurrio; se dejo un registro (`[VEHICULO] ... orden cancelada por atasco ... delante: ...`) que dice que collider lo traba, para diagnosticarlo la proxima vez que pase.
+
+**Sigue sin hacerse / sin probar:** rescate de enemigos atascados de la mansion (5 intentos de armar la prueba: el enemigo de prueba moria o la etapa cambiaba antes de los 15 s; el check se retiro), tasa de derrota de la Operacion completa, video de la animacion de muerte, y los checks viejos #067 #085 #094 #095 #101b #101i #106 #112 #114 #119 #127 #242a #082b D #501a/f (islas de NavMesh con los portones cerrados) y #501b/d/e (piezas flotando del nivel), que fallaban antes de la R17.
+
 ## Lo que no se pudo hacer
 - No existe una auditoria jugable de punta a punta: `ValidadorJugabilidad.cs` es del 8/10, su jugador automatico (Kes, no Asalto) se queda parado en el objetivo 1 y queda obsoleto. "Nivel 1 terminado" no tiene una definicion cerrada, asi que queda como PARCIAL.
 - Contraste medido solo en fusileros (ver el cierre); LEDs y fuente solo se ven en movimiento (no hay video).
 - Dificultad medida solo en la guarnicion del Centro (3 corridas, sin bajas aliadas); no se midio la tasa de derrota de la Operacion completa.
-- Salvaguarda de 60 s de la PC y rescate de atascados sin probar.
-- Particulas de polvo al caer, arma que cae, niebla y sonido de la fuente: no se hicieron.
-- No hay commit ni push de esta ronda, ni RAR nuevo (el RAR de Docs/RONDA_14/entrega esta viejo).
+- Rescate de atascados de la mansion sin probar (la salvaguarda de la PC si: ver el cierre).
+- (Polvo, arma caida, niebla y sonido de la fuente: hechos en la tercera pasada.)
+- Commits de la ronda: `eab45789` y `e75cc673` (en `main`). No hay RAR nuevo (el RAR de Docs/RONDA_14/entrega esta viejo; no se pidio).
 
 ## Archivos nuevos / tocados
 Nuevos: `Operacion/ReaccionAlDano.cs`, `Presentation/AjustesDeNivelR17.cs`, `Core/CapturasDeBuild.Ronda17.cs`, `Editor/ChecksBugs065.R17.cs`.
 Tocados: `Combat/{Health,Projectile}.cs`, `Ai/AiBrain.Tactica.cs`, `Operacion/{EnemigoPesado,EnemigoEscudero,EnemigoFrancotirador,EmboscadaDeCohetes,OperacionTerminal,OperacionDirector,OperacionDirector.Centro,OperacionDirector.Jefe,AnilloDeSubida}.cs`, `Presentation/{FuentesDeAgua,CubeFxReactor,RetiroDeEnemigosCaidos,MainMenuController}.cs`, `Actors/SoldierLook.cs`, `Tutorial/{TutorialManager,TutorialAutoPlayer.Radial}.cs`, `Player/PlayerInputDriver.cs`, `Editor/{ChecksBugs065.Bugs231a255,HeadlessTestRunner.Fases13a17,HeadlessTestRunner.BusquedasGlobales}.cs`, `Prefabs/P_Soldier_Base.prefab` (un campo serializado nuevo).
+
+## Requisitos de entrega: opciones y feedback (2026-11-21)
+**Menu de opciones modificable en partida (pausa > CONFIGURACIONES), check `#991a` OK:**
+- Resolucion: desplegable con las resoluciones del monitor + modo completa/ventana + APLICAR (ya existia).
+- Sensibilidad del mouse y de la torreta: sliders conectados al jugador (ya existia; el check la mueve y verifica el valor en el jugador).
+- **Calidad grafica (nuevo):** BAJA / MEDIA / ALTA. El proyecto solo trae 1 nivel de calidad de Unity para PC, asi que se hicieron 3 perfiles propios: escala de render y MSAA (sobre una copia del asset de URP, que se devuelve al salir), texturas, LOD y filtrado anisotropico. BAJA medido: escala 0,70, MSAA 1, lodBias 2,00 -> 1,40.
+- **Iluminacion (nuevo):** BAJA sin sombras, MEDIA las de siempre, ALTA sombra suave del sol. **Brillo (nuevo):** 80 / 100 / 120 / 140 % sobre el sol y el ambiente (medido: sol 0,16 -> 0,19, ambiente 1,00 -> 1,20). Todo se guarda en PlayerPrefs. Captura: `Assets/Validacion~/r17_opciones_graficos.png`.
+- Limite: la calidad solo se reaplica sola al arrancar en una build (en el Editor no se toca). Las opciones viven en el menu de PAUSA; el menu principal no tiene acceso a opciones.
+
+**Feedback de las acciones del jugador:** auditoria por lectura de codigo (no por ejecucion). La mayoria tiene sonido/efecto/aviso, tambien al ser rechazada. Se agrego feedback a: recarga rechazada ("CARGADOR LLENO" / "SIN MUNICION DE RESERVA"), cambio de arma con la rueda (muestra el arma), clic del canon del tanque en cooldown ("CANON RECARGANDO") y [B]/Reagrupar sin seleccion ("NADIE SELECCIONADO"). **Siguen sin feedback** (detectados, no agregados): radio que bloquea poseer/cambiar de vista, orden de mover con todos los puntos inaccesibles (suena el tono de exito), tecla [3] del tanque sin metralleta, [N] sin coincidencias, [Esc] sin nada que cancelar, curar con [E] sin heridos, y sonido al cambiar el tamano del minimapa. Esos agregados nuevos de feedback no tienen check propio.

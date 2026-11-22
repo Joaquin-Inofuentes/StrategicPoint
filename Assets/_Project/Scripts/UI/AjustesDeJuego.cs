@@ -6,7 +6,7 @@ namespace SP.UI
 {
     // Opciones que no tenian donde vivir: pantalla completa, resolucion, calidad, paleta para daltonismo y
     // HUD minimo. Se guardan en PlayerPrefs y se aplican solas al arrancar cada escena.
-    public static class AjustesDeJuego
+    public static partial class AjustesDeJuego
     {
         const string PrefPantallaV2 = "sp_pantalla_defecto_v2";
         const string PrefCompleta = "sp_pantalla_completa", PrefRes = "sp_resolucion", PrefCalidad = "sp_calidad",

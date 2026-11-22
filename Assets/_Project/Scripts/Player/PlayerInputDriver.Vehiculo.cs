@@ -380,7 +380,7 @@ namespace SP.Player
                     // camara quedaba fija: no se veia a donde iba el tiro.
                     ApuntarConLaCamara(turret, delta.y);
                     turret.TickPlayerAim(Time.deltaTime);
-                    if (mouse.leftButton.wasPressedThisFrame) turret.TryFire();
+                    if (mouse.leftButton.wasPressedThisFrame && !turret.TryFire()) RejectOrder("CANON RECARGANDO");   // antes el clic en cooldown no daba ninguna respuesta
 
                     // El artillero usaba el mismo FOV que caminando, asi
                     // que apuntar a distancia era adivinar. El zoom de
