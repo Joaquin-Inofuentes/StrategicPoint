@@ -13,6 +13,32 @@ namespace SP.EditorTools
     // cuando el punto es inaccesible, y el cambio de tamano del minimapa informa su nuevo estado.
     public static partial class ChecksBugs065
     {
+        // Tomas para el atlas: la misma vista con calidad/iluminacion/brillo distintos (no verifica nada, deja el estado como estaba).
+        static IEnumerator Bug991c()
+        {
+            if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
+            OperacionPrueba.Arrancar(2, 1);
+            ModoDios.Poner(true);
+            foreach (var x in Esperar(3f)) yield return x;
+            int q0 = SP.UI.AjustesDeJuego.CalidadActual; var i0 = SP.UI.AjustesDeJuego.Iluminacion; float b0 = SP.UI.AjustesDeJuego.Brillo;
+            SP.UI.AjustesDeJuego.PonerCalidad(2); SP.UI.AjustesDeJuego.PonerIluminacion(SP.UI.AjustesDeJuego.NivelDeIluminacion.Alta); SP.UI.AjustesDeJuego.PonerBrillo(1f);
+            foreach (var x in Esperar(1.2f)) yield return x;
+            foreach (var x in CapturarPantalla("r17_calidad_alta_ilum_alta.png")) yield return x;
+            SP.UI.AjustesDeJuego.PonerCalidad(0); SP.UI.AjustesDeJuego.PonerIluminacion(SP.UI.AjustesDeJuego.NivelDeIluminacion.Baja);
+            foreach (var x in Esperar(1.2f)) yield return x;
+            foreach (var x in CapturarPantalla("r17_calidad_baja_ilum_baja.png")) yield return x;
+            SP.UI.AjustesDeJuego.PonerCalidad(2); SP.UI.AjustesDeJuego.PonerIluminacion(SP.UI.AjustesDeJuego.NivelDeIluminacion.Media); SP.UI.AjustesDeJuego.PonerBrillo(0.8f);
+            foreach (var x in Esperar(1.2f)) yield return x;
+            foreach (var x in CapturarPantalla("r17_brillo_80.png")) yield return x;
+            SP.UI.AjustesDeJuego.PonerBrillo(1.4f);
+            foreach (var x in Esperar(1.2f)) yield return x;
+            foreach (var x in CapturarPantalla("r17_brillo_140.png")) yield return x;
+            SP.UI.AjustesDeJuego.PonerCalidad(q0); SP.UI.AjustesDeJuego.PonerIluminacion(i0); SP.UI.AjustesDeJuego.PonerBrillo(b0);
+            PlayerPrefs.DeleteKey("sp_calidad"); PlayerPrefs.DeleteKey("sp_iluminacion"); PlayerPrefs.DeleteKey("sp_brillo");
+            ModoDios.Poner(false);
+            Fin("OK 4 tomas de calidad, iluminacion y brillo");
+        }
+
         static IEnumerator Bug991b()
         {
             if (!Application.isPlaying) { Fin("FALLO el editor no esta en Play"); yield break; }
