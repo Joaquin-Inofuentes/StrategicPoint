@@ -63,7 +63,8 @@ namespace SP.Operacion
                     case 3: p = new Vector3(R(-56f, -44f), 0.8f, R(-100f, -92f)); yaw = 45f; break;    // esquina suroeste
                     default: p = new Vector3(R(44f, 56f), 0.8f, R(-100f, -92f)); yaw = -45f; break;    // esquina sureste
                 }
-                if (NavMesh.SamplePosition(p, out var hit, 8f, NavMesh.AllAreas)) p = hit.position + Vector3.up * 0.2f;
+                // BUG #017 (nacian enterrados): hit.position es el PISO y el pivote del soldado va a PivoteSobrePiso (0,8 m) sobre el; con +0,2 quedaba medio cuerpo bajo la sala.
+                if (NavMesh.SamplePosition(p, out var hit, 8f, NavMesh.AllAreas)) p = hit.position + Vector3.up * SoldierMotor.PivoteSobrePiso;
                 var clon = Instantiate(plantilla, p, Quaternion.Euler(0f, yaw, 0f), plantilla.transform.parent);
                 clon.name = "Reserva_CD_Refuerzo_" + (k + 1);
                 clon.gameObject.SetActive(false);
@@ -165,7 +166,7 @@ namespace SP.Operacion
             for (int k = 0; k < cuantos; k++)
             {
                 var p = PuntosDeGuarnicion[k];
-                if (NavMesh.SamplePosition(p, out var hit, 6f, NavMesh.AllAreas)) p = hit.position + Vector3.up * 0.2f;
+                if (NavMesh.SamplePosition(p, out var hit, 6f, NavMesh.AllAreas)) p = hit.position + Vector3.up * SoldierMotor.PivoteSobrePiso;   // BUG #017: ver arriba (antes +0,2 m = enterrados)
                 var clon = Instantiate(plantilla, p, Quaternion.Euler(0f, (k * 67f) % 360f, 0f), plantilla.transform.parent);
                 clon.gameObject.SetActive(false);
                 clon.name = "CD_Guarnicion_" + (k + 1);
