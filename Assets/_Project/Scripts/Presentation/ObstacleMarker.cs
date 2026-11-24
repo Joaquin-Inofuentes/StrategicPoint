@@ -248,6 +248,7 @@ namespace SP.Presentation
             if (!Application.isPlaying || tapa.size == Vector3.zero) return;
             var b = tapa; b.Expand(0.35f);
             float maxLado = Mathf.Max(b.size.x, b.size.y, b.size.z) * 1.3f;
+            List<ObstacleMarker> apoyados = null;
             foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsInactive.Exclude))
             {
                 if (r == null || !r.enabled || r is ParticleSystemRenderer || r is TrailRenderer || r is LineRenderer || r is SpriteRenderer) continue;
@@ -259,13 +260,22 @@ namespace SP.Presentation
                 bool sobreLaHuella = rb.center.x >= b.min.x && rb.center.x <= b.max.x && rb.center.z >= b.min.z && rb.center.z <= b.max.z;
                 bool encima = !dentro && sobreLaHuella && rb.min.y >= tapa.max.y - 0.4f && rb.min.y <= tapa.max.y + 0.4f;
                 if (!dentro && !encima) continue;
-                if (r.GetComponentInParent<ObstacleMarker>() != null) continue;           // pertenece a otro destruible
+                var otro = r.GetComponentInParent<ObstacleMarker>();
+                if (otro != null)
+                {
+                    // Pertenece a otro destruible. Si estaba APOYADO sobre este (la cabina sobre la carroceria, los sacos sobre la jardinera) y ya no
+                    // le queda nada debajo, se cae con el: antes quedaba flotando (#501d). Si otro soporte lo sostiene, sigue en pie.
+                    if (otro != this && !otro.IsCollapsed && otro.EsDestruible && encima && QuedaSinApoyo(r, rb) && (apoyados == null || !apoyados.Contains(otro)))
+                        (apoyados ?? (apoyados = new List<ObstacleMarker>())).Add(otro);
+                    continue;
+                }
                 if (r.GetComponentInParent<SP.Actors.Soldier>() != null || r.GetComponentInParent<Canvas>() != null || r.GetComponentInParent<SP.Presentation.Fragmento>() != null) continue;
                 var rbd = r.GetComponentInParent<Rigidbody>(); if (rbd != null && !rbd.isKinematic) continue;
                 bool solido = r.GetComponentInParent<Collider>() != null;
                 if ((solido || encima) && !QuedaSinApoyo(r, rb)) continue;
                 r.gameObject.SetActive(false);
             }
+            if (apoyados != null) foreach (var o in apoyados) if (o != null && !o.IsCollapsed) o.Demoler(tapa.center, 4f);
         }
 
         // true si, sin este obstaculo ni su propio collider, no hay nada solido debajo de la pieza (y no esta en el piso).

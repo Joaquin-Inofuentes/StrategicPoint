@@ -213,6 +213,10 @@ namespace SP.Operacion
             foreach (var a in AliadosAEvacuar(true))
             {
                 if (a == null || a.Health == null || !a.Health.IsAlive || !a.gameObject.activeInHierarchy || a.Brain == null || a.Brain.IsPossessedByPlayer || a == yo) continue;
+                // Con el mando tactico las unidades obedecen al operador de la radio (que se queda abajo): la que sube al campanario a proposito, o va
+                // camino de otro lado por orden, no esta "trabada en otro piso". Traerla de vuelta a los pocos segundos deshacia la orden (#101i:
+                // Vega subia a 6,5 m y reaparecia en el piso de la plaza).
+                if (MandoActivo && (a.Brain.TieneOrden || EstaEnElCampanario(a))) { rezagadosDePiso.Remove(a.Id); continue; }
                 bool encerrado = EncerradoTrasCompuerta(a, yo);
                 bool lejos = encerrado || Mathf.Abs(a.transform.position.y - yo.transform.position.y) > DiferenciaDePisoParaRezago || Plano(a.transform.position, yo.transform.position).magnitude > DistanciaDeRezago;
                 if (!lejos) { rezagadosDePiso.Remove(a.Id); continue; }

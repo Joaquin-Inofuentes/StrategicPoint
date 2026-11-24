@@ -1036,6 +1036,8 @@ namespace SP.Operacion
         }
 
         // ---- campanario: un soldado arriba revela a los enemigos en el minimapa y dispara con alcance extra ----
+        bool EstaEnElCampanario(Soldier a) => campanario != null && a.transform.position.y > AlturaDelCampanario - 1.2f && Plano(a.transform.position, campanario.position).magnitude <= RadioDelCampanario;
+
         void TickCampanario()
         {
             bool ocupado = false;
