@@ -26,7 +26,7 @@ namespace SP.Operacion
             var yo = Poseido();
             float d = yo != null ? Plano(yo.transform.position, tanque.transform.position).magnitude : 999f;
             if (hud != null) hud.Objetivo(TituloObjetivo(4, "HUIR EN EL TANQUE"), $"Subi al tanque reparado · {Mathf.RoundToInt(d)} m · el tanque avanza solo: vos manejas el CANON", 0f, new Color(0.4f, 1f, 0.5f));
-            if (d <= 6.5f && yo != null && yo.Health.IsAlive)
+            if (d <= RadioDeAbordaje && yo != null && yo.Health.IsAlive)   // R19 (E2): la misma constante que dibuja el anillo
             {
                 if (hud != null) hud.Prompt("[E] SUBIR AL TANQUE (VAS DE ARTILLERO: SOLO EL CANON)");
                 if (OperacionTerminal.EToque()) Embarcar();
@@ -137,6 +137,60 @@ namespace SP.Operacion
             Aviso("A BORDO · TRAYECTO DE " + Mathf.RoundToInt(segundosDeTrayecto) + " s\nDESTRUI A LOS AUTOS CON EL CANON");
             StartCoroutine(DespejarRutaPorLotes());   // #373: por lotes, sin tiron al subir
             EmitirOrdenDeRuta();
+            OrdenarAtaqueAlTanque();   // R19 (E4)
+        }
+
+        // R19 (plan R19 v2, punto 8-B, E4): "trigger para empezar a atacar al tanque" en su otra lectura: al subir, los enemigos de a pie cercanos
+        // van por el tanque. Como mucho MaximoContraElTanque, los mas cercanos a <= RadioDeAtaqueAlTanque, escalonados 0,3 + 0,15 * i s. Se excluyen
+        // los montados, Pasivo, PuestoFijoPorRol (pesado, francotirador) y los perros. IssueAttackVehicleOrder es idempotente (renueva sus 15 s) y la
+        // orden caduca sola cuando el tanque se aleja.
+        public const int MaximoContraElTanque = 8;
+        public const float RadioDeAtaqueAlTanque = 60f, EsperaDeLaPrimeraOrden = 0.3f, EsperaEntreOrdenes = 0.15f;
+        public int OrdenesContraElTanque { get; private set; }
+
+        public List<Soldier> CandidatosContraElTanque()
+        {
+            var r = new List<Soldier>();
+            if (tanque == null) return r;
+            var pt = tanque.transform.position;
+            var todos = ActorRegistry.All;
+            for (int i = 0; i < todos.Count; i++)
+            {
+                var s = todos[i];
+                if (s == null || s.Team != TeamId.Enemy || s.Health == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                var b = s.Brain;
+                if (b == null || b.MontadoEnVehiculo || b.Pasivo || b.PuestoFijoPorRol) continue;
+                if (s.GetComponent<PerroEnemigo>() != null) continue;
+                if (Plano(s.transform.position, pt).magnitude > RadioDeAtaqueAlTanque) continue;
+                r.Add(s);
+            }
+            r.Sort((x, y) => Plano(x.transform.position, pt).sqrMagnitude.CompareTo(Plano(y.transform.position, pt).sqrMagnitude));
+            if (r.Count > MaximoContraElTanque) r.RemoveRange(MaximoContraElTanque, r.Count - MaximoContraElTanque);
+            return r;
+        }
+
+        void OrdenarAtaqueAlTanque()
+        {
+            if (!Application.isPlaying || tanque == null) return;
+            var lista = CandidatosContraElTanque();
+            if (lista.Count > 0) StartCoroutine(OrdenesEscalonadasContraElTanque(lista));
+        }
+
+        IEnumerator OrdenesEscalonadasContraElTanque(List<Soldier> lista)
+        {
+            float t = 0f;
+            var uno = new Soldier[1];
+            for (int i = 0; i < lista.Count; i++)
+            {
+                float espera = EsperaDeLaPrimeraOrden + EsperaEntreOrdenes * i;
+                while (t < espera) { yield return null; t += Time.deltaTime; }   // R3: dt acumulado
+                if (!EnTanque || tanque == null || tanque.IsDestroyed) yield break;
+                var s = lista[i];
+                if (s == null || s.Health == null || !s.Health.IsAlive || s.Brain == null || s.Brain.MontadoEnVehiculo) continue;
+                s.Brain.IssueAttackVehicleOrder(tanque);
+                uno[0] = s; CazaDeEnemigos.Marcar(uno);
+                OrdenesContraElTanque++;
+            }
         }
 
         // Pedido: "mas poder a los ataques e impactos de tanques: lo que manejas es un tanque, los enemigos manejan camionetas". El obus
@@ -393,10 +447,14 @@ namespace SP.Operacion
                 float f = v >= 0.60f ? 0.55f : Mathf.Lerp(0.35f, 0.55f, Mathf.InverseLerp(0.15f, 0.60f, v));
                 if (Reloj < 6f) f *= 0.5f;
                 f *= MultiplicadorDeDanoDelTanque;
-                float d = Mathf.Min(dano * f, max * 0.07f * MultiplicadorDeDanoDelTanque);
+                // R20 (COLA punto 3, "con 5 bombazos ya exploto"): los topes ya no escalan con el x32 (con x32 el tope por golpe era el 224 % y el
+                // presupuesto el 51 %/s: no topaban nada). Se miden contra la vida maxima: ver TanqueJefe.TanqueDelJugador* y el check #997a/c.
+                float d = Mathf.Min(dano * f, max * TanqueJefe.TanqueDelJugadorTopePorGolpe01);
                 float ahora = Time.time;
-                if (ahora - ventanaInicio >= 1f) { ventanaInicio = ahora; gastado = 0f; }
-                float tope = max * (v > 0.5f ? 0.016f : 0.012f) * MultiplicadorDeDanoDelTanque;   // con 1600 de vida: ~51 HP/s sano, ~38 HP/s herido
+                // R20: presupuesto por VENTANA de TanqueDelJugadorVentanaDePresupuesto s (antes 1 s), compartido por balas y explosiones: un bombazo
+                // gasta la ventana y lo que llegue despues dentro de ella hace 1 (respiro entre golpes grandes).
+                if (ahora - ventanaInicio >= TanqueJefe.TanqueDelJugadorVentanaDePresupuesto) { ventanaInicio = ahora; gastado = 0f; }
+                float tope = max * (v > 0.5f ? TanqueJefe.TanqueDelJugadorPresupuestoSano01 : TanqueJefe.TanqueDelJugadorPresupuestoHerido01);
                 d = Mathf.Min(d, Mathf.Max(1f, tope - gastado));
                 gastado += d;
                 return Mathf.Max(1, Mathf.RoundToInt(d));

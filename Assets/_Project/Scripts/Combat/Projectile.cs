@@ -283,6 +283,7 @@ namespace SP.Combat
             gravity = 0f;
             ignoreVehicle = null;
             whizzPlayed = false;
+            pendienteCol = null;
             ActiveInstances.Remove(this);
             // Vuelve a escala de reposo uniforme: sin esto, la proxima vez
             // que el pool reutilice este mismo objeto para un impacto (no
@@ -347,7 +348,9 @@ namespace SP.Combat
             // tocarlo. Sin esto, subir la velocidad es cambiar un defecto
             // por otro mucho peor.
             var puntoDeImpacto = transform.position;
-            var hit = BuscarBlancoEnElTramo(posPrevia, transform.position, ref puntoDeImpacto);
+            // R20 (#995): los soldados se buscan solo HASTA la primera pared del tramo (un enemigo pegado a la pared sigue recibiendo el tiro).
+            bool hayMundo = BuscarChoqueDelMundo(posPrevia, out var puntoMundo, out var normalMundo, out var colMundo);
+            var hit = BuscarBlancoEnElTramo(posPrevia, hayMundo ? puntoMundo : transform.position, ref puntoDeImpacto);
 
             if (hit != null)
             {
@@ -357,7 +360,7 @@ namespace SP.Combat
                     bool headshot = ultimoImpactoFueCabeza;
                     // R17: un headshot de frente contra el escudero lo absorbe el escudo: ni cartel ni sangre de headshot mortal.
                     if (headshot && hit.Health.BloqueaGolpeDe != null && hit.Health.BloqueaGolpeDe(ownerId)) headshot = false;
-                    UltimoImpactoEnSoldado = puntoDeImpacto; UltimoImpactoFueCabeza = headshot;   // para los checks (#094)
+                    UltimoImpactoEnSoldado = puntoDeImpacto; UltimoImpactoFueCabeza = headshot; UltimoSoldadoImpactado = hit; SerieDeImpactosEnSoldado++;   // R20 (#995)   // para los checks (#094)
                     // #107/#108: el headshot del bando jugador sobre un enemigo humano MATA al toque (Health.TakeDamage(..., true) se lleva
                     // toda la vida). Solo llega aca como headshot si el tirador es del bando jugador y la victima enemiga (ver LeDioAlCuerpo);
                     // los vehiculos y torretas no pasan por este camino. Un enemigo pegandole a la cabeza del jugador sigue siendo dano normal.
@@ -395,7 +398,7 @@ namespace SP.Combat
             // eso. Va DESPUES del chequeo de soldados a proposito: un
             // enemigo pegado a la pared tiene que seguir recibiendo el
             // tiro, no que se lo coma el muro que tiene atras.
-            if (ChocoContraElMundo(posPrevia)) return;
+            if (hayMundo && CobrarChoqueDelMundo(puntoMundo, normalMundo, colMundo)) return;
 
             // Los barridos por distancia al ORIGEN del vehiculo y del
             // obstaculo que habia aca se fueron enteros: los dos estan
@@ -438,11 +441,31 @@ namespace SP.Combat
 
         // Buffer compartido: un barrido por bala por frame no puede estar
         // asignando un array cada vez.
-        static readonly RaycastHit[] BufferBarrido = new RaycastHit[8];
+        static readonly RaycastHit[] BufferBarrido = new RaycastHit[16];
+
+        // R20 (#995): impacto contra un collider mas grande que su malla cuya malla queda mas alla de este cuadro: se cobra cuando el tramo llega.
+        Collider pendienteCol; Vector3 pendientePunto, pendienteNormal;
+
+        // R20 (#995): ultimo impacto de una bala contra el escenario (para los checks).
+        public static int SerieDeImpactosDelMundo { get; private set; }
+        public static Collider UltimoColliderDelMundo { get; private set; }
+        public static Vector3 UltimoPuntoDelMundo { get; private set; }
+        public static GameObject UltimoDecal { get; private set; }
+        public static int InvisiblesAtravesados { get; private set; }
+        public static SP.Actors.Soldier UltimoSoldadoImpactado { get; private set; }
+        public static int SerieDeImpactosEnSoldado { get; private set; }
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ReiniciarDiagnosticoDelMundo() { SerieDeImpactosDelMundo = 0; UltimoColliderDelMundo = null; UltimoDecal = null; InvisiblesAtravesados = 0; UltimoSoldadoImpactado = null; SerieDeImpactosEnSoldado = 0; }
 
         // Devuelve true si la bala se murio contra el escenario.
-        bool ChocoContraElMundo(Vector3 desde)
+        bool ChocoContraElMundo(Vector3 desde) => BuscarChoqueDelMundo(desde, out var p, out var n, out var c) && CobrarChoqueDelMundo(p, n, c);
+
+        // R20 (#995): primero se BUSCA el choque contra el escenario (sin efectos) y despues se cobra. Tick lo usa para que la busqueda de soldados
+        // se corte en la pared: con el tramo de un cuadro largo (260 m/s, 4-80 m por cuadro segun los fps) un enemigo DETRAS de una pared que
+        // quedaba dentro del mismo tramo recibia el tiro a traves de ella.
+        bool BuscarChoqueDelMundo(Vector3 desde, out Vector3 puntoReal, out Vector3 normalReal, out Collider colImpacto)
         {
+            puntoReal = default; normalReal = default; colImpacto = null;
             var tramo = transform.position - desde;
             float largo = tramo.magnitude;
             if (largo < 0.00001f) return false;
@@ -453,6 +476,19 @@ namespace SP.Combat
             float mejor = float.MaxValue;
             RaycastHit impacto = default;
             bool hay = false;
+            // Impacto diferido del cuadro anterior (ver abajo): si este tramo pasa por el punto, gana salvo que haya algo antes.
+            if (pendienteCol != null)
+            {
+                float s = Vector3.Dot(pendientePunto - desde, dir);
+                if (!pendienteCol.enabled || !pendienteCol.gameObject.activeInHierarchy || s < -0.05f) pendienteCol = null;
+                else if (s <= largo)
+                {
+                    mejor = Mathf.Max(0f, s); hay = true;
+                    puntoReal = pendientePunto; normalReal = pendienteNormal;
+                    impacto = default;
+                }
+            }
+            Collider colDiferido = hay ? pendienteCol : null;
             for (int i = 0; i < n; i++)
             {
                 var h = BufferBarrido[i];
@@ -480,21 +516,42 @@ namespace SP.Combat
                 }
                 if (!esPared && !esVehiculo && !esLuminaria) continue;
                 if (h.distance >= mejor) continue;
-                mejor = h.distance;
+                float dReal = h.distance; Vector3 nReal = h.normal;
+                // R20 (#995): la pared tiene que tener una superficie que se vea donde la bala la toca. Sin malla en el alcance la bala sigue de
+                // largo (collider invisible); con la malla un poco mas alla (collider mas grande que la pieza), el impacto va sobre la malla.
+                if (esPared && !SuperficieVisible.Exento(h.collider)
+                    && !SuperficieVisible.Impacto(h.collider, desde, dir, h.distance, h.point, h.normal, out dReal, out nReal)) { InvisiblesAtravesados++; continue; }
+                if (dReal >= mejor) continue;
+                if (dReal > largo + 0.001f)
+                {
+                    // la malla queda mas alla de este cuadro: el tiro recto se cobra en el proximo tramo; el de arco (obus) revienta en el collider
+                    if (gravity == 0f) { pendienteCol = h.collider; pendientePunto = desde + dir * dReal; pendienteNormal = nReal; continue; }
+                    dReal = h.distance; nReal = h.normal;
+                }
+                mejor = dReal;
                 impacto = h;
+                puntoReal = dReal == h.distance ? h.point : desde + dir * dReal; normalReal = nReal;
+                colDiferido = null;
                 hay = true;
             }
 
             if (!hay) return false;
+            colImpacto = colDiferido != null ? colDiferido : impacto.collider;
+            return colImpacto != null;
+        }
 
-            transform.position = impacto.point;
+        bool CobrarChoqueDelMundo(Vector3 puntoReal, Vector3 normalReal, Collider colImpacto)
+        {
+            pendienteCol = null;
+            if (colImpacto == null) return false;
+            transform.position = puntoReal;
 
             if (explosionRadius > 0f)
             {
                 // Ronda 13 (T2): si lo tocado es un vehiculo, el impacto directo cuenta como cercania maxima (no se mide contra su pivote).
-                var vehTocado = impacto.collider != null ? impacto.collider.GetComponentInParent<SP.Vehicles.Vehicle>() : null;
+                var vehTocado = colImpacto != null ? colImpacto.GetComponentInParent<SP.Vehicles.Vehicle>() : null;
                 impactoDirecto = vehTocado != null && vehTocado != ignoreVehicle ? vehTocado : null;
-                try { Explode(impacto.point); } finally { impactoDirecto = null; }
+                try { Explode(puntoReal); } finally { impactoDirecto = null; }
                 Expire();
                 return true;
             }
@@ -504,13 +561,13 @@ namespace SP.Combat
             // mide 1,1 m de medio ancho: se le pegaba al tanque disparando
             // hasta 1,4 metros al costado, con la bala pasando a la vista
             // por afuera. Ahora manda el collider de verdad.
-            var vehiculo = impacto.collider.GetComponentInParent<SP.Vehicles.Vehicle>();
+            var vehiculo = colImpacto.GetComponentInParent<SP.Vehicles.Vehicle>();
             if (vehiculo != null)
             {
-                vehiculo.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * multiplicadorVsVehiculo)), ownerId, velocity.sqrMagnitude > 1e-4f ? impacto.point - velocity.normalized * 5f : origenDeVuelo);   // Ronda 13 (T4): origen del golpe para el anillo del HUD
-                EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, impacto.point));
-                PlayImpactSfx(EnvironmentHitKind.Vehicle, impacto.point, 0.55f);
-                ImpactFx.SpawnArmorSparks(impacto.point, impacto.normal);
+                vehiculo.TakeDamage(Mathf.Max(1, Mathf.RoundToInt(damage * multiplicadorVsVehiculo)), ownerId, velocity.sqrMagnitude > 1e-4f ? puntoReal - velocity.normalized * 5f : origenDeVuelo);   // Ronda 13 (T4): origen del golpe para el anillo del HUD
+                EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, EnvironmentHitKind.Vehicle, puntoReal));
+                PlayImpactSfx(EnvironmentHitKind.Vehicle, puntoReal, 0.55f);
+                ImpactFx.SpawnArmorSparks(puntoReal, normalReal);
                 Expire();
                 return true;
             }
@@ -519,25 +576,31 @@ namespace SP.Combat
             // el daño. Antes esto dependia de estar a menos de 1 metro del
             // ORIGEN del obstaculo, que con una barricada de casi 6 metros
             // de largo significaba que solo le pegabas cerca del pivote.
-            var marca = impacto.collider.GetComponentInParent<SP.Presentation.ObstacleMarker>();
-            var luminaria = impacto.collider.GetComponentInParent<SP.Presentation.Luminaria>();
+            var marca = colImpacto.GetComponentInParent<SP.Presentation.ObstacleMarker>();
+            var luminaria = colImpacto.GetComponentInParent<SP.Presentation.Luminaria>();
             
             if (luminaria != null)
             {
-                luminaria.TakeDamage(damage, impacto.point);
+                luminaria.TakeDamage(damage, puntoReal);
                 Expire();
                 return true;
             }
 
             var clase = marca != null ? EnvironmentHitKind.Obstacle : EnvironmentHitKind.Ground;
-            if (marca != null) marca.TakeDamage(DanoAPropio(marca, damage, ownerId), impacto.point);
+            var tImpacto = colImpacto.transform; var posAntes = tImpacto.position; var escalaAntes = tImpacto.lossyScale;
+            if (marca != null) marca.TakeDamage(DanoAPropio(marca, damage, ownerId), puntoReal);
+            // R20 (#995): si ESTE tiro derrumbo la cobertura o la aplasto de etapa, el punto ya no esta sobre nada: sin decal.
+            bool sinSoporte = colImpacto == null || !colImpacto.enabled || !colImpacto.gameObject.activeInHierarchy || (marca != null && marca.IsCollapsed)
+                || (tImpacto.position - posAntes).sqrMagnitude > 0.0025f || (tImpacto.lossyScale - escalaAntes).sqrMagnitude > 0.0025f;
 
-            EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, clase, impacto.point));
-            PlayImpactSfx(clase, impacto.point, 0.5f);
-            if (esDeVehiculoEnemigo) ImpactFx.SpawnImpactoDeMetralla(impacto.point, impacto.normal);   // bug #187
-            else ImpactCubes.Spawn(impacto.point, impacto.normal,
+            EventBus.Instance.Publish(new EnvironmentHitEvent(ownerId, clase, puntoReal));
+            PlayImpactSfx(clase, puntoReal, 0.5f);
+            if (esDeVehiculoEnemigo) ImpactFx.SpawnImpactoDeMetralla(puntoReal, normalReal);   // bug #187
+            else ImpactCubes.Spawn(puntoReal, normalReal,
                 marca != null ? ImpactSurface.Obstacle : ImpactSurface.Ground, damage);
-            DecalPool.Spawn(DecalKind.BulletHole, impacto.point, impacto.normal, 0.34f);
+            // R20 (#995): el decal queda anclado a la pieza tocada: si la pieza se retira, se apaga o se mueve, la marca se va con ella.
+            UltimoDecal = sinSoporte ? null : DecalPool.Spawn(DecalKind.BulletHole, puntoReal, normalReal, 0.34f, colImpacto);
+            UltimoColliderDelMundo = colImpacto; UltimoPuntoDelMundo = puntoReal; SerieDeImpactosDelMundo++;
 
             Expire();
             return true;

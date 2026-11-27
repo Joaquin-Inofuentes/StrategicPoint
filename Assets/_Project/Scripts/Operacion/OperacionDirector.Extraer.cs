@@ -79,6 +79,8 @@ namespace SP.Operacion
             AyudarALaEscuadraAlHeli();
             if (SubiendoAlHeli) return;
             if (CoberturaActiva) { TickCoberturaDeExtraer(Time.deltaTime); return; }   // #127: estacionario cubriendo hasta que todos esten en la zona
+            // R20 (zona final): posado, el heli queda nivelado. El salto de objetivo (checkpoint / F10) lo ponia en la azotea con el cabeceo del vuelo (~9 grados de nariz abajo).
+            if (HeliAterrizo && !HeliBajando && heli != null && heli.up.y < 0.9995f) heli.rotation = Quaternion.Euler(0f, heli.eulerAngles.y, 0f);
             var yo = Poseido();
             float d = yo != null ? Plano(yo.transform.position, heli.position).magnitude : 999f;
             if (hud != null) hud.Objetivo(TituloObjetivo(6, "SUBIR AL HELICOPTERO"), $"El helicoptero (con metralleta) aterrizo · {Mathf.RoundToInt(d)} m · acercate y apreta [E]", 0.9f, new Color(0.35f, 1f, 0.5f));
@@ -408,6 +410,8 @@ namespace SP.Operacion
             ApagarCoberturaDeExtraer();
             GameLog.Line("[Operacion] VICTORIA");
             PartidaGuardada.Borrar();   // P10 (#120): misión cumplida, ya no hay nada que continuar
+            // R19 (punto 1, D6): el NIVEL 2 del menu queda terminado (con el tiempo de la mision; la fila de resultado la pone EstadisticasDeMision).
+            ProgresoDeNiveles.Completar(2, SP.Mision.EstadisticasDeMision.SegundosDeMision);
             var outcome = GameOutcomeController.Activo;
             if (outcome != null) outcome.ShowVictory(false, AlfaDeFondoDeVictoria);   // bug #077: se ve la toma final detras, en camara lenta
             if (!TomaFinalEnLaAzotea) SP.Presentation.TomaDeVictoria.Iniciar();   // bug #220: toma de cierre orbitando a la escuadra (en el techo sigue la toma del helicoptero yendose)

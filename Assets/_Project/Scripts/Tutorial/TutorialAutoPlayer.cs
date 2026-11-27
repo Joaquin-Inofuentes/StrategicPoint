@@ -41,6 +41,12 @@ namespace SP.Tutorial
         public int DesdePaso;   // pasos anteriores a este se dan por cumplidos (preparacion, no cuentan como gesto)
         public bool IgnorarHumano = true;   // mientras corre, teclado/mouse/mando reales quedan desactivados
         public bool ConCapturas = true;     // captura antes, durante (cada 6 s) y despues de cada paso
+        // R19: resultado de la corrida para los checks (Bug994e).
+        public int PasosOk => pasosOk;
+        public int PasosConReintento => pasosReintento;
+        public int PasosSaltados => pasosSaltados;
+        public int PasosFallidos => pasosFallidos;
+        public bool Cerrada => cerrado;
         public string RunId => reg != null ? reg.RunId : null;
         public string Carpeta => reg != null ? reg.Carpeta : null;
 
@@ -104,7 +110,7 @@ namespace SP.Tutorial
                 string titulo = paso != null ? paso.Titulo : "?";
                 float tPasoInicio = Time.time;
                 Log($"[AUTOPLAY] Paso {indiceAntes + 1}/{totalPasos} '{id}' ({titulo})...");
-                float tope = id == "avanzar_disparar" || id == "final" || id == "entrar_tanque" ? 100f : TimeoutPorPaso;
+                float tope = id == "avanzar_disparar" || id == "final" || id == "entrar_tanque" || id == "canon_simple" ? 100f : TimeoutPorPaso;
 
                 if (reg != null)
                 {
@@ -178,7 +184,12 @@ namespace SP.Tutorial
                 case "granada": yield return GestoGranadaReal(driver); break;
                 case "suministros": yield return GestoSuministrosReal(driver); break;
                 case "vista_tactica": yield return GestoVistaTacticaReal(); break;
-                case "rts": yield return GestoRts(driver); break;
+                case "rts":
+                    yield return GestoRts(driver);
+                    // R19: en el simple el paso rts absorbe al de fps (TAB de vuelta).
+                    if (TutorialManager.ModoSimple) yield return GestoFps(driver);
+                    break;
+                case "canon_simple": yield return GestoCanonSimpleReal(driver); break;
                 case "fps": yield return GestoFps(driver); break;
                 case "seguir": yield return GestoSeguirYQuietos(driver); break;
                 case "seleccionar": yield return GestoSeleccionarReal(driver); break;

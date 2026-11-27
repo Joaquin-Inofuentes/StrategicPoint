@@ -285,7 +285,7 @@ namespace SP.EditorTools
                 foreach (var x in Esperar(10f)) yield return x;
                 W8Ok(ref ok, d.Jefe.Canonazos == 0 && d.Jefe.InicioDeAvisos.Count == 0 && !d.Jefe.FuegoHabilitado, sb, $"con la escuadra adentro del Centro de Datos el jefe no dispara (canonazos={d.Jefe.Canonazos}, avisos={d.Jefe.InicioDeAvisos.Count})");
                 foreach (var s in ActorRegistry.All)
-                    if (s != null && s.Team == TeamId.Player && s.gameObject.activeInHierarchy) { s.transform.position = new Vector3(0f, s.transform.position.y, -24f); ApoyoEnElPiso.Apoyar(s.transform); }
+                    if (s != null && s.Team == TeamId.Player && s.gameObject.activeInHierarchy) { s.transform.position = new Vector3(0f, s.transform.position.y, -4f); ApoyoEnElPiso.Apoyar(s.transform); }   // R19 (E3): el umbral de la toma paso a z -8 (el fuego sigue en -30)
                 float t1 = Time.realtimeSinceStartup;
                 while (d.Jefe.InicioDeAvisos.Count == 0 && Time.realtimeSinceStartup - t1 < 12f) yield return null;
                 W8Ok(ref ok, d.Jefe.FuegoHabilitado && d.Jefe.InicioDeAvisos.Count >= 1, sb, $"al salir empieza a disparar (avisos={d.Jefe.InicioDeAvisos.Count} a los {Time.realtimeSinceStartup - t1:0.0} s)");

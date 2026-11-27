@@ -457,6 +457,7 @@ namespace SP.Operacion
             if (hud != null && (Fase == FaseOperacion.Infiltrar || Fase == FaseOperacion.CentroDeDatos)) hud.OcultarTimer();   // Puestos usa el timer para la mecha
             ActualizarPasos();
             TickAnilloDeSubida();
+            TickUmbralDelBlindado();   // R19 (E3)
             TickAlejamiento();
         }
 
@@ -499,17 +500,60 @@ namespace SP.Operacion
             return true;
         }
 
-        // #111: el anillo vibrante del tanque, solo en el abordaje y mientras el jugador no este adentro.
+        // R19 (plan R19 v2, punto 7, E2): UNA sola verdad para el radio de subida al tanque. La usan TickAntesDelTanque ([E]) y el anillo del piso.
+        public const float RadioDeAbordaje = 6.5f;
+        // Anillo del helicoptero en Extraer (opcional del plan, primero en la lista de recortes: poner en false para quitarlo).
+        public const bool AnilloEnElHeli = true;
+        public const float RadioDelAnilloDelHeli = 11f;   // el mismo radio con el que TickExtraer acepta [E]
+        public const string CartelDelHeli = "[E] SUBIR AL HELICOPTERO";
+        bool aBordoAnteriorDelAnillo;
+        public int OcultadosConOnda { get; private set; }
+
+        bool ABordoDelTanque()
+        {
+            if (EnTanque) return true;
+            var drv = PlayerInputDriver.Activo;
+            return drv != null && tanque != null && drv.Vehicle == tanque && drv.CurrentSeat.HasValue;
+        }
+
+        // R19 (E2): ARBITRO UNICO del anillo de subida. Decide por fase que se marca en el piso, con que radio real y que cartel:
+        //   - Huir/Abordaje sin estar a bordo -> tanque, RadioDeAbordaje (6,5 m, en planta), "[E] SUBIR AL TANQUE";
+        //   - Resistir sin mansion ni mando -> plaza, RadioDeInteraccionDeBase (5 m), sin cartel (corrige el bug H4: el cartel del tanque en la plaza);
+        //   - Extraer con el helicoptero posado y sin caidos -> helicoptero, 11 m, "[E] SUBIR AL HELICOPTERO" (opcional, AnilloEnElHeli).
+        public bool ObjetivoDelAnillo(out Transform objetivo, out float radioDeUso, out string cartel)
+        {
+            objetivo = null; radioDeUso = 0f; cartel = "";
+            if (Fase == FaseOperacion.Huir && Subfase == (int)SubfaseHuida.Abordaje && tanque != null && tanque.Health != null && tanque.Health.IsAlive && !ABordoDelTanque())
+            {
+                objetivo = tanque.transform; radioDeUso = RadioDeAbordaje; cartel = AnilloDeSubida.CartelDelTanque;
+                return true;
+            }
+            if (Fase == FaseOperacion.Resistir && !MansionActiva && !MandoActivo && plaza != null && Poseido() != null)
+            {
+                objetivo = plaza; radioDeUso = RadioDeInteraccionDeBase; cartel = "";
+                return true;
+            }
+            if (AnilloEnElHeli && Fase == FaseOperacion.Extraer && heli != null && !SubiendoAlHeli && !CoberturaActiva && !HeliBajando && AliadosCaidos() == 0)
+            {
+                objetivo = heli; radioDeUso = RadioDelAnilloDelHeli; cartel = CartelDelHeli;
+                return true;
+            }
+            return false;
+        }
+
+        // #111 / R19 (E2): un solo Mostrar/Ocultar por cuadro. La onda de "subiste" (Ocultar(true)) solo en el cuadro en que se sube (tanque o heli);
+        // cualquier otro apagado (cambio de fase, fin de Resistir) es seco y sin sonido.
         void TickAnilloDeSubida()
         {
-            bool debe = Fase == FaseOperacion.Huir && Subfase == (int)SubfaseHuida.Abordaje && !EnTanque && tanque != null && tanque.Health != null && tanque.Health.IsAlive;
-            if (debe)
+            bool aBordo = (Fase == FaseOperacion.Huir && ABordoDelTanque()) || SubiendoAlHeli;
+            bool subioAhora = aBordo && !aBordoAnteriorDelAnillo;
+            aBordoAnteriorDelAnillo = aBordo;
+            if (ObjetivoDelAnillo(out var t, out var radio, out var cartel)) AnilloDeSubida.Mostrar(t, radio, cartel);
+            else if (AnilloDeSubida.EstaActivo)
             {
-                var drv = PlayerInputDriver.Activo;
-                if (drv != null && drv.Vehicle == tanque && drv.CurrentSeat.HasValue) debe = false;
+                if (subioAhora) OcultadosConOnda++;
+                AnilloDeSubida.Ocultar(subioAhora);
             }
-            if (debe) { if (!AnilloDeSubida.EstaActivo) AnilloDeSubida.Mostrar(tanque.transform); }
-            else if (AnilloDeSubida.EstaActivo && !(Fase == FaseOperacion.Resistir && !MansionActiva && !MandoActivo)) AnilloDeSubida.Ocultar();   // R14 (#18): en la ciudad lo lleva TickCirculoDeBase
         }
 
         // #105: al empezar cada objetivo de las fases 1-4, la escuadra sin orden recibe Follow al jugador (con un solo cartel agrupado).
@@ -600,6 +644,7 @@ namespace SP.Operacion
             kv["reflectoresRotos"] = IndicesRotos(reflectores);
             kv["generadorCaido"] = (generador != null && generador.EstaCaido).ToString();
             if (heli != null) kv["heli"] = $"activo={heli.gameObject.activeSelf};pos={heli.position.x:0.0},{heli.position.y:0.0},{heli.position.z:0.0};aterrizo={HeliAterrizo}";
+            CapturarProgreso(kv);   // Cola #2: progreso de objetivos y estructuras (OperacionDirector.Guardado.cs)
         }
 
         static string Capital(string t) => string.IsNullOrEmpty(t) ? "" : char.ToUpperInvariant(t[0]) + t.Substring(1).ToLowerInvariant();
@@ -699,6 +744,7 @@ namespace SP.Operacion
                 VolarHeli(Mathf.Clamp01(Reloj / segundosDeResistencia));
             }
             RestaurarMando(kv);
+            RestaurarProgreso(kv, fase);   // Cola #2: terminal volada, salida norte, toma del jefe, carga del porton (OperacionDirector.Guardado.cs)
             SesionLog.Evento($"Operacion restaurada: fase={fase} reloj={Reloj:0.0} puesto={PuestoActual + 1}");
         }
 

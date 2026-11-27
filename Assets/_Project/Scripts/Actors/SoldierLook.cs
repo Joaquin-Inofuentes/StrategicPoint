@@ -65,6 +65,7 @@ namespace SP.Actors
         {
             matInsignia = null; matEnemigoVisible = null; matEscudero = null; matAliado = null; matEnemigo = null; matAliadoTenido = null;
             matMedico = null; matAsalto = null; matFrancotirador = null; matPesado = null; matCivil = null;
+            paletaDeEscudero = PaletaPorDefecto; for (int i = 0; i < matEscuderoPorPaleta.Length; i++) matEscuderoPorPaleta[i] = null;
         }
 
         static Material ObtenerMaterialInsignia()
@@ -319,13 +320,99 @@ namespace SP.Actors
             (28, new Color(0.95f, 0.15f, 0.62f)), (29, new Color(0.95f, 0.15f, 0.62f)), (46, new Color(0.95f, 0.15f, 0.62f)), (60, new Color(0.30f, 0.12f, 0.45f)),   // correaje de bando: magenta
         }, new Color(0.16f, 0.04f, 0.26f));
         // Escudero (2026-11-13; R17 2.5: uniforme gris acero claro): casco y chaleco plateados (antidisturbios).
-        static Material MaterialEscudero() => MaterialPorCeldas(ref matEscudero, "MAT_Trimsheet_Escudero", new[]
+        // R19 punto 5 ("Contraste enemigo escudo"): gris sobre hormigon gris y sin el rojo de bando en el cuerpo (#990q: el tipo de menor contraste).
+        // Principio: contraste INTERNO (una zona muy clara, una muy oscura y un acento rojo saturado) dentro de la familia de color enemiga, sin azul
+        // (codigo aliado) ni dorado/amarillo (asalto aliado). Tres candidatas conmutables para elegir por medicion (Bug994i); gana la de mayor dE minima.
+        //   A "antidisturbios" (default): uniforme carmesi oscuro, casco/chaleco blanco hueso, pantalon negro, correaje rojo vivo.
+        //   B la de la R17 (gris/plata/amarillo), solo con el escudo nuevo.
+        //   C negro + blanco + rojo.
+        public enum Paleta { A_Antidisturbios = 0, B_R17 = 1, C_NegroBlancoRojo = 2, D_Claro = 3, E_ClaroPlacaNaranja = 4, F_Naranja = 5 }
+        //   D claro (hueso/blanco/negro/rojo, placa hueso), E = D con placa NARANJA de seguridad y chevrones negros, F naranja con placa hueso.
+        // Medicion #994q (2026-11-27, 12 tomas por paleta, objetivos 1-3, frente y espalda, mismos escuderos para todas):
+        //   A dE med 32,2 min 21,7 ratio 1,44 sep comun/pesado/aliado 21,9/21,3/26,4 · B 34,3/23,5/1,53 · C 34,4/25,1/1,53 · D 36,5/19,5/2,47
+        //   E 50,1/32,9/2,19 sep 37,3/33,2/55,5 · F 36,5/24,7/2,26. Gana E (mayor dE minima y la unica que pasa todos los umbrales de #994i).
+        // Por que: de frente el escudo es la mitad de la silueta; oscuro (A/B/C) se pierde de noche y queda cerca del oxido del comun; claro (D) se
+        // pierde contra el hormigon al sol. El naranja saturado se despega de ambos (croma) sin pisar azul/dorado aliado ni violeta del pesado.
+        public const Paleta PaletaPorDefecto = Paleta.E_ClaroPlacaNaranja;
+        static Paleta paletaDeEscudero = PaletaPorDefecto;
+        static readonly Material[] matEscuderoPorPaleta = new Material[6];   // un material compartido por candidata (cambiar no destruye nada: R4)
+        // Estatico de prueba (Bug994i): cambia la paleta de los escuderos que se vistan desde ahora; para los vivos, volver a llamar Aplicar().
+        public static Paleta PaletaDeEscudero
         {
-            (8, new Color(0.38f, 0.40f, 0.45f)), (10, new Color(0.38f, 0.40f, 0.45f)), (12, new Color(0.38f, 0.40f, 0.45f)),   // uniforme: gris acero claro (R17 2.5; antes grafito)
-            (52, new Color(0.80f, 0.84f, 0.88f)),   // casco y chaleco: plata
-            (19, new Color(0.09f, 0.10f, 0.12f)),   // pantalon: negro
-            (32, new Color(0.95f, 0.75f, 0.1f)), (33, new Color(0.95f, 0.75f, 0.1f)),     // correaje: amarillo
-        }, new Color(0.16f, 0.07f, 0.07f));
+            get => paletaDeEscudero;
+            set { paletaDeEscudero = value; matEscudero = null; }
+        }
+        // Color de los cubos de la desintegracion del escudero (RetiroDeEnemigosCaidos): el tono dominante de su paleta.
+        public static Color ColorDeCubosEscudero =>
+            paletaDeEscudero == Paleta.B_R17 ? new Color(0.62f, 0.65f, 0.70f) :
+            paletaDeEscudero == Paleta.C_NegroBlancoRojo ? new Color(0.88f, 0.88f, 0.88f) :
+            paletaDeEscudero == Paleta.D_Claro || paletaDeEscudero == Paleta.E_ClaroPlacaNaranja ? new Color(0.86f, 0.84f, 0.78f) :
+            paletaDeEscudero == Paleta.F_Naranja ? new Color(0.95f, 0.45f, 0.08f) :
+            new Color(0.72f, 0.09f, 0.07f);
+        // Escudo segun la paleta (lo lee EnemigoEscudero al armar y al repintar). A, B y C: placa gunmetal con chevrones blancos (plan 3.5);
+        // D "claro": placa hueso con chevrones negros (silueta clara: se despega de la sala oscura y del oxido del enemigo comun).
+        static bool PlacaClara => paletaDeEscudero == Paleta.D_Claro || paletaDeEscudero == Paleta.F_Naranja;
+        public static Color ColorDePlacaEscudero => PlacaClara ? new Color(0.84f, 0.82f, 0.76f) : paletaDeEscudero == Paleta.E_ClaroPlacaNaranja ? new Color(0.95f, 0.42f, 0.06f) : new Color(0.10f, 0.11f, 0.13f);
+        public static Color EmisionDePlacaEscudero => PlacaClara ? new Color(0.12f, 0.12f, 0.11f) : paletaDeEscudero == Paleta.E_ClaroPlacaNaranja ? new Color(0.30f, 0.12f, 0.01f) : Color.black;
+        public static Color ColorDeChevronEscudero => PlacaClara || paletaDeEscudero == Paleta.E_ClaroPlacaNaranja ? new Color(0.06f, 0.06f, 0.07f) : new Color(0.92f, 0.92f, 0.92f);
+        public static Material MaterialDelEscuderoActual => MaterialEscudero();   // para el check de paletas (Bug994q)
+        static Material MaterialEscudero()
+        {
+            int i = (int)paletaDeEscudero;
+            if (matEscuderoPorPaleta[i] == null) matEscudero = null;
+            else return matEscudero = matEscuderoPorPaleta[i];
+            switch (paletaDeEscudero)
+            {
+                case Paleta.B_R17:
+                    MaterialPorCeldas(ref matEscudero, "MAT_Trimsheet_Escudero_B", new[]
+                    {
+                        (8, new Color(0.38f, 0.40f, 0.45f)), (10, new Color(0.38f, 0.40f, 0.45f)), (12, new Color(0.38f, 0.40f, 0.45f)),   // uniforme: gris acero claro
+                        (52, new Color(0.80f, 0.84f, 0.88f)),   // casco y chaleco: plata
+                        (19, new Color(0.09f, 0.10f, 0.12f)),   // pantalon: negro
+                        (32, new Color(0.95f, 0.75f, 0.1f)), (33, new Color(0.95f, 0.75f, 0.1f)),     // correaje: amarillo
+                    }, new Color(0.16f, 0.07f, 0.07f));
+                    break;
+                case Paleta.C_NegroBlancoRojo:
+                    MaterialPorCeldas(ref matEscudero, "MAT_Trimsheet_Escudero_C", new[]
+                    {
+                        (8, new Color(0.07f, 0.07f, 0.08f)), (10, new Color(0.07f, 0.07f, 0.08f)), (12, new Color(0.07f, 0.07f, 0.08f)),   // uniforme: negro
+                        (52, new Color(0.92f, 0.92f, 0.92f)),   // casco y chaleco: blanco
+                        (19, new Color(0.05f, 0.05f, 0.06f)),   // pantalon: negro
+                        (32, new Color(0.95f, 0.10f, 0.06f)), (33, new Color(0.95f, 0.10f, 0.06f)),   // correaje: rojo vivo
+                    }, new Color(0.20f, 0.03f, 0.03f));
+                    break;
+                case Paleta.F_Naranja:
+                    MaterialPorCeldas(ref matEscudero, "MAT_Trimsheet_Escudero_F", new[]
+                    {
+                        (8, new Color(0.95f, 0.45f, 0.08f)), (10, new Color(0.95f, 0.45f, 0.08f)), (12, new Color(0.95f, 0.45f, 0.08f)),   // uniforme: naranja de seguridad
+                        (52, new Color(0.96f, 0.96f, 0.94f)),   // casco y chaleco: blanco
+                        (19, new Color(0.06f, 0.06f, 0.07f)),   // pantalon: negro
+                        (32, new Color(0.08f, 0.08f, 0.09f)), (33, new Color(0.08f, 0.08f, 0.09f)),   // correaje: negro
+                    }, new Color(0.28f, 0.12f, 0.02f));
+                    break;
+                case Paleta.D_Claro:
+                case Paleta.E_ClaroPlacaNaranja:
+                    MaterialPorCeldas(ref matEscudero, "MAT_Trimsheet_Escudero_D", new[]
+                    {
+                        (8, new Color(0.86f, 0.84f, 0.78f)), (10, new Color(0.86f, 0.84f, 0.78f)), (12, new Color(0.86f, 0.84f, 0.78f)),   // uniforme: hueso claro
+                        (52, new Color(0.96f, 0.96f, 0.94f)),   // casco y chaleco: blanco
+                        (19, new Color(0.06f, 0.06f, 0.07f)),   // pantalon: negro
+                        (32, new Color(0.95f, 0.12f, 0.08f)), (33, new Color(0.95f, 0.12f, 0.08f)),   // correaje: rojo vivo
+                    }, new Color(0.26f, 0.24f, 0.22f));
+                    break;
+                default:
+                    MaterialPorCeldas(ref matEscudero, "MAT_Trimsheet_Escudero", new[]
+                    {
+                        (8, new Color(0.50f, 0.06f, 0.06f)), (10, new Color(0.50f, 0.06f, 0.06f)), (12, new Color(0.50f, 0.06f, 0.06f)),   // uniforme: carmesi oscuro
+                        (52, new Color(0.90f, 0.90f, 0.86f)),   // casco y chaleco: blanco hueso
+                        (19, new Color(0.06f, 0.06f, 0.07f)),   // pantalon: negro
+                        (32, new Color(0.95f, 0.12f, 0.08f)), (33, new Color(0.95f, 0.12f, 0.08f)),   // correaje: rojo vivo (antes amarillo, parecido al dorado aliado)
+                    }, new Color(0.22f, 0.03f, 0.03f));
+                    break;
+            }
+            matEscuderoPorPaleta[i] = matEscudero;
+            return matEscudero;
+        }
         static Material MaterialFrancotirador() => MaterialPorCeldas(ref matFrancotirador, "MAT_Trimsheet_Aliado_Francotirador", new[]
         {
             (10, new Color(0.20f, 0.31f, 0.17f)),   // uniforme: musgo

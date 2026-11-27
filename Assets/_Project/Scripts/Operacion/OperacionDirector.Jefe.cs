@@ -30,8 +30,20 @@ namespace SP.Operacion
         public OleadaDeReserva[] oleadasDeReparacion; // 0 = 5 del este (t = 9 s), 1 = 6 del oeste (t = 18 s)
         public float segundosDeRecargaDeCajas = 25f;
 
-        public const float ZParaLaToma = -30f, SegundosDeLaToma = 3.5f, SegundosDeSalvaguardaDeLaToma = 45f;
+        // R19 (plan R19 v2, punto 8-A, E3): el umbral pasa de z = -30 (plano invisible a 10 m de la salida) a z = -8 (32 m de aproximacion desde el
+        // muro, a ~30 m del tanque, entre los sacos de z -12 y -4), se ve (UmbralDelBlindado) y lo cruza CUALQUIERA de la escuadra viva.
+        // La salvaguarda sube de 45 a 120 s; antes, cada SegundosDeRecordatorioDeLaToma, solo un recordatorio. El disparo por dano al blindado sigue.
+        public const float ZParaLaToma = -8f, SegundosDeLaToma = 3.5f, SegundosDeSalvaguardaDeLaToma = 120f;
+        // Bug #311 (sin cambios de comportamiento): el jefe abre fuego recien cuando el jugador "salio del Centro" (latch). Antes usaba ZParaLaToma.
+        public const float ZFuegoDelJefe = -30f;
+        public const float SegundosDeRecordatorioDeLaToma = 25f;
+        public const string TextoRecordatorioDeLaToma = "CRUZÁ LA LÍNEA ROJA PARA ENFRENTAR AL BLINDADO";
+        public int RecordatoriosDeLaToma { get; private set; }
+        public float SegundosConLaSalidaAbierta => segundosConSalidaAbierta;
+        // Por que arranco la ultima toma: "cruce" (el poseido), "cruce aliado", "dano" o "salvaguarda" ("" si todavia no).
+        public string MotivoDeLaToma { get; private set; } = "";
         bool avisoDeUmbral;
+        float segundosConSalidaAbierta, proximoRecordatorio = SegundosDeRecordatorioDeLaToma;
         float vidaDelBlindadoAlAbrir = -1f;   // vida del vehiculo del jefe al caer el muro (detecta que el jugador le pego antes de la toma)
         public const float SegundoOleadaEste = 9f, SegundoOleadaOeste = 18f;
         public static readonly Color ColorDelJefe = new Color(1f, 0.38f, 0.28f);
@@ -86,6 +98,9 @@ namespace SP.Operacion
             buscoMuroDeSalida = false; balizaDeMuroPuesta = false;
             EnTanque = false;
             TomaDelJefeActiva = false; TomaDelJefeHecha = false; ReparacionCompletada = false;
+            // R19 (E3): el umbral vuelve a empezar con cada pasada por la huida (saltos de prueba, reintentos)
+            avisoDeUmbral = false; vidaDelBlindadoAlAbrir = -1f; segundosConSalidaAbierta = 0f;
+            proximoRecordatorio = SegundosDeRecordatorioDeLaToma; RecordatoriosDeLaToma = 0; MotivoDeLaToma = "";
             CineDeHuida.Cancelar();
             if (tanque == null) return;
             GuardarTanqueInicial();
@@ -133,6 +148,7 @@ namespace SP.Operacion
             foreach (var c in cajasDelJefe) if (c != null) Destroy(c.gameObject);
             cajasDelJefe.Clear();
             AnilloDeAviso.CancelarTodos();
+            UmbralDelBlindado.Quitar();   // R19 (E3)
             if (hud != null) hud.OcultarBarraDeJefe();
             relojSub = 0f;
             if (Halcon != null) Destroy(Halcon.gameObject);
@@ -175,7 +191,7 @@ namespace SP.Operacion
             if (EnTanque && Subfase < (int)SubfaseHuida.CinematicaFinal) { TickTrayecto(dt); return; }
             switch ((SubfaseHuida)Subfase)
             {
-                case SubfaseHuida.Acercamiento: TickAcercamiento(); break;
+                case SubfaseHuida.Acercamiento: TickAcercamiento(dt); break;
                 case SubfaseHuida.Jefe: TickJefe(); break;
                 case SubfaseHuida.Reparacion: TickReparacion(); break;
                 case SubfaseHuida.CinematicaFinal: break;   // la lleva la corrutina CinematicaFinal (OperacionDirector.Final.cs)
@@ -200,7 +216,7 @@ namespace SP.Operacion
             return muroDeSalida != null && !muroDeSalida.IsCollapsed && muroDeSalida.gameObject.activeInHierarchy;
         }
 
-        void TickAcercamiento()
+        void TickAcercamiento(float dt)
         {
             var yo = Poseido();
             bool muro = MuroDeSalidaEnPie();
@@ -208,19 +224,58 @@ namespace SP.Operacion
             else if (!muro && balizaDeMuroPuesta && tanque != null) { balizaDeMuroPuesta = false; PonerBaliza("BLINDADO", ColorDelJefe, tanque.transform.position, tanque.transform, 3f); }
             // Bug #291: el muro ya no lo demuele el ASALTO: lo vuela el hackeo (AbrirSalidaNorte). Mientras siga en pie solo se avisa que se esta abriendo.
             if (hud != null)
-                hud.Objetivo(TituloObjetivo(4, "HUIR EN EL TANQUE"), muro ? "La salida norte se esta abriendo... · despues avanza al patio" : "Sali por la salida norte y avanza al patio · hay un BLINDADO enemigo custodiando la fuga", 0f, ColorDelJefe);
+                hud.Objetivo(TituloObjetivo(4, "HUIR EN EL TANQUE"), muro ? "La salida norte se esta abriendo... · despues avanza al patio" : "Sali al patio · el BLINDADO custodia la fuga · cruza la LINEA ROJA cuando estes listo: ahi empieza la pelea", 0f, ColorDelJefe);
+            // R19 (E3): la marca visible de la linea existe desde que cae el muro hasta que arranca la toma.
+            if (!muro && !TomaDelJefeActiva && !TomaDelJefeHecha) UmbralDelBlindado.Asegurar(ZParaLaToma);
             if (TomaDelJefeActiva || yo == null || !yo.Health.IsAlive) return;
             // Bug #243/#291: la presentacion del jefe arranca cuando cae el muro, dejando ver 2,5 s la explosion (antes arrancaba en el mismo cuadro).
-            // R17 (pedido 14, "trigger para empezar a atacar al tanque"): la pelea YA NO arranca sola 2,5 s despues de caer el muro con el jugador todavia
-            // adentro de la sala. Arranca con lo primero que pase de esto: (1) el jugador cruza el umbral z = ZParaLaToma, (2) le pega al blindado,
-            // (3) salvaguarda: pasaron SegundosDeSalvaguardaDeLaToma desde que cayo el muro (para no trabar la partida).
-            bool muroCaido = muroDeSalida != null && !muro && Time.time - salidaAbiertaT >= SegundosAntesDeLaToma;
-            bool salvaguarda = muroCaido && Time.time - salidaAbiertaT >= SegundosDeSalvaguardaDeLaToma;
+            // R17 (pedido 14) + R19 (punto 8): arranca con lo primero que pase de esto: (1) alguien de la escuadra viva cruza la linea z = ZParaLaToma,
+            // (2) le pegan al blindado, (3) salvaguarda: pasaron SegundosDeSalvaguardaDeLaToma (120 s) desde que cayo el muro. Antes de la salvaguarda,
+            // cada SegundosDeRecordatorioDeLaToma se repite el aviso de la linea roja y nada mas.
+            if (muroDeSalida != null && !muro) segundosConSalidaAbierta += dt;   // R3: reloj por dt, no Time.time
+            bool muroCaido = muroDeSalida != null && !muro && segundosConSalidaAbierta >= SegundosAntesDeLaToma;
+            bool salvaguarda = muroCaido && segundosConSalidaAbierta >= SegundosDeSalvaguardaDeLaToma;
             // (el TanqueJefe recien existe al entrar en la subfase Jefe: en el Acercamiento se mide la vida del vehiculo contra la que tenia al caer el muro)
             if (muroCaido && vidaDelBlindadoAlAbrir < 0f && tanque != null && tanque.Health != null) vidaDelBlindadoAlAbrir = tanque.Health.Current;
             bool legolpeo = vidaDelBlindadoAlAbrir >= 0f && tanque != null && tanque.Health != null && tanque.Health.Current < vidaDelBlindadoAlAbrir - 0.5f;
-            if (muroCaido && !avisoDeUmbral) { avisoDeUmbral = true; if (hud != null) hud.Aviso("SALIDA ABIERTA · CRUZA EL UMBRAL PARA ENFRENTAR AL BLINDADO", 3f); }
-            if (yo.transform.position.z > ZParaLaToma || salvaguarda || legolpeo) StartCoroutine(TomaDelJefe());
+            if (muroCaido && !avisoDeUmbral) { avisoDeUmbral = true; if (hud != null) hud.Aviso("SALIDA ABIERTA · " + TextoRecordatorioDeLaToma, 3f); }
+            if (muroCaido && segundosConSalidaAbierta >= proximoRecordatorio)
+            {
+                proximoRecordatorio += SegundosDeRecordatorioDeLaToma;
+                RecordatoriosDeLaToma++;
+                if (hud != null) hud.Aviso(TextoRecordatorioDeLaToma, 3f);
+            }
+            string motivo = null;
+            if (UmbralDelBlindado.Cruzo(yo.transform.position.z)) motivo = "cruce";
+            else if (AlguienDeLaEscuadraCruzo(yo)) motivo = "cruce aliado";
+            else if (legolpeo) motivo = "dano";
+            else if (salvaguarda) motivo = "salvaguarda";
+            if (motivo == null) return;
+            MotivoDeLaToma = motivo;
+            SesionLog.Evento($"HUIDA: la toma del blindado arranca por {motivo} a los {segundosConSalidaAbierta:0.0} s de abierta la salida");
+            UmbralDelBlindado.Apagar();
+            StartCoroutine(TomaDelJefe());
+        }
+
+        // R19 (E3): cualquiera de la escuadra viva (activo, no el poseido: ese se mira aparte) por delante de la linea.
+        bool AlguienDeLaEscuadraCruzo(Soldier yo)
+        {
+            var todos = ActorRegistry.All;
+            for (int i = 0; i < todos.Count; i++)
+            {
+                var s = todos[i];
+                if (s == null || s == yo || s.Team != TeamId.Player || s.Role == RoleType.Civilian || s.Health == null || !s.Health.IsAlive) continue;
+                if (!s.gameObject.activeInHierarchy) continue;
+                if (UmbralDelBlindado.Cruzo(s.transform.position.z)) return true;
+            }
+            return false;
+        }
+
+        // R19 (E3): la marca no sobrevive fuera del Acercamiento (saltos de fase, derrota, reintentos). Lo llama Update.
+        void TickUmbralDelBlindado()
+        {
+            if (!UmbralDelBlindado.Activa) return;
+            if (Fase != FaseOperacion.Huir || Subfase != (int)SubfaseHuida.Acercamiento || TomaDelJefeActiva || TomaDelJefeHecha) UmbralDelBlindado.Apagar();
         }
 
         void TickJefe()
@@ -230,7 +285,7 @@ namespace SP.Operacion
             if (!jefe.FuegoHabilitado)   // bug #311: dispara recien cuando el jugador salio del Centro de Datos (latch)
             {
                 var salio = Poseido();
-                if (salio != null && salio.transform.position.z > ZParaLaToma) jefe.FuegoHabilitado = true;
+                if (salio != null && salio.transform.position.z > ZFuegoDelJefe) jefe.FuegoHabilitado = true;   // R19: ZFuegoDelJefe (-30), ya no el umbral de la toma
             }
             if (hud != null)
             {

@@ -27,6 +27,37 @@ namespace SP.Presentation
         }
     }
 
+    // R20 (#995): el agujero de bala se apaga si la pieza que lo sostiene deja de estar (destruida, inactiva, collider apagado, cobertura
+    // derrumbada) o se mueve / se aplasta mas de 5 cm. Se revisa 4 veces por segundo (hasta 120 decals: costo despreciable).
+    public class DecalAnclado : MonoBehaviour
+    {
+        Collider col; Transform t; Vector3 pos, escala; Quaternion rot; ObstacleMarker marca; float proxima;
+        public Collider Ancla => col;
+
+        public void Anclar(Collider c)
+        {
+            col = c; t = c.transform; pos = t.position; rot = t.rotation; escala = t.lossyScale;
+            marca = c.GetComponentInParent<ObstacleMarker>();
+            proxima = 0f; enabled = true;
+        }
+
+        public void Soltar() { col = null; t = null; marca = null; enabled = false; }
+
+        public bool AnclaVigente()
+        {
+            if (col == null || t == null || !col.enabled || !col.gameObject.activeInHierarchy) return false;
+            if (marca != null && marca.IsCollapsed) return false;
+            return (t.position - pos).sqrMagnitude <= 0.0025f && (t.lossyScale - escala).sqrMagnitude <= 0.0025f && Quaternion.Angle(t.rotation, rot) <= 2f;   // la cobertura que se aplasta por etapas tambien
+        }
+
+        void Update()
+        {
+            if (Time.time < proxima) return;
+            proxima = Time.time + 0.25f;
+            if (!AnclaVigente()) { Soltar(); gameObject.SetActive(false); }
+        }
+    }
+
     // Marcas persistentes en el terreno (crateres de explosion y agujeros
     // de bala). Mismo problema que los escombros: sin un cupo duro, una
     // batalla larga deja miles de quads. Cada tipo tiene su propio cupo y
@@ -187,7 +218,11 @@ namespace SP.Presentation
             return spriteSangre;
         }
 
-        public static GameObject Spawn(DecalKind kind, Vector3 position, Vector3 normal, float size)
+        public static GameObject Spawn(DecalKind kind, Vector3 position, Vector3 normal, float size) => Spawn(kind, position, normal, size, null);
+
+        // R20 (#995): con 'ancla' (el collider que freno la bala) la marca vive mientras viva la pieza: si se retira, se apaga, se derrumba o se
+        // mueve, el decal se apaga en vez de quedar flotando en el aire (DecalAnclado).
+        public static GameObject Spawn(DecalKind kind, Vector3 position, Vector3 normal, float size, Collider ancla)
         {
             ResetIfStale();
             AsegurarRoot();
@@ -261,6 +296,12 @@ namespace SP.Presentation
             decal.transform.rotation = Quaternion.LookRotation(-normal, referencia) * Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
             // El sprite mide 1 m a escala 1 y su marca ocupa ~60 % del cuadro: se agranda para que "size" sea el ancho visible.
             decal.transform.localScale = Vector3.one * size * (kind == DecalKind.Crater ? EscalaCrater : 1.6f);
+            if (decal.TryGetComponent<DecalAnclado>(out var anclaVieja)) anclaVieja.Soltar();
+            if (ancla != null)
+            {
+                if (anclaVieja == null) anclaVieja = decal.AddComponent<DecalAnclado>();
+                anclaVieja.Anclar(ancla);
+            }
             decal.SetActive(true);
 
             list.Add(decal);

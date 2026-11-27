@@ -160,7 +160,7 @@ namespace SP.Presentation
         {
             var raiz = transform.parent;
             if (raiz == null) { MostrarDificultad(); return; }
-            if (panelNiveles != null) { panelNiveles.SetActive(true); return; }
+            if (panelNiveles != null) { panelNiveles.SetActive(true); RefrescarProgresoDeNiveles(); return; }
 
             var font = SP.Presentation.FuentesBelicas.Para(0);
             panelNiveles = new GameObject("PanelNiveles", typeof(RectTransform), typeof(Image));
@@ -196,8 +196,19 @@ namespace SP.Presentation
                 var tc = new Color(1f, 1f, 1f, ok ? 1f : 0.42f);
                 Texto(celda.transform, font, NombresDeNivel[i], F(44), new Vector2(0.5f, 0.82f), new Vector2(440f * E, 60f * E), tc);
                 Texto(celda.transform, font, TitulosDeNivel[i], F(26), new Vector2(0.5f, 0.62f), new Vector2(440f * E, 40f * E), ok ? new Color(1f, 0.93f, 0.6f) : new Color(1f, 1f, 1f, 0.35f));
-                if (ok) Texto(celda.transform, font, DescripcionesDeNivel[i], F(18), new Vector2(0.5f, 0.27f), new Vector2(440f * E, 120f * E), new Color(1f, 1f, 1f, 0.88f));
+                if (ok) Texto(celda.transform, font, DescripcionesDeNivel[i], F(18), new Vector2(0.5f, 0.33f), /* R19: 0,27 -> 0,33 (abajo va COMPLETADO/SIGUIENTE) */ new Vector2(440f * E, 120f * E), new Color(1f, 1f, 1f, 0.88f));
                 else Texto(celda.transform, font, "BLOQUEADO", F(22), new Vector2(0.5f, 0.3f), new Vector2(440f * E, 40f * E), new Color(1f, 1f, 1f, 0.3f));
+                // R19 (punto 1, A7): estado de progreso (COMPLETADO · mm:ss / SIGUIENTE). Se guardan las referencias: al reabrir el panel
+                // cacheado se repinta sin buscar por nombre (RefrescarProgresoDeNiveles).
+                estadoDeNivel[i] = Texto(celda.transform, font, "", F(20), new Vector2(0.5f, 0.07f), new Vector2(440f * E, 26f * E), ColorCompletado);
+                var marca = new GameObject("MarcaCompletado", typeof(RectTransform), typeof(Image));
+                marca.transform.SetParent(celda.transform, false);
+                marcaDeNivel[i] = marca.GetComponent<Image>();
+                marcaDeNivel[i].color = ColorCompletado; marcaDeNivel[i].raycastTarget = false;
+                var mrt = marca.GetComponent<RectTransform>();
+                mrt.anchorMin = mrt.anchorMax = new Vector2(0.5f, 0.07f); mrt.sizeDelta = new Vector2(18f * E, 18f * E);
+                bordeDeNivel[i] = celda.AddComponent<Outline>();
+                bordeDeNivel[i].effectColor = ColorSiguiente; bordeDeNivel[i].effectDistance = new Vector2(4f * E, 4f * E);
                 var b = celda.GetComponent<Button>();
                 int nivelPedido = n;
                 b.onClick.AddListener(() => ElegirNivel(nivelPedido));
@@ -214,6 +225,47 @@ namespace SP.Presentation
             var vb = volver.GetComponent<Button>();
             vb.onClick.AddListener(() => panelNiveles.SetActive(false));
             SP.UI.ButtonSfx.Attach(vb);
+            RefrescarProgresoDeNiveles();
+        }
+
+        // R19 (punto 1, A7): marcas de progreso en las tarjetas del selector (ProgresoDeNiveles, PlayerPrefs).
+        public static readonly Color ColorCompletado = new Color(0.45f, 0.95f, 0.55f);
+        public static readonly Color ColorSiguiente = new Color(1f, 0.80f, 0.20f);
+        public const string TextoCompletado = "COMPLETADO", TextoSiguiente = "SIGUIENTE";
+        readonly Text[] estadoDeNivel = new Text[4];
+        readonly Image[] marcaDeNivel = new Image[4];
+        readonly Outline[] bordeDeNivel = new Outline[4];
+
+        // Texto de estado de la tarjeta n (1..4): "COMPLETADO · mm:ss", "SIGUIENTE" o "". Para los checks (sin Find).
+        public string TextoDeEstadoDelNivel(int n) => n >= 1 && n <= 4 && estadoDeNivel[n - 1] != null ? estadoDeNivel[n - 1].text : "";
+        public bool NivelResaltado(int n) => n >= 1 && n <= 4 && bordeDeNivel[n - 1] != null && bordeDeNivel[n - 1].enabled;
+
+        public void RefrescarProgresoDeNiveles()
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                int n = i + 1;
+                var t = estadoDeNivel[i];
+                if (t == null) continue;
+                bool completo = NivelDisponible[i] && ProgresoDeNiveles.EstaCompleto(n);
+                bool siguiente = n == 2 && NivelDisponible[i] && ProgresoDeNiveles.EstaCompleto(1) && !ProgresoDeNiveles.EstaCompleto(2);
+                if (completo)
+                {
+                    float mejor = ProgresoDeNiveles.MejorTiempo(n);
+                    t.text = TextoCompletado + (mejor > 0f ? " · " + ProgresoDeNiveles.Formato(mejor) : "");
+                    t.color = ColorCompletado;
+                }
+                else if (siguiente) { t.text = TextoSiguiente; t.color = ColorSiguiente; }
+                else t.text = "";
+                if (marcaDeNivel[i] != null)
+                {
+                    marcaDeNivel[i].enabled = completo;
+                    // a la izquierda del texto (que va centrado)
+                    float ancho = completo ? Mathf.Min(t.preferredWidth, t.rectTransform.sizeDelta.x) : 0f;
+                    marcaDeNivel[i].rectTransform.anchoredPosition = new Vector2(-ancho * 0.5f - 12f * E, 0f);
+                }
+                if (bordeDeNivel[i] != null) bordeDeNivel[i].enabled = siguiente;
+            }
         }
 
         public void ElegirNivel(int n)
@@ -341,7 +393,7 @@ namespace SP.Presentation
             SP.UI.ButtonSfx.Attach(vb);
         }
 
-        static void Texto(Transform padre, Font font, string texto, int tam, Vector2 ancla, Vector2 caja, Color color, TextAnchor alinear = TextAnchor.MiddleCenter)
+        static Text Texto(Transform padre, Font font, string texto, int tam, Vector2 ancla, Vector2 caja, Color color, TextAnchor alinear = TextAnchor.MiddleCenter)
         {
             var go = new GameObject("Texto", typeof(RectTransform), typeof(Text));
             go.transform.SetParent(padre, false);
@@ -353,6 +405,7 @@ namespace SP.Presentation
             rt.anchorMin = rt.anchorMax = ancla;
             rt.anchoredPosition = Vector2.zero;
             rt.sizeDelta = caja;
+            return t;
         }
 
         public void IniciarPartida(NivelDificultad nivel)

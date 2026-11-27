@@ -29,6 +29,52 @@ namespace SP.Presentation
 
         static readonly Color AlertColor = new Color(0.95f, 0.2f, 0.15f);
         static readonly Color UnawareColor = new Color(0.6f, 0.6f, 0.65f, 0.5f);
+        public static Color ColorDeAlerta => AlertColor;
+        public static readonly Color ColorDeRecarga = new Color(1f, 0.62f, 0.12f);
+
+        // R19 (punto 2a): el pesado sube el marcador sobre su cabeza (antes quedaba a 1,4 m: dentro del pecho del modelo x2). Sin Find: se expone el hijo.
+        public Transform Marcador => markerRenderer != null ? markerRenderer.transform : null;
+        Vector3 escalaBase = Vector3.one * 0.18f;
+        public Vector3 EscalaBase => escalaBase;
+
+        // Pone el marcador a alturaLocal (m sobre el pivote) con un tamano en MUNDO, compensando la escala no uniforme de la raiz (el pesado es 1,5 x 1 x 1,5).
+        public void Recolocar(float alturaSobrePivote, float tamanoEnMundo)
+        {
+            var m = Marcador; if (m == null) return;
+            var ls = transform.lossyScale;
+            float sx = Mathf.Abs(ls.x) > 1e-4f ? ls.x : 1f, sy = Mathf.Abs(ls.y) > 1e-4f ? ls.y : 1f, sz = Mathf.Abs(ls.z) > 1e-4f ? ls.z : 1f;
+            m.localPosition = new Vector3(0f, alturaSobrePivote / sy, 0f);
+            escalaBase = new Vector3(tamanoEnMundo / sx, tamanoEnMundo / sy, tamanoEnMundo / sz);
+            m.localScale = escalaBase;
+        }
+
+        // R19 (punto 9): latido del marcador cuando el enemigo REACCIONA a un golpe (lo dispara ReaccionAlDano) o cuando el pesado recarga.
+        // Crece x2,6 y vuelve en DuracionDelLatido con el color pedido; despues retoma el color de su estado.
+        public const float DuracionDelLatido = 0.6f, CrecimientoDelLatido = 1.6f;
+        float latido = -1f; Color colorDelLatido;
+        public bool Latiendo => latido >= 0f;
+        public int Latidos { get; private set; }
+        public void Pulsar(Color c)
+        {
+            if (dead || markerRenderer == null) return;
+            latido = 0f; colorDelLatido = c; Latidos++;
+            markerRenderer.enabled = true;
+            PintarMarcador(c);
+        }
+
+        void TickLatido(float dt)
+        {
+            if (latido < 0f || markerRenderer == null) return;
+            latido += dt;
+            float k = Mathf.Clamp01(latido / DuracionDelLatido);
+            markerRenderer.transform.localScale = escalaBase * (1f + CrecimientoDelLatido * Mathf.Sin(k * Mathf.PI));
+            if (k >= 1f)
+            {
+                latido = -1f;
+                markerRenderer.transform.localScale = escalaBase;
+                PintarMarcador(alerted ? AlertColor : UnawareColor);
+            }
+        }
 
         // A partir de esta distancia de camara el indicador se apaga: con
         // cincuenta enemigos en pantalla, cincuenta esferas lejanas son
@@ -61,6 +107,7 @@ namespace SP.Presentation
                 }
             }
             if (markerRenderer == null) BuildMarker();
+            else if (latido < 0f) escalaBase = markerRenderer.transform.localScale;   // R19: el latido vuelve a la escala que tenia
 
             sub?.Dispose();
             sub = EventBus.Instance.Subscribe<AiStateChangedEvent>(OnStateChanged);
@@ -129,6 +176,7 @@ namespace SP.Presentation
             if (evt.NewState == "Dead")
             {
                 dead = true;
+                if (latido >= 0f) { latido = -1f; markerRenderer.transform.localScale = escalaBase; }
                 markerRenderer.enabled = false;
                 return;
             }
@@ -149,6 +197,7 @@ namespace SP.Presentation
         void Update()
         {
             if (dead || markerRenderer == null || soldier == null || soldier.Health == null) return;
+            if (latido >= 0f) { TickLatido(Time.deltaTime); return; }   // R19: durante el latido manda su color (el LOD y el parpadeo esperan)
 
             // Parte cara (distancia a camara + lectura de vida): a intervalo
             // fijo, no por frame. Con cincuenta enemigos esto era el grueso

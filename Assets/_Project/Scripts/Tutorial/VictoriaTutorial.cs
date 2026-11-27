@@ -35,6 +35,12 @@ namespace SP.Tutorial
         public int ConfetiActivo => confeti.Count;
         public Button BotonRepetir { get; private set; }
         public Button BotonMenu { get; private set; }
+        // R19 (punto 1, A6): el panel cierra el NIVEL 1 y encadena al 2.
+        public Button BotonSiguiente { get; private set; }
+        public string TituloDelPanel { get; private set; }
+        public const string TextoTituloNivel1 = "NIVEL 1 COMPLETADO";
+        public const string TextoBotonSiguiente = "JUGAR NIVEL 2";
+        public static readonly Color ColorBotonSiguiente = new Color(0.86f, 0.62f, 0.12f);
         public static VictoriaTutorial Actual { get; private set; }
 
         public static VictoriaTutorial Iniciar(TutorialManager m, Vector3 centro)
@@ -119,18 +125,27 @@ namespace SP.Tutorial
             go.transform.SetParent(manager.Ui.transform, false);
             panel = (RectTransform)go.transform;
             panel.anchorMin = panel.anchorMax = new Vector2(0.5f, 0.5f);
-            panel.sizeDelta = new Vector2(560f, 330f);
+            // R19 (A6): 560x330 -> 760x360 para tres botones (JUGAR NIVEL 2 al centro, dorado y mas grande).
+            panel.sizeDelta = new Vector2(760f, 360f);
             panel.anchoredPosition = new Vector2(0f, -40f);
             go.GetComponent<Image>().color = new Color(0.05f, 0.07f, 0.11f, 0.94f);
 
-            Texto(panel, "Titulo", "¡TUTORIAL COMPLETADO!", 36, FontStyle.Bold, new Color(1f, 0.86f, 0.30f), new Vector2(0f, 122f), new Vector2(520f, 50f));
+            // Se lee ANTES de que Finalizar (a los 1,8 s) grabe este final: dice si ya se habia terminado antes y su mejor tiempo.
+            bool yaEstaba = SP.Core.ProgresoDeNiveles.EstaCompleto(1);
+            float mejorPrevio = SP.Core.ProgresoDeNiveles.MejorTiempo(1);
+
+            TituloDelPanel = TextoTituloNivel1;
+            Texto(panel, "Titulo", TextoTituloNivel1, 36, FontStyle.Bold, new Color(1f, 0.86f, 0.30f), new Vector2(0f, 136f), new Vector2(720f, 50f));
             int m = Mathf.FloorToInt(manager.TiempoTotal / 60f), s = Mathf.FloorToInt(manager.TiempoTotal % 60f);
             Texto(panel, "Resumen", $"Pasos completados: {manager.Total} / {manager.Total}\nTiempo total: {m:00}:{s:00}\nEnemigos derribados: {manager.Bajas}",
-                  20, FontStyle.Normal, Color.white, new Vector2(0f, 42f), new Vector2(520f, 100f));
-            Texto(panel, "Consejo", "Ya sabes moverte, disparar, dar órdenes y manejar el tanque.", 15, FontStyle.Italic, new Color(0.7f, 0.78f, 0.9f), new Vector2(0f, -22f), new Vector2(520f, 30f));
-            BotonRepetir = Boton(panel, "REPETIR TUTORIAL", new Vector2(-138f, -100f), new Color(0.20f, 0.55f, 0.85f), manager.Reintentar);
-            BotonMenu = Boton(panel, "VOLVER AL MENÚ", new Vector2(138f, -100f), new Color(0.25f, 0.65f, 0.40f), manager.VolverAlMenu);
-            TutorialLog.Escribir("[VICTORIA]", "Panel final visible: REPETIR TUTORIAL / VOLVER AL MENU");
+                  20, FontStyle.Normal, Color.white, new Vector2(0f, 56f), new Vector2(720f, 100f));
+            Texto(panel, "Consejo", "Ya sabes moverte, disparar, dar órdenes y manejar el tanque.", 15, FontStyle.Italic, new Color(0.7f, 0.78f, 0.9f), new Vector2(0f, -8f), new Vector2(720f, 30f));
+            if (yaEstaba && mejorPrevio > 0f)
+                Texto(panel, "MejorTiempo", "Mejor tiempo: " + SP.Core.ProgresoDeNiveles.Formato(Mathf.Min(mejorPrevio, manager.TiempoTotal)), 14, FontStyle.Normal, new Color(0.55f, 0.95f, 0.60f), new Vector2(0f, -40f), new Vector2(720f, 24f));
+            BotonRepetir = Boton(panel, "REPETIR TUTORIAL", new Vector2(-255f, -110f), new Color(0.20f, 0.55f, 0.85f), manager.Reintentar);
+            BotonSiguiente = Boton(panel, TextoBotonSiguiente, new Vector2(0f, -110f), ColorBotonSiguiente, manager.IrAlNivel2, new Vector2(260f, 60f), 22);
+            BotonMenu = Boton(panel, "VOLVER AL MENÚ", new Vector2(255f, -110f), new Color(0.25f, 0.65f, 0.40f), manager.VolverAlMenu);
+            TutorialLog.Escribir("[VICTORIA]", "Panel final visible: NIVEL 1 COMPLETADO · REPETIR TUTORIAL / JUGAR NIVEL 2 / VOLVER AL MENU");
         }
 
         Text Texto(Transform padre, string n, string txt, int tam, FontStyle est, Color col, Vector2 pos, Vector2 size)
@@ -146,19 +161,20 @@ namespace SP.Tutorial
             return t;
         }
 
-        Button Boton(Transform padre, string txt, Vector2 pos, Color col, UnityEngine.Events.UnityAction accion)
+        Button Boton(Transform padre, string txt, Vector2 pos, Color col, UnityEngine.Events.UnityAction accion, Vector2? tam = null, int tamTexto = 20)
         {
             var go = new GameObject("Boton_" + txt, typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
             go.transform.SetParent(padre, false);
             var rt = (RectTransform)go.transform;
             rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.anchoredPosition = pos; rt.sizeDelta = new Vector2(240f, 56f);
+            var medida = tam ?? new Vector2(240f, 56f);
+            rt.anchoredPosition = pos; rt.sizeDelta = medida;
             go.GetComponent<Image>().color = col;
             var b = go.GetComponent<Button>();
             b.targetGraphic = go.GetComponent<Image>();
             b.onClick.AddListener(accion);
             SP.UI.ButtonSfx.Attach(b);
-            Texto(go.transform, "Texto", txt, 20, FontStyle.Bold, Color.white, Vector2.zero, new Vector2(230f, 50f));
+            Texto(go.transform, "Texto", txt, tamTexto, FontStyle.Bold, Color.white, Vector2.zero, new Vector2(medida.x - 10f, medida.y - 6f));
             return b;
         }
 

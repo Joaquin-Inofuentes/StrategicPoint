@@ -369,7 +369,7 @@ namespace SP.EditorTools
                 if (b.min.y > 3f || m.GetComponentInParent<Canvas>() != null) continue;
                 if (m.GetComponentInParent<Soldier>() != null || m.GetComponentInParent<SP.Vehicles.Vehicle>() != null) continue;
                 string n = RutaDe(m.transform);
-                if (n.Contains("Fusionados") || n.Contains("Calles") || n.Contains("Decal") || n.Contains("Terreno") || n.Contains("Luz") || n.Contains("Cielo") || n.Contains("Horizonte") || n.Contains("Mundo")) continue;
+                if (n.Contains("Fusionados") || n.Contains("Calles") || n.Contains("Decal") || n.Contains("Terreno") || n.Contains("Luz") || n.Contains("GuiaDe") || n.Contains("Cielo") || n.Contains("Horizonte") || n.Contains("Mundo")) continue;
                 var zona = b; zona.Expand(new Vector3(0.2f, -0.1f, 0.2f));
                 var cs = Physics.OverlapBox(zona.center, zona.extents, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore);
                 bool hay = false; foreach (var c in cs) if (c != null && !(c is TerrainCollider) && c.GetComponentInParent<Soldier>() == null && c.attachedRigidbody == null) { hay = true; break; }

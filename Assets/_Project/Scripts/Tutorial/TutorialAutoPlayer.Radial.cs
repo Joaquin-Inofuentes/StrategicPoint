@@ -286,6 +286,33 @@ namespace SP.Tutorial
             }
         }
 
+        // R19 (simple v2): [2] al canon (eso lanza la ola) y la parte de apuntar y disparar de GestoAvanzarYDispararReal, sin mover el tanque.
+        IEnumerator GestoCanonSimpleReal(PlayerInputDriver d)
+        {
+            var v = d.Vehicle;
+            var tm = TutorialManager.Instance;
+            if (v == null || tm == null) yield break;
+            if (d.CurrentSeat != SP.Vehicles.VehicleSeatRole.Gunner) { yield return GestoCambiarATorretaReal(); yield return new WaitForSeconds(0.6f); }
+            float limite = Time.time + 95f;
+            while (Time.time < limite && tm.PasoActual != null && tm.PasoActual.Id == "canon_simple")
+            {
+                if (d.CurrentSeat != SP.Vehicles.VehicleSeatRole.Gunner) { yield return GestoCambiarATorretaReal(); yield return new WaitForSeconds(0.6f); continue; }
+                Soldier objetivo = null; float mejor = float.MaxValue;
+                foreach (var s in ActorRegistry.All)
+                {
+                    if (s == null || s.Team != TeamId.Enemy || s.Health == null || !s.Health.IsAlive || !s.gameObject.activeInHierarchy) continue;
+                    float dist = (s.transform.position - v.transform.position).sqrMagnitude;
+                    if (dist < mejor) { mejor = dist; objetivo = s; }
+                }
+                if (objetivo == null) { yield return new WaitForSeconds(0.5f); continue; }
+                yield return ApuntarCanon(d, objetivo.transform.position + Vector3.up * 0.8f);
+                Entrada.BotonIzquierdo(true);
+                yield return new WaitForSeconds(0.12f);
+                Entrada.BotonIzquierdo(false);
+                yield return new WaitForSeconds(1.3f);
+            }
+        }
+
         IEnumerator GestoFinalReal(PlayerInputDriver d)
         {
             var meta = TutorialManager.Instance?.Meta;

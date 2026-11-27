@@ -47,7 +47,47 @@ namespace SP.Operacion
         readonly System.Collections.Generic.List<Transform> piezasDeMascara = new System.Collections.Generic.List<Transform>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void Reiniciar() { Creados = 0; }
+        static void Reiniciar()
+        {
+            Creados = 0;
+            // R19 (R2): estaticos nuevos
+            relojGlobal = 0f; cuadroDelReloj = -1; ultimoAnuncio = -999f; ultimoPasoConSacudida = -999f;
+            Anuncios = 0; SacudidasDePaso = 0; SacudidasDeMuerte = 0; PolvosDeMuerte = 0; GolpesDeMuerte = 0; HumosDeRecarga = 0; CartelesDeRecarga = 0;
+        }
+
+        // ================================================================ R19 (punto 2, "iterar en enemigo grande")
+        // a. legibilidad: marcador de alerta y barra de vida SOBRE la cabeza (antes a 1,4 m: dentro del pecho del modelo x2).
+        public const float MargenSobreLaCabeza = 0.45f, SeparacionDeLaBarra = 0.35f, TamanoDelMarcador = 0.30f;
+        // b. telegrafo completo: en los ultimos SegundosDeParpadeo del estacionamiento el laser parpadea a HzDeParpadeo (alfa 1 / AlfaBajaDelParpadeo).
+        public const float SegundosDeParpadeo = 0.5f, HzDeParpadeo = 8f, AlfaBajaDelParpadeo = 0.25f;
+        // c. ventana de castigo: mientras recarga recibe FactorDeDanoRecargando (se aplica antes que Dificultad/AjustesDeDano, Health.cs:182).
+        public const float FactorDeDanoRecargando = 1.5f, SegundosEntreHumos = 0.5f;
+        // d. presencia: un anuncio cada SegundosEntreAnuncios entre todos los pesados; pasos que sacuden la camara si el poseido esta cerca.
+        public const float SegundosEntreAnuncios = 45f, SegundosAnuncio = 3.5f, MetrosDeSacudidaDePaso = 14f, SacudidaDePaso = 0.04f, SegundosEntrePasosConSacudida = 0.45f;
+        public const string TextoDelAnuncio = "¡ENEMIGO PESADO! · 2 TIROS A LA CABEZA O ATACALO CUANDO RECARGA";
+        // e. muerte: sacudida si el jugador esta cerca; a los SegundosHastaElPiso el golpe contra el piso y polvo grande.
+        public const float MetrosDeSacudidaDeMuerte = 25f, SacudidaDeMuerte = 0.18f, SegundosHastaElPiso = 0.7f, EscalaDelPolvoDeMuerte = 2.5f;
+
+        static float relojGlobal; static int cuadroDelReloj = -1;
+        static float ultimoAnuncio = -999f, ultimoPasoConSacudida = -999f;
+        public static int Anuncios { get; private set; }
+        public static int SacudidasDePaso { get; private set; }
+        public static int SacudidasDeMuerte { get; private set; }
+        public static int PolvosDeMuerte { get; private set; }
+        public static int GolpesDeMuerte { get; private set; }
+        public static int HumosDeRecarga { get; private set; }
+        public static int CartelesDeRecarga { get; private set; }
+
+        // Reloj compartido por todos los pesados (dt, R3). En Play avanza una sola vez por cuadro aunque haya varios pesados; fuera de Play (suite
+        // headless) avanza con cada Tick.
+        static void AvanzarRelojGlobal(float dt)
+        {
+            if (Application.isPlaying) { if (Time.frameCount == cuadroDelReloj) return; cuadroDelReloj = Time.frameCount; }
+            relojGlobal += dt;
+        }
+        public static float RelojGlobal => relojGlobal;
+        // Solo para los checks (994c): que un anuncio anterior de la partida no tape el que se mide.
+        public static void ReiniciarEnfriamientos() { ultimoAnuncio = -999f; ultimoPasoConSacudida = -999f; }
 
         // Convierte a un soldado enemigo recien creado en pesado. Hay que llamarlo apenas se instancia (antes de su primer Start).
         public static EnemigoPesado Aplicar(Soldier s)
@@ -91,6 +131,7 @@ namespace SP.Operacion
             soldado.Health.CabezaExpuesta -= RomperMascara; soldado.Health.CabezaExpuesta += RomperMascara;
             if (cerebro != null) cerebro.PuestoFijoPorRol = true;   // R17: ReaccionAlDano no lo saca de su maquina (solo le cambia el blanco)
             ArmarMascara();
+            SubirMarcadores();
             ultimaPos = transform.position;
             var arma = soldado.Weapon;
             if (arma != null && !arma.Loadout.Contains(WeaponKind.Minigun)) { arma.Loadout.Insert(0, WeaponKind.Minigun); arma.EquipFromLoadout(0); }
@@ -101,6 +142,9 @@ namespace SP.Operacion
             var ac = SP.Core.RecursosCache.Cargar<RuntimeAnimatorController>("Soldados/AC_Pesado");
             if (anim != null && ac != null) { anim.runtimeAnimatorController = ac; AnimacionPropia = true; for (int i = 0; i < anim.layerCount; i++) if (anim.GetLayerName(i) == "Recarga") capaRecarga = i; }
             GameLog.Line($"[Pesado] {name}: vida {VidaMaxima}, minigun, ensanche {Ensanche.x:0.00}");
+            // R19: la caja del modelo cambia con la pose (los primeros cuadros dan la de reposo, mas baja): se recoloca otra vez ya asentado
+            yield return new WaitForSeconds(1f);
+            SubirMarcadores();
         }
 
         Animator anim; int capaRecarga = -1; float pesoRecarga; bool recargandoAntes;
@@ -139,19 +183,148 @@ namespace SP.Operacion
             if (recorrido < MetrosPorPaso) return;
             recorrido = 0f; PasosPesados++;
             SP.Presentation.AudioDirector.PlayAt(SP.Presentation.SfxKind.PasoPesado, p, 0.5f, 0.6f);
+            SacudirPorPaso(p);
         }
 
         void Update()
         {
+            float dt = Time.deltaTime;
             PasosQueRetumban();
             ManejarRecarga();
             ElegirArma();
-            Tick(Time.deltaTime);
+            VentanaDeCastigo(dt);
+            Muerte(dt);
+            Tick(dt);
+        }
+
+        // ---------------------------------------------------------------- R19 a: marcador y barra de vida sobre la cabeza
+        public float AlturaDeLosMarcadores { get; private set; }
+        void SubirMarcadores()
+        {
+            if (soldado == null) return;
+            float pivote = transform.position.y, tope = pivote + 2f;
+            var h = HitboxCabeza.De(soldado);
+            if (h != null) tope = Mathf.Max(tope, h.Centro.y + MargenSobreLaCabeza);
+            var smr = GetComponentInChildren<SkinnedMeshRenderer>(true);
+            if (smr != null) tope = Mathf.Max(tope, smr.bounds.max.y + 0.30f);   // margen para la variacion de la caja con la animacion (medido: ~0,1 m)   // por si la caja del modelo pasa a la cabeza (brazos, arma)
+            AlturaDeLosMarcadores = tope - pivote;
+            var marca = GetComponent<EnemyAlertIndicatorView>();
+            if (marca != null) marca.Recolocar(AlturaDeLosMarcadores, TamanoDelMarcador);
+            var barra = GetComponentInChildren<HealthBarView>(true);
+            if (barra != null)
+            {
+                var bp = barra.transform.position; bp.y = tope + SeparacionDeLaBarra;
+                barra.transform.position = bp;
+            }
+        }
+
+        // ---------------------------------------------------------------- R19 c: ventana de castigo durante la recarga
+        public bool EnVentanaDeCastigo { get; private set; }
+        public int VentanasDeCastigo { get; private set; }
+        float relojDeHumo;
+        void VentanaDeCastigo(float dt)
+        {
+            if (soldado == null || soldado.Health == null) return;
+            bool recarga = soldado.Health.IsAlive && soldado.Weapon != null && soldado.Weapon.IsReloading;
+            if (recarga && !EnVentanaDeCastigo)
+            {
+                EnVentanaDeCastigo = true; VentanasDeCastigo++; relojDeHumo = 0f;
+                soldado.Health.FactorDeDano = FactorDeDanoRecargando;
+                var cabeza = transform.position + Vector3.up * Mathf.Max(2f, AlturaDeLosMarcadores);
+                // Feedback ya no dibuja texto en el mundo (pulido de feedback): queda en el log y el contador; lo visible es el latido ambar del marcador y el humo.
+                Feedback.Visual("RECARGA", cabeza, Feedback.Info, aviso: false, pulso: false);
+                CartelesDeRecarga++;
+                var marca = GetComponent<EnemyAlertIndicatorView>();
+                if (marca != null) marca.Pulsar(EnemyAlertIndicatorView.ColorDeRecarga);
+            }
+            else if (!recarga && EnVentanaDeCastigo)
+            {
+                EnVentanaDeCastigo = false;
+                if (soldado.Health.FactorDeDano == FactorDeDanoRecargando) soldado.Health.FactorDeDano = 1f;   // solo deshace lo que puso
+            }
+            if (!EnVentanaDeCastigo) return;
+            relojDeHumo -= dt;
+            if (relojDeHumo > 0f) return;
+            relojDeHumo = SegundosEntreHumos;
+            var arma = soldado.Weapon;
+            var boca = arma != null && arma.Muzzle != null ? arma.Muzzle.position : transform.position + Vector3.up * 2.2f + transform.forward * 0.8f;
+            if (Application.isPlaying)
+                SpriteFx.Lanzar("smoke_02", boca, new Color(0.55f, 0.55f, 0.55f, 0.25f), 0.3f, 1.1f, 0.9f, Random.Range(-30f, 30f), Vector3.up * 0.5f, 1.2f, 1);
+            HumosDeRecarga++;
+        }
+
+        // ---------------------------------------------------------------- R19 d: anuncio y pasos que sacuden
+        static Vector3? PosicionDelPoseido()
+        {
+            var d = SP.Player.PlayerInputDriver.Activo;
+            var yo = d != null && d.Brain != null ? d.Brain.Current : null;
+            return yo != null ? yo.transform.position : (Vector3?)null;
+        }
+
+        void Anunciar()
+        {
+            if (relojGlobal - ultimoAnuncio < SegundosEntreAnuncios) return;
+            ultimoAnuncio = relojGlobal; Anuncios++;
+            SP.UI.AlertQueue.Push(TextoDelAnuncio, SP.UI.AlertPriority.Alta, SegundosAnuncio);
+        }
+
+        void SacudirPorPaso(Vector3 p)
+        {
+            var yo = PosicionDelPoseido(); if (!yo.HasValue) return;
+            float d = Vector3.Distance(yo.Value, p);
+            if (d >= MetrosDeSacudidaDePaso || relojGlobal - ultimoPasoConSacudida < SegundosEntrePasosConSacudida) return;
+            ultimoPasoConSacudida = relojGlobal; SacudidasDePaso++;
+            var rig = SP.CameraSystem.CameraRig.Instance;
+            if (rig != null) rig.KickDirectional(Vector3.down, SacudidaDePaso * (1f - d / MetrosDeSacudidaDePaso));
+        }
+
+        // ---------------------------------------------------------------- R19 e: la muerte pesa
+        bool muertoVisto; float desdeLaMuerte = -1f;
+        public bool GolpeDeMuerteDado { get; private set; }
+        void Muerte(float dt)
+        {
+            if (soldado == null || soldado.Health == null || VidaMaxima <= 0) return;
+            if (soldado.Health.IsAlive)
+            {
+                // revivido (o reinicializado): se rearma para una proxima muerte
+                if (muertoVisto) { muertoVisto = false; desdeLaMuerte = -1f; GolpeDeMuerteDado = false; }
+                return;
+            }
+            if (!muertoVisto)
+            {
+                muertoVisto = true; desdeLaMuerte = 0f;
+                if (EnVentanaDeCastigo) { EnVentanaDeCastigo = false; if (soldado.Health.FactorDeDano == FactorDeDanoRecargando) soldado.Health.FactorDeDano = 1f; }
+                var yo = PosicionDelPoseido();
+                if (yo.HasValue && Vector3.Distance(yo.Value, transform.position) < MetrosDeSacudidaDeMuerte)
+                {
+                    SacudidasDeMuerte++;
+                    var rig = SP.CameraSystem.CameraRig.Instance;
+                    if (rig != null) rig.KickDirectional(Vector3.down, SacudidaDeMuerte);
+                }
+                return;
+            }
+            if (GolpeDeMuerteDado) return;
+            desdeLaMuerte += dt;
+            if (desdeLaMuerte < SegundosHastaElPiso) return;
+            GolpeDeMuerteDado = true; GolpesDeMuerte++;
+            var piso = transform.position + Vector3.up * 0.05f;
+            AudioDirector.PlayAt(SfxKind.PasoPesado, piso, 0.9f, 1f, PerfilEspacial.Para(SfxKind.PasoPesado), 0.4f);
+            if (Application.isPlaying)
+            {
+                float e = EscalaDelPolvoDeMuerte;
+                for (int i = 0; i < 3; i++)
+                {
+                    var lado = new Vector3(Mathf.Sin(i * 2.1f), 0f, Mathf.Cos(i * 2.1f)) * 0.6f;
+                    SpriteFx.Lanzar("smoke_02", piso + lado, new Color(0.62f, 0.58f, 0.52f, 0.35f), 0.35f * e, 1.5f * e * 0.6f, 1.0f, Random.Range(-30f, 30f), Vector3.up * 0.3f + lado * 0.4f, 1.0f, 1);
+                }
+            }
+            PolvosDeMuerte++;
         }
 
         // Maquina de estados con dt (la suite headless la simula). InicioDeEstacionar / InicioDeFrenesi quedan con Time.time solo para medirlos desde afuera.
         public void Tick(float dt)
         {
+            AvanzarRelojGlobal(dt);   // R19: antes del corte por muerte, asi el reloj de anuncios/sacudidas avanza tambien en la suite headless
             if (cerebro == null || soldado == null || soldado.Health == null || !soldado.Health.IsAlive) { if (laser != null) laser.enabled = false; return; }
             var objetivo = cerebro.CurrentTarget;
             // R17: "ve" ahora exige LINEA DE TIRO (antes bastaba con tener blanco: se plantaba ~8 s tirando contra una pared).
@@ -161,7 +334,7 @@ namespace SP.Operacion
             switch (Estado)
             {
                 case Fase.Patrulla:
-                    if (ve) { Estado = Fase.Estacionando; enEstado = 0f; sinVer = 0f; InicioDeEstacionar = Time.time; InicioDeFrenesi = -1f; cerebro.Quieto = true; }   // lo ve: frena en seco
+                    if (ve) { Estado = Fase.Estacionando; enEstado = 0f; sinVer = 0f; InicioDeEstacionar = Time.time; InicioDeFrenesi = -1f; cerebro.Quieto = true; Anunciar(); }   // lo ve: frena en seco
                     break;
                 case Fase.Estacionando:
                     if (enEstado >= EstacionamientoActual) { Estado = Fase.Frenesi; enEstado = 0f; InicioDeFrenesi = Time.time; }   // despues abre fuego sostenido
@@ -184,6 +357,17 @@ namespace SP.Operacion
         LineRenderer laser; bool avisoSonoro;
         public bool TelegrafoActivo => laser != null && laser.enabled;
         public float AnchoDelTelegrafo => laser != null ? laser.widthMultiplier : 0f;
+        // R19 b: parpadeo de los ultimos SegundosDeParpadeo (alfa por instancia con el color de vertices del LineRenderer: el material sigue compartido, R4)
+        public float AlfaDelTelegrafo { get; private set; } = 1f;
+        public int CambiosDeParpadeo { get; private set; }
+        bool parpadeoBajo;
+        // Pura (suite): alfa del laser cuando faltan 'falta' segundos para abrir fuego.
+        public static float AlfaDeParpadeo(float falta)
+        {
+            if (falta > SegundosDeParpadeo) return 1f;
+            int fase = Mathf.FloorToInt(Mathf.Max(0f, SegundosDeParpadeo - falta) * HzDeParpadeo * 2f);
+            return (fase & 1) == 1 ? AlfaBajaDelParpadeo : 1f;
+        }
 
         void Telegrafar(bool encender, Soldier objetivo)
         {
@@ -191,6 +375,7 @@ namespace SP.Operacion
             {
                 if (laser != null) laser.enabled = false;
                 avisoSonoro = false;
+                parpadeoBajo = false; AlfaDelTelegrafo = 1f;
                 return;
             }
             if (laser == null)
@@ -206,6 +391,14 @@ namespace SP.Operacion
             laser.enabled = true;
             float k = Mathf.Clamp01(enEstado / Mathf.Max(0.01f, EstacionamientoActual));
             laser.widthMultiplier = Mathf.Lerp(0.03f, 0.11f, k);
+            float alfa = AlfaDeParpadeo(EstacionamientoActual - enEstado);
+            bool bajo = alfa < 0.99f;
+            if (bajo != parpadeoBajo) { parpadeoBajo = bajo; CambiosDeParpadeo++; }
+            if (!Mathf.Approximately(alfa, AlfaDelTelegrafo) || laser.startColor.a != alfa)
+            {
+                AlfaDelTelegrafo = alfa;
+                var c = new Color(1f, 1f, 1f, alfa); laser.startColor = c; laser.endColor = c;
+            }
             laser.SetPosition(0, transform.position + Vector3.up * 1.7f);
             laser.SetPosition(1, objetivo.transform.position + Vector3.up * 1.2f);
             if (!avisoSonoro) { avisoSonoro = true; AudioDirector.PlayAt(SfxKind.BombTick, transform.position, 0.8f, 0.7f); }

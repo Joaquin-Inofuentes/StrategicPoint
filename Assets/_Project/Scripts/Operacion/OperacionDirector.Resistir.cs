@@ -313,9 +313,10 @@ namespace SP.Operacion
         float tAvisoBase;
         void TickCirculoDeBase(Soldier yo)
         {
-            if (plaza == null || yo == null) { BaseInteractuable = false; AnilloDeSubida.Ocultar(); return; }
+            // R19 (E2): el anillo de la plaza lo dibuja el arbitro (OperacionDirector.ObjetivoDelAnillo) con RadioDeInteraccionDeBase y sin cartel;
+            // antes se llamaba Mostrar(plaza, 4.2f), que resolvia a la sobrecarga del tanque ("[E] SUBIR AL TANQUE" en la plaza, radio 3,5).
+            if (plaza == null || yo == null) { BaseInteractuable = false; return; }
             float d = Plano(yo.transform.position, plaza.position).magnitude;
-            if (!AnilloDeSubida.EstaActivo || AnilloDeSubida.Instancia == null) AnilloDeSubida.Mostrar(plaza, 4.2f);
             BaseInteractuable = d <= RadioDeInteraccionDeBase;
             if (!SP.Player.KeyBindings.WasPressed(SP.Player.KeyBindings.Interactuar)) { if (BaseInteractuable && Time.time >= tAvisoBase) { tAvisoBase = Time.time + 2.5f; if (hud != null) hud.Aviso("BASE · APRETA [" + SP.Player.KeyBindings.DisplayName(SP.Player.KeyBindings.Interactuar) + "] PARA REAGRUPAR", 2f); } return; }
             if (BaseInteractuable) { ConfirmacionesDeBase++; if (hud != null) hud.Aviso("BASE ASEGURADA · ESCUADRA REAGRUPADA", 2f); }

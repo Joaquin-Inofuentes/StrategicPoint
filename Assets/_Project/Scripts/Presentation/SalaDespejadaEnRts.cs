@@ -14,6 +14,9 @@ namespace SP.Presentation
         static SalaDespejadaEnRts instancia;
         public static int PiezasOcultas { get; private set; }
         readonly List<Renderer> piezas = new List<Renderer>(256);
+        // R19 (F3): el modo de sombra que tenia cada pieza antes de ocultarla. Antes se volvia siempre a On, y las piezas de arte que nacen
+        // con la sombra apagada (fachada R17/R19, adornos) quedaban proyectando sombra despues de la primera visita a la vista RTS.
+        readonly List<ShadowCastingMode> sombrasOriginales = new List<ShadowCastingMode>(256);
         float proximo, proximaBusqueda; bool oculto;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -32,7 +35,7 @@ namespace SP.Presentation
         }
 
         // Escena nueva: las piezas de la anterior ya no existen; se vuelve a buscar la proxima vez que se entre a RTS.
-        void AlCargarEscena() { piezas.Clear(); oculto = false; proximaBusqueda = 0f; PiezasOcultas = 0; }
+        void AlCargarEscena() { piezas.Clear(); sombrasOriginales.Clear(); oculto = false; proximaBusqueda = 0f; PiezasOcultas = 0; }
 
         // La sala del centro de datos: por jerarquia (3_CentroDeDatos / 9_Servidores) o por estar dentro de su planta (x -27..27, z -81..-39), porque parte del
         // arte de la sala cuelga de otros grupos (9_PulidoFinal, 9_ArteExtra).
@@ -73,9 +76,32 @@ namespace SP.Presentation
             }
             if (rts == oculto) return;
             oculto = rts;
-            var modo = rts ? ShadowCastingMode.ShadowsOnly : ShadowCastingMode.On;
             int n = 0;
-            for (int i = 0; i < piezas.Count; i++) if (piezas[i] != null) { piezas[i].shadowCastingMode = modo; n++; }
+            if (rts)
+            {
+                sombrasOriginales.Clear();
+                for (int i = 0; i < piezas.Count; i++)
+                {
+                    var r = piezas[i];
+                    sombrasOriginales.Add(r != null ? r.shadowCastingMode : ShadowCastingMode.On);
+                    if (r == null) continue;
+                    r.shadowCastingMode = ShadowCastingMode.ShadowsOnly; n++;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < piezas.Count; i++)
+                {
+                    var r = piezas[i];
+                    if (r == null) continue;
+                    var original = i < sombrasOriginales.Count ? sombrasOriginales[i] : ShadowCastingMode.On;
+                    // Solo se restaura si sigue como la dejamos (otro sistema pudo haberla tocado mientras tanto). Si ya estaba oculta por otro
+                    // (ShadowsOnly de antes), al volver se deja visible: este vigilante nunca la oculto de verdad y antes tambien la prendia.
+                    if (r.shadowCastingMode == ShadowCastingMode.ShadowsOnly)
+                        r.shadowCastingMode = original == ShadowCastingMode.ShadowsOnly ? ShadowCastingMode.On : original;
+                    n++;
+                }
+            }
             PiezasOcultas = rts ? n : 0;
         }
     }

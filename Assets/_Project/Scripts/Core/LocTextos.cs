@@ -336,7 +336,32 @@ namespace SP.Core
             { "1 · helipuerto", "1 · helipad" },
             { "2 · despegue", "2 · takeoff" },
             { "3 · la horda", "3 · the horde" },
-            { "MUERTO", "DEAD" }
+            { "MUERTO", "DEAD" },
+            // R19 (punto 3): tutorial simple v2 (Tutorial/TutorialManager.Simple.cs) y cierre del Nivel 1 (VictoriaTutorial)
+            { "Mira alrededor con el MOUSE", "Look around with the MOUSE" },
+            { "Mueve el MOUSE: mira a los costados y después arriba y abajo.", "Move the MOUSE: look to the sides, then up and down." },
+            { "Derriba al enemigo quieto (rojo)", "Take down the standing enemy (red)" },
+            { "Apunta al ENEMIGO ROJO y dispara con el CLIC IZQUIERDO. A LA CABEZA = 1 TIRO.", "Aim at the RED ENEMY and fire with the LEFT CLICK. HEADSHOT = 1 SHOT." },
+            { "CAMBIAR DE SOLDADO", "SWITCH SOLDIER" },
+            { "Aprieta C: controlas a un aliado", "Press C: you control an ally" },
+            { "Toca [C]: pasas al aliado más cercano. (También: mira a un aliado y mantén [Q] → POSEER.)", "Tap [C]: you switch to the nearest ally. (Also: look at an ally and hold [Q] → POSSESS.)" },
+            { "Toca C una vez, sin mantenerla. Tus aliados tienen la columna celeste.", "Tap C once, without holding it. Your allies have the light-blue column." },
+            { "CLIC DERECHO en el círculo verde", "RIGHT CLICK on the green circle" },
+            { "Tus 2 aliados ya están seleccionados: haz CLIC DERECHO en el CÍRCULO VERDE y caminan hasta allí.", "Your 2 allies are already selected: RIGHT CLICK on the GREEN CIRCLE and they walk there." },
+            { "TAB: vuelves a primera persona", "TAB: back to first person" },
+            { "Presiona [TAB] otra vez: vuelves a mirar por los ojos de tu soldado.", "Press [TAB] again: you look through your soldier's eyes again." },
+            { "SUBIR AL TANQUE", "GET IN THE TANK" },
+            { "Sube al tanque con E", "Get in the tank with E" },
+            { "Camina hasta el CÍRCULO VERDE del tanque y aprieta [E] para subir.", "Walk to the tank's GREEN CIRCLE and press [E] to get in." },
+            { "Párate dentro del círculo del piso, junto al tanque, y aprieta E.", "Stand inside the circle on the ground, next to the tank, and press E." },
+            { "USA [Q] → TANQUE", "USE [Q] → TANK" },
+            { "EL CAÑÓN DEL TANQUE", "THE TANK CANNON" },
+            { "Presiona [2]: te sientas en el CAÑÓN del tanque.", "Press [2]: you take the tank's CANNON seat." },
+            { "Derriba 3 enemigos con el cañón", "Take down 3 enemies with the cannon" },
+            { "¡Vienen enemigos! Apunta con el mouse y dispara el cañón con el CLIC IZQUIERDO.", "Enemies incoming! Aim with the mouse and fire the cannon with the LEFT CLICK." },
+            { "¡Nivel 1 completado! Ya sabes moverte, disparar, dar órdenes y usar el tanque.", "Level 1 complete! You now know how to move, shoot, give orders and use the tank." },
+            { "NIVEL 1 COMPLETADO", "LEVEL 1 COMPLETE" },
+            { "JUGAR NIVEL 2", "PLAY LEVEL 2" }
         };
     }
 }

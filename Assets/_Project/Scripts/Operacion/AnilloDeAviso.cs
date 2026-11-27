@@ -133,7 +133,10 @@ namespace SP.Operacion
         static AnilloDeAviso Crear()
         {
             AsegurarMateriales();
-            if (raizDelPool == null) raizDelPool = new GameObject("AnillosDeAviso") { hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild };
+            // R19: SIN HideFlags.DontSave*: un objeto DontSaveInEditor creado en Play no se destruye al salir de Play, y los anillos que
+            // estaban activos quedaban flotando (rojos, quietos, cerca del origen) en el Editor y en TODAS las escenas de los Play siguientes
+            // (se vio en la toma del panel del tutorial). Solo se crea en Play (Mostrar sale si !isPlaying): la escena lo destruye al cambiar.
+            if (raizDelPool == null) raizDelPool = new GameObject("AnillosDeAviso");
             var go = new GameObject("AnilloDeAviso");
             go.transform.SetParent(raizDelPool.transform, false);
             var a = go.AddComponent<AnilloDeAviso>();

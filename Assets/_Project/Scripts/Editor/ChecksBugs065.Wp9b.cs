@@ -17,7 +17,7 @@ namespace SP.EditorTools
     // (ChecksBugs065.CorrerUno("Bug097j")). Los de la carrera tardan ~85 s reales (la ruta es por tiempo: no se adelanta el reloj).
     // OJO con las letras: Bug097a/b/i ya son de WP9a (cinematica y HUD de pasos), asi que el jefe va en j, la reparacion en k, la carrera en l,
     // la variante con segundo helicoptero y disparo manual en m, y la compatibilidad de Embarcar() en n.
-    //   097j  el jefe: toma de 3,5 s con el HUD apagado y el control bloqueado; BLINDADO GOLIAT (bando Enemy, 1600, piso del 5 %), canonazo con aviso
+    //   097j  el jefe: toma de 3,5 s con el HUD apagado y el control bloqueado; BLINDADO GOLIAT (bando Enemy, TanqueJefe.VidaMaxima, piso del 5 %), canonazo con aviso
     //         en el piso (1,3-1,6 s antes de cada impacto, radio 5,5), balas hacen 1 y avisan, explosiones lo bajan, carga adosada 600, se rinde
     //         (frena en 2 s, la tripulacion baja a pie) y la fase pasa a Reparacion.
     //   097k  la reparacion: Kes (Flanqueadora) camina al tanque y repara 25 s, se pausa con un enemigo a 4 m, oleadas de 6+5+6 y una camioneta,
@@ -72,16 +72,17 @@ namespace SP.EditorTools
                 // Antes de la toma: dormido, enemigo, con su tripulacion adentro y sin disparar.
                 W8Ok(ref ok, d.Subfase == (int)SubfaseHuida.Acercamiento && j.Situacion == TanqueJefe.Estado.Dormido, sb, "al llegar: subfase 0 y jefe dormido");
                 W8Ok(ref ok, t.Bando == TeamId.Enemy && t.Health.MaxHealth == TanqueJefe.VidaMaxima && t.Health.Current == TanqueJefe.VidaMaxima, sb, $"BLINDADO bando={t.Bando} vida={t.Health.Current}/{t.Health.MaxHealth}");
-                W8Ok(ref ok, t.PisoDeVida == 80 && t.Occupants.Count == 2 && t.Gunner == null && t.Driver != null, sb, $"piso={t.PisoDeVida} tripulacion={t.Occupants.Count} (conductor + metralleta, sin artillero)");
+                int pisoEsperado = Mathf.CeilToInt(TanqueJefe.VidaMaxima * TanqueJefe.PisoDeVida01);   // R20: 5 % de VidaMaxima (era 80 con 1600)
+                W8Ok(ref ok, t.PisoDeVida == pisoEsperado && t.Occupants.Count == 2 && t.Gunner == null && t.Driver != null, sb, $"piso={t.PisoDeVida} tripulacion={t.Occupants.Count} (conductor + metralleta, sin artillero)");
                 foreach (var x in Esperar(3f)) yield return x;
                 W8Ok(ref ok, j.Canonazos == 0 && j.InicioDeAvisos.Count == 0 && !hud.BarraDeJefeVisible, sb, "dormido no dispara ni muestra la barra");
 
                 // La toma: al pasar z > -30 el control se bloquea 3,5 s con el titulo del jefe.
-                d.TeletransportarEscuadra(new Vector3(0f, 0f, -24f), Quaternion.identity);
+                d.TeletransportarEscuadra(new Vector3(0f, 0f, -4f), Quaternion.identity);   // R19 (E3): el umbral de la toma paso de z -30 a z -8
                 foreach (var x in W9bHasta(() => CineDeHuida.Activa, 3f)) yield return x;
                 float tToma0 = Time.realtimeSinceStartup;
                 bool tomaActiva = CineDeHuida.Activa;
-                W8Ok(ref ok, tomaActiva && d.TomaDelJefeActiva, sb, "la toma arranca al cruzar z=-30");
+                W8Ok(ref ok, tomaActiva && d.TomaDelJefeActiva, sb, $"la toma arranca al cruzar z={OperacionDirector.ZParaLaToma:0}");
                 W8Ok(ref ok, !drv.enabled && AiBrainPausada(), sb, "durante la toma: input del jugador y IA bloqueados");
                 foreach (var x in Esperar(1.6f)) yield return x;
                 string tarjeta = CineDeHuida.Instancia != null ? CineDeHuida.Instancia.TextoDeLaTarjeta : "";
@@ -100,6 +101,9 @@ namespace SP.EditorTools
                 CapturarDesde(desde, Quaternion.LookRotation(foco - desde, Vector3.up), W9bPrefijo + "jefe_lejos.png", 1600, 900, 50f);
 
                 // Canonazos: aviso rojo en el piso 1,3-1,6 s antes de cada impacto.
+                // R20: mientras se miden los 3 canonazos el blindado no recibe dano: con el modo dios los cohetes de la escuadra IA pegan x3 y a
+                // veces lo rendian antes del tercer canonazo (y entonces la bala, el cohete y la tripulacion se median sobre un jefe ya rendido).
+                t.Health.Invulnerable = true;
                 float maxAnillos = 0f, radioVisto = 0f, distAnillo = 99f; bool fotoAviso = false;
                 float t0 = Time.realtimeSinceStartup;
                 while (Time.realtimeSinceStartup - t0 < 24f && j.InstantesDeImpacto.Count < 3)
@@ -123,6 +127,7 @@ namespace SP.EditorTools
                     }
                     yield return null;
                 }
+                t.Health.Invulnerable = false;
                 int n = Mathf.Min(j.InstantesDeImpacto.Count, j.InicioDeAvisos.Count);
                 bool tiempos = n >= 3; var tt = new StringBuilder();
                 for (int i = 0; i < n; i++) { float dt = j.InstantesDeImpacto[i] - j.InicioDeAvisos[i]; tt.Append(dt.ToString("0.00")).Append(' '); if (dt < 1.3f || dt > 1.6f) tiempos = false; }
@@ -146,9 +151,10 @@ namespace SP.EditorTools
                 int dCarga = h0 - t.Health.Current;
                 W8Ok(ref ok, dCarga >= 550 || t.Health.Current <= t.PisoDeVida, sb, $"carga adosada: -{dCarga}");
 
-                // Hasta el piso: nunca baja de 80, se rinde, frena en 2 s, baja la tripulacion y pasa a Reparacion.
+                // Hasta el piso: nunca baja del 5 %, se rinde, frena en 2 s, baja la tripulacion y pasa a Reparacion.
+                // R20: con VidaMaxima 3200 hacen falta mas cohetes que con 1600 (tope 16).
                 int minimo = t.Health.Current; int tiros = 0;
-                while (j.Situacion != TanqueJefe.Estado.Rendido && tiros < 8)
+                while (j.Situacion != TanqueJefe.Estado.Rendido && tiros < 16)
                 {
                     Projectile.ExplodeAt(t.transform.position + Vector3.up * 1.2f, 5.5f, 95, yoId, TeamId.Player, null, 2.5f);
                     tiros++; minimo = Mathf.Min(minimo, t.Health.Current);
@@ -166,7 +172,7 @@ namespace SP.EditorTools
                 foreach (var x in Esperar(0.3f)) yield return x;
                 W8Ok(ref ok, d.Subfase == (int)SubfaseHuida.Reparacion && !hud.BarraDeJefeVisible, sb, $"pasa a Reparacion (subfase {d.Subfase}), barra de jefe oculta");
             }
-            finally { ModoDios.Poner(false); SP.Combat.WeaponHolder.MunicionInfinitaConModoDios = true; }
+            finally { ModoDios.Poner(false); SP.Combat.WeaponHolder.MunicionInfinitaConModoDios = true; if (t != null && t.Health != null) t.Health.Invulnerable = false; }
             Fin((ok ? "OK " : "FALLO ") + sb);
         }
 

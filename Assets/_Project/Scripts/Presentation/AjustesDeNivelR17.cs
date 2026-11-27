@@ -30,6 +30,10 @@ namespace SP.Presentation
         public static float FraccionLedsConFase => LedsTotales > 0 ? (float)LedsConFase / LedsTotales : 0f;
         public static int TextosCreados { get; private set; }
         static OperacionTextoMundo otmCache;   // una sola busqueda para todos los carteles
+        // Ronda 19 (F1): la raiz donde cuelga la fachada (3_CentroDeDatos) y el grupo de la R17, expuestos para que AjustesDeNivelR19 cuelgue
+        // su kit del mismo lugar sin buscar nada por su cuenta (R1: sin Find en runtime nuevo).
+        internal static Transform RaizDeLaFachada { get; private set; }
+        internal static Transform GrupoDeLaFachada { get; private set; }
 
         // Interior: el piso elevado tiene su cara de arriba en ~0,12 (juntas de baldosa a 0,125).
         const float PisoDecor = 0.12f, PisoCobertura = 0.10f;
@@ -42,7 +46,8 @@ namespace SP.Presentation
         {
             ListoInterior = ListoFachada = false;
             ObjetosCreados = CoberturasCreadas = CoberturasOmitidas = LedsTotales = LedsConFase = TextosCreados = 0;
-            materiales.Clear(); cilindro = null;
+            materiales.Clear(); cilindro = null; otmCache = null;
+            RaizDeLaFachada = GrupoDeLaFachada = null;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -68,14 +73,17 @@ namespace SP.Presentation
         {
             if (!ListoInterior) ArmarInterior();
             if (!ListoFachada) ArmarFachada();
+            AjustesDeNivelR19.Aplicar();   // R19: exterior completo (idempotente: si su grupo ya cuelga de la raiz, no hace nada)
+            AjustesDeNivelR20.Aplicar();   // R20: zona final (azotea de la mansion); idempotente por su grupo raiz R20_ZonaFinal
         }
 
         // ---------------------------------------------------------------- materiales y mallas compartidos
-        static Material Mat(string clave, Color c, float emision = 0f)
+        // (internal desde la R19: AjustesDeNivelR19 reusa los mismos ayudantes, materiales y mallas compartidos)
+        internal static Material Mat(string clave, Color c, float emision = 0f)
         {
             if (materiales.TryGetValue(clave, out var m) && m != null) return m;
             m = SafeMaterial.Create(c);
-            m.name = "R17_" + clave;
+            m.name = clave.StartsWith("R19_", System.StringComparison.Ordinal) ? clave : "R17_" + clave;
             if (emision > 0f && m.HasProperty("_EmissionColor"))
             {
                 m.EnableKeyword("_EMISSION");
@@ -85,7 +93,7 @@ namespace SP.Presentation
             return m;
         }
 
-        static Mesh MallaCilindro()
+        internal static Mesh MallaCilindro()
         {
             if (cilindro != null) return cilindro;
             var t = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -94,13 +102,13 @@ namespace SP.Presentation
             return cilindro;
         }
 
-        static float Suelo(float x, float z, float respaldo)
+        internal static float Suelo(float x, float z, float respaldo)
         {
             if (Physics.Raycast(new Vector3(x, 4f, z), Vector3.down, out var h, 8f, ~0, QueryTriggerInteraction.Ignore) && h.normal.y > 0.7f && h.point.y < 1.5f) return h.point.y;
             return respaldo;
         }
 
-        static Transform Grupo(Transform padre, string nombre)
+        internal static Transform Grupo(Transform padre, string nombre)
         {
             var g = new GameObject(nombre).transform;
             g.SetParent(padre, false);
@@ -109,10 +117,10 @@ namespace SP.Presentation
         }
 
         // Pieza de arte SIN collider: GameObject + MeshFilter + MeshRenderer con la malla compartida (no se usan primitivos).
-        static GameObject Pieza(Transform padre, string nombre, Mesh malla, Vector3 centro, Vector3 escala, Material mat, float yaw = 0f)
+        internal static GameObject Pieza(Transform padre, string nombre, Mesh malla, Vector3 centro, Vector3 escala, Material mat, float yaw = 0f)
             => Pieza(padre, nombre, malla, centro, escala, mat, Quaternion.Euler(0f, yaw, 0f));
 
-        static GameObject Pieza(Transform padre, string nombre, Mesh malla, Vector3 centro, Vector3 escala, Material mat, Quaternion rot)
+        internal static GameObject Pieza(Transform padre, string nombre, Mesh malla, Vector3 centro, Vector3 escala, Material mat, Quaternion rot)
         {
             var go = new GameObject(nombre);
             go.transform.SetParent(padre, false);
@@ -125,11 +133,11 @@ namespace SP.Presentation
             return go;
         }
 
-        static GameObject Caja(Transform p, string n, Vector3 c, Vector3 e, Material m, float yaw = 0f) => Pieza(p, n, ParticleMaterialFactory.MallaCubo(), c, e, m, yaw);
+        internal static GameObject Caja(Transform p, string n, Vector3 c, Vector3 e, Material m, float yaw = 0f) => Pieza(p, n, ParticleMaterialFactory.MallaCubo(), c, e, m, yaw);
 
-        // Cobertura: cubo (o cilindro tumbado a lo largo de X) con collider, ObstacleMarker destructible y NavMeshObstacle con carving.
+        // Cobertura: cubo (o cilindro tumbado a lo largo de X, o de pie) con collider, ObstacleMarker destructible y NavMeshObstacle con carving.
         // Si el lugar ya esta ocupado por otro collider solido (no soldados ni vehiculos), no se crea: la nueva decoracion jamas tapa nada.
-        static GameObject Cobertura(Transform padre, string nombre, Vector3 centro, Vector3 tam, Material mat, float yaw, int vida, bool cilindroAlLargoDeX = false)
+        internal static GameObject Cobertura(Transform padre, string nombre, Vector3 centro, Vector3 tam, Material mat, float yaw, int vida, bool cilindroAlLargoDeX = false, bool cilindroDePie = false)
         {
             var rot = Quaternion.Euler(0f, yaw, 0f);
             var mitad = new Vector3(Mathf.Max(0.05f, tam.x * 0.5f - 0.04f), Mathf.Max(0.05f, tam.y * 0.5f - 0.15f), Mathf.Max(0.05f, tam.z * 0.5f - 0.04f));
@@ -141,22 +149,23 @@ namespace SP.Presentation
                 CoberturasOmitidas++;
                 return null;
             }
-            var b = GameObject.CreatePrimitive(cilindroAlLargoDeX ? PrimitiveType.Cylinder : PrimitiveType.Cube);
+            var b = GameObject.CreatePrimitive(cilindroAlLargoDeX || cilindroDePie ? PrimitiveType.Cylinder : PrimitiveType.Cube);
             b.name = nombre;
             b.transform.SetParent(padre, false);
             b.transform.position = centro;
             if (cilindroAlLargoDeX) { b.transform.rotation = Quaternion.Euler(0f, yaw, 90f); b.transform.localScale = new Vector3(tam.y, tam.x * 0.5f, tam.z); }
+            else if (cilindroDePie) { b.transform.rotation = rot; b.transform.localScale = new Vector3(tam.x, tam.y * 0.5f, tam.z); }   // el cilindro primitivo mide 2 de alto
             else { b.transform.rotation = rot; b.transform.localScale = tam; }
             b.GetComponent<Renderer>().sharedMaterial = mat;
             var m = b.AddComponent<ObstacleMarker>(); m.ConfigurarVida(vida);
             var ob = b.AddComponent<UnityEngine.AI.NavMeshObstacle>();
-            ob.shape = UnityEngine.AI.NavMeshObstacleShape.Box; ob.size = Vector3.one; ob.center = Vector3.zero; ob.carving = true;
+            ob.shape = UnityEngine.AI.NavMeshObstacleShape.Box; ob.size = cilindroDePie ? new Vector3(1f, 2f, 1f) : Vector3.one; ob.center = Vector3.zero; ob.carving = true;
             CoberturasCreadas++; ObjetosCreados++;
             return b;
         }
 
         // Cartel con OperacionTextoMundo: placa oscura + TextMesh. "yaw" = hacia donde MIRA quien lee (0 = mira al norte, 180 = mira al sur).
-        static void Texto(Transform padre, string texto, Vector3 pos, float yaw, float tam, Color color, Material placa, float ancho, float alto)
+        internal static Transform Texto(Transform padre, string texto, Vector3 pos, float yaw, float tam, Color color, Material placa, float ancho, float alto)
         {
             var raiz = new GameObject("R17_Texto_" + texto.Replace("\n", " ")).transform;
             raiz.SetParent(padre, false);
@@ -183,9 +192,10 @@ namespace SP.Presentation
                 if (otm != null && otm.material != null) mr.sharedMaterial = otm.material;   // con prueba de profundidad; el barrido de OperacionTextoMundo pone la textura de la fuente
             }
             TextosCreados++;
+            return raiz;
         }
 
-        static void Combinar(Transform grupo)
+        internal static void Combinar(Transform grupo)
         {
             if (grupo == null || grupo.childCount < 2) return;
             foreach (var mf in grupo.GetComponentsInChildren<MeshFilter>(true))
@@ -278,8 +288,11 @@ namespace SP.Presentation
             var raiz = GameObject.Find("3_CentroDeDatos");
             if (raiz == null) return;
             ListoFachada = true;
-            if (raiz.transform.Find(GrupoFachada) != null) return;
+            RaizDeLaFachada = raiz.transform;
+            var existente = raiz.transform.Find(GrupoFachada);
+            if (existente != null) { GrupoDeLaFachada = existente; return; }
             var g = Grupo(raiz.transform, GrupoFachada);
+            GrupoDeLaFachada = g;
 
             var cond = Mat("Condensador", new Color(0.62f, 0.66f, 0.70f));
             var ventilador = Mat("Ventilador", new Color(0.07f, 0.08f, 0.09f));
@@ -309,8 +322,10 @@ namespace SP.Presentation
                     // ventilador (disco) sobre la cara que mira afuera, y conducto hasta la cornisa
                     Pieza(deco, "Condensador_Ventilador", cil, new Vector3(x + lado * 0.51f, sue + 0.7f, z), new Vector3(1.1f, 0.012f, 1.1f), ventilador, Quaternion.Euler(0f, 0f, 90f));
                     Caja(deco, "Condensador_Rejilla", new Vector3(x + lado * 0.52f, sue + 0.7f, z), new Vector3(0.02f, 1.2f, 0.08f), negro);
-                    float alto = 4.6f - (sue + 1.4f);
-                    Caja(deco, "Conducto_Vertical", new Vector3(lado * 27.1f, sue + 1.4f + alto * 0.5f, z), new Vector3(0.35f, alto, 0.45f), conducto);
+                    // R19 (F3, #501b): el conducto baja hasta el piso por DETRAS del condensador (entre el condensador y el muro, x 26,76..27,08).
+                    // Antes nacia arriba del condensador destructible (x 27,1, desde sue + 1,4) y quedaba flotando al demolerlo.
+                    float alto = 4.6f - sue;
+                    Caja(deco, "Conducto_Vertical", new Vector3(lado * 26.92f, sue + alto * 0.5f, z), new Vector3(0.32f, alto, 0.45f), conducto);
                 }
                 foreach (float y in new[] { 3.4f, 4.3f })
                     Caja(deco, "Bandeja_Fachada", new Vector3(lado * 26.95f, y, -72f), new Vector3(0.22f, 0.12f, 10.4f), negro);

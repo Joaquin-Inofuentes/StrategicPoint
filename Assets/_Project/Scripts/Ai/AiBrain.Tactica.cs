@@ -342,7 +342,9 @@ namespace SP.Ai
                 var c = coberturaDueno.bounds.center;
                 var f = coberturaPunto - new Vector3(c.x, coberturaPunto.y, c.z);
                 f.y = 0f;
-                if (f.sqrMagnitude > 0.01f) self.Motor.LookTowards(coberturaPunto + f.normalized * 5f, 10f);
+                // R19 (punto 9 / bug994o E4): el "dt" de 10 s giraba en el acto; ahora respeta el giro de clase (el escudero, x0,14, ya no encara de golpe
+                // al llegar a una cobertura: con x0,14 el paso queda en ~6 grados y el resto lo gira su motor lento). Los demas (x1) siguen encarando al instante.
+                if (f.sqrMagnitude > 0.01f) self.Motor.LookTowards(coberturaPunto + f.normalized * 5f, 10f * Mathf.Min(1f, self.Motor.FactorDeGiro * self.Motor.FactorDeGiro));
             }
             Feedback.Accion(SfxKind.CoverTake, null,
                 self.transform.position, Feedback.Cover, aviso: false, pulso: true, volumen: 0.5f);

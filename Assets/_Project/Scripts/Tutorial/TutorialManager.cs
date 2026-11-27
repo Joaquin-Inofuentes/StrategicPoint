@@ -24,7 +24,7 @@ namespace SP.Tutorial
     // estado del soldado, ordenes, impactos) y reacciona. La unica ayuda es que
     // mantiene con vida al jugador y al tanque, para que nadie pierda por
     // estar aprendiendo.
-    public class TutorialManager : MonoBehaviour
+    public partial class TutorialManager : MonoBehaviour
     {
         // ---- Escena (se buscan por nombre si no estan asignados) ----
         public GameObject prefabEnemigo;
@@ -164,6 +164,8 @@ namespace SP.Tutorial
             DefinirPasos();
             // R17 2.13: en modo simple quedan solo los pasos de IdsSimples (el orden original se conserva).
             if (ModoSimple) pasos.RemoveAll(paso0 => !IdsSimples.Contains(paso0.Id));
+            // R19 (punto 3): el simple v2 cambia gestos y textos de 4 pasos e inserta canon_simple (ver TutorialManager.Simple.cs).
+            if (ModoSimple) AplicarVariantesSimples();
             TutorialLog.Escribir("[INICIO]", $"Tutorial listo: {pasos.Count} pasos. Escena {SceneManager.GetActiveScene().name}");
             int guardado = PasoGuardado;
             if (guardado >= 2 && guardado < pasos.Count - 1)
@@ -971,6 +973,8 @@ namespace SP.Tutorial
                     driver.SoloRadial = true;
                     if (driver.Vehicle != null)
                         balizaTanque = TutorialBeacon.Crear("TANQUE", naranja, driver.Vehicle.transform.position, driver.Vehicle.transform, 2.2f, 14f);
+                    // R19 (punto 7, A3): el anillo del piso con el radio REAL del radial (7 m); el aro de la baliza se oculta para no encimar dos marcas.
+                    MostrarAnilloDelTanque(RadioDelRadialAlTanque, CartelDelTanqueCompleto);
                 },
                 Evaluar = () =>
                 {
@@ -978,7 +982,7 @@ namespace SP.Tutorial
                     if (DistanciaAlTanque() <= 6.5f) f.cercaDelTanque = true;
                     if (driver.Vehicle.PlayerAboard) { f.dentroDelTanque = true; f.cercaDelTanque = true; }
                 },
-                AlSalir = () => { driver.SoloRadial = false; if (balizaTanque != null) { balizaTanque.Quitar(); balizaTanque = null; } },
+                AlSalir = () => { driver.SoloRadial = false; OcultarAnilloDelTanque(); if (balizaTanque != null) { balizaTanque.Quitar(); balizaTanque = null; } },
             });
 
             // 13 ------------------------------------------------------
@@ -1655,7 +1659,7 @@ namespace SP.Tutorial
         void Protecciones()
         {
             var pa = PasoActual;
-            bool enOla = pa != null && (pa.Id == "avanzar_disparar" || pa.Id == "final");
+            bool enOla = pa != null && (pa.Id == "avanzar_disparar" || pa.Id == "final" || pa.Id == "canon_simple");
             if (enOla || danoReducido) ReducirDanoEnLasOlas(enOla);
             var v = driver.Vehicle;
             if (v != null && v.Health != null && v.Health.IsAlive && v.Health.Current < v.Health.MaxHealth * 0.6f)
@@ -1732,7 +1736,7 @@ namespace SP.Tutorial
             string pista = "";
             Sub pendiente = null;
             foreach (var s in p.Subs) if (!s.Hecha) { pendiente = s; break; }
-            if (pendiente != null && sinProgreso > 16f && !string.IsNullOrEmpty(pendiente.Pista))
+            if (pendiente != null && sinProgreso > SegundosDeAyudaActual && !string.IsNullOrEmpty(pendiente.Pista))
             {
                 pista = pendiente.Pista;
                 if (pistaMostrada != pista)
@@ -1743,7 +1747,7 @@ namespace SP.Tutorial
                 }
             }
 
-            if (pendiente != null && sinProgreso > SegundosParaAyuda)
+            if (pendiente != null && sinProgreso > SegundosDeAyudaActual)
             {
                 var ob = ObjetivoDeAyuda(p);
                 string flecha = ob != null && ob.gameObject.activeInHierarchy && driver.Rig.Cam != null
@@ -1814,15 +1818,21 @@ namespace SP.Tutorial
         // R17 2.13: tutorial simple (11 pasos) por defecto; el completo (37) se pide desde el menu. Es settable para que los checks fuercen uno u otro.
         public static bool ModoSimple = true;
         public const string ClaveProgresoCompleto = "sp_tutorial_paso";
-        public const string ClaveProgresoSimple = "sp_tutorial_paso_simple";
+        // R19 (punto 3): simple v2 de 8 pasos (un gesto cada uno, sin radial obligatorio, final con el canon). La clave del progreso cambia
+        // porque se guarda por INDICE: con la lista nueva el indice viejo retomaria en un paso equivocado.
+        public const string ClaveProgresoSimple = "sp_tutorial_paso_simple2";
+        public const string ClaveProgresoSimpleVieja = "sp_tutorial_paso_simple";
+        public const int PasosSimples = 8;
         public static readonly HashSet<string> IdsSimples = new HashSet<string>
         {
-            "camara", "wasd", "disparar", "mira", "cambiar", "seguir", "rts", "fps", "entrar_tanque", "mira_tanque", "victoria"
+            "camara", "wasd", "disparar", "cambiar", "rts", "entrar_tanque", "canon_simple", "victoria"
         };
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ReiniciarModo() { ModoSimple = true; }
         public static string ClaveProgreso => ModoSimple ? ClaveProgresoSimple : ClaveProgresoCompleto;
-        public const float SegundosParaAyuda = 16f;
+        public const float SegundosParaAyuda = 16f;           // completo (Fase19 lo exige en 16)
+        public const float SegundosParaAyudaSimple = 8f;      // R19: simple
+        public static float SegundosDeAyudaActual => ModoSimple ? SegundosParaAyudaSimple : SegundosParaAyuda;
         public static int PasoGuardado => PlayerPrefs.GetInt(ClaveProgreso, 0);
         public static void BorrarProgreso() { PlayerPrefs.DeleteKey(ClaveProgreso); PlayerPrefs.Save(); }
         float avisoRetomarHasta;
@@ -1896,6 +1906,7 @@ namespace SP.Tutorial
                 case "granada": return enemigoGranada != null ? enemigoGranada.transform : null;
                 case "ir_atacar": return enemigoAtaque != null ? enemigoAtaque.transform : null;
                 case "suministros": return cajaTutorial != null ? cajaTutorial.transform : null;
+                case "canon_simple": return EnemigoVivoDeLaOla();
                 default: return null;
             }
         }
@@ -1918,7 +1929,20 @@ namespace SP.Tutorial
             Terminado = true;
             BorrarProgreso();
             SP.UI.MenuDeOrdenes.PonerPista(-1);
+            // R19 (punto 1): el Nivel 1 del menu (este tutorial, simple o completo) queda marcado como terminado con su mejor tiempo.
+            ProgresoDeNiveles.Completar(1, TiempoTotal);
             TutorialLog.Escribir("[FIN]", $"Tutorial finalizado en {TiempoTotal:0.0} s · {bajas} bajas");
+        }
+
+        // R19 (punto 1): boton JUGAR NIVEL 2 del panel final. Mismo destino que MainMenuController.ElegirNivel(2).
+        public void IrAlNivel2()
+        {
+            Time.timeScale = 1f;
+            // Lo que el tutorial cambia de los estaticos se devuelve antes de cargar (OnDestroy tambien lo hace, pero puede llegar tarde).
+            Health.RegeneracionPermitida = true;
+            Demolicion.Segundos = Demolicion.SegundosNormales;
+            TutorialLog.Escribir("[FIN]", "JUGAR NIVEL 2: se carga SC_Operacion");
+            SceneLoader.Cargar("SC_Operacion");
         }
 
         public void Reintentar()

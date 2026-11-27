@@ -199,10 +199,17 @@ namespace SP.Mision
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ReiniciarForzados() { SupervivientesForzados = -1; HeridosRescatados = 0; }
 
+        // R19 (punto 1): segundos desde que empezo la mision (0 sin instancia). Lo usa OperacionDirector.Ganar para el mejor tiempo del Nivel 2.
+        public static float SegundosDeMision => Instancia != null ? Mathf.Max(0f, Time.time - Instancia.Inicio) : 0f;
+        public const string EtiquetaNivel2Completado = "NIVEL 2 · OPERACIÓN CUARTEL";
+
         public static List<Fila> Filas(bool victoria)
         {
             var r = new List<Fila>();
             var e = Instancia;
+            // R19 (punto 1, H16): la victoria de la Operacion cierra el NIVEL 2; va como fila (el panel de prefab no se toca ni se busca por nombre).
+            if (victoria && SP.Operacion.OperacionDirector.Activo)
+                r.Add(new Fila { Etiqueta = EtiquetaNivel2Completado, Valor = "COMPLETADO", Numero = -1, Destacada = true });
             int total = 0, vivos = 0;
             foreach (var s in ActorRegistry.All)
             {

@@ -12,7 +12,7 @@ using SP.Vehicles;
 namespace SP.Operacion
 {
     // WP9b (#097): el BLINDADO GOLIAT, jefe del objetivo 4. Es el tanque de la fuga en manos enemigas (bando Enemy, Driver + Passenger2: nunca
-    // Gunner, la TurretAI generica lo trata como humano y se calla) con 1600 de vida y un PISO del 5 %: no baja de ahi y, al llegar, se rinde.
+    // Gunner, la TurretAI generica lo trata como humano y se calla) con VidaMaxima (3200; la escena trae 1600 y Preparar lo corrige) y un PISO del 5 %: no baja de ahi y, al llegar, se rinde.
     //   * Patrulla 4 puntos del patio a 4 m/s (VehicleBrain) mientras la torreta apunta al soldado mas cercano.
     //   * CAÑONAZO cada 5 s con aviso en el piso (AnilloDeAviso): 1,5 s antes cae un circulo rojo de 5,5 m sobre el soldado; 120 de dano en el
     //     centro, con caida hacia el borde. La escuadra lo esquiva corriendo.
@@ -40,6 +40,43 @@ namespace SP.Operacion
         // Un cohete que pega en el casco hace ~86 (la explosion cae en la superficie, lejos del centro del vehiculo, y cae con la distancia):
         // contra 1600 de vida serian 18 cohetes. La explosion de arma pesada cuenta x2,2 contra el jefe (blindaje debil a explosivos): ~8 cohetes.
         public const float FactorDeExplosiones = 2.2f;
+
+        // R20 (COLA punto 3): el MISMO vehiculo, ya del jugador, en la carrera (OperacionDirector.CurvaDeDanoDelTanque). Medido antes (#997a/#997c,
+        // 2026-11-27): un cohete de a pie le sacaba ~36 %, 10 balas de fusil ~42 %, y con juego razonable el tanque caia a los 18 s de carrera tras
+        // 7 golpes grandes ("con 5 bombazos ya exploto"). Los topes del golpe y del presupuesto por segundo escalaban con el x32 y no topaban nada.
+        // Ahora (fracciones de la vida maxima ANTES del coeficiente de dano enemigo de Configuraciones y la dificultad, que lo dejan en ~x0,7):
+        //   * tope por golpe 10 %;
+        //   * presupuesto por ventana de 4 s compartido por balas y explosiones: 8 % sano, 6 % por debajo de la mitad (~4 %/~3 % efectivo). Un
+        //     bombazo de vehiculo (obus de camioneta, cañon) pesa ~4 % y "gasta" la ventana; el cohete de un SOLDADO sigue con el minimo del
+        //     bug #359 (Vehicle.DanoMinimoDeExplosion01, 15 % antes del coeficiente): ~10 % efectivo, ~10 lo destruyen;
+        //   * ventana de reparacion: sin golpes durante 4 s el tanque se repara 1 %/s hasta el 60 % (cubrirse/limpiar la zona tiene premio).
+        // Iteraciones medidas (#997c, 3 corridas cada una): topes x32 -> destruido 3/3 a los 14-18 s; 15 %/golpe + 3 %/s solo balas -> 3/3 a los
+        // 33-45 s (9-10 bombazos de 8 %); 10 %/golpe -> 2/2 a los 45-51 s (~2 golpes/s sin respiro); presupuesto de 3 %/s para todo -> 3/3 llega
+        // con 39-43 % (pero los bombazos no se sentian: 2 %).
+        public const float TanqueDelJugadorTopePorGolpe01 = 0.10f;
+        public const float TanqueDelJugadorVentanaDePresupuesto = 4f, TanqueDelJugadorPresupuestoSano01 = 0.08f, TanqueDelJugadorPresupuestoHerido01 = 0.06f;
+        public const float TanqueDelJugadorSegundosParaReparar = 4f, TanqueDelJugadorReparacionPorSegundo01 = 0.01f, TanqueDelJugadorReparaHasta01 = 0.6f;
+        public float ReparadoEnLaCarrera { get; private set; }   // HP que devolvio la ventana de reparacion (checks)
+        int vidaVista = -1; float ultimoGolpeDelJugador, reparacionAcumulada;
+
+        // El blindado ya es del jugador y la escuadra va a bordo (carrera): ventana de reparacion.
+        void TickTanqueDelJugador(float dt)
+        {
+            var d = OperacionDirector.Instancia;
+            if (d == null || !d.EnTanque || d.SubfaseDeHuida != SubfaseHuida.Carrera || Vehiculo.Bando != TeamId.Player || Vehiculo.IsDestroyed || !Vehiculo.Health.IsAlive)
+            { vidaVista = -1; reparacionAcumulada = 0f; return; }
+            int v = Vehiculo.Health.Current, max = Vehiculo.Health.MaxHealth;
+            if (vidaVista < 0 || v < vidaVista) ultimoGolpeDelJugador = Time.time;
+            vidaVista = v;
+            if (Time.time - ultimoGolpeDelJugador < TanqueDelJugadorSegundosParaReparar || v >= max * TanqueDelJugadorReparaHasta01) { reparacionAcumulada = 0f; return; }
+            reparacionAcumulada += max * TanqueDelJugadorReparacionPorSegundo01 * dt;
+            int entero = Mathf.FloorToInt(reparacionAcumulada);
+            if (entero <= 0) return;
+            reparacionAcumulada -= entero;
+            Vehiculo.Health.Heal(entero);
+            ReparadoEnLaCarrera += entero;
+            vidaVista = Vehiculo.Health.Current;
+        }
 
         public enum Estado { Dormido, Peleando, Rendido }
 
@@ -83,6 +120,7 @@ namespace SP.Operacion
             var j = v.GetComponent<TanqueJefe>();
             if (j == null) j = v.gameObject.AddComponent<TanqueJefe>();
             j.Vehiculo = v;
+            AplicarVidaMaxima(v);
             j.motor = v.GetComponent<VehicleMotor>();
             j.brain = v.GetComponent<VehicleBrain>();
             j.canon = v.TorretaCanon;
@@ -91,6 +129,16 @@ namespace SP.Operacion
             if (j.aiCanon != null) j.aiCanon.Silenciada = true;   // dormido: no dispara hasta Despertar
             Instancia = j;
             return j;
+        }
+
+        // R20 (#097j): la escena (binaria) trae el blindado con maxHealth 1600; el jefe se pelea con VidaMaxima. Se aplica en runtime conservando
+        // la fraccion que tenga (PrepararHuida lo deja al 100 % antes de llamar a Preparar). No baja una vida mayor.
+        public static void AplicarVidaMaxima(Vehicle v)
+        {
+            if (v == null || v.Health == null || v.Health.MaxHealth >= VidaMaxima || !v.Health.IsAlive) return;
+            float fr = Mathf.Clamp01(v.Health.Current / (float)Mathf.Max(1, v.Health.MaxHealth));
+            v.Health.Initialize(v.Health.ActorId, VidaMaxima);
+            v.PonerVida01(fr);
         }
 
         // Vuelve a "dormido y quieto" (entrada de la fase, antes de la toma): sin patrulla ni fuego, con el filtro de dano ya puesto.
@@ -168,7 +216,8 @@ namespace SP.Operacion
 
         void Update()
         {
-            if (Situacion == Estado.Dormido || Vehiculo == null) return;
+            if (Vehiculo == null) return;
+            if (Situacion == Estado.Dormido) { TickTanqueDelJugador(Time.deltaTime); return; }
             float dt = Time.deltaTime;
             if (Vehiculo.IsDestroyed) { CancelarAnillo(); return; }
             if (Situacion == Estado.Rendido) { TickRendido(dt); return; }

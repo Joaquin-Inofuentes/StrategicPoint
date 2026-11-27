@@ -108,6 +108,7 @@ namespace SP.Tutorial
             var dummy = TutorialManager.Instance?.Dummy;
             var pared = TutorialManager.Instance?.Pared;
             var caja = TutorialManager.Instance?.Destruible;
+            if (TutorialManager.ModoSimple) { pared = null; caja = null; }   // R19: en el simple el paso es solo el enemigo quieto
             var yo = d.Brain.Current;
             if (dummy != null)
             {

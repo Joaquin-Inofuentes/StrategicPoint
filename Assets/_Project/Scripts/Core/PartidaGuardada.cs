@@ -23,6 +23,9 @@ namespace SP.Core
         public EstadoDeSesion estado;
         public List<string> cinematicasVistas = new List<string>();
         public string estadisticas;
+        // v2 (Cola #2, 2026-11-27): resumen legible del progreso de los objetivos al guardar (terminal, salida norte, puestos, toma del jefe...).
+        // Solo diagnostico: lo que se restaura va en estado.mision (claves opcionales del estado "Operacion"). Vacio en partidas v1.
+        public string progreso;
     }
 
     // P10 (#120): guardar y continuar la partida. Se apoya en SesionLog (Capturar / Restaurar: soldados, vehiculos y el estado de la mision de cada
@@ -35,7 +38,10 @@ namespace SP.Core
     //  - ModoPrueba: los checks y OperacionPrueba escriben en partida_<escena>_prueba.json, jamas en la partida real del jugador.
     public static class PartidaGuardada
     {
-        public const int VersionActual = 1;
+        // v2: el estado de la mision suma el progreso de los objetivos (terminal volada, salida norte, toma del jefe, carga del porton).
+        // Las partidas v1 se siguen cargando: lo que les falta se deduce por la fase (OperacionDirector.RestaurarProgreso).
+        public const int VersionActual = 2;
+        public const int VersionMinimaCompatible = 1;
         public const string EscenaDeLaOperacion = "SC_Operacion";
 
         // Solo checks / pruebas por CLI: otra ruta de archivo para no tocar la partida real. Se reinicia en cada Play.
@@ -88,7 +94,7 @@ namespace SP.Core
                 if (!File.Exists(ruta)) return null;
                 var d = JsonUtility.FromJson<PartidaGuardadaDatos>(File.ReadAllText(ruta));
                 if (d == null || d.estado == null) { Aviso("la partida guardada esta vacia o danada: se ignora", avisar); return null; }
-                if (d.version != VersionActual) { Aviso($"la partida guardada es de otra version ({d.version}, esta es la {VersionActual}): se ignora", avisar); return null; }
+                if (d.version < VersionMinimaCompatible || d.version > VersionActual) { Aviso($"la partida guardada es de otra version ({d.version}, esta es la {VersionActual}): se ignora", avisar); return null; }
                 if (d.escena != escena) { Aviso("la partida guardada es de otra escena: se ignora", avisar); return null; }
                 return d;
             }
@@ -158,6 +164,7 @@ namespace SP.Core
                     tiempoDeJuego = Time.time,
                     estado = estado,
                     estadisticas = EstadisticasDeMision.Instancia != null ? EstadisticasDeMision.Instancia.Serializar() : "",
+                    progreso = d.ResumenDeProgreso(),
                 };
                 if (CinematicaDeRapel.YaVista) datos.cinematicasVistas.Add("rapel");
                 if (CinematicaDeOperacion.YaVista) datos.cinematicasVistas.Add("pasos");
@@ -257,7 +264,7 @@ namespace SP.Core
             for (int i = 0; i < 3; i++) yield return null;
             PendienteDeRestaurar = null;
             Restaurando = false;
-            SesionLog.Evento("PARTIDA: restaurada (" + d.motivo + "): " + r);
+            SesionLog.Evento("PARTIDA: restaurada (" + d.motivo + "): " + r + (dir != null ? " | progreso " + dir.ResumenDeProgreso() + (string.IsNullOrEmpty(d.progreso) ? "" : " (guardado: " + d.progreso + ")") : ""));
             IndicadorDeGuardado.Mostrar("PARTIDA CARGADA · OBJETIVO " + d.objetivo, 3f, true);
             Restaurada?.Invoke(d);
         }

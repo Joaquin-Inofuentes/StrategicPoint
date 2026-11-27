@@ -256,6 +256,19 @@ namespace SP.Operacion
             AudioDirector.PlayAt(SfxKind.Explosion, pc, 1f);
             for (int i = 0; i < 12; i++)
                 SpriteFx.Lanzar("smoke_02", centro + UnityEngine.Random.insideUnitSphere * 1.4f, new Color(0.30f, 0.29f, 0.28f, 0.7f), 0.8f, 4.2f, UnityEngine.Random.Range(2.0f, 3.4f), UnityEngine.Random.Range(-30f, 30f), Vector3.up * UnityEngine.Random.Range(1.4f, 3.2f), 1.5f, 1);
+            ApagarLaTerminal(centro, true);
+            for (int i = 0; i < 3; i++)
+            {
+                yield return new WaitForSeconds(0.12f);
+                ImpactFx.SpawnExplosion(centro + new Vector3(UnityEngine.Random.Range(-2.2f, 2.2f), UnityEngine.Random.Range(-0.4f, 0.8f), UnityEngine.Random.Range(-2.2f, 2.2f)), 3.4f, false);
+            }
+        }
+
+        // Cola #2 (2026-11-27, "mori en el blindado y al cargar estaba la computadora sin explotar"): el estado "terminal volada" se aplica por un solo
+        // camino. Con la explosion (VoladuraDeLaTerminal) el arte se hace trozos; al restaurar una partida guardada despues del hackeo se aplica sin
+        // efectos ni trozos. En los dos casos la maquina deja de dibujarse Y de chocar (renderers y colliders solidos apagados): lo que se ve es lo que hay.
+        void ApagarLaTerminal(Vector3 centro, bool fragmentar)
+        {
             if (computadora != null)
             {
                 if (computadora.luz != null) computadora.luz.material.color = Color.black;
@@ -278,10 +291,9 @@ namespace SP.Operacion
                 if (arteTerminal != null)
                 {
                     // La maquina vuela en pedazos (con el color de sus propias piezas) y el arte entero se retira: no queda nada en pie.
-                    int trozos = SP.Presentation.Fragmentador.Romper(arteTerminal, centro, 16f, 40);
+                    if (fragmentar) SP.Presentation.Fragmentador.Romper(arteTerminal, centro, 16f, 40);
                     foreach (var r in arteTerminal.GetComponentsInChildren<Renderer>(true)) r.enabled = false;
                     foreach (var c in arteTerminal.GetComponentsInChildren<Collider>(true)) c.enabled = false;
-                    TerminalDestruida = true;
                 }
                 foreach (var r in computadora.GetComponentsInChildren<Renderer>(true)) if (r != null && !(r is ParticleSystemRenderer)) r.enabled = false;
                 foreach (var c in computadora.GetComponentsInChildren<Collider>(true)) if (c != null && !c.isTrigger) c.enabled = false;
@@ -296,11 +308,16 @@ namespace SP.Operacion
                     foreach (var c in r.GetComponentsInChildren<Collider>(true)) if (!c.isTrigger) c.enabled = false;
                 }
             }
-            for (int i = 0; i < 3; i++)
-            {
-                yield return new WaitForSeconds(0.12f);
-                ImpactFx.SpawnExplosion(centro + new Vector3(UnityEngine.Random.Range(-2.2f, 2.2f), UnityEngine.Random.Range(-0.4f, 0.8f), UnityEngine.Random.Range(-2.2f, 2.2f)), 3.4f, false);
-            }
+            TerminalDestruida = true;
+        }
+
+        // Restaurar partida (objetivo 4 en adelante): terminal volada y salida norte abierta, al instante y sin efectos. Idempotente.
+        public void DejarTerminalVoladaYa()
+        {
+            if (!TerminalDestruida && computadora != null) ApagarLaTerminal(computadora.transform.position + Vector3.up * 1.4f, false);
+            AbrirSalidaNorte(false);
+            // AbrirSalidaNorte no hace nada si ya se habia marcado abierta: el muro se baja igual si quedo en pie.
+            if (MuroDeSalidaEnPie() && muroDeSalida != null) muroDeSalida.Demoler(muroDeSalida.transform.position, 6f);
         }
 
         IEnumerator DerribarElMuroTrasElEstallido(Vector3 pc)

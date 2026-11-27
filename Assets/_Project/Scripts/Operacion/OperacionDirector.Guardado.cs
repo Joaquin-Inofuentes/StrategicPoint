@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -75,6 +76,82 @@ namespace SP.Operacion
                 drv.Rig.SetMode(ControlMode.Rts, yo.transform.position);
             ForzarHud = true;
             Aviso("PARTIDA CARGADA\nOBJETIVO " + (Indice(Fase) + 1) + "/" + TotalObjetivos);
+        }
+
+        // ---------------------------------------------------------------
+        // Cola #2 (2026-11-27): "que mi ultimo guardado guarde tambien el progreso del nivel, no solo aparecer en esa zona (mori en el blindado y al
+        // cargar estaba la computadora sin explotar pero la pude traspasar igual)". SaltarA rearmaba la fase pero no las estructuras de los objetivos
+        // ya cumplidos: al continuar en la huida la salida norte quedaba abierta y la terminal entera (y desde el objetivo 5 la salida seguia en pie).
+        // Claves nuevas del estado "Operacion" (todas opcionales: una partida vieja sin ellas se deduce por la fase):
+        //   terminalVolada  True/False  la computadora del centro de datos exploto (no se dibuja ni choca)
+        //   muroSalidaCaido True/False  Muro_Salida_Norte demolido
+        //   tomaJefeHecha   True/False  la presentacion del BLINDADO ya se vio (no se repite)
+        //   cargaPorton     volado=..;mecha=..  la carga del porton norte del cuartel (objetivo 1, con la mecha encendida)
+        // ---------------------------------------------------------------
+        void CapturarProgreso(Dictionary<string, string> kv)
+        {
+            var ic = System.Globalization.CultureInfo.InvariantCulture;
+            kv["terminalVolada"] = TerminalDestruida.ToString();
+            kv["muroSalidaCaido"] = (!MuroDeSalidaEnPie() && (muroDeSalida != null || salidaAbierta)).ToString();
+            kv["tomaJefeHecha"] = TomaDelJefeHecha.ToString();
+            if (cargaPorton != null) kv["cargaPorton"] = $"volado={cargaPorton.EstaVolada};mecha={cargaPorton.MechaRestante.ToString("0.00", ic)}";
+        }
+
+        void RestaurarProgreso(Dictionary<string, string> kv, FaseOperacion fase)
+        {
+            int i = Indice(fase);
+            // Terminal y salida norte: el hackeo termina el objetivo 3, asi que desde la huida en adelante siempre estan voladas (partida vieja: por la fase).
+            bool terminalVolada = kv.TryGetValue("terminalVolada", out var tv) ? tv == "True" || i > Indice(FaseOperacion.CentroDeDatos) : i > Indice(FaseOperacion.CentroDeDatos);
+            if (terminalVolada) DejarTerminalVoladaYa();
+            if (fase == FaseOperacion.Huir)
+            {
+                // La toma del jefe ya se vio si se guardo en una subfase posterior al acercamiento (o arriba del tanque): no vuelve a dispararse.
+                bool toma = (kv.TryGetValue("tomaJefeHecha", out var th) && th == "True") || Subfase >= (int)SubfaseHuida.Jefe || EnTanque;
+                TomaDelJefeActiva = false;
+                if (toma) TomaDelJefeHecha = true;
+            }
+            if (fase == FaseOperacion.Infiltrar && cargaPorton != null && kv.TryGetValue("cargaPorton", out var cp))
+            {
+                float mecha = 0f;
+                int im = cp.IndexOf("mecha=", StringComparison.Ordinal);
+                if (im >= 0) float.TryParse(cp.Substring(im + 6).Split(';')[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out mecha);
+                if (!cp.Contains("volado=True") && mecha > 0f) cargaPorton.RestaurarMecha(mecha);
+            }
+        }
+
+        // La terminal se ve y es solida (un collider no-trigger encendido) / no queda nada de ella (ni dibujo ni choque). Lo usan los checks y el resumen.
+        public bool TerminalEnPieYSolida
+        {
+            get
+            {
+                if (computadora == null) return false;
+                bool dibujo = false, solido = false;
+                foreach (var r in computadora.GetComponentsInChildren<Renderer>(true)) if (r.enabled && r.gameObject.activeInHierarchy && !(r is ParticleSystemRenderer)) { dibujo = true; break; }
+                foreach (var c in computadora.GetComponentsInChildren<Collider>(true)) if (c.enabled && !c.isTrigger && c.gameObject.activeInHierarchy) { solido = true; break; }
+                return dibujo && solido;
+            }
+        }
+        public bool TerminalSinRastro
+        {
+            get
+            {
+                if (computadora == null) return true;
+                foreach (var r in computadora.GetComponentsInChildren<Renderer>(true)) if (r.enabled && r.gameObject.activeInHierarchy && !(r is ParticleSystemRenderer)) return false;
+                foreach (var c in computadora.GetComponentsInChildren<Collider>(true)) if (c.enabled && !c.isTrigger && c.gameObject.activeInHierarchy) return false;
+                return true;
+            }
+        }
+        public bool MuroDeSalidaSigueEnPie => MuroDeSalidaEnPie();
+        public Collider ColliderDelMuroDeSalida { get { MuroDeSalidaEnPie(); return muroDeSalida != null ? muroDeSalida.GetComponent<Collider>() : null; } }
+
+        // Resumen canonico del progreso de los objetivos (lo compara el check #996: igual antes de guardar y despues de continuar).
+        public string ResumenDeProgreso()
+        {
+            string terminal = TerminalSinRastro ? "volada" : TerminalEnPieYSolida ? "enPie" : "INCOHERENTE";
+            string muro = MuroDeSalidaEnPie() ? "enPie" : "caido";
+            return $"fase={Fase}/{Subfase};porton={(portonCuartel != null && portonCuartel.activeSelf ? "cerrado" : "abierto")};generador={(generador != null && generador.EstaCaido ? "caido" : "enPie")}"
+                 + $";torres={IndicesCaidos(torres)};puestos={ContarVolados()}/{CargasRequeridas};terminal={terminal};muroNorte={muro}"
+                 + $";toma={(Fase == FaseOperacion.Huir ? TomaDelJefeHecha.ToString() : "-")};enTanque={EnTanque}";
         }
 
         // Soldados de reserva de la ciudad que SesionLog dejo activos y vivos: son atacantes de una oleada que habia salido; se guardan de nuevo
